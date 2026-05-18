@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-05-15
+Last updated: 2026-05-19
 
 ## Document Status
 
@@ -210,6 +210,8 @@ Public-facing copy across marketing and webapp should follow one simple style:
 
 - calm, direct, and premium without fake urgency, countdown theater, or exaggerated rescue language
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
+- lead cards and above-the-fold proof with concrete user-checkable hooks: `5 days`, `no card for trial`, `Android + Windows`, `+10 days for Telegram`, `up to 5 devices in paid plans`, `cabinet`, and `support`
+- avoid mood-first public phrases such as `спокойный маршрут`, `легкий путь`, `понятный сценарий`, or similar filler when a real product fact, action, limit, or status can be shown instead
 - marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
 - email continuation copy may be live when the delivery path is ready, and must degrade honestly if delivery readiness fails
 - cabinet copy should focus on continuation, renewal, redeem, support, and recovery rather than acting like a second landing page

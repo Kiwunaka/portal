@@ -158,7 +158,7 @@ export default function SettingsPage() {
         ? "Email уже привязан к аккаунту."
         : emailReady
           ? "Можно подключить email к этому аккаунту без выхода из кабинета."
-          : "Email-вход готовим отдельно. Пока не показываем недоделанный сценарий.",
+          : "Email-вход готовим отдельно. Пока не показываем недоделанную привязку.",
       badge: linkedEmail || (emailReady ? "Можно подключить" : "Скоро"),
       tone: linkedEmail ? ("info" as const) : ("neutral" as const),
       action: canLinkEmail ? (
@@ -326,7 +326,7 @@ export default function SettingsPage() {
     <CabinetRoute
       eyebrow="Настройки"
       title="Настройки и бонусы"
-      description="Аккаунт, связанные каналы и понятные действия без личных ссылок, технических адресов и ручных профилей."
+      description="Аккаунт, связанные каналы и бонусы без личных ссылок, технических адресов и ручных профилей."
       actions={
         <>
           {canLinkEmail ? (
@@ -381,7 +381,7 @@ export default function SettingsPage() {
     >
       <CabinetHero
         eyebrow="Главное по аккаунту"
-        badge={dash?.is_active ? "Профиль в порядке" : "Профилю нужен следующий шаг"}
+        badge={dash?.is_active ? "Профиль в порядке" : "Нужно действие"}
         badgeTone={dash?.is_active ? "success" : "warning"}
         title={profileName}
         description={
@@ -403,7 +403,7 @@ export default function SettingsPage() {
             tone: linkedEmail ? "info" : "neutral",
           },
           {
-            label: "Если нужен следующий шаг",
+            label: "Если нужна помощь",
             value: dash?.is_active ? "Проверить устройства" : "Открыть оплату",
             hint: dash?.is_active ? "Полезно перед переносом доступа." : "Самый прямой путь, если срок закончился.",
             tone: "neutral",
@@ -423,7 +423,7 @@ export default function SettingsPage() {
         <CabinetSection
           eyebrow="Полезное рядом"
           title="Быстрые действия"
-          description="Если нужна следующая понятная точка, вот самые частые действия."
+          description="Если не знаете, куда идти дальше, вот самые частые действия."
         >
           <CabinetCardGrid items={quickActions} className="xl:grid-cols-1" />
         </CabinetSection>

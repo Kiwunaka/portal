@@ -8,7 +8,7 @@ export default function DashboardNotFound() {
       <section className="glass-card w-full overflow-hidden border border-white/70 p-6 dark:border-[#243129]/80 sm:p-8">
         <EmptyState
           icon={<span className="material-symbols-rounded text-3xl">explore_off</span>}
-          title="Маршрут кабинета не найден"
+          title="Страница кабинета не найдена"
           description="Этот экран не существует внутри кабинета. Вернитесь в основную точку входа или сразу откройте поддержку."
           actions={
             <>
@@ -26,7 +26,7 @@ export default function DashboardNotFound() {
           <Timeline
             items={[
               { title: "Вернитесь на старт", description: "Дашборд показывает рабочие данные и все быстрые действия.", tone: "success" },
-              { title: "Проверьте ссылку", description: "Если вы пришли по старой закладке, маршрут мог быть переименован.", tone: "warning" },
+              { title: "Проверьте ссылку", description: "Если вы пришли по старой закладке, страница могла быть переименована.", tone: "warning" },
               { title: "Спросите поддержку", description: "Команда поможет найти правильный экран и не потерять контекст.", tone: "info" },
             ]}
           />

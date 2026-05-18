@@ -234,7 +234,7 @@ export default function CheckoutPage() {
       ]}
     >
       <CabinetHero
-        eyebrow="Без второй витрины"
+        eyebrow="Из личного кабинета"
         badge="Продолжение из кабинета"
         badgeTone="success"
         title="Покупка проходит на платежной странице POKROV"
@@ -330,7 +330,7 @@ export default function CheckoutPage() {
 
           <div className="mt-5 rounded-[1.3rem] border border-slate-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
             <p>Пробный период начинается в приложении на первом подходящем устройстве.</p>
-            <p className="mt-2">Telegram остается для бонуса, восстановления и поддержки, если браузерный сценарий недоступен.</p>
+            <p className="mt-2">Telegram остается для бонуса, восстановления и поддержки, если браузерный вход недоступен.</p>
           </div>
         </CabinetSection>
       </div>

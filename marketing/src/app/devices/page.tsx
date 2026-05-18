@@ -5,7 +5,7 @@ import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
   "Android и Windows | POKROV",
-  "Приложение как основной старт, 5 дней теста и понятный маршрут по устройствам без ложных обещаний.",
+  "Приложение как основной старт, 5 дней бесплатно и честный статус Android, Windows и Apple.",
   {
     path: MARKETING_CANONICAL_PATHS.devices,
     keywords: ["android и windows", "устройства pokrov", "оптимизация на пк", "мобильный и десктопный старт"],
@@ -26,9 +26,9 @@ export default function DevicesPage() {
           pagePath={MARKETING_CANONICAL_PATHS.devices}
           heroKicker="Для основных устройств"
           heroTitle="Android и Windows без лишней суеты"
-          heroSubtitle="Для Android и Windows путь уже выстроен вокруг приложения, пробного периода и кабинета. Для Apple мы сохраняем спокойный readiness-статус без обещаний раньше времени."
-          scenarioTitle="Как устроен маршрут по устройствам"
-          scenarioBody="Эта страница помогает быстро понять, где путь уже готов, а где пока стоит честное ожидание без рекламного шума."
+          heroSubtitle="Android и Windows уже ведут к приложению, пробному периоду и кабинету. Apple остаётся в подготовке без обещаний раньше времени."
+          scenarioTitle="Что готово по устройствам"
+          scenarioBody="Эта страница помогает быстро понять, где старт уже готов, а где пока стоит честное ожидание без рекламного шума."
           scenarioCards={[
             {
               eyebrow: "Android + Windows",
@@ -39,7 +39,7 @@ export default function DevicesPage() {
             {
               eyebrow: "Apple readiness",
               glyph: "readiness",
-              title: "iPhone и Mac остаются в спокойной готовности",
+              title: "iPhone и Mac остаются в подготовке",
               desc: "Если вам важно устройство Apple, страница честно показывает статус и не обещает больше, чем уже готово.",
             },
             {
@@ -50,7 +50,7 @@ export default function DevicesPage() {
             },
           ]}
           clusterTitle="Выбор устройства без перегруза"
-          clusterBody="Страница ловит device-intent и мягко переводит в нужный сценарий, не дублируя главную и не создавая лишний шум."
+          clusterBody="Страница отвечает на вопрос по устройствам и ведёт к приложению, кабинету или поддержке."
         />
       </div>
     </>

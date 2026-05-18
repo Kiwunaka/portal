@@ -45,7 +45,7 @@ export const ADMIN_NAV_CATEGORIES: AdminNavCategory[] = [
     id: "access",
     label: "Доступ",
     icon: "key",
-    description: "Бонусы, рефералы и стартовые сценарии доступа.",
+    description: "Бонусы, рефералы и стартовые воронки доступа.",
     primaryHint: "Здесь настраиваются бонусы и стартовые предложения без ручной беготни.",
   },
   {
@@ -59,7 +59,7 @@ export const ADMIN_NAV_CATEGORIES: AdminNavCategory[] = [
     id: "network",
     label: "Сеть",
     icon: "lan",
-    description: "Ноды, маршруты и текущее состояние сети.",
+    description: "Ноды, точки доступа и текущее состояние сети.",
     primaryHint: "Все изменения по сети лучше делать из веб-админки, а не через обходные пути.",
   },
   {
@@ -115,7 +115,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     href: "/admin/referrals",
     label: "Рефералы",
     icon: "link",
-    summary: "Реферальные ссылки и стартовые сценарии.",
+    summary: "Реферальные ссылки и стартовые воронки.",
     categoryId: "access",
     match: (path) => path.startsWith("/admin/referrals"),
   },

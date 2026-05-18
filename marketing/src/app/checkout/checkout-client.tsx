@@ -260,14 +260,14 @@ export function CheckoutLoadingFallback() {
           <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
           <span>POKROV</span>
         </div>
-        <div className="checkout-kicker">Спокойная касса</div>
+        <div className="checkout-kicker">Тарифы и ключ доступа</div>
         <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
-        <h1 className="checkout-title">Маршрут оплаты через ключ доступа</h1>
-        <p className="checkout-sub">Подгружаем тарифы, условия доступа и следующий шаг для покупки или погашения ключа.</p>
+        <h1 className="checkout-title">Выберите срок и проверьте сумму</h1>
+        <p className="checkout-sub">Подгружаем тарифы, условия доступа и действия для покупки или погашения ключа.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
-          <div className="checkout-helper">Готовим тарифы и спокойный маршрут покупки…</div>
+          <div className="checkout-helper">Готовим тарифы и сумму…</div>
         </article>
         <article className="glass-card checkout-sticky">
           <div className="checkout-helper">Проверяем публичные условия и резервные шаги…</div>
@@ -414,13 +414,13 @@ export default function CheckoutClient() {
           <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
           <span>POKROV</span>
         </div>
-        <div className="checkout-kicker">Бета-контур: после пробного подключения выбрать срок и продолжить доступ</div>
+        <div className="checkout-kicker">После 5 дней в приложении можно выбрать срок</div>
         <div className={`checkout-status-chip ${checkoutReady ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
           {checkoutReady ? "Касса доступна" : "Оплата пока в ручной проверке"}
         </div>
-        <h1 className="checkout-title">Спокойная оплата без технических ссылок</h1>
+        <h1 className="checkout-title">Продление без технических ссылок</h1>
         <p className="checkout-sub">
-          Эта страница помогает выбрать срок после личной проверки в приложении. После оплаты ключ доступа погашается в приложении или кабинете, а если касса временно недоступна, поддержка подскажет ручной следующий шаг.
+          Эта страница помогает выбрать срок после теста в приложении. После оплаты ключ доступа погашается в приложении или кабинете, а если касса временно недоступна, поддержка поможет вручную.
         </p>
       </section>
 
@@ -433,13 +433,13 @@ export default function CheckoutClient() {
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>
-            <h3>Касса остаётся тихой и понятной</h3>
-            <p>Оплата должна выдавать ключ доступа для беты и не уводить в сложные технические сценарии.</p>
+            <h3>Сумма видна до оплаты</h3>
+            <p>Оплата должна выдавать ключ доступа для беты и не уводить в сложные технические настройки.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Если нужна помощь</span>
             <h3>Кабинет и Telegram рядом</h3>
-            <p>Когда нужно восстановление или помощь, рядом остаются кабинет, поддержка и спокойный путь продолжения.</p>
+            <p>Когда нужно восстановление или помощь, рядом остаются кабинет, поддержка и история обращения.</p>
           </article>
         </div>
       </section>
@@ -473,7 +473,7 @@ export default function CheckoutClient() {
               <li>
                 После бесплатного периода остается базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
-              <li>На первом экране остается понятный маршрут без ручных технических настроек.</li>
+              <li>На первом экране остаются срок, устройства, цена и действие без ручных технических настроек.</li>
               <li>Telegram нужен для бонуса +10 дней, восстановления и связи с поддержкой.</li>
             </ul>
           </div>
@@ -491,7 +491,7 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
-                : "Промокод меняет только итоговую сумму и не открывает ручные технические сценарии."}
+                : "Промокод меняет только итоговую сумму и не открывает ручные технические настройки."}
             </p>
           </div>
 

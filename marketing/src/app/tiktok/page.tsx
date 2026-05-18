@@ -4,8 +4,8 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "TikTok: спокойная проверка | POKROV",
-  "Приложение, 5 дней теста и спокойный маршрут для проверки коротких видео без лишней настройки.",
+  "TikTok: проверка через приложение | POKROV",
+  "Приложение, 5 дней бесплатно и проверка коротких видео без лишней настройки.",
   {
     path: MARKETING_CANONICAL_PATHS.tiktok,
     keywords: ["проверка tiktok", "короткие видео", "pokrov tiktok", "мобильный старт"],
@@ -26,9 +26,9 @@ export default function TiktokPage() {
           pagePath={MARKETING_CANONICAL_PATHS.tiktok}
           heroKicker="Для TikTok и коротких видео"
           heroTitle="TikTok с быстрым стартом для проверки"
-          heroSubtitle="Страница помогает спокойно проверить качество связи под TikTok, а уже потом решить в кабинете, хотите ли вы продолжать."
+          heroSubtitle="Проверьте TikTok в приложении, а уже потом решите в кабинете, хотите ли продолжать."
           scenarioTitle="Как проверить TikTok без лишнего шума"
-          scenarioBody="Когда вы смотрите короткие видео, важны быстрый старт, понятная проверка и минимум действий до первого просмотра."
+          scenarioBody="Когда вы смотрите короткие видео, важны быстрый старт, реальная проверка и минимум действий до первого просмотра."
           scenarioCards={[
             {
               eyebrow: "Мгновенный старт",
@@ -37,7 +37,7 @@ export default function TiktokPage() {
               desc: "Android- или Windows-приложение быстро доводит до реального теста, чтобы вы смотрели видео, а не разбирались в технических деталях.",
             },
             {
-              eyebrow: "Понятный путь",
+              eyebrow: "Приложение сначала",
               glyph: "route",
               title: "Приложение для опыта, кабинет для решения",
               desc: "Сайт отвечает за вход, приложение — за первый личный тест, кабинет — за управление доступом дальше.",
@@ -49,8 +49,8 @@ export default function TiktokPage() {
               desc: "Telegram и команда заботы помогают быстро решить вопрос и не перегружают вас лишним шумом.",
             },
           ]}
-          clusterTitle="Ещё сценарии под видео"
-          clusterBody="Изучите соседние страницы, чтобы выбрать привычный формат просмотра и тот же спокойный маршрут."
+          clusterTitle="Ещё задачи под видео"
+          clusterBody="Изучите соседние страницы под привычные сервисы и форматы просмотра."
         />
       </div>
     </>

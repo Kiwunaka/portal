@@ -16,11 +16,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV | Спокойный доступ и понятный старт",
+    default: "POKROV | 5 дней бесплатно для Android и Windows",
     template: "%s",
   },
   description:
-    "POKROV помогает начать через приложение, попробовать сервис 5 дней бесплатно и дальше спокойно управлять доступом, устройствами и поддержкой.",
+    "POKROV помогает начать через приложение, получить 5 дней бесплатно и дальше управлять доступом, устройствами и поддержкой в кабинете.",
   applicationName: CANONICAL_PLATFORM_BRAND,
   alternates: {
     canonical: `${CANONICAL_MARKETING_SITE_URL}/`,
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV | Спокойный старт и понятный доступ",
+    title: "POKROV | 5 дней бесплатно для Android и Windows",
     description: "Начните с приложения, получите бесплатные 5 дней и дальше управляйте доступом без лишнего шума.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
         url: DEFAULT_MARKETING_SHARE_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_PLATFORM_BRAND} — спокойный старт и понятный доступ`,
+        alt: `${CANONICAL_PLATFORM_BRAND} — 5 дней бесплатно для Android и Windows`,
       },
     ],
   },

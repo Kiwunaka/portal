@@ -9,7 +9,7 @@ export default function NotFound() {
         <EmptyState
           icon={<span className="material-symbols-rounded text-3xl">travel_explore</span>}
           title="Страница не найдена"
-          description="Похоже, этот адрес не относится к активным маршрутам кабинета. Вернитесь в рабочую зону или откройте поддержку."
+          description="Похоже, этот адрес не относится к активным страницам кабинета. Вернитесь в рабочую зону или откройте поддержку."
           actions={
             <>
               <AppRouteLink href="/dashboard/" className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
@@ -26,7 +26,7 @@ export default function NotFound() {
           <Timeline
             items={[
               { title: "Проверьте адрес", description: "Иногда проблема только в лишнем символе или устаревшей закладке.", tone: "info" },
-              { title: "Откройте кабинет", description: "Главный маршрут доступен без лишних шагов на /dashboard/.", tone: "success" },
+              { title: "Откройте кабинет", description: "Главная страница доступна на /dashboard/.", tone: "success" },
               { title: "Попросите помощь", description: "Если ссылка пришла извне, поддержку можно открыть сразу отсюда.", tone: "warning" },
             ]}
           />

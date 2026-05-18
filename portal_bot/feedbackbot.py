@@ -246,7 +246,7 @@ async def _show_queue(message: Message) -> None:
 
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="fb_back_home")])
     await message.answer(
-        f"Очередь модерации: {len(entries)}\nСледующий шаг: выберите отзыв, который хотите проверить.",
+        f"Очередь модерации: {len(entries)}\nВыберите отзыв, который хотите проверить.",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
     )
 
@@ -307,7 +307,7 @@ async def capture_feedback(message: Message) -> None:
             session.close()
     except ValueError:
         pending_feedback.add(tg_id)
-        await message.answer("Напишите пару слов, чтобы мы поняли контекст и спокойно передали отзыв на модерацию.")
+        await message.answer("Напишите пару слов, чтобы мы поняли контекст и передали отзыв на модерацию.")
         return
 
     await _notify_admin(message.bot, entry)

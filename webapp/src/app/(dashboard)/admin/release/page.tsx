@@ -707,7 +707,7 @@ export default function AdminReleasePage() {
           {
             label: "Telegram Stars",
             value: "выключено по политике",
-            hint: "BOT_STARS_PAYMENTS_ENABLED=false; после GO единственный публичный платежный маршрут — Lava.top. Сейчас оплата закрыта, подарочные коды можно только активировать.",
+            hint: "BOT_STARS_PAYMENTS_ENABLED=false; после GO единственный публичный платежный канал — Lava.top. Сейчас оплата закрыта, подарочные коды можно только активировать.",
             tone: "success",
           },
           {

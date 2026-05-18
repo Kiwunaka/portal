@@ -174,7 +174,7 @@ export default function AdminReferralsPage() {
       <article className="glass-card p-4">
         <h2 className="font-display text-xl font-bold">Стартовые ссылки и welcome-цепочки</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Здесь создаются start-ссылки для welcome и campaign сценариев, а также обрабатывается реферальная очередь.
+          Здесь создаются start-ссылки для welcome и campaign-входов, а также обрабатывается реферальная очередь.
         </p>
       </article>
 
@@ -186,7 +186,7 @@ export default function AdminReferralsPage() {
             </div>
             <div className="min-w-0">
               <h2 className="font-display text-xl font-bold">Стартовые ссылки</h2>
-              <p className="text-xs text-slate-500">Используются для welcome, промо и других входных сценариев.</p>
+              <p className="text-xs text-slate-500">Используются для welcome, промо и других входов.</p>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">

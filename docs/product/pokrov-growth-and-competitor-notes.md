@@ -1,6 +1,6 @@
 # POKROV Growth And Competitor Notes
 
-Last updated: 2026-03-22
+Last updated: 2026-05-19
 
 ## Purpose
 
@@ -26,6 +26,13 @@ Public entry impression:
 - hero copy is short and clear, but the experience becomes auth-first almost immediately
 - the first visible promise is speed and simplicity, not trust, proof, or transparent pricing
 - privacy and terms are linked, but there is less pre-login explanation of what the product does and why it is safe to try
+
+Observed on `2026-05-19` across Amnezia, Nord, Proton, Windscribe, Surfshark, Browsec, Dedmax, Batya, and Durev public pages:
+
+- high-performing first screens put a concrete hook before mood copy: trial period, discount, platform, device count, guarantee, price, current country/status, or install action
+- strong cards start with a number, status, or job-to-be-done, then explain what the user can do next
+- weaker cards feel like abstract reassurance; `POKROV` should not lead with atmosphere when it can show `5 days`, `Android + Windows`, `+10 days`, `up to 5 devices`, `cabinet`, or `support`
+- local Telegram-first competitors often make trial, price, and platform blocks visible immediately; `POKROV` should keep that directness while preserving beta/payment honesty and avoiding unsupported claims
 
 ## Where POKROV Can Win
 

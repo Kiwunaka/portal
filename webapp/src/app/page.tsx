@@ -143,7 +143,7 @@ function EntryBody() {
               Продолжите с того места, где остановились
             </h1>
             <p className="max-w-xl text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
-              Это не вторая витрина POKROV. Здесь открывается личный кабинет: срок доступа, устройства,
+              Здесь открывается личный кабинет POKROV: срок доступа, устройства,
               ключи доступа, загрузки и поддержка. Подключение и ежедневный выбор режима остаются в приложении.
             </p>
           </FadeUp>
@@ -181,7 +181,7 @@ function EntryBody() {
 
             <div className="mt-8 rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.02]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Спокойная логика входа
+                Вход без ручных профилей
               </p>
               <p className="mt-2 text-[13px] leading-relaxed text-slate-600 dark:text-slate-400">
                 Если браузер уже знает вашу сессию, мы сразу переведем вас в кабинет. Email-продолжение пока честно помечено как готовящееся.

@@ -19,7 +19,7 @@ export const pokrovBranding = {
   legacyThemeStorageKeys: POKROV_LEGACY_THEME_STORAGE_KEYS,
   metadataTitle: `${productFacts.brands.platform} - Личный кабинет`,
   metadataDescription:
-    "Проверяйте доступ, управляйте устройствами и обращайтесь в поддержку из одного спокойного кабинета.",
+    "Проверяйте доступ, управляйте устройствами, продлевайте срок и обращайтесь в поддержку из одного кабинета.",
 } as const;
 
 export type PokrovBranding = typeof pokrovBranding;

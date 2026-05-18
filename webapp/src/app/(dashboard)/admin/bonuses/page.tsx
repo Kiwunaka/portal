@@ -160,7 +160,7 @@ export default function AdminBonusesPage() {
           </div>
           <div className="min-w-0">
             <h2 className="font-display text-xl font-bold">Бонусы и лояльность</h2>
-            <p className="text-xs text-slate-500">Колесо бонусов, ручная выдача уровней и настройка сценариев удержания.</p>
+            <p className="text-xs text-slate-500">Колесо бонусов, ручная выдача уровней и настройка цепочек удержания.</p>
           </div>
         </div>
         <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">

@@ -643,7 +643,7 @@ export default function AdminUsersPage() {
             {dialog.kind === "create" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Создать manual/test пользователя</h3>
-                <p className="mt-1 text-xs text-slate-500">Manual-аккаунты допустимы только для админских и тестовых сценариев.</p>
+                <p className="mt-1 text-xs text-slate-500">Manual-аккаунты допустимы только для админских и тестовых задач.</p>
                 <input
                   value={dialog.displayName}
                   onChange={(event) => setDialog({ kind: "create", displayName: event.target.value, days: dialog.days })}

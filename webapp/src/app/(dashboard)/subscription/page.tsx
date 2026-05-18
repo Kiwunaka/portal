@@ -122,13 +122,16 @@ export default function SubscriptionPage() {
   const planCards = plans.slice(0, 4).map((plan) => {
     const normalizedCode = normalizePlanCode(plan.code);
     const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
+    const amountRub = Number(plan.amount_rub || 0);
+    const days = Number(plan.days || 0);
+    const deviceLimit = Number(plan.device_limit || 0);
 
     return {
       key: plan.code,
-      title: `${plan.label} · ${Number(plan.amount_rub || 0)} ₽`,
-      body: `${plan.days} дней · до ${plan.device_limit} устройств · ${nodePolicyLabel(plan.node_policy)}${plan.badge ? ` · ${plan.badge}` : ""}`,
-      badge: isCurrent ? "Сейчас у вас" : plan.badge || "Доступно",
-      tone: isCurrent ? ("success" as const) : plan.days >= 180 ? ("info" as const) : ("neutral" as const),
+      title: `${days} дней · ${amountRub} ₽`,
+      body: `${plan.label} · до ${deviceLimit} устройств · ${nodePolicyLabel(plan.node_policy)}${plan.badge ? ` · ${plan.badge}` : ""}`,
+      badge: isCurrent ? "Уже действует" : plan.badge || "Продлить",
+      tone: isCurrent ? ("success" as const) : days >= 180 ? ("info" as const) : ("neutral" as const),
       action: isCurrent ? (
         <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Уже действует</span>
       ) : (
@@ -146,8 +149,8 @@ export default function SubscriptionPage() {
     {
       key: "checkout",
       title: "Открыть оплату",
-      body: "Самый прямой путь, если нужно продлить срок без лишних переходов.",
-      badge: "Основной путь",
+      body: "Выберите срок, проверьте сумму и продолжите оплату из кабинета.",
+      badge: "Основной способ",
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -171,7 +174,7 @@ export default function SubscriptionPage() {
       key: "support",
       title: "Если после оплаты статус не обновился",
       body: "Не нужно искать скрытые экраны. Лучше сразу открыть поддержку и продолжить один кейс.",
-      badge: "Человеческий путь",
+      badge: "Поддержка",
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -184,7 +187,7 @@ export default function SubscriptionPage() {
   const modeCards = [
     {
       key: "paid",
-      title: paidMode ? "Полный режим уже активен" : "Полный режим — самый спокойный вариант",
+      title: paidMode ? "Полный режим уже активен" : "Полный режим для основного использования",
       body: paidMode
         ? "Сейчас профиль работает без месячного лимита трафика."
         : "Если не хочется думать о месячных ограничениях, смотреть стоит в эту сторону.",
@@ -194,7 +197,7 @@ export default function SubscriptionPage() {
     {
       key: "trial",
       title: trialMode ? "Пробный период уже идет" : "Пробный период показывает сервис в полном режиме",
-      body: trialMode ? `Он действует до ${formatDate(dash?.expiry_at)}.` : "После него можно спокойно решить, нужен ли вам платный режим дальше.",
+      body: trialMode ? `Он действует до ${formatDate(dash?.expiry_at)}.` : "После него можно решить, нужен ли вам платный режим дальше.",
       badge: trialMode ? "Активен" : "Как это работает",
       tone: trialMode ? ("warning" as const) : ("neutral" as const),
     },
@@ -203,7 +206,7 @@ export default function SubscriptionPage() {
       title: freeMode ? "Базовый режим сейчас активен" : "Базовый режим остается запасным",
       body: freeMode
         ? `Сейчас ориентир до ${freeLimitGb || 5} ГБ и до ${deviceLimit} устройств.`
-        : "Он подходит для спокойного повседневного использования и знакомства с сервисом.",
+        : "Он подходит для знакомства с сервисом, но может быть теснее по лимитам.",
       badge: freeMode ? "Сейчас так" : "Запасной путь",
       tone: freeMode && !softMode ? ("info" as const) : softMode ? ("warning" as const) : ("neutral" as const),
     },
@@ -212,10 +215,10 @@ export default function SubscriptionPage() {
   return (
     <CabinetRoute
       eyebrow="Тарифы и оплата"
-      title={dash?.is_active ? "Продление и режимы" : "Вернуть доступ без лишних шагов"}
+      title={dash?.is_active ? "Продление и режимы" : "Вернуть доступ"}
       description={
         dash?.is_active
-          ? "Здесь только практичные вещи: текущий режим, понятные варианты продления и работа с ключом."
+          ? "Здесь только практичные вещи: текущий режим, варианты продления и работа с ключом."
           : "Если срок закончился, отсюда проще всего вернуть доступ и продолжить тем же профилем."
       }
       actions={
@@ -258,7 +261,7 @@ export default function SubscriptionPage() {
       <CabinetSection
         eyebrow="Варианты"
         title="Что можно выбрать"
-        description="Рабочие варианты продления видны сразу, без прокрутки и без лишней витрины."
+        description="Срок, цена и лимит устройств видны в карточках сразу."
       >
         <CabinetCardGrid items={planCards} className="xl:grid-cols-4" />
         {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
@@ -266,7 +269,7 @@ export default function SubscriptionPage() {
 
       <CabinetHero
         eyebrow="Сейчас по профилю"
-        badge={dash?.is_active ? "Можно продлить спокойно" : "Нужен следующий шаг"}
+        badge={dash?.is_active ? "Можно продлить" : "Нужно действие"}
         badgeTone={dash?.is_active ? "success" : "warning"}
         title={dash?.is_active ? "Выберите удобный способ продлить" : "Сначала верните срок действия"}
         description={
@@ -310,7 +313,7 @@ export default function SubscriptionPage() {
         <CabinetSection
           eyebrow="Восстановление"
           title="Ручное подключение только как запасной путь"
-          description="Основной сценарий: откройте POKROV, войдите в тот же аккаунт и дайте приложению подтянуть профиль. QR и личная ссылка нужны только для совместимого клиента или восстановления."
+          description="Обычно достаточно открыть POKROV, войти в тот же аккаунт и дать приложению подтянуть профиль. QR и личная ссылка нужны только для совместимого клиента или восстановления."
           tone={manualAccessReady ? "info" : "warning"}
           actions={
             <AppRouteLink href="/downloads/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
@@ -374,7 +377,7 @@ export default function SubscriptionPage() {
 
         <CabinetSection
           eyebrow="Что делать дальше"
-          title="Три понятных сценария"
+          title="Три рабочих действия"
           description="Почти всегда нужен один из этих путей."
         >
           <CabinetCardGrid items={paymentCards} className="xl:grid-cols-1" />
@@ -395,7 +398,7 @@ export default function SubscriptionPage() {
         <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
           <p className="font-semibold text-slate-950 dark:text-slate-50">История оплат пока не подключена.</p>
           <p className="mt-2">
-            Мы не показываем декоративные строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
+            Мы не показываем фальшивые строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
             откройте поддержку: оператор проверит платеж по безопасным данным и продолжит тот же кейс.
           </p>
         </div>

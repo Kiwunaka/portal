@@ -119,7 +119,7 @@ export default function StatisticsPage() {
     >
       <CabinetHero
         eyebrow="Короткая картина"
-        badge={dash?.is_active ? "Доступ активен" : "Нужен следующий шаг"}
+        badge={dash?.is_active ? "Доступ активен" : "Нужно действие"}
         badgeTone={dash?.is_active ? "success" : "warning"}
         title={dash?.is_active ? "Все важное видно без технических деталей" : "Сначала верните срок действия"}
         description={

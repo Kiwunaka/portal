@@ -30,7 +30,7 @@ export default function DashboardRouteError({ error, reset }: ErrorProps) {
       steps={[
         { title: "Повторите попытку", description: "Эта кнопка попросит Next заново собрать экран.", tone: "info" },
         { title: "Откройте дашборд", description: "Если конкретный путь сломался, возвращение в начало безопаснее.", tone: "warning" },
-        { title: "Свяжитесь с поддержкой", description: "Так мы быстрее найдём маршрут, который не открывается.", tone: "success" },
+        { title: "Свяжитесь с поддержкой", description: "Так мы быстрее найдём экран или действие, которое не открывается.", tone: "success" },
       ]}
       icon="report_problem"
     />

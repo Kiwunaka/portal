@@ -25,10 +25,10 @@ export default function RootError({ error, reset }: ErrorProps) {
       secondaryAction={{ label: "Открыть кабинет", href: "/dashboard/" }}
       metrics={[
         { label: "Состояние", value: "ошибка", hint: "Оболочка не смогла собрать экран.", tone: "rose" },
-        { label: "Маршрут", value: "root", hint: "Сбой произошёл на верхнем уровне приложения." },
+        { label: "Экран", value: "root", hint: "Сбой произошёл на верхнем уровне приложения." },
       ]}
       steps={[
-        { title: "Повторите попытку", description: "После повторного рендера Next вернёт вас в рабочий маршрут.", tone: "info" },
+        { title: "Повторите попытку", description: "После повторного рендера Next вернёт вас в рабочую зону.", tone: "info" },
         { title: "Откройте кабинет заново", description: "Если ошибка осталась, начните с чистого входа в личный кабинет.", tone: "warning" },
         { title: "Напишите в поддержку", description: "Команда увидит ситуацию и поможет восстановить доступ.", tone: "success" },
       ]}

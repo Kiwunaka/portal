@@ -129,7 +129,7 @@ export default function AdminHomePage() {
                   <AdminEmptyState
                     className="mt-3 min-h-[120px]"
                     title="Разделы пока не настроены"
-                    description="Для этой категории ещё нет рабочих admin-маршрутов."
+                    description="Для этой категории ещё нет рабочих admin-экранов."
                   />
                 )}
               </section>
@@ -148,7 +148,7 @@ export default function AdminHomePage() {
               {[
                 "Сводка: очереди, ошибки, свежесть данных.",
                 "Пользователи: точечные кейсы, ручные действия, observer-сигналы.",
-                "Сеть: ноды, маршруты и инфраструктурные тревоги.",
+                "Сеть: ноды, точки доступа и инфраструктурные тревоги.",
                 "Обращения: открытые треды и статус ответа операторов.",
               ].map((line) => (
                 <div key={line} className="rounded-[0.9rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 text-slate-700">

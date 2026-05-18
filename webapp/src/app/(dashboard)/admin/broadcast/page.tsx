@@ -34,9 +34,9 @@ const RETENTION_TEMPLATE_GROUPS = [
   { key: "retention_welcome_a", label: "Welcome A", flow: "Welcome", hint: "Первый вариант приветствия для новых пользователей." },
   { key: "retention_welcome_b", label: "Welcome B", flow: "Welcome", hint: "Второй вариант приветствия с альтернативным тоном." },
   { key: "retention_t3_a", label: "За 3 дня (A)", flow: "Retention", hint: "Шаблон для напоминания за три дня до окончания подписки." },
-  { key: "retention_t3_b", label: "За 3 дня (B)", flow: "Retention", hint: "Альтернатива для сценария T-3." },
+  { key: "retention_t3_b", label: "За 3 дня (B)", flow: "Retention", hint: "Альтернатива для T-3." },
   { key: "retention_t1_a", label: "За 1 день (A)", flow: "Retention", hint: "Шаблон для мягкого напоминания за день до конца." },
-  { key: "retention_t1_b", label: "За 1 день (B)", flow: "Retention", hint: "Альтернатива для сценария T-1." },
+  { key: "retention_t1_b", label: "За 1 день (B)", flow: "Retention", hint: "Альтернатива для T-1." },
   { key: "retention_t0_a", label: "В день окончания (A)", flow: "Retention", hint: "Сообщение на день, когда подписка уже закончилась." },
   { key: "retention_t0_b", label: "В день окончания (B)", flow: "Retention", hint: "Альтернативный вариант сообщения для T0." },
   { key: "retention_reactivation_a", label: "Реактивация A", flow: "Reactivation", hint: "Шаблон для возврата ушедших пользователей." },
@@ -232,7 +232,7 @@ export default function AdminBroadcastPage() {
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-xl font-bold">Рассылки</h2>
             <p className="text-xs text-slate-500">
-              Отсюда отправляются массовые сообщения и управляются новости на витрине. Перед запуском проверьте сегмент, лимит и текст.
+              Отсюда отправляются массовые сообщения и управляются новости на главной. Перед запуском проверьте сегмент, лимит и текст.
             </p>
           </div>
         </div>
@@ -316,7 +316,7 @@ export default function AdminBroadcastPage() {
             <div className="min-w-0">
               <h3 className="font-display text-xl font-bold">Retention-шаблоны</h3>
               <p className="text-xs text-slate-500">
-                Здесь редактируются сценарии приветствия, удержания и реактивации. Шаблоны используются в автоматических цепочках.
+                Здесь редактируются цепочки приветствия, удержания и реактивации. Шаблоны используются в автоматических сообщениях.
               </p>
             </div>
           </div>
@@ -365,7 +365,7 @@ export default function AdminBroadcastPage() {
             <div className="min-w-0">
               <h3 className="font-display text-xl font-bold">Новости и анонсы</h3>
               <p className="text-xs text-slate-500">
-                Управляйте короткими карточками на главной витрине и связанными ссылками.
+                Управляйте короткими карточками на главной и связанными ссылками.
               </p>
             </div>
           </div>

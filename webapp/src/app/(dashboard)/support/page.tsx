@@ -43,7 +43,7 @@ const CATEGORY_PRESETS: Record<
   },
   Скорость: {
     intro: "Подходит, если доступ стал заметно медленнее или соединение ведет себя нестабильно.",
-    subject: "Нестабильная скорость или маршрут",
+    subject: "Нестабильная скорость или подключение",
     body: "Как выглядит проблема:\n\nНа каком устройстве это заметно:\n\nЧто меняется между Wi-Fi и мобильной сетью:",
     checklist: ["Тип сети", "Когда это началось", "Скрин или короткое видео, если удобно"],
   },
@@ -148,7 +148,7 @@ export default function SupportPage() {
       title: latestTicket ? "Лучше продолжать уже открытый кейс" : "Если вопрос уже понятен, можно сразу открыть кейс",
       body: latestTicket
         ? "Так не теряется история, вложения и то, что вы уже успели объяснить."
-        : "Особенно если нужен скриншот, видео или понятная история переписки.",
+        : "Особенно если нужен скриншот, видео или история переписки.",
       badge: "Кабинет",
       tone: "neutral" as const,
       action: latestTicket ? (
@@ -197,7 +197,7 @@ export default function SupportPage() {
     const normalizedSubject = subject.trim();
 
     if (!normalizedBody) {
-      setMessage("Добавьте пару строк, чтобы нам было понятно, с чего начать.");
+      setMessage("Добавьте пару строк: что делали, где сломалось и что видите сейчас.");
       return;
     }
 
@@ -324,7 +324,7 @@ export default function SupportPage() {
           <CabinetSection
             eyebrow="История"
             title="Ваши обращения"
-            description="Если вопрос уже был, лучше продолжать тот же кейс. Так быстрее и спокойнее."
+            description="Если вопрос уже был, лучше продолжать тот же кейс. Так быстрее."
             actions={
               <button type="button" onClick={() => setComposeOpen(true)} className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
                 Новый кейс
@@ -361,7 +361,7 @@ export default function SupportPage() {
                 key: "access",
                 title: "Режим доступа",
                 body: resolvePlanLabel(dash, user),
-                badge: dash?.is_active ? "Активен" : "Нужен следующий шаг",
+                badge: dash?.is_active ? "Активен" : "Нужно действие",
                 tone: dash?.is_active ? ("success" as const) : ("warning" as const),
               },
               {
@@ -472,7 +472,7 @@ export default function SupportPage() {
                   onChange={(event) => setBody(event.target.value)}
                   rows={8}
                   className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
-                  placeholder="Опишите ситуацию так, чтобы нам было понятно, с чего начать."
+                  placeholder="Опишите, что делали, где сломалось и что видите сейчас."
                 />
 
                 <label className="block rounded-[1.3rem] border border-dashed border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">

@@ -4,7 +4,7 @@
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV — спокойный цифровой маршрут в платной бете",
+      "ru": "POKROV — 5 дней бесплатно для Android и Windows",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Попробуйте 5 дней бесплатно, затем продолжайте доступ через понятную оплату и тот же app-first аккаунт.",
+      "ru": "Поставьте POKROV, включите доступ в приложении и проверьте свои сервисы 5 дней бесплатно. Продление, устройства и поддержка — в кабинете.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -22,7 +22,7 @@
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV • 5 дней спокойной проверки",
+      "ru": "POKROV • 5 дней бесплатно",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Начните с приложения, спокойно проверьте и только потом решайте про оплату",
+      "ru": "Поставьте POKROV, включите и проверьте свои сервисы",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Откройте POKROV на Android или Windows, включите 5 дней теста и продолжайте доступ только если сервис подошёл в обычной жизни.",
+      "ru": "Приложение для Android и Windows. Начните без карты, проверьте POKROV в обычном использовании и продлевайте только если подошло.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Начать с приложения",
+      "ru": "Начать бесплатно",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -67,7 +67,7 @@
     },
     "marketing.hero.overline": {
       "surface": "marketing.home.hero",
-      "ru": "Платная бета POKROV для Android и Windows.",
+      "ru": "Бета POKROV для Android и Windows.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -85,7 +85,7 @@
     },
     "marketing.hero.proof_1.text": {
       "surface": "marketing.home.hero",
-      "ru": "бесплатной проверки в приложении",
+      "ru": "доступа в приложении без карты",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -103,7 +103,7 @@
     },
     "marketing.hero.proof_2.text": {
       "surface": "marketing.home.hero",
-      "ru": "удобные приложения POKROV",
+      "ru": "актуальные beta-сборки POKROV",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -112,7 +112,7 @@
     },
     "marketing.hero.proof_3.title": {
       "surface": "marketing.home.hero",
-      "ru": "Живая поддержка",
+      "ru": "+10 дней",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -121,7 +121,7 @@
     },
     "marketing.hero.proof_3.text": {
       "surface": "marketing.home.hero",
-      "ru": "ответ в бете — best-effort без декоративного SLA",
+      "ru": "за Telegram-канал POKROV",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -130,7 +130,7 @@
     },
     "marketing.support.title": {
       "surface": "marketing.home.support",
-      "ru": "Помогаем пройти настройку спокойно",
+      "ru": "Поможем с установкой, входом и продлением",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -139,7 +139,7 @@
     },
     "marketing.support.subtitle": {
       "surface": "marketing.home.support",
-      "ru": "Если нужен совет по подключению, задержке или оплате, команда подскажет простой следующий шаг.",
+      "ru": "Если не открылась сборка, не подтянулся аккаунт или возник вопрос по оплате, поддержка подскажет, что делать.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -148,7 +148,7 @@
     },
     "marketing.checkout.title": {
       "surface": "marketing.checkout",
-      "ru": "Выберите доступ",
+      "ru": "Выберите срок доступа",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -157,7 +157,7 @@
     },
     "marketing.checkout.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Здесь можно выбрать подходящий вариант. Полный доступ и оплата открываются в кабинете.",
+      "ru": "Сначала войдите в кабинет, затем выберите план. Сумма и условия видны до оплаты.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -166,7 +166,7 @@
     },
     "marketing.checkout.primary_cta": {
       "surface": "marketing.checkout",
-      "ru": "Выбрать план",
+      "ru": "Выбрать срок",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -175,7 +175,7 @@
     },
     "marketing.checkout.meta.title": {
       "surface": "marketing.checkout",
-      "ru": "Оплата бета-доступа | POKROV",
+      "ru": "Продление доступа | POKROV",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -184,7 +184,7 @@
     },
     "marketing.checkout.meta.description": {
       "surface": "marketing.checkout",
-      "ru": "Страница checkout объясняет оплату бета-доступа, покупку activation key, ручную помощь при спорных платежах и следующий шаг без сырых технических ссылок.",
+      "ru": "Страница оплаты показывает доступные планы, сумму до оплаты, получение ключа доступа и помощь при спорных платежах.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -193,7 +193,7 @@
     },
     "marketing.checkout.breadcrumb": {
       "surface": "marketing.checkout",
-      "ru": "Выбор доступа",
+      "ru": "Продление доступа",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -220,7 +220,7 @@
     },
     "marketing.checkout.anonymous.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Чтобы продолжить оплату и привязать доступ к себе, войдите через кабинет или Telegram.",
+      "ru": "Чтобы оплата привязалась к вам, войдите через кабинет или Telegram.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -247,7 +247,7 @@
     },
     "marketing.checkout.session.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Вы уже вошли в кабинет. Здесь можно спокойно выбрать план и перейти к оплате.",
+      "ru": "Вы уже вошли в кабинет. Выберите срок и переходите к оплате.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -274,7 +274,7 @@
     },
     "marketing.checkout.ticket.subtitle": {
       "surface": "marketing.checkout",
-      "ru": "Вы открыли персональную ссылку. Выберите срок, проверьте платёжный маршрут и переходите к оплате.",
+      "ru": "Вы открыли персональную ссылку. Выберите срок, проверьте сумму и переходите к оплате.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -283,7 +283,7 @@
     },
     "marketing.checkout.helper.anonymous": {
       "surface": "marketing.checkout",
-      "ru": "Сначала войдите в кабинет или продолжите через Telegram. После этого откроется персональный сценарий оплаты.",
+      "ru": "Сначала войдите в кабинет или продолжите через Telegram. После входа откроются доступные планы.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -292,7 +292,7 @@
     },
     "marketing.checkout.helper.session": {
       "surface": "marketing.checkout",
-      "ru": "Вы уже в кабинете. Следующий шаг — выбрать план и продолжить оплату.",
+      "ru": "Вы уже в кабинете. Выберите план и продолжите оплату.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -301,7 +301,7 @@
     },
     "marketing.checkout.helper.ticket": {
       "surface": "marketing.checkout",
-      "ru": "Если возник вопрос по оплате, поддержка поможет сверить статус и подскажет следующий шаг.",
+      "ru": "Если возник вопрос по оплате, поддержка поможет сверить статус и сумму.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -310,7 +310,7 @@
     },
     "marketing.promise.title": {
       "surface": "marketing.home.promise",
-      "ru": "Почему старт с POKROV спокойнее",
+      "ru": "Что вы получаете с POKROV",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -319,7 +319,7 @@
     },
     "marketing.promise.subtitle": {
       "surface": "marketing.home.promise",
-      "ru": "Всё устроено просто: открываете приложение, проверяете сервис 5 дней и только потом принимаете решение об оплате.",
+      "ru": "Приложение для Android и Windows, 5 дней бесплатно, кабинет для устройств и продления, поддержка в Telegram.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -328,7 +328,7 @@
     },
     "marketing.downloads.title": {
       "surface": "marketing.home.downloads",
-      "ru": "Установите приложение и начните спокойно",
+      "ru": "Установите POKROV и проверьте 5 дней",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -337,7 +337,7 @@
     },
     "marketing.downloads.subtitle": {
       "surface": "marketing.home.downloads",
-      "ru": "Публичные кнопки ведут в кабинет или помощь. Бета-файлы выдаются только там, где доступ уже разрешён.",
+      "ru": "Если сборка доступна вашему аккаунту, она откроется в кабинете. Если нет — покажем инструкцию или поддержку.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -355,7 +355,7 @@
     },
     "marketing.steps.subtitle": {
       "surface": "marketing.home.steps",
-      "ru": "Мы ценим простоту: один раз начали в приложении, спокойно проверили сервис и продолжили только при понятной пользе.",
+      "ru": "Установите приложение, включите доступ, проверьте POKROV в своих сервисах. Продление — только если подошло.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -364,7 +364,7 @@
     },
     "marketing.pricing.title": {
       "surface": "marketing.home.pricing",
-      "ru": "Тарифы, которые легко понять",
+      "ru": "Тарифы POKROV",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -373,7 +373,7 @@
     },
     "marketing.pricing.subtitle": {
       "surface": "marketing.home.pricing",
-      "ru": "На сайте вы видите планы и следующий шаг. Оплата открывается уже в личном сценарии, где доступны актуальные способы и честная сумма.",
+      "ru": "5 дней бесплатно. Дальше выберите срок в кабинете: цена и условия видны до оплаты.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -382,7 +382,7 @@
     },
     "marketing.plan.start.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Мягкий переход после бесплатных 5 дней, если хочется продолжить без спешки.",
+      "ru": "Месяц после теста, если хотите продолжить без долгих обязательств.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -391,7 +391,7 @@
     },
     "marketing.plan.month.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Гибкий вариант на месяц, когда важна свобода выбора.",
+      "ru": "Гибкий вариант на месяц для регулярного использования.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -400,7 +400,7 @@
     },
     "marketing.plan.quarter.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Комфортный баланс цены и срока для регулярного использования.",
+      "ru": "Три месяца дешевле помесячного продления.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -409,7 +409,7 @@
     },
     "marketing.plan.half.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Оптимальный выбор тех, кто ценит качество и стабильность во всем.",
+      "ru": "Редкие продления и выгоднее ежемесячного плана.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -418,7 +418,7 @@
     },
     "marketing.plan.long.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Максимально выгодный тариф для долгого спокойного доступа.",
+      "ru": "Максимальная выгода для долгого использования.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -427,7 +427,7 @@
     },
     "marketing.plan.cta": {
       "surface": "marketing.home.pricing",
-      "ru": "Выбрать план и продолжить",
+      "ru": "Выбрать срок",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -472,7 +472,7 @@
     },
     "marketing.install.meta.description": {
       "surface": "marketing.install",
-      "ru": "Откройте кабинет для Android или Windows. Если сборка ещё не выдана вашему аккаунту, мы честно покажем следующий шаг.",
+      "ru": "Как открыть сборку POKROV для Android или Windows, что делать если файл недоступен, и куда обратиться за помощью.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -490,7 +490,7 @@
     },
     "marketing.install.title": {
       "surface": "marketing.install",
-      "ru": "Установка без тупиков",
+      "ru": "Скачать POKROV или получить помощь",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -499,7 +499,7 @@
     },
     "marketing.install.subtitle": {
       "surface": "marketing.install",
-      "ru": "Бета-сборки выдаются через кабинет или поддержку. Если файл пока не доступен вашему аккаунту, вы всё равно не теряете маршрут.",
+      "ru": "Бета-сборки открываются через кабинет. Если файла пока нет в вашем аккаунте, покажем инструкцию или поддержку.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -535,7 +535,7 @@
     },
     "marketing.install.help_eyebrow": {
       "surface": "marketing.install",
-      "ru": "Если что-то не открылось",
+      "ru": "Если файл не открылся",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -544,7 +544,7 @@
     },
     "marketing.install.help_title": {
       "surface": "marketing.install",
-      "ru": "Кабинет, Telegram и короткий путь",
+      "ru": "Кабинет, Telegram и поддержка рядом",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -553,7 +553,7 @@
     },
     "marketing.install.help_body": {
       "surface": "marketing.install",
-      "ru": "Если файла нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем следующий шаг и не будем обещать лишнего.",
+      "ru": "Если сборки нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем, что делать дальше.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -625,7 +625,7 @@
     },
     "marketing.faq.2.a": {
       "surface": "marketing.home.faq",
-      "ru": "Это полноценный доступ на 5 дней: можно спокойно проверить качество связи и удобство сервиса перед продолжением.",
+      "ru": "Это 5 дней доступа в приложении: проверьте POKROV на своих сервисах и устройствах перед продлением.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -643,7 +643,7 @@
     },
     "marketing.faq.3.a": {
       "surface": "marketing.home.faq",
-      "ru": "Сначала откройте личный кабинет или персональную ссылку из Telegram. После этого checkout покажет только подходящие способы оплаты и честную сумму.",
+      "ru": "Откройте личный кабинет или персональную ссылку из Telegram. Checkout покажет доступные способы, сумму и срок.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -661,7 +661,7 @@
     },
     "marketing.faq.4.a": {
       "surface": "marketing.home.faq",
-      "ru": "Напишите в @pokrov_supportbot или на support@pokrov.space. Если нужно, поддержка переведёт вас в нужный маршрут.",
+      "ru": "Напишите в @pokrov_supportbot или на support@pokrov.space. Поддержка поможет с установкой, входом, оплатой или восстановлением.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -670,7 +670,7 @@
     },
     "marketing.footer.title": {
       "surface": "marketing.home.footer",
-      "ru": "POKROV: сначала приложение, потом всё остальное",
+      "ru": "POKROV: сначала 5 дней в приложении, потом продление",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -679,7 +679,7 @@
     },
     "marketing.footer.body": {
       "surface": "marketing.home.footer",
-      "ru": "Установите приложение, проверьте сервис бесплатно и только потом переходите к кабинету, продлению и поддержке. Это честный и безопасный путь для публичного запуска.",
+      "ru": "Установите приложение, проверьте POKROV бесплатно и продлевайте только если сервис подошел. Кабинет остается для срока, устройств и поддержки.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -688,7 +688,7 @@
     },
     "marketing.legal.offer.intro": {
       "surface": "marketing.legal.offer",
-      "ru": "Понятные правила использования POKROV. Мы объясняем условия сервиса спокойно, прозрачно и без скрытого смысла.",
+      "ru": "Правила использования POKROV без лишней канцелярии: условия доступа, продления, поддержки и ограничений беты.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -859,7 +859,7 @@
     },
     "webapp.subscription.subtitle": {
       "surface": "webapp.subscription",
-      "ru": "Здесь видны текущий режим доступа, срок, ссылка подключения и все, что нужно для спокойного продления.",
+      "ru": "Здесь видны текущий режим доступа, срок, ссылка подключения и все, что нужно для продления.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -877,7 +877,7 @@
     },
     "webapp.checkout.subtitle": {
       "surface": "webapp.checkout",
-      "ru": "Выберите тариф и оплатите его в понятном персональном сценарии. Сумма и срок видны заранее, а если нужна помощь, можно продолжить через Telegram.",
+      "ru": "Выберите тариф и оплатите его из личного кабинета. Сумма и срок видны заранее, а если нужна помощь, можно продолжить через Telegram.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -967,7 +967,7 @@
     },
     "bot.welcome": {
       "surface": "bot.main",
-      "ru": "Я помогу спокойно начать: открыть кабинет, взять 5 дней бесплатно или выбрать полный доступ, когда будете готовы.",
+      "ru": "Привет! Помогу начать: 5 дней бесплатно, приложение для Android и Windows, кабинет для продления и поддержки.",
       "variables": [],
       "tone": "helpful",
       "allowed_public": false,
@@ -976,7 +976,7 @@
     },
     "bot.choose_tariff": {
       "surface": "bot.main",
-      "ru": "Можно начать с 5 дней бесплатно или сразу открыть полный доступ. Я покажу сроки, цену и следующий шаг.",
+      "ru": "Можно начать с 5 дней бесплатно или сразу выбрать полный доступ. Покажу сроки, цену и действие.",
       "variables": [],
       "tone": "helpful",
       "allowed_public": false,
@@ -1039,7 +1039,7 @@
     },
     "retention.t1": {
       "surface": "bot.retention",
-      "ru": "Срок вашей подписки подходит к концу. Продлите доступ, чтобы сохранить привычное подключение без лишних шагов.",
+      "ru": "Срок вашей подписки подходит к концу. Продлите доступ, чтобы сохранить привычное подключение.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1048,7 +1048,7 @@
     },
     "retention.t0": {
       "surface": "bot.retention",
-      "ru": "Доступ завершается сегодня. Продлите его, чтобы сохранить тот же спокойный маршрут.",
+      "ru": "Доступ завершается сегодня. Продлите его, чтобы сохранить тот же профиль.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1086,7 +1086,7 @@
     },
     "marketing.install.downloads.subtitle": {
       "surface": "marketing.install.downloads",
-      "ru": "Публичная страница не выдаёт прямые загрузки. Если сборка доступна вашему аккаунту, она откроется в кабинете; если нет, рядом остаётся помощь.",
+      "ru": "Публичная страница не выдает случайные файлы. Доступные сборки открываются в вашем кабинете.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1185,7 +1185,7 @@
     },
     "cabinet.entry.subtitle": {
       "surface": "cabinet.entry",
-      "ru": "Здесь собраны доступ, устройства, загрузки и поддержка без повторной витрины.",
+      "ru": "Доступ, устройства, загрузки и поддержка — всё здесь, без лишних экранов.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -1221,7 +1221,7 @@
     },
     "cabinet.dashboard.subtitle": {
       "surface": "cabinet.dashboard",
-      "ru": "Следите за доступом, загрузками и последними действиями в одном месте.",
+      "ru": "Срок доступа, загрузки и последние действия собраны в одном месте.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -1239,7 +1239,7 @@
     },
     "cabinet.devices.subtitle": {
       "surface": "cabinet.devices",
-      "ru": "Проверяйте, где ваш доступ уже подключен, и продолжайте без лишних шагов.",
+      "ru": "Смотрите, какие устройства уже связаны с аккаунтом, и подключайте новые без ручных профилей.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -1257,7 +1257,7 @@
     },
     "cabinet.subscription.subtitle": {
       "surface": "cabinet.subscription",
-      "ru": "Продлевайте доступ, активируйте ключ и держите управление под рукой.",
+      "ru": "Продлевайте доступ, активируйте ключ и проверяйте условия до оплаты.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -1473,7 +1473,7 @@
     },
     "bot.shared.bonus_ready": {
       "surface": "bot.shared",
-      "ru": "Бонус готов. Заберите его в основном боте и продолжайте дальше.",
+      "ru": "Бонус готов. Заберите его в основном боте и продолжайте пользоваться POKROV.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -1563,7 +1563,7 @@
     },
     "app.trial.subtitle": {
       "surface": "app.trial",
-      "ru": "Начните с приложения и получите 5 дней доступа без лишних шагов.",
+      "ru": "Начните с приложения и получите 5 дней доступа без карты.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,

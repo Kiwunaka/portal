@@ -195,7 +195,7 @@ export function CabinetDownloadsSurface() {
         {
           label: "Инструкция",
           value: hasDocs ? "Под рукой" : "Не обязательна",
-          hint: "Короткий ориентир, если нужен спокойный старт.",
+          hint: "Короткий ориентир, если нужна установка с первого раза.",
           tone: "neutral",
         },
         {
@@ -263,7 +263,7 @@ export function CabinetDownloadsSurface() {
         <CabinetSection
           eyebrow="Коротко"
           title="Что важно помнить"
-          description="Этих трех заметок обычно хватает, чтобы спокойно довести установку до конца."
+          description="Этих трех заметок обычно хватает, чтобы довести установку до конца."
         >
           <CabinetCardGrid items={helperCards} className="xl:grid-cols-1" />
         </CabinetSection>

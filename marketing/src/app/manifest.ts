@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: CANONICAL_PLATFORM_BRAND,
     short_name: "POKROV",
-    description: "Приложение POKROV для Android и Windows с бесплатным стартом, понятным кабинетом и живой поддержкой.",
+    description: "Приложение POKROV для Android и Windows с бесплатным стартом, кабинетом и поддержкой.",
     start_url: "/",
     display: "standalone",
     background_color: "#f6f1e8",

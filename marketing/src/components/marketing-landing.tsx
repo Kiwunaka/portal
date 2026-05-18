@@ -15,7 +15,6 @@ import {
 } from "../lib/marketing-site";
 import {
   CANONICAL_PLATFORM_BRAND,
-  CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE,
   CANONICAL_PUBLIC_PLATFORM_SCOPE,
   getPokrovPublicConfig,
   getTariffPlans,
@@ -78,12 +77,12 @@ const HERO_SIGNALS: HeroSignal[] = [
   {
     label: "Стартовый доступ",
     value: "5 дней бесплатно",
-    detail: "Сначала можно спокойно проверить сервис на своем устройстве без обязательной регистрации.",
+    detail: "Проверьте POKROV на своем устройстве до продления.",
   },
   {
-    label: "Маршрут",
-    value: "Все, кроме RU",
-    detail: "На первом экране остается понятный повседневный режим без технических вариантов.",
+    label: "Запуск",
+    value: "В приложении",
+    detail: "Первый экран ведет к подключению, а не к техническим настройкам.",
   },
 ];
 
@@ -91,8 +90,8 @@ const DEFAULT_SCENARIOS: ScenarioCard[] = [
   {
     eyebrow: "Приложение сначала",
     glyph: "route",
-    title: "Один спокойный путь",
-    desc: "Сайт помогает начать, приложение дает первый опыт, а кабинет остается рядом для срока доступа, поддержки и продления.",
+    title: "Поставьте, включите, проверьте",
+    desc: "Сайт ведет к приложению, приложение дает первый опыт, кабинет остается для срока доступа, поддержки и продления.",
   },
   {
     eyebrow: "Продление",
@@ -137,16 +136,6 @@ function buildPlatformLabel(): string {
     if (item === "windows") return "Windows";
     return item;
   }).join(" + ");
-}
-
-function buildRouteLabel(): string {
-  if (CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE === "all_except_ru") {
-    return "Все, кроме RU";
-  }
-  if (CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE === "global") {
-    return "Полный маршрут";
-  }
-  return "Спокойный маршрут";
 }
 
 function buildDownloadCards(): DownloadCard[] {
@@ -397,7 +386,7 @@ export default function MarketingLanding({
         <div className="lp-header-shell">
           <div className="lp-brand">
             <Link href="/">POKROV</Link>
-            <span>спокойный цифровой маршрут</span>
+            <span>5 дней бесплатно • Android и Windows</span>
           </div>
           <div className="lp-theme-toggle-wrap">
             <button
@@ -445,12 +434,12 @@ export default function MarketingLanding({
           <div className="lp-hero-copy">
             <div className="lp-kicker">{heroKicker || "POKROV • Android + Windows"}</div>
             <p className="lp-overline">
-              Эта волна — бета-контур с честными ограничениями. Сайт объясняет следующий шаг, а кабинет помогает продолжить путь.
+              Бета с честными условиями: приложение для старта, кабинет для продления и поддержки.
             </p>
-            <h1>{heroTitle || "Один спокойный путь: установить приложение, проверить сервис и только потом продлевать доступ"}</h1>
+            <h1>{heroTitle || "Поставьте POKROV, включите доступ и проверьте свои сервисы"}</h1>
             <p className="lp-hero-lead">
               {heroSubtitle ||
-                "POKROV не отправляет вас разбираться в настройках с первого экрана. Сначала приложение для Android или Windows, затем 5 дней бесплатного доступа, потом базовый режим или продление через ключ доступа."}
+                "Сначала приложение для Android или Windows и 5 дней бесплатного доступа. Если сервис подошел, выберите срок и продолжайте в том же аккаунте."}
             </p>
             <div className="lp-hero-actions">
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
@@ -477,11 +466,11 @@ export default function MarketingLanding({
             <article className="lp-stage-card lp-stage-card--primary">
               <div className="lp-stage-label">
                 <LandingGlyph name="route" />
-                Бета-настройка
+                Старт в приложении
               </div>
-              <h2>Одна логическая локация и один понятный маршрут.</h2>
+              <h2>Пользователь видит платформу, срок и действие.</h2>
               <p>
-                На пользовательских экранах виден один понятный маршрут <strong>{buildRouteLabel()}</strong> и текущая платформа <strong>{buildPlatformLabel()}</strong>.
+                На первом экране должны быть <strong>{buildPlatformLabel()}</strong>, 5 дней бесплатно и кнопка старта. Технические режимы остаются внутри продукта.
               </p>
               <ol className="lp-stage-steps">
                 {KEY_FLOW_STEPS.map((step, index) => (
@@ -521,7 +510,7 @@ export default function MarketingLanding({
                 <LandingGlyph name="arc" />
                 Статус беты
               </div>
-              <blockquote>Доступ работает в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка отвечает без декоративных обещаний.</blockquote>
+              <blockquote>Доступ работает в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка помогает без лишних обещаний.</blockquote>
               <span>Бета-контур • Android + Windows</span>
             </article>
           </div>
@@ -530,9 +519,9 @@ export default function MarketingLanding({
         <section className="lp-section">
           <div className="lp-section-head">
             <span>Обещание</span>
-            <h2>Сайт помогает выбрать следующий шаг, не раскрывая техническую кухню.</h2>
+            <h2>Сайт продает результат, а не техническую кухню.</h2>
             <p>
-              Мы не обещаем стабильный публичный релиз раньше времени. Android и Windows уже ведут в бета-путь, Apple остается в подготовке, а технические ссылки не показываются в обычном сценарии.
+              Мы не обещаем стабильный публичный релиз раньше времени. Android и Windows уже ведут к приложению, Apple остается в подготовке, а технические ссылки не мешают первому старту.
             </p>
           </div>
           <div className="lp-trust-grid">
@@ -577,9 +566,9 @@ export default function MarketingLanding({
         <section id="pricing" className="lp-section">
           <div className="lp-section-head">
             <span>Тарифы</span>
-            <h2>Тарифы ведут к ключу доступа, а не к технической ссылке.</h2>
+            <h2>Тарифы показывают срок, цену и действие.</h2>
             <p>
-              Вы выбираете срок, переходите к спокойной оплате и затем погашаете ключ в приложении или кабинете, когда касса доступна.
+              Вы выбираете срок, видите сумму заранее и продолжаете доступ в том же приложении или кабинете, когда касса доступна.
             </p>
           </div>
           <div className="lp-pricing-shell">
@@ -590,7 +579,7 @@ export default function MarketingLanding({
               </div>
               <h3>Выберите срок, получите ключ, продолжайте тот же доступ.</h3>
               <p>
-                Приложение и кабинет продолжают одну историю. Сайт показывает цену, ограничения беты и следующий шаг без ручных настроек.
+                Приложение и кабинет продолжают одну историю. Сайт показывает цену, ограничения беты и действие без ручных настроек.
               </p>
               <ul className="lp-pricing-points">
                 <li>После бесплатного периода остается базовый режим с месячным лимитом.</li>
@@ -623,11 +612,11 @@ export default function MarketingLanding({
           <div className="lp-conversation-grid">
             <div>
               <div className="lp-section-head">
-                <span>Сценарий</span>
-                <h2>{scenarioTitle || "Проверка, помощь и продление собираются в один спокойный опыт"}</h2>
+                <span>Опыт</span>
+                <h2>{scenarioTitle || "Проба, помощь и продление должны быть на одном аккаунте"}</h2>
                 <p>
                   {scenarioBody ||
-                    "Сначала бесплатная проверка, потом базовый режим, затем продление через ключ доступа. Это один маршрут для сайта, кабинета и Telegram без противоречий."}
+                    "Сначала 5 дней в приложении, потом базовый режим или продление через ключ доступа. Сайт, кабинет и Telegram не должны противоречить друг другу."}
                 </p>
               </div>
               {reviews.length ? (
@@ -685,10 +674,10 @@ export default function MarketingLanding({
         <section className="lp-section">
           <div className="lp-section-head">
             <span>Рядом</span>
-            <h2>{clusterTitle || "Отдельные страницы под конкретные сценарии"}</h2>
+            <h2>{clusterTitle || "Отдельные страницы под конкретные задачи"}</h2>
             <p>
               {clusterBody ||
-                "Эти страницы раскрывают установку, устройства, Telegram и видеосценарии без смешивания ролей сайта, приложения и кабинета."}
+                "Эти страницы раскрывают установку, устройства, Telegram и видео-задачи без смешивания ролей сайта, приложения и кабинета."}
             </p>
           </div>
           <div className="lp-related-grid">
@@ -696,7 +685,7 @@ export default function MarketingLanding({
               <article key={item.href} className="lp-related-card">
                 <div className="lp-stage-label">
                   <LandingGlyph name="route" />
-                  Соседний сценарий
+                  Похожая задача
                 </div>
                 <h3>{item.label}</h3>
                 <p>Та же логика: сайт объясняет, приложение дает первый опыт, кабинет и Telegram помогают продолжить или восстановить доступ.</p>
@@ -712,7 +701,7 @@ export default function MarketingLanding({
           <div className="lp-footer-cta">
             <div className="lp-footer-copy">
               <span>Финальный шаг</span>
-              <h2>POKROV: сначала приложение, потом спокойное продление.</h2>
+              <h2>POKROV: сначала приложение, потом продление.</h2>
               <p>
                 Если нужен первый старт, идите в приложение. Если сервис подошел, выбирайте срок и продолжайте тот же доступ через ключ в кабинете.
               </p>

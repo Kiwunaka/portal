@@ -111,7 +111,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/devices"),
-    meta: { title: "Устройства", subtitle: "Что уже связано с аккаунтом и как спокойно перенести доступ." },
+    meta: { title: "Устройства", subtitle: "Что уже связано с аккаунтом и как подключить новый экран." },
   },
   {
     match: (pathname) => pathname.startsWith("/statistics"),
@@ -123,7 +123,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
-    meta: { title: "Настройки", subtitle: "Аккаунт, связанные каналы и понятные бонусные действия." },
+    meta: { title: "Настройки", subtitle: "Аккаунт, связанные каналы и бонусные действия." },
   },
 ];
 

@@ -5,7 +5,6 @@ import JsonLd from "../json-ld";
 import styles from "./homepage.module.css";
 import { buildSoftwareApplicationJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import {
-  CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE,
   CANONICAL_PUBLIC_PLATFORM_SCOPE,
   getPokrovPublicConfig,
   getTariffPlans,
@@ -35,47 +34,54 @@ const HOW_IT_WORKS = [
   {
     step: "1",
     title: "Установите приложение",
-    text: "Android APK и Windows EXE доступны как beta-сборки. Публичный релиз и store-доступ не обещаем до закрытия release gate.",
+    text: "Начните с Android или Windows. Если сборка доступна вашему аккаунту, кабинет покажет файл и инструкцию.",
   },
   {
     step: "2",
     title: "Попробуйте 5 дней",
-    text: "Старт без карты и без ручной настройки. POKROV сам готовит managed-подключение в приложении.",
+    text: "Первые 5 дней можно проверить в своих сервисах без карты и ручных настроек.",
   },
   {
     step: "3",
-    title: "Нажмите подключение",
-    text: "Основной путь живет в приложении: один понятный экран, режим маршрута и поддержка рядом в профиле.",
+    title: "Включите в приложении",
+    text: "Откройте POKROV, войдите в тот же аккаунт и нажмите подключение. Кабинет остается для продления, устройств и помощи.",
   },
   {
     step: "4",
     title: "Продлите если понравилось",
-    text: "Выберите удобный срок и продолжайте пользоваться тем же доступом. Никаких новых настроек.",
+    text: "Выберите срок заранее: цена и условия видны до оплаты, а доступ остается на том же аккаунте.",
   },
 ];
 
 const SURFACE_PANELS = [
   {
     eyebrow: "Устройства",
-    title: "Один доступ — все экраны",
-    text: "Установите POKROV на телефон, ноутбук и планшет. Все устройства работают под одним доступом без дополнительной платы.",
-    bullets: ["Android и Windows в одном приложении", "До 5 устройств одновременно", "Переключайтесь мгновенно"],
+    title: "Android и Windows под одним аккаунтом",
+    text: "Поставьте приложение на основные устройства и управляйте доступом в кабинете. Платные планы рассчитаны до 5 устройств.",
+    bullets: ["Android и Windows", "До 5 устройств в платных планах", "Загрузки и статус в кабинете"],
     tone: "devices" as const,
   },
   {
-    eyebrow: "Маршрут",
-    title: "Вы сами решаете, что защищать",
-    text: "Можно включить защиту для всего устройства или оставить только выбранные приложения. Сценарий меняется без ручных конфигов.",
-    bullets: ["Режим для всего устройства", "Выбор отдельных приложений", "Переключение без ручных настроек"],
+    eyebrow: "Приложение",
+    title: "Включение без ручных настроек",
+    text: "Первый запуск не требует ссылок, конфигов и списков серверов. Откройте приложение, войдите и нажмите подключение.",
+    bullets: ["Один экран запуска", "Без ручных профилей", "Технические режимы — позже, если нужны"],
     tone: "routing" as const,
   },
   {
     eyebrow: "Поддержка",
     title: "Если что-то не так — мы рядом",
-    text: "Напишите в поддержку прямо из приложения или кабинета. Один тикет, полная история, не нужно объяснять всё заново.",
-    bullets: ["Без декоративного SLA", "Видна история обращений", "Telegram-канал с обновлениями"],
+    text: "Напишите в Telegram или из кабинета. Мы видим контекст аккаунта и быстрее понимаем, где нужна помощь.",
+    bullets: ["Telegram и кабинет", "История обращений", "Новости в канале POKROV"],
     tone: "support" as const,
   },
+];
+
+const HERO_HOOKS = [
+  { value: "5 дней", label: "проверка без карты" },
+  { value: "+10 дней", label: "за Telegram-канал" },
+  { value: "Android + Windows", label: "актуальные beta-сборки" },
+  { value: "До 5 устройств", label: "в платных планах" },
 ];
 
 function buildCheckoutHref(planCode: string): string {
@@ -118,16 +124,6 @@ function buildPlatformLabel(): string {
     if (item === "windows") return "Windows";
     return item;
   }).join(" + ");
-}
-
-function buildRouteLabel(): string {
-  if (CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE === "all_except_ru") {
-    return "Все, кроме RU";
-  }
-  if (CANONICAL_PUBLIC_DEFAULT_ROUTE_MODE === "global") {
-    return "Полный маршрут";
-  }
-  return "Спокойный маршрут";
 }
 
 /* ── Icons ── */
@@ -239,25 +235,33 @@ function Hero({ links }: { links: HomeLinks }) {
           <div className={styles.heroCopy}>
             <div className={styles.eyebrow}>
               <UiIcon name="verified_user" size={18} />
-              Старт в приложении
+              5 дней бесплатно
             </div>
             <h1 className={styles.heroTitle}>
-              POKROV для
+              POKROV: поставьте,
               <br />
-              спокойного маршрута
+              включите, проверьте
             </h1>
             <p className={styles.heroSubtitle}>
-              Пять дней в приложении без карты и без ручных настроек. Кабинет помогает продлить доступ, привязать Telegram и проверить устройства.
+              Приложение для Android и Windows. Начните без карты, проверьте POKROV в своих сервисах и продлевайте только если подошло.
             </p>
             <div className={styles.heroActions}>
               <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
                 <UiIcon name="shield_lock" size={22} />
-                Попробовать 5 дней
+                Начать бесплатно
               </Link>
               <a href="#how-it-works" className={`${styles.btnSecondary} ${styles.btnPill}`}>
                 <UiIcon name="play_circle" size={20} />
-                Как начать
+                Как это работает
               </a>
+            </div>
+            <div className={styles.heroHooks} aria-label="Коротко о POKROV">
+              {HERO_HOOKS.map((item) => (
+                <div key={item.value} className={styles.heroHook}>
+                  <span className={styles.heroHookValue}>{item.value}</span>
+                  <span className={styles.heroHookLabel}>{item.label}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -289,11 +293,11 @@ function Hero({ links }: { links: HomeLinks }) {
 
 function ProofStrip() {
   const items = [
-    { icon: "event_available", value: "5 дней", label: "пробного доступа без карты" },
-    { icon: "phone_android", value: buildPlatformLabel(), label: "beta-сборки для ваших устройств" },
-    { icon: "devices", value: "До 5", label: "устройств одновременно" },
-    { icon: "security", value: "Старт в приложении", label: "кабинет остается рядом" },
-    { icon: "route", value: buildRouteLabel(), label: "публичный режим маршрута по умолчанию" },
+    { icon: "event_available", value: "5 дней", label: "доступа в приложении без карты" },
+    { icon: "phone_android", value: buildPlatformLabel(), label: "актуальные beta-сборки" },
+    { icon: "devices", value: "До 5", label: "устройств в платных планах" },
+    { icon: "security", value: "+10 дней", label: "за Telegram-канал" },
+    { icon: "route", value: "Кабинет", label: "продление, устройства, поддержка" },
   ];
 
   return (
@@ -313,7 +317,7 @@ function ProofStrip() {
       </div>
       <div className={styles.proofFooter}>
         <UiIcon name="lock" size={16} />
-        Публичный релиз не обещаем: beta-ограничения показываем рядом с действиями.
+        POKROV остается в бете: если сборка или оплата недоступны аккаунту, покажем кабинет или поддержку вместо пустой кнопки.
       </div>
     </FadeUp>
   );
@@ -325,8 +329,8 @@ function HowItWorks() {
       <div className={styles.section} id="how-it-works">
         <div className={styles.sectionHead}>
           <span className={styles.eyebrow}>как начать</span>
-          <h2>Четыре шага до спокойного маршрута</h2>
-          <p>Без ручных ссылок и технических терминов. Установите приложение, нажмите подключение, а кабинет оставьте для продления и поддержки.</p>
+          <h2>Четыре шага: поставить, включить, решить</h2>
+          <p>Без ручных ссылок и технических терминов. Сначала приложение и 5 дней теста, потом продление, если POKROV подошёл.</p>
         </div>
         <div className={styles.stepsGrid}>
           {HOW_IT_WORKS.map((item) => (
@@ -361,12 +365,12 @@ function SurfaceMock({ tone }: { tone: (typeof SURFACE_PANELS)[number]["tone"] }
         <div className={styles.mockRouting}>
           <div className={styles.mockRoutingModes}>
             <div className={styles.modeCardActive}>
-              <strong>Полный туннель</strong>
-              <span>Весь трафик защищён</span>
+              <strong>Всё устройство</strong>
+              <span>Один режим для повседневного старта</span>
             </div>
             <div className={styles.modeCard}>
-              <strong>Разделённый</strong>
-              <span>Только выбранные приложения</span>
+              <strong>Выбор приложений</strong>
+              <span>Для тех, кому нужна точная настройка</span>
             </div>
           </div>
           <div className={styles.mockRoutingMap} />
@@ -403,8 +407,8 @@ function Features() {
       <div className={styles.section}>
         <div className={styles.sectionHead}>
           <span className={styles.eyebrow}>возможности</span>
-          <h2>Всё, что нужно для безопасного интернета</h2>
-          <p>POKROV работает тихо и незаметно. Вы даже не почувствуете разницы — просто интернет станет безопаснее.</p>
+          <h2>Что видно пользователю, а не инженеру</h2>
+          <p>Приложение запускает доступ, кабинет показывает срок и устройства, поддержка помогает без пересказа всей истории заново.</p>
         </div>
         <div className={styles.surfaceGrid}>
           {SURFACE_PANELS.map((panel) => (
@@ -447,17 +451,17 @@ function Pricing({ links }: { links: HomeLinks }) {
   const featuredCode = planCards[1]?.code || defaultPlanCode;
 
   const freeFeatures = [
-    "Полный доступ на 5 дней",
-    "Все доступные серверы в пробе",
-    "Высокая скорость",
+    "5 дней доступа в приложении",
+    "Проверка на своих сервисах",
+    "Android и Windows",
     "Без привязки карты",
   ];
 
   const paidFeatures = [
-    "Доступ без счетчика трафика",
-    "Высокая скорость на всех серверах",
-    "Поддержка без повторного старта",
+    "Платный пул серверов",
     "До 5 устройств",
+    "Продление в том же аккаунте",
+    "Кабинет и поддержка",
   ];
 
   return (
@@ -465,8 +469,8 @@ function Pricing({ links }: { links: HomeLinks }) {
       <div className={styles.section}>
         <div className={styles.sectionHead}>
           <span className={styles.eyebrow}>тарифы</span>
-          <h2>Сначала проба, потом — ваш выбор</h2>
-          <p>5 дней бесплатно, чтобы понять, подходит ли вам сервис. Потом выберите удобный срок.</p>
+          <h2>5 дней бесплатно, дальше — по сроку</h2>
+          <p>Сначала проверьте POKROV в приложении. Если подходит, выберите срок заранее: цена и условия видны до оплаты.</p>
         </div>
 
         <div className={styles.pricingLayout}>
@@ -474,7 +478,7 @@ function Pricing({ links }: { links: HomeLinks }) {
             <div className={`${styles.badge} ${styles.badgeEmerald}`}>старт</div>
             <h3>5 дней бесплатно</h3>
             <p>
-              Достаточно, чтобы проверить скорость, стабильность и удобство. Серверы премиум-пула, без карты.
+              Достаточно, чтобы понять, подходит ли POKROV для ваших сервисов и устройств. Старт без карты.
             </p>
             <ul className={styles.planFeatures}>
               {freeFeatures.map((f) => (
@@ -541,12 +545,12 @@ function FinalCta({ links }: { links: HomeLinks }) {
           </span>
           <h2>Попробуйте POKROV в приложении</h2>
           <p>
-            Никаких обязательств и ручных настроек. Android и Windows остаются beta-сборками, а кабинет продолжает доступ после первого запуска.
+            Начните с 5 дней бесплатно. Android и Windows остаются beta-сборками, а кабинет помогает с продлением, устройствами и поддержкой.
           </p>
         </div>
         <div className={styles.finalActions}>
           <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-            Попробовать 5 дней
+            Начать бесплатно
           </Link>
           <Link href={links.checkoutHref} className={styles.btnOutline}>
             Продлить позже
@@ -580,7 +584,7 @@ export default function MarketingHomePage() {
             <img className={styles.brandMark} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
             <span className={styles.brandText}>
               <strong>POKROV</strong>
-              <small>спокойный цифровой маршрут</small>
+              <small>5 дней бесплатно • Android и Windows</small>
             </span>
           </Link>
 
@@ -596,7 +600,7 @@ export default function MarketingHomePage() {
               Кабинет
             </a>
             <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-              Попробовать 5 дней
+              Начать бесплатно
             </Link>
           </div>
         </header>

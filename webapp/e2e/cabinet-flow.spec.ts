@@ -364,7 +364,7 @@ test.describe("Cabinet flow", () => {
 
     await expect(page.getByLabel("POKROV logo").first()).toBeVisible();
     const sidebar = page.getByRole("complementary").first();
-    await expect(sidebar).toContainText("Доступ, устройства и помощь в одном спокойном кабинете.");
+    await expect(sidebar).toContainText("Доступ, устройства, продление и помощь в одном кабинете.");
     await expect(sidebar.locator("nav")).toContainText("Главная");
     await expect(sidebar.locator("nav")).toContainText("Статистика");
     await expect(sidebar.locator("nav")).toContainText("Настройки");
@@ -677,8 +677,8 @@ test.describe("Cabinet flow", () => {
     await page.getByRole("button", { name: "Новый кейс" }).first().click();
     await page.getByPlaceholder("Коротко: что случилось").fill("Нужна помощь с импортом");
     await page
-      .getByPlaceholder("Опишите ситуацию так, чтобы нам было понятно, с чего начать.")
-      .fill("Тестовый сценарий без приложения.");
+      .getByPlaceholder("Опишите, что делали, где сломалось и что видите сейчас.")
+      .fill("Тестовый кейс без приложения.");
     await page.getByRole("button", { name: "Создать кейс" }).click();
     await expect(page.locator("main")).toContainText("Открыт · #");
     await expect(page.locator("main")).toContainText("Нужна помощь с импортом");

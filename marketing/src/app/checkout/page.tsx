@@ -10,12 +10,12 @@ export const metadata = buildMarketingMetadata(
   getCopyText("marketing.checkout.meta.title", "Оплата бета-доступа | POKROV"),
   getCopyText(
     "marketing.checkout.meta.description",
-    "Страница оплаты объясняет продление бета-доступа, получение ключа доступа, ручную помощь при спорных платежах и следующий шаг без сырых технических ссылок.",
+    "Страница оплаты показывает доступные планы, сумму до оплаты, получение ключа доступа и помощь при спорных платежах.",
   ),
   {
     path: "/checkout/",
     noIndex: false,
-    keywords: ["оплата pokrov", "продление pokrov", "личный маршрут оплаты", "checkout pokrov"],
+    keywords: ["оплата pokrov", "продление pokrov", "тарифы pokrov", "checkout pokrov"],
   },
 );
 
@@ -25,7 +25,7 @@ export default function CheckoutPage() {
       <JsonLd
         data={buildBreadcrumbJsonLd([
           { name: CANONICAL_PLATFORM_BRAND, path: "/" },
-          { name: getCopyText("marketing.checkout.breadcrumb", "Личный маршрут оплаты"), path: "/checkout/" },
+          { name: getCopyText("marketing.checkout.breadcrumb", "Продление доступа"), path: "/checkout/" },
         ])}
       />
       <Suspense fallback={<CheckoutLoadingFallback />}>
