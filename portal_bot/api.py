@@ -263,6 +263,7 @@ REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_
 CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("bonus_days", 10) or 10)))
 APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", int(_TRIAL_FACTS.get("trial_days", 5) or 5)))
 APP_TRIAL_MAX_DAYS = APP_TRIAL_DEFAULT_DAYS
+WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
 OPENING_PREMIUM_CAMPAIGN_KEY = (
@@ -1721,11 +1722,11 @@ async def _sync_control_panel_access(*, user: User) -> bool:
 
 
 def _linked_identities_payload(*, s, user: User, auth_user: dict[str, Any] | None = None) -> dict[str, Any]:
-    email_identity = get_verified_identity_for_user(s, tg_id=int(user.tg_id))
-    telegram_id = _linked_telegram_id(user) or (0 if bool(getattr(user, "is_app_user", False)) else int(user.tg_id))
+    email_identity = _verified_email_identity_for_account_family(s, user=user)
+    telegram_id = _linked_telegram_id(user) or (0 if _is_app_or_email_account(user) else int(user.tg_id))
     telegram_username = (
         str(getattr(user, "linked_telegram_username", "") or "").strip()
-        or (str(getattr(user, "username", "") or "").strip() if telegram_id and not bool(getattr(user, "is_app_user", False)) else "")
+        or (str(getattr(user, "username", "") or "").strip() if telegram_id and not _is_app_or_email_account(user) else "")
         or (str((auth_user or {}).get("username") or "").strip() if telegram_id else "")
     )
     return {
@@ -2337,6 +2338,46 @@ def _email_identity_payload(identity: WebEmailIdentity | None) -> dict[str, Any]
     }
 
 
+def _is_synthetic_email_account_id(tg_id: int | str | None) -> bool:
+    try:
+        value = int(tg_id or 0)
+    except Exception:
+        return False
+    return int(WEB_EMAIL_ACCOUNT_TG_ID_BASE) <= value < int(APP_ACCOUNT_TG_ID_BASE)
+
+
+def _is_app_or_email_account(user: User | None) -> bool:
+    if not user:
+        return False
+    return bool(getattr(user, "is_app_user", False)) or _is_synthetic_email_account_id(getattr(user, "tg_id", 0))
+
+
+def _linked_account_for_telegram(s, *, telegram_id: int) -> User | None:
+    tg_id = int(telegram_id or 0)
+    if tg_id <= 0:
+        return None
+    return (
+        s.query(User)
+        .filter(User.linked_telegram_id == tg_id)
+        .order_by(User.linked_telegram_linked_at.desc(), User.created_at.desc(), User.tg_id.desc())
+        .first()
+    )
+
+
+def _verified_email_identity_for_account_family(s, *, user: User | None) -> WebEmailIdentity | None:
+    if not user:
+        return None
+    direct = get_verified_identity_for_user(s, tg_id=int(user.tg_id))
+    if direct:
+        return direct
+    if _is_app_or_email_account(user):
+        return None
+    linked_account = _linked_account_for_telegram(s, telegram_id=int(getattr(user, "tg_id", 0) or 0))
+    if not linked_account or int(getattr(linked_account, "tg_id", 0) or 0) == int(user.tg_id):
+        return None
+    return get_verified_identity_for_user(s, tg_id=int(linked_account.tg_id))
+
+
 def _require_email_public_ready() -> dict[str, Any]:
     status = email_delivery_runtime_status()
     if bool(status.get("enabled")):
@@ -2681,12 +2722,45 @@ def _require_user_access(*, target_tg_id: int, x_telegram_init_data: str, reques
     return user_data
 
 
+def _auth_actor_tg_id(auth_user: dict[str, Any] | None) -> int:
+    if not auth_user:
+        return 0
+    direct_id = int((auth_user or {}).get("actor_tg_id") or (auth_user or {}).get("telegram_id") or 0)
+    if direct_id > 0:
+        return direct_id
+    account_id = int((auth_user or {}).get("id") or 0)
+    if account_id <= 0 or _is_admin_tg(account_id):
+        return account_id
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == account_id).first()
+        linked_id = _linked_telegram_id(user)
+        return linked_id or account_id
+    finally:
+        s.close()
+
+
+def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User | None) -> bool:
+    candidates = [
+        int((auth_user or {}).get("id") or 0),
+        _auth_actor_tg_id(auth_user),
+        int(getattr(user, "tg_id", 0) or 0) if user else 0,
+        _linked_telegram_id(user),
+    ]
+    return any(_is_admin_tg(candidate) for candidate in candidates if candidate)
+
+
 def _require_admin(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
     user_data = _require_auth_user(x_telegram_init_data, request=request)
-    actor_id = int(user_data.get("id", 0))
+    account_id = int(user_data.get("id", 0))
+    actor_id = _auth_actor_tg_id(user_data)
     if not _is_admin_tg(actor_id):
         raise HTTPException(status_code=403, detail="Admin access required")
-    return user_data
+    out = dict(user_data)
+    out["account_id"] = account_id
+    out["actor_tg_id"] = actor_id
+    out["id"] = actor_id
+    return out
 
 
 def _safe_public_url(value: str) -> str:
@@ -5176,7 +5250,7 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == tg_id).first()
-        email_identity = get_verified_identity_for_user(s, tg_id=tg_id)
+        email_identity = _verified_email_identity_for_account_family(s, user=user)
     finally:
         s.close()
     device_name = app_first_service.normalize_app_device_name(
@@ -6933,7 +7007,7 @@ async def user_data(
         referral_code = (user.referral_code or "").strip()
         channel_link = f"https://t.me/{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""
         support_link = f"https://t.me/{SUPPORT_USERNAME}" if SUPPORT_USERNAME else ""
-        role_admin = _is_admin_tg(tg_id)
+        role_admin = _auth_user_can_admin_account(auth_user=auth_user, user=user)
         channel_claimed_at = _safe_iso(getattr(user, "channel_bonus_claimed_at", None))
         opening_bonus_claimed = _has_campaign_mark(
             s,

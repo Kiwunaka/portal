@@ -322,6 +322,101 @@ def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):
     assert session_body["user"]["linked_identities"]["email"]["email"] == "alice@pokrov.test"
 
 
+def test_email_account_linked_to_admin_telegram_keeps_admin_access(monkeypatch, tmp_path):
+    monkeypatch.setenv("ADMIN_ID", "777001")
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
+    client = TestClient(api.app)
+
+    register = client.post(
+        "/api/auth/email/register",
+        json={
+            "email": "operator@pokrov.test",
+            "password": "StrongPass123!",
+            "display_name": "Operator",
+        },
+    )
+    assert register.status_code == 200, register.text
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, verify.text
+    account_id = int(verify.json()["user"]["id"])
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter(api.User.tg_id == account_id).first()
+        assert user is not None
+        user.linked_telegram_id = 777001
+        user.linked_telegram_username = "admin_owner"
+        user.linked_telegram_linked_at = api._utcnow()
+        db.commit()
+    finally:
+        db.close()
+
+    login = client.post(
+        "/api/auth/email/login",
+        json={"email": "operator@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['token']}"}
+
+    profile = client.get(f"/api/user/{account_id}", headers=headers)
+    assert profile.status_code == 200, profile.text
+    profile_body = profile.json()
+    assert profile_body["is_admin"] is True
+    assert profile_body["linked_identities"]["telegram"]["id"] == 777001
+    assert profile_body["linked_identities"]["email"]["email"] == "operator@pokrov.test"
+
+    admin_summary = client.get("/api/admin/summary", headers=headers)
+    assert admin_summary.status_code == 200, admin_summary.text
+
+
+def test_telegram_session_shows_email_from_linked_email_account(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
+    client = TestClient(api.app)
+
+    register = client.post(
+        "/api/auth/email/register",
+        json={"email": "linked@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert register.status_code == 200, register.text
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, verify.text
+    account_id = int(verify.json()["user"]["id"])
+
+    api._ensure_user_row_for_login(tg_id=777001, username="linked_owner")
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter(api.User.tg_id == account_id).first()
+        assert user is not None
+        user.linked_telegram_id = 777001
+        user.linked_telegram_username = "linked_owner"
+        user.linked_telegram_linked_at = api._utcnow()
+        db.commit()
+    finally:
+        db.close()
+
+    token = api.create_web_session_token(
+        tg_id=777001,
+        username="linked_owner",
+        auth_type="telegram",
+        auth_origin="telegram",
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    session = client.get("/api/auth/session", headers=headers)
+    assert session.status_code == 200, session.text
+    session_body = session.json()
+    assert session_body["user"]["email"] == "linked@pokrov.test"
+    assert session_body["user"]["linked_identities"]["email"]["email"] == "linked@pokrov.test"
+
+    profile = client.get("/api/user/777001", headers=headers)
+    assert profile.status_code == 200, profile.text
+    profile_body = profile.json()
+    assert profile_body["email"] == "linked@pokrov.test"
+    assert profile_body["linked_identities"]["email"]["email"] == "linked@pokrov.test"
+
+
 def test_email_recovery_resets_password(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
     captured = _capture_auth_delivery(monkeypatch, api)

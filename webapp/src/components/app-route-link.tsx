@@ -54,6 +54,20 @@ function dispatchRouteActivity(href: string): void {
   }
 }
 
+function scheduleNavigationFallback(targetPath: string, targetHref: string): void {
+  if (typeof window === "undefined") return;
+  const key = `${targetPath}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  const navWindow = window as Window & { __pokrovRouteNavKey?: string };
+  navWindow.__pokrovRouteNavKey = key;
+  window.setTimeout(() => {
+    if (navWindow.__pokrovRouteNavKey !== key) return;
+    const currentPath = `${normalizeAppPath(window.location.pathname)}${window.location.search}${window.location.hash}`;
+    if (currentPath !== targetPath) {
+      window.location.assign(targetHref);
+    }
+  }, 900);
+}
+
 const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function AppRouteLink(
   { hardNavigate = false, onClick, target, rel, className, href, ...props },
   ref,
@@ -83,6 +97,7 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
             event.preventDefault();
             dispatchRouteActivity(event.currentTarget.href);
             router.push(targetPath);
+            scheduleNavigationFallback(targetPath, event.currentTarget.href);
           }
           return;
         }
