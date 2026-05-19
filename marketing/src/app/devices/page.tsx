@@ -5,7 +5,7 @@ import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
   "Android и Windows | POKROV",
-  "Приложение как основной старт, 5 дней бесплатно и честный статус Android, Windows и Apple.",
+  "POKROV для Android и Windows: 5 дней доступа без карты, до 5 устройств в платных планах и честный статус Apple.",
   {
     path: MARKETING_CANONICAL_PATHS.devices,
     keywords: ["android и windows", "устройства pokrov", "оптимизация на пк", "мобильный и десктопный старт"],
@@ -25,16 +25,16 @@ export default function DevicesPage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.devices}
           heroKicker="Для основных устройств"
-          heroTitle="Android и Windows без лишней суеты"
-          heroSubtitle="Android и Windows уже ведут к приложению, пробному периоду и кабинету. Apple остаётся в подготовке без обещаний раньше времени."
+          heroTitle="Android и Windows в одном аккаунте POKROV"
+          heroSubtitle="Текущая бета ведет к приложению, 5 дням доступа без карты и кабинету. Apple остается в подготовке без обещаний раньше времени."
           scenarioTitle="Что готово по устройствам"
-          scenarioBody="Эта страница помогает быстро понять, где старт уже готов, а где пока стоит честное ожидание без рекламного шума."
+          scenarioBody="Эта страница сразу показывает, где старт уже готов, а где пока стоит честное ожидание без рекламного шума."
           scenarioCards={[
             {
               eyebrow: "Android + Windows",
               glyph: "window",
-              title: "Бета-путь уже собран",
-              desc: "Именно эти платформы входят в текущий бета-контур, поэтому старт, тест и продление выстроены вокруг них.",
+              title: "Бета уже собрана вокруг этих платформ",
+              desc: "Android и Windows входят в текущий бета-контур, поэтому старт, бесплатный период и продление выстроены вокруг них.",
             },
             {
               eyebrow: "Apple readiness",

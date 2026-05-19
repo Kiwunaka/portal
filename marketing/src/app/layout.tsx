@@ -16,11 +16,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV | 5 дней бесплатно для Android и Windows",
+    default: "POKROV — приложение для доступа к сайтам | Android и Windows",
     template: "%s",
   },
   description:
-    "POKROV помогает начать через приложение, получить 5 дней бесплатно и дальше управлять доступом, устройствами и поддержкой в кабинете.",
+    "Скачайте POKROV для Android или Windows: 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней, до 5 устройств и поддержка в Telegram.",
   applicationName: CANONICAL_PLATFORM_BRAND,
   alternates: {
     canonical: `${CANONICAL_MARKETING_SITE_URL}/`,
@@ -30,28 +30,28 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV | 5 дней бесплатно для Android и Windows",
-    description: "Начните с приложения, получите бесплатные 5 дней и дальше управляйте доступом без лишнего шума.",
+    title: "POKROV — приложение для доступа к сайтам",
+    description: "Android и Windows, 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней и поддержка рядом.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
       {
         url: DEFAULT_MARKETING_SHARE_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_PLATFORM_BRAND} — 5 дней бесплатно для Android и Windows`,
+        alt: `${CANONICAL_PLATFORM_BRAND} — приложение для доступа к сайтам на Android и Windows`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "POKROV | Приложение, доступ и помощь без лишнего шума",
-    description: "Скачайте приложение, начните с бесплатных 5 дней и при необходимости продолжайте через кабинет и поддержку.",
+    title: "POKROV | Android и Windows",
+    description: "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через кабинет.",
     images: [
       {
         url: DEFAULT_MARKETING_TWITTER_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_PLATFORM_BRAND} — приложение, кабинет и поддержка`,
+        alt: `${CANONICAL_PLATFORM_BRAND} — приложение, кабинет и поддержка для Android и Windows`,
       },
     ],
   },

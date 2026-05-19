@@ -72,7 +72,7 @@ const HERO_SIGNALS: HeroSignal[] = [
   {
     label: "Платформы",
     value: "Android + Windows",
-    detail: "Основной путь сейчас собран для телефона и компьютера. Apple-направление остается в подготовке.",
+    detail: "Текущая бета собрана для телефона и компьютера. Apple-направление остается в подготовке.",
   },
   {
     label: "Стартовый доступ",
@@ -90,7 +90,7 @@ const DEFAULT_SCENARIOS: ScenarioCard[] = [
   {
     eyebrow: "Приложение сначала",
     glyph: "route",
-    title: "Поставьте, включите, проверьте",
+    title: "Скачайте, включите, получите 5 дней",
     desc: "Сайт ведет к приложению, приложение дает первый опыт, кабинет остается для срока доступа, поддержки и продления.",
   },
   {
@@ -183,9 +183,9 @@ function buildPlanCards(): PlanCard[] {
 }
 
 export function buildMarketingMetadata(
-  title = "POKROV | Спокойный доступ без лишнего шума",
+  title = "POKROV | 5 дней доступа без карты",
   description =
-    "Скачайте приложение для Android или Windows, получите 5 дней бесплатного доступа и продолжайте тот же путь через кабинет.",
+    "Скачайте приложение для Android или Windows, получите 5 дней доступа без карты и продолжайте через кабинет.",
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");
@@ -436,10 +436,10 @@ export default function MarketingLanding({
             <p className="lp-overline">
               Бета с честными условиями: приложение для старта, кабинет для продления и поддержки.
             </p>
-            <h1>{heroTitle || "Поставьте POKROV, включите доступ и проверьте свои сервисы"}</h1>
+            <h1>{heroTitle || "POKROV — 5 дней доступа без карты"}</h1>
             <p className="lp-hero-lead">
               {heroSubtitle ||
-                "Сначала приложение для Android или Windows и 5 дней бесплатного доступа. Если сервис подошел, выберите срок и продолжайте в том же аккаунте."}
+                "Сначала приложение для Android или Windows и 5 дней доступа без карты. Дальше выберите срок и продолжайте в том же аккаунте."}
             </p>
             <div className="lp-hero-actions">
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
@@ -510,7 +510,7 @@ export default function MarketingLanding({
                 <LandingGlyph name="arc" />
                 Статус беты
               </div>
-              <blockquote>Доступ работает в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка помогает без лишних обещаний.</blockquote>
+              <blockquote>Доступ работает в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка помогает с установкой и продлением.</blockquote>
               <span>Бета-контур • Android + Windows</span>
             </article>
           </div>
@@ -543,7 +543,7 @@ export default function MarketingLanding({
             <span>Приложение</span>
             <h2>Бета-вход начинается с установки, а не с технических ссылок.</h2>
             <p>
-              Android и Windows составляют текущий пользовательский путь. Apple-сборки остаются в подготовке и не обещаются как готовый релиз этой волны.
+              Android и Windows составляют текущую пользовательскую бету. Apple-сборки остаются в подготовке и не обещаются как готовый релиз этой волны.
             </p>
           </div>
           <div className="lp-download-grid">
@@ -703,13 +703,13 @@ export default function MarketingLanding({
               <span>Финальный шаг</span>
               <h2>POKROV: сначала приложение, потом продление.</h2>
               <p>
-                Если нужен первый старт, идите в приложение. Если сервис подошел, выбирайте срок и продолжайте тот же доступ через ключ в кабинете.
+                Если нужен первый старт, идите в приложение. Если нужен платный срок, выбирайте тариф и продолжайте тот же доступ через ключ в кабинете.
               </p>
             </div>
             <div className="lp-footer-rail">
               <div>
                 <strong>Android + Windows</strong>
-                <span>бета-путь с честными ограничениями</span>
+                <span>бета с честными ограничениями</span>
               </div>
               <div>
                 <strong>5 дней</strong>

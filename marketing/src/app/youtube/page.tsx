@@ -4,8 +4,8 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "YouTube: проверка через приложение | POKROV",
-  "Приложение, 5 дней бесплатно и проверка длинных видео без ручных настроек.",
+  "YouTube через приложение | POKROV",
+  "POKROV для Android и Windows: 5 дней доступа без карты, быстрый старт и просмотр длинных видео без ручных профилей.",
   {
     path: MARKETING_CANONICAL_PATHS.youtube,
     keywords: ["проверка youtube", "длинные видео", "pokrov youtube", "видео через pokrov"],
@@ -25,22 +25,22 @@ export default function YoutubePage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.youtube}
           heroKicker="Для YouTube и длинных видео"
-          heroTitle="YouTube: проверьте на своих устройствах"
-          heroSubtitle="Сначала проверьте качество видео в приложении. Если POKROV подошёл, продлите доступ в кабинете."
-          scenarioTitle="Как проверить YouTube без лишней настройки"
-          scenarioBody="Здесь важны быстрый запуск, предсказуемый первый экран и проверка на реальном видео."
+          heroTitle="YouTube на ваших устройствах без ручных профилей"
+          heroSubtitle="Скачайте POKROV, получите 5 дней доступа без карты и смотрите видео в приложении на Android или Windows."
+          scenarioTitle="Как начать смотреть быстрее"
+          scenarioBody="Здесь важны быстрый запуск, предсказуемый первый экран и реальный опыт на видео, а не обещания в вакууме."
           scenarioCards={[
             {
               eyebrow: "Длинные видео",
               glyph: "signal",
-              title: "Сразу проверяете нужное видео",
-              desc: "Страница ведёт к реальной проверке, а не к абстрактным обещаниям.",
+              title: "Сразу открываете нужное видео",
+              desc: "Страница ведет к приложению и первому просмотру, а не к абстрактным обещаниям.",
             },
             {
               eyebrow: "Приложение сначала",
               glyph: "window",
-              title: "Продукт говорит тише рекламы",
-              desc: "Первый шаг прозрачен: приложение, тест и только потом кабинет, если качество связи вас устраивает.",
+              title: "Меньше рекламы, больше конкретики",
+              desc: "Первый шаг прозрачен: приложение, бесплатный период и кабинет для продления, если качество связи устраивает.",
             },
             {
               eyebrow: "Продление потом",

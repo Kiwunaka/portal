@@ -128,3 +128,22 @@ Do not copy the competitor's auth-first emphasis.
 - human in support
 - transparent in checkout
 - concrete about what works on day one
+
+## 2026-05-19 Homepage Copy Pass
+
+Implemented first-wave changes from the May 2026 competitor pass:
+
+- rewrote the homepage hero around the concrete offer: `5 days`, no card, Android + Windows, cabinet, support, and Telegram bonus
+- moved tariff visibility higher on the page and exposed `from 99 RUB` as the start extension hook
+- added a value-card block for trial, platforms, devices, and Telegram bonus before the procedural onboarding steps
+- rewrote the feature cards from internal surfaces (`app`, `cabinet`, `support`) into user outcomes: no manual profiles, one account for phone/computer, and support with context
+- strengthened metadata around high-intent public wording such as `access`, `Android`, `Windows`, `5 days`, no card, devices, and Telegram support while preserving the no-direct-`VPN` public wording rule
+- deliberately did not adopt competitor claims like `works in Russia`, unlimited devices, server/country counts, best/fastest language, or public-release certainty because those need current gate evidence
+
+Second-wave consilium synthesis applied after OpenCode reviews with DeepSeek V4 Pro, Kimi K2.6, MiniMax M2.7, Mimo V2.5 Pro, and GLM 5.1:
+
+- shifted the hero from a condition-first headline (`5 days without card`) to an outcome-first headline around YouTube/TikTok while keeping the trial, price, and device facts visible
+- removed the repeated proof-strip pattern because the same facts already live in the hero hooks, value cards, and pricing
+- rewrote value cards from feature labels into buyer reasons: free start without card, one-action app start, one account for phone/computer, and Telegram bonus/support
+- added homepage FAQ UI and FAQ JSON-LD from the shared marketing FAQ list, then expanded the list with manual-profile and beta-availability objections
+- kept `VPN` out of public POKROV copy and did not use unsupported availability, speed, rating, social-proof, audit, or guarantee claims

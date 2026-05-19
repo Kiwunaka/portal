@@ -69,7 +69,7 @@ export default function InstallPage() {
                   Открыть кабинет
                 </a>
                 <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-                  Служба заботы
+                  Поддержка
                 </a>
               </div>
             </nav>

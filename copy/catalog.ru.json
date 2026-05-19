@@ -4,7 +4,7 @@
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV — 5 дней бесплатно для Android и Windows",
+      "ru": "POKROV — приложение для доступа к сайтам | Android и Windows",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Поставьте POKROV, включите доступ в приложении и проверьте свои сервисы 5 дней бесплатно. Продление, устройства и поддержка — в кабинете.",
+      "ru": "Скачайте POKROV для Android или Windows: 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней, до 5 устройств и поддержка в Telegram.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Поставьте POKROV, включите и проверьте свои сервисы",
+      "ru": "POKROV: YouTube и TikTok",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Приложение для Android и Windows. Начните без карты, проверьте POKROV в обычном использовании и продлевайте только если подошло.",
+      "ru": "Установите приложение, нажмите «Подключить» и проверьте свои сервисы. 5 дней без карты, продление от 99 ₽ за 30 дней.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Начать бесплатно",
+      "ru": "Получить 5 дней бесплатно",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -310,7 +310,7 @@
     },
     "marketing.promise.title": {
       "surface": "marketing.home.promise",
-      "ru": "Что вы получаете с POKROV",
+      "ru": "Почему POKROV",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -319,7 +319,7 @@
     },
     "marketing.promise.subtitle": {
       "surface": "marketing.home.promise",
-      "ru": "Приложение для Android и Windows, 5 дней бесплатно, кабинет для устройств и продления, поддержка в Telegram.",
+      "ru": "Проверяете на своих устройствах без карты, затем продлеваете срок в том же аккаунте.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -328,7 +328,7 @@
     },
     "marketing.downloads.title": {
       "surface": "marketing.home.downloads",
-      "ru": "Установите POKROV и проверьте 5 дней",
+      "ru": "Установите POKROV и получите 5 дней",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -355,7 +355,7 @@
     },
     "marketing.steps.subtitle": {
       "surface": "marketing.home.steps",
-      "ru": "Установите приложение, включите доступ, проверьте POKROV в своих сервисах. Продление — только если подошло.",
+      "ru": "Установите приложение, активируйте 5 дней без карты и продолжайте в том же аккаунте, если нужен платный срок.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -373,7 +373,7 @@
     },
     "marketing.pricing.subtitle": {
       "surface": "marketing.home.pricing",
-      "ru": "5 дней бесплатно. Дальше выберите срок в кабинете: цена и условия видны до оплаты.",
+      "ru": "5 дней бесплатно. Продление — от 99 ₽; цена, срок и лимит устройств видны до оплаты.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -607,7 +607,7 @@
     },
     "marketing.faq.1.a": {
       "surface": "marketing.home.faq",
-      "ru": "Установите приложение, запустите 5 дней бесплатного доступа и проверьте связь в обычном ритме.",
+      "ru": "Установите приложение, запустите 5 дней без карты и проверьте свои сервисы на устройстве.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -625,7 +625,7 @@
     },
     "marketing.faq.2.a": {
       "surface": "marketing.home.faq",
-      "ru": "Это 5 дней доступа в приложении: проверьте POKROV на своих сервисах и устройствах перед продлением.",
+      "ru": "Это 5 дней доступа в приложении без карты: Android и Windows, кабинет, поддержка и возможность продлить срок позже.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -679,7 +679,7 @@
     },
     "marketing.footer.body": {
       "surface": "marketing.home.footer",
-      "ru": "Установите приложение, проверьте POKROV бесплатно и продлевайте только если сервис подошел. Кабинет остается для срока, устройств и поддержки.",
+      "ru": "Установите приложение, получите 5 дней бесплатно и продолжайте через кабинет, если нужен платный срок.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -688,7 +688,7 @@
     },
     "marketing.legal.offer.intro": {
       "surface": "marketing.legal.offer",
-      "ru": "Правила использования POKROV без лишней канцелярии: условия доступа, продления, поддержки и ограничений беты.",
+      "ru": "Правила использования POKROV: условия доступа, продления, поддержки и ограничений беты.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -1021,7 +1021,7 @@
     },
     "retention.welcome": {
       "surface": "bot.retention",
-      "ru": "Профиль готов. Установите приложение, подключитесь и проверьте доступ без лишних настроек.",
+      "ru": "Профиль готов. Установите приложение, подключитесь и пользуйтесь доступом без ручных настроек.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1066,7 +1066,7 @@
     },
     "retention.start99_offer": {
       "surface": "bot.retention",
-      "ru": "Если бесплатный доступ подошёл, скидка {discount_pct}% сохранена для первого продления POKROV.",
+      "ru": "Скидка {discount_pct}% сохранена для первого продления POKROV после бесплатного периода.",
       "variables": [
         "discount_pct"
       ],
@@ -1185,7 +1185,7 @@
     },
     "cabinet.entry.subtitle": {
       "surface": "cabinet.entry",
-      "ru": "Доступ, устройства, загрузки и поддержка — всё здесь, без лишних экранов.",
+      "ru": "Доступ, устройства, загрузки и поддержка собраны в одном кабинете.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,

@@ -429,7 +429,7 @@ export default function CheckoutClient() {
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Сначала попробовать</span>
             <h3>Установка и пробный период идут до покупки</h3>
-            <p>Первый шаг остаётся за приложением: 5 дней теста и первое подключение помогают понять продукт до оплаты.</p>
+            <p>Первый шаг остаётся за приложением: 5 дней теста и первое подключение дают проверить продукт до оплаты.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом оплатить</span>

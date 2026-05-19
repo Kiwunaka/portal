@@ -4,8 +4,8 @@ import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/mark
 import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
-  "TikTok: проверка через приложение | POKROV",
-  "Приложение, 5 дней бесплатно и проверка коротких видео без лишней настройки.",
+  "TikTok через приложение | POKROV",
+  "POKROV для Android и Windows: 5 дней доступа без карты, быстрый старт и короткие видео без ручных профилей.",
   {
     path: MARKETING_CANONICAL_PATHS.tiktok,
     keywords: ["проверка tiktok", "короткие видео", "pokrov tiktok", "мобильный старт"],
@@ -25,15 +25,15 @@ export default function TiktokPage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.tiktok}
           heroKicker="Для TikTok и коротких видео"
-          heroTitle="TikTok с быстрым стартом для проверки"
-          heroSubtitle="Проверьте TikTok в приложении, а уже потом решите в кабинете, хотите ли продолжать."
-          scenarioTitle="Как проверить TikTok без лишнего шума"
-          scenarioBody="Когда вы смотрите короткие видео, важны быстрый старт, реальная проверка и минимум действий до первого просмотра."
+          heroTitle="TikTok с быстрым стартом в приложении"
+          heroSubtitle="Получите 5 дней доступа без карты, откройте POKROV и смотрите короткие видео без ручной настройки."
+          scenarioTitle="Как дойти до первого просмотра"
+          scenarioBody="Когда вы смотрите короткие видео, важны быстрый старт, видимая кнопка подключения и минимум действий до первого просмотра."
           scenarioCards={[
             {
               eyebrow: "Мгновенный старт",
               glyph: "arc",
-              title: "Проверка начинается почти сразу",
+              title: "Первый просмотр начинается быстрее",
               desc: "Android- или Windows-приложение быстро доводит до реального теста, чтобы вы смотрели видео, а не разбирались в технических деталях.",
             },
             {
@@ -43,10 +43,10 @@ export default function TiktokPage() {
               desc: "Сайт отвечает за вход, приложение — за первый личный тест, кабинет — за управление доступом дальше.",
             },
             {
-              eyebrow: "Служба заботы",
+              eyebrow: "Поддержка",
               glyph: "shield",
-              title: "Поддержка остаётся рядом",
-              desc: "Telegram и команда заботы помогают быстро решить вопрос и не перегружают вас лишним шумом.",
+              title: "Поддержка остается рядом",
+              desc: "Telegram и команда поддержки помогают быстро решить вопрос по установке, доступу или продлению.",
             },
           ]}
           clusterTitle="Ещё задачи под видео"

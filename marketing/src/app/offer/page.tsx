@@ -84,7 +84,7 @@ export default function OfferPage() {
 
           <article className="lp-legal-panel">
             <h2>Где смотреть актуальную версию</h2>
-            <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в службу заботы.</p>
+            <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в поддержку.</p>
             <p className="lp-legal-inline-links">
               Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
               <Link href={MARKETING_CANONICAL_PATHS.mobile}>мобильный старт</Link> и{" "}

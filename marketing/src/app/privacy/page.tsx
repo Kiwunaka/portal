@@ -9,7 +9,7 @@ const config = getPokrovPublicConfig(process.env as Record<string, string | unde
 
 export const metadata = buildMarketingMetadata(
   "Политика конфиденциальности | POKROV",
-  "Какие данные использует POKROV для работы аккаунта, поддержки и платежей, и как связаться со службой заботы.",
+  "Какие данные использует POKROV для работы аккаунта, поддержки и платежей, и как связаться с поддержкой.",
   {
     path: "/privacy/",
     keywords: ["политика конфиденциальности", "privacy pokrov", "данные pokrov"],
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
               <li>Данные аккаунта: идентификатор, срок доступа, активный план и служебные метки для работы продукта.</li>
               <li>Технические события: ошибки оплаты, события авторизации, обращения в поддержку и сигналы стабильности сервиса.</li>
               <li>Платёжные события: номер или статус заказа внутри POKROV, выбранный срок, сумма, провайдерский статус и отметки ручной сверки без хранения карточных данных на стороне POKROV.</li>
-              <li>Сообщения и файлы, которые пользователь сам отправляет в службу заботы.</li>
+              <li>Сообщения и файлы, которые пользователь сам отправляет в поддержку.</li>
             </ul>
           </article>
 
@@ -78,7 +78,7 @@ export default function PrivacyPage() {
             <p className="lp-legal-inline-links">
               Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
               <Link href={MARKETING_CANONICAL_PATHS.youtube}>YouTube</Link> и{" "}
-              <Link href={MARKETING_CANONICAL_PATHS.telegram}>Telegram и служба заботы</Link>.
+              <Link href={MARKETING_CANONICAL_PATHS.telegram}>Telegram и поддержка</Link>.
             </p>
           </article>
         </section>
