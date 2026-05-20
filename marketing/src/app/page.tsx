@@ -2,8 +2,8 @@ import MarketingHomePage from "../components/home/homepage";
 import { buildMarketingMetadata } from "../components/marketing-landing";
 
 export const metadata = buildMarketingMetadata(
-  "POKROV — приложение для доступа к сайтам | Android и Windows",
-  "Скачайте POKROV для Android или Windows: 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней, до 5 устройств и поддержка в Telegram.",
+  "POKROV для YouTube, TikTok и нужных вам сайтов | Android и Windows",
+  "Скачайте POKROV на Android или Windows, попробуйте 5 дней без карты и продлите доступ от 99 ₽ за 30 дней.",
   {
     path: "/",
     keywords: [

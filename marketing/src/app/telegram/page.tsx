@@ -5,7 +5,7 @@ import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
   "Telegram-бонус и поддержка | POKROV",
-  "Telegram в POKROV: +10 дней за канал, поддержка и восстановление, пока основной старт остается в приложении.",
+  "Telegram в POKROV: +10 дней за канал, поддержка и восстановление. Начать можно без Telegram.",
   {
     path: MARKETING_CANONICAL_PATHS.telegram,
     keywords: ["telegram pokrov", "поддержка pokrov", "бонус telegram", "команда поддержки"],
@@ -26,7 +26,7 @@ export default function TelegramPage() {
           pagePath={MARKETING_CANONICAL_PATHS.telegram}
           heroKicker="Telegram как бонус и поддержка"
           heroTitle="Telegram дает +10 дней и быстрый контакт с поддержкой"
-          heroSubtitle="Бот помогает быстро вернуться к кабинету, бонусу или поддержке. Основной опыт по-прежнему живёт внутри приложения и личного кабинета."
+          heroSubtitle="Бот помогает вернуться к кабинету, бонусу или поддержке. Основной опыт по-прежнему живёт внутри приложения и личного кабинета."
           scenarioTitle="Где Telegram помогает лучше всего"
           scenarioBody="Мы используем Telegram для бонусов, поддержки и восстановления доступа, но первый старт остается в приложении."
           scenarioCards={[
@@ -40,7 +40,7 @@ export default function TelegramPage() {
               eyebrow: "Поддержка",
               glyph: "shield",
               title: "Человеческий ответ по установке и продлению",
-              desc: "Если появились вопросы по скорости, доступу или оплате, Telegram остаётся самым быстрым способом поговорить с командой.",
+              desc: "Если появились вопросы по установке, доступу или оплате, Telegram остается быстрым способом поговорить с командой.",
             },
             {
               eyebrow: "Продолжение",

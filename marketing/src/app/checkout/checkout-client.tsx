@@ -208,19 +208,19 @@ async function createPublicRubOrder(payload: {
 function describePromoContent(contentId: string): { title: string; body: string } {
   if (contentId === "redeem_key") {
     return {
-      title: "Уже есть ключ доступа?",
-      body: "Проверьте его статус ниже и переходите к погашению в приложении или кабинете.",
+      title: "Уже есть код активации?",
+      body: "Проверьте его статус ниже и переходите к активации в приложении или кабинете.",
     };
   }
   if (contentId === "telegram_bonus") {
     return {
-      title: "Telegram остаётся бонусом и запасным путем",
+      title: "Telegram остается бонусом и способом восстановления",
       body: "После привязки аккаунта Telegram может дать +10 дней, но первый старт остается в приложении.",
     };
   }
   return {
     title: "Поддержка при спорной оплате",
-    body: "Если касса или погашение ключа недоступны, поддержка поможет вручную и не попросит открывать технические ссылки.",
+    body: "Если оплата или активация кода не сработали, поддержка поможет проверить статус без лишних действий.",
   };
 }
 
@@ -260,10 +260,10 @@ export function CheckoutLoadingFallback() {
           <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
           <span>POKROV</span>
         </div>
-        <div className="checkout-kicker">Тарифы и ключ доступа</div>
+        <div className="checkout-kicker">Тарифы и код активации</div>
         <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
         <h1 className="checkout-title">Выберите срок и проверьте сумму</h1>
-        <p className="checkout-sub">Подгружаем тарифы, условия доступа и действия для покупки или погашения ключа.</p>
+        <p className="checkout-sub">Подгружаем тарифы, условия доступа и действия для покупки или активации кода.</p>
       </section>
       <section className="checkout-grid">
         <article className="glass-card">
@@ -416,11 +416,11 @@ export default function CheckoutClient() {
         </div>
         <div className="checkout-kicker">После 5 дней в приложении можно выбрать срок</div>
         <div className={`checkout-status-chip ${checkoutReady ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
-          {checkoutReady ? "Касса доступна" : "Оплата пока в ручной проверке"}
+          {checkoutReady ? "Оплата доступна" : "Оплата временно недоступна"}
         </div>
-        <h1 className="checkout-title">Продление без технических ссылок</h1>
+        <h1 className="checkout-title">Выберите срок доступа</h1>
         <p className="checkout-sub">
-          Эта страница помогает выбрать срок после теста в приложении. После оплаты ключ доступа погашается в приложении или кабинете, а если касса временно недоступна, поддержка поможет вручную.
+          Сначала проверьте POKROV в приложении. Если всё нравится — выберите срок; цена, устройства и способ оплаты видны заранее.
         </p>
       </section>
 
@@ -428,18 +428,18 @@ export default function CheckoutClient() {
         <div className="lp-info-band__grid">
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Сначала попробовать</span>
-            <h3>Установка и пробный период идут до покупки</h3>
-            <p>Первый шаг остаётся за приложением: 5 дней теста и первое подключение дают проверить продукт до оплаты.</p>
+            <h3>5 дней без карты до оплаты</h3>
+            <p>Первый шаг остается за приложением: установите POKROV, нажмите «Подключить» и проверьте свои сервисы.</p>
           </article>
           <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Потом оплатить</span>
+            <span className="lp-info-card__eyebrow">Потом продлить</span>
             <h3>Сумма видна до оплаты</h3>
-            <p>Оплата должна выдавать ключ доступа для беты и не уводить в сложные технические настройки.</p>
+            <p>Вы выбираете срок и видите итоговую сумму, лимит устройств и платформы до перехода к оплате.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Если нужна помощь</span>
-            <h3>Кабинет и Telegram рядом</h3>
-            <p>Когда нужно восстановление или помощь, рядом остаются кабинет, поддержка и история обращения.</p>
+            <h3>Поддержка рядом</h3>
+            <p>Если оплата или активация не обновили статус, откройте поддержку: оператор продолжит один понятный кейс.</p>
           </article>
         </div>
       </section>
@@ -469,12 +469,12 @@ export default function CheckoutClient() {
           <div className="checkout-trust">
             <strong>Как это работает</strong>
             <ul className="checkout-trust-list">
-              <li>В приложении первое валидное устройство получает 5 дней бесплатного доступа без обязательной регистрации.</li>
+              <li>Первое валидное устройство получает 5 дней бесплатного доступа без карты.</li>
               <li>
                 После бесплатного периода остается базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
-              <li>На первом экране остаются срок, устройства, цена и действие без ручных технических настроек.</li>
-              <li>Telegram нужен для бонуса +10 дней, восстановления и связи с поддержкой.</li>
+              <li>Перед оплатой видны срок, устройства, цена и платформы.</li>
+              <li>Telegram нужен только для бонуса +10 дней, восстановления и связи с поддержкой.</li>
             </ul>
           </div>
 
@@ -491,12 +491,12 @@ export default function CheckoutClient() {
             <p className="checkout-helper">
               {discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
-                : "Промокод меняет только итоговую сумму и не открывает ручные технические настройки."}
+                : "Промокод меняет только итоговую сумму."}
             </p>
           </div>
 
           <div className="checkout-trust">
-            <strong>Уже есть ключ?</strong>
+            <strong>Уже есть код?</strong>
             <div className="checkout-actions">
               <input
                 value={keyInput}
@@ -505,12 +505,12 @@ export default function CheckoutClient() {
                 className="checkout-secondary"
               />
             </div>
-            {keyBusy ? <p className="checkout-helper">Проверяем статус ключа…</p> : null}
+            {keyBusy ? <p className="checkout-helper">Проверяем статус кода…</p> : null}
             {keyStatus ? (
               <ul className="checkout-trust-list">
-                <li>Ключ: {maskAccessKey(keyStatus.key)}</li>
+                <li>Код: {maskAccessKey(keyStatus.key)}</li>
                 <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
-                <li>Статус: {keyStatus.redeemed ? "уже погашен" : "готов к погашению"}</li>
+                <li>Статус: {keyStatus.redeemed ? "уже активирован" : "готов к активации"}</li>
               </ul>
             ) : null}
           </div>
@@ -519,7 +519,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Продление должно заканчиваться ключом доступа. Дальше тот же аккаунт продолжает работу без повторной ручной настройки. Пока касса не готова, спорные платежи и ручные заявки разбираются через поддержку.
+            Продление добавляет срок к тому же аккаунту POKROV. Если оплата временно недоступна или статус не обновился, поддержку можно открыть прямо отсюда.
           </p>
 
           <div className="checkout-summary">
@@ -542,7 +542,7 @@ export default function CheckoutClient() {
 
           {checkoutReady ? (
             <label className="checkout-helper" htmlFor="checkout-buyer-email">
-              Email для доставки ключа
+              Email для чека и кода активации
               <input
                 id="checkout-buyer-email"
                 type="email"
@@ -568,13 +568,13 @@ export default function CheckoutClient() {
           {!checkoutReady ? (
             <p className="checkout-helper checkout-helper--warning">
               {checkoutBlockedReasons.length
-                ? "Касса ждет включения провайдера оплаты. Пока продолжайте через поддержку или кабинет."
-                : "Проверяем доступность кассы. Если кнопка не появится, продолжайте через поддержку или кабинет."}
+                ? "Провайдер оплаты еще не включен. Пока продолжайте через поддержку или кабинет."
+                : "Проверяем доступность оплаты. Если кнопка не появится, продолжайте через поддержку или кабинет."}
             </p>
           ) : null}
 
           <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Погасить ключ в кабинете
+            Активировать код в кабинете
           </a>
 
           <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
@@ -590,7 +590,7 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            Email нужен для доставки купленного ключа и может использоваться как дополнительный способ входа. Бесплатный период начинается из приложения на первом валидном устройстве, а купленный ключ можно погасить в приложении или кабинете.
+            Email нужен для чека, кода активации и дополнительного способа входа. Бесплатный период начинается из приложения на первом валидном устройстве.
           </p>
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}

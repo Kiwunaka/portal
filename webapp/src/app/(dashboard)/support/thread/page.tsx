@@ -200,7 +200,7 @@ export default function SupportTicketThreadPage() {
         badge={statusTitle(ticket.status)}
         badgeTone={canReply ? "info" : "neutral"}
         title="Продолжайте этот же кейс"
-        description="Так не теряется история, вложения и контекст. Не присылайте личные ссылки или ключи, если поддержка прямо их не запросила."
+        description="Так не теряется история, вложения и контекст. Не присылайте личные ссылки или коды активации, если поддержка прямо их не запросила."
         details={[
           {
             label: "Тема",

@@ -33,77 +33,77 @@ type HomeLinks = {
 const HOW_IT_WORKS = [
   {
     step: "1",
-    title: "Установите приложение",
+    title: "Скачайте приложение",
     text: "Выберите Android или Windows. Если сборка доступна вашему аккаунту, кабинет покажет файл и шаги установки.",
   },
   {
     step: "2",
     title: "Запустите 5 дней без карты",
-    text: "Первый период активируется в приложении: без привязки карты, ручных профилей и долгой переписки.",
+    text: "Первый период активируется в приложении: без платежных данных, автосписаний и долгой регистрации.",
   },
   {
     step: "3",
     title: "Нажмите «Подключить»",
-    text: "POKROV применит настройки сам. Без выбора сервера, без ручных профилей и без копирования конфигов.",
+    text: "POKROV применит нужные параметры сам. Никаких конфигов, серверных списков и ручных профилей.",
   },
   {
     step: "4",
-    title: "Продлите срок в кабинете",
-    text: "Цена, срок и лимит устройств видны заранее. Доступ остается в том же аккаунте, поддержку можно открыть в любой момент.",
+    title: "Продлите, если подходит",
+    text: "Цена, срок и лимит устройств видны до оплаты. После окончания полного доступа останется базовый режим.",
   },
 ];
 
 const SURFACE_PANELS = [
   {
     eyebrow: "Старт",
-    title: "Подключение без ручных профилей",
-    text: "Не нужно искать ссылку, копировать конфиг или выбирать сервер из списка. Первое действие начинается в приложении.",
-    bullets: ["Скачайте приложение", "Запустите 5 дней", "Нажмите подключение"],
+    title: "Одна кнопка вместо настроек",
+    text: "Не нужно искать ссылку, копировать конфиг или выбирать сервер из списка. Установили приложение, нажали «Подключить» и проверили свои сервисы.",
+    bullets: ["Скачайте приложение", "Получите 5 дней", "Нажмите «Подключить»"],
     tone: "routing" as const,
   },
   {
     eyebrow: "Устройства",
-    title: "Телефон и компьютер в одном аккаунте",
+    title: "Телефон и компьютер вместе",
     text: "Android и Windows остаются в одном кабинете: там видны загрузки, срок доступа, устройства и продление.",
     bullets: ["Android + Windows", "До 5 устройств в платных планах", "Один кабинет для управления"],
     tone: "devices" as const,
   },
   {
-    eyebrow: "Помощь",
-    title: "Поддержка без пересказа всей истории",
-    text: "Если установка, вход или продление не сработали с первого раза, откройте кабинет или Telegram — оператор увидит базовый контекст обращения.",
-    bullets: ["Кабинет и Telegram", "История обращений", "Бонус +10 дней через канал"],
+    eyebrow: "Вход",
+    title: "Почта и Telegram ведут в один аккаунт",
+    text: "Начать можно без Telegram. Почту и Telegram можно привязать позже для входа, бонуса, восстановления и поддержки.",
+    bullets: ["Email-вход", "Telegram-бонус +10 дней", "Один профиль POKROV"],
     tone: "support" as const,
   },
 ];
 
 const HERO_HOOKS = [
-  { value: "5 дней", label: "бесплатно, без карты" },
-  { value: "от 99 ₽", label: "после бесплатного периода" },
-  { value: "Android + Windows", label: "телефон и компьютер" },
-  { value: "до 5 устройств", label: "одним аккаунтом" },
+  { value: "5 дней", label: "без карты и автосписаний" },
+  { value: "от 99 ₽", label: "за 30 дней после теста" },
+  { value: "Android + Windows", label: "beta-сборки" },
+  { value: "до 5 устройств", label: "в платном доступе" },
 ];
 
 const VALUE_CARDS = [
   {
     icon: "event_available",
-    title: "5 дней бесплатно. Без карты",
-    text: "Проверьте POKROV на телефоне или компьютере: без реквизитов, скрытых списаний и долгой регистрации.",
+    title: "Карта не нужна",
+    text: "5 дней теста без платежных данных и автосписаний. Сначала проверяете POKROV на своих сервисах, потом решаете.",
   },
   {
     icon: "phone_android",
-    title: "Один экран — одно действие",
-    text: "Скачайте приложение, нажмите «Подключить» и пользуйтесь. Списки серверов, файлы и протоколы остаются внутри продукта.",
+    title: "Одна кнопка вместо настроек",
+    text: "POKROV сам применит нужные параметры. Никаких конфигов, ручных профилей и выбора серверов на первом экране.",
   },
   {
     icon: "devices",
-    title: "Телефон и компьютер — один аккаунт",
+    title: "Телефон и компьютер вместе",
     text: "Android и Windows управляются вместе. В платных планах можно подключить до 5 личных устройств.",
   },
   {
     icon: "security",
-    title: "+10 дней за Telegram",
-    text: "Подпишитесь на канал POKROV — получите бонусные дни, новости о сборках и быстрый контакт с поддержкой.",
+    title: "Telegram как бонус",
+    text: "Начать можно без Telegram. Привяжете позже — получите +10 дней, восстановление и быстрый канал поддержки.",
   },
 ];
 
@@ -125,7 +125,7 @@ function buildPlanCards(): PlanCard[] {
       note:
         plan.marketing_note ||
         plan.cabinet_note ||
-        "Продление продолжается поверх того же доступа, без ручного перезапуска.",
+        "Продление добавляет срок к тому же аккаунту POKROV.",
       badge: plan.badge || null,
     }));
 }
@@ -242,12 +242,12 @@ function UiIcon({ name, size = 20 }: { name: string; size?: number }) {
 /* ── Sections ── */
 
 function Hero({ links }: { links: HomeLinks }) {
-  const heroTitle = getCopyText("marketing.hero.title", "POKROV: YouTube и TikTok");
+  const heroTitle = getCopyText("marketing.hero.title", "POKROV для YouTube, TikTok и нужных вам сайтов");
   const heroSubtitle = getCopyText(
     "marketing.hero.subtitle",
-    "Установите приложение, нажмите «Подключить» и проверьте свои сервисы. 5 дней без карты, продление от 99 ₽ за 30 дней.",
+    "Установите приложение на Android или Windows, нажмите «Подключить» и проверьте свои сервисы. 5 дней бесплатно, карту не просим.",
   );
-  const primaryCta = getCopyText("marketing.hero.primary_cta", "Получить 5 дней бесплатно");
+  const primaryCta = getCopyText("marketing.hero.primary_cta", "Попробовать 5 дней бесплатно");
 
   return (
     <FadeUp delay={0.1} as="section" className={styles.container}>
@@ -267,7 +267,7 @@ function Hero({ links }: { links: HomeLinks }) {
               </Link>
               <a href="#pricing" className={`${styles.btnSecondary} ${styles.btnPill}`}>
                 <UiIcon name="play_circle" size={20} />
-                Смотреть цены
+                Посмотреть тарифы
               </a>
             </div>
             <div className={styles.heroHooks} aria-label="Коротко о POKROV">
@@ -309,12 +309,12 @@ function Hero({ links }: { links: HomeLinks }) {
 function ValueCards() {
   return (
     <FadeUp delay={0.25} as="section" className={styles.container} id="why-pokrov">
-      <div className={styles.section}>
-        <div className={styles.sectionHead}>
-          <span className={styles.eyebrow}>почему POKROV</span>
-          <h2>Сначала проверяете на своих устройствах, потом решаете</h2>
-          <p>Без карты на старте, без ручных профилей и без покупки отдельного срока для каждого устройства.</p>
-        </div>
+        <div className={styles.section}>
+          <div className={styles.sectionHead}>
+            <span className={styles.eyebrow}>почему POKROV</span>
+            <h2>Конкретно: пробуете, подключаете, решаете</h2>
+            <p>Карта не нужна на старте, Telegram не обязателен, а тарифы видны до оплаты.</p>
+          </div>
         <div className={styles.valueGrid}>
           {VALUE_CARDS.map((card) => (
             <article key={card.title} className={styles.valueCard}>
@@ -334,11 +334,11 @@ function ValueCards() {
 function HowItWorks() {
   return (
     <FadeUp delay={0.3} as="section" className={styles.container}>
-      <div className={styles.section} id="how-it-works">
-        <div className={styles.sectionHead}>
-          <span className={styles.eyebrow}>как начать</span>
-          <h2>Как начать за пару минут</h2>
-          <p>Сначала приложение и бесплатный период, затем тариф в том же аккаунте. Кабинет и Telegram остаются рядом для продления, бонуса и поддержки.</p>
+        <div className={styles.section} id="how-it-works">
+          <div className={styles.sectionHead}>
+            <span className={styles.eyebrow}>как начать</span>
+          <h2>Старт за пару минут</h2>
+          <p>Сначала приложение и бесплатный период, затем тариф в том же аккаунте. Кабинет показывает срок, устройства, оплату и поддержку.</p>
         </div>
         <div className={styles.stepsGrid}>
           {HOW_IT_WORKS.map((item) => (
@@ -412,10 +412,10 @@ function SurfaceMock({ tone }: { tone: (typeof SURFACE_PANELS)[number]["tone"] }
 function Features() {
   return (
     <FadeUp delay={0.4} as="section" className={styles.container}>
-      <div className={styles.section}>
-        <div className={styles.sectionHead}>
-          <span className={styles.eyebrow}>возможности</span>
-          <h2>Как выглядит POKROV изнутри</h2>
+        <div className={styles.section}>
+          <div className={styles.sectionHead}>
+            <span className={styles.eyebrow}>возможности</span>
+          <h2>Что видно в POKROV</h2>
           <p>Приложение ведет к подключению, кабинет показывает срок и устройства, поддержка помогает с установкой, входом и продлением.</p>
         </div>
         <div className={styles.surfaceGrid}>
@@ -474,11 +474,11 @@ function Pricing({ links }: { links: HomeLinks }) {
 
   return (
     <FadeUp delay={0.5} as="section" className={styles.container} id="pricing">
-      <div className={styles.section}>
-        <div className={styles.sectionHead}>
-          <span className={styles.eyebrow}>сколько стоит</span>
-          <h2>Сначала бесплатно, потом от 99 ₽ за 30 дней</h2>
-          <p>Сначала получите бесплатный период в приложении. Дальше выберите срок: цена, лимит устройств и условия видны до оплаты.</p>
+        <div className={styles.section}>
+          <div className={styles.sectionHead}>
+            <span className={styles.eyebrow}>сколько стоит</span>
+          <h2>Сначала попробуйте, потом платите</h2>
+          <p>Получите 5 дней в приложении без карты. Если всё нравится, выберите срок: цена, лимит устройств и условия видны до оплаты.</p>
         </div>
 
         <div className={styles.pricingLayout}>
@@ -486,7 +486,7 @@ function Pricing({ links }: { links: HomeLinks }) {
             <div className={`${styles.badge} ${styles.badgeEmerald}`}>старт</div>
             <h3>5 дней бесплатно без карты</h3>
             <p>
-              Начните в приложении и не платите до первого опыта. Если нужен платный срок, стартовое продление на 30 дней стоит 99 ₽.
+              Проверьте POKROV на YouTube, TikTok и нужных сайтах. Если нужен платный срок, стартовое продление на 30 дней стоит 99 ₽.
             </p>
             <ul className={styles.planFeatures}>
               {freeFeatures.map((f) => (
@@ -496,8 +496,8 @@ function Pricing({ links }: { links: HomeLinks }) {
                 </li>
               ))}
             </ul>
-            <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`} style={{ marginTop: "auto" }}>
-              Получить 5 дней бесплатно
+              <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`} style={{ marginTop: "auto" }}>
+              Попробовать 5 дней бесплатно
             </Link>
           </div>
 
@@ -558,7 +558,7 @@ function FinalCta({ links }: { links: HomeLinks }) {
         </div>
         <div className={styles.finalActions}>
           <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-            Получить 5 дней бесплатно
+            Попробовать 5 дней бесплатно
           </Link>
           <Link href={links.checkoutHref} className={styles.btnOutline}>
             Выбрать срок
@@ -634,7 +634,7 @@ export default function MarketingHomePage() {
               Кабинет
             </a>
             <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
-              Получить 5 дней бесплатно
+              Попробовать 5 дней бесплатно
             </Link>
           </div>
         </header>

@@ -70,7 +70,7 @@ export default function SettingsPage() {
   const [telegramLinkError, setTelegramLinkError] = useState("");
 
   const linked = user?.linked_identities || dash?.linked_identities || null;
-  const linkedEmail = linked?.email?.email || "";
+  const linkedEmail = user?.email || linked?.email?.email || "";
   const linkedTelegram = linked?.telegram || null;
   const linkedTelegramId = Number(linkedTelegram?.id || 0);
   const linkedTelegramUsername = String(linkedTelegram?.username || "").trim();
@@ -132,8 +132,8 @@ export default function SettingsPage() {
       key: "telegram",
       title: "Telegram",
       body: hasLinkedTelegram
-        ? "Используется для входа в браузере, бонуса и восстановления доступа через поддержку."
-        : "Если вы вошли через email, Telegram можно подключить через бота без потери текущего профиля.",
+        ? "Привязан к этому аккаунту. Можно входить быстрее, восстанавливать доступ и получать бонусы."
+        : "Привяжите Telegram, чтобы входить быстрее, восстановить аккаунт и получить +10 дней.",
       badge: telegramName,
       tone: hasLinkedTelegram ? ("success" as const) : ("warning" as const),
       action: hasLinkedTelegram ? (
@@ -147,7 +147,7 @@ export default function SettingsPage() {
           disabled={telegramLinkBusy}
           className="text-sm font-semibold text-emerald-800 disabled:opacity-60 dark:text-emerald-300"
         >
-          {telegramLinkBusy ? "Готовим..." : "Подключить"}
+          {telegramLinkBusy ? "Открываем..." : "Привязать Telegram"}
         </button>
       ),
     },
@@ -155,15 +155,15 @@ export default function SettingsPage() {
       key: "email",
       title: "Email",
       body: linkedEmail
-        ? "Email уже привязан к аккаунту."
+        ? "Привязан к этому аккаунту. Можно входить без Telegram, получать письма и восстанавливать доступ."
         : emailReady
-          ? "Можно подключить email к этому аккаунту без выхода из кабинета."
-          : "Email-вход готовим отдельно. Пока не показываем недоделанную привязку.",
-      badge: linkedEmail || (emailReady ? "Можно подключить" : "Скоро"),
+          ? "Добавьте почту для входа без Telegram, чеков и восстановления доступа."
+          : "Почтовый вход появится после финальной проверки доставки писем.",
+      badge: linkedEmail || (emailReady ? "Можно добавить" : "Скоро"),
       tone: linkedEmail ? ("info" as const) : ("neutral" as const),
       action: canLinkEmail ? (
         <a href="#email-link" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Подключить
+          Добавить почту
         </a>
       ) : emailReady ? (
         <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Готово</span>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
       key: "access",
       title: "Статус доступа",
       body: dash?.is_active
-        ? "Профиль готов для приложений, продления и поддержки."
+        ? "Профиль готов для приложения, продления и поддержки."
         : "Доступ можно вернуть через раздел оплаты.",
       badge: dash?.is_active ? "Активен" : "Нужно продление",
       tone: dash?.is_active ? ("success" as const) : ("warning" as const),
@@ -189,7 +189,7 @@ export default function SettingsPage() {
     {
       key: "devices",
       title: "Проверить устройства",
-      body: "Полезно перед переносом доступа на новый экран.",
+      body: "Посмотрите, какие телефоны и компьютеры уже связаны с аккаунтом.",
       badge: "Устройства",
       tone: "neutral" as const,
       action: (
@@ -201,7 +201,7 @@ export default function SettingsPage() {
     {
       key: "downloads",
       title: "Открыть загрузки",
-      body: "Android и Windows бета-ссылки лежат в отдельном разделе кабинета.",
+      body: "Android и Windows beta-сборки лежат в отдельном разделе кабинета.",
       badge: "Загрузки",
       tone: "neutral" as const,
       action: (
@@ -213,7 +213,7 @@ export default function SettingsPage() {
     {
       key: "support",
       title: "Продолжить поддержку",
-      body: "Если вопрос уже был, лучше держать его в одном кейсе.",
+      body: "Если вопрос уже был, держите его в одном кейсе: так быстрее разобраться.",
       badge: "Поддержка",
       tone: "neutral" as const,
       action: (
@@ -326,12 +326,12 @@ export default function SettingsPage() {
     <CabinetRoute
       eyebrow="Настройки"
       title="Настройки и бонусы"
-      description="Аккаунт, связанные каналы и бонусы без личных ссылок, технических адресов и ручных профилей."
+      description="Здесь видно, что привязано к аккаунту: Telegram, почта, бонусы и быстрые действия."
       actions={
         <>
           {canLinkEmail ? (
             <a href="#email-link" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Подключить email
+              Добавить почту
             </a>
           ) : null}
           {!hasLinkedTelegram ? (
@@ -341,11 +341,11 @@ export default function SettingsPage() {
               disabled={telegramLinkBusy}
               className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
             >
-              {telegramLinkBusy ? "Готовим Telegram..." : "Подключить Telegram"}
+              {telegramLinkBusy ? "Открываем Telegram..." : "Привязать Telegram и получить +10 дней"}
             </button>
           ) : null}
           <AppRouteLink href="/subscription/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-            Тарифы и оплата
+            Продлить доступ
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Поддержка
@@ -360,7 +360,7 @@ export default function SettingsPage() {
           tone: "neutral",
         },
         {
-          label: "Текущий режим",
+          label: "Текущий доступ",
           value: resolvePlanLabel(dash, user),
           hint: resolveTrafficStatusText(dash, user),
           tone: dash?.is_active ? "success" : "warning",
@@ -393,19 +393,19 @@ export default function SettingsPage() {
           {
             label: "Telegram",
             value: telegramName,
-            hint: hasLinkedTelegram ? "Основной рабочий канал входа в браузере." : "Можно подключить через бота без смены текущего профиля.",
+            hint: hasLinkedTelegram ? "Telegram и этот аккаунт POKROV уже связаны." : "Привяжите Telegram для входа, бонуса и восстановления.",
             tone: hasLinkedTelegram ? "success" : "warning",
           },
           {
             label: "Email",
-            value: linkedEmail || (emailReady ? "Можно подключить" : "Скоро"),
-            hint: linkedEmail ? "Связка уже есть." : emailReady ? "Подключается прямо в настройках." : "Пока честно держим этот вход выключенным.",
+            value: linkedEmail || (emailReady ? "Можно добавить" : "Скоро"),
+            hint: linkedEmail ? "Почта ведет в тот же аккаунт." : emailReady ? "Добавляется прямо в настройках." : "Появится после проверки писем.",
             tone: linkedEmail ? "info" : "neutral",
           },
           {
             label: "Если нужна помощь",
             value: dash?.is_active ? "Проверить устройства" : "Открыть оплату",
-            hint: dash?.is_active ? "Полезно перед переносом доступа." : "Самый прямой путь, если срок закончился.",
+            hint: dash?.is_active ? "Полезно перед новым устройством." : "Самый прямой путь, если срок закончился.",
             tone: "neutral",
           },
         ]}
@@ -414,8 +414,8 @@ export default function SettingsPage() {
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <CabinetSection
           eyebrow="Связки"
-          title="Что уже привязано"
-          description="Только каналы, которые реально помогают зайти, продлить доступ или продолжить поддержку."
+          title="Способы входа и восстановления"
+          description="Telegram и почта должны вести в один аккаунт POKROV. Если чего-то не хватает, действие видно здесь."
         >
           <CabinetList items={linkedItems} />
         </CabinetSection>
@@ -461,8 +461,8 @@ export default function SettingsPage() {
         <div id="email-link" className="scroll-mt-24">
           <CabinetSection
             eyebrow="Email"
-            title="Подключить email к текущему аккаунту"
-            description="Останетесь в этом же профиле: отправим письмо, вы введете код, и email станет дополнительным способом входа."
+            title="Добавить почту к текущему аккаунту"
+            description="Останетесь в этом же профиле: отправим письмо, вы введете код, и почта станет дополнительным способом входа."
           >
             <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
               <form className="space-y-3" onSubmit={onEmailLinkRequest}>
@@ -479,7 +479,7 @@ export default function SettingsPage() {
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
                   value={emailLinkName}
                   onChange={(event) => setEmailLinkName(event.target.value)}
-                  placeholder="Как обращаться"
+                  placeholder="Имя для писем"
                   autoComplete="name"
                 />
                 <input

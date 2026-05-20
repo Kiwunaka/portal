@@ -5,7 +5,7 @@ import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
   "Android и Windows | POKROV",
-  "POKROV для Android и Windows: 5 дней доступа без карты, до 5 устройств в платных планах и честный статус Apple.",
+  "POKROV для Android и Windows: 5 дней бесплатно без карты, до 5 устройств в платных планах и один кабинет.",
   {
     path: MARKETING_CANONICAL_PATHS.devices,
     keywords: ["android и windows", "устройства pokrov", "оптимизация на пк", "мобильный и десктопный старт"],
@@ -26,9 +26,9 @@ export default function DevicesPage() {
           pagePath={MARKETING_CANONICAL_PATHS.devices}
           heroKicker="Для основных устройств"
           heroTitle="Android и Windows в одном аккаунте POKROV"
-          heroSubtitle="Текущая бета ведет к приложению, 5 дням доступа без карты и кабинету. Apple остается в подготовке без обещаний раньше времени."
+          heroSubtitle="Текущая бета ведет к приложению, 5 дням бесплатно без карты и кабинету для устройств, продления и поддержки."
           scenarioTitle="Что готово по устройствам"
-          scenarioBody="Эта страница сразу показывает, где старт уже готов, а где пока стоит честное ожидание без рекламного шума."
+          scenarioBody="Эта страница показывает текущий пользовательский контур: Android и Windows, один аккаунт, понятное продление."
           scenarioCards={[
             {
               eyebrow: "Android + Windows",
@@ -37,15 +37,15 @@ export default function DevicesPage() {
               desc: "Android и Windows входят в текущий бета-контур, поэтому старт, бесплатный период и продление выстроены вокруг них.",
             },
             {
-              eyebrow: "Apple readiness",
+              eyebrow: "До 5 устройств",
               glyph: "readiness",
-              title: "iPhone и Mac остаются в подготовке",
-              desc: "Если вам важно устройство Apple, страница честно показывает статус и не обещает больше, чем уже готово.",
+              title: "Платный доступ подходит для нескольких личных устройств",
+              desc: "Один аккаунт помогает держать телефон и компьютер рядом: срок, загрузки и поддержка видны в кабинете.",
             },
             {
               eyebrow: "Одна логика",
               glyph: "route",
-              title: "Один тон для всех устройств",
+              title: "Один сценарий для телефона и компьютера",
               desc: "Сайт помогает начать, приложение даёт первый опыт, а кабинет берёт на себя управление доступом дальше.",
             },
           ]}

@@ -37,7 +37,7 @@ export default function RedeemPage() {
   const lookup = async (rawKey?: string): Promise<AccessKeyStatusPayload | null> => {
     const key = normalizeKey(rawKey ?? keyInput);
     if (!key) {
-      setError("Введите ключ, чтобы мы могли его проверить.");
+      setError("Введите код, чтобы мы могли его проверить.");
       return null;
     }
 
@@ -48,15 +48,15 @@ export default function RedeemPage() {
       const nextStatus = await fetchAccessKeyStatus(key);
       setStatus(nextStatus);
       if (!nextStatus.exists) {
-        setMessage("Такой ключ не найден. Проверьте, не потерялся ли символ.");
+        setMessage("Такой код не найден. Проверьте, не потерялся ли символ.");
       } else if (nextStatus.redeemed) {
-        setMessage("Этот ключ уже был использован. Если нужна помощь, лучше сразу открыть поддержку.");
+        setMessage("Этот код уже был использован. Если нужна помощь, лучше сразу открыть поддержку.");
       } else {
-        setMessage("Ключ найден. Его можно применить к текущему профилю.");
+        setMessage("Код найден. Его можно активировать в текущем профиле.");
       }
       return nextStatus;
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось проверить ключ."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось проверить код."));
       return null;
     } finally {
       setLookupBusy(false);
@@ -67,11 +67,11 @@ export default function RedeemPage() {
     const nextStatus = status || (await lookup());
     if (!nextStatus) return;
     if (!nextStatus.exists) {
-      setError("Такой ключ не найден.");
+      setError("Такой код не найден.");
       return;
     }
     if (nextStatus.redeemed) {
-      setError("Ключ уже был использован. Для восстановления лучше открыть поддержку.");
+      setError("Код уже был использован. Для восстановления лучше открыть поддержку.");
       return;
     }
 
@@ -82,9 +82,9 @@ export default function RedeemPage() {
       const payload = await redeemAccessKey(nextStatus.key);
       setStatus(payload.status);
       await refresh();
-      setMessage(`Ключ ${payload.key} применен. Профиль уже обновлен.`);
+      setMessage(`Код ${payload.key} активирован. Профиль уже обновлен.`);
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось применить ключ."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось активировать код."));
     } finally {
       setRedeemBusy(false);
     }
@@ -103,25 +103,25 @@ export default function RedeemPage() {
     {
       label: "Профиль",
       value: resolvePlanLabel(dash, user),
-      hint: "Ключ применяется к текущему аккаунту.",
+      hint: "Код активируется в текущем аккаунте.",
       tone: "neutral" as const,
     },
     {
       label: "Статус доступа",
       value: dash?.is_active ? "Активен" : "Нужно продление",
-      hint: dash?.is_active ? "Ключ применится к текущему активному профилю." : "Если срок закончился, ключ поможет вернуть доступ.",
+      hint: dash?.is_active ? "Код добавится к текущему активному профилю." : "Если срок закончился, код поможет вернуть доступ.",
       tone: dash?.is_active ? ("success" as const) : ("warning" as const),
     },
     {
-      label: "Проверка ключа",
-      value: status ? (status.exists ? "Ключ найден" : "Не найден") : "Ждет проверки",
-      hint: status?.redeemed ? "Этот ключ уже был использован." : "Сначала проверьте ключ, потом применяйте.",
+      label: "Проверка кода",
+      value: status ? (status.exists ? "Код найден" : "Не найден") : "Ждет проверки",
+      hint: status?.redeemed ? "Этот код уже был использован." : "Сначала проверьте код, потом активируйте.",
       tone: status?.redeemed ? ("warning" as const) : status?.exists ? ("success" as const) : ("neutral" as const),
     },
     {
       label: "Что дальше",
-      value: status?.redeemed ? "Открыть поддержку" : "Применить к профилю",
-      hint: "Если ключ уже использован или потерян, лучше не гадать, а написать нам.",
+      value: status?.redeemed ? "Открыть поддержку" : "Активировать в профиле",
+      hint: "Если код уже использован или потерян, лучше не гадать, а написать нам.",
       tone: "neutral" as const,
     },
   ];
@@ -130,14 +130,14 @@ export default function RedeemPage() {
     ? [
         {
           key: "key",
-          title: "Ключ",
+          title: "Код",
           body: status.key,
           badge: status.exists ? "Найден" : "Не найден",
           tone: status.exists ? ("success" as const) : ("warning" as const),
         },
         {
           key: "plan",
-          title: "Что даст этот ключ",
+          title: "Что даст этот код",
           body: status.plan?.label || status.kind || "Уточним после проверки",
           badge: `До ${status.device_limit || 1} устройств`,
           tone: "neutral" as const,
@@ -146,7 +146,7 @@ export default function RedeemPage() {
           key: "dates",
           title: "Когда был выдан и использован",
           body: `Выдан: ${formatDate(status.issued_at)}. Использован: ${formatDate(status.redeemed_at)}.`,
-          badge: status.redeemed ? "Уже использован" : "Готов к применению",
+          badge: status.redeemed ? "Уже использован" : "Готов к активации",
           tone: status.redeemed ? ("warning" as const) : ("info" as const),
         },
       ]
@@ -155,14 +155,14 @@ export default function RedeemPage() {
   const helpItems = [
     {
       key: "check",
-      title: "Сначала проверьте ключ",
+      title: "Сначала проверьте код",
       body: "Так вы сразу увидите, существует ли он и не был ли уже использован раньше.",
       badge: "Шаг 1",
       tone: "neutral" as const,
     },
     {
       key: "redeem",
-      title: "Если ключ найден, примените его",
+      title: "Если код найден, активируйте его",
       body: "После этого профиль подтянется автоматически. Новый аккаунт создавать не нужно.",
       badge: "Шаг 2",
       tone: "neutral" as const,
@@ -170,7 +170,7 @@ export default function RedeemPage() {
     {
       key: "support",
       title: "Если что-то не совпало, откройте поддержку",
-      body: "Это самый безопасный путь, если ключ уже использован или выглядит не так, как ожидалось.",
+      body: "Это самый безопасный путь, если код уже использован или выглядит не так, как ожидалось.",
       badge: "Шаг 3",
       tone: "neutral" as const,
       action: (
@@ -184,12 +184,12 @@ export default function RedeemPage() {
   return (
     <CabinetRoute
       eyebrow="Тарифы и оплата"
-      title="Применить ключ"
-      description="Если у вас уже есть ключ оплаты или подарка, примените его здесь к текущему профилю."
+      title="Активировать код"
+      description="Если у вас уже есть код оплаты или подарка, активируйте его здесь в текущем профиле."
       actions={
         <>
           <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Купить ключ
+            Купить доступ
           </AppRouteLink>
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Поддержка
@@ -200,10 +200,10 @@ export default function RedeemPage() {
     >
       <CabinetHero
         eyebrow="Что делать сейчас"
-        badge={status?.exists && !status.redeemed ? "Ключ можно применить" : status?.redeemed ? "Нужна проверка" : "Сначала проверка"}
+        badge={status?.exists && !status.redeemed ? "Код можно активировать" : status?.redeemed ? "Нужна проверка" : "Сначала проверка"}
         badgeTone={status?.exists && !status.redeemed ? "success" : status?.redeemed ? "warning" : "neutral"}
-        title={status?.exists && !status.redeemed ? "Ключ найден, примените его к профилю" : "Проверьте ключ перед применением"}
-        description="Ключ применяется к текущему аккаунту POKROV. Новый профиль создавать не нужно, а личные ссылки и ручные параметры здесь не показываются."
+        title={status?.exists && !status.redeemed ? "Код найден, активируйте его в профиле" : "Проверьте код перед активацией"}
+        description="Код активируется в текущем аккаунте POKROV. Новый профиль создавать не нужно, а личные ссылки и ручные параметры здесь не показываются."
         actions={
           <>
             <button
@@ -212,7 +212,7 @@ export default function RedeemPage() {
               onClick={() => void lookup()}
               className="outline-btn rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
             >
-              {lookupBusy ? "Проверяем..." : "Проверить ключ"}
+              {lookupBusy ? "Проверяем..." : "Проверить код"}
             </button>
             <button
               type="button"
@@ -220,7 +220,7 @@ export default function RedeemPage() {
               onClick={() => void onRedeem()}
               className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
             >
-              {redeemBusy ? "Применяем..." : "Применить"}
+              {redeemBusy ? "Активируем..." : "Активировать"}
             </button>
           </>
         }
@@ -228,13 +228,13 @@ export default function RedeemPage() {
           {
             label: "Профиль",
             value: resolvePlanLabel(dash, user),
-            hint: "Ключ добавит срок к текущему аккаунту.",
+            hint: "Код добавит срок к текущему аккаунту.",
             tone: dash?.is_active ? "success" : "neutral",
           },
           {
             label: "Проверка",
             value: status ? (status.exists ? "Найден" : "Не найден") : "Не запускалась",
-            hint: status?.redeemed ? "Этот ключ уже был использован." : "Сначала проверьте, затем применяйте.",
+            hint: status?.redeemed ? "Этот код уже был использован." : "Сначала проверьте, затем активируйте.",
             tone: status?.redeemed ? "warning" : status?.exists ? "success" : "neutral",
           },
           {
@@ -249,11 +249,11 @@ export default function RedeemPage() {
       <div className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
         <CabinetSection
           eyebrow="Проверка"
-          title="Проверить и применить"
-          description="Лучше сначала проверить ключ, а потом уже применять его к профилю."
+          title="Проверить и активировать"
+          description="Лучше сначала проверить код, а потом уже активировать его в профиле."
         >
           <label className="block text-xs font-semibold text-[var(--atlas-text-muted)]">
-            Ключ
+            Код
           </label>
           <div className="mt-2 flex flex-col gap-3 md:flex-row">
             <input
@@ -276,7 +276,7 @@ export default function RedeemPage() {
               onClick={() => void onRedeem()}
               className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
             >
-              {redeemBusy ? "Применяем..." : "Применить"}
+              {redeemBusy ? "Активируем..." : "Активировать"}
             </button>
           </div>
 
@@ -294,7 +294,7 @@ export default function RedeemPage() {
 
         <CabinetSection
           eyebrow="Подсказка"
-          title="Если ключ не проходит"
+          title="Если код не проходит"
           description="Обычно дальше нужен один из этих трех шагов."
         >
           <CabinetCardGrid items={helpItems} className="xl:grid-cols-1" />
@@ -303,10 +303,10 @@ export default function RedeemPage() {
 
       <CabinetSection
         eyebrow="Статус"
-        title="Что удалось узнать по ключу"
-        description="После проверки или применения информация появится здесь."
+        title="Что удалось узнать по коду"
+        description="После проверки или активации информация появится здесь."
       >
-        <CabinetList items={statusItems} empty="Пока ничего не проверяли. Введите ключ, и здесь появится его статус." />
+        <CabinetList items={statusItems} empty="Пока ничего не проверяли. Введите код, и здесь появится его статус." />
       </CabinetSection>
     </CabinetRoute>
   );

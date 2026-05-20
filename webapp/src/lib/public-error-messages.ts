@@ -11,16 +11,16 @@ export function userFacingErrorMessage(error: unknown, fallback: string): string
   const lower = message.toLowerCase();
 
   if (lower.includes("access key already redeemed") || lower.includes("already_redeemed")) {
-    return "Ключ уже был использован. Для восстановления лучше открыть поддержку.";
+    return "Код уже был использован. Для восстановления лучше открыть поддержку.";
   }
   if (lower.includes("you cannot redeem your own key") || lower.includes("self_redeem")) {
-    return "Этот ключ выпущен для передачи другому человеку. Свой ключ применять не нужно.";
+    return "Этот код выпущен для передачи другому человеку. Свой код активировать не нужно.";
   }
   if (lower.includes("accept terms before redeeming") || lower.includes("tos_required")) {
-    return "Сначала примите условия в кабинете, потом примените ключ.";
+    return "Сначала примите условия в кабинете, потом активируйте код.";
   }
   if (lower.includes("access key not found") || lower.includes("not_found")) {
-    return "Такой ключ не найден. Проверьте, не потерялся ли символ.";
+    return "Такой код не найден. Проверьте, не потерялся ли символ.";
   }
   if (lower.includes("attachment too large") || lower.includes("file too large")) {
     return "Файл больше 20 МБ. Уменьшите вложение или отправьте его в Telegram-поддержку.";

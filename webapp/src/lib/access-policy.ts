@@ -100,13 +100,13 @@ export function resolveTrafficStatusText(
   const limitGb = getTrafficLimitGb(dash, user);
 
   if (isPaidUnlimitedState(state) || isTrialPremiumState(state)) {
-    return "Безлимитный трафик";
+    return "Полный доступ без лимита трафика";
   }
   if (isSoftModeState(state) && limitGb != null) {
-    return `Базовый режим после ${formatTrafficGb(limitGb)}`;
+    return `Базовый режим: ${formatTrafficGb(limitGb)} уже использованы`;
   }
   if (limitGb != null) {
-    return `${formatTrafficGb(limitGb)} на ${Number(FREE_TIER.cycle_days || 30)} дней`;
+    return `${formatTrafficGb(limitGb)} в базовом режиме на ${Number(FREE_TIER.cycle_days || 30)} дней`;
   }
   return "По текущему режиму";
 }

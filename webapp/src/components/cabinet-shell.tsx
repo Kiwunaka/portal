@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/subscription",
     icon: "payments",
     label: "Тарифы и оплата",
-    description: "Продление, планы и ключи",
+    description: "Продление, планы и коды",
     match: (pathname) => pathname.startsWith("/subscription") || pathname.startsWith("/redeem"),
   },
   {
@@ -79,7 +79,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/settings",
     icon: "account_circle",
     label: "Настройки",
-    description: "Аккаунт и бонусы",
+    description: "Вход, почта и бонусы",
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
   },
 ];
@@ -107,7 +107,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/subscription") || pathname.startsWith("/redeem"),
-    meta: { title: "Тарифы и оплата", subtitle: "Текущий режим, варианты продления и работа с ключом." },
+    meta: { title: "Тарифы и оплата", subtitle: "Текущий доступ, варианты продления и код активации." },
   },
   {
     match: (pathname) => pathname.startsWith("/devices"),
@@ -123,7 +123,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
-    meta: { title: "Настройки", subtitle: "Аккаунт, связанные каналы и бонусные действия." },
+    meta: { title: "Настройки", subtitle: "Способы входа, почта, Telegram и бонусы." },
   },
 ];
 
@@ -417,7 +417,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   const statusLabel = dash.is_active ? "Доступ активен" : "Нужно продление";
   const sidebarSummary = dash.is_active
     ? `План ${planLabel.toLowerCase()} до ${formatExpiry(dash.expiry_at)}.`
-    : "Срок закончился. Продление вернет доступ без нового старта.";
+    : "Срок закончился. Продление вернет доступ в том же аккаунте.";
 
   const sidebar = (
     <aside className="hidden w-[292px] shrink-0 xl:block">

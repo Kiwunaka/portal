@@ -16,11 +16,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV — приложение для доступа к сайтам | Android и Windows",
+    default: "POKROV для YouTube, TikTok и нужных вам сайтов | Android и Windows",
     template: "%s",
   },
   description:
-    "Скачайте POKROV для Android или Windows: 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней, до 5 устройств и поддержка в Telegram.",
+    "Скачайте POKROV на Android или Windows, попробуйте 5 дней без карты и продлите доступ от 99 ₽ за 30 дней.",
   applicationName: CANONICAL_PLATFORM_BRAND,
   alternates: {
     canonical: `${CANONICAL_MARKETING_SITE_URL}/`,
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV — приложение для доступа к сайтам",
+    title: "POKROV для YouTube, TikTok и нужных вам сайтов",
     description: "Android и Windows, 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней и поддержка рядом.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
@@ -38,14 +38,14 @@ export const metadata: Metadata = {
         url: DEFAULT_MARKETING_SHARE_IMAGE_PATH,
         width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
         height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
-        alt: `${CANONICAL_PLATFORM_BRAND} — приложение для доступа к сайтам на Android и Windows`,
+        alt: `${CANONICAL_PLATFORM_BRAND} для Android и Windows`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "POKROV | Android и Windows",
-    description: "Скачайте приложение для Android или Windows, получите 5 дней бесплатно и продолжайте через кабинет.",
+    description: "Скачайте приложение для Android или Windows, получите 5 дней бесплатно без карты и продолжайте через кабинет.",
     images: [
       {
         url: DEFAULT_MARKETING_TWITTER_IMAGE_PATH,

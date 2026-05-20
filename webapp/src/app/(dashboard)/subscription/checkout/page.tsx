@@ -161,11 +161,11 @@ export default function CheckoutPage() {
       });
       const paymentUrl = String(order.payment_url || "").trim();
       if (!paymentUrl) {
-        throw new Error("Payment URL is missing.");
+        throw new Error("Платежная ссылка не получена.");
       }
       window.location.assign(paymentUrl);
     } catch (error) {
-      setCheckoutError(String((error as { message?: string })?.message || error || "Checkout is not available."));
+      setCheckoutError(String((error as { message?: string })?.message || error || "Оплата сейчас недоступна."));
     } finally {
       setCheckoutBusy(false);
     }
@@ -195,14 +195,14 @@ export default function CheckoutPage() {
     <CabinetRoute
       eyebrow="Продление"
       title="Продлить доступ"
-      description="Выберите срок, проверьте сумму и перейдите на защищенную страницу оплаты. После оплаты ключ можно применить в приложении или в кабинете."
+      description="Выберите срок, проверьте сумму и перейдите на страницу оплаты. Если после оплаты нужен код активации, его можно применить в приложении или кабинете."
       actions={
         <>
           <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60">
             Перейти к оплате
           </button>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            У меня уже есть ключ
+            У меня уже есть код
           </AppRouteLink>
         </>
       }
@@ -258,8 +258,8 @@ export default function CheckoutPage() {
           },
           {
             label: "Ключ после оплаты",
-            value: "Применяется отдельно",
-            hint: "Если ключ уже есть, используйте раздел применения ключа.",
+            value: "Код активации",
+            hint: "Если код уже есть, используйте раздел активации.",
             tone: "neutral",
           },
           {
@@ -315,7 +315,7 @@ export default function CheckoutPage() {
               Перейти к оплате
             </button>
             <AppRouteLink href="/redeem/" className="outline-btn block rounded-2xl py-3 text-center text-sm font-semibold">
-              Применить уже купленный ключ
+              Активировать уже купленный код
             </AppRouteLink>
           </div>
 

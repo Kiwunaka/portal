@@ -142,7 +142,7 @@ export default function DashboardPage() {
     if (!dash?.is_active) {
       items.push(
         <AlertBanner key="inactive" tone="danger" icon="error" title="Доступ закончился">
-          <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Продлите подписку</AppRouteLink>, чтобы вернуть защиту.
+          <AppRouteLink href="/subscription/checkout/" className="underline font-semibold">Продлите доступ</AppRouteLink>, чтобы снова подключаться в приложении POKROV.
         </AlertBanner>
       );
     } else if (trialMode) {
@@ -183,8 +183,8 @@ export default function DashboardPage() {
 
     if (items.length === 0) {
       items.push(
-        <AlertBanner key="all-good" tone="success" icon="check_circle" title="Всё работает отлично">
-          Ваш трафик защищён. Наслаждайтесь безопасным интернетом.
+        <AlertBanner key="all-good" tone="success" icon="check_circle" title="Доступ активен">
+          Откройте приложение POKROV и нажмите <strong>Подключить</strong>, когда нужно включить его на устройстве.
         </AlertBanner>
       );
     }
@@ -218,11 +218,11 @@ export default function DashboardPage() {
   return (
     <CabinetRoute
       eyebrow="Главная"
-      title={dash?.is_active ? "Ваш доступ под контролем" : "Продлите доступ"}
+      title={dash?.is_active ? "Ваш доступ POKROV" : "Продлите доступ"}
       description={
         dash?.is_active
-          ? "Статус, устройства, загрузки и поддержка в одном месте. Для подключения откройте приложение POKROV."
-          : "Доступ закончился. Продлите подписку, чтобы вернуть защиту."
+          ? "Здесь видно срок, устройства, трафик и следующий шаг. Само подключение включается в приложении."
+          : "Доступ закончился. Продлите срок, чтобы снова подключаться в приложении POKROV."
       }
       actions={
         <>
@@ -259,7 +259,7 @@ export default function DashboardPage() {
         <StatCard
           label="Осталось дней"
           value={daysRemaining ?? "—"}
-          hint={daysRemaining !== null && daysRemaining <= 5 ? "Скоро продлите" : null}
+          hint={daysRemaining !== null && daysRemaining <= 5 ? "Срок скоро закончится" : null}
           tone={daysRemaining !== null && daysRemaining <= 5 ? "warning" : "neutral"}
         />
         <StatCard
@@ -272,10 +272,10 @@ export default function DashboardPage() {
       </div>
 
       {/* ── App Download Block ── */}
-      <CabinetSection
-        eyebrow="Следующий шаг"
-        title="Откройте приложение и нажмите Connect"
-        description="Кабинет не заменяет приложение: он помогает скачать beta-сборку, проверить устройства, продлить доступ и открыть поддержку без ручных ссылок."
+        <CabinetSection
+          eyebrow="Следующий шаг"
+        title="Откройте приложение и нажмите «Подключить»"
+        description="Кабинет не заменяет приложение: он помогает скачать beta-сборку, проверить устройства, продлить доступ и открыть поддержку."
       >
         <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr] items-start">
           <div className="rounded-[1.5rem] border border-emerald-200/60 bg-emerald-50/60 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20">
@@ -285,7 +285,7 @@ export default function DashboardPage() {
               </span>
               <div>
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Быстрый старт</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Откройте приложение, выберите режим и нажмите Подключить.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Откройте приложение и нажмите «Подключить».</p>
               </div>
             </div>
             <div className="mt-4 grid gap-2 text-sm text-slate-700 dark:text-slate-300">

@@ -4,7 +4,7 @@
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV — приложение для доступа к сайтам | Android и Windows",
+      "ru": "POKROV для YouTube, TikTok и нужных вам сайтов | Android и Windows",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -13,7 +13,7 @@
     },
     "marketing.meta.description": {
       "surface": "marketing.meta",
-      "ru": "Скачайте POKROV для Android или Windows: 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней, до 5 устройств и поддержка в Telegram.",
+      "ru": "Скачайте POKROV на Android или Windows, попробуйте 5 дней без карты и продлите доступ от 99 ₽ за 30 дней.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -22,7 +22,7 @@
     },
     "marketing.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV • 5 дней бесплатно",
+      "ru": "POKROV • 5 дней без карты",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV: YouTube и TikTok",
+      "ru": "POKROV для YouTube, TikTok и нужных вам сайтов",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -40,7 +40,7 @@
     },
     "marketing.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Установите приложение, нажмите «Подключить» и проверьте свои сервисы. 5 дней без карты, продление от 99 ₽ за 30 дней.",
+      "ru": "Установите приложение на Android или Windows, нажмите «Подключить» и проверьте свои сервисы. 5 дней бесплатно, карту не просим.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -49,7 +49,7 @@
     },
     "marketing.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Получить 5 дней бесплатно",
+      "ru": "Попробовать 5 дней бесплатно",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -58,7 +58,7 @@
     },
     "marketing.hero.secondary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Открыть кабинет",
+      "ru": "Посмотреть тарифы",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -67,7 +67,7 @@
     },
     "marketing.hero.overline": {
       "surface": "marketing.home.hero",
-      "ru": "Бета POKROV для Android и Windows.",
+      "ru": "Beta-сборки POKROV для Android и Windows.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -85,7 +85,7 @@
     },
     "marketing.hero.proof_1.text": {
       "surface": "marketing.home.hero",
-      "ru": "доступа в приложении без карты",
+      "ru": "без карты и автосписаний",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -103,7 +103,7 @@
     },
     "marketing.hero.proof_2.text": {
       "surface": "marketing.home.hero",
-      "ru": "актуальные beta-сборки POKROV",
+      "ru": "телефон и компьютер",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -787,7 +787,7 @@
     },
     "webapp.entry.note.body": {
       "surface": "webapp.entry",
-      "ru": "Если Telegram не открылся автоматически, используйте кнопку ниже. Вход проходит на защищенной стороне Telegram и занимает минимум времени.",
+      "ru": "Если Telegram не открылся автоматически, нажмите кнопку ниже. Подтверждение проходит в Telegram и обычно занимает пару секунд.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,

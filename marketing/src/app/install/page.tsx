@@ -39,7 +39,6 @@ export default function InstallPage() {
   const helpHref = buildHelpHref();
   const androidHref = buildCabinetDownloadsHref("android");
   const windowsHref = buildCabinetDownloadsHref("windows");
-  const appleHref = buildHelpHref();
   const androidHasArtifact = Boolean(String(config.androidApkUrl || "").trim());
   const windowsHasArtifact = Boolean(String(config.windowsExeUrl || "").trim());
 
@@ -79,9 +78,9 @@ export default function InstallPage() {
         <main id="main-content" className="lp-main lp-route-main lp-route-main--install">
           <section className="lp-hero">
             <div className="lp-hero-copy">
-              <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка и настройка POKROV")}</div>
-              <p className="lp-overline">Сборка, кабинет и поддержка на одной странице. Без пустых кнопок и ложной загрузки.</p>
-              <h1>{getCopyText("marketing.install.title", "Установка без тупиков")}</h1>
+              <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка POKROV")}</div>
+              <p className="lp-overline">Android и Windows beta, кабинет и поддержка на одной странице.</p>
+              <h1>{getCopyText("marketing.install.title", "Скачать POKROV или получить помощь")}</h1>
               <p className="lp-hero-lead">
                 {getCopyText(
                   "marketing.install.subtitle",
@@ -101,7 +100,7 @@ export default function InstallPage() {
             <div className="lp-hero-stage">
               <article className="lp-stage-card lp-stage-card--primary">
                 <div className="lp-stage-label">Сначала кабинет, потом файл</div>
-                <h2>Каждый шаг здесь либо доступен, либо честно объяснён.</h2>
+                <h2>Каждый шаг либо доступен, либо честно объяснен.</h2>
                 <p>
                   Если бета-сборка уже доступна вашему аккаунту, кабинет покажет актуальный файл. Если нет, страница покажет инструкцию,
                   текущий статус и канал помощи.
@@ -132,9 +131,9 @@ export default function InstallPage() {
               </article>
 
               <article className="lp-stage-card">
-                <div className="lp-stage-label">Что делать, если доступа к файлу нет</div>
+                <div className="lp-stage-label">Если доступа к файлу нет</div>
                 <p>
-                  Эта страница не притворяется загрузкой. Если релиз ещё не выдан вашему аккаунту, мы показываем кабинет,
+                  Если релиз еще не выдан вашему аккаунту, мы показываем кабинет,
                   инструкцию и помощь человека там, где она действительно нужна.
                 </p>
                 <div className="lp-stage-links">
@@ -207,23 +206,6 @@ export default function InstallPage() {
                     {getCopyText("marketing.install.help_cta", "Открыть инструкцию")}
                   </a>
                 )}
-              </article>
-
-              <article className="lp-platform-card">
-                <div className="lp-stage-label">
-                  <span aria-hidden="true">◎</span>
-                  {getCopyText("marketing.install.apple.status", "Apple readiness")}
-                </div>
-                <h3>{getCopyText("marketing.install.apple.title", "iPhone и Mac")}</h3>
-                <p>
-                  {getCopyText(
-                    "marketing.install.apple.desc",
-                    "Apple-линейка пока остаётся в readiness-режиме. Здесь нет ложной загрузки, только честная инструкция и актуальный статус.",
-                  )}
-                </p>
-                <a href={appleHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                  {getCopyText("marketing.download.apple.cta", "Открыть инструкцию")}
-                </a>
               </article>
             </div>
           </section>

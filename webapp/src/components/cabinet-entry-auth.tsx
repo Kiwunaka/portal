@@ -184,13 +184,13 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     <div className="space-y-5">
       <div className="rounded-[1.5rem] border border-emerald-200/70 bg-emerald-50/90 p-5 dark:border-emerald-400/20 dark:bg-emerald-400/10">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">
-          Основной вход
+          Telegram
         </p>
         <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
-          Telegram подтверждает кабинет
+          Быстрый вход в кабинет
         </h3>
         <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-          Нажмите кнопку, подтвердите вход в Telegram, и мы вернем вас сюда с тем же профилем. Это путь продолжения, а не новая регистрация.
+          Подтвердите Telegram — откроем тот же аккаунт POKROV. Это способ входа, а не новая регистрация.
         </p>
         <div className="mt-4">
           <TelegramLoginWidget />
@@ -209,7 +209,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
               Email
             </p>
             <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
-              {emailReady ? "Email-вход" : "Готовим аккуратно"}
+              {emailReady ? "Вход по почте" : "Почтовый вход скоро"}
             </h3>
           </div>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
@@ -291,7 +291,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           </div>
         ) : (
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Email-вход появится после готовности доставки писем. Сейчас для браузера используйте Telegram или напишите в поддержку, если доступ нужно восстановить вручную.
+            Почтовый вход появится после финальной проверки доставки писем. Пока используйте Telegram или напишите в поддержку, если нужно восстановить доступ.
           </p>
         )}
       </div>

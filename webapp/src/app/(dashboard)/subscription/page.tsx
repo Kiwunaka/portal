@@ -53,7 +53,7 @@ function formatDate(value?: string | null): string {
 
 function nodePolicyLabel(value?: string | null): string {
   const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "free_single_location" || normalized === "nl_only") return "NL-free";
+  if (normalized === "free_single_location" || normalized === "nl_only") return "Базовый узел";
   if (normalized === "managed_premium" || normalized === "paid_pool") return "Полный пул";
   return "По профилю";
 }
@@ -105,6 +105,21 @@ export default function SubscriptionPage() {
   const currentPaidPlanCode = paidMode ? currentPlanCode : "";
   const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
+  const premiumMode = paidMode || trialMode;
+  const accessTitle = paidMode
+    ? "Премиум активен"
+    : trialMode
+      ? "Пробный период активен"
+      : freeMode
+        ? "Базовый режим"
+        : "Доступ не активен";
+  const accessHint = paidMode
+    ? "Полный доступ действует до указанной даты."
+    : trialMode
+      ? "Сейчас идет бесплатный полный доступ."
+      : freeMode
+        ? `Доступно ${freeLimitGb || 5} ГБ на ${nextResetAt ? `период до ${formatDate(nextResetAt)}` : "30 дней"} для 1 устройства.`
+        : "Продлите срок, чтобы снова подключаться в приложении.";
 
   const copySubscriptionUrl = async () => {
     if (!manualAccessReady) {
@@ -130,10 +145,10 @@ export default function SubscriptionPage() {
       key: plan.code,
       title: `${days} дней · ${amountRub} ₽`,
       body: `${plan.label} · до ${deviceLimit} устройств · ${nodePolicyLabel(plan.node_policy)}${plan.badge ? ` · ${plan.badge}` : ""}`,
-      badge: isCurrent ? "Уже действует" : plan.badge || "Продлить",
+      badge: isCurrent ? "Ваш текущий срок" : plan.badge || "Продлить",
       tone: isCurrent ? ("success" as const) : days >= 180 ? ("info" as const) : ("neutral" as const),
       action: isCurrent ? (
-        <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Уже действует</span>
+        <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Действует сейчас</span>
       ) : (
         <AppRouteLink
           href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
@@ -148,8 +163,8 @@ export default function SubscriptionPage() {
   const paymentCards = [
     {
       key: "checkout",
-      title: "Открыть оплату",
-      body: "Выберите срок, проверьте сумму и продолжите оплату из кабинета.",
+      title: "Продлить доступ",
+      body: "Выберите срок, проверьте сумму, устройства и платформы до оплаты.",
       badge: "Основной способ",
       tone: "neutral" as const,
       action: (
@@ -160,20 +175,20 @@ export default function SubscriptionPage() {
     },
     {
       key: "redeem",
-      title: "Применить ключ",
-      body: "Если у вас уже есть подарок или оплаченный ключ, можно использовать его здесь.",
-      badge: "Если ключ уже есть",
+      title: "Активировать код",
+      body: "Если у вас уже есть подарочный или оплаченный код, примените его в этом разделе.",
+      badge: "Если код уже есть",
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/redeem/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Применить ключ
+          Активировать код
         </AppRouteLink>
       ),
     },
     {
       key: "support",
       title: "Если после оплаты статус не обновился",
-      body: "Не нужно искать скрытые экраны. Лучше сразу открыть поддержку и продолжить один кейс.",
+      body: "Откройте поддержку и продолжите один кейс. Оператор проверит оплату по безопасным данным.",
       badge: "Поддержка",
       tone: "neutral" as const,
       action: (
@@ -187,17 +202,17 @@ export default function SubscriptionPage() {
   const modeCards = [
     {
       key: "paid",
-      title: paidMode ? "Полный режим уже активен" : "Полный режим для основного использования",
+      title: paidMode ? "Премиум активен" : "Премиум для основного использования",
       body: paidMode
-        ? "Сейчас профиль работает без месячного лимита трафика."
-        : "Если не хочется думать о месячных ограничениях, смотреть стоит в эту сторону.",
+        ? `Доступ действует до ${formatDate(dash?.expiry_at)}. После окончания срока останется базовый режим.`
+        : "Если не хочется думать о месячном лимите, продлите полный доступ от 99 ₽.",
       badge: paidMode ? "Сейчас так" : "Вариант",
       tone: paidMode ? ("success" as const) : ("neutral" as const),
     },
     {
       key: "trial",
-      title: trialMode ? "Пробный период уже идет" : "Пробный период показывает сервис в полном режиме",
-      body: trialMode ? `Он действует до ${formatDate(dash?.expiry_at)}.` : "После него можно решить, нужен ли вам платный режим дальше.",
+      title: trialMode ? "Пробный период уже идет" : "Пробный период показывает POKROV в полном доступе",
+      body: trialMode ? `Он действует до ${formatDate(dash?.expiry_at)}.` : "После него можно решить, нужен ли платный срок дальше.",
       badge: trialMode ? "Активен" : "Как это работает",
       tone: trialMode ? ("warning" as const) : ("neutral" as const),
     },
@@ -205,8 +220,8 @@ export default function SubscriptionPage() {
       key: "free",
       title: freeMode ? "Базовый режим сейчас активен" : "Базовый режим остается запасным",
       body: freeMode
-        ? `Сейчас ориентир до ${freeLimitGb || 5} ГБ и до ${deviceLimit} устройств.`
-        : "Он подходит для знакомства с сервисом, но может быть теснее по лимитам.",
+        ? `Сейчас доступно ${freeLimitGb || 5} ГБ на 30 дней для 1 устройства.`
+        : "После окончания полного доступа остается запасной режим: 5 ГБ на 30 дней для 1 устройства.",
       badge: freeMode ? "Сейчас так" : "Запасной путь",
       tone: freeMode && !softMode ? ("info" as const) : softMode ? ("warning" as const) : ("neutral" as const),
     },
@@ -215,10 +230,10 @@ export default function SubscriptionPage() {
   return (
     <CabinetRoute
       eyebrow="Тарифы и оплата"
-      title={dash?.is_active ? "Продление и режимы" : "Вернуть доступ"}
+      title={dash?.is_active ? "Текущий доступ и продление" : "Вернуть доступ"}
       description={
         dash?.is_active
-          ? "Здесь только практичные вещи: текущий режим, варианты продления и работа с ключом."
+          ? "Здесь видно, какой доступ активен сейчас, что будет после окончания срока и какие варианты продления доступны."
           : "Если срок закончился, отсюда проще всего вернуть доступ и продолжить тем же профилем."
       }
       actions={
@@ -227,41 +242,41 @@ export default function SubscriptionPage() {
             Открыть оплату
           </AppRouteLink>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            У меня есть ключ
+            У меня есть код
           </AppRouteLink>
         </>
       }
       metrics={[
         {
-          label: "Текущий режим",
-          value: resolvePlanLabel(dash, user),
-          hint: dash?.is_active ? "Профиль уже активен." : "Если срок закончился, вернуть его можно отсюда.",
-          tone: dash?.is_active ? "success" : "warning",
+          label: "Текущий доступ",
+          value: accessTitle,
+          hint: accessHint,
+          tone: premiumMode ? "success" : dash?.is_active ? "info" : "warning",
         },
         {
           label: "Срок",
           value: formatDate(dash?.expiry_at || user?.expiry_at),
-          hint: trialMode ? "Сейчас действует пробный период." : "Это ближайшая важная дата по доступу.",
+          hint: paidMode ? "Дата окончания полного доступа." : trialMode ? "Сейчас действует пробный период." : "Дата ближайшего изменения доступа.",
           tone: "neutral",
         },
         {
           label: "Трафик",
           value: resolveTrafficStatusText(dash, user),
-          hint: nextResetAt ? `Следующий сброс ${formatDate(nextResetAt)}` : "Без отдельного сброса",
+          hint: premiumMode ? "Без месячного лимита в полном доступе." : nextResetAt ? `Следующий сброс ${formatDate(nextResetAt)}` : "Без отдельного сброса",
           tone: softMode ? "warning" : "neutral",
         },
         {
           label: "Устройства",
           value: `До ${deviceLimit}`,
-          hint: freeMode ? `В базовом режиме ориентир до ${freeLimitGb || 5} ГБ.` : "Лимит действует на весь профиль.",
+          hint: freeMode ? "В базовом режиме доступно 1 устройство." : "Лимит действует на весь профиль.",
           tone: "neutral",
         },
       ]}
     >
       <CabinetSection
         eyebrow="Варианты"
-        title="Что можно выбрать"
-        description="Срок, цена и лимит устройств видны в карточках сразу."
+        title="Сроки видно сразу"
+        description="Цена, срок и лимит устройств показаны в карточках до оплаты."
       >
         <CabinetCardGrid items={planCards} className="xl:grid-cols-4" />
         {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
@@ -271,10 +286,12 @@ export default function SubscriptionPage() {
         eyebrow="Сейчас по профилю"
         badge={dash?.is_active ? "Можно продлить" : "Нужно действие"}
         badgeTone={dash?.is_active ? "success" : "warning"}
-        title={dash?.is_active ? "Выберите удобный способ продлить" : "Сначала верните срок действия"}
+        title={premiumMode ? "Полный доступ можно продлить заранее" : dash?.is_active ? "Базовый режим можно заменить полным доступом" : "Сначала верните срок действия"}
         description={
-          dash?.is_active
-            ? "Кабинет не пытается продавать лишнее. Показываем только рабочие варианты и самый прямой путь к оплате."
+          premiumMode
+            ? "Если POKROV подходит, продлите срок до окончания доступа: устройства и история останутся на месте."
+            : dash?.is_active
+              ? "Базовый режим остается запасным, но полный доступ дает больше устройств и убирает месячный лимит."
             : "Как только срок снова станет активным, устройства и история останутся на месте."
         }
         actions={
@@ -283,7 +300,7 @@ export default function SubscriptionPage() {
               Открыть оплату
             </AppRouteLink>
             <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Применить ключ
+              Активировать код
             </AppRouteLink>
           </>
         }
@@ -291,18 +308,18 @@ export default function SubscriptionPage() {
           {
             label: "План сейчас",
             value: resolvePlanLabel(dash, user),
-            hint: dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дату уточним позже",
+            hint: paidMode || trialMode ? `Полный доступ до ${formatDate(dash?.expiry_at || user?.expiry_at)}` : accessHint,
             tone: "neutral",
           },
           {
             label: "Полный режим",
             value: paidMode ? "Активен" : "Можно включить",
-            hint: paidMode ? "Без месячного лимита трафика." : "Подходит, если хочется меньше думать об ограничениях.",
+            hint: paidMode ? "Без месячного лимита трафика." : "До 5 устройств и полный пул доступных узлов.",
             tone: paidMode ? "success" : "neutral",
           },
           {
             label: "Если оплата уже была",
-            value: "Не искать обходы",
+            value: "Открыть поддержку",
             hint: "Если статус не обновился, лучше сразу продолжить кейс в поддержке.",
             tone: "neutral",
           },
@@ -325,7 +342,7 @@ export default function SubscriptionPage() {
             <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
               {manualAccessReady
                 ? "Личная ссылка готова, но мы не показываем ее первой. Используйте ее только если приложение POKROV сейчас недоступно или поддержка попросила открыть ручной вариант."
-                : "После оплаты или активации ключа запасной ручной вариант станет доступен здесь."}
+                : "После оплаты или активации кода запасной ручной вариант станет доступен здесь."}
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <button

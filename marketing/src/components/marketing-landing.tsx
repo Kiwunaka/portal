@@ -72,17 +72,17 @@ const HERO_SIGNALS: HeroSignal[] = [
   {
     label: "Платформы",
     value: "Android + Windows",
-    detail: "Текущая бета собрана для телефона и компьютера. Apple-направление остается в подготовке.",
+    detail: "Текущая пользовательская бета собрана для телефона и компьютера.",
   },
   {
     label: "Стартовый доступ",
     value: "5 дней бесплатно",
-    detail: "Проверьте POKROV на своем устройстве до продления.",
+    detail: "Проверьте POKROV на своем устройстве до оплаты.",
   },
   {
     label: "Запуск",
     value: "В приложении",
-    detail: "Первый экран ведет к подключению, а не к техническим настройкам.",
+    detail: "Первый экран ведет к кнопке «Подключить».",
   },
 ];
 
@@ -91,19 +91,19 @@ const DEFAULT_SCENARIOS: ScenarioCard[] = [
     eyebrow: "Приложение сначала",
     glyph: "route",
     title: "Скачайте, включите, получите 5 дней",
-    desc: "Сайт ведет к приложению, приложение дает первый опыт, кабинет остается для срока доступа, поддержки и продления.",
+    desc: "Сайт ведет к приложению, приложение дает первый опыт, кабинет остается для срока, устройств, поддержки и продления.",
   },
   {
     eyebrow: "Продление",
     glyph: "shield",
-    title: "Ключ доступа без технических ссылок",
-    desc: "Оплата заканчивается ключом доступа. Его можно погасить в приложении или кабинете и продолжить тот же аккаунт.",
+    title: "Цена и срок видны до оплаты",
+    desc: "Вы выбираете срок, проверяете сумму и продолжаете тот же аккаунт POKROV. Если нужен код активации, кабинет покажет, что делать.",
   },
   {
     eyebrow: "Telegram по делу",
     glyph: "signal",
     title: "Восстановление, поддержка и бонус +10 дней",
-    desc: "Telegram остается запасным путем для помощи, бонуса и восстановления, но не заменяет основной старт в приложении.",
+    desc: "Telegram остается дополнительным способом для помощи, бонуса и восстановления, но не нужен для первого старта.",
   },
 ];
 
@@ -111,7 +111,7 @@ const KEY_FLOW_STEPS = [
   "Установите приложение для Android или Windows.",
   "Запустите 5 дней бесплатного доступа на первом устройстве.",
   "Если бесплатный период закончился, остается базовый режим с лимитом на месяц.",
-  "Выберите срок, получите ключ доступа и погасите его в приложении или кабинете.",
+  "Выберите срок и продолжайте тот же аккаунт POKROV.",
 ];
 
 const RELATED_PAGES = [
@@ -156,13 +156,6 @@ function buildDownloadCards(): DownloadCard[] {
       href: installHref,
       cta: "Открыть установку",
     },
-    {
-      title: "iPhone и Mac",
-      status: "В подготовке",
-      desc: "Apple-направление остается в инженерной подготовке и не входит в обещание этой волны.",
-      href: installHref,
-      cta: "Открыть статус",
-    },
   ];
 }
 
@@ -183,9 +176,9 @@ function buildPlanCards(): PlanCard[] {
 }
 
 export function buildMarketingMetadata(
-  title = "POKROV | 5 дней доступа без карты",
+  title = "POKROV | 5 дней бесплатно без карты",
   description =
-    "Скачайте приложение для Android или Windows, получите 5 дней доступа без карты и продолжайте через кабинет.",
+    "Скачайте приложение для Android или Windows, получите 5 дней бесплатно без карты и продолжайте через кабинет.",
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");
@@ -432,21 +425,21 @@ export default function MarketingLanding({
       <main id="main-content" className="lp-main">
         <section className="lp-hero">
           <div className="lp-hero-copy">
-            <div className="lp-kicker">{heroKicker || "POKROV • Android + Windows"}</div>
+            <div className="lp-kicker">{heroKicker || "POKROV • 5 дней без карты"}</div>
             <p className="lp-overline">
-              Бета с честными условиями: приложение для старта, кабинет для продления и поддержки.
+              Android и Windows beta: приложение для старта, кабинет для продления и поддержки.
             </p>
-            <h1>{heroTitle || "POKROV — 5 дней доступа без карты"}</h1>
+            <h1>{heroTitle || "POKROV для YouTube, TikTok и нужных вам сайтов"}</h1>
             <p className="lp-hero-lead">
               {heroSubtitle ||
-                "Сначала приложение для Android или Windows и 5 дней доступа без карты. Дальше выберите срок и продолжайте в том же аккаунте."}
+                "Сначала приложение для Android или Windows и 5 дней бесплатно без карты. Дальше выберите срок и продолжайте в том же аккаунте."}
             </p>
             <div className="lp-hero-actions">
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
-                Установить приложение
+                Попробовать 5 дней бесплатно
               </Link>
               <Link href={defaultCheckoutHref} className="lp-btn lp-btn--ghost">
-                Выбрать срок
+                Посмотреть тарифы
               </Link>
             </div>
             <dl className="lp-proof">
@@ -468,9 +461,9 @@ export default function MarketingLanding({
                 <LandingGlyph name="route" />
                 Старт в приложении
               </div>
-              <h2>Пользователь видит платформу, срок и действие.</h2>
+              <h2>Видно главное: устройство, срок и кнопка.</h2>
               <p>
-                На первом экране должны быть <strong>{buildPlatformLabel()}</strong>, 5 дней бесплатно и кнопка старта. Технические режимы остаются внутри продукта.
+                На первом экране есть <strong>{buildPlatformLabel()}</strong>, 5 дней бесплатно и понятный старт. Сложные параметры остаются внутри продукта.
               </p>
               <ol className="lp-stage-steps">
                 {KEY_FLOW_STEPS.map((step, index) => (
@@ -490,7 +483,7 @@ export default function MarketingLanding({
                 Telegram остается рядом
               </div>
               <p>
-                Telegram помогает с восстановлением, бонусом +10 дней, новостями и поддержкой. Основной старт все равно начинается в приложении.
+                Telegram помогает с восстановлением, бонусом +10 дней, новостями и поддержкой. Первый старт все равно начинается в приложении.
               </p>
               <div className="lp-stage-links">
                 <a href={config.newsChannelUrl} target="_blank" rel="noreferrer">
@@ -510,7 +503,7 @@ export default function MarketingLanding({
                 <LandingGlyph name="arc" />
                 Статус беты
               </div>
-              <blockquote>Доступ работает в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка помогает с установкой и продлением.</blockquote>
+              <blockquote>POKROV доступен в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка помогает с установкой и продлением.</blockquote>
               <span>Бета-контур • Android + Windows</span>
             </article>
           </div>
@@ -518,10 +511,10 @@ export default function MarketingLanding({
 
         <section className="lp-section">
           <div className="lp-section-head">
-            <span>Обещание</span>
-            <h2>Сайт продает результат, а не техническую кухню.</h2>
+            <span>Почему это удобно</span>
+            <h2>POKROV продает понятный результат, а не техническую кухню.</h2>
             <p>
-              Мы не обещаем стабильный публичный релиз раньше времени. Android и Windows уже ведут к приложению, Apple остается в подготовке, а технические ссылки не мешают первому старту.
+              Android и Windows ведут к приложению, бесплатному старту и кабинету. Первый экран не заставляет выбирать протоколы, файлы и серверы.
             </p>
           </div>
           <div className="lp-trust-grid">
@@ -541,9 +534,9 @@ export default function MarketingLanding({
         <section id="downloads" className="lp-section">
           <div className="lp-section-head">
             <span>Приложение</span>
-            <h2>Бета-вход начинается с установки, а не с технических ссылок.</h2>
+            <h2>Старт начинается с установки и одной кнопки.</h2>
             <p>
-              Android и Windows составляют текущую пользовательскую бету. Apple-сборки остаются в подготовке и не обещаются как готовый релиз этой волны.
+              Android и Windows составляют текущую пользовательскую бету. Если сборка пока не открыта вашему аккаунту, кабинет покажет статус или поддержку.
             </p>
           </div>
           <div className="lp-download-grid">
@@ -566,18 +559,18 @@ export default function MarketingLanding({
         <section id="pricing" className="lp-section">
           <div className="lp-section-head">
             <span>Тарифы</span>
-            <h2>Тарифы показывают срок, цену и действие.</h2>
+            <h2>Тарифы показывают цену, срок и лимит устройств.</h2>
             <p>
-              Вы выбираете срок, видите сумму заранее и продолжаете доступ в том же приложении или кабинете, когда касса доступна.
+              Вы выбираете срок, видите сумму заранее и продолжаете доступ в том же приложении или кабинете, когда оплата доступна.
             </p>
           </div>
           <div className="lp-pricing-shell">
             <aside className="lp-pricing-intro">
               <div className="lp-stage-label">
                 <LandingGlyph name="shield" />
-                Ключ доступа
+                Продление
               </div>
-              <h3>Выберите срок, получите ключ, продолжайте тот же доступ.</h3>
+              <h3>Выберите срок и продолжайте тот же аккаунт.</h3>
               <p>
                 Приложение и кабинет продолжают одну историю. Сайт показывает цену, ограничения беты и действие без ручных настроек.
               </p>
@@ -616,7 +609,7 @@ export default function MarketingLanding({
                 <h2>{scenarioTitle || "Проба, помощь и продление должны быть на одном аккаунте"}</h2>
                 <p>
                   {scenarioBody ||
-                    "Сначала 5 дней в приложении, потом базовый режим или продление через ключ доступа. Сайт, кабинет и Telegram не должны противоречить друг другу."}
+                    "Сначала 5 дней в приложении, потом базовый режим или продление. Сайт, кабинет и Telegram не должны противоречить друг другу."}
                 </p>
               </div>
               {reviews.length ? (

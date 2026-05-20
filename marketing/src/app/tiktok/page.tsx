@@ -5,7 +5,7 @@ import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
   "TikTok через приложение | POKROV",
-  "POKROV для Android и Windows: 5 дней доступа без карты, быстрый старт и короткие видео без ручных профилей.",
+  "POKROV для Android и Windows: 5 дней бесплатно без карты, быстрый старт и проверка TikTok без ручных профилей.",
   {
     path: MARKETING_CANONICAL_PATHS.tiktok,
     keywords: ["проверка tiktok", "короткие видео", "pokrov tiktok", "мобильный старт"],
@@ -25,16 +25,16 @@ export default function TiktokPage() {
         <MarketingLanding
           pagePath={MARKETING_CANONICAL_PATHS.tiktok}
           heroKicker="Для TikTok и коротких видео"
-          heroTitle="TikTok с быстрым стартом в приложении"
-          heroSubtitle="Получите 5 дней доступа без карты, откройте POKROV и смотрите короткие видео без ручной настройки."
-          scenarioTitle="Как дойти до первого просмотра"
-          scenarioBody="Когда вы смотрите короткие видео, важны быстрый старт, видимая кнопка подключения и минимум действий до первого просмотра."
+          heroTitle="POKROV для TikTok на Android и Windows"
+          heroSubtitle="Получите 5 дней бесплатно без карты, откройте POKROV и проверьте короткие видео без ручной настройки."
+          scenarioTitle="Как дойти до первого ролика"
+          scenarioBody="Для коротких видео важны быстрый старт, видимая кнопка подключения и минимум действий до проверки."
           scenarioCards={[
             {
-              eyebrow: "Мгновенный старт",
+              eyebrow: "Быстрый старт",
               glyph: "arc",
-              title: "Первый просмотр начинается быстрее",
-              desc: "Android- или Windows-приложение быстро доводит до реального теста, чтобы вы смотрели видео, а не разбирались в технических деталях.",
+              title: "Проверяете TikTok до оплаты",
+              desc: "Android- или Windows-приложение доводит до реального теста, а не до списка технических настроек.",
             },
             {
               eyebrow: "Приложение сначала",
@@ -46,7 +46,7 @@ export default function TiktokPage() {
               eyebrow: "Поддержка",
               glyph: "shield",
               title: "Поддержка остается рядом",
-              desc: "Telegram и команда поддержки помогают быстро решить вопрос по установке, доступу или продлению.",
+              desc: "Telegram и команда поддержки помогают решить вопрос по установке, доступу или продлению.",
             },
           ]}
           clusterTitle="Ещё задачи под видео"
