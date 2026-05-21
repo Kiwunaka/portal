@@ -59,7 +59,7 @@ class _FakeCallback:
         self.answers: list[tuple[str, bool]] = []
         self.data = data
 
-    async def answer(self, text, show_alert=False):
+    async def answer(self, text="", show_alert=False):
         self.answers.append((str(text), bool(show_alert)))
         return None
 
@@ -186,6 +186,9 @@ class BotPaywallTests(unittest.TestCase):
         labels = [button.text for row in reply_markup.inline_keyboard for button in row]
         self.assertIn("📋 Скопировать ссылку", labels)
         self.assertIn("📱 QR для подключения", labels)
+        self.assertIn("📲 Как подключить вручную", labels)
+        self.assertNotIn("👨‍👩‍👧‍👦 Поделиться доступом", labels)
+        self.assertNotIn("🚨 Panic Mode", labels)
 
     def test_check_subscription_allows_when_channel_not_configured(self) -> None:
         self.bot_module.NEWS_CHANNEL_ID = ""
@@ -800,7 +803,26 @@ class BotPaywallTests(unittest.TestCase):
         labels = [str(button.get("text") or "") for row in rows for button in row]
         upper_labels = [label.upper() for label in labels]
         self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
+        self.assertTrue(any("ПОДКЛЮЧИТЬ УСТРОЙСТВО" in label for label in upper_labels))
+        self.assertTrue(any("Я ЗАПУТАЛСЯ" in label for label in upper_labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
+        self.assertFalse(any("РУЧНАЯ ССЫЛКА" in label for label in upper_labels))
+        self.assertFalse(any("БОНУСЫ" in label for label in upper_labels))
+
+    def test_confused_help_routes_to_user_intents_without_raw_link(self) -> None:
+        callback = _FakeCallback(1001, data="confused_help")
+
+        asyncio.run(self.bot_module.confused_help(callback))
+
+        final_text = callback.message.edits[-1]
+        self.assertIn("Давайте без терминов", final_text)
+        self.assertNotIn("connect.pokrov.space", final_text)
+        reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
+        labels = [button.text for row in reply_markup.inline_keyboard for button in row]
+        self.assertIn("📲 Подключить это устройство", labels)
+        self.assertIn("🎫 Есть код оплаты или подарок", labels)
+        self.assertIn("🔗 Есть личная ссылка", labels)
+        self.assertIn("⚠️ Подключение не работает", labels)
 
     def test_configure_public_bot_menu_matches_live_checker_payload(self) -> None:
         class _MenuBot:

@@ -1031,6 +1031,201 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_start99_public_order_blocks_after_first_purchase_flag(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4455,
+                    username="start99_used",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4455",
+                    sub_type="PAID",
+                    is_active=True,
+                    first_purchase_done=True,
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4455,
+            plan_code="start_99",
+            promo_code="",
+            campaign_key="",
+            source="bot",
+        )
+
+        async def _unexpected_create_rub_payment(**kwargs):
+            raise AssertionError("start_99 repeat purchase must be blocked before provider invoice creation")
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _unexpected_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={"provider": "lavatop", "plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertIn("start_99 is available only once", response.text)
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4455).first()
+            self.assertIsNone(row)
+        finally:
+            s.close()
+
+    def test_start99_public_order_blocks_when_user_has_paid_lavatop_start99_order(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4456,
+                    username="start99_lava_paid",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4456",
+                    sub_type="FREE",
+                    is_active=True,
+                    first_purchase_done=False,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="lavatop_start99_paid_4456",
+                    provider="lavatop",
+                    tg_id=4456,
+                    plan_code="start_99",
+                    source="site",
+                    amount=99.0,
+                    currency="RUB",
+                    status="paid",
+                    paid_at=self.api._utcnow(),
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4456,
+            plan_code="start_99",
+            promo_code="",
+            campaign_key="",
+            source="bot",
+        )
+
+        async def _unexpected_create_rub_payment(**kwargs):
+            raise AssertionError("paid Lava.top start_99 history must block repeat provider invoice creation")
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _unexpected_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={"provider": "lavatop", "plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertIn("start_99 is available only once", response.text)
+
+        s = SessionLocal()
+        try:
+            rows = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4456).all()
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0].order_id, "lavatop_start99_paid_4456")
+        finally:
+            s.close()
+
+    def test_start99_public_order_blocks_when_user_has_any_paid_lavatop_order(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4457,
+                    username="start99_lava_paid_other_plan",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4457",
+                    sub_type="FREE",
+                    is_active=True,
+                    first_purchase_done=False,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="lavatop_1_month_paid_4457",
+                    provider="lavatop",
+                    tg_id=4457,
+                    plan_code="1_month",
+                    source="site",
+                    amount=299.0,
+                    currency="RUB",
+                    status="paid",
+                    paid_at=self.api._utcnow(),
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4457,
+            plan_code="start_99",
+            promo_code="",
+            campaign_key="",
+            source="bot",
+        )
+
+        async def _unexpected_create_rub_payment(**kwargs):
+            raise AssertionError("paid Lava.top history must block repeat provider invoice creation")
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _unexpected_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={"provider": "lavatop", "plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertIn("start_99 is available only once", response.text)
+
+        s = SessionLocal()
+        try:
+            rows = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4457).all()
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0].order_id, "lavatop_1_month_paid_4457")
+        finally:
+            s.close()
+
     def test_anonymous_public_lavatop_order_requires_email_and_uses_it_for_invoice(self) -> None:
         client = TestClient(self.api.app)
         capture: dict[str, object] = {}
@@ -1161,8 +1356,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         sent_text = str(sent["text"])
         self.assertIn("Оплата прошла", sent_text)
         self.assertIn("Лучший путь: откройте POKROV", sent_text)
-        self.assertIn("Запасная ручная ссылка", sent_text)
-        self.assertIn("connect.pokrov.space", sent_text)
+        self.assertIn("Ручная ссылка / QR", sent_text)
+        self.assertNotIn("connect.pokrov.space", sent_text)
         self.assertNotIn("Happ", sent_text)
         self.assertNotIn("Hiddify", sent_text)
         kwargs = sent["kwargs"]

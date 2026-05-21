@@ -548,7 +548,7 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
         self.assertIn("windows.exe_url GitHub Releases .exe", missing)
         self.assertIn("docs_url under https://pokrov.space/install/", missing)
 
-    def test_ru_origin_failure_and_unsigned_windows_block_publication(self) -> None:
+    def test_ru_origin_pokrov_failure_and_unsigned_windows_block_publication(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)
             handoff = root / "handoff.md"
@@ -557,7 +557,7 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
             ru_origin = _write_ru_payload(
                 root / "ru-origin.json",
                 status="FAIL",
-                classification="RU_ORIGIN_TELEGRAM_DEGRADED",
+                classification="RU_ORIGIN_POKROV_DEGRADED",
             )
             client_evidence = _write_client_build_evidence(root / "client-build.md", authenticode="NotSigned")
             android_validation = _write_android_validation(root / "android-validation.json", ok=False)
@@ -584,6 +584,8 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
         self.assertEqual(report["classification"], "FAIL")
         checks = {check["name"]: check for check in report["checks"]}
         self.assertEqual(checks["ru_origin_probe_evidence"]["status"], "FAIL")
+        self.assertIn("RU_ORIGIN_POKROV_DEGRADED", checks["ru_origin_probe_evidence"]["note"])
+        self.assertNotIn("Telegram", "\n".join(checks["ru_origin_probe_evidence"].get("missing", [])))
         self.assertEqual(checks["windows_signing_or_unsigned_risk"]["status"], "EXTERNAL_DEPENDENCY")
 
     def test_ru_origin_operator_skip_from_env_is_release_ready_but_disclosed(self) -> None:
@@ -595,7 +597,7 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
             ru_origin = _write_ru_payload(
                 root / "ru-origin.json",
                 status="FAIL",
-                classification="RU_ORIGIN_TELEGRAM_DEGRADED",
+                classification="RU_ORIGIN_POKROV_DEGRADED",
             )
             client_evidence = _write_client_build_evidence(root / "client-build.md")
             android_validation = _write_android_validation(root / "android-validation.json", ok=False)
@@ -623,6 +625,7 @@ class PublicBetaExternalAccessPreflightTests(unittest.TestCase):
         checks = {check["name"]: check for check in report["checks"]}
         self.assertEqual(checks["ru_origin_probe_evidence"]["status"], "SKIPPED_BY_OPERATOR")
         self.assertIn("Do not claim RU-origin readiness", checks["ru_origin_probe_evidence"]["note"])
+        self.assertNotIn("Telegram", checks["ru_origin_probe_evidence"]["note"])
         serialized = json.dumps(report, ensure_ascii=False)
         self.assertNotIn("query_id=AAA", serialized)
         self.assertNotIn("secret-github-token", serialized)

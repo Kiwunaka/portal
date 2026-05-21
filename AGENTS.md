@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-05-16
+Last updated: 2026-05-21
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -36,7 +36,7 @@ Use it to answer four questions before touching code:
 - Legacy compatibility host: `kiwunaka.space`
 - Canonical control-plane host: `82.21.114.104`
 - Android public release is blocked until the repo/static gate pack is green and a physical-device release-build localhost/control-surface audit proves the client is safe
-- RU-origin probe readiness is an operational dependency; `mini` / `RFMINI` is the canonical RU-origin operator sandbox when SSH access is current
+- RU-origin probe readiness is an operational dependency for `POKROV` public hosts, API, and delivery-node reachability; `mini` / `RFMINI` is the canonical RU-origin operator sandbox when SSH access is current
 - Payment provider launch truth: paid checkout must stay unavailable or clearly degraded until Lava.top credentials, order creation, webhook auth, replay/idempotency, failed-payment, and reconciliation evidence are attached with secrets redacted
 - Current release gate snapshot: Open Beta v4 preparation is allowed; broad public release and `1.0.0` labeling are blocked until all P0 gates are green
 - Design source of truth: root `DESIGN.md` plus `shared/design-tokens.json` and `shared/design-tokens.schema.json`
@@ -51,7 +51,7 @@ Blocked P0 gates:
 - runtime app-download smoke with env-only Telegram init data
 - Android physical release-build localhost/control-surface audit
 - public Android/Windows handoff URLs
-- RU-origin probe evidence
+- RU-origin `POKROV` host/API/node probe evidence
 - deploy/brain-origin evidence for the exact release candidate
 
 Do not change public copy, deploy notes, or launch announcements to imply broad public availability until these gates have current, redacted evidence.
@@ -340,7 +340,7 @@ When behavior changes, update the matching canonical docs in the same task.
 2. Inspect `scripts/collect_node_metrics.py`, `infra/portal-node-metrics.service`, and `infra/portal-node-metrics.timer`.
 3. Verify `/api/admin/metrics/status` freshness, per-node alerts, and probe-failure fields.
 4. Treat hoster CPU warnings as capacity incidents requiring node and control-plane telemetry review.
-5. Treat RU probe readiness itself as a tracked dependency. Use `mini` / `RFMINI` as the canonical RU-origin operator sandbox when SSH access is current; if auth or reachability is blocked, report `RU-origin check: BLOCKED_BY_ACCESS`.
+5. Treat RU probe readiness itself as a tracked dependency for `POKROV` hosts, API, and delivery nodes. Use `mini` / `RFMINI` as the canonical RU-origin operator sandbox when SSH access is current; if auth or reachability is blocked, report `RU-origin check: BLOCKED_BY_ACCESS`.
 
 ### Client task
 

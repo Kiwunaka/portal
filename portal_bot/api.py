@@ -1583,6 +1583,27 @@ def _resolve_plan_config(*, s, code: str) -> dict[str, Any] | None:
     return None
 
 
+def _has_paid_lavatop_order(*, s, tg_id: int) -> bool:
+    if int(tg_id or 0) <= 0:
+        return False
+    row = (
+        s.query(ExternalOrder.id)
+        .filter(ExternalOrder.tg_id == int(tg_id))
+        .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "lavatop")
+        .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
+        .first()
+    )
+    return bool(row)
+
+
+def _ensure_start99_available_for_user(*, s, user: User | None, plan_code: str) -> None:
+    if (plan_code or "").strip().lower() != "start_99" or not user:
+        return
+    tg_id = int(getattr(user, "tg_id", 0) or 0)
+    if bool(getattr(user, "first_purchase_done", False)) or _has_paid_lavatop_order(s=s, tg_id=tg_id):
+        raise HTTPException(status_code=409, detail="start_99 is available only once per user")
+
+
 def _access_matrix_state_facts(access_state: str | None) -> dict[str, Any]:
     states = dict(_ACCESS_MATRIX.get("states") or {})
     return dict(states.get(str(access_state or "").strip(), {}) or {})
@@ -3910,7 +3931,7 @@ async def _telegram_send_message(
 
 def _telegram_paid_access_keyboard() -> dict[str, Any]:
     rows: list[list[dict[str, Any]]] = [
-        [{"text": "📲 Установить POKROV", "callback_data": "instruction"}],
+        [{"text": "📲 Подключить устройство", "callback_data": "instruction"}],
         [{"text": "🌐 Открыть кабинет", "web_app": {"url": _public_webapp_url()}}],
         [{"text": "🔗 Ручная ссылка / QR", "callback_data": "show_key"}],
     ]
@@ -3930,7 +3951,6 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
             s.commit()
             s.refresh(user)
         expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
-        sub_link = build_subscription_url(str(user.sub_token or ""))
     finally:
         s.close()
 
@@ -3938,11 +3958,8 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
         text = (
             "✅ *Оплата прошла, доступ готов.*\n\n"
             f"📅 До: `{expiry}`\n\n"
-            "Лучший путь: откройте POKROV и обновите доступ в кабинете.\n"
-            "Пока приложения в бете, мы не ограничиваем ручное подключение: "
-            "если POKROV ещё не установлен, скопируйте ссылку и используйте её только в доверенном совместимом клиенте.\n\n"
-            "🔗 *Запасная ручная ссылка:*\n"
-            f"`{sub_link}`"
+            "Лучший путь: откройте POKROV, войдите тем же способом и нажмите «Подключить».\n\n"
+            "Если приложения нет под рукой, нажмите «Ручная ссылка / QR» ниже. Я покажу её отдельно и напомню, как использовать безопасно."
         )
     else:
         text = (
@@ -3950,8 +3967,7 @@ async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bo
             f"📅 До: `{expiry}`\n\n"
             "Доступ записан в системе, но авто-синхронизация с узлами заняла больше обычного. "
             "Попробуйте открыть POKROV или кабинет через минуту; если подключение не заработает, напишите в поддержку.\n\n"
-            "🔗 *Запасная ручная ссылка:*\n"
-            f"`{sub_link}`"
+            "Ручная ссылка доступна по кнопке ниже, но используйте её только как запасной вариант."
         )
     return await _telegram_send_message(
         int(tg_id),
@@ -5953,6 +5969,8 @@ async def _rub_create_order_internal(
             user = s.query(User).filter(User.tg_id == int(normalized_tg_id)).first()
         if normalized_tg_id > 0 and not user:
             raise HTTPException(status_code=404, detail="User not found")
+        normalized_plan_code = str(plan.get("code") or plan_code).strip().lower()
+        _ensure_start99_available_for_user(s=s, user=user, plan_code=normalized_plan_code)
         base_amount = max(0, int(plan.get("amount_rub") or 0))
         final_amount = base_amount
         discount_pct = 0
@@ -5983,7 +6001,7 @@ async def _rub_create_order_internal(
             order_id=order_id,
             tg_id=int(normalized_tg_id) if normalized_tg_id > 0 else None,
             provider=provider,
-            plan_code=str(plan.get("code") or plan_code).strip().lower(),
+            plan_code=normalized_plan_code,
             source=source,
             campaign=(campaign or "").strip()[:64] or None,
             promo_code=effective_promo or None,
@@ -5997,7 +6015,7 @@ async def _rub_create_order_internal(
                     "promo_code": effective_promo,
                     "tg_id": int(normalized_tg_id) if normalized_tg_id > 0 else None,
                     "buyer_email": buyer_email_norm or None,
-                    "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+                    "plan_code": normalized_plan_code,
                     "provider": provider,
                     "plan_label": plan_label,
                     "fulfillment": {
@@ -6036,7 +6054,7 @@ async def _rub_create_order_internal(
         "currency": "RUB",
         "tg_id": int(normalized_tg_id) if normalized_tg_id > 0 else None,
         "buyer_email": buyer_email_norm or None,
-        "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+        "plan_code": normalized_plan_code,
         "plan_label": plan_label,
         "campaign": campaign or "",
         "promo_code": effective_promo or "",
@@ -6054,7 +6072,7 @@ async def _rub_create_order_internal(
             amount_rub=amount_rub,
             currency="RUB",
             tg_id=int(normalized_tg_id),
-            plan_code=str(plan.get("code") or plan_code).strip().lower(),
+            plan_code=normalized_plan_code,
             campaign=campaign or "",
             promo_code=effective_promo or "",
         )
@@ -6075,7 +6093,7 @@ async def _rub_create_order_internal(
             custom={
                 **({"tg_id": int(normalized_tg_id)} if normalized_tg_id > 0 else {}),
                 **({"email": buyer_email_norm} if buyer_email_norm else {}),
-                "plan_code": str(plan.get("code") or plan_code).strip().lower(),
+                "plan_code": normalized_plan_code,
                 "provider": provider,
                 "source": source,
                 "campaign": campaign or "",

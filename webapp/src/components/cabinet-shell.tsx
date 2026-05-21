@@ -363,8 +363,8 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   if (webLoginRequired) {
     return (
       <ShellState
-        title="Подтвердите вход"
-        description="Кабинет продолжает доступ в браузере. Само подключение по-прежнему живет в приложении POKROV."
+        title="Вход в аккаунт"
+        description="Доступ, устройства, оплата и поддержка."
       >
         <CabinetEntryAuth siteUrl={CABINET_SITE_URL} />
       </ShellState>

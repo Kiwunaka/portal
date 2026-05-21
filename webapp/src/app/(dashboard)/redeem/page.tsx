@@ -12,6 +12,19 @@ function normalizeKey(value: string): string {
   return String(value || "").trim().toUpperCase();
 }
 
+function looksLikeConnectionLink(value: string): boolean {
+  const normalized = String(value || "").trim().toLowerCase();
+  return (
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.includes("connect.pokrov.space") ||
+    normalized.includes("/s8kx2mp7qr4wt/")
+  );
+}
+
+const CONNECTION_LINK_ERROR =
+  "Это ссылка подключения, а не код активации. Ее нужно вставлять в совместимый клиент, а код оплаты или подарка вводится здесь.";
+
 function formatDate(value?: string | null): string {
   if (!value) return "Уточним по мере обновления";
   const parsed = new Date(value);
@@ -35,7 +48,14 @@ export default function RedeemPage() {
   const [error, setError] = useState("");
 
   const lookup = async (rawKey?: string): Promise<AccessKeyStatusPayload | null> => {
-    const key = normalizeKey(rawKey ?? keyInput);
+    const rawValue = rawKey ?? keyInput;
+    if (looksLikeConnectionLink(rawValue)) {
+      setStatus(null);
+      setMessage("");
+      setError(CONNECTION_LINK_ERROR);
+      return null;
+    }
+    const key = normalizeKey(rawValue);
     if (!key) {
       setError("Введите код, чтобы мы могли его проверить.");
       return null;
@@ -185,7 +205,7 @@ export default function RedeemPage() {
     <CabinetRoute
       eyebrow="Тарифы и оплата"
       title="Активировать код"
-      description="Если у вас уже есть код оплаты или подарка, активируйте его здесь в текущем профиле."
+      description="Здесь вводится только код оплаты или подарка. Личная ссылка подключения сюда не подходит."
       actions={
         <>
           <AppRouteLink href="/subscription/checkout/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -203,7 +223,7 @@ export default function RedeemPage() {
         badge={status?.exists && !status.redeemed ? "Код можно активировать" : status?.redeemed ? "Нужна проверка" : "Сначала проверка"}
         badgeTone={status?.exists && !status.redeemed ? "success" : status?.redeemed ? "warning" : "neutral"}
         title={status?.exists && !status.redeemed ? "Код найден, активируйте его в профиле" : "Проверьте код перед активацией"}
-        description="Код активируется в текущем аккаунте POKROV. Новый профиль создавать не нужно, а личные ссылки и ручные параметры здесь не показываются."
+        description="Код активируется в текущем аккаунте POKROV. Если у вас длинная ссылка или токен подключения, используйте раздел тарифов и ручной вариант."
         actions={
           <>
             <button
@@ -259,7 +279,7 @@ export default function RedeemPage() {
             <input
               value={keyInput}
               onChange={(event) => setKeyInput(normalizeKey(event.target.value))}
-              placeholder="Например: POKROV-XXXX-XXXX"
+              placeholder="Код активации или подарка"
               className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
             />
             <button
@@ -279,6 +299,9 @@ export default function RedeemPage() {
               {redeemBusy ? "Активируем..." : "Активировать"}
             </button>
           </div>
+          <p className="mt-3 text-xs leading-5 text-[var(--atlas-text-muted)]">
+            Длинная ссылка вида connect.pokrov.space сюда не подходит. Это ссылка подключения для совместимого клиента.
+          </p>
 
           {message ? (
             <div className="mt-4 rounded-2xl border border-emerald-300/40 bg-emerald-50/80 px-4 py-3 text-sm leading-6 text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">

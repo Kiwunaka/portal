@@ -39,7 +39,19 @@ function legacyTelegramWidgetEnabled(): boolean {
   );
 }
 
-export default function TelegramLoginWidget() {
+type TelegramLoginWidgetProps = {
+  buttonClassName?: string;
+  buttonLabel?: string;
+  busyLabel?: string;
+  showHint?: boolean;
+};
+
+export default function TelegramLoginWidget({
+  buttonClassName = "btn-primary w-full rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]",
+  buttonLabel = "Открыть Telegram для входа",
+  busyLabel = "Открываем Telegram...",
+  showHint = true,
+}: TelegramLoginWidgetProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const authDoneRef = useRef(false);
   const legacyWidget = legacyTelegramWidgetEnabled();
@@ -112,16 +124,18 @@ export default function TelegramLoginWidget() {
   return (
     <div className="space-y-2">
       <button
-        className="btn-primary w-full rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
+        className={buttonClassName}
         disabled={webLoginBusy}
         onClick={() => void startTelegramLogin()}
         type="button"
       >
-        {webLoginBusy ? "Открываем Telegram..." : "Открыть Telegram для входа"}
+        {webLoginBusy ? busyLabel : buttonLabel}
       </button>
-      <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-        Telegram подтвердит вход и вернет вас обратно в кабинет без лишних экранов.
-      </p>
+      {showHint ? (
+        <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+          Telegram подтвердит вход и вернет вас обратно в кабинет без лишних экранов.
+        </p>
+      ) : null}
       <div ref={hostRef} className={legacyWidget ? "min-h-[56px]" : "hidden"} id="tg-login-widget" />
       {legacyWidget && widgetHint ? <p className="text-xs leading-5 text-amber-600 dark:text-amber-300">{widgetHint}</p> : null}
     </div>

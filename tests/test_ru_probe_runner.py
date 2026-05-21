@@ -44,8 +44,6 @@ class RuProbeRunnerTests(unittest.TestCase):
 
         names = {target["name"] for target in targets}
         self.assertIn("google", names)
-        self.assertIn("api-telegram", names)
-        self.assertIn("telegram-web", names)
         self.assertIn("pokrov-space", names)
         self.assertIn("app-pokrov-space", names)
         self.assertIn("api-pokrov-space", names)
@@ -53,6 +51,8 @@ class RuProbeRunnerTests(unittest.TestCase):
         self.assertIn("node-nl", names)
         self.assertIn("reserve-xhttp", names)
         self.assertIn("reserve-hysteria", names)
+        self.assertNotIn("api-telegram", names)
+        self.assertNotIn("telegram-web", names)
         self.assertNotIn("node-brain", names)
         self.assertNotIn("node-mini", names)
         self.assertNotIn("node-rf1", names)
@@ -94,7 +94,7 @@ class RuProbeRunnerTests(unittest.TestCase):
 
         self.assertEqual(classifications[0], "probe_host_problem")
 
-    def test_classify_probe_report_flags_telegram_reachability_problem(self) -> None:
+    def test_classify_probe_report_ignores_telegram_targets_for_ru_gate(self) -> None:
         classifications = self.module._classify_probe_report(
             {
                 "google_reachable": True,
@@ -111,7 +111,7 @@ class RuProbeRunnerTests(unittest.TestCase):
             }
         )
 
-        self.assertIn("telegram_reachability_problem", classifications)
+        self.assertNotIn("telegram_reachability_problem", classifications)
         self.assertNotIn("canonical_host_problem", classifications)
         self.assertNotIn("foreign_edge_problem", classifications)
 

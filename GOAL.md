@@ -22,7 +22,7 @@ Owner decisions for this goal:
 - Lava.top payment is considered working by the owner, but Codex must still attach fresh redacted evidence for the exact public route being enabled.
 - Email is considered working by the owner, but Codex must still verify runtime readiness and retain redacted evidence.
 - Buyer/probe email is owner-provided. Use it only as a local runtime input such as `POKROV_RELEASE_BUYER_EMAIL`; do **not** commit the raw email address into docs or evidence.
-- RU-origin check is reduced to **brain/API reachability from RU**. Telegram from Russia is expected unavailable and must not block this release. Do not treat RU Telegram unreachability as a failed gate.
+- RU-origin check is scoped to POKROV public host/API/delivery-node reachability from a Russian origin only.
 - If RU host access is missing, search local files and prior evidence for current `mini` / RU access. If unavailable, mark only the RU brain-reachability gate as `BLOCKED_BY_ACCESS` with exact next command/input.
 - Do not resume RF ingress, `rf1` promotion, or `mini` ingress experiments.
 
@@ -134,7 +134,7 @@ Preserve these unless a newer canonical doc is deliberately changed in the same 
 - Never delete retained evidence under `ops-local/`, `docs/audit-artifacts/`, `docs/developer/work-orders/`, retained bridge archives, signing material, merchant secrets, or SSH key packs.
 - Never mark a gate as passed because a local/static check passed when that gate requires live runtime, brain-origin, RU-origin, provider, email-inbox, or deploy evidence.
 - Never claim store readiness, trusted signing, notarization, TestFlight, Google Play, Microsoft Store, iOS, or macOS release.
-- Never treat RU Telegram unreachability as a blocker. For this goal, RU-origin checks only brain/API reachability.
+- Never expand RU-origin checks beyond POKROV host/API/delivery-node reachability for this goal.
 - Never run RF ingress, `rf1` promotion, or `mini` ingress experiments.
 
 ## Checkpoint 0 — baseline
@@ -223,7 +223,6 @@ Required gates:
 Gate-specific rules:
 
 - Mark signing/store/manifests as `NOT_APPLICABLE` for this release, with note: `Owner-approved outside-store Android+Windows release as-is; no trusted signing/store manifests in scope`.
-- Mark RU Telegram checks as `NOT_APPLICABLE`, with note: `Owner states Telegram from Russia is unavailable; release RU check is brain/API reachability only`.
 - If `start_99` is the only proven payment plan, restrict public checkout to `start_99` and mark other plans `NOT_APPLICABLE` or disabled.
 - If raw Android physical audit cannot be produced but current docs accept operator attestation for this beta wave and owner accepts release as-is, mark `Android_release_audit_or_owner_accepted_attestation=PASS` only with exact evidence path and wording `OPERATOR_ATTESTED`, not raw evidence.
 - If any runtime/deploy/probe input is missing, do not ask broad questions. Search local files, docs, env examples, `ops-local/`, audit artifacts, and release handoff metadata. If still missing, mark the precise gate `BLOCKED_BY_ACCESS`.
@@ -336,7 +335,6 @@ RU-origin brain/API reachability only:
 ```powershell
 # First search local docs/ops-local for current RU host access.
 # If mini/RU host access works, run only a brain/API reachability check from that origin.
-# Do not check Telegram from RU for this release gate.
 ```
 
 ## Runtime APP_* sync policy
@@ -410,8 +408,6 @@ Windows:
 For this release only:
 
 - Required RU check: brain/API reachability from a Russian origin, if access exists.
-- Telegram from Russia is expected unavailable and not a release blocker.
-- Do not run Telegram reachability as a failing RU gate.
 - Do not run RF ingress or `mini` ingress experiments.
 - If RU access is unavailable after searching local files and retained evidence, mark `RU_origin_brain_api_reachability_only=BLOCKED_BY_ACCESS` and state exact missing access.
 
@@ -466,7 +462,7 @@ Report `COMPLETE_PUBLIC_RELEASE_GO` only when all are true:
 - Email auth and paid-key email delivery are verified or any non-green email path degrades honestly.
 - Android outside-store release state is truthful and accepted for this release.
 - Windows unsigned warning posture is truthful and visible.
-- RU-origin brain/API check is PASS, or the only remaining RU issue is exact `BLOCKED_BY_ACCESS` accepted by owner policy. Do not block on RU Telegram.
+- RU-origin brain/API check is PASS, or the only remaining RU issue is exact `BLOCKED_BY_ACCESS` accepted by owner policy.
 - `webapp/public/release-status.json` is updated to a current GO artifact for the approved release scope.
 - `docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md` is updated from old NO_GO to exact GO scope.
 - Product/runbook/client docs are consistent with the final public Android+Windows outside-store release scope.
@@ -520,7 +516,6 @@ Origin checks:
 - current-origin check:
 - brain-origin check:
 - RU-origin brain/API check:
-- RU Telegram check: NOT_APPLICABLE — owner states Telegram from Russia is unavailable and not a release blocker
 
 Remaining blockers / risks:
 -

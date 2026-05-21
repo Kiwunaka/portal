@@ -382,11 +382,12 @@ Required external geography check:
 
 - run an RU-based external probe every `6 hours`
 - verify the probe host itself can reach `google.com`
-- verify Telegram surfaces such as `api.telegram.org` and `t.me`
-- verify the current `POKROV` nodes remain reachable from that external RU vantage point
+- verify the current `POKROV` public hosts and API health from that external RU vantage point
+- verify the current `POKROV` delivery nodes remain reachable from that external RU vantage point
 - verify the RF reserve ingress state:
   - `xhttp_alive`
   - `hysteria_alive`
+- keep the RU-origin release verdict limited to POKROV public hosts, API health, delivery-node reachability, and reserve ingress checks
 
 This gives operators a useful distinction between:
 

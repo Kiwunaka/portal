@@ -381,11 +381,11 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Telegram подтверждает кабинет" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toBeVisible();
-    await expect(page.locator("main")).toContainText(
-      "Email-вход появится после готовности доставки писем. Сейчас для браузера используйте Telegram",
-    );
+    await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Вход" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Регистрация" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Email-вход сейчас проверяется");
+    await expect(page.getByRole("button", { name: "Войти через Telegram" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Продолжить через email/i })).toHaveCount(0);
   });
 
@@ -396,21 +396,19 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Скоро");
-    await expect(page.locator("main")).toContainText("используйте Telegram");
+    await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Email-вход сейчас проверяется");
+    await expect(page.locator("main")).toContainText("Пока войдите через Telegram");
     await expect(page.getByRole("button", { name: /^Email$/i })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Регистрация/i })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Войти/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Продолжить через email/i })).toHaveCount(0);
   });
 
   test("reuses an existing web session and lands in the cabinet without showing auth entry again", async ({ page }) => {
     await page.goto("/");
 
     await expect(page).toHaveURL(/\/dashboard\/?$/);
-    await expect(page.getByRole("heading", { name: "Ваш доступ под контролем" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Telegram подтверждает кабинет" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Ваш доступ POKROV" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toHaveCount(0);
   });
 
   test("shows a human reauth CTA when the browser session is expired", async ({ page }) => {
@@ -428,7 +426,7 @@ test.describe("Cabinet flow", () => {
     await page.goto("/dashboard/");
 
     await expect(page.locator("main")).toContainText("Сессия в браузере устарела");
-    await expect(page.getByRole("button", { name: "Открыть Telegram для входа" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Войти через Telegram" })).toBeVisible();
   });
 
   test("maps raw Telegram deprecated auth errors to a reauth CTA", async ({ page }) => {
@@ -445,16 +443,17 @@ test.describe("Cabinet flow", () => {
 
     await expect(page.locator("main")).toContainText("Вход устарел");
     await expect(page.locator("main")).not.toContainText("telegram_login_deprecated");
-    await expect(page.getByRole("button", { name: "Открыть Telegram для входа" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Войти через Telegram" })).toBeVisible();
   });
 
   test("keeps the dashboard on consumer-safe access actions", async ({ page }) => {
     await page.goto("/dashboard/");
 
-    await expect(page.getByRole("heading", { name: "Ваш доступ под контролем" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("приложение POKROV");
+    await expect(page.getByRole("heading", { name: "Ваш доступ POKROV" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Откройте приложение");
     await expect(page.getByRole("heading", { name: "Что делать дальше" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Скачать приложение" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Я запутался" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Написать в поддержку" }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText("QR");
     await expect(page.locator("main")).not.toContainText("?format=plain");
@@ -472,7 +471,7 @@ test.describe("Cabinet flow", () => {
 
     await page.locator("aside nav a[href='/subscription/']").click();
     await expect(page).toHaveURL(/\/subscription\/?$/);
-    await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Выберите срок продления" })).toBeVisible();
 
     await page.locator("aside nav a[href='/downloads/']").click();
     await expect(page).toHaveURL(/\/downloads\/?$/);
@@ -500,14 +499,15 @@ test.describe("Cabinet flow", () => {
   test("shows subscription manual connection only as an explicit fallback", async ({ page }) => {
     await page.goto("/subscription/");
 
-    await expect(page.getByRole("heading", { name: "Продление и режимы" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Выберите срок продления" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Открыть оплату" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Ручное подключение только как запасной путь" })).toBeVisible();
-    const manualConnection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Ручное подключение только как запасной путь" }) });
-    await expect(manualConnection).toContainText("не показываем ее первой");
+    await expect(page.getByRole("heading", { name: "Если приложения POKROV пока нет под рукой" })).toBeVisible();
+    const manualConnection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Если приложения POKROV пока нет под рукой" }) });
+    await expect(manualConnection).toContainText("не заменяет код активации");
+    await expect(manualConnection).toContainText("Совместимые клиенты");
     await expect(manualConnection).not.toContainText("mock_token");
-    await manualConnection.getByRole("button", { name: "Показать ручной вариант" }).click();
+    await manualConnection.getByRole("button", { name: "Показать ссылку и QR" }).click();
     await expect(manualConnection).toContainText("mock_token");
     await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
     await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toBeVisible();
@@ -671,6 +671,9 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/support/");
     await expect(page.getByRole("heading", { name: "Один кейс на весь вопрос" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Выберите, что у вас сейчас" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("У меня есть личная ссылка");
+    await expect(page.locator("main")).toContainText("Длинная ссылка подключения туда не подходит");
     await expect(page.locator("main")).toContainText("Безопасная диагностика");
     await expect(page.locator("main")).not.toContainText("public IP");
     await expect(page.locator("main")).not.toContainText("subscription_url");

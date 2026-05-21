@@ -67,24 +67,6 @@ def _build_default_targets(inventory_path: Path, reserve_host: str = "", reserve
             "http_path": "/",
         },
         {
-            "name": "api-telegram",
-            "kind": "telegram",
-            "host": "api.telegram.org",
-            "port": 443,
-            "sni": "api.telegram.org",
-            "include_http": True,
-            "http_path": "/",
-        },
-        {
-            "name": "telegram-web",
-            "kind": "telegram",
-            "host": "t.me",
-            "port": 443,
-            "sni": "t.me",
-            "include_http": True,
-            "http_path": "/",
-        },
-        {
             "name": "pokrov-space",
             "kind": "canonical",
             "host": "pokrov.space",
@@ -384,12 +366,9 @@ def _classify_probe_report(payload: dict[str, Any]) -> list[str]:
         classifications.append("probe_host_problem")
 
     canonical_failed = any(str(item.get("kind") or "") == "canonical" and not bool(item.get("ok")) for item in targets)
-    telegram_failed = any(str(item.get("kind") or "") == "telegram" and not bool(item.get("ok")) for item in targets)
     foreign_failed = any(str(item.get("kind") or "") == "foreign_node" and not bool(item.get("ok")) for item in targets)
     if canonical_failed:
         classifications.append("canonical_host_problem")
-    if telegram_failed:
-        classifications.append("telegram_reachability_problem")
     if foreign_failed:
         classifications.append("foreign_edge_problem")
         classifications.append("eu_node_problem")

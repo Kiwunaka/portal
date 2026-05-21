@@ -58,7 +58,6 @@ python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 Из отчёта должно быть понятно:
 
 - может ли RU-host открыть `google.com`
-- может ли он достучаться до Telegram-поверхностей, например `api.telegram.org` и `t.me`
 - открываются ли текущие публичные поверхности `POKROV`, если это нужно в проверке
 - доступны ли целевые delivery nodes
 - доступен ли reserve contour
@@ -79,7 +78,6 @@ python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 - путь к сырому JSON
 - путь к готовому отчёту или сам короткий summary
 - открывался ли `google.com`
-- открывались ли Telegram-поверхности
 - краткий итог по нодам
 - статусы `xhttp_alive` и `hysteria_alive`
 - итоговую `probe_classification`

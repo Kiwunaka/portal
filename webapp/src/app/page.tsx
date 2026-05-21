@@ -13,26 +13,15 @@ import { Preloader } from "@/components/ui/preloader";
 import { pokrovBranding } from "./branding";
 import PokrovLogo from "./pokrov-logo";
 
-const ENTRY_STEPS = [
-  "Проверить срок доступа и быстро вернуться в рабочий кабинет.",
-  "Открыть продление, загрузки, код активации или поддержку без нового старта.",
-  "Продолжить с тем же профилем, который уже связан с приложением POKROV.",
-] as const;
-
 function EntrySkeleton() {
   return (
-    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[1180px] items-center px-4 py-8 sm:px-6">
-      <DoubleBezel className="w-full" innerClassName="grid gap-5 p-6 lg:grid-cols-[1.02fr_0.98fr] lg:p-8">
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[760px] items-center px-4 py-6 sm:px-6">
+      <DoubleBezel className="w-full" innerClassName="p-5 sm:p-7">
         <div className="space-y-8">
           <div className="h-12 w-52 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-          <div className="h-4 w-28 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-          <div className="h-14 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
-          <div className="h-24 w-full max-w-2xl animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
-        </div>
-        <div className="rounded-[1.7rem] bg-slate-50 p-5 dark:bg-white/[0.04]">
-          <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-          <div className="mt-4 h-11 w-full animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-          <div className="mt-4 h-28 w-full animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+          <div className="h-10 w-60 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+          <div className="h-12 w-full animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
+          <div className="h-40 w-full animate-pulse rounded-[1.4rem] bg-slate-200 dark:bg-slate-800" />
         </div>
       </DoubleBezel>
     </main>
@@ -110,84 +99,38 @@ function EntryBody() {
   }
 
   return (
-    <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-[1240px] items-center px-4 py-8 sm:px-6">
+    <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-[760px] items-center px-4 py-6 sm:px-6">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(209,250,229,0.3),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.05),transparent_50%)]" />
 
-      <DoubleBezel tone="glass" className="w-full" innerClassName="grid gap-5 p-6 lg:grid-cols-[1.05fr_0.95fr] lg:p-8">
-        <div className="space-y-8 pr-0 lg:pr-8">
-          <FadeUp delay={0.1} className="flex flex-wrap items-center justify-between gap-4">
-            <PokrovLogo
-              showWordmark
-              className="inline-flex items-center gap-3"
-              markClassName="h-12 w-12 rounded-full bg-white p-2.5 shadow-sm ring-1 ring-emerald-900/5 dark:bg-white/[0.04] dark:ring-white/10"
-              caption={pokrovBranding.cabinetName}
-              label="POKROV cabinet"
-            />
-            <AppRouteLink
-              href={pokrovBranding.marketingUrl}
-              hardNavigate
-              className="rounded-full bg-black/5 px-5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 transition-colors hover:bg-black/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-            >
-              {pokrovBranding.siteLinkLabel}
-            </AppRouteLink>
-          </FadeUp>
+      <DoubleBezel tone="glass" className="w-full" innerClassName="p-5 sm:p-7">
+        <FadeUp delay={0.1} className="flex flex-wrap items-center justify-between gap-4">
+          <PokrovLogo
+            showWordmark
+            className="inline-flex items-center gap-3"
+            markClassName="h-12 w-12 rounded-full bg-white p-2.5 shadow-sm ring-1 ring-emerald-900/5 dark:bg-white/[0.04] dark:ring-white/10"
+            caption={pokrovBranding.cabinetName}
+            label="POKROV cabinet"
+          />
+          <AppRouteLink
+            href={pokrovBranding.marketingUrl}
+            hardNavigate
+            className="rounded-full bg-black/5 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-black/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
+          >
+            На сайт
+          </AppRouteLink>
+        </FadeUp>
 
-          <FadeUp delay={0.2} className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 ring-1 ring-inset ring-emerald-200/50 dark:bg-emerald-500/10 dark:ring-emerald-400/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-800 dark:text-emerald-300">
-                {pokrovBranding.entryEyebrow}
-              </p>
-            </div>
-            <h1 className="font-display text-[clamp(2.5rem,6vw,4.5rem)] font-semibold leading-[0.92] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
-              Продолжите с того места, где остановились
-            </h1>
-            <p className="max-w-xl text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
-              Здесь открывается личный кабинет POKROV: срок доступа, устройства,
-              коды активации, загрузки и поддержка. Подключение и ежедневный выбор режима остаются в приложении.
-            </p>
-          </FadeUp>
+        <FadeUp delay={0.2} className="mt-8">
+          <h1 className="font-display text-[clamp(2.15rem,7vw,3.2rem)] font-semibold leading-[1.02] text-slate-950 dark:text-slate-50">
+            Вход в аккаунт
+          </h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+            Доступ, устройства, оплата и поддержка.
+          </p>
+        </FadeUp>
 
-          <FadeUp delay={0.3} className="grid gap-3 sm:grid-cols-3">
-            {ENTRY_STEPS.map((step, index) => (
-              <article
-                key={step}
-                className="group relative overflow-hidden rounded-[1.5rem] bg-slate-50/50 p-5 ring-1 ring-inset ring-slate-200/50 transition-colors hover:bg-emerald-50/50 hover:ring-emerald-200/50 dark:bg-white/[0.02] dark:ring-white/5 dark:hover:bg-emerald-500/5 dark:hover:ring-emerald-500/20"
-              >
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800/70 transition-colors group-hover:text-emerald-800 dark:text-emerald-400/70 dark:group-hover:text-emerald-400">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <p className="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{step}</p>
-              </article>
-            ))}
-          </FadeUp>
-        </div>
-
-        <FadeUp delay={0.4} className="h-full">
-          <div className="relative flex h-full flex-col justify-center overflow-hidden rounded-[2rem] bg-white p-6 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.1)] ring-1 ring-slate-200/50 dark:bg-[#0a0f0d] dark:ring-white/10 sm:p-8">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Вход в браузере
-            </p>
-            <h2 className="mt-3 font-display text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-slate-950 dark:text-slate-50">
-              Подтвердите аккаунт и продолжайте
-            </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
-              Telegram работает как текущий путь подтверждения. Мы не просим заново знакомиться с продуктом:
-              вход нужен только чтобы показать именно ваш доступ, обращения и устройства.
-            </p>
-            <div className="mt-8">
-              <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />
-            </div>
-
-            <div className="mt-8 rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.02]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                Вход без ручных профилей
-              </p>
-              <p className="mt-2 text-[13px] leading-relaxed text-slate-600 dark:text-slate-400">
-                Если браузер уже знает вашу сессию, мы сразу переведем вас в кабинет. Email-продолжение пока честно помечено как готовящееся.
-              </p>
-            </div>
-          </div>
+        <FadeUp delay={0.3} className="mt-7">
+          <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />
         </FadeUp>
       </DoubleBezel>
     </main>

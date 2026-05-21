@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-05-19
+Last updated: 2026-05-21
 
 ## Document Status
 
@@ -289,6 +289,7 @@ Official Telegram surfaces:
 - `free_monthly` keeps monthly traffic reset via the free-cycle job
 - after `5 GB` is exhausted, the account stays usable in `soft mode` until the next reset
 - `paid` remains unlimited traffic with up to `5 devices`
+- `start_99` is a one-time user plan; checkout must reject repeat attempts before provider invoice creation when the account has already made a first purchase or already has any successful paid Lava.top order
 
 ## Advanced Settings Policy
 

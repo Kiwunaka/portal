@@ -147,3 +147,18 @@ Second-wave consilium synthesis applied after OpenCode reviews with DeepSeek V4 
 - rewrote value cards from feature labels into buyer reasons: free start without card, one-action app start, one account for phone/computer, and Telegram bonus/support
 - added homepage FAQ UI and FAQ JSON-LD from the shared marketing FAQ list, then expanded the list with manual-profile and beta-availability objections
 - kept `VPN` out of public POKROV copy and did not use unsupported availability, speed, rating, social-proof, audit, or guarantee claims
+
+## 2026-05-21 Telegram Bot Onboarding Pass
+
+Observed live Telegram competitor flows:
+
+- PickVPN is strong at per-platform instructions, subscription status, and explicit plan/payment steps, but its first menu is crowded and raw subscription links are too visible.
+- MORI is stronger at simplicity: the first menu is short, platform download choices are obvious, and `My key` is easy to understand. Its weakness is that raw keys/links are exposed too early and the copy relies on unsupported hype.
+
+POKROV synthesis:
+
+- keep the first layer short and action-led: cabinet, device connection, access status, help, support, and secondary actions
+- add a `Я запутался` route that asks what the user has now: device to connect, activation code, personal connection link, or broken connection
+- keep personal `connect.pokrov.space` links out of payment/gift success messages; show them only behind explicit `Ручная ссылка / QR`
+- treat app install as the normal path, with manual compatible clients only as a beta/recovery fallback
+- in the cabinet, add a visible `Я запутался` entry that routes to downloads, redeem, manual fallback, or support without requiring protocol knowledge

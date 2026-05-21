@@ -255,6 +255,9 @@ Current user-facing delivery semantics:
 - one key-first commerce path: buy key -> redeem key -> managed premium
 - no public smart/plain split in bot, site, or webapp wording
 - consumer client and cabinet flows should prefer reconnect, refresh, route-mode change, checkout, and support over raw subscription copy/edit surfaces
+- the main Telegram bot must not put the manual link, QR, share action, or security reset on the first menu layer; those actions belong in `Ещё`, device instructions, or explicit manual/recovery context
+- redeem surfaces must reject or clearly explain `connect.pokrov.space` URLs as connection links, not activation keys
+- payment, gift, and bonus success messages should prefer app/cabinet continuation and may offer a `Ручная ссылка / QR` button, but should not paste the full bearer connection URL into the message body by default
 
 Compatibility note:
 
@@ -289,6 +292,7 @@ Contract rule:
 Contract rule:
 
 - Telegram linking should also refresh the canonical linked username automatically when Telegram provides one
+- Raw `sub_token` values and `connect.pokrov.space` subscription URLs are bearer connection secrets for compatible clients only. They must not be accepted as Telegram-linking proof or as access-key redemption codes.
 
 ## Telegram Bonus Claim Flow
 

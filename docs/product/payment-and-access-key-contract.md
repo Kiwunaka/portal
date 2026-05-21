@@ -1,6 +1,6 @@
 # Payment And Access-Key Contract
 
-Last updated: 2026-05-15
+Last updated: 2026-05-21
 
 ## Current Rule
 
@@ -30,5 +30,6 @@ Current fulfillment contract:
 - after a paid bot callback, the user receives a Telegram handoff that prefers the POKROV app/cabinet and also includes the single `connect.pokrov.space` subscription link for beta-stage manual import;
 - the authenticated cabinet may show the same `connect.pokrov.space` subscription link and QR after access is active, so beta users can connect manually while native apps are still gated;
 - anonymous public checkout requires buyer email and issues one access key through email delivery after a valid paid callback;
+- `start_99` is a one-time user plan: backend order creation must reject it before provider invoice creation when `User.first_purchase_done=true` or when the user already has any successful paid Lava.top order;
 - amount, currency, plan, provider auth, local order binding, replay idempotency, and failed/cancelled events are mandatory gate checks before access changes;
 - access keys must not be returned in public payment API responses or URLs after payment.

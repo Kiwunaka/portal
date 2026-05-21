@@ -135,30 +135,32 @@ Availability rule:
 - if `mini` TCP reachability is present but SSH auth fails, treat the run as `RU-origin check: BLOCKED_BY_ACCESS`, not as proof that RU visibility is absent
 - if `mini` is actually down, treat RU-origin observability as degraded until a replacement external RU host is ready
 
+RU-origin scope:
+
+- RU-origin release evidence is scoped to `POKROV` public hosts, API health, and delivery-node reachability from a Russian vantage point
+- the RU-origin release verdict must be computed only from the POKROV-owned target set and the explicitly tracked reserve ingress checks
+- if a probe payload contains extra non-release targets, keep them as incidental diagnostics only and do not fold them into the RU-origin verdict
+
 Required checks on each run:
 
 1. confirm the probe host can reach `google.com`
-2. confirm the probe host can reach Telegram surfaces such as `api.telegram.org` and `t.me`
-3. confirm the probe host can resolve and reach the current public `POKROV` surfaces when needed
-4. confirm the probe host can reach the intended node endpoints used by current subscriptions
-5. measure the path as separate probe stages instead of one flat `ping`:
+2. confirm the probe host can resolve and reach the current public `POKROV` surfaces when needed
+3. confirm the probe host can reach the intended node endpoints used by current subscriptions
+4. measure the path as separate probe stages instead of one flat `ping`:
    - `DNS`
    - `TCP/443`
    - `TLS`
    - `large-body HTTPS >=64KB`
-   - `Telegram native/app-path`
-   - `Telegram web-path`
-6. confirm the current reserve ingress state from RU:
+5. confirm the current reserve ingress state from RU:
    - `xhttp_alive`
    - `hysteria_alive`
-7. record failures in a compact operator-readable report
+6. record failures in a compact operator-readable report
 
 Minimum report fields:
 
 - UTC timestamp
 - probe host label and public IP if known
 - whether `google.com` was reachable
-- whether the Telegram surfaces were reachable
 - node-by-node status
 - per-target split health for `DNS`, `TCP`, `TLS`, `HTTP`, and `UDP` when applicable
 - `probe_classification`
@@ -317,7 +319,7 @@ Current backlog note:
 - RU ingress / RF reserve experiments are paused
 - keep using `mini` only as the RU probe origin and operator sandbox
 - do not resume `mini` canary work or `rf1` promotion until the product owner explicitly requests it
-- the Telegram MTProto exception does not reopen the paused RF reserve canary; the earlier `mini:443` attempt is disabled because Telegram reachability from `mini` is degraded
+- the MTProto exception does not reopen the paused RF reserve canary; the earlier `mini:443` attempt remains disabled and separate from POKROV delivery-node health
 
 Interpretation note:
 
@@ -341,7 +343,7 @@ Telegram MTProto proxy interpretation:
 - `portal-mtproto.service active` proves the Telegram proxy daemon is running on the free node
 - `current-origin check` and `brain-origin check` should verify `151.245.217.23:9443/tcp` separately from HTTPS checks because MTProto is not an HTTP service
 - free-node reachability to `core.telegram.org` controls whether the daily config refresh timer can stay enabled
-- if `mini` is considered again, a fresh RU-origin check must prove Telegram hostname and DC reachability first; the 2026-04-24 result is degraded and should not be treated as a healthy endpoint
+- if `mini` is considered again for the standard release probe, a fresh RU-origin check must prove POKROV host/API/node reachability first; any separate proxy work stays outside the standard RU-origin release verdict
 - the MTProto link and secret are operational secret material and should stay in `/etc/portal-mtproto.env`, not in docs or incident reports
 
 ## App, Bot, Device, And IP Visibility

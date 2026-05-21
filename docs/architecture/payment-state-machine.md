@@ -1,6 +1,6 @@
 # Payment State Machine
 
-Last updated: 2026-04-26
+Last updated: 2026-05-21
 
 | State | Meaning | Access effect |
 | --- | --- | --- |
@@ -19,6 +19,8 @@ Open Beta v4 must not enable public paid checkout until tests and provider evide
 ## Lava.top Normalization
 
 For `lavatop`, local order creation stores an `ExternalOrder` before redirect. The provider invoice request is sent to `/api/v3/invoice` with `clientUtm.utm_content=<local order_id>` and optional per-plan `offerId` mapping.
+
+For the one-time `start_99` plan, order creation must stop before provider invoice creation when the linked user has `first_purchase_done=true` or an existing paid Lava.top order. This guard prevents duplicate one-time offers even if older fulfillment evidence missed the user flag.
 
 Incoming Lava.top result webhooks must pass `X-Api-Key` or Basic webhook authentication before fulfillment. `payment.success` and `subscription.recurring.payment.success` normalize through the provider `status` value, where `completed` grants access. `payment.failed`, recurring payment failures, and `subscription.cancelled` normalize to non-fulfilling states.
 

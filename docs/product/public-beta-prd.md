@@ -22,7 +22,7 @@ Open Beta v4 is approved for public beta distribution outside app stores. It is 
 - Paid checkout is Lava.top-only for this beta. Other payment providers and Telegram Stars are not public checkout routes.
 - Direct public downloads are allowed through the official install page, cabinet runtime links, and GitHub Releases after the `2026-05-15` runtime app-download smoke.
 - iOS and macOS are not launch platforms for this wave.
-- RU-origin verification was skipped by operator decision for this beta; do not claim Telegram availability from RU-origin.
+- RU-origin verification was skipped by operator decision for this beta; do not claim RU-origin POKROV API, public-host, or node availability.
 
 ## Launch Decision
 

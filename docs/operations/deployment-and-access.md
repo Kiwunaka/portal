@@ -56,7 +56,7 @@ RF access rule:
 - do not resume `mini` ingress experiments, do not provision `rf1`, and do not treat this contour as active work unless the product owner explicitly asks to return to it
 - owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
 - `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS`
-- RU probe readiness itself is a tracked operational dependency for release confidence
+- RU probe readiness itself is a tracked operational dependency for release confidence and is scoped to `POKROV` public hosts, API health, and delivery-node reachability
 
 ## Operator Shell Policy
 
@@ -199,7 +199,7 @@ Current state:
 
 - the dedicated free node (`151.245.217.23`) hosts `portal-mtproto.service` on `tcp/9443`
 - `x-ui.service` continues to own `tcp/443` on the free node for normal free-pool delivery
-- the previous `mini:443` MTProto attempt is disabled because `mini` cannot reliably reach Telegram hostnames and reached only one checked Telegram DC endpoint
+- the previous `mini:443` MTProto attempt is disabled; this compatibility proxy is kept only on the dedicated free node
 - the MTProto secret and share links live only in `/etc/portal-mtproto.env` on the free node; do not copy them into docs, commits, or handoff reports
 - `portal-mtproto-config-refresh.timer` is enabled on the free node because it can reach `core.telegram.org`
 - the official Telegram MTProxy source currently needs a PID namespace workaround on this host, so the systemd unit starts it through `unshare --fork --pid --mount-proc`
@@ -529,7 +529,7 @@ Migration-only legacy note:
 
 Monitoring note:
 
-- the external RU probe runbook, hostname migration visibility, and device or Telegram visibility rules live in [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
+- the external RU probe runbook, hostname migration visibility, and device/session visibility rules live in [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 
 Safe deploy note:
 

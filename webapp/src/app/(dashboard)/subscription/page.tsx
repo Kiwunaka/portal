@@ -7,7 +7,6 @@ import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/co
 import SubscriptionQrCard from "@/components/subscription-qr-card";
 import {
   getAccessState,
-  getDeviceLimit,
   getNextResetAt,
   getTrafficLimitGb,
   isFreeMonthlyState,
@@ -15,7 +14,6 @@ import {
   isSoftModeState,
   isTrialPremiumState,
   resolvePlanLabel,
-  resolveTrafficStatusText,
 } from "@/lib/access-policy";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getTariffPlans, normalizePlanCode } from "@/lib/portal";
@@ -58,6 +56,88 @@ function nodePolicyLabel(value?: string | null): string {
   return "По профилю";
 }
 
+const manualStepCards = [
+  {
+    key: "copy",
+    title: "Скопируйте личную ссылку",
+    body: "Это ссылка подключения для совместимого клиента. Она не привязывает Telegram и не заменяет код активации.",
+    badge: "1",
+    tone: "neutral" as const,
+  },
+  {
+    key: "client",
+    title: "Установите клиент",
+    body: "Для Android проще начать с Hiddify или NekoBox. Для Windows обычно подходят Hiddify или v2rayN.",
+    badge: "2",
+    tone: "neutral" as const,
+  },
+  {
+    key: "import",
+    title: "Импортируйте ссылку",
+    body: "Нажмите плюс, выберите импорт из буфера или subscription URL, вставьте ссылку и обновите профиль.",
+    badge: "3",
+    tone: "neutral" as const,
+  },
+  {
+    key: "connect",
+    title: "Выберите профиль и подключитесь",
+    body: "Если клиент попросит режим, выбирайте автоматический профиль из подписки. Ручные параметры вводить не нужно.",
+    badge: "4",
+    tone: "neutral" as const,
+  },
+];
+
+const manualClientCards = [
+  {
+    key: "hiddify",
+    title: "Hiddify",
+    body: "Android и Windows. Удобный импорт ссылки, подходит для sing-box/Xray-профилей.",
+    badge: "Проще всего",
+    tone: "success" as const,
+    action: (
+      <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        Скачать
+      </a>
+    ),
+  },
+  {
+    key: "v2rayn",
+    title: "v2rayN",
+    body: "Windows. Подходит, если нужен привычный настольный клиент с подписками.",
+    badge: "Windows",
+    tone: "neutral" as const,
+    action: (
+      <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        Скачать
+      </a>
+    ),
+  },
+  {
+    key: "nekobox",
+    title: "NekoBox",
+    body: "Android. Подходит для импорта ссылки и профилей на базе sing-box/Xray.",
+    badge: "Android",
+    tone: "neutral" as const,
+    action: (
+      <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        Скачать
+      </a>
+    ),
+  },
+  {
+    key: "sfa",
+    title: "sing-box for Android",
+    body: "Android. Ближе к чистому sing-box, если нужен минимальный клиент без лишней оболочки.",
+    badge: "SFA",
+    tone: "neutral" as const,
+    action: (
+      <a href="https://sing-box.sagernet.org/clients/android/" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        Открыть
+      </a>
+    ),
+  },
+];
+
 export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
   const [plans, setPlans] = useState<PlanCatalogRow[]>(() => fallbackPlans());
@@ -99,20 +179,12 @@ export default function SubscriptionPage() {
   const freeMode = isFreeMonthlyState(accessState);
   const softMode = isSoftModeState(accessState);
   const nextResetAt = getNextResetAt(dash, user);
-  const deviceLimit = getDeviceLimit(dash, user);
   const freeLimitGb = getTrafficLimitGb(dash, user);
   const currentPlanCode = normalizePlanCode(dash?.current_plan_code || dash?.sub_type || "");
   const currentPaidPlanCode = paidMode ? currentPlanCode : "";
   const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
   const premiumMode = paidMode || trialMode;
-  const accessTitle = paidMode
-    ? "Премиум активен"
-    : trialMode
-      ? "Пробный период активен"
-      : freeMode
-        ? "Базовый режим"
-        : "Доступ не активен";
   const accessHint = paidMode
     ? "Полный доступ действует до указанной даты."
     : trialMode
@@ -143,9 +215,9 @@ export default function SubscriptionPage() {
 
     return {
       key: plan.code,
-      title: `${days} дней · ${amountRub} ₽`,
-      body: `${plan.label} · до ${deviceLimit} устройств · ${nodePolicyLabel(plan.node_policy)}${plan.badge ? ` · ${plan.badge}` : ""}`,
-      badge: isCurrent ? "Ваш текущий срок" : plan.badge || "Продлить",
+      title: `${amountRub} ₽`,
+      body: `${plan.label} · ${days} дней · до ${deviceLimit} устройств · ${nodePolicyLabel(plan.node_policy)}`,
+      badge: isCurrent ? "Действует" : plan.badge || "Тариф",
       tone: isCurrent ? ("success" as const) : days >= 180 ? ("info" as const) : ("neutral" as const),
       action: isCurrent ? (
         <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Действует сейчас</span>
@@ -230,11 +302,11 @@ export default function SubscriptionPage() {
   return (
     <CabinetRoute
       eyebrow="Тарифы и оплата"
-      title={dash?.is_active ? "Текущий доступ и продление" : "Вернуть доступ"}
+      title={dash?.is_active ? "Выберите срок продления" : "Вернуть доступ"}
       description={
         dash?.is_active
-          ? "Здесь видно, какой доступ активен сейчас, что будет после окончания срока и какие варианты продления доступны."
-          : "Если срок закончился, отсюда проще всего вернуть доступ и продолжить тем же профилем."
+          ? "Цены, срок и лимит устройств показаны сразу. Текущий статус ниже."
+          : "Сначала выберите срок, затем продолжайте тем же профилем."
       }
       actions={
         <>
@@ -246,32 +318,6 @@ export default function SubscriptionPage() {
           </AppRouteLink>
         </>
       }
-      metrics={[
-        {
-          label: "Текущий доступ",
-          value: accessTitle,
-          hint: accessHint,
-          tone: premiumMode ? "success" : dash?.is_active ? "info" : "warning",
-        },
-        {
-          label: "Срок",
-          value: formatDate(dash?.expiry_at || user?.expiry_at),
-          hint: paidMode ? "Дата окончания полного доступа." : trialMode ? "Сейчас действует пробный период." : "Дата ближайшего изменения доступа.",
-          tone: "neutral",
-        },
-        {
-          label: "Трафик",
-          value: resolveTrafficStatusText(dash, user),
-          hint: premiumMode ? "Без месячного лимита в полном доступе." : nextResetAt ? `Следующий сброс ${formatDate(nextResetAt)}` : "Без отдельного сброса",
-          tone: softMode ? "warning" : "neutral",
-        },
-        {
-          label: "Устройства",
-          value: `До ${deviceLimit}`,
-          hint: freeMode ? "В базовом режиме доступно 1 устройство." : "Лимит действует на весь профиль.",
-          tone: "neutral",
-        },
-      ]}
     >
       <CabinetSection
         eyebrow="Варианты"
@@ -328,9 +374,9 @@ export default function SubscriptionPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <CabinetSection
-          eyebrow="Восстановление"
-          title="Ручное подключение только как запасной путь"
-          description="Обычно достаточно открыть POKROV, войти в тот же аккаунт и дать приложению подтянуть профиль. QR и личная ссылка нужны только для совместимого клиента или восстановления."
+          eyebrow="Ручной вариант"
+          title="Если приложения POKROV пока нет под рукой"
+          description="Личная ссылка нужна только для совместимых клиентов и восстановления. Это не код активации и не способ привязать Telegram."
           tone={manualAccessReady ? "info" : "warning"}
           actions={
             <AppRouteLink href="/downloads/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
@@ -341,8 +387,8 @@ export default function SubscriptionPage() {
           <div className="rounded-[1.3rem] border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] p-4">
             <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
               {manualAccessReady
-                ? "Личная ссылка готова, но мы не показываем ее первой. Используйте ее только если приложение POKROV сейчас недоступно или поддержка попросила открыть ручной вариант."
-                : "После оплаты или активации кода запасной ручной вариант станет доступен здесь."}
+                ? "Инструкции можно читать сразу. Саму ссылку показываем отдельно, чтобы ее случайно не скопировали на чужое устройство."
+                : "После оплаты или активации кода здесь появится личная ссылка и QR-код."}
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
@@ -351,7 +397,7 @@ export default function SubscriptionPage() {
                 disabled={!manualAccessReady}
                 className="outline-btn rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
               >
-                {manualAccessOpen ? "Скрыть ручной вариант" : "Показать ручной вариант"}
+                {manualAccessOpen ? "Скрыть ссылку" : "Показать ссылку и QR"}
               </button>
               {!manualAccessReady ? (
                 <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
@@ -361,6 +407,17 @@ export default function SubscriptionPage() {
             </div>
           </div>
 
+          <div className="mt-5">
+            <CabinetCardGrid items={manualStepCards} className="xl:grid-cols-2" />
+          </div>
+
+          <div className="mt-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--atlas-text-muted)]">
+              Совместимые клиенты
+            </p>
+            <CabinetCardGrid items={manualClientCards} className="xl:grid-cols-1" />
+          </div>
+
           {manualAccessOpen ? (
             <div className="mt-5 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
               <div className="min-w-0">
@@ -368,7 +425,7 @@ export default function SubscriptionPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
-                  Скопируйте ссылку или отсканируйте QR-код только на устройстве, которому доверяете.
+                  Скопируйте ссылку или отсканируйте QR-код только на устройстве, которому доверяете. Ссылка дает доступ к профилю подключения.
                 </p>
                 <div className="mt-4 rounded-[1.1rem] border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 py-3">
                   <p className="break-all font-mono text-xs leading-6 text-[var(--atlas-text)]">{subscriptionUrl}</p>

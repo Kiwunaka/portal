@@ -187,6 +187,65 @@ export default function SupportPage() {
     },
   ];
 
+  const openPresetTicket = (nextCategory: TicketCategory): void => {
+    const nextPreset = CATEGORY_PRESETS[nextCategory];
+    setCategory(nextCategory);
+    setSubject(nextPreset.subject);
+    setBody(nextPreset.body);
+    setComposeOpen(true);
+  };
+
+  const guideCards = [
+    {
+      key: "connect-device",
+      title: "Хочу подключить устройство",
+      body: "Выберите Android или Windows, скачайте приложение и войдите тем же способом. Если приложения нет под рукой, там же есть ручной вариант.",
+      badge: "Старт",
+      tone: "success" as const,
+      action: (
+        <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Перейти
+        </AppRouteLink>
+      ),
+    },
+    {
+      key: "redeem-code",
+      title: "У меня есть код",
+      body: "Код оплаты, подарка или промокод вводится в разделе активации. Длинная ссылка подключения туда не подходит.",
+      badge: "Код",
+      tone: "neutral" as const,
+      action: (
+        <AppRouteLink href="/redeem/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Активировать
+        </AppRouteLink>
+      ),
+    },
+    {
+      key: "manual-link",
+      title: "У меня есть личная ссылка",
+      body: "Это запасной способ для совместимого клиента. Ссылку не отправляют боту и не используют для привязки Telegram.",
+      badge: "Ссылка",
+      tone: "neutral" as const,
+      action: (
+        <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Открыть
+        </AppRouteLink>
+      ),
+    },
+    {
+      key: "not-working",
+      title: "Подключение не работает",
+      body: "Откроем короткий кейс с нужными полями: устройство, шаг, на котором остановились, и что уже пробовали.",
+      badge: "Помощь",
+      tone: "warning" as const,
+      action: (
+        <button type="button" onClick={() => openPresetTicket("Подключение")} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+          Разобраться
+        </button>
+      ),
+    },
+  ];
+
   const prepareTemplate = (): void => {
     if (!subject.trim()) setSubject(preset.subject);
     if (!body.trim()) setBody(preset.body);
@@ -237,6 +296,13 @@ export default function SupportPage() {
         description="Здесь удобно открыть новый кейс, продолжить старый и не потерять контекст, если вопрос тянется дольше одного сообщения."
         actions={
           <>
+            <button
+              type="button"
+              onClick={() => document.getElementById("quick-help")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="outline-btn rounded-full px-5 py-3 text-sm font-semibold"
+            >
+              Я запутался
+            </button>
             <button type="button" onClick={() => setComposeOpen(true)} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
               Новый кейс
             </button>
@@ -319,6 +385,17 @@ export default function SupportPage() {
             },
           ]}
         />
+
+        <CabinetSection
+          eyebrow="Я запутался"
+          title="Выберите, что у вас сейчас"
+          description="Не нужно знать протоколы и названия клиентов. Начните с ситуации, а кабинет отведет в нужный раздел."
+          tone="info"
+        >
+          <div id="quick-help" className="scroll-mt-28">
+            <CabinetCardGrid items={guideCards} className="xl:grid-cols-4" />
+          </div>
+        </CabinetSection>
 
         <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
           <CabinetSection

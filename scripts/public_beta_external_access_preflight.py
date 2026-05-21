@@ -431,14 +431,14 @@ def _ru_origin_check(path: Path, *, env: Mapping[str, str], skip_evidence: Path)
     if ok:
         status = PASS
         missing: list[str] = []
-        note = "RU-origin report says POKROV and Telegram reachability passed."
+        note = "RU-origin report says POKROV API, public hosts, and delivery-node reachability passed."
     elif skip_accepted:
         status = SKIPPED_BY_OPERATOR
         missing = []
         note = skip_note
     else:
         status = FAIL
-        missing = skip_missing or ["RU-origin Telegram reachability PASS"]
+        missing = skip_missing or ["RU-origin POKROV API/public-host/node reachability PASS"]
         note = raw_classification or "RU-origin report is not PASS."
     return _check(
         "ru_origin_probe_evidence",

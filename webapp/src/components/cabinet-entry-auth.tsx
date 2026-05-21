@@ -1,6 +1,5 @@
 "use client";
 
-import { pokrovBranding } from "@/app/branding";
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
 import {
@@ -13,34 +12,44 @@ import {
   verifyEmailToken,
 } from "@/lib/api";
 import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
-import { getPortalPublicConfig } from "@/lib/portal";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
-const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const EMAIL_MODE_LABELS = {
-  login: "Войти",
-  register: "Создать аккаунт",
-  verify: "Подтвердить",
-  recover: "Восстановить доступ",
-} as const;
+type EmailMode = "login" | "register" | "verify" | "recover";
+
+const EMAIL_MODE_LABELS: Record<EmailMode, string> = {
+  login: "Вход",
+  register: "Регистрация",
+  verify: "Подтверждение",
+  recover: "Восстановление",
+};
 const EMAIL_MODES = new Set(Object.keys(EMAIL_MODE_LABELS));
 const PASSWORD_HINT = "Минимум 10 символов.";
 
+function externalPageUrl(siteUrl: string, pathname: "/offer/" | "/privacy/"): string {
+  try {
+    return new URL(pathname, siteUrl).href;
+  } catch {
+    return pathname;
+  }
+}
+
 export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
-  const { logoutWebSession, webLoginBusy, webLoginError } = usePortalSession();
+  const { webLoginBusy, webLoginError } = usePortalSession();
+  const passwordRef = useRef<HTMLInputElement | null>(null);
+  const newPasswordRef = useRef<HTMLInputElement | null>(null);
   const [emailReady, setEmailReady] = useState(false);
-  const [emailMode, setEmailMode] = useState<"login" | "register" | "verify" | "recover">("login");
+  const [emailMode, setEmailMode] = useState<EmailMode>("login");
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
   const [emailError, setEmailError] = useState("");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [password, setPassword] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
   const [recoveryToken, setRecoveryToken] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +74,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     const nextEmailMode = String(url.searchParams.get("email_mode") || "").trim();
     let shouldReplaceUrl = Boolean(nextVerifyToken || nextRecoveryToken);
     if (!nextVerifyToken && !nextRecoveryToken && EMAIL_MODES.has(nextEmailMode)) {
-      setEmailMode(nextEmailMode as keyof typeof EMAIL_MODE_LABELS);
+      setEmailMode(nextEmailMode as EmailMode);
       shouldReplaceUrl = true;
     }
     if (!shouldReplaceUrl) return;
@@ -74,12 +83,12 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       setVerifyToken(nextVerifyToken);
       setRecoveryToken("");
       setEmailMode("verify");
-      setEmailMessage("Код подтверждения из письма уже подставлен. Осталось нажать «Подтвердить».");
+      setEmailMessage("Код подтверждения уже подставлен. Нажмите «Подтвердить».");
     } else if (nextRecoveryToken) {
       setRecoveryToken(nextRecoveryToken);
       setVerifyToken("");
       setEmailMode("recover");
-      setEmailMessage("Код восстановления из письма уже подставлен. Введите новый пароль.");
+      setEmailMessage("Код восстановления уже подставлен. Введите новый пароль.");
     }
     setEmailError("");
 
@@ -90,8 +99,17 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   }, []);
 
   const clearSensitiveInputs = (): void => {
-    setPassword("");
-    setNewPassword("");
+    if (passwordRef.current) passwordRef.current.value = "";
+    if (newPasswordRef.current) newPasswordRef.current.value = "";
+  };
+
+  const setMode = (mode: EmailMode): void => {
+    setEmailMode(mode);
+    setEmailError("");
+    setEmailMessage("");
+    clearSensitiveInputs();
+    if (mode === "verify") setRecoveryToken("");
+    if (mode === "recover") setVerifyToken("");
   };
 
   const completeEmailLogin = (nextToken?: string | null): void => {
@@ -113,7 +131,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     try {
       await action();
     } catch (error) {
-      setEmailError(userFacingErrorMessage(error, "Не удалось выполнить действие с email. Попробуйте позже или напишите в поддержку."));
+      setEmailError(userFacingErrorMessage(error, "Не удалось выполнить действие. Попробуйте позже или напишите в поддержку."));
     } finally {
       setEmailBusy(false);
     }
@@ -122,7 +140,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const submitLogin = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     await runEmailAction(async () => {
-      const payload = await loginByEmail({ email, password });
+      const payload = await loginByEmail({ email, password: passwordRef.current?.value || "" });
       completeEmailLogin(payload.token);
     });
     clearSensitiveInputs();
@@ -131,11 +149,15 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const submitRegister = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     await runEmailAction(async () => {
-      const payload = await registerByEmail({ email, password, display_name: displayName || undefined });
+      const payload = await registerByEmail({
+        email,
+        password: passwordRef.current?.value || "",
+        display_name: displayName || undefined,
+      });
       setEmailMessage(
         payload?.delivery?.status === "sent"
-          ? "Письмо для подтверждения отправлено."
-          : "Аккаунт создан. Введите код подтверждения из письма.",
+          ? "Письмо отправлено. Проверьте почту."
+          : "Аккаунт создан. Введите код из письма.",
       );
       setVerifyToken("");
       setRecoveryToken("");
@@ -163,12 +185,12 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       const token = String(recoveryToken || "").trim();
       if (!token) {
         await startEmailRecovery({ email });
-        setEmailMessage("Письмо для восстановления отправлено. Введите код и новый пароль.");
+        setEmailMessage("Письмо для восстановления отправлено.");
         return;
       }
-      const nextPassword = String(newPassword || "").trim();
+      const nextPassword = String(newPasswordRef.current?.value || "").trim();
       if (!nextPassword) {
-        setEmailError("Введите новый пароль из письма восстановления.");
+        setEmailError("Введите новый пароль.");
         return;
       }
       const payload = await finishEmailRecovery({ token, password: nextPassword });
@@ -178,154 +200,243 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   };
 
   const inputClass =
-    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]";
+    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-rose-400 dark:border-white/10 dark:bg-white/[0.04]";
+  const passwordInputClass = `${inputClass} pr-12`;
+  const legalLinkClass = "text-slate-500 underline-offset-4 transition hover:text-slate-950 hover:underline dark:text-slate-400 dark:hover:text-slate-100";
+
+  const passwordField = (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Пароль</label>
+      <div className="relative">
+        <input
+          ref={passwordRef}
+          className={passwordInputClass}
+          type={showPassword ? "text" : "password"}
+          autoComplete={emailMode === "login" ? "current-password" : "new-password"}
+          placeholder="Пароль"
+          minLength={emailMode === "register" ? 10 : undefined}
+          required
+        />
+        <button
+          type="button"
+          aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+          onClick={() => setShowPassword((value) => !value)}
+          className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-slate-100"
+        >
+          <span className="material-symbols-rounded text-[20px]">{showPassword ? "visibility_off" : "visibility"}</span>
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
-      <div className="rounded-[1.5rem] border border-emerald-200/70 bg-emerald-50/90 p-5 dark:border-emerald-400/20 dark:bg-emerald-400/10">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-200">
-          Telegram
-        </p>
-        <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
-          Быстрый вход в кабинет
-        </h3>
-        <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-          Подтвердите Telegram — откроем тот же аккаунт POKROV. Это способ входа, а не новая регистрация.
-        </p>
-        <div className="mt-4">
-          <TelegramLoginWidget />
-        </div>
-        {webLoginError ? (
-          <div className="mt-4 rounded-2xl border border-rose-200/70 bg-rose-50/85 px-4 py-3 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
-            {webLoginError}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/90 p-5 dark:border-white/10 dark:bg-white/[0.04]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-              Email
-            </p>
-            <h3 className="mt-2 text-xl font-semibold text-slate-950 dark:text-slate-50">
-              {emailReady ? "Вход по почте" : "Почтовый вход скоро"}
-            </h3>
-          </div>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
-            {emailReady ? "Готово" : "Скоро"}
-          </span>
+      <div>
+        <div className="grid grid-cols-2 rounded-[1.5rem] bg-slate-100 p-1 shadow-inner dark:bg-white/[0.05]">
+          {(["login", "register"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setMode(mode)}
+              className={`min-h-12 rounded-[1.25rem] px-4 text-sm font-semibold transition ${
+                emailMode === mode
+                  ? "bg-white text-rose-600 shadow-sm dark:bg-white/[0.10] dark:text-rose-200"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+              }`}
+            >
+              {EMAIL_MODE_LABELS[mode]}
+            </button>
+          ))}
         </div>
 
         {emailReady ? (
-          <div className="mt-4 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {(["login", "register", "verify", "recover"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => {
-                    setEmailMode(mode);
-                    setEmailError("");
-                    setEmailMessage("");
-                    clearSensitiveInputs();
-                    if (mode === "verify") setRecoveryToken("");
-                    if (mode === "recover") setVerifyToken("");
-                  }}
-                  className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] ${
-                    emailMode === mode
-                      ? "border-emerald-400 bg-emerald-100 text-emerald-900 dark:border-emerald-300/40 dark:bg-emerald-400/15 dark:text-emerald-100"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"
-                  }`}
-                >
-                  {EMAIL_MODE_LABELS[mode]}
-                </button>
-              ))}
-            </div>
-
+          <div className="mt-6">
             {emailMode === "login" ? (
-              <form className="space-y-3" onSubmit={submitLogin}>
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" placeholder="Пароль" required />
-                <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  Войти
+              <form className="space-y-4" onSubmit={submitLogin}>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Email</label>
+                  <input
+                    className={inputClass}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@example.com"
+                    required
+                  />
+                </div>
+                {passwordField}
+                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                  {emailBusy ? "Входим..." : "Войти"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("recover")}
+                  className="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300"
+                >
+                  Забыли пароль?
                 </button>
               </form>
             ) : null}
 
             {emailMode === "register" ? (
-              <form className="space-y-3" onSubmit={submitRegister}>
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required />
-                <input className={inputClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" placeholder="Имя" />
-                <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Пароль" minLength={10} required />
+              <form className="space-y-4" onSubmit={submitRegister}>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Email</label>
+                  <input
+                    className={inputClass}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@example.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Имя</label>
+                  <input
+                    className={inputClass}
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    autoComplete="name"
+                    placeholder="Как к вам обращаться"
+                  />
+                </div>
+                {passwordField}
                 <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">{PASSWORD_HINT}</p>
-                <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  Создать аккаунт
+                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                  {emailBusy ? "Создаем..." : "Зарегистрироваться"}
                 </button>
               </form>
             ) : null}
 
             {emailMode === "verify" ? (
-              <form className="space-y-3" onSubmit={submitVerify}>
-                <input className={inputClass} value={verifyToken} onChange={(event) => setVerifyToken(event.target.value)} placeholder="Код подтверждения" required />
-                <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  Подтвердить
+              <form className="space-y-4" onSubmit={submitVerify}>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Код из письма</label>
+                  <input
+                    className={inputClass}
+                    value={verifyToken}
+                    onChange={(event) => setVerifyToken(event.target.value)}
+                    autoComplete="one-time-code"
+                    placeholder="Код подтверждения"
+                    required
+                  />
+                </div>
+                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                  {emailBusy ? "Проверяем..." : "Подтвердить"}
+                </button>
+                <button type="button" onClick={() => setMode("login")} className="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold">
+                  Вернуться ко входу
                 </button>
               </form>
             ) : null}
 
             {emailMode === "recover" ? (
-              <form className="space-y-3" onSubmit={submitRecovery}>
-                <input className={inputClass} value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" placeholder="email@example.com" required={!recoveryToken} />
-                <input className={inputClass} value={recoveryToken} onChange={(event) => setRecoveryToken(event.target.value)} placeholder="Код восстановления" />
-                <input className={inputClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} type="password" autoComplete="new-password" placeholder="Новый пароль" minLength={10} required={Boolean(recoveryToken)} />
-                <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">{PASSWORD_HINT}</p>
-                <button type="submit" disabled={emailBusy} className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60">
-                  {recoveryToken ? "Сбросить пароль и войти" : "Отправить письмо"}
+              <form className="space-y-4" onSubmit={submitRecovery}>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Email</label>
+                  <input
+                    className={inputClass}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@example.com"
+                    required={!recoveryToken}
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Код восстановления</label>
+                  <input
+                    className={inputClass}
+                    value={recoveryToken}
+                    onChange={(event) => setRecoveryToken(event.target.value)}
+                    autoComplete="one-time-code"
+                    placeholder="Заполните, когда письмо придет"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Новый пароль</label>
+                  <div className="relative">
+                    <input
+                      ref={newPasswordRef}
+                      className={passwordInputClass}
+                      type={showNewPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="Минимум 10 символов"
+                      minLength={10}
+                      required={Boolean(recoveryToken)}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showNewPassword ? "Скрыть пароль" : "Показать пароль"}
+                      onClick={() => setShowNewPassword((value) => !value)}
+                      className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-slate-100"
+                    >
+                      <span className="material-symbols-rounded text-[20px]">{showNewPassword ? "visibility_off" : "visibility"}</span>
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                  {emailBusy ? "Отправляем..." : recoveryToken ? "Сбросить пароль и войти" : "Отправить письмо"}
+                </button>
+                <button type="button" onClick={() => setMode("login")} className="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold">
+                  Вернуться ко входу
                 </button>
               </form>
             ) : null}
-
-            {emailMessage ? <p className="text-sm leading-6 text-emerald-700 dark:text-emerald-200">{emailMessage}</p> : null}
-            {emailError ? <p className="text-sm leading-6 text-rose-700 dark:text-rose-200">{emailError}</p> : null}
           </div>
         ) : (
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Почтовый вход появится после финальной проверки доставки писем. Пока используйте Telegram или напишите в поддержку, если нужно восстановить доступ.
-          </p>
+          <div className="mt-6 rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
+            Email-вход сейчас проверяется. Пока войдите через Telegram.
+          </div>
         )}
       </div>
 
+      {emailMessage ? (
+        <div className="rounded-2xl border border-emerald-300/40 bg-emerald-50/80 px-4 py-3 text-sm leading-6 text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
+          {emailMessage}
+        </div>
+      ) : null}
+      {emailError ? (
+        <div className="rounded-2xl border border-rose-300/40 bg-rose-50/80 px-4 py-3 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+          {emailError}
+        </div>
+      ) : null}
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">или</span>
+        <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+      </div>
+
+      <TelegramLoginWidget
+        buttonClassName="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold"
+        buttonLabel="Войти через Telegram"
+        busyLabel="Открываем Telegram..."
+        showHint={false}
+      />
+
+      {webLoginError ? (
+        <div className="rounded-2xl border border-rose-300/40 bg-rose-50/80 px-4 py-3 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
+          {webLoginError}
+        </div>
+      ) : null}
       {webLoginBusy ? (
         <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-          Открываем Telegram. Если окно уже появилось, завершите вход там и вернитесь в эту вкладку.
+          Завершите вход в Telegram и вернитесь в эту вкладку.
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <AppRouteLink
-          href={siteUrl}
-          hardNavigate
-          className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
-        >
-          {pokrovBranding.siteLinkLabel}
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-2 text-xs">
+        <AppRouteLink href={externalPageUrl(siteUrl, "/privacy/")} target="_blank" hardNavigate={false} className={legalLinkClass}>
+          Политика конфиденциальности
         </AppRouteLink>
-        <AppRouteLink
-          href={config.supportTelegramUrl}
-          target="_blank"
-          hardNavigate={false}
-          className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
-        >
-          Поддержка
+        <AppRouteLink href={externalPageUrl(siteUrl, "/offer/")} target="_blank" hardNavigate={false} className={legalLinkClass}>
+          Пользовательское соглашение
         </AppRouteLink>
-        <button
-          type="button"
-          disabled={webLoginBusy}
-          onClick={logoutWebSession}
-          className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-        >
-          Сменить аккаунт
-        </button>
       </div>
     </div>
   );
