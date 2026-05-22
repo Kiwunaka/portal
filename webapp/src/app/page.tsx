@@ -3,7 +3,6 @@
 import AppRouteLink from "@/components/app-route-link";
 import CabinetEntryAuth from "@/components/cabinet-entry-auth";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { DoubleBezel } from "@/components/ui/double-bezel";
@@ -29,14 +28,13 @@ function EntrySkeleton() {
 }
 
 function EntryBody() {
-  const router = useRouter();
   const { loading, error, webLoginRequired, refresh, logoutWebSession } = usePortalSession();
 
   useEffect(() => {
     if (!loading && !webLoginRequired) {
-      router.replace("/dashboard/");
+      window.location.replace("/dashboard/");
     }
-  }, [loading, router, webLoginRequired]);
+  }, [loading, webLoginRequired]);
 
   if (loading) {
     return (

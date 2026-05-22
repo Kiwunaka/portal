@@ -120,7 +120,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     clearSensitiveInputs();
     setWebSessionToken(nextToken);
     if (typeof window !== "undefined") {
-      window.location.replace("/");
+      window.location.replace("/dashboard/");
     }
   };
 
