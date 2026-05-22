@@ -52,6 +52,15 @@ function dispatchRouteActivity(href: string): void {
   }
 }
 
+function navigateWithBrowser(href: string): boolean {
+  if (typeof window === "undefined" || !isInternalNavigationTarget(href)) {
+    return false;
+  }
+  dispatchRouteActivity(href);
+  window.location.assign(href);
+  return true;
+}
+
 const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function AppRouteLink(
   { hardNavigate = false, onClick, target, rel, className, href, ...props },
   ref,
@@ -74,12 +83,16 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
         if (target === "_blank" || !shouldUseBrowserNavigation(event)) {
           return;
         }
-        if (!hardNavigate) {
-          dispatchRouteActivity(event.currentTarget.href);
+        const targetHref = event.currentTarget.href;
+        if (hardNavigate) {
+          event.preventDefault();
+          window.location.assign(targetHref);
           return;
         }
-        event.preventDefault();
-        window.location.assign(event.currentTarget.href);
+        if (isInternalNavigationTarget(targetHref)) {
+          event.preventDefault();
+          navigateWithBrowser(targetHref);
+        }
       }}
     />
   );
