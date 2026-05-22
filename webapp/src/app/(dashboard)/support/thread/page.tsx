@@ -129,7 +129,7 @@ export default function SupportTicketThreadPage() {
 
   if (loading) {
     return (
-      <CabinetRoute eyebrow="Поддержка" title="Загружаем обращение" description="Подтягиваем историю кейса и вложения.">
+      <CabinetRoute eyebrow="Поддержка" title="Загружаем обращение" description="Подтягиваем историю обращения и вложения.">
         <CabinetSection eyebrow="История" title="Пожалуйста, подождите" description="Обычно это занимает несколько секунд.">
           <div className="atlas-skeleton min-h-40 rounded-[var(--pokrov-radius-card,0.875rem)]" />
         </CabinetSection>
@@ -149,7 +149,7 @@ export default function SupportTicketThreadPage() {
           </AppRouteLink>
         }
       >
-        <CabinetSection eyebrow="Что дальше" title="Вернитесь к списку кейсов" description="Если обращение было закрыто или ссылка устарела, создайте новый кейс из раздела поддержки.">
+        <CabinetSection eyebrow="Что дальше" title="Вернитесь к списку обращений" description="Если обращение было закрыто или ссылка устарела, создайте новое обращение из раздела поддержки.">
           <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
             Открыть поддержку
           </AppRouteLink>
@@ -162,7 +162,7 @@ export default function SupportTicketThreadPage() {
     <CabinetRoute
       eyebrow="Поддержка"
       title={ticket.subject || "Обращение без темы"}
-      description={`Кейс #${ticket.id}. Статус: ${statusTitle(ticket.status)}. Обновлен ${fmtDate(ticket.updated_at)}.`}
+      description={`Обращение #${ticket.id}. Статус: ${statusTitle(ticket.status)}. Обновлено ${fmtDate(ticket.updated_at)}.`}
       actions={
         <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
           К списку
@@ -170,7 +170,7 @@ export default function SupportTicketThreadPage() {
       }
       metrics={[
         {
-          label: "Кейс",
+          label: "Обращение",
           value: `#${ticket.id}`,
           hint: "Этот номер можно назвать поддержке.",
           tone: "neutral",
@@ -178,7 +178,7 @@ export default function SupportTicketThreadPage() {
         {
           label: "Статус",
           value: statusTitle(ticket.status),
-          hint: canReply ? "Можно отправить ответ." : "Кейс закрыт.",
+          hint: canReply ? "Можно отправить ответ." : "Обращение закрыто.",
           tone: canReply ? "info" : "neutral",
         },
         {
@@ -199,7 +199,7 @@ export default function SupportTicketThreadPage() {
         eyebrow="Диалог"
         badge={statusTitle(ticket.status)}
         badgeTone={canReply ? "info" : "neutral"}
-        title="Продолжайте этот же кейс"
+        title="Продолжайте это обращение"
         description="Так не теряется история, вложения и контекст. Не присылайте личные ссылки или коды активации, если поддержка прямо их не запросила."
         details={[
           {
@@ -217,13 +217,13 @@ export default function SupportTicketThreadPage() {
           {
             label: "Ответ",
             value: canReply ? "Доступен" : "Закрыт",
-            hint: canReply ? "Напишите коротко, что изменилось." : "Для нового вопроса создайте новый кейс.",
+            hint: canReply ? "Напишите коротко, что изменилось." : "Для нового вопроса создайте новое обращение.",
             tone: canReply ? "success" : "neutral",
           },
         ]}
       />
 
-      <CabinetSection eyebrow="История" title="Сообщения по кейсу" description="Здесь только переписка и вложения к этому обращению.">
+      <CabinetSection eyebrow="История" title="Сообщения по обращению" description="Здесь только переписка и вложения к этому обращению.">
         <div className="max-h-[52vh] space-y-4 overflow-y-auto pr-1">
           {ticket.messages.length === 0 ? (
             <div className="rounded-[var(--pokrov-radius-card,0.875rem)] border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] px-4 py-3 text-sm text-[var(--atlas-text-soft)]">История сообщений пока пустая.</div>

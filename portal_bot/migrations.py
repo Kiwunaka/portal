@@ -2,6 +2,7 @@
 
 import os
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,6 +20,61 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
         {"name": index_name},
     ).fetchall()
     return bool(rows)
+
+
+_POSTGRES_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _postgres_ident(value: str) -> str:
+    raw = str(value or "").strip()
+    if not _POSTGRES_IDENTIFIER_RE.match(raw):
+        raise ValueError(f"Unsafe PostgreSQL identifier: {value!r}")
+    return raw
+
+
+def _postgres_column_exists(conn, table: str, column: str) -> bool:
+    return bool(
+        conn.execute(
+            text(
+                """
+                SELECT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = :table_name
+                    AND column_name = :column_name
+                );
+                """
+            ),
+            {"table_name": str(table), "column_name": str(column)},
+        ).scalar()
+    )
+
+
+def _postgres_varchar_limit(conn, table: str, column: str) -> int | None:
+    value = conn.execute(
+        text(
+            """
+            SELECT character_maximum_length
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name;
+            """
+        ),
+        {"table_name": str(table), "column_name": str(column)},
+    ).scalar()
+    try:
+        return int(value) if value is not None else None
+    except Exception:
+        return None
+
+
+def _postgres_add_column_if_missing(conn, table: str, column: str, ddl: str) -> bool:
+    if _postgres_column_exists(conn, table, column):
+        return False
+    conn.execute(text(f"ALTER TABLE {_postgres_ident(table)} ADD COLUMN {_postgres_ident(column)} {ddl};"))
+    return True
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -1200,7 +1256,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
     `create_all()` already creates tables; here we only ensure additive columns/indexes.
     """
     with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE gift_cards ALTER COLUMN code TYPE VARCHAR(32);"))
+        conn.execute(text("SELECT pg_advisory_xact_lock(hashtext('pokrov_schema_migrations'));"))
+        code_limit = _postgres_varchar_limit(conn, "gift_cards", "code")
+        if code_limit is not None and code_limit < 32:
+            conn.execute(text("ALTER TABLE gift_cards ALTER COLUMN code TYPE VARCHAR(32);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reviews_featured_created ON reviews(is_featured, created_at);"))
         conn.execute(
             text(
@@ -1220,87 +1279,87 @@ def _run_postgres_migrations(engine: Engine) -> None:
                 """
             )
         )
-        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS username VARCHAR(100);"))
-        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS category VARCHAR(32) DEFAULT 'general';"))
-        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'new';"))
-        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS source VARCHAR(32) DEFAULT 'webapp';"))
-        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS review_id INTEGER;"))
-        conn.execute(text("ALTER TABLE feedback_entries ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;"))
+        _postgres_add_column_if_missing(conn, "feedback_entries", "username", "VARCHAR(100)")
+        _postgres_add_column_if_missing(conn, "feedback_entries", "category", "VARCHAR(32) DEFAULT 'general'")
+        _postgres_add_column_if_missing(conn, "feedback_entries", "status", "VARCHAR(20) DEFAULT 'new'")
+        _postgres_add_column_if_missing(conn, "feedback_entries", "source", "VARCHAR(32) DEFAULT 'webapp'")
+        _postgres_add_column_if_missing(conn, "feedback_entries", "review_id", "INTEGER")
+        _postgres_add_column_if_missing(conn, "feedback_entries", "reviewed_at", "TIMESTAMP")
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_tg_id ON feedback_entries(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_status ON feedback_entries(status);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_created_at ON feedback_entries(created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_review_id ON feedback_entries(review_id);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(10);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_purchase_done BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_token VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_months INTEGER DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last_check TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_claimed_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_used BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_wheel_spin TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_manual BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_by_admin BIGINT;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(100);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS device_reset_last_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_active BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_expires_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS channel_bonus_revoked_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_discount_pct INTEGER;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_discount_code VARCHAR(20);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_discount_set_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_anchor_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_last_reset_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS free_cycle_next_reset_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS current_plan_code VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_app_user BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_install_id VARCHAR(128);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_device_name VARCHAR(120);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_platform VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_os_version VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_version VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_locale VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_timezone VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_seen_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS app_last_ip VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS route_mode VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS route_selected_apps_json TEXT;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS route_requires_elevated_privileges BOOLEAN;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_id BIGINT;"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_username VARCHAR(100);"))
-        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_telegram_linked_at TIMESTAMP;"))
+        _postgres_add_column_if_missing(conn, "users", "referral_code", "VARCHAR(10)")
+        _postgres_add_column_if_missing(conn, "users", "first_purchase_done", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "users", "sub_token", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "users", "streak_months", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "users", "streak_last_check", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "channel_bonus_claimed_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "tos_accepted", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "users", "trial_used", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "users", "last_wheel_spin", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "is_manual", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "users", "created_by_admin", "BIGINT")
+        _postgres_add_column_if_missing(conn, "users", "display_name", "VARCHAR(100)")
+        _postgres_add_column_if_missing(conn, "users", "device_reset_last_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "channel_bonus_active", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "users", "channel_bonus_expires_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "channel_bonus_revoked_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "pending_discount_pct", "INTEGER")
+        _postgres_add_column_if_missing(conn, "users", "pending_discount_code", "VARCHAR(20)")
+        _postgres_add_column_if_missing(conn, "users", "pending_discount_set_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "free_cycle_anchor_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "free_cycle_last_reset_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "free_cycle_next_reset_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "current_plan_code", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "users", "is_app_user", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "users", "app_install_id", "VARCHAR(128)")
+        _postgres_add_column_if_missing(conn, "users", "app_device_name", "VARCHAR(120)")
+        _postgres_add_column_if_missing(conn, "users", "app_platform", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "users", "app_os_version", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "users", "app_version", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "users", "app_locale", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "users", "app_timezone", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "users", "app_last_seen_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "users", "app_last_ip", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "users", "route_mode", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "users", "route_selected_apps_json", "TEXT")
+        _postgres_add_column_if_missing(conn, "users", "route_requires_elevated_privileges", "BOOLEAN")
+        _postgres_add_column_if_missing(conn, "users", "linked_telegram_id", "BIGINT")
+        _postgres_add_column_if_missing(conn, "users", "linked_telegram_username", "VARCHAR(100)")
+        _postgres_add_column_if_missing(conn, "users", "linked_telegram_linked_at", "TIMESTAMP")
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS accepting_new_clients BOOLEAN DEFAULT TRUE;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS is_draining BOOLEAN DEFAULT FALSE;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS memory_used_mb INTEGER DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS memory_total_mb INTEGER DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_used_gb DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_total_gb DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS disk_free_gb DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_rx_bytes_total BIGINT;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_tx_bytes_total BIGINT;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_rx_mbps DOUBLE PRECISION;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_tx_mbps DOUBLE PRECISION;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS network_total_mbps DOUBLE PRECISION;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_stage VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_kind VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_error_message VARCHAR(500);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS hoster_family VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS hoster_asn VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS hoster_subnet VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS ipv4_health VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS ipv6_health VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS last_probe_classification VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS transport_health_json TEXT;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS transport_profiles_json TEXT;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_push_secret VARCHAR(128);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_push_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_last_batch_id VARCHAR(128);"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_unmatched_count INTEGER DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE nodes ADD COLUMN IF NOT EXISTS observer_parse_error_count INTEGER DEFAULT 0;"))
+        _postgres_add_column_if_missing(conn, "nodes", "accepting_new_clients", "BOOLEAN DEFAULT TRUE")
+        _postgres_add_column_if_missing(conn, "nodes", "is_draining", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "nodes", "cpu_percent", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "memory_used_mb", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "memory_total_mb", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "disk_used_gb", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "disk_total_gb", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "disk_free_gb", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "network_rx_bytes_total", "BIGINT")
+        _postgres_add_column_if_missing(conn, "nodes", "network_tx_bytes_total", "BIGINT")
+        _postgres_add_column_if_missing(conn, "nodes", "network_rx_mbps", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "network_tx_mbps", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "network_total_mbps", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "last_probe_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "nodes", "last_probe_stage", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "nodes", "last_probe_error_kind", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "nodes", "last_probe_error_message", "VARCHAR(500)")
+        _postgres_add_column_if_missing(conn, "nodes", "hoster_family", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "nodes", "hoster_asn", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "nodes", "hoster_subnet", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "nodes", "ipv4_health", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "nodes", "ipv6_health", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "nodes", "last_probe_classification", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "nodes", "transport_health_json", "TEXT")
+        _postgres_add_column_if_missing(conn, "nodes", "transport_profiles_json", "TEXT")
+        _postgres_add_column_if_missing(conn, "nodes", "observer_push_secret", "VARCHAR(128)")
+        _postgres_add_column_if_missing(conn, "nodes", "observer_last_push_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "nodes", "observer_last_batch_id", "VARCHAR(128)")
+        _postgres_add_column_if_missing(conn, "nodes", "observer_unmatched_count", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "observer_parse_error_count", "INTEGER DEFAULT 0")
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_accepting_new_clients ON nodes(accepting_new_clients);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_is_draining ON nodes(is_draining);"))
         rows = conn.execute(
@@ -1330,28 +1389,28 @@ def _run_postgres_migrations(engine: Engine) -> None:
                     ),
                 },
             )
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS memory_used_mb INTEGER DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS memory_total_mb INTEGER DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_used_gb DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_total_gb DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS disk_free_gb DOUBLE PRECISION DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_rx_bytes_total BIGINT;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_tx_bytes_total BIGINT;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_rx_mbps DOUBLE PRECISION;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_tx_mbps DOUBLE PRECISION;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS network_total_mbps DOUBLE PRECISION;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_up_bytes BIGINT DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_down_bytes BIGINT DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS total_traffic_bytes BIGINT DEFAULT 0;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_at TIMESTAMP;"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_stage VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_error_kind VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_error_message VARCHAR(500);"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS probe_classification VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS ipv4_health VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS ipv6_health VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE node_health_samples ADD COLUMN IF NOT EXISTS transport_health_json TEXT;"))
+        _postgres_add_column_if_missing(conn, "node_health_samples", "cpu_percent", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "memory_used_mb", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "memory_total_mb", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "disk_used_gb", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "disk_total_gb", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "disk_free_gb", "DOUBLE PRECISION DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "network_rx_bytes_total", "BIGINT")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "network_tx_bytes_total", "BIGINT")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "network_rx_mbps", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "network_tx_mbps", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "network_total_mbps", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "total_up_bytes", "BIGINT DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "total_down_bytes", "BIGINT DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "total_traffic_bytes", "BIGINT DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "probe_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "probe_stage", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "probe_error_kind", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "probe_error_message", "VARCHAR(500)")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "probe_classification", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "ipv4_health", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "ipv6_health", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "node_health_samples", "transport_health_json", "TEXT")
 
         conn.execute(
             text(
@@ -1375,10 +1434,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
                 """
             )
         )
-        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS source VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS campaign VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS promo_code VARCHAR(32);"))
-        conn.execute(text("ALTER TABLE external_orders ADD COLUMN IF NOT EXISTS meta_json TEXT;"))
+        _postgres_add_column_if_missing(conn, "external_orders", "source", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "external_orders", "campaign", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "external_orders", "promo_code", "VARCHAR(32)")
+        _postgres_add_column_if_missing(conn, "external_orders", "meta_json", "TEXT")
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
@@ -1572,8 +1631,8 @@ def _run_postgres_migrations(engine: Engine) -> None:
                 """
             )
         )
-        conn.execute(text("ALTER TABLE live_updates ADD COLUMN IF NOT EXISTS channel_username VARCHAR(64);"))
-        conn.execute(text("ALTER TABLE live_updates ADD COLUMN IF NOT EXISTS post_id INTEGER;"))
+        _postgres_add_column_if_missing(conn, "live_updates", "channel_username", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "live_updates", "post_id", "INTEGER")
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_channel_post ON live_updates(channel_username, post_id);"))
 

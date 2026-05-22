@@ -213,7 +213,7 @@ export default function SettingsPage() {
     {
       key: "support",
       title: "Продолжить поддержку",
-      body: "Если вопрос уже был, держите его в одном кейсе: так быстрее разобраться.",
+      body: "Если вопрос уже был, держите его в одном обращении: так быстрее разобраться.",
       badge: "Поддержка",
       tone: "neutral" as const,
       action: (
@@ -403,8 +403,8 @@ export default function SettingsPage() {
             tone: linkedEmail ? "info" : "neutral",
           },
           {
-            label: "Если нужна помощь",
-            value: dash?.is_active ? "Проверить устройства" : "Открыть оплату",
+            label: "Нужна помощь",
+            value: dash?.is_active ? "Проверить устройства" : "Оплатить",
             hint: dash?.is_active ? "Полезно перед новым устройством." : "Самый прямой путь, если срок закончился.",
             tone: "neutral",
           },

@@ -55,7 +55,7 @@ export default function SupportLegalPage() {
         },
         {
           label: "Если есть вопрос",
-          value: "Один кейс",
+          value: "Одно обращение",
           hint: "Поддержка быстрее передаст запрос нужному специалисту.",
           tone: "info",
         },
@@ -93,7 +93,7 @@ export default function SupportLegalPage() {
           {
             label: "Спорный случай",
             value: "Поддержка",
-            hint: "Лучше открыть один кейс с коротким описанием.",
+            hint: "Лучше открыть одно обращение с коротким описанием.",
             tone: "info",
           },
         ]}
@@ -134,7 +134,7 @@ export default function SupportLegalPage() {
               key: "support",
               title: "Вопрос по документам",
               body: "Создайте обращение и укажите, какой документ или платежный случай нужно проверить.",
-              badge: "Кейс",
+              badge: "Обращение",
               tone: "info",
               action: (
                 <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">

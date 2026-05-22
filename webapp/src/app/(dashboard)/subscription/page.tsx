@@ -253,7 +253,7 @@ export default function SubscriptionPage() {
       tone: "neutral" as const,
       action: (
         <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть оплату
+          Оплатить
         </AppRouteLink>
       ),
     },
@@ -272,7 +272,7 @@ export default function SubscriptionPage() {
     {
       key: "support",
       title: "Если после оплаты статус не обновился",
-      body: "Откройте поддержку и продолжите один кейс. Оператор проверит оплату по безопасным данным.",
+      body: "Откройте поддержку и продолжите одно обращение. Оператор проверит оплату по безопасным данным.",
       badge: "Поддержка",
       tone: "neutral" as const,
       action: (
@@ -314,7 +314,7 @@ export default function SubscriptionPage() {
   return (
     <CabinetRoute
       eyebrow="Тарифы и оплата"
-      title={dash?.is_active ? "Выберите срок продления" : "Вернуть доступ"}
+      title={dash?.is_active ? "На сколько продлить?" : "Вернуть доступ"}
       description={
         dash?.is_active
           ? "Цены, срок и лимит устройств показаны сразу. Текущий статус ниже."
@@ -323,13 +323,13 @@ export default function SubscriptionPage() {
       actions={
         <>
           <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-            Открыть оплату
+            Оплатить
           </AppRouteLink>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            У меня есть код
+            Активировать код
           </AppRouteLink>
           <AppRouteLink href="#manual-setup" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Ключ / QR
+            Ручная настройка
           </AppRouteLink>
         </>
       }
@@ -358,7 +358,7 @@ export default function SubscriptionPage() {
         actions={
           <>
             <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Открыть оплату
+              Оплатить
             </AppRouteLink>
             <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
               Активировать код
@@ -381,7 +381,7 @@ export default function SubscriptionPage() {
           {
             label: "Если оплата уже была",
             value: "Открыть поддержку",
-            hint: "Если статус не обновился, лучше сразу продолжить кейс в поддержке.",
+            hint: "Если статус не обновился, лучше сразу продолжить обращение в поддержке.",
             tone: "neutral",
           },
         ]}
@@ -416,7 +416,7 @@ export default function SubscriptionPage() {
               </button>
               {!manualAccessReady ? (
                 <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                  Открыть оплату
+                  Оплатить
                 </AppRouteLink>
               ) : null}
             </div>
@@ -488,7 +488,7 @@ export default function SubscriptionPage() {
           <p className="font-semibold text-slate-950 dark:text-slate-50">История оплат пока не подключена.</p>
           <p className="mt-2">
             Мы не показываем фальшивые строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
-            откройте поддержку: оператор проверит платеж по безопасным данным и продолжит тот же кейс.
+            откройте поддержку: оператор проверит платеж по безопасным данным и продолжит то же обращение.
           </p>
         </div>
       </CabinetSection>

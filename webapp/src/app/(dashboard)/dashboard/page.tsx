@@ -218,10 +218,10 @@ export default function DashboardPage() {
   return (
     <CabinetRoute
       eyebrow="Главная"
-      title={dash?.is_active ? "Ваш доступ POKROV" : "Продлите доступ"}
+      title={dash?.is_active ? "Доступ активен" : "Продлите доступ"}
       description={
         dash?.is_active
-          ? "Здесь видно срок, устройства, трафик и следующий шаг. Само подключение включается в приложении."
+          ? "Срок, устройства и трафик здесь. Подключение включается в приложении POKROV."
           : "Доступ закончился. Продлите срок, чтобы снова подключаться в приложении POKROV."
       }
       actions={
@@ -230,10 +230,10 @@ export default function DashboardPage() {
             href={dash?.is_active ? "/downloads/" : "/subscription/checkout/"}
             className="btn-primary rounded-full px-5 py-3 text-sm font-semibold"
           >
-            {dash?.is_active ? "Открыть приложение" : "Продлить доступ"}
+            {dash?.is_active ? "Открыть POKROV" : "Продлить доступ"}
           </AppRouteLink>
           <AppRouteLink href={dash?.is_active ? "/subscription/" : "/support/"} className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            {dash?.is_active ? "Продлить доступ" : "Поддержка"}
+            {dash?.is_active ? "Продлить" : "Поддержка"}
           </AppRouteLink>
         </>
       }
@@ -348,10 +348,10 @@ export default function DashboardPage() {
       >
         <div className="quick-action-grid">
           <QuickAction icon="download" label="Скачать приложение" href="https://pokrov.space/install/" primary />
-          <QuickAction icon="qr_code_2" label="Ключ / QR" href="/subscription/#manual-setup" />
-          <QuickAction icon="explore" label="Я запутался" href="/support/#quick-help" />
-          <QuickAction icon="payments" label="Продлить доступ" href="/subscription/checkout/" />
-          <QuickAction icon="devices" label="Мои устройства" href="/devices/" />
+          <QuickAction icon="qr_code_2" label="Ручная настройка" href="/subscription/#manual-setup" />
+          <QuickAction icon="explore" label="Помогите разобраться" href="/support/#quick-help" />
+          <QuickAction icon="payments" label="Продлить" href="/subscription/checkout/" />
+          <QuickAction icon="devices" label="Устройства" href="/devices/" />
           <QuickAction icon="support_agent" label="Написать в поддержку" href="/support/" />
         </div>
       </CabinetSection>

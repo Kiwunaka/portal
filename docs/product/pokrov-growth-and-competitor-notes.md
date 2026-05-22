@@ -158,7 +158,7 @@ Observed live Telegram competitor flows:
 POKROV synthesis:
 
 - keep the first layer short and action-led: cabinet, device connection, access status, help, support, and secondary actions
-- add a `Я запутался` route that asks what the user has now: device to connect, activation code, personal connection link, or broken connection
+- add a `Помогите разобраться` route that asks what the user has now: device to connect, activation code, personal connection link, or broken connection
 - keep personal `connect.pokrov.space` links out of payment/gift success messages; show them only behind explicit `Ручная ссылка / QR`
 - treat app install as the normal path, with manual compatible clients only as a beta/recovery fallback
-- in the cabinet, add a visible `Я запутался` entry that routes to downloads, redeem, manual fallback, or support without requiring protocol knowledge
+- in the cabinet, add a visible `Помогите разобраться` entry that routes to downloads, redeem, manual fallback, or support without requiring protocol knowledge

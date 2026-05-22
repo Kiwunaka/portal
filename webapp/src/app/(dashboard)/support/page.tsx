@@ -145,7 +145,7 @@ export default function SupportPage() {
   const helpCards = [
     {
       key: "continue",
-      title: latestTicket ? "Лучше продолжать уже открытый кейс" : "Если вопрос уже понятен, можно сразу открыть кейс",
+      title: latestTicket ? "Лучше продолжать уже открытое обращение" : "Если вопрос уже понятен, можно сразу написать",
       body: latestTicket
         ? "Так не теряется история, вложения и то, что вы уже успели объяснить."
         : "Особенно если нужен скриншот, видео или история переписки.",
@@ -157,7 +157,7 @@ export default function SupportPage() {
         </AppRouteLink>
       ) : (
         <button type="button" onClick={() => setComposeOpen(true)} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Новый кейс
+          Новый вопрос
         </button>
       ),
     },
@@ -210,7 +210,7 @@ export default function SupportPage() {
     },
     {
       key: "redeem-code",
-      title: "У меня есть код",
+      title: "Активировать код",
       body: "Код оплаты, подарка или промокод вводится в разделе активации. Длинная ссылка подключения туда не подходит.",
       badge: "Код",
       tone: "neutral" as const,
@@ -235,7 +235,7 @@ export default function SupportPage() {
     {
       key: "not-working",
       title: "Подключение не работает",
-      body: "Откроем короткий кейс с нужными полями: устройство, шаг, на котором остановились, и что уже пробовали.",
+      body: "Откроем короткое обращение с нужными полями: устройство, шаг, на котором остановились, и что уже пробовали.",
       badge: "Помощь",
       tone: "warning" as const,
       action: (
@@ -280,7 +280,7 @@ export default function SupportPage() {
       setBody("");
       setAttachmentFile(null);
       await loadTickets();
-      setMessage(`Кейс #${created.id} создан. Его можно продолжить из списка.`);
+      setMessage(`Обращение #${created.id} создано. Его можно продолжить из списка.`);
     } catch (nextError) {
       setError(String((nextError as { message?: string })?.message || nextError || ""));
     } finally {
@@ -292,8 +292,8 @@ export default function SupportPage() {
     <>
       <CabinetRoute
         eyebrow="Поддержка"
-        title="Один кейс на весь вопрос"
-        description="Здесь удобно открыть новый кейс, продолжить старый и не потерять контекст, если вопрос тянется дольше одного сообщения."
+        title="Один вопрос — одно обращение"
+        description="Опишите проблему коротко. Ответим в кабинете или Telegram, а история останется рядом."
         actions={
           <>
             <button
@@ -301,10 +301,10 @@ export default function SupportPage() {
               onClick={() => document.getElementById("quick-help")?.scrollIntoView({ behavior: "smooth", block: "start" })}
               className="outline-btn rounded-full px-5 py-3 text-sm font-semibold"
             >
-              Я запутался
+              Помогите разобраться
             </button>
             <button type="button" onClick={() => setComposeOpen(true)} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Новый кейс
+              Новый вопрос
             </button>
             <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
               Telegram
@@ -319,9 +319,9 @@ export default function SupportPage() {
             tone: "neutral",
           },
           {
-            label: "Открытых кейсов",
+            label: "Открытых обращений",
             value: String(openCount),
-            hint: latestTicket ? `Последнее обновление ${formatDate(latestTicket.updated_at || latestTicket.created_at)}.` : "Если вопросов еще не было, просто создайте первый кейс.",
+            hint: latestTicket ? `Последнее обновление ${formatDate(latestTicket.updated_at || latestTicket.created_at)}.` : "Если вопросов еще не было, просто задайте первый вопрос.",
             tone: openCount ? "warning" : "success",
           },
           {
@@ -340,23 +340,23 @@ export default function SupportPage() {
       >
         <CabinetHero
           eyebrow="Что делать сейчас"
-          badge={latestTicket ? "Есть кейс, который можно продолжить" : "Можно открыть первый кейс"}
+          badge={latestTicket ? "Есть обращение, которое можно продолжить" : "Можно задать первый вопрос"}
           badgeTone={latestTicket ? "success" : "info"}
           title={latestTicket ? latestTicket.subject || `Обращение #${latestTicket.id}` : "Не нужно начинать заново каждый раз"}
           description={
             latestTicket
-              ? latestTicket.last_message_preview || "Если вопрос еще не решен, удобнее продолжить именно этот кейс."
-              : "Если вопрос уже понятен, откройте один кейс и продолжайте его дальше. Так поддержка видит всю историю рядом."
+              ? latestTicket.last_message_preview || "Если вопрос еще не решен, удобнее продолжить именно это обращение."
+              : "Если вопрос уже понятен, задайте его здесь и продолжайте в одном месте. Так поддержка видит всю историю рядом."
           }
           actions={
             <>
               {latestTicket ? (
                 <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                  Продолжить кейс
+                  Продолжить обращение
                 </AppRouteLink>
               ) : (
                 <button type="button" onClick={() => setComposeOpen(true)} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                  Создать кейс
+                  Задать вопрос
                 </button>
               )}
               <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -366,13 +366,13 @@ export default function SupportPage() {
           }
           details={[
             {
-              label: "Статус последнего кейса",
+              label: "Статус последнего обращения",
               value: latestTicket ? statusLabel(latestTicket.status) : "Пока нет",
-              hint: latestTicket ? `#${latestTicket.id}` : "Первый кейс можно открыть отсюда.",
+              hint: latestTicket ? `#${latestTicket.id}` : "Первый вопрос можно задать отсюда.",
               tone: latestTicket ? "success" : "neutral",
             },
             {
-              label: "Открытых кейсов",
+              label: "Открытых обращений",
               value: String(openCount),
               hint: "Если вопрос один, лучше держать его в одном месте.",
               tone: openCount ? "warning" : "neutral",
@@ -387,7 +387,7 @@ export default function SupportPage() {
         />
 
         <CabinetSection
-          eyebrow="Я запутался"
+          eyebrow="Помогите разобраться"
           title="Выберите, что у вас сейчас"
           description="Не нужно знать протоколы и названия клиентов. Начните с ситуации, а кабинет отведет в нужный раздел."
           tone="info"
@@ -401,10 +401,10 @@ export default function SupportPage() {
           <CabinetSection
             eyebrow="История"
             title="Ваши обращения"
-            description="Если вопрос уже был, лучше продолжать тот же кейс. Так быстрее."
+            description="Если вопрос уже был, лучше продолжать то же обращение. Так быстрее."
             actions={
               <button type="button" onClick={() => setComposeOpen(true)} className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-                Новый кейс
+                Новый вопрос
               </button>
             }
           >
@@ -413,7 +413,7 @@ export default function SupportPage() {
                 Загружаем историю обращений...
               </div>
             ) : (
-              <CabinetList items={ticketItems} empty="Пока обращений нет. Если что-то пошло не так, просто откройте первый кейс отсюда." />
+              <CabinetList items={ticketItems} empty="Пока обращений нет. Если что-то пошло не так, задайте первый вопрос отсюда." />
             )}
             {error ? <p className="mt-4 text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
           </CabinetSection>
@@ -429,7 +429,7 @@ export default function SupportPage() {
 
         <CabinetSection
           eyebrow="Безопасная диагностика"
-          title="Что мы можем передать в кейс"
+          title="Что мы можем передать в обращение"
           description="Только полезный контекст из кабинета. Личные ссылки, коды активации, адреса точек доступа и публичный адрес устройства не показываем и не просим присылать."
         >
           <CabinetCardGrid
@@ -489,7 +489,7 @@ export default function SupportPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Новый кейс</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Новый вопрос</p>
                 <h2 className="mt-2 font-display text-2xl font-semibold text-slate-950 dark:text-slate-50">Опишите вопрос коротко и по делу</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{preset.intro}</p>
               </div>
@@ -581,7 +581,7 @@ export default function SupportPage() {
                     onClick={() => void onCreateTicket()}
                     className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
                   >
-                    {busy ? "Отправляем..." : "Создать кейс"}
+                    {busy ? "Отправляем..." : "Отправить вопрос"}
                   </button>
                   <button
                     type="button"

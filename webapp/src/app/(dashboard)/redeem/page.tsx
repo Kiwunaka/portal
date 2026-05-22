@@ -70,7 +70,7 @@ export default function RedeemPage() {
       if (!nextStatus.exists) {
         setMessage("Такой код не найден. Проверьте, не потерялся ли символ.");
       } else if (nextStatus.redeemed) {
-        setMessage("Этот код уже был использован. Если нужна помощь, лучше сразу открыть поддержку.");
+        setMessage("Этот код уже был использован. Нужна помощь? Откройте поддержку.");
       } else {
         setMessage("Код найден. Его можно активировать в текущем профиле.");
       }
@@ -260,7 +260,7 @@ export default function RedeemPage() {
           {
             label: "Если не сходится",
             value: "Поддержка",
-            hint: "Один кейс быстрее ручных попыток.",
+            hint: "Одно обращение быстрее ручных попыток.",
             tone: "neutral",
           },
         ]}

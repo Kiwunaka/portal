@@ -111,6 +111,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out` and `webapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
+- before bundling, static deploy appends the release id as `?v=<release>` to `/_next/static/*` references inside exported HTML so browsers do not keep stale cabinet chunks after a deploy; `app.pokrov.space` should also serve `Cache-Control: no-cache, must-revalidate` from Caddy
 
 ### Bot token / username switch
 

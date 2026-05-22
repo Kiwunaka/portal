@@ -152,8 +152,8 @@ export function CabinetDownloadsSurface() {
     },
     {
       key: "step-help",
-      title: "Если что-то не пошло, продолжите один кейс",
-      body: "Так быстрее и для вас, и для поддержки: весь контекст уже будет рядом.",
+      title: "Если что-то не пошло, напишите в поддержку",
+      body: "Так быстрее и для вас, и для поддержки: весь контекст будет рядом.",
       badge: "Шаг 3",
       tone: "neutral",
       action: (
@@ -167,7 +167,7 @@ export function CabinetDownloadsSurface() {
   return (
     <CabinetRoute
       eyebrow="Загрузки"
-      title="Все нужные загрузки под рукой"
+      title="Скачать POKROV"
       description="Бета-доступ открыт только из кабинета. Показываем реальные ссылки из backend или честно говорим, что их нет."
       actions={
         <>
@@ -220,11 +220,11 @@ export function CabinetDownloadsSurface() {
           <>
             {cards[0]?.href ? (
               <a href={cards[0].href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                Открыть первую ссылку
+                Скачать
               </a>
             ) : null}
             <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Если нужна помощь
+              Нужна помощь
             </AppRouteLink>
           </>
         }
@@ -244,7 +244,7 @@ export function CabinetDownloadsSurface() {
           {
             label: "Если что-то не открылось",
             value: "Не искать обходы",
-            hint: "Быстрее сразу продолжить один кейс в поддержке.",
+            hint: "Быстрее сразу продолжить одно обращение в поддержке.",
             tone: error ? "warning" : "neutral",
           },
         ]}

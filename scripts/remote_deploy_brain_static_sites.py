@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import posixpath
+import re
 import shlex
 import sys
 import tarfile
@@ -79,6 +80,27 @@ def _build_static_bundle(local_dir: Path, bundle_path: Path, *, label: str) -> N
             tar.add(str(p), arcname=arcname, recursive=False)
     elapsed = int(time.monotonic() - started)
     _safe_print(f"[bundle] {label}: {_format_bytes(bundle_path.stat().st_size)} in {elapsed}s")
+
+
+_NEXT_STATIC_REF_RE = re.compile(r"(?P<url>/_next/static/[^\"'\\\s<>?]+)(?:\?v=[A-Za-z0-9_-]+)?")
+
+
+def _cache_bust_next_static_refs(local_dir: Path, *, release_id: str, label: str) -> None:
+    touched = 0
+    suffix = f"?v={release_id}"
+    for html_path in sorted(local_dir.rglob("*.html")):
+        raw = html_path.read_text(encoding="utf-8", errors="replace")
+
+        def repl(match: re.Match[str]) -> str:
+            url = match.group("url")
+            return f"{url}{suffix}"
+
+        updated = _NEXT_STATIC_REF_RE.sub(repl, raw)
+        if updated == raw:
+            continue
+        html_path.write_text(updated, encoding="utf-8")
+        touched += 1
+    _safe_print(f"[cache-bust] {label}: {touched} html files")
 
 
 def _deploy_static_bundle(
@@ -196,6 +218,8 @@ def main() -> int:
             temp_dir = Path(temp_root)
             webapp_bundle = temp_dir / f"webapp-{release_id}.tar.gz"
             marketing_bundle = temp_dir / f"marketing-{release_id}.tar.gz"
+            _cache_bust_next_static_refs(local_webapp, release_id=release_id, label="webapp")
+            _cache_bust_next_static_refs(local_mkt, release_id=release_id, label="marketing")
             _build_static_bundle(local_webapp, webapp_bundle, label="webapp")
             _build_static_bundle(local_mkt, marketing_bundle, label="marketing")
 

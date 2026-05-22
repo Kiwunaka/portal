@@ -119,7 +119,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/support"),
-    meta: { title: "Поддержка", subtitle: "Один разговор на весь кейс, без потери контекста." },
+    meta: { title: "Поддержка", subtitle: "Один разговор на весь вопрос, без потери контекста." },
   },
   {
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
