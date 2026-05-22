@@ -173,6 +173,18 @@ export default function SubscriptionPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const openManualSetupFromHash = () => {
+      if (window.location.hash === "#manual-setup") {
+        setManualAccessOpen(true);
+      }
+    };
+    openManualSetupFromHash();
+    window.addEventListener("hashchange", openManualSetupFromHash);
+    return () => window.removeEventListener("hashchange", openManualSetupFromHash);
+  }, []);
+
   const accessState = getAccessState(dash, user);
   const paidMode = isPaidUnlimitedState(accessState);
   const trialMode = isTrialPremiumState(accessState);
@@ -316,6 +328,9 @@ export default function SubscriptionPage() {
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             У меня есть код
           </AppRouteLink>
+          <AppRouteLink href="#manual-setup" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+            Ключ / QR
+          </AppRouteLink>
         </>
       }
     >
@@ -372,7 +387,7 @@ export default function SubscriptionPage() {
         ]}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+      <div id="manual-setup" className="scroll-mt-24 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <CabinetSection
           eyebrow="Ручной вариант"
           title="Если приложения POKROV пока нет под рукой"

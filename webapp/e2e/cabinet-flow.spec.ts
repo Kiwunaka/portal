@@ -360,10 +360,12 @@ test.describe("Cabinet flow", () => {
   });
 
   test("shows shared POKROV cabinet branding and a site return link", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/dashboard/");
 
     await expect(page.getByLabel("POKROV logo").first()).toBeVisible();
     const sidebar = page.getByRole("complementary").first();
+    await expect(sidebar).toBeVisible();
     await expect(sidebar).toContainText("Доступ, устройства, продление и помощь в одном кабинете.");
     await expect(sidebar.locator("nav")).toContainText("Главная");
     await expect(sidebar.locator("nav")).toContainText("Статистика");
@@ -372,6 +374,17 @@ test.describe("Cabinet flow", () => {
     const siteLink = page.getByRole("link", { name: /^На сайт/i });
     await expect(siteLink).toBeVisible();
     await expect(siteLink).toHaveAttribute("href", /https:\/\/pokrov\.space\/?$/);
+  });
+
+  test("uses desktop navigation at 1280px instead of the mobile bottom menu", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/dashboard/");
+
+    await expect(page.getByRole("complementary").first()).toBeVisible();
+    await expect(page.locator(".mobile-nav-root")).toBeHidden();
+    await page.locator("aside nav a[href='/subscription/']").click();
+    await expect(page).toHaveURL(/\/subscription\/?$/);
+    await expect(page.getByRole("heading", { name: "Выберите срок продления" })).toBeVisible();
   });
 
   test("shows an honest email-soon state on the root auth entry", async ({ page }) => {
@@ -453,9 +466,9 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Откройте приложение");
     await expect(page.getByRole("heading", { name: "Что делать дальше" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Скачать приложение" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Ключ / QR" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Я запутался" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Написать в поддержку" }).first()).toBeVisible();
-    await expect(page.locator("main")).not.toContainText("QR");
     await expect(page.locator("main")).not.toContainText("?format=plain");
     await expect(page.locator("main")).not.toContainText("mock_token");
     await expect(page.getByRole("button", { name: "Показать", exact: true })).toHaveCount(0);
@@ -512,6 +525,18 @@ test.describe("Cabinet flow", () => {
     await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
     await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
+  });
+
+  test("opens the manual key section from a direct dashboard shortcut", async ({ page }) => {
+    await page.goto("/dashboard/");
+
+    await page.getByRole("link", { name: "Ключ / QR" }).first().click();
+
+    await expect(page).toHaveURL(/\/subscription\/#manual-setup$/);
+    const manualConnection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Если приложения POKROV пока нет под рукой" }) });
+    await expect(manualConnection).toBeVisible();
+    await expect(manualConnection).toContainText("mock_token");
+    await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
   });
 
   test("keeps paid plan cards selectable for a free monthly account", async ({ page }) => {

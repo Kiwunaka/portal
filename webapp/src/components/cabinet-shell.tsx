@@ -257,8 +257,8 @@ function InitialCabinetSkeleton() {
       aria-busy="true"
       aria-live="polite"
     >
-      <div className="grid min-h-[calc(100dvh-2rem)] gap-4 xl:grid-cols-[292px,1fr]">
-        <aside className="hidden rounded-[1.9rem] border border-slate-200/80 bg-[#fbfaf7]/96 p-4 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/92 xl:block">
+      <div className="grid min-h-[calc(100dvh-2rem)] gap-4 lg:grid-cols-[260px,1fr] xl:grid-cols-[292px,1fr]">
+        <aside className="hidden rounded-[1.9rem] border border-slate-200/80 bg-[#fbfaf7]/96 p-4 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/92 lg:block">
           <div className="rounded-[1.5rem] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
             <SkeletonLine className="h-11 w-36" />
             <SkeletonLine className="mt-4 h-3 w-full" />
@@ -271,7 +271,7 @@ function InitialCabinetSkeleton() {
           </div>
         </aside>
 
-        <section className="min-w-0 pb-24 xl:pb-8" aria-label="Открываем кабинет POKROV">
+        <section className="min-w-0 pb-24 lg:pb-8" aria-label="Открываем кабинет POKROV">
           <header className="mb-5 rounded-[1.5rem] border border-slate-200/80 bg-white/90 px-4 py-4 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">POKROV</p>
             <h1 className="mt-2 font-display text-[1.6rem] font-semibold leading-none tracking-[-0.03em] text-slate-950 dark:text-slate-50">
@@ -420,7 +420,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     : "Срок закончился. Продление вернет доступ в том же аккаунте.";
 
   const sidebar = (
-    <aside className="hidden w-[292px] shrink-0 xl:block">
+    <aside className="hidden w-[260px] shrink-0 lg:block xl:w-[292px]">
       <div className="sticky top-4 flex min-h-[calc(100vh-2rem)] flex-col rounded-[1.9rem] border border-slate-200/80 bg-[#fbfaf7]/96 px-4 py-4 shadow-[0_28px_70px_-48px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#101713]/92">
         <div>
           <div className="rounded-[1.5rem] border border-slate-200/80 bg-white/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
@@ -500,7 +500,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   );
 
   const mobileMenu = (
-    <div className="fixed inset-0 z-50 bg-slate-950/42 p-3 xl:hidden" onClick={() => setDrawerOpen(false)}>
+    <div className="fixed inset-0 z-50 bg-slate-950/42 p-3 lg:hidden" onClick={() => setDrawerOpen(false)}>
       <aside
         className="h-full w-[min(86vw,340px)] rounded-[1.8rem] border border-slate-200/80 bg-[#fbfaf7]/98 p-4 shadow-[0_32px_80px_-48px_rgba(15,23,42,0.4)] dark:border-white/10 dark:bg-[#101713]/98"
         onClick={(event) => event.stopPropagation()}
@@ -577,14 +577,14 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
       <div className="mx-auto flex min-h-screen max-w-[1500px] gap-4 px-3 py-4 sm:px-4 lg:px-5">
         {sidebar}
 
-        <div className="min-w-0 flex-1 pb-24 xl:pb-8" style={{ paddingTop: "max(0.5rem, var(--tg-safe-area-top, 0px))" }}>
+        <div className="min-w-0 flex-1 pb-24 lg:pb-8" style={{ paddingTop: "max(0.5rem, var(--tg-safe-area-top, 0px))" }}>
           <header className="mb-4 rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(true)}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 xl:hidden dark:text-slate-300 dark:hover:bg-white/[0.04]"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 lg:hidden dark:text-slate-300 dark:hover:bg-white/[0.04]"
                   aria-label="Открыть меню"
                 >
                   <span className="material-symbols-rounded">menu</span>
@@ -625,7 +625,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
       {!isAdminRoute && !drawerOpen ? (
         <nav
-          className="mobile-nav-root xl:hidden"
+          className="mobile-nav-root lg:hidden"
           aria-label="Навигация кабинета"
         >
           {MOBILE_NAV_ITEMS.map((item) => {

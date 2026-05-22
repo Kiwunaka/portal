@@ -1338,7 +1338,7 @@ body {
   color: #fff;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .mobile-nav-root {
     display: none;
   }

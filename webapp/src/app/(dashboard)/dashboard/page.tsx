@@ -348,6 +348,7 @@ export default function DashboardPage() {
       >
         <div className="quick-action-grid">
           <QuickAction icon="download" label="Скачать приложение" href="https://pokrov.space/install/" primary />
+          <QuickAction icon="qr_code_2" label="Ключ / QR" href="/subscription/#manual-setup" />
           <QuickAction icon="explore" label="Я запутался" href="/support/#quick-help" />
           <QuickAction icon="payments" label="Продлить доступ" href="/subscription/checkout/" />
           <QuickAction icon="devices" label="Мои устройства" href="/devices/" />
