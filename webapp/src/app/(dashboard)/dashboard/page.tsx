@@ -175,8 +175,8 @@ export default function DashboardPage() {
       );
     } else if (knownNodes > 0 && healthyNodes < knownNodes) {
       items.push(
-        <AlertBanner key="nodes-attention" tone="warning" icon="network_check" title="Часть серверов на обслуживании">
-          Готовы {healthyNodes} из {knownNodes} серверов. Если заметили сбои — <AppRouteLink href="/support/" className="underline font-semibold">сообщите нам</AppRouteLink>.
+        <AlertBanner key="nodes-attention" tone="warning" icon="network_check" title="Часть направлений на обслуживании">
+          Готовы {healthyNodes} из {knownNodes} направлений. Если заметили сбои — <AppRouteLink href="/support/" className="underline font-semibold">сообщите нам</AppRouteLink>.
         </AlertBanner>
       );
     }
@@ -274,8 +274,8 @@ export default function DashboardPage() {
       {/* ── App Download Block ── */}
         <CabinetSection
           eyebrow="Следующий шаг"
-        title="Откройте приложение и нажмите «Подключить»"
-        description="Кабинет не заменяет приложение: он помогает скачать beta-сборку, проверить устройства, продлить доступ и открыть поддержку."
+        title="Сначала включите POKROV на устройстве"
+        description="Здесь можно скачать приложение, продлить доступ, посмотреть устройства и быстро написать в поддержку."
       >
         <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr] items-start">
           <div className="rounded-[1.5rem] border border-emerald-200/60 bg-emerald-50/60 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20">
@@ -284,8 +284,8 @@ export default function DashboardPage() {
                 <span className="material-symbols-rounded text-[24px]">bolt</span>
               </span>
               <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Быстрый старт</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Откройте приложение и нажмите «Подключить».</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Самый короткий путь</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">Установите приложение, войдите и нажмите «Подключить».</p>
               </div>
             </div>
             <div className="mt-4 grid gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -314,7 +314,7 @@ export default function DashboardPage() {
                 <span className="material-symbols-rounded text-[28px] text-emerald-700 dark:text-emerald-400">android</span>
                 <div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Android</p>
-                  <p className="text-xs text-slate-500">APK через GitHub Releases</p>
+                  <p className="text-xs text-slate-500">Скачать APK</p>
                 </div>
               </a>
               <a
@@ -326,14 +326,14 @@ export default function DashboardPage() {
                 <span className="material-symbols-rounded text-[28px] text-emerald-700 dark:text-emerald-400">desktop_windows</span>
                 <div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Windows</p>
-                  <p className="text-xs text-slate-500">Установщик и портативная</p>
+                  <p className="text-xs text-slate-500">Установщик для Windows</p>
                 </div>
               </a>
             </div>
             <div className="rounded-xl border border-slate-200/60 bg-white/60 p-4 dark:bg-slate-900/30 dark:border-slate-700/30">
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                <strong>Как подключиться:</strong> установите приложение, продолжите текущий доступ и нажмите <strong>Подключить</strong>.
-                Telegram остается запасным способом входа и восстановления, если приложение или кабинет не помогли.
+                <strong>Как подключиться:</strong> установите приложение, войдите в тот же аккаунт и нажмите <strong>Подключить</strong>.
+                Telegram оставьте как запасной вход и быстрый контакт с поддержкой.
               </p>
             </div>
           </div>
@@ -343,8 +343,8 @@ export default function DashboardPage() {
       {/* ── Quick Actions ── */}
       <CabinetSection
         eyebrow="Быстрые действия"
-        title="Что делать дальше"
-        description="Сначала приложение, затем продление и поддержка, если они понадобятся."
+        title="Что нужно сейчас?"
+        description="Выберите ближайший шаг: установить приложение, настроить вручную, продлить доступ или попросить помощь."
       >
         <div className="quick-action-grid">
           <QuickAction icon="download" label="Скачать приложение" href="https://pokrov.space/install/" primary />

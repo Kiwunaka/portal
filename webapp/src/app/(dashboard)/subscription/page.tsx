@@ -51,37 +51,37 @@ function formatDate(value?: string | null): string {
 
 function nodePolicyLabel(value?: string | null): string {
   const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "free_single_location" || normalized === "nl_only") return "Базовый узел";
-  if (normalized === "managed_premium" || normalized === "paid_pool") return "Полный пул";
-  return "По профилю";
+  if (normalized === "free_single_location" || normalized === "nl_only") return "базовое направление";
+  if (normalized === "managed_premium" || normalized === "paid_pool") return "больше направлений";
+  return "по вашему профилю";
 }
 
 const manualStepCards = [
   {
     key: "copy",
     title: "Скопируйте личную ссылку",
-    body: "Это ссылка подключения для совместимого клиента. Она не привязывает Telegram и не заменяет код активации.",
+    body: "Нужна только для ручной установки. Не отправляйте ее в бот и не используйте как код активации.",
     badge: "1",
     tone: "neutral" as const,
   },
   {
     key: "client",
     title: "Установите клиент",
-    body: "Для Android проще начать с Hiddify или NekoBox. Для Windows обычно подходят Hiddify или v2rayN.",
+    body: "Если приложения POKROV нет под рукой, начните с Hiddify. Ниже есть варианты для Android и Windows.",
     badge: "2",
     tone: "neutral" as const,
   },
   {
     key: "import",
-    title: "Импортируйте ссылку",
-    body: "Нажмите плюс, выберите импорт из буфера или subscription URL, вставьте ссылку и обновите профиль.",
+    title: "Добавьте ссылку в клиент",
+    body: "Нажмите плюс, вставьте ссылку из буфера и обновите профиль. Обычно этого достаточно.",
     badge: "3",
     tone: "neutral" as const,
   },
   {
     key: "connect",
-    title: "Выберите профиль и подключитесь",
-    body: "Если клиент попросит режим, выбирайте автоматический профиль из подписки. Ручные параметры вводить не нужно.",
+    title: "Подключитесь",
+    body: "Выберите добавленный профиль и включите подключение. Ручные параметры вводить не нужно.",
     badge: "4",
     tone: "neutral" as const,
   },
@@ -91,7 +91,7 @@ const manualClientCards = [
   {
     key: "hiddify",
     title: "Hiddify",
-    body: "Android и Windows. Удобный импорт ссылки, подходит для sing-box/Xray-профилей.",
+    body: "Android и Windows. Удобно вставить ссылку и сразу проверить подключение.",
     badge: "Проще всего",
     tone: "success" as const,
     action: (
@@ -103,7 +103,7 @@ const manualClientCards = [
   {
     key: "v2rayn",
     title: "v2rayN",
-    body: "Windows. Подходит, если нужен привычный настольный клиент с подписками.",
+    body: "Windows. Подходит, если нужен привычный настольный клиент.",
     badge: "Windows",
     tone: "neutral" as const,
     action: (
@@ -115,7 +115,7 @@ const manualClientCards = [
   {
     key: "nekobox",
     title: "NekoBox",
-    body: "Android. Подходит для импорта ссылки и профилей на базе sing-box/Xray.",
+    body: "Android. Подходит, если Hiddify не подошел или уже привычен другой клиент.",
     badge: "Android",
     tone: "neutral" as const,
     action: (
@@ -127,7 +127,7 @@ const manualClientCards = [
   {
     key: "sfa",
     title: "sing-box for Android",
-    body: "Android. Ближе к чистому sing-box, если нужен минимальный клиент без лишней оболочки.",
+    body: "Android. Минимальный вариант для тех, кто уже пользовался ручными клиентами.",
     badge: "SFA",
     tone: "neutral" as const,
     action: (
@@ -248,7 +248,7 @@ export default function SubscriptionPage() {
     {
       key: "checkout",
       title: "Продлить доступ",
-      body: "Выберите срок, проверьте сумму, устройства и платформы до оплаты.",
+      body: "Выберите срок и проверьте сумму до оплаты. После оплаты доступ обновится в этом же аккаунте.",
       badge: "Основной способ",
       tone: "neutral" as const,
       action: (
@@ -272,7 +272,7 @@ export default function SubscriptionPage() {
     {
       key: "support",
       title: "Если после оплаты статус не обновился",
-      body: "Откройте поддержку и продолжите одно обращение. Оператор проверит оплату по безопасным данным.",
+      body: "Не оплачивайте второй раз. Откройте поддержку, и оператор проверит платеж.",
       badge: "Поддержка",
       tone: "neutral" as const,
       action: (
@@ -286,7 +286,7 @@ export default function SubscriptionPage() {
   const modeCards = [
     {
       key: "paid",
-      title: paidMode ? "Премиум активен" : "Премиум для основного использования",
+      title: paidMode ? "Полный доступ активен" : "Полный доступ на каждый день",
       body: paidMode
         ? `Доступ действует до ${formatDate(dash?.expiry_at)}. После окончания срока останется базовый режим.`
         : "Если не хочется думать о месячном лимите, продлите полный доступ от 99 ₽.",
@@ -305,8 +305,8 @@ export default function SubscriptionPage() {
       title: freeMode ? "Базовый режим сейчас активен" : "Базовый режим остается запасным",
       body: freeMode
         ? `Сейчас доступно ${freeLimitGb || 5} ГБ на 30 дней для 1 устройства.`
-        : "После окончания полного доступа остается запасной режим: 5 ГБ на 30 дней для 1 устройства.",
-      badge: freeMode ? "Сейчас так" : "Запасной путь",
+        : "После окончания полного доступа остается базовый режим: 5 ГБ на 30 дней для 1 устройства.",
+      badge: freeMode ? "Сейчас так" : "Базовый режим",
       tone: freeMode && !softMode ? ("info" as const) : softMode ? ("warning" as const) : ("neutral" as const),
     },
   ];
@@ -352,8 +352,8 @@ export default function SubscriptionPage() {
           premiumMode
             ? "Если POKROV подходит, продлите срок до окончания доступа: устройства и история останутся на месте."
             : dash?.is_active
-              ? "Базовый режим остается запасным, но полный доступ дает больше устройств и убирает месячный лимит."
-            : "Как только срок снова станет активным, устройства и история останутся на месте."
+              ? "Базовый режим останется, а полный доступ добавит больше устройств и уберет месячный лимит."
+              : "Как только срок снова станет активным, устройства и история останутся на месте."
         }
         actions={
           <>
@@ -375,7 +375,7 @@ export default function SubscriptionPage() {
           {
             label: "Полный режим",
             value: paidMode ? "Активен" : "Можно включить",
-            hint: paidMode ? "Без месячного лимита трафика." : "До 5 устройств и полный пул доступных узлов.",
+            hint: paidMode ? "Без месячного лимита трафика." : "До 5 устройств и больше направлений для подключения.",
             tone: paidMode ? "success" : "neutral",
           },
           {
@@ -476,7 +476,7 @@ export default function SubscriptionPage() {
       <CabinetSection
         eyebrow="История"
         title="История оплат"
-        description="Платежная история появится здесь, когда backend отдаст безопасную пользовательскую выписку."
+        description="Когда история станет доступна, она появится прямо здесь."
         actions={
           <AppRouteLink href="/support/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
             Поддержка
@@ -485,10 +485,9 @@ export default function SubscriptionPage() {
         tone="info"
       >
         <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
-          <p className="font-semibold text-slate-950 dark:text-slate-50">История оплат пока не подключена.</p>
+          <p className="font-semibold text-slate-950 dark:text-slate-50">Оплаты появятся здесь.</p>
           <p className="mt-2">
-            Мы не показываем фальшивые строки и не придумываем квитанции. Если оплата уже была, а срок не обновился,
-            откройте поддержку: оператор проверит платеж по безопасным данным и продолжит то же обращение.
+            Если уже платили, а срок не обновился, не оплачивайте второй раз. Откройте поддержку: оператор проверит платеж и продолжит одно обращение.
           </p>
         </div>
       </CabinetSection>

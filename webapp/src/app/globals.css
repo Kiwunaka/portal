@@ -13,6 +13,9 @@
   --line-dark: var(--pokrov-line-dark, rgba(202, 215, 206, 0.1));
   --glass: var(--pokrov-surface, rgba(255, 255, 255, 0.76));
   --glass-dark: var(--pokrov-surface-dark, rgba(15, 22, 18, 0.84));
+  --font-body: "Manrope", "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Manrope", "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --tg-safe-area-top: 0px;
   --tg-safe-area-bottom: 0px;
   --tg-safe-area-left: 0px;

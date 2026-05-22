@@ -5,6 +5,7 @@ import { getInitData } from "./telegram";
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
 const DIRECT_API_BASE = "https://api.pokrov.space";
 const DEFAULT_API_TIMEOUT_MS = 15000;
+const WEB_SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const NODE_STATUS_CACHE_TTL_MS = 30000;
 let authSessionCacheKey = "";
 let authSessionCacheValue: AuthSessionPayload | null = null;
@@ -1307,9 +1308,40 @@ export type EmailRecoveryStartResult = {
   } | null;
 };
 
+function webSessionCookieSuffix(maxAgeSeconds: number): string {
+  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+  return `; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`;
+}
+
+function getCookieValue(name: string): string {
+  if (typeof document === "undefined") return "";
+  const prefix = `${encodeURIComponent(name)}=`;
+  const item = String(document.cookie || "")
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  if (!item) return "";
+  try {
+    return decodeURIComponent(item.slice(prefix.length));
+  } catch {
+    return item.slice(prefix.length);
+  }
+}
+
+function setCookieValue(name: string, value: string, maxAgeSeconds: number): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}${webSessionCookieSuffix(maxAgeSeconds)}`;
+}
+
 function getWebSessionToken(): string {
   if (typeof window === "undefined") return "";
-  return String(window.localStorage.getItem(WEB_SESSION_TOKEN_KEY) || "").trim();
+  try {
+    const localToken = String(window.localStorage?.getItem(WEB_SESSION_TOKEN_KEY) || "").trim();
+    if (localToken) return localToken;
+  } catch {
+    // Some embedded browsers can disable localStorage; cookie fallback keeps email login usable.
+  }
+  return getCookieValue(WEB_SESSION_TOKEN_KEY).trim();
 }
 
 function clearAuthSessionCache(): void {
@@ -1351,7 +1383,12 @@ export function setWebSessionToken(token: string): void {
   const value = String(token || "").trim();
   if (!value) return;
   clearAuthSessionCache();
-  window.localStorage.setItem(WEB_SESSION_TOKEN_KEY, value);
+  try {
+    window.localStorage?.setItem(WEB_SESSION_TOKEN_KEY, value);
+  } catch {
+    // Keep going: the cookie fallback is enough for authenticated API calls.
+  }
+  setCookieValue(WEB_SESSION_TOKEN_KEY, value, WEB_SESSION_COOKIE_MAX_AGE_SECONDS);
 }
 
 export function consumeWebSessionTokenFromUrl(): boolean {
@@ -1377,7 +1414,12 @@ export function consumeWebSessionTokenFromUrl(): boolean {
 export function clearWebSessionToken(): void {
   if (typeof window === "undefined") return;
   clearAuthSessionCache();
-  window.localStorage.removeItem(WEB_SESSION_TOKEN_KEY);
+  try {
+    window.localStorage?.removeItem(WEB_SESSION_TOKEN_KEY);
+  } catch {
+    // Ignore storage failures during logout/re-auth.
+  }
+  setCookieValue(WEB_SESSION_TOKEN_KEY, "", 0);
 }
 
 function dispatchAuthRequired(detail?: { code?: string | null; message?: string | null }): void {

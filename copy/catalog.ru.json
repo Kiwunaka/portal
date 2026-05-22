@@ -1113,7 +1113,7 @@
     },
     "marketing.install.android.desc": {
       "surface": "marketing.install.android",
-      "ru": "Android APK для этой беты открывается через кабинет и GitHub Releases. Не используйте случайные зеркала и стор-ссылки.",
+      "ru": "Android-файл для текущей беты открывается через кабинет. Не используйте случайные зеркала и стор-ссылки.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1140,7 +1140,7 @@
     },
     "marketing.install.windows.desc": {
       "surface": "marketing.install.windows",
-      "ru": "Windows-сборка для этой беты открывается через кабинет и GitHub Releases. Установщик может быть неподписанным, поэтому предупреждение о неизвестном издателе ожидаемо.",
+      "ru": "Windows-файл для текущей беты открывается через кабинет. Система может показать предупреждение о неизвестном издателе.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,

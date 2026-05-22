@@ -324,7 +324,7 @@ export default function CheckoutPage() {
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
               {providerReasons.length
                 ? `Оплата пока закрыта: ${providerReasons.join("; ")}.`
-                : "Платежный провайдер пока не включен. Продление останется недоступным, пока backend не вернет рабочий способ оплаты."}
+                : "Оплата пока не включена. Продление станет доступно, когда платежный способ пройдет финальную проверку."}
             </p>
           ) : null}
 

@@ -211,7 +211,7 @@ export default function SupportTicketThreadPage() {
           {
             label: "Последнее обновление",
             value: fmtDate(ticket.updated_at),
-            hint: "Время отображается по данным backend.",
+            hint: "Время берется из этого обращения.",
             tone: "neutral",
           },
           {

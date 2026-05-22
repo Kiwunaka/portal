@@ -145,14 +145,14 @@ function buildDownloadCards(): DownloadCard[] {
     {
       title: "Android",
       status: "APK beta",
-      desc: "Android-версия этой волны распространяется как APK через кабинет и GitHub Releases, без публикации в сторах.",
+      desc: "Android-версия этой волны скачивается через кабинет, без публикации в сторах.",
       href: installHref,
       cta: "Открыть установку",
     },
     {
       title: "Windows",
       status: "EXE beta",
-      desc: "Windows-сборка идет как EXE через кабинет и GitHub Releases. Если система показывает предупреждение о неподписанном файле, это ожидаемо для текущей беты.",
+      desc: "Windows-сборка скачивается через кабинет. Если система покажет предупреждение, это ожидаемо для текущей беты.",
       href: installHref,
       cta: "Открыть установку",
     },
@@ -512,7 +512,7 @@ export default function MarketingLanding({
         <section className="lp-section">
           <div className="lp-section-head">
             <span>Почему это удобно</span>
-            <h2>POKROV продает понятный результат, а не техническую кухню.</h2>
+            <h2>POKROV дает понятный результат без технической возни.</h2>
             <p>
               Android и Windows ведут к приложению, бесплатному старту и кабинету. Первый экран не заставляет выбирать протоколы, файлы и серверы.
             </p>

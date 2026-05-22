@@ -45,9 +45,9 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     androidApk
       ? {
           key: "android-apk",
-          title: "Android APK через GitHub Releases",
-          body: "Бета APK для Android. Ставьте только из этой ссылки в кабинете или из ссылки, которую дала поддержка.",
-          badge: "APK beta",
+          title: "Android-приложение",
+          body: "Скачивайте файл только отсюда или по ссылке от поддержки, чтобы не поставить старую сборку.",
+          badge: "Android",
           tone: "warning",
           href: androidApk,
           action: externalAction(androidApk, "Скачать"),
@@ -57,8 +57,8 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "android-mirror",
           title: "Резервная ссылка для Android",
-          body: "Резерв той же APK-сборки. Если обычная ссылка не открывается, лучше написать в поддержку, а не искать обходной путь.",
-          badge: "Резерв beta",
+          body: "Если обычная ссылка не открылась, попробуйте эту. Если и она не помогла, лучше написать в поддержку.",
+          badge: "Резерв",
           tone: "warning",
           href: androidMirror,
           action: externalAction(androidMirror, "Открыть"),
@@ -67,9 +67,9 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     windowsExe
       ? {
           key: "windows-exe",
-          title: "Windows EXE через GitHub Releases",
-          body: "Бета-сборка для Windows. Установщик может быть неподписанный, поэтому SmartScreen или системное предупреждение ожидаемы.",
-          badge: "Бета-сборка",
+          title: "Windows-приложение",
+          body: "Скачайте установщик и войдите в тот же аккаунт. Windows может показать предупреждение, пока приложение в бете.",
+          badge: "Windows",
           tone: "warning",
           href: windowsExe,
           action: externalAction(windowsExe, "Скачать"),
@@ -79,8 +79,8 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
       ? {
           key: "windows-mirror",
           title: "Резервная ссылка для Windows",
-          body: "Резерв той же beta-сборки. Если Windows предупреждает о неподписанном файле, это известное ограничение публичной беты.",
-          badge: "Резерв beta",
+          body: "Запасная ссылка на тот же установщик. Предупреждение Windows возможно, пока приложение в бете.",
+          badge: "Резерв",
           tone: "warning",
           href: windowsMirror,
           action: externalAction(windowsMirror, "Открыть"),
@@ -168,7 +168,7 @@ export function CabinetDownloadsSurface() {
     <CabinetRoute
       eyebrow="Загрузки"
       title="Скачать POKROV"
-      description="Бета-доступ открыт только из кабинета. Показываем реальные ссылки из backend или честно говорим, что их нет."
+      description="Скачивайте приложение только отсюда: так меньше риска взять старый или чужой файл."
       actions={
         <>
           <AppRouteLink href="/devices/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
@@ -183,13 +183,13 @@ export function CabinetDownloadsSurface() {
         {
           label: "Android",
           value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
-          hint: "Для этой беты используем APK из GitHub Releases, без стор-публикации.",
+          hint: "Официальная APK-ссылка для текущей беты.",
           tone: hasAndroid ? "warning" : "neutral",
         },
         {
           label: "Windows",
           value: hasWindows ? "Ссылка готова" : "Подтянем позже",
-          hint: "Beta-сборка может содержать неподписанный артефакт и вызвать системное предупреждение.",
+          hint: "Windows может показать предупреждение, пока сборка в бете.",
           tone: hasWindows ? "warning" : "neutral",
         },
         {
@@ -213,7 +213,7 @@ export function CabinetDownloadsSurface() {
         title={cards.length ? "Сначала загрузка, потом вход" : "Часть ссылок подтянем позже"}
         description={
           cards.length
-            ? "Для нового экрана обычно хватает двух шагов: открыть нужную бета-загрузку и войти в тот же аккаунт. Всё остальное уже догружается само."
+            ? "Обычно хватает двух шагов: скачать файл и войти в тот же аккаунт. Остальное POKROV подтянет сам."
             : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше не искать обходной путь, а открыть поддержку."
         }
         actions={
@@ -230,7 +230,7 @@ export function CabinetDownloadsSurface() {
         }
         details={[
           {
-            label: "Лучший путь",
+            label: "Что скачать",
             value: hasAndroid ? "Android APK" : hasWindows ? "Установщик Windows" : "Поддержка",
             hint: "Берите обычный путь первым. Запасные ссылки нужны редко.",
             tone: "neutral",
@@ -243,7 +243,7 @@ export function CabinetDownloadsSurface() {
           },
           {
             label: "Если что-то не открылось",
-            value: "Не искать обходы",
+            value: "Написать в поддержку",
             hint: "Быстрее сразу продолжить одно обращение в поддержке.",
             tone: error ? "warning" : "neutral",
           },
@@ -254,7 +254,7 @@ export function CabinetDownloadsSurface() {
         <CabinetSection
           eyebrow="Платформы"
           title="Куда можно перейти сейчас"
-          description="Оставили только реальные бета-ссылки и честные состояния артефактов."
+          description="Показываем только те ссылки, которые сейчас доступны."
         >
           <CabinetCardGrid items={cards} className="xl:grid-cols-2" />
           {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть ссылок не удалось обновить автоматически: {error}</p> : null}

@@ -121,7 +121,7 @@ export default function DevicesPage() {
       body: freeMode
         ? `Сейчас ориентир до ${deviceLimit} устройств и около ${freeLimitGb || 5} ГБ в месяц.`
         : "Он подходит для знакомства с сервисом, но может быть теснее по лимитам.",
-      badge: freeMode ? "Сейчас так" : "Запасной путь",
+      badge: freeMode ? "Сейчас так" : "Базовый режим",
       tone: freeMode ? ("info" as const) : ("neutral" as const),
     },
   ];

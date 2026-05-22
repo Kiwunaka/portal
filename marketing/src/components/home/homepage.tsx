@@ -415,8 +415,8 @@ function Features() {
         <div className={styles.section}>
           <div className={styles.sectionHead}>
             <span className={styles.eyebrow}>возможности</span>
-          <h2>Что видно в POKROV</h2>
-          <p>Приложение ведет к подключению, кабинет показывает срок и устройства, поддержка помогает с установкой, входом и продлением.</p>
+          <h2>POKROV сразу ведет к делу</h2>
+          <p>Скачайте приложение, войдите в аккаунт и включайте доступ. В кабинете рядом срок, устройства, оплата и поддержка.</p>
         </div>
         <div className={styles.surfaceGrid}>
           {SURFACE_PANELS.map((panel) => (
@@ -466,7 +466,7 @@ function Pricing({ links }: { links: HomeLinks }) {
   ];
 
   const paidFeatures = [
-    "Платный пул доступных узлов",
+    "Больше направлений для подключения",
     "До 5 личных устройств",
     "Тот же аккаунт и кабинет",
     "Кабинет и поддержка",

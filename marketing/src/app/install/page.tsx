@@ -117,7 +117,7 @@ export default function InstallPage() {
                     <span>02</span>
                     <div>
                       <strong>Windows</strong>
-                      <p>Бета-сборка может быть неподписанной; предупреждение показывается до установки.</p>
+                      <p>Windows может показать предупреждение перед установкой, пока приложение в бете.</p>
                     </div>
                   </li>
                   <li>
@@ -171,7 +171,7 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.android.desc",
-                    "Android APK для этой беты открывается через кабинет и GitHub Releases. Не используйте случайные зеркала и стор-ссылки.",
+                    "Android-файл для текущей беты открывается через кабинет. Не используйте случайные зеркала и стор-ссылки.",
                   )}
                 </p>
                 {androidHasArtifact ? (
@@ -194,7 +194,7 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.windows.desc",
-                    "Windows-сборка для беты может быть неподписанной. Перед установкой пользователь должен увидеть предупреждение о неизвестном издателе.",
+                    "Windows-файл для текущей беты открывается через кабинет. Система может показать предупреждение о неизвестном издателе.",
                   )}
                 </p>
                 {windowsHasArtifact ? (

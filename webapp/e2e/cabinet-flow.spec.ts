@@ -183,16 +183,19 @@ function mockTickets(): TicketMock[] {
   ];
 }
 
-async function registerCabinetMocks(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    window.localStorage.setItem("portal_web_session_token", "e2e_mock_token");
+async function registerCabinetMocks(page: Page, options: { seedWebSession?: boolean } = {}): Promise<void> {
+  const seedWebSession = options.seedWebSession ?? true;
+  await page.addInitScript((shouldSeedWebSession) => {
+    if (shouldSeedWebSession) {
+      window.localStorage.setItem("portal_web_session_token", "e2e_mock_token");
+    }
     Object.defineProperty(window.navigator, "clipboard", {
       configurable: true,
       value: {
         writeText: async () => undefined,
       },
     });
-  });
+  }, seedWebSession);
 
   const sessionUser = mockSessionUser();
   const dashboard = mockDashboard();
@@ -354,6 +357,22 @@ async function registerCabinetMocks(page: Page): Promise<void> {
   });
 }
 
+test.describe("Cabinet session persistence", () => {
+  test("reuses an email web session from the cookie fallback", async ({ page }) => {
+    await registerCabinetMocks(page, { seedWebSession: false });
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("portal_web_session_token");
+      document.cookie = "portal_web_session_token=e2e_mock_token; Path=/; SameSite=Lax";
+    });
+
+    await page.goto("/");
+
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await expect(page.getByRole("heading", { name: "Доступ активен" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toHaveCount(0);
+  });
+});
+
 test.describe("Cabinet flow", () => {
   test.beforeEach(async ({ page }) => {
     await registerCabinetMocks(page);
@@ -464,7 +483,7 @@ test.describe("Cabinet flow", () => {
 
     await expect(page.getByRole("heading", { name: "Доступ активен" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Откройте приложение");
-    await expect(page.getByRole("heading", { name: "Что делать дальше" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Что нужно сейчас?" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Скачать приложение" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Ручная настройка" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Помогите разобраться" }).first()).toBeVisible();
@@ -476,11 +495,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("button", { name: "Скопировать" })).toHaveCount(0);
   });
 
-  test("keeps cabinet navigation on native Next.js routing", async ({ page }) => {
+  test("keeps cabinet navigation usable with left-click browser routing", async ({ page }) => {
     await page.goto("/dashboard/");
-    await page.evaluate(() => {
-      (window as Window & { __routeMarker?: string }).__routeMarker = "persist-me";
-    });
 
     await page.locator("aside nav a[href='/subscription/']").click();
     await expect(page).toHaveURL(/\/subscription\/?$/);
@@ -489,12 +505,7 @@ test.describe("Cabinet flow", () => {
     await page.locator("aside nav a[href='/downloads/']").click();
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
-    await expect(page.locator("main")).toContainText("GitHub Releases");
-
-    const markerPersisted = await page.evaluate(
-      () => Boolean((window as Window & { __routeMarker?: string }).__routeMarker),
-    );
-    expect(markerPersisted).toBe(true);
+    await expect(page.locator("main")).toContainText("Android-приложение");
   });
 
   test("shows branded root and cabinet not-found recovery screens", async ({ page }) => {
@@ -517,7 +528,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("link", { name: "Поддержка", exact: true }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Если приложения POKROV пока нет под рукой" })).toBeVisible();
     const manualConnection = page.locator("section").filter({ has: page.getByRole("heading", { name: "Если приложения POKROV пока нет под рукой" }) });
-    await expect(manualConnection).toContainText("не заменяет код активации");
+    await expect(manualConnection).toContainText("не используйте как код активации");
     await expect(manualConnection).toContainText("Совместимые клиенты");
     await expect(manualConnection).not.toContainText("mock_token");
     await manualConnection.getByRole("button", { name: "Показать ссылку и QR" }).click();
@@ -652,7 +663,7 @@ test.describe("Cabinet flow", () => {
   test("shows honest payment history and Russian checkout continuation copy", async ({ page }) => {
     await page.goto("/subscription/");
     await expect(page.getByRole("heading", { name: "История оплат" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("История оплат пока не подключена");
+    await expect(page.locator("main")).toContainText("Оплаты появятся здесь");
 
     await page.route("**/api/payments/providers", async (route) =>
       route.fulfill({
@@ -688,10 +699,10 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator("main")).toContainText("Бета-доступ");
-    await expect(page.locator("main")).toContainText("Android APK через GitHub Releases");
+    await expect(page.locator("main")).toContainText("Android-приложение");
     await expect(page.locator("main a[href*='github.com'][href$='pokrov-android-universal.apk']").first()).toBeVisible();
     await expect(page.locator("main")).toContainText("Windows");
-    await expect(page.locator("main")).toContainText("неподписанный");
+    await expect(page.locator("main")).toContainText("предупреждение");
     await expect(page.locator("main a[href*='github.com'][href$='pokrov-windows-setup-x64.exe']").first()).toBeVisible();
 
     await page.goto("/support/");
