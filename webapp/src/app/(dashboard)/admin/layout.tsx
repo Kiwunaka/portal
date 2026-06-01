@@ -9,14 +9,37 @@ import {
   adminShellFrameClass,
   adminTopbarClass,
 } from "@/components/admin/admin-shell";
+import { adminSummary, type AdminSummaryPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { usePathname } from "next/navigation";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { pokrovBranding } from "../../branding";
 import { ADMIN_NAV_GROUPS, findAdminNavCategory, findAdminNavItem } from "./nav";
 
 const MARKETING_SITE_URL = pokrovBranding.marketingUrl;
+
+function formatOperatorName(user: { display_name?: string | null; username?: string | null; tg_id?: number | null } | null): string {
+  if (!user) return "Оператор";
+  return user.display_name || (user.username ? `@${user.username}` : user.tg_id ? `ID ${user.tg_id}` : "Оператор");
+}
+
+function adminAttentionCount(summary: AdminSummaryPayload | null, href: string): number {
+  if (!summary) return 0;
+  if (href.startsWith("/admin/tickets")) return Number(summary.tickets.open || 0);
+  if (href.startsWith("/admin/payments")) return Number(summary.errors.payment_callback_failures_24h || 0);
+  if (href.startsWith("/admin/nodes")) return Number(summary.errors.unhealthy_nodes || 0);
+  if (href.startsWith("/admin/users")) return Number(summary.retention.expiring_3d || 0);
+  if (href.startsWith("/admin/dashboard")) {
+    return (
+      Number(summary.tickets.open || 0) +
+      Number(summary.errors.unhealthy_nodes || 0) +
+      Number(summary.errors.payment_callback_failures_24h || 0) +
+      Number(summary.errors.subscription_numeric_fallbacks_24h || 0)
+    );
+  }
+  return 0;
+}
 
 function AdminStateCard({
   eyebrow,
@@ -53,10 +76,35 @@ function AdminStateCard({
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { error, loading, logoutWebSession, user, webLoginRequired } = usePortalSession();
+  const [summary, setSummary] = useState<AdminSummaryPayload | null>(null);
+  const [summaryError, setSummaryError] = useState("");
 
   const activeItem = useMemo(() => findAdminNavItem(pathname), [pathname]);
   const activeCategory = useMemo(() => findAdminNavCategory(pathname), [pathname]);
   const siblingItems = activeCategory.items.filter((item) => item.href !== activeItem.href);
+  const operatorName = formatOperatorName(user);
+  const unhealthyNodes = summary ? Math.max(0, Number(summary.nodes.total || 0) - Number(summary.nodes.healthy || 0)) : 0;
+  const paymentsToCheck = summary ? Number(summary.errors.payment_callback_failures_24h || 0) : 0;
+  const openTickets = summary ? Number(summary.tickets.open || 0) : 0;
+
+  useEffect(() => {
+    if (!user?.is_admin) {
+      setSummary(null);
+      return;
+    }
+    let cancelled = false;
+    setSummaryError("");
+    adminSummary()
+      .then((payload) => {
+        if (!cancelled) setSummary(payload);
+      })
+      .catch((err) => {
+        if (!cancelled) setSummaryError(String((err as { message?: string })?.message || err || "Не удалось загрузить сводку."));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.is_admin]);
 
   if (loading) {
     return (
@@ -139,7 +187,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                             : "block rounded-[0.95rem] border border-transparent bg-transparent px-3 py-2.5 text-slate-600 transition hover:border-slate-200 hover:bg-slate-50/60 hover:text-slate-900"
                         }
                       >
-                        <span className="block text-sm font-semibold">{item.label}</span>
+                        <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                          <span>{item.label}</span>
+                          {adminAttentionCount(summary, item.href) > 0 ? (
+                            <span
+                              className={
+                                selected
+                                  ? "inline-flex min-w-6 justify-center rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] text-white"
+                                  : "inline-flex min-w-6 justify-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-800"
+                              }
+                            >
+                              {adminAttentionCount(summary, item.href)}
+                            </span>
+                          ) : null}
+                        </span>
                         <span className={selected ? "mt-1 block text-xs leading-5 text-emerald-700" : "mt-1 block text-xs leading-5 text-slate-500"}>
                           {item.summary}
                         </span>
@@ -161,10 +222,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <AdminBadge>{activeItem.label}</AdminBadge>
                   <AdminBadge tone="success">Веб-админка — основной путь</AdminBadge>
                 </div>
-                <h1 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.04em] text-slate-900">Админка POKROV</h1>
-                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500">
-                  Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий.
-                </p>
+                <h1 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.04em] text-slate-900">{activeItem.label}</h1>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500">{activeCategory.primaryHint}</p>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -180,24 +239,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200/60 pt-4">
-              {ADMIN_NAV_GROUPS.map((group) => {
-                const selected = group.id === activeCategory.id;
-                return (
-                  <AppRouteLink
-                    key={group.id}
-                    href={group.items[0]?.href || "/admin/dashboard"}
-                    aria-label={`Категория ${group.label}`}
-                    className={
-                      selected
-                        ? "inline-flex min-h-8 items-center rounded-full border border-emerald-300 bg-emerald-50/80 px-3 text-[11px] font-semibold text-emerald-800"
-                        : "inline-flex min-h-8 items-center rounded-full border border-slate-200 bg-white/80 px-3 text-[11px] font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-                    }
-                  >
-                    {group.label}
-                  </AppRouteLink>
-                );
-              })}
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200/60 pt-4 text-[11px] font-semibold text-slate-500">
+              <AppRouteLink href="/admin/dashboard" className="transition hover:text-emerald-700">
+                POKROV Ops
+              </AppRouteLink>
+              <span>/</span>
+              <AppRouteLink href={activeCategory.items[0]?.href || "/admin/dashboard"} className="transition hover:text-emerald-700">
+                {activeCategory.label}
+              </AppRouteLink>
+              <span>/</span>
+              <span className="text-slate-900">{activeItem.label}</span>
             </div>
           </header>
 
@@ -206,32 +257,51 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         <aside className="space-y-4 2xl:sticky 2xl:top-4 2xl:self-start">
           <section className={adminRailCardClass}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Текущий контекст</p>
-            <h2 className="mt-2 text-lg font-semibold text-slate-900">{activeItem.label}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">{activeItem.summary}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <AdminBadge tone="accent">{activeCategory.label}</AdminBadge>
-              <AdminBadge>{activeCategory.primaryHint}</AdminBadge>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Смена</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">{operatorName}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Рабочий экран: {activeItem.label}. Веб-админка остаётся основным путём, Telegram — запасной канал.</p>
+            <div className="mt-3 grid gap-2 text-xs">
+              <div className="flex items-center justify-between rounded-[0.85rem] border border-slate-200/70 bg-white/70 px-3 py-2">
+                <span className="text-slate-500">Открытые тикеты</span>
+                <span className="font-mono font-semibold text-slate-900">{summary ? openTickets : "-"}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-[0.85rem] border border-slate-200/70 bg-white/70 px-3 py-2">
+                <span className="text-slate-500">Ноды с риском</span>
+                <span className="font-mono font-semibold text-slate-900">{summary ? unhealthyNodes : "-"}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-[0.85rem] border border-slate-200/70 bg-white/70 px-3 py-2">
+                <span className="text-slate-500">Callback 24 ч</span>
+                <span className="font-mono font-semibold text-slate-900">{summary ? paymentsToCheck : "-"}</span>
+              </div>
             </div>
+            {summaryError ? <p className="mt-3 text-xs leading-5 text-rose-600">{summaryError}</p> : null}
           </section>
 
           <section className={adminRailCardClass}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Рядом по теме</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Быстрые переходы</p>
             <div className="mt-3 space-y-2">
-              {siblingItems.length ? (
-                siblingItems.map((item) => (
-                  <AppRouteLink
-                    key={item.href}
-                    href={item.href}
-                    className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40"
-                  >
-                    <span className="block text-sm font-semibold text-slate-800">{item.label}</span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">{item.summary}</span>
-                  </AppRouteLink>
-                ))
-              ) : (
-                <p className="text-xs leading-5 text-slate-500">В этой категории пока один рабочий экран.</p>
-              )}
+              <AppRouteLink href="/admin/dashboard" className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40">
+                <span className="block text-sm font-semibold text-slate-800">Сводка смены</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-500">Начать с тревог, очередей и свежести данных.</span>
+              </AppRouteLink>
+              <AppRouteLink href="/admin/payments?status=manual_review" className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40">
+                <span className="block text-sm font-semibold text-slate-800">Платежи на сверку</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-500">Открыть журнал сразу с ручной проверкой.</span>
+              </AppRouteLink>
+              <AppRouteLink href="/admin/tickets" className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40">
+                <span className="block text-sm font-semibold text-slate-800">Очередь поддержки</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-500">Ответы, статусы и шаблоны оператора.</span>
+              </AppRouteLink>
+              {siblingItems.slice(0, 2).map((item) => (
+                <AppRouteLink
+                  key={item.href}
+                  href={item.href}
+                  className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40"
+                >
+                  <span className="block text-sm font-semibold text-slate-800">{item.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">{item.summary}</span>
+                </AppRouteLink>
+              ))}
             </div>
           </section>
 

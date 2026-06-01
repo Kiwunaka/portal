@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+﻿import { expect, test, type Page } from "@playwright/test";
 
 type AdminUserRowMock = {
   tg_id: number;
@@ -1112,7 +1112,7 @@ test.describe("Admin gate", () => {
 
     await expect(page).toHaveURL(/\/admin\/release\/?$/);
     await expect(page.getByRole("navigation", { name: "Admin sections" }).getByRole("link", { name: /Релиз|GO\/NO-GO/ })).toBeVisible();
-    await expect(page.locator("body")).toContainText("NO-GO");
+    await expect(page.locator("body")).toContainText("NO_GO");
     await expect(page.locator("body")).toContainText("GitHub Releases");
     await expect(page.locator("body")).toContainText("Lava.top");
     await expect(page.locator("body")).toContainText("RUNTIME LINK SYNC AUDIT BEFORE ANNOUNCEMENT");
@@ -1154,13 +1154,12 @@ test.describe("Admin gate", () => {
 
     await openRoute(page, "admin/");
 
-    await expect(page.getByRole("heading", { name: "Админка POKROV" })).toBeVisible();
-    await expect(
-      page.getByText("Веб-админка — основной операторский интерфейс. Telegram используйте только для быстрых fallback-действий.").first(),
-    ).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Сводка" }).first()).toBeVisible();
+    await expect(page.getByText("Веб-админка — основной путь")).toBeVisible();
 
-    for (const category of ["Диагностика", "Пользователи", "Доступ", "Оплата", "Сеть", "Сообщения", "Обращения"]) {
-      await expect(page.getByRole("heading", { name: category, level: 2 }).first()).toBeVisible();
+    for (const category of ["Рабочий стол", "Люди", "Доступ и промо", "Оплата", "Сеть", "Сообщения", "Поддержка"]) {
+      await expect(page.getByText(category).first()).toBeVisible();
     }
   });
 
@@ -1188,8 +1187,9 @@ test.describe("Admin gate", () => {
     await registerApiMocks(page, { isAdmin: true });
 
     await openRoute(page, "admin/dashboard/");
-    await expect(page.getByRole("heading", { name: "Как читать эту страницу" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Сводка ошибок и рисков" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Сводка смены" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Тревоги" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "В работе" })).toBeVisible();
 
     await openRoute(page, "admin/users/");
     await expect(page.getByRole("link", { name: /Сводка/ }).first()).toBeVisible();
@@ -1327,8 +1327,9 @@ test.describe("Admin gate", () => {
     });
 
     await openRoute(page, "admin/dashboard/");
-    await expect(page.getByText("Observer watch")).toBeVisible();
-    await expect(page.getByText("Observer suspicious")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Сводка смены" })).toBeVisible();
+    await expect(page.getByText("Observer watch")).not.toBeVisible();
+    await expect(page.getByText("Observer suspicious")).not.toBeVisible();
 
     await openRoute(page, "admin/users/");
     await page.locator("select").nth(2).selectOption("suspicious");
@@ -1349,7 +1350,7 @@ test.describe("Admin gate", () => {
     });
 
     await openRoute(page, "admin/users/");
-    await expect(page.getByText("РџРѕРґС‚СЏРіРёРІР°РµРј РґР°РЅРЅС‹Рµ РєР°Р±РёРЅРµС‚Р°")).not.toBeVisible();
+    await expect(page.getByText("Подтягиваем данные кабинета")).not.toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("QA Admin");
     await page.locator("tbody tr").first().click();
     await expect(page.getByText("Observer-lite")).toBeVisible();
@@ -1649,6 +1650,13 @@ test.describe("Admin gate", () => {
   test("shows payment ledger and requires an audit note for manual reconciliation", async ({ page }) => {
     await registerApiMocks(page, {
       isAdmin: true,
+      adminSummary: {
+        ...mockAdminSummary(),
+        errors: {
+          ...mockAdminSummary().errors,
+          payment_callback_failures_24h: 2,
+        },
+      },
       paymentOrders: [
         makePaymentOrder({
           order_id: "order-review-2403",
@@ -1665,19 +1673,27 @@ test.describe("Admin gate", () => {
     });
 
     await openRoute(page, "admin/payments/");
-    await expect(page.getByRole("heading", { name: /Payment ledger/i }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Платёжный журнал" }).first()).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Admin sections" }).getByRole("link", { name: /Платёжный журнал/ })).toContainText("2");
+    await page.getByLabel("Статус платежа").selectOption("pending");
+    await expect(page).toHaveURL(/status=pending/);
+    await page.getByLabel("Провайдер").selectOption("freekassa");
+    await expect(page).toHaveURL(/provider=freekassa/);
+    await page.getByPlaceholder("заказ, провайдер, план, кампания, Telegram ID").fill("order-review-2403");
+    await expect(page).toHaveURL(/q=order-review-2403/);
+
     const reviewOrderRow = page.getByRole("row").filter({ hasText: "order-review-2403" });
     await expect(reviewOrderRow).toBeVisible();
     await expect(reviewOrderRow.getByText("manual_review")).toBeVisible();
     await expect(reviewOrderRow.getByText("tx-review-2403")).toBeVisible();
     await expect(page.getByText(/raw-provider-token/i)).not.toBeVisible();
 
-    await page.getByRole("button", { name: /Reconcile/i }).first().click();
-    await page.getByRole("button", { name: /Save reconciliation/i }).click();
-    await expect(page.getByText(/Audit note is required/i)).toBeVisible();
+    await page.getByRole("button", { name: "Сверка" }).first().click();
+    await page.getByRole("button", { name: "Сохранить сверку" }).click();
+    await expect(page.getByText("Для ручной сверки нужна заметка аудита.")).toBeVisible();
 
-    await page.getByPlaceholder(/Provider dashboard/i).fill("Provider dashboard confirms paid result; no automatic access change.");
-    await page.getByRole("button", { name: /Save reconciliation/i }).click();
-    await expect(page.getByText(/Reconciliation note saved/i)).toBeVisible();
+    await page.getByPlaceholder(/кабинете провайдера/i).fill("Кабинет провайдера подтверждает оплату; автоматическую выдачу доступа не меняем.");
+    await page.getByRole("button", { name: "Сохранить сверку" }).click();
+    await expect(page.getByText("Сверка сохранена. Доступ пользователя автоматически не менялся.")).toBeVisible();
   });
 });
