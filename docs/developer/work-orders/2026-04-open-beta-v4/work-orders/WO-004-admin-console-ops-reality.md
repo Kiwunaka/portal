@@ -1,6 +1,6 @@
 # WO-004 Admin Console Ops Reality
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W04
 
 ## Scope

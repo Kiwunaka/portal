@@ -1,6 +1,6 @@
 # WO-002 Marketing, Checkout, Install, Legal, SEO
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W02
 
 ## Scope

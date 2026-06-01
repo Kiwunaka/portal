@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-05-14
+Last updated: 2026-05-26
 
 ## Document Status
 
@@ -47,6 +47,8 @@ Current operator routes:
 - `/admin/bonuses/`
 - `/admin/promos/`
 - `/admin/referrals/`
+- `/admin/payments/`
+- `/admin/release/`
 - `/admin/broadcast/`
 
 ## Surface Boundary

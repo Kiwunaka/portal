@@ -1,7 +1,15 @@
 # Orchestrator Context
 
-Status: in progress
-Date: 2026-04-26
+Status: superseded by 2026-05-15 beta decision
+Date: 2026-05-26
+
+## Supersession Note
+
+This file preserves the original 2026-04-26 orchestration context. Current release truth is:
+
+- outside-store public Android + Windows beta is `GO` from the 2026-05-15 evidence pack;
+- `1.0.0`, app-store release, trusted Windows signing, raw Android physical-audit proof, RU-origin readiness, and production payment maturity remain separate follow-up gates;
+- owner hardware, real-user Telegram/WebApp, payment dashboard, live deploy approval, signing, store access, and RU-origin checks are labeled `MANUAL_OWNER_TEST`, `SKIPPED_BY_OWNER`, `OPERATOR_ATTESTED`, `NOT_REQUESTED`, or `BLOCKED_BY_ACCESS` for agent work.
 
 ## Source Of Truth
 
@@ -13,7 +21,7 @@ Date: 2026-04-26
 
 ## Release Stance
 
-The default public target is `0.10.0-open-beta.N`.
+The default public target is the `0.x.x-beta` outside-store beta line.
 
 `1.0.0` is blocked until every P0 gate has direct, redacted evidence:
 
@@ -25,15 +33,15 @@ The default public target is `0.10.0-open-beta.N`.
 - signed or clearly gated Android/Windows artifacts;
 - security, privacy, performance, support, docs, and rollback evidence.
 
-## Known External Blockers
+## Current Manual / External Follow-Ups
 
 | Gate | Current label | Missing dependency |
 | --- | --- | --- |
-| Lava.top live provider proof | blocked by missing access | merchant/API credentials and provider dashboard state |
-| Telegram runtime download smoke | blocked by missing access | live `TELEGRAM_INIT_DATA` supplied only through environment |
-| RU-origin check | blocked by missing access | healthy external RU probe host or current `mini` access |
-| Android physical audit | blocked by missing access | physical device serial in `ANDROID_AUDIT_SERIAL` |
-| Production signing | blocked by missing access | Android and Windows signing material |
+| Lava.top live provider proof | `PASS_FOR_BETA` / production follow-up | refund, chargeback, and reconciliation evidence before stronger payment claims |
+| Telegram runtime download smoke | `PASS` with brain-signed synthetic init data / `MANUAL_OWNER_TEST` for real user | real user opening Telegram WebApp |
+| RU-origin check | `SKIPPED_BY_OPERATOR` | healthy external RU probe host or current `mini` access before RU-origin claim |
+| Android physical audit | `OPERATOR_ATTESTED` / `MANUAL_OWNER_TEST` for raw proof | retained raw device audit evidence before stronger Android claim |
+| Production signing | `NOT_REQUESTED` for beta | Android and Windows signing material before store/trusted claims |
 
 ## Orchestration Rules
 
@@ -41,4 +49,4 @@ The default public target is `0.10.0-open-beta.N`.
 - Implementation work orders have file locks in `12-file-locks.md`.
 - No secrets in markdown, logs, screenshots, prompts, commits, or evidence.
 - All findings must use one evidence label: `confirmed`, `probable`, `unknown`, `needs local run`, `blocked by missing access`, or `deferred`.
-- Do not claim public Android or `1.0.0` while any P0 gate is blocked.
+- Do not claim `1.0.0`, store availability, trusted Windows signing, raw Android physical-audit proof, or RU-origin readiness while those separate gates are not proven.

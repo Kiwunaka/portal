@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-04-23
+Last updated: 2026-05-26
 
 ## Document Status
 
@@ -170,7 +170,7 @@ Artifact-location note:
 - raw Android release outputs are expected under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/build/app/outputs/...`
 - the wrapper-based Android build commands verify those raw outputs directly
 - active client-lane artifact retention plus release metadata lives in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
-- those raw outputs do not prove production readiness until the production key path is confirmed and the physical-device audit is complete
+- those raw outputs do not prove production readiness until the production key path is confirmed and raw physical-device audit evidence is complete; the current outside-store beta relies on the separate `2026-05-15` owner attestation
 - retain the formal Android localhost-audit evidence in `ops-local/android-localhost-audit*.json`, and keep any curated release evidence that must survive the handoff under `docs/audit-artifacts/`
 - treat repo-local screenshots, UI XML dumps, logcat captures, and ad hoc runtime snapshots from one Android validation pass as disposable scratch unless they are intentionally promoted into `docs/audit-artifacts/`
 - machine-local Android tooling noise such as `C:\Windows\adb.exe`, `%TEMP%`, SDK install directories, and `~/.android` is outside repo cleanup scope and is not release evidence
@@ -185,7 +185,7 @@ Operator shortcut:
 - Google Play submission is the preferred Android store path.
 - Direct APK distribution remains valid while Play rollout is pending.
 - Android package continuity should be treated as a fresh install path if package identity changed.
-- Android public release is blocked if the release-build audit cannot prove that local proxy, DNS, command, and admin surfaces are safely disabled or protected
+- Android trusted, store, stable, or raw-audited release is blocked if the release-build audit cannot prove that local proxy, DNS, command, and admin surfaces are safely disabled or protected
 
 ### Cost note
 

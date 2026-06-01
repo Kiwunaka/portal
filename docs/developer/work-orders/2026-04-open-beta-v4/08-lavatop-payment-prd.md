@@ -1,11 +1,11 @@
 # Lava.top Payment PRD
 
 Status: active  
-Date: 2026-04-26
+Date: 2026-05-26
 
 ## Goal
 
-Introduce an active payment-provider path that can sell activation keys safely, or keep checkout disabled with truthful public copy when proof is missing.
+Keep the active Lava.top payment-provider path safe for outside-store beta, and keep production claims blocked until refund/chargeback/reconciliation evidence is stronger.
 
 ## Required Contract
 
@@ -19,7 +19,9 @@ Introduce an active payment-provider path that can sell activation keys safely, 
 
 ## Launch Rule
 
-Paid checkout remains blocked until provider credentials, live/sandbox order proof, webhook auth, replay rejection, and reconciliation behavior are documented with redacted evidence.
+Paid checkout is allowed for the current outside-store public beta when the `2026-05-15` Lava.top evidence pack applies. Stronger production checkout claims remain blocked until refund/chargeback, reconciliation, provider-change, and fresh release-candidate evidence are documented with secrets redacted.
+
+Manual/external payment checks that require the owner payment dashboard, live buyer account, deploy approval, or provider-side evidence should be labeled `MANUAL_OWNER_TEST`, `SKIPPED_BY_OWNER`, `NOT_REQUESTED`, or `BLOCKED_BY_ACCESS` for agent work instead of blocking local docs/code synchronization.
 
 ## Provider Facts From Research
 
@@ -46,7 +48,7 @@ Paid checkout remains blocked until provider credentials, live/sandbox order pro
 | `chargeback` | Dispute/chargeback found in reconciliation. | no new access; trigger operator review |
 | `manual_review` | Payload, auth, amount, currency, or account mapping is ambiguous. | no |
 
-## Evidence Required Before Enabling Checkout
+## Evidence Required Before Enabling Checkout Or Stronger Claims
 
 | Evidence | Required detail |
 | --- | --- |

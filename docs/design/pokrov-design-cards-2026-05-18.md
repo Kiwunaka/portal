@@ -32,7 +32,7 @@ Design brief used for generation and review:
 - Brand: `POKROV`.
 - Public wording: do not use `VPN` as a direct public product description.
 - Product facts: app-first, consumer-first, 5 day trial, Telegram `+10 days`, Android + Windows beta scope.
-- Release honesty: no broad public release, app-store, or payment-readiness claims.
+- Release honesty: outside-store public beta is allowed by the 2026-05-15 evidence pack, but no app-store, stable `1.0.0`, trusted Windows signing, raw Android-audit, RU-origin, or production payment-maturity claims.
 - Visual canon: warm light canvas, emerald primary action, mint status, Manrope-like typography, restrained premium interface.
 
 ## Review Note
@@ -56,4 +56,4 @@ Applied follow-up changes:
 
 ## Release Scope Note
 
-The cards are safe as design exploration for implementation planning. They do not claim broad public release, Android store availability, Windows trusted signing, Lava.top readiness, or cleared release gates.
+The cards are safe as design exploration for implementation planning. They may support outside-store public beta communication, but they do not claim Android store availability, Windows trusted signing, raw Android physical-audit proof, RU-origin readiness, production Lava.top maturity, or stable `1.0.0` release gates.

@@ -1,6 +1,6 @@
 # POKROV Flow State
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 ## Document Status
 
@@ -73,6 +73,8 @@ Recommended classes:
 - `proof-boundary-gap`
 - `mechanism-adequacy-gap`
 - `reviewability-gap`
+- `context-cost-harness-gap`
+- `prompt-cache-regression`
 - `scope-creep`
 - `stale-evidence`
 - `wrong-lane-routing`

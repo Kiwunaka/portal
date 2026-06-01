@@ -1,12 +1,19 @@
 # POKROV Open Beta v4 Work Order
 
-Status: in progress
+Status: public beta GO with accepted skips
 Started: 2026-04-26
 Platform branch: `codex/open-beta-v4`
 Client branch: `codex/open-beta-v4`
-Last indexed: 2026-05-07
+Last indexed: 2026-05-26
 
 This folder tracks execution of `POKROV_open_beta_1_0_orchestrator_superplan_v4.md`.
+
+Current decision:
+
+- `2026-05-15`: release `POKROV` as a public Android + Windows beta outside app stores.
+- Machine-readable decision: `docs/audit-artifacts/public-beta-launch-decision-2026-05-15.json`.
+- Human decision: `13-launch-decision.md`.
+- Accepted limitations: RU-origin skipped by operator, Android raw physical audit evidence replaced by owner attestation for this beta, Windows remains unsigned.
 
 Reference boundary:
 
@@ -18,8 +25,9 @@ Reference boundary:
 
 - Target the honest `Open Beta` path unless every `1.0.0` P0 gate has redacted evidence.
 - Keep public copy on `POKROV` and avoid direct public `VPN` product wording except legacy or technical contexts.
-- Treat live Lava.top proof, live Telegram init data, RU-origin checks, and Android physical-device audit as evidence gates.
-- Record missing external access as `blocked by missing access`, not as a pass.
+- Treat live Lava.top proof, runtime Telegram init-data smoke, RU-origin checks, and Android physical-device audit as evidence gates with explicit labels.
+- For the current agent goal, checks that require owner hardware/accounts, provider dashboards, live deploy approval, signing identity, store access, or RU probe access are recorded as `MANUAL_OWNER_TEST`, `SKIPPED_BY_OWNER`, `OPERATOR_ATTESTED`, `NOT_REQUESTED`, or `BLOCKED_BY_ACCESS`; they do not block local docs/code synchronization.
+- Do not upgrade accepted skips into stable, store, trusted-signing, RU-origin, or raw-device claims.
 
 ## Folder Map
 
@@ -38,6 +46,7 @@ Reference boundary:
 - `12-file-locks.md` — file ownership during parallel work.
 - `13-launch-decision.md` — final decision statement.
 - `14-final-git-promotion-record.md` — promotion and handoff record.
+- `15-beta-ready-backlog.md` — category backlog, manual gates, beta-ready/non-production split.
 - `research/` — R01-R10 research outputs.
 - `work-orders/` — WO-001 through WO-010 implementation orders.
 - `evidence/` — redacted supporting logs and reports.

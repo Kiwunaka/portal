@@ -1,6 +1,8 @@
 # Передача для RU-origin probe
 
-Last updated: 2026-04-15
+Last updated: 2026-05-22
+
+Current SSH access note, verified on `2026-05-22`: `mini` / `RFMINI` is reachable as `kiwunaka@176.123.166.119:22` with the retained local password bundle. `root@22` does not authenticate, and `29374` opens TCP but resets before the SSH banner. Do not write the password value into docs, commits, reports, or chat handoffs.
 
 ## Зачем нужен этот файл
 

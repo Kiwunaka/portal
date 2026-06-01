@@ -1,6 +1,6 @@
 # WO-006 Lava.top Payments, Keys, Support, Feedback
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W06
 
 ## Scope
@@ -19,7 +19,7 @@ Owner: W06
 - Invalid auth does not mutate paid state.
 - Failed/cancelled/refund/chargeback paths do not silently provision.
 - Paid success aligns with the documented key-first fulfillment model.
-- If live proof is blocked, public checkout remains disabled with honest copy.
+- If live proof is blocked for a future provider, plan, or release candidate, public checkout must degrade with honest copy; the 2026-05-15 Lava.top evidence pack is beta-ready for the current outside-store beta.
 
 ## Verification
 

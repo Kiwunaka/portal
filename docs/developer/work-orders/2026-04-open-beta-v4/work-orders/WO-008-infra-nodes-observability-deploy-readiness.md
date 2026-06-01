@@ -1,6 +1,6 @@
 # WO-008 Infra, Nodes, Observability, Deploy Readiness
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W08
 
 ## Scope

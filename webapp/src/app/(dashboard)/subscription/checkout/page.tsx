@@ -323,8 +323,8 @@ export default function CheckoutPage() {
           {!checkoutReady ? (
             <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
               {providerReasons.length
-                ? `Оплата пока закрыта: ${providerReasons.join("; ")}.`
-                : "Оплата пока не включена. Продление станет доступно, когда платежный способ пройдет финальную проверку."}
+                ? `Оплата временно недоступна: ${providerReasons.join("; ")}.`
+                : "Lava.top для beta должен быть единственным публичным способом оплаты. Если каталог недоступен, попробуйте позже или напишите в поддержку."}
             </p>
           ) : null}
 

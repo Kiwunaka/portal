@@ -1,6 +1,6 @@
 # WO-001 Design System, Brand, Visual Parity
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W01
 
 ## Scope

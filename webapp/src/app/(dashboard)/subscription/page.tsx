@@ -67,7 +67,7 @@ const manualStepCards = [
   {
     key: "client",
     title: "Установите клиент",
-    body: "Если приложения POKROV нет под рукой, начните с Hiddify. Ниже есть варианты для Android и Windows.",
+    body: "Если приложения POKROV нет под рукой, используйте совместимый клиент только как ручной recovery-путь. Ниже есть варианты для Android и Windows.",
     badge: "2",
     tone: "neutral" as const,
   },
@@ -90,10 +90,10 @@ const manualStepCards = [
 const manualClientCards = [
   {
     key: "hiddify",
-    title: "Hiddify",
-    body: "Android и Windows. Удобно вставить ссылку и сразу проверить подключение.",
-    badge: "Проще всего",
-    tone: "success" as const,
+    title: "Совместимый клиент",
+    body: "Android и Windows. Recovery-вариант, если приложение POKROV недоступно на устройстве.",
+    badge: "Recovery",
+    tone: "neutral" as const,
     action: (
       <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
         Скачать
@@ -115,7 +115,7 @@ const manualClientCards = [
   {
     key: "nekobox",
     title: "NekoBox",
-    body: "Android. Подходит, если Hiddify не подошел или уже привычен другой клиент.",
+    body: "Android. Подходит, если нужен другой совместимый клиент для ручного восстановления.",
     badge: "Android",
     tone: "neutral" as const,
     action: (
@@ -314,11 +314,11 @@ export default function SubscriptionPage() {
   return (
     <CabinetRoute
       eyebrow="Тарифы и оплата"
-      title={dash?.is_active ? "На сколько продлить?" : "Вернуть доступ"}
+      title="Продлить доступ"
       description={
         dash?.is_active
-          ? "Цены, срок и лимит устройств показаны сразу. Текущий статус ниже."
-          : "Сначала выберите срок, затем продолжайте тем же профилем."
+          ? "Выберите срок. Устройства, настройки и история останутся на месте."
+          : "Выберите срок или активируйте код, чтобы снова подключаться в приложении."
       }
       actions={
         <>
@@ -327,9 +327,6 @@ export default function SubscriptionPage() {
           </AppRouteLink>
           <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
             Активировать код
-          </AppRouteLink>
-          <AppRouteLink href="#manual-setup" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Ручная настройка
           </AppRouteLink>
         </>
       }
@@ -387,11 +384,19 @@ export default function SubscriptionPage() {
         ]}
       />
 
-      <div id="manual-setup" className="scroll-mt-24 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+      <CabinetSection
+        eyebrow="Основные действия"
+        title="Оплатить или активировать код"
+        description="Почти всегда нужен один из этих путей. Если статус после оплаты не обновился, не оплачивайте второй раз — напишите в поддержку."
+      >
+        <CabinetCardGrid items={paymentCards} className="xl:grid-cols-3" />
+      </CabinetSection>
+
+      <div id="manual-setup" className="scroll-mt-24">
         <CabinetSection
-          eyebrow="Ручной вариант"
-          title="Если приложения POKROV пока нет под рукой"
-          description="Личная ссылка нужна только для совместимых клиентов и восстановления. Это не код активации и не способ привязать Telegram."
+          eyebrow="Запасной способ"
+          title="Ручная настройка, если приложение не подходит"
+          description="Используйте этот вариант только для восстановления или совместимого клиента. Личная ссылка не является кодом оплаты и не привязывает Telegram."
           tone={manualAccessReady ? "info" : "warning"}
           actions={
             <AppRouteLink href="/downloads/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
@@ -402,7 +407,7 @@ export default function SubscriptionPage() {
           <div className="rounded-[1.3rem] border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] p-4">
             <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
               {manualAccessReady
-                ? "Инструкции можно читать сразу. Саму ссылку показываем отдельно, чтобы ее случайно не скопировали на чужое устройство."
+                ? "Сначала попробуйте приложение POKROV. Ссылку показываем отдельно, чтобы ее случайно не скопировали на чужое устройство."
                 : "После оплаты или активации кода здесь появится личная ссылка и QR-код."}
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
@@ -462,14 +467,6 @@ export default function SubscriptionPage() {
               </div>
             </div>
           ) : null}
-        </CabinetSection>
-
-        <CabinetSection
-          eyebrow="Что делать дальше"
-          title="Три рабочих действия"
-          description="Почти всегда нужен один из этих путей."
-        >
-          <CabinetCardGrid items={paymentCards} className="xl:grid-cols-1" />
         </CabinetSection>
       </div>
 

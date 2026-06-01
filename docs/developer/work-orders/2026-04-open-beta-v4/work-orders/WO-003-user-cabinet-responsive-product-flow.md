@@ -1,6 +1,6 @@
 # WO-003 User Cabinet Responsive Product Flow
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W03
 
 ## Scope

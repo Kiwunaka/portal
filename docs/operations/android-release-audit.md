@@ -1,8 +1,8 @@
 # Android Release Audit
 
-Last updated: 2026-04-26
+Last updated: 2026-05-26
 
-Android public release is blocked until a physical release-installed build passes the localhost/control-surface audit.
+Android outside-store public beta uses the retained `2026-05-15` owner attestation for the physical release-build localhost/control-surface audit. A fresh raw physical-device PASS remains a manual owner test before stronger Android safety, store, stable, or raw-audited claims.
 
 Run only with a physical device:
 
@@ -15,4 +15,4 @@ python scripts/android_localhost_audit.py --serial $env:ANDROID_AUDIT_SERIAL --p
 
 The release gate will also pass `ANDROID_AUDIT_PACKAGE` and require `ANDROID_AUDIT_RELEASE_EVIDENCE` when Android platform gates are requested.
 
-Evidence must include package name, build type, serial label, and redacted output. Do not use emulator evidence for public Android approval.
+Evidence must include package name, build type, serial label, and redacted output. Do not use emulator evidence for trusted, store, stable, or raw-audited Android approval.

@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 ## Document Status
 
@@ -19,7 +19,7 @@ Legacy filename note:
 
 - some canonical docs still use legacy `portal-vpn-*` filenames
 - those files remain authoritative for current `POKROV` behavior until a dedicated rename pass happens
-- legacy `POKROV VPN` labels in filenames or identifiers do not authorize new direct-meaning `VPN` copy
+- owner-approved update on `2026-06-01`: visible `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent public surfaces and metadata when it is useful to users and tied to the real POKROV Android/Windows app flow; legacy `POKROV VPN` labels in filenames or identifiers do not authorize hidden SEO text, cloaking, keyword stuffing, or unsupported release/payment/store claims
 
 ## Read Before Editing
 
@@ -52,6 +52,8 @@ For orchestrated multi-step work, also read:
 
 - [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [docs/developer/orchestration/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/README.md)
+- [docs/developer/orchestration/context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
+- [docs/developer/openai-operator-assistants.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/openai-operator-assistants.md)
 - [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
 
 For Open Beta v4 release work, also read:
@@ -141,6 +143,7 @@ Canonical paths:
 - [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md)
 - [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
+- [docs/developer/orchestration/context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
 - [docs/developer/orchestration/roles/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles)
 - [docs/developer/orchestration/templates/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates)
 - [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
@@ -154,6 +157,7 @@ Current rules:
 - any retained bridge evidence must be called out explicitly as archive evidence rather than as a live repo lane
 - mixed WOs must preserve separate git evidence for the platform lane and the new client lane when each is touched
 - medium/high-risk WOs must define reviewability, validation attribution, MREP, risk proof, and mechanism adequacy or record why each is not applicable
+- prompt-heavy WOs must define LLM context/cost harnessing or record why prompt caching and telemetry are not applicable
 - the executor does not self-close the WO
 - same reviewers may recheck only their owned findings after a fix pass
 - fresh-context final review is separate from owned-finding recheck and is required for non-trivial, risk-sensitive, mixed-lane, release-sensitive, or multi-cycle WOs
@@ -161,6 +165,28 @@ Current rules:
 - if the same issue class appears for the third time without a mechanism-changing fix, pause ordinary same-executor routing and perform problem-class analysis before continuing
 - a green automated check does not close a WO when manual checks, deploy steps, Android localhost audit, or origin evidence still remain open
 - live execution artifacts belong under `docs/developer/work-orders/`; reusable templates belong under `docs/developer/orchestration/templates/`
+- reusable prompt/context packets can be audited with `python scripts/agent_context_packet_audit.py <packet.md>` before expensive repeated model calls
+
+## OpenAI Operator Assistants
+
+Experimental OpenAI helpers are local, read-only operator tools unless a future
+work order promotes a bounded production path.
+
+```powershell
+python scripts/pokrov_ai_docs_assistant.py inventory
+python scripts/pokrov_operator_copilot.py list-tools
+python scripts/pokrov_support_ai_kb_refresh.py inventory
+```
+
+Use [openai-operator-assistants.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/openai-operator-assistants.md)
+for File Search sync/ask commands, function-calling tool boundaries, and
+verification. Do not index secrets or let a model perform deploy, SSH, payment,
+grant, revoke, or release-claim actions.
+
+For production support AI, use Pi as a knowledge curation harness only:
+`pokrov_support_ai_kb_refresh.py` builds an allowlisted-doc prompt, asks Pi/OpenRouter/DeepSeek for a sanitized support KB, validates the JSON shape, and writes `shared/support-ai-knowledge.json`. Runtime user replies still go through the bounded backend service.
+For OpenRouter runtime routing, keep `SUPPORT_AI_OPENROUTER_DATA_COLLECTION` blank by default. Set it to `deny` or `allow` only after confirming the target model/provider route supports that data policy.
+The expanded runtime KB expects `SUPPORT_AI_MAX_CONTEXT_CHARS=32000` or higher so troubleshooting topics are not truncated before model input.
 
 ## Current Runtime Contract Reminders
 
@@ -308,7 +334,7 @@ python scripts/run_client_release_gate.py build --target android-aab
 
 Client release-gate note:
 
-- Android stays release-blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
+- Android outside-store beta may use the retained owner attestation from the `2026-05-15` launch decision; trusted, store, stable, or raw-audited Android claims stay blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
 - run `python scripts/client_security_smoke.py` before broader client release verification so the `POKROV-app` seed contract, Android host manifest, runtime-artifact pin, and Windows release seed fail fast in CI or local gates
 - `run_client_release_gate.py` now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default and fails fast when that workspace is missing or incomplete
 - `python scripts/run_client_release_gate.py preflight` verifies the `POKROV-app` seed workspace layout, wrapper scripts, host shells, and seed configs before client gates run

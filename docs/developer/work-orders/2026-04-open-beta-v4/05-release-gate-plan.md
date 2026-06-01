@@ -1,11 +1,17 @@
 # Release Gate Plan
 
 Status: active  
-Date: 2026-04-26
+Date: 2026-05-26
 
 ## Scope Rule
 
-This plan verifies Open Beta v4 preparation. It does not authorize public release until external evidence gates move from `blocked by missing access` to `pass`.
+This plan verifies Open Beta v4 and later release-candidate handoffs.
+
+Current decision:
+
+- The outside-store Android + Windows public beta is authorized as `GO` from the `2026-05-15` evidence pack.
+- Future stable, store, trusted-signing, RU-origin, and raw Android-device claims require fresh exact-candidate evidence.
+- For the current local agent goal, checks that require owner hardware/accounts, real Telegram/WebApp users, provider dashboards, signing identities, store access, live deploy approval, or RU probe access are recorded as explicit manual/skip/block labels instead of stopping docs/code synchronization.
 
 ## Local Platform Gates
 
@@ -55,11 +61,12 @@ python scripts/release_gate_check.py --client-platform-gates android-apk,android
 
 | Gate | Required proof | Current label |
 | --- | --- | --- |
-| Payment provider | Lava.top order, webhook auth, replay, invalid auth, failure states | blocked by missing access |
-| Telegram download | `runtime_app_download_smoke.py --redact` with env-only init data | blocked by missing access |
-| RU-origin | external RU probe report for POKROV and Telegram split | blocked by missing access |
-| Android physical audit | `android_localhost_audit.py` on physical release-installed build | blocked by missing access |
-| Brain-origin | predeploy or brain network probe with redacted access | blocked by missing access |
+| Payment provider | Lava.top order, webhook auth, replay, invalid auth, failure states | PASS for beta; production refund/chargeback/reconciliation follow-up |
+| Telegram download | `runtime_app_download_smoke.py --redact` with env-only init data | PASS with brain-signed synthetic init data; real-user Telegram WebApp opening is `MANUAL_OWNER_TEST` |
+| RU-origin | external RU probe report for POKROV and Telegram split | SKIPPED_BY_OPERATOR for beta; do not claim RU readiness |
+| Android physical audit | `android_localhost_audit.py` on physical release-installed build | OPERATOR_ATTESTED for beta; raw evidence is `MANUAL_OWNER_TEST` |
+| Brain-origin | predeploy or brain network probe with redacted access | PASS for 2026-05-15 beta evidence pack |
+| Store/trusted release | Google Play / Microsoft Store / trusted Windows signing evidence | NOT_REQUESTED for beta; blocked for store or trusted claims |
 
 ## Evidence Rules
 
@@ -67,3 +74,4 @@ python scripts/release_gate_check.py --client-platform-gates android-apk,android
 - Never paste provider API keys, Telegram init data, SSH material, raw session tokens, QR codes, or subscription links into markdown.
 - Every remote result must identify origin as `current-origin`, `brain-origin`, or `RU-origin`.
 - A blocked gate is an honest result, not a failure to hide.
+- An accepted skip or owner attestation is an honest beta label, not a stable-release pass.

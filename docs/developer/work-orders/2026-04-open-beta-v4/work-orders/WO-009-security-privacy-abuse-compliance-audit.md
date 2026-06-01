@@ -1,6 +1,6 @@
 # WO-009 Security, Privacy, Abuse, Compliance Audit
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W09
 
 ## Scope

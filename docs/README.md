@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-05-16
+Last updated: 2026-05-28
 
 This directory is split into two classes of material:
 
@@ -57,6 +57,7 @@ Current-vs-history boundary:
 ## Start Here As User
 
 - [POKROV User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
+- [Compatible Clients Manual Setup Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/compatibility-clients-guide-ru.md)
 
 ## Start Here For New Client Lane
 
@@ -125,6 +126,8 @@ Current-vs-history boundary:
 - [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md)
 - [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
+- [docs/developer/orchestration/context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
+- [docs/developer/openai-operator-assistants.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/openai-operator-assistants.md)
 - [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
 - [docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md)
 - [docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md)
@@ -132,6 +135,7 @@ Current-vs-history boundary:
 ### User
 
 - [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
+- [docs/user/compatibility-clients-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/compatibility-clients-guide-ru.md)
 
 ### Client
 

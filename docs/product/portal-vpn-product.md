@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-05-21
+Last updated: 2026-05-26
 
 ## Document Status
 
@@ -51,7 +51,7 @@ The current program is locked around these target product decisions:
 - normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
 - target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
 - visible routing story becomes `All except RU`, `Full tunnel`, and `Selected apps`, with `Rules` owning split tunneling and bypass behavior
-- the public wording rule still forbids promoting the product through direct-meaning `VPN` wording on public surfaces
+- owner-approved update on `2026-06-01`: public `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent surfaces and metadata when it is visible, useful to users, and tied to the actual POKROV Android/Windows app flow; hidden text, cloaking, keyword stuffing, unsupported "best" claims, and unsupported availability claims remain forbidden
 
 Client-canon note:
 
@@ -74,17 +74,19 @@ Client-canon note:
 - recommended public routing mode: `All except RU`
 - public routing mode set: `All except RU` and `Full tunnel`
 - public recovery order: `POKROV app -> web cabinet -> Telegram fallback`
-- public wording must avoid direct `VPN` wording and describe the product through app, connection, routing, access, or support context instead
+- public wording may use direct `VPN` / `ВПН` terms on SEO/search-intent pages and metadata after the `2026-06-01` owner approval, but normal product copy should still prefer app, connection, routing, access, or support context when that is clearer and less spammy
 
 ## Current Release Constraints
 
 - release target remains `Android + Windows`
-- `Windows` stays in scope for the public `v1` ship when its normal gates are green
-- `Android` public beta promotion uses the operator-approved physical-device audit plus the APK/EXE outside-store handoff; store publishing and production signing remain separate later gates
-- as of `2026-05-14`, Android/Windows public beta still requires explicit runtime-link sync approval, live `/api/client/apps` verification, and the final release handoff before announcement
-- repo/static/client green gates do not by themselves prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks
+- outside-store public beta for Android + Windows is `GO` as of `2026-05-15` with the retained launch-decision evidence pack
+- `Windows` stays in scope for the public `v1` ship when its normal gates are green; the current outside-store beta remains unsigned and must keep unknown-publisher warning copy visible
+- `Android` public beta promotion uses the operator-approved physical-device audit plus the APK/EXE outside-store handoff; store publishing, raw physical audit proof, and stronger Android safety claims remain separate later gates
+- runtime `/api/client/apps` verification and GitHub Releases APK/EXE handoff are green for the beta; a real-user Telegram WebApp opening remains a manual owner test, not a local agent blocker
+- repo/static/client green gates do not by themselves prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks; the 2026-05-15 pack includes current-origin and brain-origin evidence, while RU-origin remains an accepted skip
 - emulator or adb-only audit runs are valid preflight for adb wiring and timing, but the public beta handoff must retain physical release-build audit evidence for Android
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
+- broad/stable release, `1.0.0`, app-store availability, trusted Windows signing, raw Android audit proof, and RU-origin readiness must not be claimed until each has current redacted evidence
 
 ## Russia-Aware Routing Direction
 
@@ -134,6 +136,7 @@ Quick Connect rule:
 - free-tier access still resolves only to the dedicated `NL-free` node
 - the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= 90`, and transport-incompatible nodes before the client measures latency
 - the client combines real device RTT with backend CPU and health penalties and keeps the previous node when the improvement stays below the `15%` stickiness threshold
+- incident-promoted `ru_bridge_relay` profiles may use `mini` as a first-hop bridge to non-US POKROV delivery nodes; this is an emergency reachability contour, not a normal RU delivery node or a public RU-readiness claim
 - public client screens must not expose raw hostnames, ports, public IP, raw connection links, sniffing terms, JSON/profile editors, or local-control surfaces in the normal consumer path
 
 First-run route-mode rule:
@@ -216,7 +219,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - email continuation copy may be live when the delivery path is ready, and must degrade honestly if delivery readiness fails
 - cabinet copy should focus on continuation, renewal, redeem, support, and recovery rather than acting like a second landing page
 - one product story across homepage, SEO landings, cabinet, and checkout, with trial, install, and first connection as the primary public CTA path
-- avoid direct-meaning `VPN` wording on public surfaces; `POKROV VPN` survives only as a legacy identifier where removal is not yet feasible
+- direct `VPN` / `ВПН` wording is allowed for visible SEO/search-intent copy after the `2026-06-01` owner approval; do not use hidden SEO text, cloaking, keyword stuffing, unsupported "лучший" claims, or copy that implies store availability, stable `1.0.0`, trusted Windows signing, raw Android physical-audit proof, or RU-origin readiness without evidence
 - public-facing wording should prefer user outcomes and next steps over transport acronyms, raw profile terminology, or operator jargon
 - explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
 - no separate product variants or conflicting promises invented for SEO pages
@@ -426,4 +429,4 @@ Current major product risks are:
 - Apple readiness notes being mistaken for a public ship promise
 - Android release being treated as ready before localhost listener and control-surface safety is proven in a release build
 - RU routing and DNS presets being described as finished before the real strategy layer and leak checks ship
-- public copy drifting back into direct `VPN` wording instead of policy-compliant neutral product language
+- public `VPN` / `ВПН` copy drifting from useful visible SEO/search-intent language into hidden text, cloaking, stuffing, or unsupported "best"/availability claims

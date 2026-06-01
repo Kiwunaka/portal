@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 ## Document Status
 
@@ -22,7 +22,7 @@ Legacy filename note:
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
-| `docs/developer/orchestration/` | canonical orchestration standard, WO authoring rules, flow-state rules, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md`, `docs/developer/orchestration/wo-authoring-guide.md`, `docs/developer/orchestration/flow-state.md` |
+| `docs/developer/orchestration/` | canonical orchestration standard, WO authoring rules, flow-state rules, context/cost harness rules, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md`, `docs/developer/orchestration/wo-authoring-guide.md`, `docs/developer/orchestration/flow-state.md`, `docs/developer/orchestration/context-cost-harnesses.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
 | `docs/superpowers/specs/` | retained implementation specs and planning packets | historical/reference only unless copied into a current WO or canonical doc |
 | `reference-atlas/` | retained local design reference atlas | design-reference history only; not a production surface |
@@ -48,7 +48,8 @@ Legacy filename note:
 | Monitoring and visibility | [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md) |
 | Publishing and signing | [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md) |
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
-| Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md), [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md), and [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md) |
+| OpenAI operator assistants | [docs/developer/openai-operator-assistants.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/openai-operator-assistants.md) |
+| Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md), [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md), [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md), and [docs/developer/orchestration/context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
 | Design system | [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md), [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md), and [docs/design/atlas-glass/](C:/Users/kiwun/Documents/ai/VPN/docs/design/atlas-glass/) |
 | Open Beta v4 release scope | [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md) and [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md) |
@@ -73,7 +74,7 @@ Legacy filename note:
 - smart-connect shortlist logic, RTT upload, and stickiness are part of that same app-first contract and must not be documented separately from the pool rule
 - split-tunnel persistence is part of that same contract through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields
 - additive browser email auth lives under `/api/auth/email/*`, but current canon keeps it marked `soon` until transactional sender identity plus delivery-confirmation/webhook readiness and the public launch path are live
-- support tickets live under `/api/tickets`, `/api/tickets/uploads`, and `/api/tickets/{ticket_id}/messages`; cabinet and admin continue real ticket threads instead of fake live-chat state
+- support tickets live under `/api/tickets`, `/api/tickets/uploads`, and `/api/tickets/{ticket_id}/messages`; cabinet and admin continue real ticket threads instead of fake live-chat state. The optional support AI helper is server-side for `portal-api` and `@pokrov_supportbot`, uses `portal_bot/support_ai_service.py` plus `shared/support-ai-knowledge.json`, and stores model hints as `assistant` messages instead of pretending they are operator replies.
 - app-first marketing ownership, checkout continuation, and cabinet top-level IA belong in the same canonical contract family as hostnames, support, and shared copy governance
 - public user-facing version labels stay on `0.x.x-beta`; inherited strings like `2.5.7 dev` are release regressions
 - versioned release metadata belongs under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` during the bridge period and under `.../artifacts/releases/pokrov-app/<version>/` after cutover
@@ -85,6 +86,7 @@ Legacy filename note:
 - `remote_deploy_brain_portal_code.py`
 - `remote_deploy_brain_static_sites.py`
 - `remote_brain_apply_release_handoff.py`
+- `remote_apply_ru_bridge_relay.py`
 - `remote_apply_transport_front.py`
 - `remote_install_mini_canary_stack.py`
 - `remote_install_mtproto_proxy.py`
@@ -99,6 +101,10 @@ Legacy filename note:
 - `client_security_smoke.py`
 - `release_gate_check.py`
 - `run_client_release_gate.py`
+- `agent_context_packet_audit.py`
+- `pokrov_ai_docs_assistant.py`
+- `pokrov_operator_copilot.py`
+- `pokrov_support_ai_kb_refresh.py`
 - `render_ru_probe_report.py`
 - `ru_probe_runner.py`
 - `remote_transport_front_smoke.py`

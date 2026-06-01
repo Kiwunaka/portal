@@ -1,6 +1,6 @@
 # POKROV Work Orders
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 ## Document Status
 
@@ -49,6 +49,7 @@ A new orchestrator should be able to resume from the wave folder alone:
 - see what was verified
 - see which evidence source tiers were used and which checks were owned by the WO
 - see the MREP, proof boundaries, and review focus for medium/high-risk WOs
+- see LLM context/cost harness expectations when repeatable prompt packets or provider routes change
 - see what is still partial or blocked
 - see the compact `FLOW_STATE` for review loops, repeated issue classes, and next action
 

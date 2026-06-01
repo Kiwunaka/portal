@@ -56,6 +56,8 @@ Reference-lane note:
   Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
+- `portal_bot/support_ai_service.py`
+  Optional server-side AI helper for text-only support hints in `@pokrov_supportbot` and ticket API flows; disabled by default and backed by sanitized shared support knowledge.
 - `portal_bot/worker.py`
   Background jobs for retention, bonus enforcement, and free-cycle operations.
 - `portal_bot/models.py`
@@ -70,12 +72,13 @@ Reference-lane note:
 - node inventory and routing logic
 - 3x-ui panels as node-local execution layer
 - observer-lite uses `xray access.log -> node collector -> brain ingest -> Postgres state -> web admin`
-- transport rollout uses a per-node catalog so a node can carry `legacy_reality_fallback`, `grpc_443_primary`, hidden reserve `reserve_xhttp_cdn`, and operator-only `operator_lab` entries side by side
+- transport rollout uses a per-node catalog so a node can carry `legacy_reality_fallback`, `grpc_443_primary`, hidden reserve `reserve_xhttp_cdn`, emergency `ru_bridge_relay`, and operator-only `operator_lab` entries side by side
 - `nodes.transport_profiles_json` is the canonical per-node transport catalog; legacy inbound fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and are synthesized into `legacy_reality_fallback` when the catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout policy for transport, DNS, routing, and operator lab allowlists, and it is exposed through admin GET/PUT endpoints
-- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
-- `defaults` pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary cohorts are explicitly promoted
+- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `defaults` normally pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split`; the owner-approved `2026-06-01` incident posture may promote `transport_profile=ru_bridge_relay` while keeping `legacy_reality_fallback` as the rollback target
 - dormant reserve transport metadata also lives in rollout config and node catalogs under `reserve_xhttp_cdn`; it stays disabled by default and becomes active only through explicit rollout allowlists
+- `ru_bridge_relay` is the owner-approved `2026-06-01` emergency profile: the app receives a sing-box manifest where the top selector lists countries and each non-US country contains nested `Обычный` and `Белые списки` choices; `us` remains available only as a normal direct target
 - rollout overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `operator_lab` stays allowlist-only and carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
@@ -85,6 +88,7 @@ Reference-lane note:
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path
 - `reserve_xhttp_cdn` is prepared as a hidden reserve profile; when explicitly selected it resolves to `transport_kind=xhttp` with `engine_hint=xray`, while the normal consumer baseline stays `sing-box`
+- `ru_bridge_relay` resolves to `transport_kind=ru_bridge` with `engine_hint=singbox`; it is not a normal delivery-node pool and does not make `mini` a control-plane host
 
 Node lifecycle rule:
 
@@ -174,9 +178,10 @@ The additive rollout model keeps the current Reality path intact while introduci
 
 Rollout rule:
 
-- `legacy_reality_fallback` stays the baseline transport profile until a canary cohort is explicitly enabled
+- `legacy_reality_fallback` stays the rollback and manual/export baseline transport profile
 - `grpc_443_primary` is the new app-first primary profile for allowlisted cohorts and premium-node canaries
 - `reserve_xhttp_cdn` is the hidden reserve profile prepared on eligible nodes for emergency allowlisted fallback; it is not part of the default public rollout in this wave
+- `ru_bridge_relay` is the RU reachability bridge for allowlisted, incident-promoted, or temporary default cohorts; it exposes countries first, then nested direct/`Белые списки` choices through `mini` for non-US targets, while US stays direct-only
 - `operator_lab` stays hidden behind allowlists and must not appear in public UI or mass session payloads
 - `Naive`, `Trojan`, and `Hysteria2` are not part of the mass public payload for this wave
 
@@ -289,7 +294,8 @@ This contour is observe-and-verify only. It does not change cashier UI design, b
 
 1. user opens support from app, WebApp, or helpbot
 2. the platform stores or routes the support thread
-3. operator responds through the current support tooling
+3. when enabled, `portal-api` or `portal-helpbot` may add a redacted AI hint from `shared/support-ai-knowledge.json` as sender role `assistant`
+4. operator responds through the current support tooling; the AI hint does not close or resolve the ticket
 
 ### Feedback And Review Flow
 
@@ -316,7 +322,7 @@ Important services:
 Auxiliary RF hosts:
 
 - `mini`
-  dedicated RU probe vantage point for whitelist and foreign-reachability checks
+  dedicated RU probe vantage point plus owner-approved emergency RU bridge endpoint for non-US delivery reachability
 - `rf1`
   reserve RF ingress for operator and VIP/manual access, chained onward to an EU exit
 
@@ -324,8 +330,8 @@ RF host rule:
 
 - do not place control-plane services on `mini` or `rf1`
 - keep `rf1` outside the default runtime delivery pool in phase 1
-- RU ingress / RF reserve experiments are currently in backlog
-- do not spend implementation time on `mini` ingress variants or `rf1` promotion until the product owner explicitly requests a return to this work
+- `rf1` promotion remains in backlog
+- owner-approved exception on `2026-06-01`: `mini` may run `ru_bridge_relay` on `tcp/443` as an emergency bridge to enabled non-US POKROV delivery nodes; keep it out of the standard delivery pool, keep US excluded, and keep a rollback path that disables the rollout profile without touching normal Reality delivery
 - owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) runs `portal-mtproto.service` as a Telegram-only MTProto proxy on `tcp/9443`; it is not a new generic delivery role and must not displace the node's normal `x-ui` listener on `tcp/443`
 
 ## Public Hostnames And Migration Roles

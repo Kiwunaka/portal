@@ -1,6 +1,6 @@
 # WO-005 Backend Contract Hardening
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W05
 
 ## Scope

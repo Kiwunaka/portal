@@ -1,6 +1,6 @@
 # POKROV Orchestration Docs
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 ## Document Status
 
@@ -34,6 +34,8 @@ Historical boundary:
   work-order ceremony levels, proof blocks, evidence tiers, reviewability, and validation attribution
 - [flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
   compact fix-cycle state, reviewer recheck semantics, and stop rules
+- [context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
+  cache-aware context packet rules, LLM telemetry schema, and prompt-cost harness guidance
 - [roles/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles)
   paste-ready role contracts for orchestrator, executor, and reviewers
 - [templates/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates)
@@ -46,10 +48,11 @@ Historical boundary:
 1. Start from [orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md).
 2. Use [wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md) when drafting or reviewing a `WO` contract.
 3. Use [flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md) once a `WO` enters review or fix-cycle.
-4. Use [roles/orchestrator.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles/orchestrator.md) to launch or resume an orchestration session.
-5. Create or update a wave folder under [docs/developer/work-orders/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md).
-6. Route active client work to `POKROV-app/main` by default, and call out any bridge-lane work as explicit release-truth or hotfix evidence.
-7. Drive each `WO` through the required review loop before closure.
+4. Use [context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md) when a WO creates repeatable prompt packets, external-model consults, or prompt-heavy harnesses.
+5. Use [roles/orchestrator.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles/orchestrator.md) to launch or resume an orchestration session.
+6. Create or update a wave folder under [docs/developer/work-orders/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md).
+7. Route active client work to `POKROV-app/main` by default, and call out any bridge-lane work as explicit release-truth or hotfix evidence.
+8. Drive each `WO` through the required review loop before closure.
 
 ## Scope Rule
 

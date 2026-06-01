@@ -1,6 +1,6 @@
 # WO-007 Android/Windows Public Beta Client
 
-Status: pending research
+Status: historical work order; current beta decision synced 2026-05-26
 Owner: W07
 Repo: POKROV-app worktree
 

@@ -4,9 +4,14 @@ Status: complete
 Date: 2026-04-26  
 Scope: R01-R10 research wave for Open Beta v4
 
+Supersession note:
+
+- This synthesis records the `2026-04-26` research state. The launch decision changed on `2026-05-15` to outside-store public beta `GO` with accepted skips; use `13-launch-decision.md`, `03-tech-debt-register.md`, `04-risk-register.md`, and `05-release-gate-plan.md` for current gate labels.
+- Historical "blocked" findings below should not override the current beta decision; they remain useful as context for stable, store, trusted-signing, raw Android-audit, RU-origin, and production payment follow-up.
+
 ## Release Truth
 
-The release cannot be called `1.0.0` and cannot be promoted as a broad public launch. The current truthful scope is an Open Beta v4 preparation branch with a possible gated beta only after local gates pass and blocked external gates stay clearly labeled.
+At the time of this research wave, the release could not be called `1.0.0` or promoted as a broad public launch. The truthful scope was Open Beta v4 preparation with a possible gated beta only after local gates passed and external gates stayed clearly labeled.
 
 Allowed public stance before new proof:
 

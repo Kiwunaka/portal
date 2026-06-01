@@ -63,7 +63,7 @@ function EntryBody() {
               Нужен повторный вход
             </p>
             <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3rem)] font-semibold leading-[0.98] tracking-[-0.04em] text-slate-950 dark:text-slate-50">
-              Кабинет сейчас не открылся
+              Не удалось открыть кабинет
             </h1>
             <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
               {error}
@@ -120,10 +120,10 @@ function EntryBody() {
 
         <FadeUp delay={0.2} className="mt-8">
           <h1 className="font-display text-[clamp(2.15rem,7vw,3.2rem)] font-semibold leading-[1.02] text-slate-950 dark:text-slate-50">
-            Вход в аккаунт
+            Кабинет POKROV
           </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
-            Доступ, устройства, оплата и поддержка.
+            Войдите, чтобы скачать приложение, проверить доступ, продлить срок или написать в поддержку.
           </p>
         </FadeUp>
 

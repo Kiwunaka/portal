@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-05-15
+Last updated: 2026-05-28
 
 ## Document Status
 
@@ -43,7 +43,7 @@ Key services expected there:
 RF auxiliary hosts:
 
 - `mini`
-  dedicated external RU probe origin and universal operator sandbox
+  dedicated external RU probe origin, universal operator sandbox, and owner-approved emergency RU bridge endpoint for non-US delivery reachability
 - `rf1`
   reserve RF ingress for operator and VIP/manual access
 
@@ -52,10 +52,11 @@ RF access rule:
 - do not place control-plane services on `mini` or `rf1`
 - do not add `rf1` to the normal runtime delivery pool in phase 1
 - keep a hard kill switch for the `rf1` VIP/manual contour so it can be withdrawn without touching the standard consumer path
-- RU ingress / RF reserve work is currently backlog-only
-- do not resume `mini` ingress experiments, do not provision `rf1`, and do not treat this contour as active work unless the product owner explicitly asks to return to it
+- `rf1` reserve work remains backlog-only
+- owner-approved exception on `2026-06-01`: `mini` may run `ru_bridge_relay` on `tcp/443` through Xray Reality as an emergency bridge to POKROV delivery nodes except US; do not add `mini` to the normal runtime delivery pool and do not move control-plane services onto it
 - owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
 - `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS`
+- current `mini` SSH access, verified on `2026-06-01`: use `kiwunaka@176.123.166.119:22` with the retained local password bundle; `29374` opens TCP but resets before the SSH banner and should not be used as the primary SSH path
 - RU probe readiness itself is a tracked operational dependency for release confidence and is scoped to `POKROV` public hosts, API health, and delivery-node reachability
 
 ## Operator Shell Policy
@@ -98,8 +99,11 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 Repo-side deploy rule:
 
 - the default restart set is `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`
-- the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, and `promo-slots.json`
+- the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, and `support-ai-knowledge.json`
 - the deploy step should be treated as failed if any requested unit does not become `active` after restart
+- support AI is a `portal-api` and `portal-helpbot` runtime feature. It stays disabled unless the `brain` environment sets `SUPPORT_AI_ENABLED=true` plus an API key. The default route is OpenRouter `https://openrouter.ai/api/v1` with `deepseek/deepseek-v4-flash`; switch providers only through env overrides. Leave `SUPPORT_AI_OPENROUTER_DATA_COLLECTION` blank unless a specific OpenRouter route requires `deny` or `allow`; an unsupported strict policy can make OpenRouter return no matching endpoints.
+- keep `SUPPORT_AI_MAX_CONTEXT_CHARS` at `32000` or higher when deploying the expanded support KB; lower values can truncate later troubleshooting topics before they reach the model.
+- knowledge refresh is operator-side: use `python scripts/pokrov_support_ai_kb_refresh.py run-pi --apply`, review `shared/support-ai-knowledge.json`, then deploy backend code/shared runtime assets to `brain`
 
 Observer-lite canary install:
 
@@ -182,15 +186,19 @@ python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host m
 python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 ```
 
+Current SSH note for running the probe remotely: `mini` is reachable as `kiwunaka@176.123.166.119:22`. Do not copy the password into docs or reports; use the retained local password bundle or an approved secret channel.
+
 ### RF Reserve Note
 
 - [remote_install_mini_canary_stack.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_mini_canary_stack.py)
+- [remote_apply_ru_bridge_relay.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_apply_ru_bridge_relay.py)
 
 Status:
 
-- previous `mini` canary experiments and the `rf1` reserve-bridge idea are now in backlog
-- keep the script as historical/operator tooling only
-- do not run this script, do not continue the experiment, and do not evolve the contour unless the product owner explicitly requests a return to this work
+- previous `remote_install_mini_canary_stack.py` xhttp/hysteria experiments remain historical/operator tooling only
+- `remote_apply_ru_bridge_relay.py` is the current owner-approved emergency bridge path: it syncs active user UUIDs from `brain`, installs/preserves `mini` Xray Reality on `tcp/443`, restricts bridge egress to POKROV target nodes, excludes `us`, and patches public bridge metadata into `network_rollout_config`
+- rerun `remote_apply_ru_bridge_relay.py --apply --update-brain-rollout` after meaningful user growth or before relying on the bridge for a live incident, because `mini` authorizes the active UUID snapshot that was synced at apply time
+- rollback is `defaults.transport_profile=legacy_reality_fallback`; enable or keep `ru_bridge_relay` only through an explicit cohort/carrier/default decision after verification
 
 ### Telegram MTProto proxy on free node
 
@@ -223,13 +231,14 @@ The transport rollout stays additive: the current Reality path remains in place 
 
 Transport policy rule:
 
-- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, `reserve_xhttp_cdn`, and `operator_lab`
+- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, `reserve_xhttp_cdn`, and `operator_lab`; `ru_bridge_relay` lives in `network_rollout_config` because it is a cross-node RU bridge, not a node-local delivery inbound
 - legacy node fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and should synthesize `legacy_reality_fallback` when the transport catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout source of truth for `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
-- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
-- `defaults` pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split` until canary cohorts are explicitly approved
+- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `defaults` normally pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split`; live incident response may temporarily set `transport_profile=ru_bridge_relay`
 - `carrier_overrides` and `cohort_overrides` may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `reserve_xhttp_cdn` stays opt-in, disabled by default, and is intended only as a reserve path on eligible nodes until a later rollout wave promotes it explicitly
+- `ru_bridge_relay` stays opt-in unless an incident commander explicitly promotes it; app-managed sing-box manifests expose countries at the top level and nested `Обычный` / `Белые списки` choices under non-US nodes, while US remains a direct-only target and is never routed through the RU bridge
 - `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
@@ -308,7 +317,7 @@ Canonical repo-local build and packaging commands for this wave:
 
 Current local-build notes:
 
-- Android public promotion is still blocked until `python scripts/android_localhost_audit.py` is run against a release-installed build on physical hardware
+- Android outside-store public beta is owner-attested for the `2026-05-15` launch decision; raw `python scripts/android_localhost_audit.py` evidence on a release-installed physical build remains required before stronger Android safety, store, or stable claims
 - the platform-owned `run_client_release_gate.py` wrapper now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default; it validates the clean-room seed workspace, runs the `POKROV-app` test lane, and produces `POKROV-app` Android or Windows engineering artifacts
 - raw Android wrapper artifacts are produced under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/build/app/outputs/...`; their presence alone does not prove production signing or publication readiness
 - local Android builds may fall back to the debug keystore when the production release keystore is unavailable; that is valid for local smoke only, not for publication
@@ -332,19 +341,19 @@ Current brand-source rule for release assets:
 
 ## Current Unclosed Release Blockers
 
-As of `2026-04-15`, the documented local green gate snapshot is not the same thing as a finished public release handoff.
+As of `2026-05-15`, the outside-store Android + Windows public beta has a retained `GO` evidence pack. The documented green beta snapshot is not the same thing as a stable, store, trusted-signing, RU-origin, or raw-device release handoff.
 
-Still required before public promotion or node enablement:
+Still required before a stronger public promotion, new exact release candidate, store/trusted release, or node enablement that depends on new node state:
 
 - live deploy of the released backend and static surfaces
 - live node enablement where the rollout depends on new node state
 - separate `current-origin check`, `brain-origin check`, and `RU-origin check` evidence lines
 - Android production signing instead of debug-keystore fallback
 - confirmation that the final signed Android artifacts are actually production-ready
-- physical-device `python scripts/android_localhost_audit.py` on the release-installed Android build
+- raw physical-device `python scripts/android_localhost_audit.py` on the release-installed Android build if replacing the current beta owner attestation or making stronger Android claims
 - live Windows and Android scenario evidence on real devices and in a real network after the current UI pass
 - live transactional sender readiness for public email registration or recovery mail must stay green; as of `2026-05-15`, a real verify-email delivery and public email registration flow were confirmed for beta, but reset and paid-key delivery should still be checked before broad launch language
-- final release handoff with published URLs, runtime sync, and redeployed static download surfaces
+- final release handoff with published URLs, runtime sync, and redeployed static download surfaces for any new artifact or URL change
 
 Release handoff shortcuts:
 
@@ -457,7 +466,7 @@ Release gate rule:
 - when `TELEGRAM_INIT_DATA` is available, retain evidence through `python scripts/runtime_app_download_smoke.py --redact --check-providers --require-release-handoff`
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the same markdown report to include artifact-producing client builds
 - the latest documented `release_orchestrator.py --gates-only` success is a local-only proof and does not replace live deploy, live node enablement, or three-origin network evidence
-- Android public release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect; green repo/static gates are necessary but not sufficient
+- Android outside-store beta currently relies on owner attestation; a trusted/stable/store Android release must also include a release-build localhost-listener audit covering proxy, DNS, command-server, and admin/control surfaces before connect, after connect, and after disconnect; green repo/static gates are necessary but not sufficient
 - the Android release gate fails if an unauthenticated local SOCKS, HTTP proxy, Clash API, command, or similar admin surface remains reachable
 - public client release validation must include routing preset smoke for `Full tunnel` and `All except RU`, plus DNS split and leak checks on Android and Windows
 - `Blocked only` remains internal or compatibility-only until geo assets and DNS behavior are complete enough for honest public verification
@@ -613,8 +622,8 @@ Signed release path:
 
 Android release-block rule:
 
-- do not publish Android as a trusted public release until the release-build audit proves that localhost proxy, local DNS, libbox command, Clash API, and equivalent control surfaces are either unavailable to other apps or protected to an acceptable standard
-- if that proof is missing, keep Android in blocked state even if the app otherwise builds and signs correctly
+- do not publish Android as a trusted, store, stable, or raw-audited release until the release-build audit proves that localhost proxy, local DNS, libbox command, Clash API, and equivalent control surfaces are either unavailable to other apps or protected to an acceptable standard
+- if that proof is missing, keep Android limited to the documented outside-store beta/owner-attested posture even if the app otherwise builds and signs correctly
 
 Release handoff after publishing artifacts:
 

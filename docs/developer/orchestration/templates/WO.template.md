@@ -205,6 +205,21 @@ Describe the intended implementation shape before work starts. Keep this section
   - Known blind spots: `<what remains unproven or intentionally scoped out>`
   - Regex/text-only proof allowed: `yes | no + reason`
 
+## LLM Context And Cost Harness
+
+Use when this WO changes repeatable prompt packets, external-model consult paths, provider routing, prompt-heavy evals, or `.content-video-ad` model orchestration.
+
+- Required: `no | yes`
+- If no: `<short reason>`
+- If yes:
+  - Stable prefix blocks: `<tools, role, static canon, stable examples, rubric, or N/A>`
+  - Dynamic suffix blocks: `<current task, date, cwd, git status, file excerpts, run state, tool output, or N/A>`
+  - Cache/key/retention policy: `<prompt_cache_key, prompt_cache_retention, provider TTL, direct/proxy route, or N/A>`
+  - Telemetry required: `<cached_tokens/cache_read/new_input/output/TTFT/system_hash/tools_hash or N/A>`
+  - Harness/eval command: `<python scripts/agent_context_packet_audit.py ... or provider trace/eval command>`
+  - Anti-cache-miss controls: `<stable tool ordering, no trace IDs in prefix, append-only history, no tool results in cached prefix, or N/A>`
+  - Residual cost risk: `<what remains unmeasured or provider/proxy-dependent>`
+
 ## Reviewability
 
 - Expected diff shape: `<files/areas likely to change and what kind of change reviewers should expect>`

@@ -25,7 +25,7 @@ const EMAIL_MODE_LABELS: Record<EmailMode, string> = {
   recover: "Восстановление",
 };
 const EMAIL_MODES = new Set(Object.keys(EMAIL_MODE_LABELS));
-const PASSWORD_HINT = "Минимум 10 символов.";
+const PASSWORD_HINT = "Минимум 10 символов. Не используйте пароль от почты или Telegram.";
 
 function externalPageUrl(siteUrl: string, pathname: "/offer/" | "/privacy/"): string {
   try {
@@ -390,7 +390,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           </div>
         ) : (
           <div className="mt-6 rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
-            Email-вход сейчас проверяется. Пока войдите через Telegram.
+            Email-вход пока проверяется. Самый быстрый путь сейчас — войти через Telegram.
           </div>
         )}
       </div>
@@ -426,7 +426,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       ) : null}
       {webLoginBusy ? (
         <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-          Завершите вход в Telegram и вернитесь в эту вкладку.
+          Подтвердите вход в Telegram и вернитесь сюда. Кабинет откроется автоматически.
         </p>
       ) : null}
 

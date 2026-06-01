@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-05-21
+Last updated: 2026-05-26
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -16,7 +16,7 @@ Use it to answer four questions before touching code:
 - Platform brand: `POKROV`
 - Public product line: `POKROV`
 - Legacy client identifier: `POKROV VPN` only where removal is not yet feasible
-- Public wording rule: do not use `VPN` as a direct public product description; keep it only in legacy names, compatibility labels, and unavoidable technical identifiers
+- Public wording rule: owner-approved `2026-06-01` update allows visible `VPN` / `ВПН` wording on dedicated SEO/search-intent surfaces and metadata when it is useful to users and tied to the real POKROV Android/Windows app flow; hidden text, cloaking, keyword stuffing, unsupported "best" claims, and unsupported release/payment/store claims remain forbidden
 - Client strategy: `consumer-first`
 - Identity model: `app-first`
 - Trial duration: `5 days`
@@ -35,26 +35,28 @@ Use it to answer four questions before touching code:
 - Canonical checkout host: `https://pay.pokrov.space/checkout/`
 - Legacy compatibility host: `kiwunaka.space`
 - Canonical control-plane host: `82.21.114.104`
-- Android public release is blocked until the repo/static gate pack is green and a physical-device release-build localhost/control-surface audit proves the client is safe
+- Android outside-store public beta may use the retained `2026-05-15` operator-attested physical-device release-build localhost/control-surface audit; raw physical audit evidence remains a manual owner test before stronger Android safety claims
 - RU-origin probe readiness is an operational dependency for `POKROV` public hosts, API, and delivery-node reachability; `mini` / `RFMINI` is the canonical RU-origin operator sandbox when SSH access is current
-- Payment provider launch truth: paid checkout must stay unavailable or clearly degraded until Lava.top credentials, order creation, webhook auth, replay/idempotency, failed-payment, and reconciliation evidence are attached with secrets redacted
-- Current release gate snapshot: Open Beta v4 preparation is allowed; broad public release and `1.0.0` labeling are blocked until all P0 gates are green
+- Payment provider launch truth: Lava.top paid checkout is evidence-backed for the outside-store public beta as of `2026-05-15`; production maturity still requires refund/chargeback, reconciliation, and fulfillment-ledger hardening evidence with secrets redacted
+- Current release gate snapshot: outside-store public Android + Windows beta is `GO` as of `2026-05-15` with accepted skips; broad/stable/store/trusted release and `1.0.0` labeling remain blocked until the separate P0/manual gates are green
 - Design source of truth: root `DESIGN.md` plus `shared/design-tokens.json` and `shared/design-tokens.schema.json`
 
 ## Current Release Gate Snapshot
 
-As of `2026-04-26`, Open Beta v4 is a preparation branch, not a public-release authorization.
+As of `2026-05-15`, `POKROV` outside-store public beta for Android + Windows is authorized with the evidence pack recorded in `docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md` and `docs/audit-artifacts/public-beta-launch-decision-2026-05-15.json`.
 
-Blocked P0 gates:
+Current beta gate labels:
 
-- Lava.top provider proof
-- runtime app-download smoke with env-only Telegram init data
-- Android physical release-build localhost/control-surface audit
-- public Android/Windows handoff URLs
-- RU-origin `POKROV` host/API/node probe evidence
-- deploy/brain-origin evidence for the exact release candidate
+- Lava.top provider proof: `PASS` for beta, production refund/chargeback/reconciliation evidence still follow-up
+- runtime app-download smoke with brain-signed env-only Telegram init data: `PASS`; real-user Telegram WebApp opening remains manual owner test
+- Android physical release-build localhost/control-surface audit: `OPERATOR_ATTESTED` for beta; raw device evidence remains optional replacement/manual test
+- public Android/Windows handoff URLs: `PASS` for GitHub Releases APK/EXE and install docs URLs
+- RU-origin `POKROV` host/API/node probe evidence: `SKIPPED_BY_OPERATOR`; do not claim RU-origin readiness
+- deploy/brain-origin evidence for the exact beta candidate: `PASS`
 
-Do not change public copy, deploy notes, or launch announcements to imply broad public availability until these gates have current, redacted evidence.
+For agent work, checks that require the owner's physical device, real user session, Telegram/WebApp account, payment dashboard, live deploy approval, signing identity, store access, or RU probe access should be recorded as `MANUAL_OWNER_TEST`, `SKIPPED_BY_OWNER`, `OPERATOR_ATTESTED`, `NOT_REQUESTED`, or `BLOCKED_BY_ACCESS` rather than blocking the local docs/code task.
+
+Do not change public copy, deploy notes, or launch announcements to imply store availability, stable `1.0.0`, trusted Windows signing, raw Android physical-audit proof, or RU-origin readiness until those claims have current, redacted evidence.
 
 ## Design And Generated Asset Truth
 
@@ -85,6 +87,8 @@ OpenCode CLI rules:
 
 Preferred model routing for design and copy work:
 
+- Owner-approved update on `2026-06-01`: for copy/UX consilium work on webapp, bot, support text, and user instructions, use the `opencode-go` subscription lane first. The consilium model set is `opencode-go/minimax-m3`, `opencode-go/qwen3.7-max`, `opencode-go/mimo-v2.5-pro`, `opencode-go/glm-5.1`, and `opencode-go/deepseek-v4-pro`.
+- When an `opencode-go` model exposes a reasoning or variant control, use the maximum available reasoning setting for consilium critique, contradiction hunting, and final copy review. Hide or discard reasoning traces from handoffs unless the user explicitly asks for them.
 - Use `openrouter/deepseek/deepseek-v4-pro` for hard design/copy critique, contradiction hunting, information architecture, dense screen review, policy/canon consistency checks, and high-stakes "what is wrong with this?" passes.
 - When using DeepSeek V4 Pro through OpenRouter for maximum reasoning, pass `reasoning: { "effort": "xhigh" }`. Treat reasoning tokens as paid output and hide or discard `reasoning` / `reasoning_details` from handoffs unless the user explicitly asks for them.
 - Use `fireworks-ai/accounts/fireworks/models/kimi-k2p6` for taste passes, visual hierarchy alternatives, calmer premium UI directions, copy-tone variants, human rewrites, roleplay/persona passes, Russian phrasing, support/dialogue text, and "find a more elegant version" prompts. Kimi is especially useful when the text needs to sound natural, warm, and human rather than procedural.
@@ -116,11 +120,18 @@ SKILL PACKET:
 - Output format:
 ```
 
+Cache-aware packet rule:
+
+- keep stable role, POKROV canon, reusable skill constraints, and output contract before the dynamic task
+- put current date, cwd, git status, user steering, file excerpts, run ids, trace ids, and tool outputs at the end of the packet
+- for repeatable prompt packets, run `python scripts/agent_context_packet_audit.py <packet.md>` before high-volume or expensive model calls
+- when a repo-owned LLM integration exists, retain provider usage telemetry such as cache-read/new-input/output token split without logging raw prompts or secrets
+
 Design prompt pattern:
 
 1. State the surface: marketing, cabinet, admin, Android, Windows, store, support, or release asset.
 2. State the user goal and emotional target in plain language.
-3. Include hard POKROV constraints: no public direct `VPN` product wording, app-first identity, consumer-first UX, beta/release gate honesty, and current token/design canon.
+3. Include hard POKROV constraints: visible SEO/search-intent `VPN` / `ВПН` wording is allowed after the `2026-06-01` owner approval, hidden/cloaked/stuffed `VPN` copy remains forbidden, app-first identity, consumer-first UX, beta/release gate honesty, and current token/design canon.
 4. Add the compact skill packet for the local taste rules that should shape the critique.
 5. Ask for critique in named categories: hierarchy, trust, conversion, density, motion, accessibility, localization, and implementation risk.
 6. Require a compact final format: `Verdict`, `Top fixes`, `Keep`, `Avoid`, `Implementation notes`.
@@ -130,7 +141,7 @@ Copy rewrite prompt pattern:
 
 1. State the surface: marketing, cabinet, admin, Android, Windows, store, support, bot, checkout, legal, release note, or operator handoff.
 2. State the audience, scenario, emotional target, and desired level of directness.
-3. Include hard POKROV constraints: no public direct `VPN` product wording, app-first identity, consumer-first UX, beta/release gate honesty, no unsupported launch/payment claims, and current shared copy/facts canon.
+3. Include hard POKROV constraints: visible SEO/search-intent `VPN` / `ВПН` wording is allowed after the `2026-06-01` owner approval, hidden/cloaked/stuffed `VPN` copy remains forbidden, app-first identity, consumer-first UX, beta/release gate honesty, no unsupported launch/payment claims, and current shared copy/facts canon.
 4. Ask for 2-3 rewrite directions when exploration is useful, or one final polished rewrite when the intent is already clear.
 5. For roleplay, ask the model to answer as the target user, support operator, skeptical buyer, or confused newcomer, then extract only actionable wording lessons.
 6. Require a compact final format: `Best rewrite`, `Why it works`, `Risks`, `Canon checks`.
@@ -176,7 +187,7 @@ Legacy filename note:
 
 - some canonical docs still use legacy path names such as `portal-vpn-product.md`, `portal-vpn-user-guide-ru.md`, and `portal-vpn-v1-spec.md`
 - these files are still the live source of truth for the current `POKROV` product until a separate rename wave happens
-- legacy `POKROV VPN` labels inside paths or old identifiers do not authorize new direct-meaning `VPN` copy
+- legacy `POKROV VPN` labels inside paths or old identifiers do not by themselves authorize broad direct-meaning `VPN` copy; the `2026-06-01` owner approval authorizes visible SEO/search-intent `VPN` / `ВПН` wording under the public wording rule above
 - treat the content as current even when the path still contains an older name
 
 Living documentation lives only in these areas:

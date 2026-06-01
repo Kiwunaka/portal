@@ -1,15 +1,17 @@
 # Telegram Announcement Drafts
 
-Last updated: 2026-05-14
+Last updated: 2026-05-26
 
-Status: drafts only. Do not post until the release handoff says `GO`.
+Status: drafts only. The `2026-05-15` release handoff says outside-store public beta `GO`, but channel posting remains an owner/manual action.
 
-Use the `Gated Beta With Downloads` draft only after all of these are true:
+Before posting, the owner should manually confirm:
 
-- runtime `APP_*` download links were synced with explicit operator approval;
-- cabinet `/api/client/apps` shows GitHub Releases APK/EXE links;
-- paid checkout is either still clearly closed or Lava.top evidence is green;
-- final release handoff says the Telegram channel post is allowed.
+- cabinet `/api/client/apps` still shows the intended GitHub Releases APK/EXE links;
+- Lava.top remains the only enabled public beta payment provider;
+- Windows unsigned warning copy is still visible where users download the EXE;
+- no public copy claims store availability, stable `1.0.0`, trusted Windows signing, raw Android audit proof, or RU-origin readiness.
+
+The body drafts below are beta-only and still require the owner to post manually.
 
 ## Gated Beta With Downloads
 
@@ -33,7 +35,7 @@ POKROV открывает аккуратную beta-проверку для Andr
 - Android APK и Windows EXE вне магазинов
 - поддержка через кабинет и @pokrov_supportbot
 
-Оплата пока может быть закрыта: мы включим Lava.top только после финальной проверки счетов, webhook, повторов, сверки и доставки ключей. Если кнопка оплаты недоступна, это не ошибка.
+Оплата в этой beta-волне работает через Lava.top. Если кнопка оплаты недоступна именно вашему аккаунту или письмо с ключом не пришло, напишите в поддержку; не используйте сторонние зеркала и не присылайте данные карты в чат.
 
 Windows-сборка может показывать предупреждение о неизвестном издателе. Для этой beta-волны это ожидаемо: подпись не является релизным блокером, но устанавливать файл нужно только из официального кабинета.
 
@@ -49,7 +51,7 @@ Android APK и Windows EXE доступны через официальный к
 
 Это ещё не релиз в магазинах. Пожалуйста, не используйте зеркала и не пересылайте файлы из случайных источников. Если ссылка не появилась или нужна помощь, напишите в поддержку: @pokrov_supportbot
 
-Оплата может оставаться закрытой, пока мы завершаем финальную проверку Lava.top и доставки ключей.
+Оплата работает через Lava.top там, где кнопка доступна в официальной поверхности POKROV. Если не видите оплату или ключ не пришёл, напишите в поддержку.
 
 ## Downloads Paused / No-Go
 

@@ -310,15 +310,15 @@ RF role split:
 
 - `mini` / `RFMINI` is the canonical RU probe origin and universal operator sandbox
 - `rf1` is the reserve ingress for operator and VIP/manual access
-- do not use `mini` for general user traffic
+- owner-approved exception on `2026-06-01`: `mini` may carry emergency `ru_bridge_relay` traffic on `tcp/443` for allowlisted or incident-promoted cohorts, bridging only to POKROV delivery nodes except US
 - do not treat `rf1` as a general delivery node until repeated RU probes prove stability
 - owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) also runs the Telegram-only `portal-mtproto.service` on `tcp/9443`; monitor it separately from POKROV delivery-node health and do not count it as normal subscription traffic
 
 Current backlog note:
 
 - RU ingress / RF reserve experiments are paused
-- keep using `mini` only as the RU probe origin and operator sandbox
-- do not resume `mini` canary work or `rf1` promotion until the product owner explicitly requests it
+- `rf1` promotion remains paused
+- `mini` bridge work has resumed only for `ru_bridge_relay`; keep separate evidence for probe health, bridge listener health, and downstream non-US target reachability
 - the MTProto exception does not reopen the paused RF reserve canary; the earlier `mini:443` attempt remains disabled and separate from POKROV delivery-node health
 
 Interpretation note:
@@ -326,6 +326,7 @@ Interpretation note:
 - a successful `current-origin check` only proves reachability from that current workstation
 - a successful `brain-origin check` only proves control-plane reachability
 - missing `RU-origin check` data means RU-specific conclusions remain unproven, even if another origin succeeds or fails
+- a green `ru_bridge_relay` listener does not prove normal RU-origin readiness; it only proves the bridge contour is available for the selected cohort/profile
 
 When handing this off, use:
 

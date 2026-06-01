@@ -1,6 +1,6 @@
 # POKROV Orchestration Standard
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 ## Document Status
 
@@ -19,6 +19,7 @@ The goal is reliable execution with:
 - explicit reviewability, validation attribution, and proof boundaries before execution
 - owned-finding rechecks plus fresh-context final review after implementation
 - compact `FLOW_STATE` for fix-cycle and handoff decisions
+- cache-aware context/cost harnesses for prompt-heavy agent work
 - durable evidence for validation, manual checks, and git state
 
 ## When To Use
@@ -129,6 +130,7 @@ Full WOs must define or explicitly mark N/A for:
 - `Minimal E2E Path (MREP)` with an evidence source tier
 - `Risk Proof Plan`
 - `Mechanism Adequacy`
+- `LLM Context And Cost Harness` when the WO changes repeatable prompt packets, external-model consult paths, provider routing, or prompt-heavy batch/eval work
 - `Reviewability`
 - `Validation Attribution`
 
@@ -169,6 +171,8 @@ Reviewability tells reviewers where to focus: expected diff shape, risk lenses, 
 
 Validation attribution says which checks belong to the WO, which evidence tiers are required, which failures are likely attributable to the WO, and which failures are wave-level or integration-level.
 
+LLM context and cost harnessing is required when a WO creates or changes repeatable prompts, external-model packets, provider routing, agent memory, batch eval prompts, or `.content-video-ad` model orchestration. Use [context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md), keep stable prompt content before dynamic task/run data, and run `python scripts/agent_context_packet_audit.py <packet.md>` for reusable packets when practical.
+
 ## Core Artifacts
 
 - `Wave`
@@ -179,6 +183,8 @@ Validation attribution says which checks belong to the WO, which evidence tiers 
   one work-order file for one bounded execution target
 - WO authoring guide
   proof-field and evidence-tier rules for writing reviewable WOs
+- context/cost harness guide
+  cache-aware prompt packet rules, LLM telemetry schema, and prompt-cost validation rules
 - discovery memo
   read-only context gathering for a WO
 - implementation strategy
@@ -225,6 +231,7 @@ Validation attribution says which checks belong to the WO, which evidence tiers 
 - A weak proof mechanism does not close a strong acceptance criterion unless the WO narrows that criterion and records residual risk.
 - Validation evidence must identify source tier and attribution to this WO versus wave-level or unrelated failure.
 - Medium/high-risk WOs must include reviewability, validation attribution, MREP, risk proof, and mechanism adequacy, or explicitly record N/A reasons.
+- Prompt-heavy WOs must include LLM context/cost harnessing or explicitly record why prompt caching and telemetry are not applicable.
 - The executor never self-closes the WO.
 - Reviewers report findings back through the orchestrator and classify each finding with a stable issue class.
 - The same reviewer may recheck only their owned findings after a fix pass.

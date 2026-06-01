@@ -1,6 +1,6 @@
 # POKROV WO Authoring Guide
 
-Last updated: 2026-05-16
+Last updated: 2026-05-23
 
 ## Document Status
 
@@ -10,6 +10,7 @@ Use it together with:
 
 - [orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
+- [context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
 - [WO.template.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates/WO.template.md)
 
 The standard defines lifecycle and routing. This guide defines how to write a WO that an executor, reviewer, and validator can actually close without relying on chat memory.
@@ -106,6 +107,28 @@ If a WO depends on later feedback, PR comments, deploy completion, provider acce
 - what should happen when feedback arrives
 
 Use a heartbeat or automation when the current thread should wake up later and continue the loop. Do not model a recurring monitor as a one-time manual reminder unless the user explicitly wants that.
+
+## LLM Context And Cost Harness
+
+Set `Required: yes` when the WO changes a repeatable prompt, context packet, external-model consult path, provider route, prompt-heavy eval, or `.content-video-ad` model orchestration.
+
+When required, define:
+
+- stable prefix blocks
+- dynamic suffix blocks
+- cache/key/retention policy when a provider supports it
+- telemetry required, including cache read/new input/output token split when available
+- harness or eval command
+- anti-cache-miss controls
+- residual cost risk
+
+For reusable prompt packets, run:
+
+```powershell
+python scripts/agent_context_packet_audit.py <packet.md>
+```
+
+This is a static harness. It proves prompt-shape discipline, not provider cache behavior. Real provider behavior still needs usage telemetry such as OpenAI `cached_tokens`.
 
 ## Evidence Source Tiers
 
@@ -223,6 +246,7 @@ Medium/high-risk WOs need:
 - MREP or explicit N/A
 - risk proof plan or explicit N/A
 - mechanism adequacy or explicit N/A
+- LLM context/cost harness or explicit N/A when prompts, model routing, or agent packets change
 - reviewability guidance
 - validation attribution
 - focused validation
