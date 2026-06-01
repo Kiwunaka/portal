@@ -6,13 +6,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, "..");
 
-const canonicalRoutes = ["/mobile/", "/tiktok/", "/youtube/", "/devices/", "/telegram/"];
+const canonicalRoutes = ["/mobile/", "/tiktok/", "/youtube/", "/devices/", "/telegram/", "/vpn/"];
 const legacyRedirectMap = new Map([
   ["/bystryy-vpn-na-telefon/", "/mobile/"],
   ["/vpn-dlya-tiktok/", "/tiktok/"],
   ["/vpn-dlya-youtube/", "/youtube/"],
   ["/vpn-na-iphone-android-windows/", "/devices/"],
   ["/vpn-telegram-bot/", "/telegram/"],
+  ["/vpn-skachat/", "/vpn/"],
+  ["/vpn-skachat-besplatno/", "/vpn/"],
+  ["/skachat-vpn/", "/vpn/"],
+  ["/besplatnyy-vpn/", "/vpn/"],
 ]);
 
 const sourceFiles = [
@@ -28,6 +32,7 @@ const sourceFiles = [
   "src/app/youtube/page.tsx",
   "src/app/devices/page.tsx",
   "src/app/telegram/page.tsx",
+  "src/app/vpn/page.tsx",
   "src/components/marketing-landing.tsx",
   "src/lib/marketing-site.ts",
 ];
@@ -94,7 +99,6 @@ function checkRedirectsFile() {
 function checkSourceCopy() {
   const forbiddenPublicPatterns = [
     { label: "visible brand 'POKROV Network'", regex: /POKROV Network/g },
-    { label: "public VPN wording", regex: /\bVPN\b|\bvpn\b|\bвпн\b/gimu },
   ];
 
   for (const relativePath of sourceFiles) {
@@ -113,9 +117,6 @@ function checkSourceCopy() {
     const ru = String(item?.ru || "");
     if (/POKROV Network/.test(ru)) {
       pushError(`Catalog marketing key ${key} still uses 'POKROV Network'.`);
-    }
-    if (/\bVPN\b|\bvpn\b|\bвпн\b/gimu.test(ru)) {
-      pushError(`Catalog marketing key ${key} still contains public VPN wording.`);
     }
   }
 }
@@ -144,9 +145,6 @@ function checkBuiltOutput() {
     const content = fs.readFileSync(fullPath, "utf8");
     if (/POKROV Network/.test(content)) {
       pushError(`Built artifact ${relativePath} still exposes 'POKROV Network'.`);
-    }
-    if (/\bVPN\b|\bvpn\b|\bвпн\b/gimu.test(content)) {
-      pushError(`Built artifact ${relativePath} still exposes public VPN wording.`);
     }
     for (const legacyRoute of legacyRedirectMap.keys()) {
       if (content.includes(legacyRoute)) {

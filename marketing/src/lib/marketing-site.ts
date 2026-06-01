@@ -24,10 +24,16 @@ export const MARKETING_CANONICAL_PATHS = {
   youtube: "/youtube/",
   devices: "/devices/",
   telegram: "/telegram/",
+  vpn: "/vpn/",
   checkout: "/checkout/",
   install: "/install/",
   offer: "/offer/",
   privacy: "/privacy/",
+} as const;
+
+export const MARKETING_MACHINE_READABLE_PATHS = {
+  llms: "/llms.txt",
+  pricing: "/pricing.md",
 } as const;
 
 const PUBLIC_TARIFF_PLANS = getTariffPlans()
@@ -36,6 +42,7 @@ const PUBLIC_TARIFF_PLANS = getTariffPlans()
   .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
 
 const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
+const SEO_LAST_REVIEWED_DATE = "2026-06-01";
 
 export const MARKETING_FEATURE_LIST = [
   "Android и Windows beta",
@@ -58,8 +65,11 @@ export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
   { path: MARKETING_CANONICAL_PATHS.devices, changeFrequency: "weekly", priority: 0.88 },
   { path: MARKETING_CANONICAL_PATHS.youtube, changeFrequency: "weekly", priority: 0.82 },
   { path: MARKETING_CANONICAL_PATHS.tiktok, changeFrequency: "weekly", priority: 0.82 },
+  { path: MARKETING_CANONICAL_PATHS.vpn, changeFrequency: "weekly", priority: 0.8 },
   { path: MARKETING_CANONICAL_PATHS.telegram, changeFrequency: "weekly", priority: 0.78 },
   { path: MARKETING_CANONICAL_PATHS.checkout, changeFrequency: "weekly", priority: 0.76 },
+  { path: MARKETING_MACHINE_READABLE_PATHS.pricing, changeFrequency: "weekly", priority: 0.64 },
+  { path: MARKETING_MACHINE_READABLE_PATHS.llms, changeFrequency: "weekly", priority: 0.58 },
   { path: MARKETING_CANONICAL_PATHS.offer, changeFrequency: "monthly", priority: 0.36 },
   { path: MARKETING_CANONICAL_PATHS.privacy, changeFrequency: "monthly", priority: 0.34 },
 ];
@@ -168,6 +178,45 @@ export function buildWebSiteJsonLd() {
       "@type": "Organization",
       name: CANONICAL_PLATFORM_BRAND,
     },
+    about: [
+      "Android",
+      "Windows",
+      "public beta",
+      "app-based connection",
+      "subscription management",
+      "customer support",
+    ],
+  };
+}
+
+function buildOfferCatalogJsonLd() {
+  return {
+    "@type": "OfferCatalog",
+    name: `${CANONICAL_PLATFORM_BRAND} access plans`,
+    url: buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout),
+    itemListElement: PUBLIC_TARIFF_PLANS.map((plan, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Offer",
+        name: plan.label,
+        price: String(plan.amount_rub || 0),
+        priceCurrency: "RUB",
+        availability: "https://schema.org/LimitedAvailability",
+        url: buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout),
+        description: plan.marketing_note || plan.cabinet_note || plan.label,
+        eligibleQuantity: {
+          "@type": "QuantitativeValue",
+          value: Number(plan.device_limit || 1),
+          unitText: "devices",
+        },
+        eligibleDuration: {
+          "@type": "QuantitativeValue",
+          value: Number(plan.duration_days || 0),
+          unitText: "days",
+        },
+      },
+    })),
   };
 }
 
@@ -196,6 +245,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
     applicationCategory: "UtilitiesApplication",
     operatingSystem: CANONICAL_PUBLIC_PLATFORM_SCOPE.join(", "),
     inLanguage: "ru-RU",
+    dateModified: SEO_LAST_REVIEWED_DATE,
     image: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
     screenshot: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
     featureList: MARKETING_FEATURE_LIST,
@@ -216,9 +266,12 @@ export function buildSoftwareApplicationJsonLd(options?: {
       "@type": "Offer",
       price: String(START_PLAN?.amount_rub || 0),
       priceCurrency: "RUB",
-      availability: "https://schema.org/InStock",
+      availability: "https://schema.org/LimitedAvailability",
+      description:
+        "Outside-store public beta: Android APK and Windows EXE are available through official POKROV surfaces; store, trusted-signing, and production claims are not included.",
       url: buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout),
     },
+    hasOfferCatalog: buildOfferCatalogJsonLd(),
     downloadUrl: buildMarketingUrl(MARKETING_CANONICAL_PATHS.install),
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,

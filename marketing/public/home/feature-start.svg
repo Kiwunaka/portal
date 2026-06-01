@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">POKROV: старт в приложении</title>
+  <desc id="desc">Мокап приложения POKROV с кнопкой подключения, тестовым периодом и проверкой сервисов.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eff8f2"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0b4832"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#0b4832" flood-opacity=".16"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" rx="54" fill="url(#bg)"/>
+  <circle cx="260" cy="170" r="170" fill="#d6f7e7" opacity=".55"/>
+  <circle cx="1260" cy="720" r="250" fill="#d7f3e4" opacity=".6"/>
+
+  <g filter="url(#shadow)">
+    <rect x="230" y="122" width="760" height="620" rx="38" fill="#ffffff" stroke="#d8e6de" stroke-width="2"/>
+    <rect x="230" y="122" width="760" height="78" rx="38" fill="#0b4832"/>
+    <circle cx="284" cy="161" r="10" fill="#c7f9dc"/>
+    <circle cx="320" cy="161" r="10" fill="#7dd3a6"/>
+    <circle cx="356" cy="161" r="10" fill="#ffffff" opacity=".55"/>
+
+    <text x="286" y="276" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800" fill="#17202f">POKROV</text>
+    <text x="286" y="322" font-family="Inter, Arial, sans-serif" font-size="23" fill="#697386">Доступ готов к запуску</text>
+
+    <rect x="286" y="378" width="350" height="350" rx="42" fill="#f5fbf7" stroke="#d8e6de" stroke-width="2"/>
+    <circle cx="461" cy="516" r="98" fill="#0b4832"/>
+    <circle cx="461" cy="516" r="70" fill="url(#green)"/>
+    <circle cx="461" cy="516" r="30" fill="#c7f9dc"/>
+    <text x="365" y="668" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800" fill="#0b4832">Подключить</text>
+
+    <rect x="680" y="378" width="250" height="76" rx="22" fill="#eff8f2" stroke="#cfe0d7"/>
+    <text x="712" y="425" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800" fill="#17202f">5 дней</text>
+    <text x="816" y="425" font-family="Inter, Arial, sans-serif" font-size="19" fill="#697386">без карты</text>
+
+    <rect x="680" y="482" width="250" height="76" rx="22" fill="#ffffff" stroke="#d8e6de"/>
+    <circle cx="719" cy="520" r="14" fill="#10b981"/>
+    <text x="750" y="528" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#17202f">YouTube</text>
+
+    <rect x="680" y="586" width="250" height="76" rx="22" fill="#ffffff" stroke="#d8e6de"/>
+    <circle cx="719" cy="624" r="14" fill="#10b981"/>
+    <text x="750" y="632" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#17202f">TikTok</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1060" y="230" width="270" height="510" rx="44" fill="#ffffff" stroke="#d8e6de" stroke-width="2"/>
+    <rect x="1098" y="286" width="194" height="96" rx="28" fill="#eff8f2"/>
+    <text x="1132" y="343" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#0b4832">Android</text>
+    <rect x="1098" y="420" width="194" height="96" rx="28" fill="#f7faf8" stroke="#d8e6de"/>
+    <text x="1130" y="477" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#17202f">Windows</text>
+    <rect x="1098" y="570" width="194" height="88" rx="44" fill="url(#green)"/>
+    <text x="1144" y="625" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#ffffff">Старт</text>
+  </g>
+</svg>

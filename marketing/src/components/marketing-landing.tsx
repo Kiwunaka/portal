@@ -21,6 +21,7 @@ import {
 } from "../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+const CHECKOUT_READY_PLAN_CODES = new Set(["start_99"]);
 
 export type MarketingReview = {
   name: string;
@@ -161,7 +162,7 @@ function buildDownloadCards(): DownloadCard[] {
 
 function buildPlanCards(): PlanCard[] {
   return getTariffPlans()
-    .filter((plan) => Boolean(plan.is_active))
+    .filter((plan) => Boolean(plan.is_active) && CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()))
     .slice()
     .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
     .map((plan) => ({
@@ -188,6 +189,9 @@ export function buildMarketingMetadata(
     title,
     description,
     keywords: options.keywords,
+    category: "technology",
+    creator: CANONICAL_PLATFORM_BRAND,
+    publisher: CANONICAL_PLATFORM_BRAND,
     alternates: {
       canonical,
     },
@@ -199,6 +203,13 @@ export function buildMarketingMetadata(
       : {
           index: true,
           follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
         },
     openGraph: {
       type: "website",
@@ -561,7 +572,7 @@ export default function MarketingLanding({
             <span>Тарифы</span>
             <h2>Тарифы показывают цену, срок и лимит устройств.</h2>
             <p>
-              Вы выбираете срок, видите сумму заранее и продолжаете доступ в том же приложении или кабинете, когда оплата доступна.
+              В beta-кассе открыт стартовый срок. Сумма и условия видны заранее; более сильные production/payment claims остаются отдельным follow-up.
             </p>
           </div>
           <div className="lp-pricing-shell">

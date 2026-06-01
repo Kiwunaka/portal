@@ -12,6 +12,7 @@ PUBLIC_COPY_FILES = [
     ROOT / "docs/developer/developer-guide.md",
     ROOT / "docs/developer/repository-map.md",
     ROOT / "docs/user/portal-vpn-user-guide-ru.md",
+    ROOT / "docs/user/compatibility-clients-guide-ru.md",
 ]
 FRONTEND_COPY_FILES = [
     ROOT / "shared/portal-config.ts",

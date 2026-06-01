@@ -11,6 +11,7 @@ import {
 } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+const CHECKOUT_READY_PLAN_CODES = new Set(["start_99"]);
 
 type PlanCard = {
   code: string;
@@ -60,6 +61,7 @@ const SURFACE_PANELS = [
     text: "Не нужно искать ссылку, копировать конфиг или выбирать сервер из списка. Установили приложение, нажали «Подключить» и проверили свои сервисы.",
     bullets: ["Скачайте приложение", "Получите 5 дней", "Нажмите «Подключить»"],
     tone: "routing" as const,
+    imageSrc: "/home/feature-start.svg",
   },
   {
     eyebrow: "Устройства",
@@ -67,6 +69,7 @@ const SURFACE_PANELS = [
     text: "Android и Windows остаются в одном кабинете: там видны загрузки, срок доступа, устройства и продление.",
     bullets: ["Android + Windows", "До 5 устройств в платных планах", "Один кабинет для управления"],
     tone: "devices" as const,
+    imageSrc: "/home/feature-devices.svg",
   },
   {
     eyebrow: "Вход",
@@ -74,6 +77,7 @@ const SURFACE_PANELS = [
     text: "Начать можно без Telegram. Почту и Telegram можно привязать позже для входа, бонуса, восстановления и поддержки.",
     bullets: ["Email-вход", "Telegram-бонус +10 дней", "Один профиль POKROV"],
     tone: "support" as const,
+    imageSrc: "/home/feature-account.svg",
   },
 ];
 
@@ -113,7 +117,7 @@ function buildCheckoutHref(planCode: string): string {
 
 function buildPlanCards(): PlanCard[] {
   return getTariffPlans()
-    .filter((plan) => Boolean(plan.is_active))
+    .filter((plan) => Boolean(plan.is_active) && CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()))
     .slice()
     .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
     .map((plan) => ({
@@ -354,57 +358,10 @@ function HowItWorks() {
   );
 }
 
-function SurfaceMock({ tone }: { tone: (typeof SURFACE_PANELS)[number]["tone"] }) {
-  if (tone === "devices") {
-    return (
-      <div className={`${styles.mockVisual} ${styles.mockDevices}`} aria-hidden="true">
-        <div className={styles.mockDeviceRow}>
-          <div className={`${styles.mockDevice} ${styles.mockDeviceLaptop}`} />
-          <div className={`${styles.mockDevice} ${styles.mockDeviceTablet}`} />
-          <div className={`${styles.mockDevice} ${styles.mockDevicePhone}`} />
-        </div>
-      </div>
-    );
-  }
-
-  if (tone === "routing") {
-    return (
-      <div className={styles.mockVisual} aria-hidden="true">
-        <div className={styles.mockRouting}>
-          <div className={styles.mockRoutingModes}>
-            <div className={styles.modeCardActive}>
-              <strong>Всё устройство</strong>
-              <span>Один режим для повседневного старта</span>
-            </div>
-            <div className={styles.modeCard}>
-              <strong>Выбор приложений</strong>
-              <span>Для тех, кому нужна точная настройка</span>
-            </div>
-          </div>
-          <div className={styles.mockRoutingMap} />
-        </div>
-      </div>
-    );
-  }
-
+function SurfaceMock({ imageSrc, title }: { imageSrc: string; title: string }) {
   return (
-    <div className={styles.mockVisual} aria-hidden="true">
-      <div className={`${styles.mockVisual} ${styles.mockSupport}`}>
-        <div className={styles.mockSupportRail}>
-          <span className={styles.mockSupportRailActive}>Поддержка</span>
-          <span>История</span>
-          <span>FAQ</span>
-        </div>
-        <div className={styles.mockSupportBody}>
-          <div className={styles.searchBar} />
-          <div className={styles.supportQuickRow}>
-            <span /><span /><span />
-          </div>
-          <div className={styles.supportList}>
-            <div /><div />
-          </div>
-        </div>
-      </div>
+    <div className={styles.mockVisual}>
+      <img className={styles.surfaceImage} src={imageSrc} alt={`Мокап: ${title}`} loading="lazy" decoding="async" />
     </div>
   );
 }
@@ -428,7 +385,7 @@ function Features() {
                 <h3>{panel.title}</h3>
                 <p>{panel.text}</p>
               </div>
-              <SurfaceMock tone={panel.tone} />
+              <SurfaceMock imageSrc={panel.imageSrc} title={panel.title} />
               <ul className={styles.surfaceBullets}>
                 {panel.bullets.map((bullet) => (
                   <li key={bullet}>{bullet}</li>
@@ -456,7 +413,7 @@ function Features() {
 function Pricing({ links }: { links: HomeLinks }) {
   const planCards = buildPlanCards();
   const defaultPlanCode = planCards.find((plan) => plan.code === "start_99")?.code || planCards[0]?.code || "start_99";
-  const featuredCode = planCards.find((plan) => plan.code === "12_months")?.code || planCards[1]?.code || defaultPlanCode;
+  const featuredCode = defaultPlanCode;
 
   const freeFeatures = [
     "5 дней без карты",
@@ -478,7 +435,7 @@ function Pricing({ links }: { links: HomeLinks }) {
           <div className={styles.sectionHead}>
             <span className={styles.eyebrow}>сколько стоит</span>
           <h2>Сначала попробуйте, потом платите</h2>
-          <p>Получите 5 дней в приложении без карты. Если всё нравится, выберите срок: цена, лимит устройств и условия видны до оплаты.</p>
+          <p>Получите 5 дней в приложении без карты. В beta-кассе сейчас открыт стартовый срок: цена, лимит устройств и условия видны до оплаты.</p>
         </div>
 
         <div className={styles.pricingLayout}>
@@ -507,7 +464,7 @@ function Pricing({ links }: { links: HomeLinks }) {
               return (
                 <article key={plan.code} className={`${styles.planCard} ${isFeatured ? styles.planCardFeatured : ""}`.trim()}>
                   <div className={`${styles.planBadge} ${isFeatured ? styles.badgeAmber : styles.badgeEmerald}`}>
-                    {plan.badge || (isFeatured ? "выгодно" : "продление")}
+                    {plan.badge || (isFeatured ? "beta" : "продление")}
                   </div>
                   <h3>{plan.label}</h3>
                   <div className={styles.planPrice}>
@@ -531,7 +488,7 @@ function Pricing({ links }: { links: HomeLinks }) {
                     className={isFeatured ? styles.btnPrimary : styles.btnSecondary}
                     style={{ marginTop: "auto", borderRadius: "var(--radius-pill)" }}
                   >
-                    {isFeatured ? "Выбрать выгодный срок" : "Выбрать срок"}
+                    {isFeatured ? "Выбрать beta-старт" : "Выбрать срок"}
                   </Link>
                 </article>
               );

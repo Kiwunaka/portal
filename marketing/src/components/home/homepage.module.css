@@ -813,6 +813,14 @@
   justify-content: center;
 }
 
+.surfaceImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
 .mockDevices {
   position: relative;
   display: grid;
@@ -1250,7 +1258,6 @@
   .valueGrid,
   .faqGrid,
   .stepsGrid,
-  .surfaceGrid,
   .planGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1277,6 +1284,10 @@
 @media (max-width: 1120px) {
   .heroGrid {
     grid-template-columns: 1fr;
+  }
+
+  .surfaceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .heroVisual {

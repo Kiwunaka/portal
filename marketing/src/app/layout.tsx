@@ -57,6 +57,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/tab-icon-32.png", type: "image/png", sizes: "32x32" },
       { url: "/favicon.ico", sizes: "any" },
       { url: "/pokrov-logo.svg", type: "image/svg+xml", sizes: "any" },
     ],

@@ -1,0 +1,26 @@
+{
+  "updatedAt": "2026-06-01",
+  "intendedSurface": "marketing home feature cards",
+  "reviewNote": "Deterministic SVG product mockups created after owner feedback that real POKROV data explains the feature cards better than abstract NBP renders.",
+  "releaseScopeNote": "Public marketing beta assets; use only current POKROV facts: 5-day trial, Android/Windows beta, Telegram +10 days, cabinet/support flow. No store/stable/RU-origin claims.",
+  "assets": [
+    {
+      "path": "marketing/public/home/feature-start.svg",
+      "finalDimensions": "1600x900 SVG",
+      "sourcePrompt": "Real product mockup for app-first start: POKROV, Подключить, 5 дней без карты, Android/Windows, YouTube/TikTok service check.",
+      "sourceMaster": "POKROV design tokens and canonical public product facts"
+    },
+    {
+      "path": "marketing/public/home/feature-devices.svg",
+      "finalDimensions": "1600x900 SVG",
+      "sourcePrompt": "Real product mockup for one cabinet managing Android beta and Windows beta devices.",
+      "sourceMaster": "POKROV design tokens and canonical public product facts"
+    },
+    {
+      "path": "marketing/public/home/feature-account.svg",
+      "finalDimensions": "1600x900 SVG",
+      "sourcePrompt": "Real product mockup for Email, Telegram +10 days, one POKROV account, and support.",
+      "sourceMaster": "POKROV design tokens and canonical public product facts"
+    }
+  ]
+}
