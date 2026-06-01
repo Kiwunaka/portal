@@ -101,6 +101,7 @@ from tickets_repo import (
     list_user_tickets,
     set_ticket_status,
 )
+from support_ai_service import SupportAIConfig, generate_support_reply
 from nodes_repo import enabled_nodes
 from node_policy import (
     SMART_CONNECT_SHORTLIST_LIMIT,
@@ -157,8 +158,10 @@ from network_rollout import (
     NETWORK_ROLLOUT_CONFIG_KEY,
     load_network_rollout_config,
     normalized_network_rollout_config,
+    ru_bridge_relay_config,
     resolved_client_policy,
     transport_node_allowlist,
+    transport_node_exclusions,
 )
 from public_urls import build_subscription_url, public_connect_host
 from shared_surface_facts import (
@@ -168,7 +171,7 @@ from shared_surface_facts import (
     get_public_urls,
     get_tariff_catalog,
 )
-from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, node_transport_profiles, transport_profile_by_name
+from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY, node_transport_profiles, transport_profile_by_name
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -308,6 +311,8 @@ SUPPORT_UPLOAD_DIR = Path(
 ).resolve()
 SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uploads/support').strip().strip('/')}"
 SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
+SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
+support_ai_last_reply_at: dict[int, float] = {}
 API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
@@ -4096,6 +4101,69 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
     }
 
 
+def _load_ticket_row(ticket_id: int, *, message_limit: int = 100) -> dict[str, Any]:
+    s = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(s, int(ticket_id))
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        msgs = list_ticket_messages(s, ticket.id, limit=max(1, min(int(message_limit), 100)))
+        return _ticket_row(ticket, msgs)
+    finally:
+        s.close()
+
+
+async def _maybe_append_support_ai_reply(
+    *,
+    ticket_id: int,
+    user_tg_id: int,
+    text: str,
+    has_attachment: bool = False,
+) -> bool:
+    if has_attachment or not SUPPORT_AI_CONFIG.enabled or not SUPPORT_AI_CONFIG.api_key:
+        return False
+    body = (text or "").strip()
+    if not body:
+        return False
+
+    now = time.monotonic()
+    min_interval = max(0.0, float(SUPPORT_AI_CONFIG.min_interval_seconds))
+    last = support_ai_last_reply_at.get(int(user_tg_id), 0.0)
+    if min_interval and now - last < min_interval:
+        return False
+    support_ai_last_reply_at[int(user_tg_id)] = now
+
+    reply = await generate_support_reply(
+        body,
+        ticket_id=int(ticket_id),
+        user_tg_id=int(user_tg_id),
+        config=SUPPORT_AI_CONFIG,
+    )
+    if not reply:
+        return False
+
+    s = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(s, int(ticket_id))
+        if not ticket or int(ticket.user_tg_id) != int(user_tg_id):
+            return False
+        add_ticket_message(
+            s,
+            ticket_id=ticket.id,
+            sender_tg_id=0,
+            sender_role="assistant",
+            body=reply,
+        )
+        s.commit()
+        return True
+    except Exception as exc:
+        s.rollback()
+        logger.warning("support AI ticket append failed ticket=%s err=%s", ticket_id, exc)
+        return False
+    finally:
+        s.close()
+
+
 def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = None, meta: dict[str, Any] | None = None) -> None:
     s = SessionLocal()
     try:
@@ -5679,6 +5747,7 @@ async def client_managed_profile(
             nodes=effective_nodes,
             title="POKROV",
             transport_profile=transport_profile,
+            rollout_config=rollout_config,
         )
         smart_connect = _smart_connect_shortlist(
             session=s,
@@ -7937,14 +8006,20 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
         )
         set_ticket_status(s, ticket=ticket, status=STATUS_OPEN)
         s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=20)
+        ticket_id = int(ticket.id)
     finally:
         s.close()
 
     if Settings.ADMIN_ID:
-        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый обращение #{ticket.id} от пользователя {tg_id}.")
-    track_event(tg_id=tg_id, event_name="ticket_created", source="webapp", meta={"ticket_id": int(ticket.id)})
-    return {"ticket": _ticket_row(ticket, msgs)}
+        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый обращение #{ticket_id} от пользователя {tg_id}.")
+    track_event(tg_id=tg_id, event_name="ticket_created", source="webapp", meta={"ticket_id": ticket_id})
+    await _maybe_append_support_ai_reply(
+        ticket_id=ticket_id,
+        user_tg_id=tg_id,
+        text=payload.body,
+        has_attachment=bool(payload.media_type or payload.media_file_id),
+    )
+    return {"ticket": _load_ticket_row(ticket_id, message_limit=20)}
 
 
 @app.get("/api/tickets/{ticket_id}")
@@ -7993,15 +8068,22 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
         )
         s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
+        ticket_user_tg_id = int(ticket.user_tg_id)
     finally:
         s.close()
 
     if role == "admin":
-        await _telegram_send_message(int(ticket.user_tg_id), f"💬 Новый ответ оператора в обращении #{ticket.id}.")
+        await _telegram_send_message(int(ticket_user_tg_id), f"💬 Новый ответ оператора в обращении #{ticket_id}.")
     elif Settings.ADMIN_ID:
-        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое сообщение в обращении #{ticket.id} от {actor}.")
-    return {"ticket": _ticket_row(ticket, msgs)}
+        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое сообщение в обращении #{ticket_id} от {actor}.")
+    if role == "user":
+        await _maybe_append_support_ai_reply(
+            ticket_id=ticket_id,
+            user_tg_id=actor,
+            text=payload.body,
+            has_attachment=bool(payload.media_type or payload.media_file_id),
+        )
+    return {"ticket": _load_ticket_row(ticket_id, message_limit=100)}
 
 
 @app.get("/api/admin/summary")
@@ -11316,15 +11398,25 @@ def _node_outbound_from_transport_profile(*, user_uuid: str, node: Any, tag: str
     return outbound
 
 
-def _filter_nodes_for_transport_profile(*, nodes: list, rollout_config: dict[str, Any], transport_profile: str) -> list:
+def _filter_nodes_for_transport_profile(
+    *,
+    nodes: list,
+    rollout_config: dict[str, Any],
+    transport_profile: str,
+    apply_exclusions: bool = True,
+) -> list:
     allowlist = set(transport_node_allowlist(rollout_config, transport_profile))
-    if not allowlist:
-        return list(nodes)
-    return [
-        node
-        for node in nodes
-        if str(getattr(node, "code", "") or "").strip().lower() in allowlist
-    ]
+    excluded = set(transport_node_exclusions(rollout_config, transport_profile))
+    out: list[Any] = []
+    for node in nodes:
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        base = _node_code_base(code)
+        if allowlist and code not in allowlist and base not in allowlist:
+            continue
+        if apply_exclusions and excluded and (code in excluded or base in excluded):
+            continue
+        out.append(node)
+    return out
 
 
 def _node_supports_transport_profile(node: Any, transport_profile: str | None) -> bool:
@@ -11344,6 +11436,33 @@ def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
     if primary != LEGACY_REALITY_FALLBACK:
         order.append(LEGACY_REALITY_FALLBACK)
     return order
+
+
+def _ru_bridge_outbound(*, user_uuid: str, rollout_config: dict[str, Any], tag: str = "POKROV мост") -> dict[str, Any]:
+    bridge = ru_bridge_relay_config(rollout_config)
+    tls_server_name = str(bridge.get("tls_server_name") or "www.yandex.ru").strip()
+    return {
+        "type": "vless",
+        "tag": tag,
+        "server": str(bridge.get("endpoint_host") or "176.123.166.119").strip(),
+        "server_port": int(bridge.get("endpoint_port") or 443),
+        "uuid": user_uuid,
+        "flow": "xtls-rprx-vision",
+        "packet_encoding": "xudp",
+        "tls": {
+            "enabled": True,
+            "server_name": tls_server_name,
+            "utls": {
+                "enabled": True,
+                "fingerprint": str(bridge.get("fingerprint") or "chrome").strip() or "chrome",
+            },
+            "reality": {
+                "enabled": True,
+                "public_key": str(bridge.get("reality_public_key") or "").strip(),
+                "short_id": str(bridge.get("reality_short_id") or "").strip(),
+            },
+        },
+    }
 
 
 def _synthetic_transport_node() -> Any:
@@ -11416,7 +11535,10 @@ def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, roll
         nodes=nodes,
         rollout_config=rollout_config,
         transport_profile=transport_profile,
+        apply_exclusions=str(transport_profile or "").strip() != RU_BRIDGE_RELAY,
     )
+    if str(transport_profile or "").strip() == RU_BRIDGE_RELAY:
+        return filtered
     supporting = [
         node for node in filtered if _node_supports_transport_profile(node, transport_profile)
     ]
@@ -11474,7 +11596,15 @@ def _xray_multi_node_config(*, user_uuid: str, nodes: list, title: str, transpor
     }
 
 
-def _managed_manifest_payload(*, user: User, nodes: list, title: str, transport_profile: str) -> tuple[str, dict[str, Any]]:
+def _managed_manifest_payload(
+    *,
+    user: User,
+    nodes: list,
+    title: str,
+    transport_profile: str,
+    rollout_config: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    effective_rollout_config = normalized_network_rollout_config(rollout_config or {})
     if str(transport_profile or "").strip() in {OPERATOR_LAB, RESERVE_XHTTP_CDN}:
         return (
             "xray-json",
@@ -11483,6 +11613,17 @@ def _managed_manifest_payload(*, user: User, nodes: list, title: str, transport_
                 nodes=nodes,
                 title=title,
                 transport_profile=transport_profile,
+            ),
+        )
+
+    if str(transport_profile or "").strip() == RU_BRIDGE_RELAY:
+        return (
+            "singbox-json",
+            _singbox_ru_bridge_config(
+                user_uuid=str(user.uuid),
+                nodes=nodes,
+                title=title,
+                rollout_config=effective_rollout_config,
             ),
         )
 
@@ -11727,6 +11868,105 @@ def _singbox_multi_node_config(
             "cache_file": {"enabled": True},
         },
         "_meta": {"title": title},
+    }
+
+
+def _singbox_ru_bridge_config(
+    *,
+    user_uuid: str,
+    nodes: list,
+    title: str,
+    rollout_config: dict[str, Any],
+) -> dict:
+    bridge = ru_bridge_relay_config(rollout_config)
+    selector_tag = "🌍 Страны"
+    bridge_tag = "POKROV мост"
+    excluded = set(transport_node_exclusions(rollout_config, RU_BRIDGE_RELAY))
+
+    outbounds = []
+    selector_opts = []
+    def bridge_excluded(node: Any) -> bool:
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        base = _node_code_base(code)
+        return code in excluded or base in excluded
+
+    ordered_nodes = sorted(enumerate(nodes), key=lambda item: (bridge_excluded(item[1]), item[0]))
+    for _idx, n in ordered_nodes:
+        label = _node_label_ru(getattr(n, "code", ""), getattr(n, "name", ""))
+        code = str(getattr(n, "code", "") or "").strip().lower()
+        base = _node_code_base(code)
+        selector_opts.append(label)
+
+        country_opts: list[str] = []
+        normal_tag = f"{label} · Обычный"
+        direct_outbound = _node_outbound_from_transport_profile(
+            user_uuid=user_uuid,
+            node=n,
+            tag=normal_tag,
+            transport_profile=LEGACY_REALITY_FALLBACK,
+        )
+        outbounds.append(direct_outbound)
+        country_opts.append(normal_tag)
+        if code in excluded or base in excluded:
+            outbounds.append(
+                {
+                    "type": "selector",
+                    "tag": label,
+                    "outbounds": country_opts,
+                    "default": normal_tag,
+                }
+            )
+            continue
+
+        bridge_node_tag = f"{label} · Белые списки"
+        bridged_outbound = dict(direct_outbound)
+        bridged_outbound["tag"] = bridge_node_tag
+        bridged_outbound["detour"] = bridge_tag
+        outbounds.append(bridged_outbound)
+        country_opts.append(bridge_node_tag)
+        outbounds.append(
+            {
+                "type": "selector",
+                "tag": label,
+                "outbounds": country_opts,
+                "default": normal_tag,
+            }
+        )
+
+    selector_default = selector_opts[0] if selector_opts else "direct"
+    outbounds.extend(
+        [
+            _ru_bridge_outbound(user_uuid=user_uuid, rollout_config=rollout_config, tag=bridge_tag),
+            {
+                "type": "selector",
+                "tag": selector_tag,
+                "outbounds": selector_opts,
+                "default": selector_default,
+            },
+            {"type": "direct", "tag": "direct"},
+            {"type": "block", "tag": "block"},
+            {"type": "dns", "tag": "dns-out"},
+        ]
+    )
+
+    return {
+        "log": {"level": "warn", "timestamp": True},
+        "dns": {
+            "servers": [
+                {"tag": "google", "address": "8.8.8.8", "detour": selector_tag},
+                {"tag": "local", "address": "local", "detour": "direct"},
+            ]
+        },
+        "inbounds": [],
+        "outbounds": outbounds,
+        "route": {
+            "rule_set": _singbox_remote_rule_sets(),
+            "rules": _singbox_common_route_rules(selector_tag=selector_tag),
+            "auto_detect_interface": True,
+            "final": selector_tag,
+        },
+        "experimental": {"cache_file": {"enabled": True}},
+        "_meta": {"title": title, "ru_bridge": {"enabled": True, "excluded_node_codes": bridge.get("excluded_node_codes", [])}},
     }
 
 
@@ -12206,6 +12446,14 @@ async def subscription(token: str, request: Request, format: str = Query(default
             return Response(content="", media_type="text/plain", status_code=503)
 
         cfg = (
+            _singbox_ru_bridge_config(
+                user_uuid=user.uuid,
+                nodes=smart_nodes_for_user,
+                title="POKROV",
+                rollout_config=rollout_config,
+            )
+            if smart_transport_profile == RU_BRIDGE_RELAY
+            else
             _singbox_free_allowlist_config(
                 user_uuid=user.uuid,
                 nodes=smart_nodes_for_user,

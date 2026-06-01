@@ -29,6 +29,7 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("/root/shared/product-facts.json", targets)
         self.assertIn("/root/shared/public-urls.json", targets)
         self.assertIn("/root/shared/design-tokens.json", targets)
+        self.assertIn("/root/shared/support-ai-knowledge.json", targets)
 
     def test_restart_default_includes_feedbackbot(self) -> None:
         module = _load_module()

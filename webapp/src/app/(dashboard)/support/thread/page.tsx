@@ -2,7 +2,9 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { SupportMessageBody } from "@/components/support-message-body";
 import { addTicketMessage, getTicket, resolveApiUrl, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
+import { LifeBuoy, ListChecks, MessageSquareText, RefreshCw, type LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -26,6 +28,35 @@ type ParsedAttachment = {
   contentType: string;
   size: number;
 };
+
+type QuickReplyAction = {
+  label: string;
+  body: string;
+  icon: LucideIcon;
+};
+
+const QUICK_REPLY_ACTIONS: QuickReplyAction[] = [
+  {
+    label: "Не получилось",
+    icon: RefreshCw,
+    body: "Не получилось после этих шагов.\n\nУстройство:\nКлиент:\nНа каком шаге остановилось:\nЧто видно на экране:",
+  },
+  {
+    label: "Дайте шаги",
+    icon: ListChecks,
+    body: "Можно, пожалуйста, пошагово для моего устройства?\n\nУстройство:\nКлиент, если уже установлен:\nЧто хочу сделать:",
+  },
+  {
+    label: "Уточнить",
+    icon: MessageSquareText,
+    body: "Уточняю детали:\n\nЧто пробовал:\nЧто изменилось:\nТекст ошибки, если есть:",
+  },
+  {
+    label: "Нужен оператор",
+    icon: LifeBuoy,
+    body: "Нужна ручная проверка оператором.\n\nКоротко что случилось:\nПримерное время проблемы:\nСкриншот могу приложить без личной ссылки и QR.",
+  },
+];
 
 function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 Б";
@@ -125,6 +156,14 @@ export default function SupportTicketThreadPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const applyQuickReply = (body: string): void => {
+    setReplyError("");
+    setMessage((current) => {
+      const existing = current.trim();
+      return existing ? `${existing}\n\n${body}` : body;
+    });
   };
 
   if (loading) {
@@ -230,12 +269,14 @@ export default function SupportTicketThreadPage() {
             ) : (
               ticket.messages.map((msg) => {
                 const isAdmin = msg.sender_role === "admin";
+                const isAssistant = msg.sender_role === "assistant";
+                const senderLabel = isAdmin ? "Оператор" : isAssistant ? "AI-помощник" : "Вы";
                 const attachment = ticketAttachment(msg);
                 return (
-                  <div key={msg.id} className={`flex ${isAdmin ? "justify-start" : "justify-end"}`}>
-                    <div className={`max-w-[86%] rounded-2xl border border-[color:var(--atlas-border)] px-4 py-3 text-sm leading-6 ${isAdmin ? "bg-[var(--atlas-surface)]" : "bg-[var(--atlas-status-info-bg)]"}`}>
-                      <p className="text-xs font-semibold text-[var(--atlas-text-muted)]">{isAdmin ? "Оператор" : "Вы"}</p>
-                      <p className="mt-1 whitespace-pre-line">{msg.body}</p>
+                  <div key={msg.id} className={`flex ${isAdmin || isAssistant ? "justify-start" : "justify-end"}`}>
+                    <div className={`max-w-[86%] rounded-2xl border border-[color:var(--atlas-border)] px-4 py-3 text-sm leading-6 ${isAdmin ? "bg-[var(--atlas-surface)]" : isAssistant ? "bg-[var(--atlas-glass)]" : "bg-[var(--atlas-status-info-bg)]"}`}>
+                      <p className="text-xs font-semibold text-[var(--atlas-text-muted)]">{senderLabel}</p>
+                      <SupportMessageBody body={msg.body} className="mt-1" />
                       {attachment?.kind === "image" ? (
                         <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-[color:var(--atlas-border)]">
                           <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
@@ -276,6 +317,23 @@ export default function SupportTicketThreadPage() {
                 placeholder="Напишите ответ..."
                 className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
               />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {QUICK_REPLY_ACTIONS.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.label}
+                      type="button"
+                      onClick={() => applyQuickReply(action.body)}
+                      className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 text-xs font-semibold text-[var(--atlas-text)] transition hover:border-emerald-400/60 hover:bg-emerald-500/10 active:scale-[0.98]"
+                      title={`Вставить шаблон: ${action.label}`}
+                    >
+                      <Icon size={14} aria-hidden="true" />
+                      {action.label}
+                    </button>
+                  );
+                })}
+              </div>
               <label className="mt-3 block rounded-2xl border border-dashed border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-4 py-4 text-sm">
                 <span className="block font-medium">Добавить вложение</span>
                 <span className="mt-1 block text-xs text-[var(--atlas-text-muted)]">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>

@@ -107,7 +107,8 @@ def add_ticket_message(
     msg_body = (body or "").strip()
     if not msg_body:
         raise ValueError("ticket message body cannot be empty")
-    role = "admin" if (sender_role or "").strip().lower() == "admin" else "user"
+    raw_role = (sender_role or "").strip().lower()
+    role = raw_role if raw_role in {"admin", "assistant"} else "user"
 
     now = _utcnow()
     msg = SupportTicketMessage(

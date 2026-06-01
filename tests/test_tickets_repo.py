@@ -88,10 +88,21 @@ class TicketRepoTests(unittest.TestCase):
                 sender_role="admin",
                 body="Operator reply",
             )
+            add_ticket_message(
+                s,
+                ticket_id=t.id,
+                sender_tg_id=0,
+                sender_role="assistant",
+                body="Automated support hint",
+            )
             set_ticket_status(s, ticket=t, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=9999)
             s.commit()
             self.assertEqual(t.status, STATUS_IN_PROGRESS)
             self.assertEqual(t.assigned_admin_tg_id, 9999)
+            self.assertEqual(
+                [message.sender_role for message in list_ticket_messages(s, t.id, limit=10)],
+                ["user", "admin", "assistant"],
+            )
 
             set_ticket_status(s, ticket=t, status=STATUS_CLOSED)
             s.commit()

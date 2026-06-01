@@ -82,6 +82,7 @@ def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
         "tariff-catalog.json",
         "access-matrix.json",
         "promo-slots.json",
+        "support-ai-knowledge.json",
     ):
         source = repo_root / "shared" / shared_name
         if source.exists():

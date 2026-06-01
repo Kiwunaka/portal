@@ -7,13 +7,15 @@ from typing import Any
 LEGACY_REALITY_FALLBACK = "legacy_reality_fallback"
 GRPC_443_PRIMARY = "grpc_443_primary"
 RESERVE_XHTTP_CDN = "reserve_xhttp_cdn"
+RU_BRIDGE_RELAY = "ru_bridge_relay"
 OPERATOR_LAB = "operator_lab"
 
 _PROFILE_ORDER = {
     LEGACY_REALITY_FALLBACK: 0,
     GRPC_443_PRIMARY: 1,
     RESERVE_XHTTP_CDN: 2,
-    OPERATOR_LAB: 3,
+    RU_BRIDGE_RELAY: 3,
+    OPERATOR_LAB: 4,
 }
 
 

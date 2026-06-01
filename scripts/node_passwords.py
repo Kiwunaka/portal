@@ -53,7 +53,9 @@ def _find_marker_index(lines: list[str], code: str) -> int | None:
     return None
 
 
-def _extract_password_near(lines: list[str], marker_idx: int) -> str:
+def _password_candidates_near(lines: list[str], marker_idx: int) -> list[str]:
+    candidates: list[str] = []
+    seen: set[str] = set()
     for j in range(marker_idx + 1, min(marker_idx + 15, len(lines))):
         raw = lines[j].strip()
         if not raw:
@@ -66,8 +68,34 @@ def _extract_password_near(lines: list[str], marker_idx: int) -> str:
             continue
         if ":" in raw and len(raw.split()) > 1:
             continue
-        return raw
-    return ""
+        if raw.startswith("PuTTY-") or raw.startswith("-----"):
+            continue
+        if raw not in seen:
+            seen.add(raw)
+            candidates.append(raw)
+    return candidates
+
+
+def _extract_password_near(lines: list[str], marker_idx: int) -> str:
+    candidates = _password_candidates_near(lines, marker_idx)
+    return candidates[0] if candidates else ""
+
+
+def parse_password_candidates(path: Path, *, requested_codes: list[str] | None = None) -> dict[str, list[str]]:
+    lines = [ln.rstrip("\n") for ln in path.read_text(encoding="utf-8", errors="replace").splitlines()]
+    out: dict[str, list[str]] = {}
+    codes = [str(c).lower().strip() for c in (requested_codes or []) if str(c).strip()]
+    if not codes:
+        # Fallback for legacy behavior when no inventory is provided.
+        codes = ["brain", "us", "pl", "it", "free"]
+    for code in codes:
+        idx = _find_marker_index(lines, code)
+        if idx is None:
+            continue
+        candidates = _password_candidates_near(lines, idx)
+        if candidates:
+            out[code] = candidates
+    return out
 
 
 def parse_passwords(path: Path, *, requested_codes: list[str] | None = None) -> dict[str, str]:

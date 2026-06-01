@@ -1,8 +1,9 @@
 "use client";
 
 import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
+import { SupportMessageBody } from "@/components/support-message-body";
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
-import { CheckCircle, Clock, Inbox, Loader2, MessageCircle, RefreshCw, Send } from "lucide-react";
+import { CheckCircle, Clock, CreditCard, Inbox, LifeBuoy, ListChecks, Loader2, MessageCircle, RefreshCw, Send, Smartphone, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmtRuDate } from "../nav";
 
@@ -11,6 +12,35 @@ const STATUS_META: Record<string, { color: string; badge: string; icon: typeof C
   in_progress: { color: "badge-warning", badge: "В работе", icon: Clock },
   closed: { color: "badge-success", badge: "Закрыт", icon: CheckCircle },
 };
+
+type AdminReplyTemplate = {
+  label: string;
+  body: string;
+  icon: LucideIcon;
+};
+
+const ADMIN_REPLY_TEMPLATES: AdminReplyTemplate[] = [
+  {
+    label: "Данные",
+    icon: Smartphone,
+    body: "Уточните, пожалуйста:\n\n1. Устройство и версия системы.\n2. Название клиента или приложения.\n3. На каком шаге возникла ошибка.\n4. Текст ошибки или скриншот без личной ссылки и QR.",
+  },
+  {
+    label: "Шаги",
+    icon: ListChecks,
+    body: "**Что сделать:**\n1. Обновите профиль/подписку в клиенте.\n2. Выберите другую локацию.\n3. Выключите другие сетевые клиенты.\n4. Переподключитесь и напишите, что изменилось.",
+  },
+  {
+    label: "Оплата",
+    icon: CreditCard,
+    body: "По оплате проверим вручную. Пришлите, пожалуйста, примерное время оплаты, выбранный план и пришел ли activation key. Данные карты присылать не нужно.",
+  },
+  {
+    label: "Оператор",
+    icon: LifeBuoy,
+    body: "Передал обращение на ручную проверку. Оператор посмотрит историю и вернется с ответом в этом же треде.",
+  },
+];
 
 function normalizeTicketStatus(ticket: Pick<TicketInfo, "status" | "status_title"> | null | undefined): keyof typeof STATUS_META {
   const raw = String(ticket?.status || "").toLowerCase().replace(/\s+/g, "_");
@@ -68,6 +98,14 @@ export default function AdminTicketsPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const insertReplyTemplate = (body: string): void => {
+    setError("");
+    setReply((current) => {
+      const existing = current.trim();
+      return existing ? `${existing}\n\n${body}` : body;
+    });
   };
 
   const updateStatus = async (nextStatus: string): Promise<void> => {
@@ -181,13 +219,15 @@ export default function AdminTicketsPage() {
               ) : null}
               {(selected.messages || []).map((message) => {
                 const isAdmin = message.sender_role === "admin";
+                const isAssistant = message.sender_role === "assistant";
+                const senderLabel = isAdmin ? "Оператор" : isAssistant ? "AI-помощник" : "Пользователь";
                 return (
                   <div key={message.id} className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}>
                     <div className={`chat-bubble text-sm ${isAdmin ? "chat-bubble-admin" : "chat-bubble-user"}`}>
                       <p className="mb-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
-                        {isAdmin ? "Оператор" : "Пользователь"}
+                        {senderLabel}
                       </p>
-                      <p className="whitespace-pre-line">{message.body}</p>
+                      <SupportMessageBody body={message.body} />
                       <p className="mt-1.5 text-right text-[10px] text-slate-400">{fmtRuDate(message.created_at)}</p>
                     </div>
                   </div>
@@ -197,6 +237,23 @@ export default function AdminTicketsPage() {
             </div>
 
             <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {ADMIN_REPLY_TEMPLATES.map((template) => {
+                  const Icon = template.icon;
+                  return (
+                    <button
+                      key={template.label}
+                      type="button"
+                      onClick={() => insertReplyTemplate(template.body)}
+                      className={adminButtonClass("ghost", "xs")}
+                      title={`Вставить шаблон: ${template.label}`}
+                    >
+                      <Icon size={12} />
+                      {template.label}
+                    </button>
+                  );
+                })}
+              </div>
               <textarea
                 value={reply}
                 onChange={(event) => setReply(event.target.value)}

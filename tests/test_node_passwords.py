@@ -32,6 +32,27 @@ class NodePasswordsTests(unittest.TestCase):
 
         self.assertEqual(result.get("mini"), "mini-secret-password")
 
+    def test_parse_password_candidates_keeps_multiple_near_marker(self) -> None:
+        import node_passwords
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "PASSWORDS.txt"
+            path.write_text(
+                "\n".join(
+                    [
+                        "RFMINI",
+                        "176.123.166.119",
+                        "panel-pass",
+                        "ssh-pass",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = node_passwords.parse_password_candidates(path, requested_codes=["mini"])
+
+        self.assertEqual(result.get("mini"), ["panel-pass", "ssh-pass"])
+
 
 if __name__ == "__main__":
     unittest.main()

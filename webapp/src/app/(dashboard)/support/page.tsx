@@ -15,10 +15,10 @@ import { getDeviceLimit, resolvePlanLabel } from "@/lib/access-policy";
 import { getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 
-type TicketCategory = "Подключение" | "Оплата" | "Скорость" | "Другой вопрос";
+type TicketCategory = "Не могу подключиться" | "Вопрос по оплате" | "Медленно работает" | "Другое";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
-const CATEGORIES: TicketCategory[] = ["Подключение", "Оплата", "Скорость", "Другой вопрос"];
+const CATEGORIES: TicketCategory[] = ["Не могу подключиться", "Вопрос по оплате", "Медленно работает", "Другое"];
 
 const CATEGORY_PRESETS: Record<
   TicketCategory,
@@ -29,25 +29,25 @@ const CATEGORY_PRESETS: Record<
     checklist: string[];
   }
 > = {
-  Подключение: {
+  "Не могу подключиться": {
     intro: "Подходит, если приложение не подключается, профиль не подтягивается или новое устройство не появляется в кабинете.",
     subject: "Не получается подключить устройство",
     body: "Что происходит:\n\nНа каком устройстве это видно:\n\nЧто уже пробовали сделать:",
-    checklist: ["Модель устройства", "Шаг, на котором все остановилось", "Что уже пробовали"],
+    checklist: ["Модель устройства", "Где остановились: установили / вошли / нажали «Подключить»", "Что уже пробовали"],
   },
-  Оплата: {
+  "Вопрос по оплате": {
     intro: "Подходит, если возник вопрос по продлению, платежу или статус не обновился после оплаты.",
     subject: "Вопрос по оплате или продлению",
     body: "Что ожидали увидеть:\n\nЧто произошло вместо этого:\n\nПримерное время оплаты:",
     checklist: ["Какой вариант выбирали", "Примерное время платежа", "Скрин шага оплаты, если удобно"],
   },
-  Скорость: {
+  "Медленно работает": {
     intro: "Подходит, если доступ стал заметно медленнее или соединение ведет себя нестабильно.",
     subject: "Нестабильная скорость или подключение",
     body: "Как выглядит проблема:\n\nНа каком устройстве это заметно:\n\nЧто меняется между Wi-Fi и мобильной сетью:",
     checklist: ["Тип сети", "Когда это началось", "Скрин или короткое видео, если удобно"],
   },
-  "Другой вопрос": {
+  Другое: {
     intro: "Подходит для любых остальных вопросов по кабинету, доступу и связанным устройствам.",
     subject: "Вопрос по кабинету POKROV",
     body: "Коротко опишите вопрос:\n\nКакой результат нужен:\n\nНужны ли вложения:",
@@ -239,7 +239,7 @@ export default function SupportPage() {
       badge: "Помощь",
       tone: "warning" as const,
       action: (
-        <button type="button" onClick={() => openPresetTicket("Подключение")} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        <button type="button" onClick={() => openPresetTicket("Не могу подключиться")} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Разобраться
         </button>
       ),
@@ -292,8 +292,8 @@ export default function SupportPage() {
     <>
       <CabinetRoute
         eyebrow="Поддержка"
-        title="Один вопрос — одно обращение"
-        description="Опишите проблему коротко. Ответим в кабинете или Telegram, а история останется рядом."
+        title="Что случилось?"
+        description="Опишите по-человечески: что делали, на каком устройстве и что пошло не так. Ответим в кабинете или Telegram."
         actions={
           <>
             <button
@@ -389,9 +389,12 @@ export default function SupportPage() {
         <CabinetSection
           eyebrow="Помогите разобраться"
           title="Выберите, что у вас сейчас"
-          description="Не нужно знать протоколы и названия клиентов. Начните с ситуации, а кабинет отведет в нужный раздел."
+          description="Не нужно знать протоколы и названия клиентов. Начните с ситуации, а кабинет подставит нужные поля."
           tone="info"
         >
+          <div className="mb-4 rounded-[1.2rem] border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
+            Не отправляйте пароли, коды оплаты, личные ссылки подключения и скриншоты банка. Если они понадобятся, поддержка попросит безопасный вариант.
+          </div>
           <div id="quick-help" className="scroll-mt-28">
             <CabinetCardGrid items={guideCards} className="xl:grid-cols-4" />
           </div>
@@ -549,7 +552,7 @@ export default function SupportPage() {
                   onChange={(event) => setBody(event.target.value)}
                   rows={8}
                   className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
-                  placeholder="Опишите, что делали, где сломалось и что видите сейчас."
+                  placeholder="Напишите коротко: что делали, на каком устройстве и что видите сейчас."
                 />
 
                 <label className="block rounded-[1.3rem] border border-dashed border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">

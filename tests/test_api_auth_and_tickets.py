@@ -58,6 +58,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "OPENING_PREMIUM_CAMPAIGN_KEY",
             "SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED",
             "SUPPORT_UPLOAD_DIR",
+            "SUPPORT_AI_ENABLED",
+            "SUPPORT_AI_API_KEY",
+            "SUPPORT_AI_MODEL",
+            "SUPPORT_AI_MIN_INTERVAL_SECONDS",
         ):
             self._saved_env[k] = os.environ.get(k)
 
@@ -73,6 +77,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["OPENING_PREMIUM_CAMPAIGN_KEY"] = "opening_premium_14d"
         os.environ["SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED"] = "true"
         os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
+        os.environ["SUPPORT_AI_ENABLED"] = "false"
+        os.environ["SUPPORT_AI_API_KEY"] = ""
+        os.environ["SUPPORT_AI_MODEL"] = "deepseek/deepseek-v4-flash"
+        os.environ["SUPPORT_AI_MIN_INTERVAL_SECONDS"] = "0"
 
         if "config" in sys.modules:
             importlib.reload(sys.modules["config"])
@@ -1307,6 +1315,73 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         )
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()["ticket"]["status"], "in_progress")
+
+    def test_ticket_create_appends_ai_hint_when_enabled(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        async def fake_generate(user_text, *, ticket_id, user_tg_id, config):
+            self.assertEqual(user_text, "How do I start the trial?")
+            self.assertGreater(ticket_id, 0)
+            self.assertEqual(user_tg_id, 1001)
+            return "Откройте приложение POKROV и нажмите Try free."
+
+        self.api.SUPPORT_AI_CONFIG.enabled = True
+        self.api.SUPPORT_AI_CONFIG.api_key = "sk-test"
+        self.api.SUPPORT_AI_CONFIG.min_interval_seconds = 0
+
+        with patch.object(self.api, "generate_support_reply", side_effect=fake_generate), patch.object(
+            self.api, "_telegram_send_message", new_callable=AsyncMock
+        ):
+            create = self.client.post(
+                "/api/tickets",
+                headers=user_hdrs,
+                json={"subject": "Trial", "body": "How do I start the trial?"},
+            )
+
+        self.assertEqual(create.status_code, 200, create.text)
+        messages = create.json()["ticket"]["messages"]
+        self.assertEqual([message["sender_role"] for message in messages], ["user", "assistant"])
+        self.assertIn("Try free", messages[-1]["body"])
+
+    def test_ticket_followup_appends_ai_hint_for_user_messages_only(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        create = self.client.post(
+            "/api/tickets",
+            headers=user_hdrs,
+            json={"subject": "Connection", "body": "Initial issue"},
+        )
+        self.assertEqual(create.status_code, 200, create.text)
+        ticket_id = create.json()["ticket"]["id"]
+
+        async def fake_generate(user_text, *, ticket_id, user_tg_id, config):
+            self.assertEqual(user_text, "Connection is slow")
+            return "Попробуйте обновить профиль и выбрать другое направление."
+
+        self.api.SUPPORT_AI_CONFIG.enabled = True
+        self.api.SUPPORT_AI_CONFIG.api_key = "sk-test"
+        self.api.SUPPORT_AI_CONFIG.min_interval_seconds = 0
+
+        with patch.object(self.api, "generate_support_reply", side_effect=fake_generate) as ai_call, patch.object(
+            self.api, "_telegram_send_message", new_callable=AsyncMock
+        ):
+            user_reply = self.client.post(
+                f"/api/tickets/{ticket_id}/messages",
+                headers=user_hdrs,
+                json={"body": "Connection is slow"},
+            )
+            admin_reply = self.client.post(
+                f"/api/tickets/{ticket_id}/messages",
+                headers=admin_hdrs,
+                json={"body": "Operator reply"},
+            )
+
+        self.assertEqual(user_reply.status_code, 200, user_reply.text)
+        self.assertEqual(admin_reply.status_code, 200, admin_reply.text)
+        self.assertEqual(ai_call.call_count, 1)
+        messages = admin_reply.json()["ticket"]["messages"]
+        self.assertEqual([message["sender_role"] for message in messages], ["user", "user", "assistant", "admin"])
 
     def test_ticket_upload_returns_attachment_metadata_and_serves_file(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}

@@ -385,3 +385,84 @@ def test_latency_samples_are_ingested_and_exposed_as_sticky_hint(monkeypatch, tm
         assert meta["install_id"] == "install-sticky"
     finally:
         db.close()
+
+
+def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_only(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    rollout_payload = _rollout_payload()
+    rollout_payload["ru_bridge_relay"] = {
+        "enabled": True,
+        "endpoint_host": "176.123.166.119",
+        "endpoint_port": 443,
+        "tls_server_name": "www.yandex.ru",
+        "reality_public_key": "ru-bridge-pbk",
+        "reality_short_id": "ab12cd34",
+        "fingerprint": "chrome",
+        "excluded_node_codes": ["us"],
+    }
+    rollout_payload["cohort_overrides"]["ru-bridge-canary"] = {
+        "install_ids": ["install-ru-bridge"],
+        "transport_profile": "ru_bridge_relay",
+    }
+    db = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=db, key="network_rollout_config", value=rollout_payload)
+        db.commit()
+    finally:
+        db.close()
+
+    now = _utcnow()
+    _add_node(api, code="pl", health_score=98.0, last_health_at=now)
+    _add_node(api, code="nl", health_score=96.0, last_health_at=now)
+    _add_node(api, code="it", health_score=94.0, last_health_at=now)
+    _add_node(api, code="us", health_score=99.0, last_health_at=now)
+
+    start_body = _start_trial(client, install_id="install-ru-bridge")
+    assert start_body["client_policy"]["transport_profile"] == "ru_bridge_relay"
+    assert start_body["client_policy"]["transport_kind"] == "ru_bridge"
+    assert start_body["client_policy"]["engine_hint"] == "singbox"
+
+    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+    assert managed.status_code == 200, managed.text
+    body = managed.json()
+    assert body["transport_profile"] == "ru_bridge_relay"
+    assert body["fallback_order"] == ["ru_bridge_relay", "legacy_reality_fallback"]
+    assert body["config_format"] == "singbox-json"
+
+    config = body["config_payload"]
+    outbounds = {item["tag"]: item for item in config["outbounds"]}
+    assert "POKROV мост" in outbounds
+    assert not any("via RU" in tag or "RU bridge" in tag for tag in outbounds)
+    bridge = outbounds["POKROV мост"]
+    assert bridge["server"] == "176.123.166.119"
+    assert bridge["server_port"] == 443
+    assert bridge["tls"]["server_name"] == "www.yandex.ru"
+    assert bridge["tls"]["reality"]["public_key"] == "ru-bridge-pbk"
+    assert bridge["tls"]["reality"]["short_id"] == "ab12cd34"
+
+    country_selector = outbounds["🌍 Страны"]
+    assert country_selector["outbounds"] == [
+        "🇵🇱 Польша",
+        "🇳🇱 Нидерланды",
+        "🇮🇹 Италия",
+        "🇺🇸 США",
+    ]
+
+    for label in ["🇵🇱 Польша", "🇳🇱 Нидерланды", "🇮🇹 Италия", "🇺🇸 США"]:
+        assert outbounds[label]["type"] == "selector"
+
+    for label in ["🇵🇱 Польша", "🇳🇱 Нидерланды", "🇮🇹 Италия"]:
+        normal_tag = f"{label} · Обычный"
+        bridge_tag = f"{label} · Белые списки"
+        assert outbounds[label]["outbounds"] == [normal_tag, bridge_tag]
+        assert outbounds[normal_tag]["type"] == "vless"
+        assert "detour" not in outbounds[normal_tag]
+        assert outbounds[bridge_tag]["type"] == "vless"
+        assert outbounds[bridge_tag]["detour"] == "POKROV мост"
+
+    assert outbounds["🇺🇸 США"]["outbounds"] == ["🇺🇸 США · Обычный"]
+    assert outbounds["🇺🇸 США · Обычный"]["type"] == "vless"
+    assert "detour" not in outbounds["🇺🇸 США · Обычный"]
+    assert "🇺🇸 США · Белые списки" not in outbounds

@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from puttykeys import ppkraw_to_openssh
 
-from node_passwords import parse_passwords
+from node_passwords import parse_password_candidates, parse_passwords
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +27,16 @@ KEY_STEMS: dict[str, list[str]] = {
     "free": ["FREEnode", "FreeNode", "FREE"],
     "mini": ["RUSSIA", "Russia", "RFMINI"],
     "rf1": ["RFRESERVE1", "rf1"],
+}
+
+DEFAULT_USERS: dict[str, list[str]] = {
+    # mini/RFMINI currently exposes the operator account on port 22. Keep
+    # root as a fallback for older notes and emergency reconfiguration.
+    "mini": ["kiwunaka", "root"],
+}
+
+DEFAULT_PORTS: dict[str, list[int]] = {
+    "mini": [22, 29374],
 }
 
 
@@ -185,48 +195,79 @@ def connect_node(
     key_dir: Path | None = None,
 ) -> tuple[paramiko.SSHClient, str]:
     passwords_path = passwords_path or DEFAULT_PASSWORDS
-    pw_map = parse_passwords(passwords_path, requested_codes=[code])
-    password = os.getenv(f"NODE_PASS_{str(code or '').upper()}", "").strip() or pw_map.get(str(code or "").lower(), "").strip()
+    code_key = str(code or "").lower().strip()
+    password_values: list[str] = []
+    env_password = os.getenv(f"NODE_PASS_{str(code or '').upper()}", "").strip()
+    if env_password:
+        password_values.append(env_password)
+    if not password_values:
+        try:
+            password_values.extend(parse_password_candidates(passwords_path, requested_codes=[code]).get(code_key, []))
+        except Exception:
+            password_values = []
+    if not password_values:
+        pw_map = parse_passwords(passwords_path, requested_codes=[code])
+        file_password = pw_map.get(code_key, "").strip()
+        if file_password:
+            password_values.append(file_password)
+    unique_passwords: list[str] = []
+    seen_passwords: set[str] = set()
+    for password in password_values:
+        if not password or password in seen_passwords:
+            continue
+        seen_passwords.add(password)
+        unique_passwords.append(password)
+
     pkey = load_private_key(str(code or ""), key_dir=key_dir or passwords_path.parent)
 
     attempts: list[tuple[str, dict[str, object]]] = []
     if pkey is not None:
         attempts.append(("key", {"pkey": pkey}))
-    if password:
-        attempts.append(("password", {"password": password}))
+    for idx, password in enumerate(unique_passwords, 1):
+        method = "password" if len(unique_passwords) == 1 else f"password#{idx}"
+        attempts.append((method, {"password": password}))
     if not attempts:
         raise RuntimeError(f"No SSH auth material found for node {code}")
 
     ports: list[int] = []
-    for candidate in (int(port), 22):
+    preferred_ports = DEFAULT_PORTS.get(code_key, [int(port), 22]) if int(port) == 29374 else [int(port), 22]
+    for candidate in preferred_ports:
         if candidate not in ports:
             ports.append(candidate)
 
+    users: list[str] = []
+    preferred_users = DEFAULT_USERS.get(code_key, [str(user or "root")]) if str(user or "root") == "root" else [str(user)]
+    for candidate_user in preferred_users:
+        candidate_user = str(candidate_user or "").strip()
+        if candidate_user and candidate_user not in users:
+            users.append(candidate_user)
+
     last_error: Exception | None = None
-    for target_port in ports:
-        for method, auth in attempts:
-            cli = paramiko.SSHClient()
-            cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            try:
-                cli.connect(
-                    host,
-                    port=target_port,
-                    username=user,
-                    timeout=30,
-                    banner_timeout=30,
-                    auth_timeout=30,
-                    allow_agent=False,
-                    look_for_keys=False,
-                    **auth,
-                )
-                t = cli.get_transport()
-                if t:
-                    t.set_keepalive(30)
-                return cli, method
-            except Exception as exc:
-                last_error = exc
+    for target_user in users:
+        for target_port in ports:
+            for method, auth in attempts:
+                cli = paramiko.SSHClient()
+                cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 try:
-                    cli.close()
-                except Exception:
-                    pass
+                    cli.connect(
+                        host,
+                        port=target_port,
+                        username=target_user,
+                        timeout=30,
+                        banner_timeout=30,
+                        auth_timeout=30,
+                        allow_agent=False,
+                        look_for_keys=False,
+                        **auth,
+                    )
+                    t = cli.get_transport()
+                    if t:
+                        t.set_keepalive(30)
+                    return cli, method
+                except Exception as exc:
+                    last_error = exc
+                    try:
+                        cli.close()
+                    except Exception:
+                        pass
     raise RuntimeError(f"SSH auth failed for node {code}: {last_error}")

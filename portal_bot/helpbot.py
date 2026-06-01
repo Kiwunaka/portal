@@ -9,8 +9,11 @@ from the main bot admin queue (shared DB tables).
 from __future__ import annotations
 
 import logging
+import html
 import json
 import os
+import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,6 +43,7 @@ from tickets_repo import (
     list_user_tickets,
     set_ticket_status,
 )
+from support_ai_service import SupportAIConfig, generate_support_reply
 
 # Keep existing helpbot keyboard construction while routing every button through
 # the Bot API 9.4/9.5 style and custom-emoji helper.
@@ -51,6 +55,7 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
 HELPBOT_START_MEDIA_PATH = (os.getenv("HELPBOT_START_MEDIA_PATH") or "").strip()
 HELPBOT_START_MEDIA_TYPE = (os.getenv("HELPBOT_START_MEDIA_TYPE") or "photo").strip().lower()
+SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
 
 if not HELP_BOT_TOKEN:
     raise SystemExit("HELP_BOT_TOKEN is empty")
@@ -60,11 +65,15 @@ logger = logging.getLogger(__name__)
 
 # ticket_id that expects next text message from tg_id
 pending_ticket_replies: dict[int, int] = {}
+support_ai_last_reply_at: dict[int, float] = {}
 
 router = Router()
 
 # Ensure schema/migrations are applied before polling.
 init_db()
+
+_INLINE_CODE_RE = re.compile(r"`([^`]+)`")
+_INLINE_BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
 
 
 def _now_str(dt: datetime | None) -> str:
@@ -94,6 +103,22 @@ def _ticket_message_preview(text: str, limit: int = 200) -> str:
     if not t:
         return "(без текста)"
     return t if len(t) <= limit else t[: max(0, limit - 1)] + "…"
+
+
+def _ticket_sender_title(sender_role: str | None) -> str:
+    role = (sender_role or "").lower().strip()
+    if role == "admin":
+        return "Оператор"
+    if role == "assistant":
+        return "AI-помощник"
+    return "Пользователь"
+
+
+def _support_reply_html(text: str) -> str:
+    escaped = html.escape(str(text or "").strip())
+    escaped = _INLINE_CODE_RE.sub(r"<code>\1</code>", escaped)
+    escaped = _INLINE_BOLD_RE.sub(r"<b>\1</b>", escaped)
+    return escaped
 
 
 def _main_menu(is_admin: bool) -> InlineKeyboardMarkup:
@@ -161,6 +186,21 @@ def _ticket_view_keyboard(ticket_id: int, status: str, *, is_admin: bool) -> Inl
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def _support_ai_reply_keyboard(ticket_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Не получилось", callback_data=f"hb_aiq_no_{ticket_id}"),
+                InlineKeyboardButton(text="Дайте шаги", callback_data=f"hb_aiq_steps_{ticket_id}"),
+            ],
+            [
+                InlineKeyboardButton(text="Оператор", callback_data=f"hb_aiq_operator_{ticket_id}"),
+                InlineKeyboardButton(text="Открыть обращение", callback_data=f"hb_ticket_view_{ticket_id}"),
+            ],
+        ]
+    )
+
+
 async def _safe_answer(callback: CallbackQuery, text: str | None = None, *, show_alert: bool = False) -> None:
     try:
         await callback.answer(text=text, show_alert=show_alert)
@@ -175,6 +215,46 @@ async def _notify_admin(bot: Bot, text: str) -> None:
         await bot.send_message(ADMIN_ID, text)
     except Exception as e:
         logger.warning("helpbot admin notify failed: %s", e)
+
+
+async def _maybe_generate_support_ai_reply(message: Message, *, ticket_id: int, text: str) -> str | None:
+    tg_id = int(message.from_user.id)
+    if tg_id == ADMIN_ID or not SUPPORT_AI_CONFIG.enabled or not SUPPORT_AI_CONFIG.api_key:
+        return None
+
+    now = time.monotonic()
+    min_interval = max(0.0, float(SUPPORT_AI_CONFIG.min_interval_seconds))
+    last = support_ai_last_reply_at.get(tg_id, 0.0)
+    if min_interval and now - last < min_interval:
+        return None
+    support_ai_last_reply_at[tg_id] = now
+
+    reply = await generate_support_reply(
+        text,
+        ticket_id=ticket_id,
+        user_tg_id=tg_id,
+        config=SUPPORT_AI_CONFIG,
+    )
+    if not reply:
+        return None
+
+    session = SessionLocal()
+    try:
+        add_ticket_message(
+            session,
+            ticket_id=ticket_id,
+            sender_tg_id=0,
+            sender_role="assistant",
+            body=reply,
+        )
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        logger.warning("support AI ticket append failed ticket=%s err=%s", ticket_id, exc)
+        return None
+    finally:
+        session.close()
+    return reply
 
 
 def _main_bot_hint() -> str:
@@ -263,7 +343,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
         msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=20)
         lines = []
         for msg in msgs:
-            role = "Оператор" if (msg.sender_role or "").lower() == "admin" else "Пользователь"
+            role = _ticket_sender_title(msg.sender_role)
             lines.append(f"[{_now_str(msg.created_at)}] {role}: {_ticket_message_preview(msg.body)}")
         history = "\n".join(lines) if lines else "Сообщений пока нет."
 
@@ -494,6 +574,82 @@ async def ticket_reopen(callback: CallbackQuery) -> None:
     await _render_ticket(callback, ticket_id)
 
 
+@router.callback_query(F.data.startswith("hb_aiq_"))
+async def support_ai_quick_reply(callback: CallbackQuery) -> None:
+    raw = str(callback.data or "")
+    try:
+        action, ticket_id_raw = raw.replace("hb_aiq_", "", 1).rsplit("_", 1)
+        ticket_id = int(ticket_id_raw)
+    except Exception:
+        await _safe_answer(callback, "Кнопка устарела.", show_alert=True)
+        return
+
+    tg_id = int(callback.from_user.id)
+    if tg_id == ADMIN_ID:
+        await _safe_answer(callback, "Эти кнопки доступны пользователю.", show_alert=True)
+        return
+
+    session = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await _safe_answer(callback, "Обращение не найдено.", show_alert=True)
+            return
+        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+            await _safe_answer(callback, "Нет доступа.", show_alert=True)
+            return
+
+        if action == "operator":
+            body = "Нужна ручная проверка оператором."
+            add_ticket_message(
+                session,
+                ticket_id=ticket.id,
+                sender_tg_id=tg_id,
+                sender_role="user",
+                body=body,
+            )
+            set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+            session.commit()
+            await _notify_admin(
+                callback.bot,
+                f"🆕 Пользователь {tg_id} попросил оператора в обращении #{ticket.id} (helpbot).\n{_main_bot_hint()}",
+            )
+            await callback.message.answer(
+                f"Ок, позвал оператора в обращение #{ticket.id}. Можно дописать детали одним сообщением.",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"hb_ticket_view_{ticket.id}")]]
+                ),
+            )
+            await _safe_answer(callback)
+            return
+    finally:
+        session.close()
+
+    pending_ticket_replies[tg_id] = ticket_id
+    if action == "steps":
+        prompt = (
+            "Напишите одним сообщением устройство и клиент — я дам более точные шаги.\n\n"
+            "Устройство:\n"
+            "Клиент, если уже установлен:\n"
+            "Что хотите сделать:"
+        )
+    else:
+        prompt = (
+            "Ок, напишите что именно не получилось — добавлю это в обращение.\n\n"
+            "Устройство:\n"
+            "Клиент:\n"
+            "На каком шаге остановилось:\n"
+            "Что видно на экране:"
+        )
+    await callback.message.answer(
+        prompt,
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"hb_ticket_view_{ticket_id}")]]
+        ),
+    )
+    await _safe_answer(callback)
+
+
 @router.callback_query(F.data == "hb_admin_queue")
 async def admin_queue(callback: CallbackQuery) -> None:
     await _safe_answer(callback)
@@ -684,14 +840,31 @@ async def capture_ticket_reply(message: Message) -> None:
     finally:
         session.close()
 
+    reply_markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"hb_ticket_view_{ticket_id}")],
+            [InlineKeyboardButton(text="🏠 В меню", callback_data="hb_back_home")],
+        ]
+    )
+    assistant_reply = None
+    if tg_id != ADMIN_ID:
+        assistant_reply = await _maybe_generate_support_ai_reply(message, ticket_id=ticket_id, text=text)
+
+    if assistant_reply:
+        await message.answer(
+            (
+                f"<b>AI-подсказка по обращению #{ticket_id}</b>\n\n"
+                f"{_support_reply_html(assistant_reply)}\n\n"
+                "<i>Обращение осталось открытым: оператор увидит историю и сможет дополнить ответ.</i>"
+            ),
+            reply_markup=_support_ai_reply_keyboard(ticket_id),
+            parse_mode="HTML",
+        )
+        return
+
     await message.answer(
         f"Сообщение добавлено в обращение #{ticket_id}.\nСледующий шаг: откройте обращение, если хотите продолжить диалог.",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"hb_ticket_view_{ticket_id}")],
-                [InlineKeyboardButton(text="🏠 В меню", callback_data="hb_back_home")],
-            ]
-        ),
+        reply_markup=reply_markup,
     )
 
 

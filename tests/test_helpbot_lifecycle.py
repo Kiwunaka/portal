@@ -104,6 +104,10 @@ class HelpbotLifecycleTests(unittest.TestCase):
             "TG_BTN_EMOJI_PRIMARY_ID",
             "TG_BTN_EMOJI_SUCCESS_ID",
             "TG_BTN_EMOJI_DANGER_ID",
+            "SUPPORT_AI_ENABLED",
+            "SUPPORT_AI_API_KEY",
+            "SUPPORT_AI_MODEL",
+            "SUPPORT_AI_MIN_INTERVAL_SECONDS",
         ):
             self._saved_env[key] = os.environ.get(key)
 
@@ -116,8 +120,22 @@ class HelpbotLifecycleTests(unittest.TestCase):
         os.environ["TG_BTN_EMOJI_PRIMARY_ID"] = "5368324170671202286"
         os.environ["TG_BTN_EMOJI_SUCCESS_ID"] = "5373141891321699086"
         os.environ["TG_BTN_EMOJI_DANGER_ID"] = "5368324170671202299"
+        os.environ["SUPPORT_AI_ENABLED"] = "false"
+        os.environ["SUPPORT_AI_API_KEY"] = ""
+        os.environ["SUPPORT_AI_MODEL"] = "deepseek/deepseek-v4-flash"
+        os.environ["SUPPORT_AI_MIN_INTERVAL_SECONDS"] = "0"
 
-        for module_name in ("config", "db", "models", "migrations", "tickets_repo", "copy_catalog", "telegram_buttons", "helpbot"):
+        for module_name in (
+            "config",
+            "db",
+            "models",
+            "migrations",
+            "tickets_repo",
+            "copy_catalog",
+            "telegram_buttons",
+            "support_ai_service",
+            "helpbot",
+        ):
             sys.modules.pop(module_name, None)
 
         self.helpbot = importlib.import_module("helpbot")
@@ -129,7 +147,7 @@ class HelpbotLifecycleTests(unittest.TestCase):
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
-        for module_name in ("helpbot", "tickets_repo", "db", "models", "migrations"):
+        for module_name in ("helpbot", "support_ai_service", "tickets_repo", "db", "models", "migrations"):
             sys.modules.pop(module_name, None)
         try:
             close_all_sessions()
@@ -175,6 +193,69 @@ class HelpbotLifecycleTests(unittest.TestCase):
         self.assertEqual([message.sender_role for message in messages], ["user", "admin"])
         self.assertEqual([message.body for message in messages], ["First launch does not connect", "Please refresh the profile and try again."])
         self.assertTrue(any(message["chat_id"] == 1001 for message in bot.messages))
+
+    def test_user_text_receives_ai_support_hint_when_enabled(self) -> None:
+        bot = _FakeBot()
+
+        async def fake_generate(user_text, *, ticket_id, user_tg_id, config):
+            self.assertEqual(user_text, "How do I get the trial?")
+            self.assertGreater(ticket_id, 0)
+            self.assertEqual(user_tg_id, 1001)
+            return "**Коротко:** Откройте приложение POKROV и нажмите `Try free`."
+
+        self.helpbot.SUPPORT_AI_CONFIG.enabled = True
+        self.helpbot.SUPPORT_AI_CONFIG.api_key = "sk-test"
+        self.helpbot.SUPPORT_AI_CONFIG.min_interval_seconds = 0
+        self.helpbot.generate_support_reply = fake_generate
+
+        start = _FakeMessage(1001, "/start ticket_new", bot=bot)
+        asyncio.run(self.helpbot.start(start))
+        ticket_id = self.helpbot.pending_ticket_replies[1001]
+
+        user_reply = _FakeMessage(1001, "How do I get the trial?", bot=bot)
+        asyncio.run(self.helpbot.capture_ticket_reply(user_reply))
+
+        ticket, messages = self._ticket_messages(ticket_id)
+        self.assertEqual(ticket.status, self.helpbot.STATUS_OPEN)
+        self.assertEqual([message.sender_role for message in messages], ["user", "assistant"])
+        self.assertEqual(messages[-1].body, "**Коротко:** Откройте приложение POKROV и нажмите `Try free`.")
+        self.assertTrue(user_reply.answers)
+        self.assertIn("<b>Коротко:</b>", user_reply.answers[-1][0])
+        self.assertIn("<code>Try free</code>", user_reply.answers[-1][0])
+        self.assertEqual(user_reply.answers[-1][1].get("parse_mode"), "HTML")
+        buttons = {
+            str(getattr(button, "callback_data", "") or ""): button
+            for row in user_reply.answers[-1][1]["reply_markup"].inline_keyboard
+            for button in row
+        }
+        self.assertIn(f"hb_aiq_no_{ticket_id}", buttons)
+        self.assertIn(f"hb_aiq_steps_{ticket_id}", buttons)
+        self.assertIn(f"hb_aiq_operator_{ticket_id}", buttons)
+
+    def test_helpbot_ai_quick_replies_prompt_details_or_call_operator(self) -> None:
+        bot = _FakeBot()
+
+        start = _FakeMessage(1001, "/start ticket_new", bot=bot)
+        asyncio.run(self.helpbot.start(start))
+        ticket_id = self.helpbot.pending_ticket_replies[1001]
+
+        user_reply = _FakeMessage(1001, "Hiddify пустой профиль", bot=bot)
+        asyncio.run(self.helpbot.capture_ticket_reply(user_reply))
+
+        details = _FakeCallback(1001, f"hb_aiq_no_{ticket_id}", bot=bot)
+        asyncio.run(self.helpbot.support_ai_quick_reply(details))
+        self.assertEqual(self.helpbot.pending_ticket_replies[1001], ticket_id)
+        self.assertTrue(details.message.answers)
+        self.assertIn("Устройство:", details.message.answers[-1][0])
+
+        operator = _FakeCallback(1001, f"hb_aiq_operator_{ticket_id}", bot=bot)
+        asyncio.run(self.helpbot.support_ai_quick_reply(operator))
+
+        ticket, messages = self._ticket_messages(ticket_id)
+        self.assertEqual(ticket.status, self.helpbot.STATUS_OPEN)
+        self.assertEqual([message.sender_role for message in messages], ["user", "user"])
+        self.assertEqual(messages[-1].body, "Нужна ручная проверка оператором.")
+        self.assertTrue(any(row["chat_id"] == 9999 and "попросил оператора" in row["text"] for row in bot.messages))
 
     def test_helpbot_captures_telegram_photo_and_document_attachments(self) -> None:
         bot = _FakeBot()

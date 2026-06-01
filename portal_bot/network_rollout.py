@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from shared_surface_facts import get_product_facts
-from transport_catalog import GRPC_443_PRIMARY, LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN
+from transport_catalog import GRPC_443_PRIMARY, LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY
 
 
 NETWORK_ROLLOUT_CONFIG_KEY = "network_rollout_config"
@@ -126,6 +126,20 @@ def default_network_rollout_config() -> dict[str, Any]:
             "xhttp_path": "/reserve-xhttp",
             "tls_server_name": "cdn.connect.pokrov.space",
         },
+        RU_BRIDGE_RELAY: {
+            "enabled": False,
+            "endpoint_host": "176.123.166.119",
+            "endpoint_port": 443,
+            "tls_server_name": "www.yandex.ru",
+            "reality_public_key": "",
+            "reality_short_id": "",
+            "fingerprint": "chrome",
+            "allowlist_node_codes": [],
+            "excluded_node_codes": ["us"],
+            "urltest_url": "https://www.gstatic.com/generate_204",
+            "urltest_interval": "10m",
+            "urltest_tolerance": 80,
+        },
         "package_catalog_feed": {
             "version": _clean_text(versions.get("package_catalog_version"), fallback=version),
         },
@@ -155,6 +169,9 @@ def _transport_metadata(transport_profile: str, *, version: str) -> dict[str, st
     elif profile in {OPERATOR_LAB, RESERVE_XHTTP_CDN}:
         transport_kind = "xhttp"
         engine_hint = "xray"
+    elif profile == RU_BRIDGE_RELAY:
+        transport_kind = "ru_bridge"
+        engine_hint = "singbox"
     else:
         transport_kind = "reality"
         engine_hint = "singbox"
@@ -208,6 +225,31 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
         "tls_server_name": _clean_text((reserve_xhttp_src or {}).get("tls_server_name"), fallback="cdn.connect.pokrov.space")
         or "cdn.connect.pokrov.space",
     }
+    ru_bridge_src = src.get(RU_BRIDGE_RELAY)
+    default_ru_bridge = defaults[RU_BRIDGE_RELAY]
+    try:
+        endpoint_port = int((ru_bridge_src or {}).get("endpoint_port") or default_ru_bridge["endpoint_port"])
+    except Exception:
+        endpoint_port = int(default_ru_bridge["endpoint_port"])
+    try:
+        urltest_tolerance = int((ru_bridge_src or {}).get("urltest_tolerance") or default_ru_bridge["urltest_tolerance"])
+    except Exception:
+        urltest_tolerance = int(default_ru_bridge["urltest_tolerance"])
+    ru_bridge_relay = {
+        "enabled": _as_bool((ru_bridge_src or {}).get("enabled")) if isinstance(ru_bridge_src, dict) else False,
+        "endpoint_host": _clean_text((ru_bridge_src or {}).get("endpoint_host"), fallback=default_ru_bridge["endpoint_host"]),
+        "endpoint_port": max(1, min(65535, endpoint_port)),
+        "tls_server_name": _clean_text((ru_bridge_src or {}).get("tls_server_name"), fallback=default_ru_bridge["tls_server_name"]),
+        "reality_public_key": _clean_text((ru_bridge_src or {}).get("reality_public_key")),
+        "reality_short_id": _clean_text((ru_bridge_src or {}).get("reality_short_id")),
+        "fingerprint": _clean_text((ru_bridge_src or {}).get("fingerprint"), fallback=default_ru_bridge["fingerprint"]),
+        "allowlist_node_codes": _normalize_string_list((ru_bridge_src or {}).get("allowlist_node_codes"), lower=True),
+        "excluded_node_codes": _normalize_string_list((ru_bridge_src or {}).get("excluded_node_codes"), lower=True)
+        or list(default_ru_bridge["excluded_node_codes"]),
+        "urltest_url": _clean_text((ru_bridge_src or {}).get("urltest_url"), fallback=default_ru_bridge["urltest_url"]),
+        "urltest_interval": _clean_text((ru_bridge_src or {}).get("urltest_interval"), fallback=default_ru_bridge["urltest_interval"]),
+        "urltest_tolerance": max(0, urltest_tolerance),
+    }
 
     package_catalog_feed = src.get("package_catalog_feed") if isinstance(src.get("package_catalog_feed"), dict) else {}
     routing_rules_feed = src.get("routing_rules_feed") if isinstance(src.get("routing_rules_feed"), dict) else {}
@@ -222,6 +264,7 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
         "cohort_overrides": cohort_overrides,
         "operator_lab": operator_lab,
         RESERVE_XHTTP_CDN: reserve_xhttp_cdn,
+        RU_BRIDGE_RELAY: ru_bridge_relay,
         "package_catalog_feed": {
             "version": _clean_text(package_catalog_feed.get("version"), fallback=defaults["package_catalog_feed"]["version"]),
         },
@@ -279,6 +322,15 @@ def operator_lab_access(
 def reserve_xhttp_cdn_enabled(config: dict[str, Any]) -> bool:
     reserve = dict(config.get(RESERVE_XHTTP_CDN) or {})
     return _as_bool(reserve.get("enabled"))
+
+
+def ru_bridge_relay_enabled(config: dict[str, Any]) -> bool:
+    bridge = dict(config.get(RU_BRIDGE_RELAY) or {})
+    return _as_bool(bridge.get("enabled")) and bool(_clean_text(bridge.get("reality_public_key")))
+
+
+def ru_bridge_relay_config(config: dict[str, Any]) -> dict[str, Any]:
+    return dict(normalized_network_rollout_config(config).get(RU_BRIDGE_RELAY) or {})
 
 
 def _cohort_matches(rule: dict[str, Any], *, install_id: str, tg_ids: list[int], platform: str) -> bool:
@@ -346,7 +398,9 @@ def resolved_client_policy(
         transport_profile = LEGACY_REALITY_FALLBACK
     if transport_profile == RESERVE_XHTTP_CDN and not reserve_xhttp_cdn_enabled(config):
         transport_profile = LEGACY_REALITY_FALLBACK
-    if transport_profile not in {LEGACY_REALITY_FALLBACK, GRPC_443_PRIMARY, RESERVE_XHTTP_CDN, OPERATOR_LAB}:
+    if transport_profile == RU_BRIDGE_RELAY and not ru_bridge_relay_enabled(config):
+        transport_profile = LEGACY_REALITY_FALLBACK
+    if transport_profile not in {LEGACY_REALITY_FALLBACK, GRPC_443_PRIMARY, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY, OPERATOR_LAB}:
         transport_profile = LEGACY_REALITY_FALLBACK
     transport_meta = _transport_metadata(transport_profile, version=_clean_text(config.get("version"), fallback=_default_rollout_version()))
 
@@ -390,7 +444,19 @@ def transport_node_allowlist(config: dict[str, Any], transport_profile: str) -> 
         if not _as_bool(reserve.get("enabled")):
             return []
         return _normalize_string_list(reserve.get("allowlist_node_codes"), lower=True)
+    if _clean_text(transport_profile) == RU_BRIDGE_RELAY:
+        bridge = dict(config.get(RU_BRIDGE_RELAY) or {})
+        if not _as_bool(bridge.get("enabled")):
+            return []
+        return _normalize_string_list(bridge.get("allowlist_node_codes"), lower=True)
     if _clean_text(transport_profile) != OPERATOR_LAB:
         return []
     operator_lab = dict(config.get("operator_lab") or {})
     return _normalize_string_list(operator_lab.get("allowlist_node_codes"), lower=True)
+
+
+def transport_node_exclusions(config: dict[str, Any], transport_profile: str) -> list[str]:
+    if _clean_text(transport_profile) != RU_BRIDGE_RELAY:
+        return []
+    bridge = dict(config.get(RU_BRIDGE_RELAY) or {})
+    return _normalize_string_list(bridge.get("excluded_node_codes"), lower=True)

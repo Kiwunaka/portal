@@ -382,7 +382,7 @@ class SupportTicketMessage(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     ticket_id = Column(Integer, index=True, nullable=False)
     sender_tg_id = Column(BigInteger, index=True, nullable=False)
-    sender_role = Column(String(20), nullable=False)  # user / admin
+    sender_role = Column(String(20), nullable=False)  # user / admin / assistant
     body = Column(String(2000), nullable=False)
     media_type = Column(String(32), nullable=True)
     media_file_id = Column(String(256), nullable=True)

@@ -44,6 +44,8 @@ class NodeAccessTests(unittest.TestCase):
                 return None
 
         with patch.object(node_access, "load_private_key", return_value=None), patch.object(
+            node_access, "parse_password_candidates", return_value={}
+        ), patch.object(
             node_access, "parse_passwords", return_value={"nl": "pw"}
         ), patch.object(node_access.paramiko, "SSHClient", side_effect=lambda: FakeClient()):
             _ssh, method = node_access.connect_node(
@@ -54,6 +56,49 @@ class NodeAccessTests(unittest.TestCase):
 
         self.assertEqual(method, "password")
         self.assertEqual(attempts, [(29374, True), (22, True)])
+
+    def test_connect_node_uses_mini_operator_user_port_and_password_candidates(self) -> None:
+        import node_access
+
+        attempts: list[tuple[str, int, str | None]] = []
+
+        class FakeTransport:
+            def set_keepalive(self, _seconds: int) -> None:
+                return None
+
+        class FakeClient:
+            def set_missing_host_key_policy(self, _policy) -> None:
+                return None
+
+            def connect(self, host, port, username, timeout, banner_timeout, auth_timeout, allow_agent, look_for_keys, **auth):
+                attempts.append((str(username), int(port), auth.get("password")))
+                if username == "kiwunaka" and int(port) == 22 and auth.get("password") == "ssh-pass":
+                    return None
+                raise RuntimeError("not this credential")
+
+            def get_transport(self):
+                return FakeTransport()
+
+            def close(self) -> None:
+                return None
+
+        with patch.object(node_access, "load_private_key", return_value=None), patch.object(
+            node_access, "parse_password_candidates", return_value={"mini": ["panel-pass", "ssh-pass"]}
+        ), patch.object(node_access.paramiko, "SSHClient", side_effect=lambda: FakeClient()):
+            _ssh, method = node_access.connect_node(
+                code="mini",
+                host="176.123.166.119",
+                passwords_path=Path("ignored.txt"),
+            )
+
+        self.assertEqual(method, "password#2")
+        self.assertEqual(
+            attempts,
+            [
+                ("kiwunaka", 22, "panel-pass"),
+                ("kiwunaka", 22, "ssh-pass"),
+            ],
+        )
 
     def test_private_key_candidates_support_mini_russia_key_names(self) -> None:
         import node_access
@@ -144,6 +189,8 @@ class NodeAccessTests(unittest.TestCase):
             passwords_path = Path(tmp) / "PASSWORDS.txt"
             passwords_path.write_text("", encoding="utf-8")
             with patch.object(node_access, "load_private_key", side_effect=fake_load_private_key), patch.object(
+                node_access, "parse_password_candidates", return_value={}
+            ), patch.object(
                 node_access, "parse_passwords", return_value={}
             ), patch.object(node_access.paramiko, "SSHClient", side_effect=lambda: FakeClient()):
                 _ssh, method = node_access.connect_node(

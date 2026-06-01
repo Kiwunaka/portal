@@ -139,7 +139,7 @@ export type TicketMessage = {
   id: number;
   ticket_id: number;
   sender_tg_id: number;
-  sender_role: "user" | "admin";
+  sender_role: "user" | "admin" | "assistant";
   body: string;
   media_type?: string | null;
   media_file_id?: string | null;

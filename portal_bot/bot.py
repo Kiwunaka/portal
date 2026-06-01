@@ -328,8 +328,8 @@ FRIEND_GIFT_CAMPAIGN_KEY = (
 CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
-    "a": "✨ Подобрать доступ",
-    "b": "✨ Подобрать доступ",
+    "a": "💳 Продлить или начать",
+    "b": "💳 Продлить или начать",
 }
 
 
@@ -2968,7 +2968,7 @@ TEXTS = {
         "💰 Оборот: `{stars}` Stars"
     ),
     "trial_used": "❌ 5 дней бесплатно уже были включены. Теперь можно выбрать полный доступ.",
-    "payment_success": "✅ *Оплата принята.* Сейчас подготовлю доступ...",
+    "payment_success": "✅ *Оплата принята.* Доступ обновляется в этом аккаунте. Откройте POKROV и нажмите «Подключить».",
     "gift_success": "✅ Подписка выдана пользователю {tg_id} на {days} дней."
 }
 
@@ -3434,7 +3434,6 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
 
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
-        [_btn_spec(text="🌐 Открыть кабинет", web_app_url=WEBAPP_URL)],
         [_btn_spec(text="📲 Подключить устройство", callback_data="instruction")],
         [
             _btn_spec(
@@ -3445,11 +3444,11 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             ),
         ],
         [
-            _btn_spec(text="📦 Мой доступ", callback_data="status"),
-            _btn_spec(text="🧭 Я запутался", callback_data="confused_help"),
+            _btn_spec(text="📦 Проверить доступ", callback_data="status"),
+            _btn_spec(text="🆘 Помощь", callback_data="support"),
         ],
         [
-            _btn_spec(text="🆘 Нужна помощь", callback_data="support"),
+            _btn_spec(text="🌐 Кабинет", web_app_url=WEBAPP_URL),
             _btn_spec(text="⚙️ Ещё", callback_data="settings"),
         ],
     ]
@@ -3820,13 +3819,13 @@ async def cmd_start(message: Message):
 
     text = (
         "👋 *Добро пожаловать в POKROV*\n\n"
-        "Поставьте приложение, включите 5 дней бесплатно или выберите срок - и подключайтесь.\n\n"
-        "Начнем с устройства и покажем только нужные шаги."
+        "Помогу установить приложение, проверить доступ или открыть поддержку.\n\n"
+        "Если вы здесь впервые, начните с установки POKROV."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✨ Помочь начать", callback_data="mode_simple")],
-        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🔧 Полное меню", callback_data="mode_pro")],
+        [InlineKeyboardButton(text="📲 Начать: установить POKROV", callback_data="mode_simple")],
+        [InlineKeyboardButton(text="🌐 Кабинет: доступ и оплата", web_app=WebAppInfo(url=WEBAPP_URL))],
+        [InlineKeyboardButton(text="⚙️ Все действия", callback_data="mode_pro")],
     ])
     sent = await message.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     last_bot_message[tg_id] = sent.message_id
@@ -4340,7 +4339,7 @@ async def show_instruction(callback: CallbackQuery):
             InlineKeyboardButton(text="🍎 macOS", callback_data="instr_mac"),
         ],
         [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🧭 Я запутался", callback_data="confused_help")],
+        [InlineKeyboardButton(text="🆘 Помощь с выбором", callback_data="confused_help")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
@@ -4933,7 +4932,7 @@ FAQ_ANSWERS = {
     "renew": (
         "💳 *Как продлить доступ?*\n\n"
         f"1️⃣ Откройте бота @{BOT_USERNAME_MD}\n\n"
-        "2️⃣ Нажмите *✨ Подобрать доступ*\n\n"
+        "2️⃣ Нажмите *💳 Продлить или начать*\n\n"
         "3️⃣ Выберите нужный план\n\n"
         "4️⃣ Откройте оплату в ₽\n\n"
         "После успешной оплаты доступ обновится автоматически."
@@ -5995,7 +5994,7 @@ async def support_diagnose(callback: CallbackQuery):
     
     if not user:
         status = "❌ Доступ не найден"
-        details = "Запустите доступ через *✨ Подобрать доступ*"
+        details = "Запустите доступ через *💳 Продлить или начать*"
     else:
         # Status
         if user.is_active and user.expiry_at and user.expiry_at > _utcnow():
@@ -8415,11 +8414,11 @@ async def mode_pro_start(callback: CallbackQuery):
         return
 
     await callback.message.edit_text(
-        "🔧 *Полное меню уже открыто*\n\nПерехожу к основным действиям.",
+        "⚙️ *Все действия*\n\nВыберите ближайший шаг.",
         reply_markup=main_keyboard(tg_id),
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer("Открываю полное меню", show_alert=False)
+    await callback.answer("Открываю действия", show_alert=False)
 
 
 @router.callback_query(F.data == "mode_simple")
@@ -8432,7 +8431,7 @@ async def mode_simple_start(callback: CallbackQuery):
         [InlineKeyboardButton(text="🤖 Android", callback_data="simple_android")],
         [InlineKeyboardButton(text="💻 Windows", callback_data="simple_win")],
         [InlineKeyboardButton(text="🍏 iPhone / iPad", callback_data="simple_ios")],
-        [InlineKeyboardButton(text="🧭 Не знаю, что выбрать", callback_data="confused_help")],
+        [InlineKeyboardButton(text="🆘 Помощь с выбором", callback_data="confused_help")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
@@ -9325,7 +9324,7 @@ async def payment_success(message: Message, bot: Bot):
         payment.total_amount,
         payment.currency,
     )
-    await message.answer("✅ Оплата получена. Проверяем активацию, если не активировалось — напишите в службу заботы.")
+    await message.answer("✅ Оплата получена. Откройте POKROV и нажмите «Подключить». Если доступ не обновился, напишите в поддержку.")
 
 async def create_subscription(
     message: Message,
