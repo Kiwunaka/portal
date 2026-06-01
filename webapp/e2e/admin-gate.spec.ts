@@ -1100,6 +1100,7 @@ test.describe("Admin gate", () => {
     for (const section of sections) {
       await openRoute(page, section);
       await expect(page).toHaveURL(new RegExp(`/${section.replace(/\//g, "\\/")}$`));
+      await expect(page.getByTestId("cabinet-shell")).toHaveCount(0);
       await expect(page.getByRole("navigation", { name: "Admin sections" })).toBeVisible();
       await expect(page.locator("h1, h2").first()).toBeVisible();
     }

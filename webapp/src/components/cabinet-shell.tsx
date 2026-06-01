@@ -572,7 +572,11 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden" style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}>
+    <div
+      data-testid="cabinet-shell"
+      className="relative min-h-screen overflow-x-hidden"
+      style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}
+    >
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(11,72,50,0.06),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(197,138,42,0.06),_transparent_28%)]" />
       <div className="mx-auto flex min-h-screen max-w-[1500px] gap-4 px-3 py-4 sm:px-4 lg:px-5">
         {sidebar}

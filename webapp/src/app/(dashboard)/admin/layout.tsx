@@ -6,12 +6,11 @@ import {
   adminButtonClass,
   adminRailCardClass,
   adminSidebarClass,
-  adminShellFrameClass,
   adminTopbarClass,
 } from "@/components/admin/admin-shell";
 import { adminSummary, type AdminSummaryPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { pokrovBranding } from "../../branding";
@@ -75,6 +74,7 @@ function AdminStateCard({
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { error, loading, logoutWebSession, user, webLoginRequired } = usePortalSession();
   const [summary, setSummary] = useState<AdminSummaryPayload | null>(null);
   const [summaryError, setSummaryError] = useState("");
@@ -105,6 +105,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [user?.is_admin]);
+
+  useEffect(() => {
+    if (!loading && user && !user.is_admin) {
+      router.replace("/dashboard/");
+    }
+  }, [loading, router, user]);
 
   if (loading) {
     return (
@@ -154,9 +160,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={adminShellFrameClass}>
-      <div className="grid gap-4 p-4 2xl:grid-cols-[252px_minmax(0,1fr)_292px]">
-        <aside className={`${adminSidebarClass} p-4 2xl:sticky 2xl:top-4 2xl:self-start`}>
+    <main className="min-h-[100dvh] bg-slate-50 px-3 py-3 text-slate-800 sm:px-4">
+      <div className="grid min-h-[calc(100dvh-1.5rem)] gap-4 2xl:grid-cols-[264px_minmax(0,1fr)_300px]">
+        <aside className={`${adminSidebarClass} p-4 2xl:sticky 2xl:top-3 2xl:self-start`}>
           <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">admin shell</p>
@@ -255,7 +261,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="min-w-0">{children}</div>
         </section>
 
-        <aside className="space-y-4 2xl:sticky 2xl:top-4 2xl:self-start">
+        <aside className="space-y-4 2xl:sticky 2xl:top-3 2xl:self-start">
           <section className={adminRailCardClass}>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Смена</p>
             <h2 className="mt-2 text-lg font-semibold text-slate-900">{operatorName}</h2>
@@ -315,6 +321,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </section>
         </aside>
       </div>
-    </div>
+    </main>
   );
 }

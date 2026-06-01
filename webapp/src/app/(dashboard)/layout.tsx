@@ -4,11 +4,15 @@ import type { ReactNode } from "react";
 
 import CabinetShell from "@/components/cabinet-shell";
 import { PortalSessionProvider } from "@/lib/session";
+import { usePathname } from "next/navigation";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isAdminRoute = pathname.startsWith("/admin");
+
   return (
     <PortalSessionProvider>
-      <CabinetShell>{children}</CabinetShell>
+      {isAdminRoute ? children : <CabinetShell>{children}</CabinetShell>}
     </PortalSessionProvider>
   );
 }
