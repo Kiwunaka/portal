@@ -36,6 +36,8 @@ Current user-facing route families in `webapp/src/app/`:
 - `/subscription/checkout/` for renewal continuation into the hosted activation-key checkout flow
 - `/pricing/` only as a compatibility continuation alias redirecting to `/subscription/`
 
+Cabinet routes live under `webapp/src/app/(dashboard)/`. The route group is URL-invisible and owns the `CabinetShell`.
+
 Current operator routes:
 
 - `/admin/`
@@ -50,6 +52,8 @@ Current operator routes:
 - `/admin/payments/`
 - `/admin/release/`
 - `/admin/broadcast/`
+
+Operator routes live under `webapp/src/app/(admin)/admin/`. The route group is URL-invisible and keeps the admin shell independent from the personal cabinet shell.
 
 ## Surface Boundary
 
@@ -89,7 +93,8 @@ Rules:
 - Internal cabinet navigation keeps the shell mounted, shows page-shaped skeleton or route activity feedback, and must not reset the product frame.
 - Dashboard and user snapshots may be kept only in React memory as last-good state during warm refresh; do not persist dashboard cache to browser storage.
 - Theme follows the system preference by default. Manual light/dark choice is a browser UI preference and should not store account or dashboard data.
-- Mobile cabinet navigation keeps bottom tabs stable on non-admin routes.
+- Mobile cabinet navigation keeps bottom tabs stable on cabinet routes.
+- Admin navigation uses its own route group and must not depend on `CabinetShell` or dashboard path checks.
 
 ## Frontend Environment
 

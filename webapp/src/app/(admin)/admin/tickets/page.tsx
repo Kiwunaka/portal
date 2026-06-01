@@ -3,9 +3,9 @@
 import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
 import { SupportMessageBody } from "@/components/support-message-body";
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
+import { fmtRuDate } from "@/lib/date-format";
 import { CheckCircle, Clock, CreditCard, Inbox, LifeBuoy, ListChecks, Loader2, MessageCircle, RefreshCw, Send, Smartphone, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { fmtRuDate } from "../nav";
 
 const STATUS_META: Record<string, { color: string; badge: string; icon: typeof Clock }> = {
   open: { color: "badge-info", badge: "Открыт", icon: Inbox },

@@ -13,7 +13,7 @@ import { usePortalSession } from "@/lib/session";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { pokrovBranding } from "../../branding";
+import { pokrovBranding } from "@/app/branding";
 import { ADMIN_NAV_GROUPS, findAdminNavCategory, findAdminNavItem } from "./nav";
 
 const MARKETING_SITE_URL = pokrovBranding.marketingUrl;

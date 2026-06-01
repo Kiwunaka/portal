@@ -21,8 +21,8 @@ Checkout has a useful local catalog fallback and canonical hosted-checkout hando
 | E02 | `webapp/playwright.config.ts` | Playwright has one Chromium-like config, failure-only screenshots, no named viewport projects. | High |
 | E03 | `webapp/e2e/cabinet-flow.spec.ts` | Cabinet overflow test covers only 390x844 and only `/dashboard/`, `/subscription/`, `/devices/`, `/support/`. | High |
 | E04 | `webapp/e2e/admin-gate.spec.ts` | Admin mobile overflow test covers only 390x844 and selected admin pages (`users`, `nodes`, `tickets`). | High |
-| E05 | `webapp/src/app/(dashboard)/admin/layout.tsx` | Admin layout uses full stacked sidebar/content/rail below 2xl; no compact admin drawer or mobile-first category nav. | High |
-| E06 | `webapp/src/app/(dashboard)/admin/users/page.tsx` | Users admin page has table/detail split at xl and table horizontal scroll; usable but not optimized for 320/360. | Medium |
+| E05 | `webapp/src/app/(admin)/admin/layout.tsx` | Admin layout uses full stacked sidebar/content/rail below 2xl; no compact admin drawer or mobile-first category nav. | High |
+| E06 | `webapp/src/app/(admin)/admin/users/page.tsx` | Users admin page has table/detail split at xl and table horizontal scroll; usable but not optimized for 320/360. | Medium |
 | E07 | `webapp/src/components/cabinet-shell.tsx` | Consumer cabinet has an xl sidebar, mobile drawer, Telegram-context bottom nav, and `overflow-x-hidden`. | High |
 | E08 | `marketing/src/app/globals.css` | Marketing has responsive breakpoints at 1180/980/780/560 and checkout grid collapses below 1180. | High |
 | E09 | `marketing/src/components/home/homepage.module.css` | Home v3 has breakpoints at 1280/960/720; no explicit 320/360 visual proof. | High |

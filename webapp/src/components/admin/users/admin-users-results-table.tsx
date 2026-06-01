@@ -1,7 +1,7 @@
 "use client";
 
 import { AdminBadge, AdminEmptyState, adminPanelClass, adminTableShellClass } from "@/components/admin/admin-shell";
-import { fmtRuDate } from "@/app/(dashboard)/admin/nav";
+import { fmtRuDate } from "@/lib/date-format";
 import {
   isManualTestUserLike,
   observerStateLabel,

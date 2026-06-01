@@ -182,10 +182,3 @@ export function findAdminNavCategory(path: string) {
   const activeItem = findAdminNavItem(path);
   return ADMIN_NAV_GROUPS.find((group) => group.id === activeItem.categoryId) || ADMIN_NAV_GROUPS[0];
 }
-
-export function fmtRuDate(value?: string | null): string {
-  if (!value) return "-";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "-";
-  return dt.toLocaleString("ru-RU");
-}

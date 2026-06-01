@@ -12,9 +12,9 @@ import {
   type AdminStartLinkRow,
   type CampaignLinksBuildResult,
 } from "@/lib/api";
+import { fmtRuDate } from "@/lib/date-format";
 import { Copy, ExternalLink, Link2, Loader2, PencilLine, Plus, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { fmtRuDate } from "../nav";
 
 type StartLinkDialog =
   | { kind: "create"; code: string; description: string; targetAction: string }

@@ -28,7 +28,7 @@ Implementation locks are advisory for this branch. Agents and the orchestrator m
 | W01 | `DESIGN.md`, `docs/design/*`, `shared/design-tokens.schema.json`, client design docs |
 | W02 | `marketing/src/lib/marketing-site.ts`, marketing SEO tests/docs |
 | W03 | `webapp/src/components/*`, cabinet responsive docs/tests |
-| W04 | `webapp/src/app/(dashboard)/admin/*`, admin operator docs/tests |
+| W04 | `webapp/src/app/(admin)/admin/*`, admin operator docs/tests |
 | W05 | backend API/payment contract docs and tests |
 | W06 | Lava.top provider docs/tests and runtime download smoke wrapper |
 | W07 | Android/Windows client release gates and client release docs |

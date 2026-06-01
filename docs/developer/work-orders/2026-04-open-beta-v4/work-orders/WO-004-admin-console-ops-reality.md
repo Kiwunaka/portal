@@ -5,7 +5,7 @@ Owner: W04
 
 ## Scope
 
-- `webapp/src/app/(dashboard)/admin/`.
+- `webapp/src/app/(admin)/admin/`.
 - Admin API contracts for users, payments, tickets, nodes, bonuses, metrics.
 - Payment provider status and blocked reason rendering.
 - Origin-separated node/probe status.

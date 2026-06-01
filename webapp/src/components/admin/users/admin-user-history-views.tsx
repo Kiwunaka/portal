@@ -1,7 +1,7 @@
 "use client";
 
 import { adminButtonClass, adminInsetPanelClass, adminTableShellClass } from "@/components/admin/admin-shell";
-import { fmtRuDate } from "@/app/(dashboard)/admin/nav";
+import { fmtRuDate } from "@/lib/date-format";
 import type { AdminAuditRow, AdminUserKeyHistoryRow } from "@/lib/api";
 import { actionLabel, historyBadgeClass } from "./admin-users-format";
 

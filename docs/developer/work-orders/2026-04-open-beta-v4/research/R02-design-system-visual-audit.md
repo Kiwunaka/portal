@@ -30,7 +30,7 @@ The second major risk is false visual evidence. Marketing still uses rendered pr
 | confirmed | Web public assets | `marketing/public/favicon.ico`, `apple-icon.png`, `opengraph-image.png`, `twitter-image.png` | Derived assets exist, but this pass did not decode them visually, so subtitle-free derivation is unproven. | P1 |
 | confirmed | Public copy integrity | `marketing/src/components/home/homepage.tsx` | Homepage contains mojibake in visible Russian strings. | P0 |
 | confirmed | Cabinet copy integrity | `webapp/src/components/cabinet-downloads-page.tsx`, `webapp/src/app/loading.tsx` | Downloads and loading copy contain visible mojibake. | P0 |
-| confirmed | Admin copy integrity | `webapp/src/app/(dashboard)/admin/network/page.tsx` | Admin network page includes mojibake; operator-only but still a visual QA and credibility issue. | P1 |
+| confirmed | Admin copy integrity | `webapp/src/app/(admin)/admin/network/page.tsx` | Admin network page includes mojibake; operator-only but still a visual QA and credibility issue. | P1 |
 | confirmed | Product scope | Canonical docs and client cutover docs | Public target remains Android + Windows; Apple is readiness-only. Android public release is blocked pending physical audit and signing. | P0 |
 | confirmed | Client visual language | `POKROV-app/packages/app_shell/lib/app_shell.dart` | App shell is English-first (`Protection`, `Locations`, `Rules`, `Profile`, `One tap`, `Protected`) while consumer beta copy is Russian-first. | P1 |
 | probable | Icon system | `webapp` package and globals | Webapp mixes `lucide-react` with Material Symbols; marketing has no icon library and relies on custom visuals/CSS. | P1 |

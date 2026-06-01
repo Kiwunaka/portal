@@ -320,7 +320,6 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [routeActivity, setRouteActivity] = useState(false);
-  const isAdminRoute = pathname.startsWith("/admin");
   const showActivity = refreshing || routeActivity;
 
   useEffect(() => {
@@ -627,7 +626,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
       {drawerOpen ? mobileMenu : null}
 
-      {!isAdminRoute && !drawerOpen ? (
+      {!drawerOpen ? (
         <nav
           className="mobile-nav-root lg:hidden"
           aria-label="Навигация кабинета"

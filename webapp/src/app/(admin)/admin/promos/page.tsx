@@ -11,10 +11,10 @@ import {
   type PromoSlotCatalogContent,
   type PromoSlotCatalogSlot,
 } from "@/lib/api";
+import { fmtRuDate } from "@/lib/date-format";
 import { getAccessMatrix, getPromoSlotsCatalog, getTariffPlans } from "@/lib/portal";
 import { Check, Copy, KeyRound, LayoutTemplate, RefreshCw, Save, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { fmtRuDate } from "../nav";
 
 const ACCESS_MATRIX = getAccessMatrix();
 const PROMO_CATALOG = getPromoSlotsCatalog();

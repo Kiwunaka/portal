@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
-import { fmtRuDate } from "@/app/(dashboard)/admin/nav";
+import { fmtRuDate } from "@/lib/date-format";
 import type { AdminPaymentOrder, AdminUserCard, AdminUserKey } from "@/lib/api";
 import {
   observerStateBadgeClass,
