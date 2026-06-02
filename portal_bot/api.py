@@ -54,6 +54,7 @@ from models import (
     ExternalPaymentEvent,
     FamilySlot,
     FeedbackEntry,
+    FunnelEvent,
     GiftCard,
     IncentiveCampaign,
     KeyActionHistory,
@@ -935,6 +936,18 @@ class EventIn(BaseModel):
     event_name: str = Field(min_length=2, max_length=64)
     source: str = Field(default="webapp", max_length=32)
     session_id: str | None = Field(default=None, max_length=64)
+    meta: dict[str, Any] | None = None
+
+
+class FunnelEventIn(BaseModel):
+    event_name: str = Field(min_length=2, max_length=64)
+    stage: str = Field(default="site_visit", max_length=64)
+    channel: str = Field(default="site", max_length=32)
+    source: str = Field(default="site", max_length=64)
+    session_id: str = Field(min_length=8, max_length=96)
+    path: str | None = Field(default=None, max_length=512)
+    referrer: str | None = Field(default=None, max_length=600)
+    campaign: str | None = Field(default=None, max_length=64)
     meta: dict[str, Any] | None = None
 
 
@@ -4671,6 +4684,42 @@ EVENT_WHITELIST = {
     "copy_used",
 }
 
+FUNNEL_EVENT_WHITELIST = {
+    "page_view",
+    "cta_click",
+    "install_opened",
+    "checkout_view",
+    "checkout_start",
+    "bot_open_intent",
+    "cabinet_open_intent",
+}
+
+FUNNEL_STAGE_WHITELIST = {
+    "site_visit",
+    "install_intent",
+    "cabinet_intent",
+    "bot_intent",
+    "checkout_view",
+    "checkout_start",
+}
+
+FUNNEL_CHANNEL_WHITELIST = {"site", "marketing", "checkout", "webapp", "bot"}
+
+
+def _clean_funnel_slug(value: object, *, default: str, max_len: int = 64) -> str:
+    raw = str(value or "").strip().lower()
+    raw = re.sub(r"[^a-z0-9_.:-]+", "_", raw)
+    raw = raw.strip("._:-")
+    return (raw or default)[:max_len]
+
+
+def _clean_public_text(value: object, *, max_len: int) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    raw = raw.replace("\x00", "")
+    return raw[:max_len]
+
 
 def _node_country_name(code: str) -> str:
     raw = (code or "").strip().lower()
@@ -6689,6 +6738,21 @@ async def admin_metrics_status(request: Request, x_telegram_init_data: str = Hea
         s.close()
 
 
+@app.get("/api/admin/funnel/summary")
+async def admin_funnel_summary(
+    x_telegram_init_data: str = Header(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default="", alias="to"),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    from_dt, to_dt = _admin_metrics_range(from_, to, max_days=90)
+    s = SessionLocal()
+    try:
+        return _admin_funnel_summary_payload(s=s, from_dt=from_dt, to_dt=to_dt)
+    finally:
+        s.close()
+
+
 def _parse_admin_datetime(value: str | None) -> datetime | None:
     raw = str(value or "").strip()
     if not raw:
@@ -6710,6 +6774,207 @@ def _admin_metrics_range(from_value: str | None, to_value: str | None, *, max_da
     from_dt = from_dt.replace(hour=0, minute=0, second=0, microsecond=0)
     to_dt = to_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
     return from_dt, to_dt
+
+
+def _pct(part: int, total: int) -> float:
+    if total <= 0:
+        return 0.0
+    return round(float(part) / float(total) * 100.0, 1)
+
+
+def _count_funnel_sessions(s, *, from_dt: datetime, to_dt: datetime, stages: set[str] | None = None, event_names: set[str] | None = None) -> int:
+    q = s.query(func.count(func.distinct(FunnelEvent.session_id))).filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
+    if stages:
+        q = q.filter(FunnelEvent.stage.in_(sorted(stages)))
+    if event_names:
+        q = q.filter(FunnelEvent.event_name.in_(sorted(event_names)))
+    return int(q.scalar() or 0)
+
+
+def _count_known_event_users(s, *, from_dt: datetime, to_dt: datetime, event_names: set[str]) -> int:
+    return int(
+        s.query(func.count(func.distinct(Event.tg_id)))
+        .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+        .filter(Event.event_name.in_(sorted(event_names)))
+        .scalar()
+        or 0
+    )
+
+
+def _count_pay_attempt_users(s, *, from_dt: datetime, to_dt: datetime, statuses: set[str] | None = None) -> int:
+    q = s.query(func.count(func.distinct(PayAttempt.tg_id))).filter(PayAttempt.started_at >= from_dt, PayAttempt.started_at <= to_dt)
+    if statuses:
+        q = q.filter(func.lower(func.coalesce(PayAttempt.status, "")).in_(sorted(statuses)))
+    return int(q.scalar() or 0)
+
+
+def _count_paid_external_orders(s, *, from_dt: datetime, to_dt: datetime) -> int:
+    return int(
+        s.query(func.count(func.distinct(ExternalOrder.order_id)))
+        .filter(ExternalOrder.paid_at.isnot(None), ExternalOrder.paid_at >= from_dt, ExternalOrder.paid_at <= to_dt)
+        .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
+        .scalar()
+        or 0
+    )
+
+
+def _funnel_stage_row(key: str, label: str, entered: int, reached_next: int) -> dict[str, Any]:
+    entered = max(0, int(entered or 0))
+    reached_next = max(0, int(reached_next or 0))
+    return {
+        "key": key,
+        "label": label,
+        "entered": entered,
+        "reached_next": reached_next,
+        "dropped": max(0, entered - reached_next),
+        "conversion_pct": _pct(reached_next, entered),
+    }
+
+
+def _source_bucket(rows: list[dict[str, Any]], source: str) -> dict[str, Any]:
+    for row in rows:
+        if row["source"] == source:
+            return row
+    row = {"source": source, "visitors": 0, "app_opens": 0, "checkouts": 0, "paid": 0, "connected": 0}
+    rows.append(row)
+    return row
+
+
+def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> dict[str, Any]:
+    visitors = _count_funnel_sessions(s, from_dt=from_dt, to_dt=to_dt, stages={"site_visit"})
+    site_app_intents = _count_funnel_sessions(
+        s,
+        from_dt=from_dt,
+        to_dt=to_dt,
+        stages={"install_intent", "cabinet_intent", "bot_intent"},
+    )
+    known_app_opens = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"opened_webapp", "deep_link_opened"})
+    app_opens = site_app_intents + known_app_opens
+
+    site_checkouts = _count_funnel_sessions(s, from_dt=from_dt, to_dt=to_dt, stages={"checkout_view", "checkout_start"})
+    known_checkout_events = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"clicked_pay", "pay_started"})
+    pay_attempts_started = _count_pay_attempt_users(s, from_dt=from_dt, to_dt=to_dt)
+    checkouts = site_checkouts + max(known_checkout_events, pay_attempts_started)
+
+    known_paid_events = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"paid", "renewed"})
+    paid_attempt_users = _count_pay_attempt_users(s, from_dt=from_dt, to_dt=to_dt, statuses={"paid"})
+    paid_external_orders = _count_paid_external_orders(s, from_dt=from_dt, to_dt=to_dt)
+    paid = max(known_paid_events, paid_attempt_users, paid_external_orders)
+
+    connected = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"connected_ok"})
+    stages = [
+        _funnel_stage_row("site_to_app", "Сайт → кабинет или бот", visitors, app_opens),
+        _funnel_stage_row("app_to_checkout", "Кабинет/бот → оплата", app_opens, checkouts),
+        _funnel_stage_row("checkout_to_paid", "Оплата → подтверждение", checkouts, paid),
+        _funnel_stage_row("paid_to_connected", "Оплачено → подключение", paid, connected),
+    ]
+
+    by_source: list[dict[str, Any]] = []
+    for source, count in (
+        s.query(FunnelEvent.source, func.count(func.distinct(FunnelEvent.session_id)))
+        .filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
+        .filter(FunnelEvent.stage == "site_visit")
+        .group_by(FunnelEvent.source)
+        .order_by(func.count(func.distinct(FunnelEvent.session_id)).desc())
+        .limit(20)
+        .all()
+    ):
+        _source_bucket(by_source, str(source or "unknown"))["visitors"] += int(count or 0)
+
+    for source, event_name, count in (
+        s.query(Event.source, Event.event_name, func.count(func.distinct(Event.tg_id)))
+        .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+        .filter(Event.event_name.in_(["opened_webapp", "deep_link_opened", "clicked_pay", "pay_started", "paid", "renewed", "connected_ok"]))
+        .group_by(Event.source, Event.event_name)
+        .all()
+    ):
+        bucket = _source_bucket(by_source, str(source or "unknown"))
+        name = str(event_name or "")
+        if name in {"opened_webapp", "deep_link_opened"}:
+            bucket["app_opens"] += int(count or 0)
+        elif name in {"clicked_pay", "pay_started"}:
+            bucket["checkouts"] += int(count or 0)
+        elif name in {"paid", "renewed"}:
+            bucket["paid"] += int(count or 0)
+        elif name == "connected_ok":
+            bucket["connected"] += int(count or 0)
+
+    for source, status, count in (
+        s.query(PayAttempt.source, PayAttempt.status, func.count(func.distinct(PayAttempt.tg_id)))
+        .filter(PayAttempt.started_at >= from_dt, PayAttempt.started_at <= to_dt)
+        .group_by(PayAttempt.source, PayAttempt.status)
+        .all()
+    ):
+        bucket = _source_bucket(by_source, str(source or "unknown"))
+        bucket["checkouts"] += int(count or 0)
+        if str(status or "").lower() == "paid":
+            bucket["paid"] += int(count or 0)
+
+    by_source.sort(key=lambda row: (row["visitors"] + row["app_opens"] + row["checkouts"] + row["paid"]), reverse=True)
+
+    recent_site = [
+        {
+            "kind": "site",
+            "created_at": _safe_iso(row.created_at),
+            "session_id": row.session_id,
+            "tg_id": row.tg_id,
+            "event_name": row.event_name,
+            "stage": row.stage,
+            "source": row.source,
+            "path": row.path,
+        }
+        for row in (
+            s.query(FunnelEvent)
+            .filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
+            .order_by(FunnelEvent.created_at.desc(), FunnelEvent.id.desc())
+            .limit(25)
+            .all()
+        )
+    ]
+    recent_known = [
+        {
+            "kind": "user",
+            "created_at": _safe_iso(row.created_at),
+            "session_id": row.session_id,
+            "tg_id": int(row.tg_id),
+            "event_name": row.event_name,
+            "stage": "",
+            "source": row.source,
+            "path": "",
+        }
+        for row in (
+            s.query(Event)
+            .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+            .order_by(Event.created_at.desc(), Event.id.desc())
+            .limit(25)
+            .all()
+        )
+    ]
+    recent = sorted(recent_site + recent_known, key=lambda row: str(row.get("created_at") or ""), reverse=True)[:40]
+
+    return {
+        "period": {"from": from_dt.date().isoformat(), "to": to_dt.date().isoformat()},
+        "totals": {
+            "visitors": visitors,
+            "app_opens": app_opens,
+            "checkouts": checkouts,
+            "paid": paid,
+            "connected": connected,
+        },
+        "stages": stages,
+        "drop_reasons": [
+            {"reason": "Ушли с сайта до кабинета или бота", "count": stages[0]["dropped"]},
+            {"reason": "Открыли кабинет/бот, но не начали оплату", "count": stages[1]["dropped"]},
+            {"reason": "Начали оплату, но подтверждение не пришло", "count": stages[2]["dropped"]},
+            {"reason": "Оплата есть, подключение не подтверждено событием", "count": stages[3]["dropped"]},
+        ],
+        "by_source": by_source[:20],
+        "recent": recent,
+        "notes": [
+            "Сайт считается по анонимным session_id без IP и user-agent.",
+            "Кабинет, бот и оплата считаются по известным пользовательским событиям и платежным попыткам.",
+        ],
+    }
 
 
 def _date_key(value: Any) -> str:
@@ -6947,6 +7212,52 @@ async def api_track_event(payload: EventIn, request: Request, x_telegram_init_da
         meta=payload.meta or {},
     )
     return {"ok": bool(event_id), "event_id": event_id}
+
+
+@app.post("/api/funnel/events")
+async def api_track_funnel_event(payload: FunnelEventIn) -> dict:
+    event_name = _clean_funnel_slug(payload.event_name, default="")
+    if event_name not in FUNNEL_EVENT_WHITELIST:
+        raise HTTPException(status_code=400, detail="Unsupported funnel event")
+    stage = _clean_funnel_slug(payload.stage, default="site_visit")
+    if stage not in FUNNEL_STAGE_WHITELIST:
+        raise HTTPException(status_code=400, detail="Unsupported funnel stage")
+    channel = _clean_funnel_slug(payload.channel, default="site", max_len=32)
+    if channel not in FUNNEL_CHANNEL_WHITELIST:
+        channel = "site"
+    source = _clean_funnel_slug(payload.source, default="unknown", max_len=64)
+    session_id = _clean_public_text(payload.session_id, max_len=96)
+    if len(session_id) < 8:
+        raise HTTPException(status_code=400, detail="Invalid session id")
+    meta_json = None
+    if payload.meta:
+        try:
+            meta_json = json.dumps(payload.meta, ensure_ascii=False, separators=(",", ":"))[:3800]
+        except Exception:
+            meta_json = None
+    row = FunnelEvent(
+        session_id=session_id,
+        channel=channel,
+        event_name=event_name,
+        stage=stage,
+        source=source,
+        path=_clean_public_text(payload.path, max_len=512) or None,
+        referrer=_clean_public_text(payload.referrer, max_len=600) or None,
+        campaign=_clean_funnel_slug(payload.campaign, default="", max_len=64) or None,
+        meta_json=meta_json,
+        created_at=_utcnow(),
+    )
+    s = SessionLocal()
+    try:
+        s.add(row)
+        s.commit()
+        event_id = int(row.id)
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    return {"ok": True, "event_id": event_id}
 
 
 @app.post("/api/connect/confirm")
@@ -11025,6 +11336,25 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
             )
             for n in rows
         ]
+    }
+
+
+@app.get("/api/admin/nodes/runtime")
+async def admin_nodes_runtime(
+    x_telegram_init_data: str = Header(default=""),
+    only: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    only_codes = [part.strip().lower() for part in str(only or "").split(",") if part.strip()]
+    panel = ControlPanel()
+    try:
+        rows = await panel.get_node_runtime_snapshots(node_codes=only_codes or None)
+    finally:
+        await panel.close()
+    return {
+        "ok": True,
+        "updated_at": _utcnow().isoformat(),
+        "nodes": [rows[key] for key in sorted(rows.keys())],
     }
 
 

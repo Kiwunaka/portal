@@ -8,11 +8,13 @@ import {
   adminNodeResync,
   adminNodesDrift,
   adminNodesHealth,
+  adminNodesRuntime,
   adminNodesSync,
   adminNodesTraffic,
   type AdminMetricsStatus,
   type AdminNodeDriftReport,
   type AdminNodeHealthRow,
+  type AdminNodeRuntimeRow,
   type AdminNodeTrafficRow,
 } from "@/lib/api";
 import { Activity, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
@@ -83,6 +85,12 @@ function formatDiskFree(value?: number | null): string {
 function formatMbps(value?: number | null, digits = 1): string {
   if (value == null || Number.isNaN(Number(value))) return "нет данных";
   return `${Number(value).toFixed(digits)} Mbps`;
+}
+
+function formatBytesPerSec(value?: number | null): string {
+  if (value == null || Number.isNaN(Number(value))) return "нет данных";
+  const mbps = (Number(value) * 8) / 1_000_000;
+  return `${mbps.toFixed(1)} Mbps`;
 }
 
 function scoreTone(score: number): { dotClass: string; badgeClass: string } {
@@ -197,6 +205,7 @@ function probeFailureCopy(kind?: string | null, stage?: string | null, message?:
 
 export default function AdminNodesPage() {
   const [nodes, setNodes] = useState<AdminNodeHealthRow[]>([]);
+  const [runtime, setRuntime] = useState<AdminNodeRuntimeRow[]>([]);
   const [traffic, setTraffic] = useState<AdminNodeTrafficRow[]>([]);
   const [status, setStatus] = useState<AdminMetricsStatus | null>(null);
   const [drift, setDrift] = useState<AdminNodeDriftReport | null>(null);
@@ -236,6 +245,9 @@ export default function AdminNodesPage() {
       setNodes(healthRows);
       setStatus(metricsStatus);
       setTraffic(trafficRows);
+      adminNodesRuntime()
+        .then(setRuntime)
+        .catch(() => setRuntime([]));
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось загрузить данные по нодам."));
     }
@@ -362,6 +374,80 @@ export default function AdminNodesPage() {
             ))}
           </div>
         ) : null}
+      </div>
+
+      <div className="glass-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-display text-xl font-bold">Живой снимок панелей</h3>
+            <p className="text-xs text-slate-500">3x-ui показывает только runtime: авторизация панели, отклик, онлайн и inbound. Тарифы и доступ остаются в POKROV.</p>
+          </div>
+          <span className="badge badge-info">{runtime.length ? `нод: ${runtime.length}` : "ожидаем данные"}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-[0.1em] text-slate-500">
+                <th className="px-3 py-2.5">Нода</th>
+                <th className="px-3 py-2.5">Панель</th>
+                <th className="px-3 py-2.5">Отклик</th>
+                <th className="px-3 py-2.5">Онлайн</th>
+                <th className="px-3 py-2.5">Inbound</th>
+                <th className="px-3 py-2.5">Система</th>
+                <th className="px-3 py-2.5">Ошибка</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runtime.map((row, index) => {
+                const inbound = row.inbound;
+                const system = row.system || {};
+                return (
+                  <tr key={row.node_code} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
+                    <td className="px-3 py-3 font-semibold">{String(row.node_code || "").toUpperCase()}</td>
+                    <td className="px-3 py-3">
+                      <span className={`badge ${row.panel_auth_ok ? "badge-success" : "badge-danger"}`}>{row.panel_auth_ok ? "доступ есть" : "нет доступа"}</span>
+                      <div className="mt-1 text-xs text-slate-500">{row.api_token_mode ? "API token" : row.csrf_mode ? "CSRF" : "cookie"}</div>
+                    </td>
+                    <td className="px-3 py-3">{row.panel_latency_ms != null ? `${row.panel_latency_ms} ms` : "нет данных"}</td>
+                    <td className="px-3 py-3">
+                      <div>{Number(row.online?.online_keys_now || 0)} ключей</div>
+                      <div className="text-xs text-slate-500">{Number(row.online?.online_connections_now || 0)} подключений</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      {inbound ? (
+                        <div>
+                          <div className="font-medium">
+                            #{inbound.inbound_id ?? row.expected_inbound_id ?? "?"} · {inbound.protocol || "protocol?"} · {inbound.port || "port?"}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {inbound.network || "network?"} / {inbound.security || "security?"}
+                            {inbound.server_names?.length ? ` · SNI ${inbound.server_names.slice(0, 2).join(", ")}` : ""}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">не найден</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div>CPU {formatPercent(system.cpu_percent, 0)}</div>
+                      <div className="text-xs text-slate-500">
+                        ↓ {formatBytesPerSec(system.network_rx_bytes_per_sec)} · ↑ {formatBytesPerSec(system.network_tx_bytes_per_sec)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-xs text-rose-500">{row.error || "—"}</td>
+                  </tr>
+                );
+              })}
+              {runtime.length === 0 ? (
+                <tr>
+                  <td className="px-3 py-4 text-sm text-slate-500" colSpan={7}>
+                    Live runtime ещё не загрузился или панели недоступны.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {drift ? (

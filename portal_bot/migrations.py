@@ -734,6 +734,35 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(
             text(
                 """
+                CREATE TABLE IF NOT EXISTS funnel_events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  session_id VARCHAR(96) NOT NULL,
+                  tg_id BIGINT,
+                  channel VARCHAR(32) NOT NULL DEFAULT 'site',
+                  event_name VARCHAR(64) NOT NULL,
+                  stage VARCHAR(64) NOT NULL,
+                  source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+                  path VARCHAR(512),
+                  referrer VARCHAR(600),
+                  campaign VARCHAR(64),
+                  meta_json VARCHAR(4000),
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_session_id ON funnel_events(session_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_tg_id ON funnel_events(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_channel ON funnel_events(channel);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_event_name ON funnel_events(event_name);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_stage ON funnel_events(stage);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_source ON funnel_events(source);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_created_at ON funnel_events(created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_stage_created ON funnel_events(stage, created_at);"))
+
+        conn.execute(
+            text(
+                """
                 CREATE TABLE IF NOT EXISTS observer_batches (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   node_id INTEGER NOT NULL,
@@ -1479,6 +1508,34 @@ def _run_postgres_migrations(engine: Engine) -> None:
         # Multi-column indexes from P0.
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS funnel_events (
+                  id SERIAL PRIMARY KEY,
+                  session_id VARCHAR(96) NOT NULL,
+                  tg_id BIGINT,
+                  channel VARCHAR(32) NOT NULL DEFAULT 'site',
+                  event_name VARCHAR(64) NOT NULL,
+                  stage VARCHAR(64) NOT NULL,
+                  source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+                  path VARCHAR(512),
+                  referrer VARCHAR(600),
+                  campaign VARCHAR(64),
+                  meta_json VARCHAR(4000),
+                  created_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_session_id ON funnel_events(session_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_tg_id ON funnel_events(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_channel ON funnel_events(channel);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_event_name ON funnel_events(event_name);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_stage ON funnel_events(stage);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_source ON funnel_events(source);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_created_at ON funnel_events(created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_stage_created ON funnel_events(stage, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_tg_status_started ON pay_attempts(tg_id, status, started_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_offers_tg_status_exp ON offers(tg_id, status, expires_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_exp_created ON points_ledger(tg_id, expires_at, created_at);"))

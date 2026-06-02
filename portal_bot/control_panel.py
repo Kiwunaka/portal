@@ -351,6 +351,59 @@ class ControlPanel:
             out[str(code)] = dict(summary or {})
         return out
 
+    async def get_node_runtime_snapshots(self, *, node_codes: list[str] | None = None) -> dict[str, dict]:
+        nodes = await self.refresh()
+        selected_nodes: list = []
+        seen: set[str] = set()
+        if node_codes:
+            groups = self._requested_node_groups(nodes, node_codes)
+            for _group_key, candidates in groups:
+                for n in candidates:
+                    code = str(getattr(n, "code", "") or "").strip()
+                    if not code or code in seen:
+                        continue
+                    seen.add(code)
+                    selected_nodes.append(n)
+        else:
+            selected_nodes = list(nodes)
+
+        semaphore = asyncio.Semaphore(max(1, int(self._concurrency or 1)))
+
+        async def _collect(node):
+            code = str(getattr(node, "code", "") or "").strip()
+            if not code:
+                return None
+            async with semaphore:
+                try:
+                    snapshot = await self._clients[code].get_node_runtime_snapshot()
+                except Exception as exc:
+                    snapshot = {
+                        "node_code": code,
+                        "panel_auth_ok": False,
+                        "panel_latency_ms": None,
+                        "csrf_mode": False,
+                        "api_token_mode": False,
+                        "error": str(exc)[:300],
+                        "server_status": None,
+                        "system": {},
+                        "inbound": None,
+                        "online": {"online_keys_now": 0, "online_connections_now": 0},
+                    }
+                snapshot["node_name"] = str(getattr(node, "name", "") or "")
+                snapshot["node_host"] = str(getattr(node, "host", "") or "")
+                snapshot["node_enabled"] = bool(getattr(node, "enabled", True))
+                snapshot["expected_inbound_id"] = int(getattr(node, "inbound_id", 0) or 0)
+                return code, snapshot
+
+        rows = await asyncio.gather(*[_collect(n) for n in selected_nodes], return_exceptions=False)
+        out: dict[str, dict] = {}
+        for row in rows:
+            if not row:
+                continue
+            code, snapshot = row
+            out[str(code)] = dict(snapshot or {})
+        return out
+
     async def _resolve_target_node(self, node_code: str):
         wanted = str(node_code or "").strip().lower()
         if not wanted:

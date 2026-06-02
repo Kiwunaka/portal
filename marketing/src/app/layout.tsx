@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 
 import JsonLd from "../components/json-ld";
+import FunnelTracker from "../components/funnel-tracker";
 import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <JsonLd data={buildOrganizationJsonLd()} />
         <JsonLd data={buildWebSiteJsonLd()} />
+        <FunnelTracker />
         {children}
       </body>
     </html>

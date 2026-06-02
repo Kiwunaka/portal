@@ -384,6 +384,13 @@ Dashboard and user-cabinet traffic visibility must come from server-side node ru
 - the cabinet/admin subscription-sharing proxy metric should be described as an estimate, not a people counter: it is derived from live IP activity and capped by recent unique IP evidence so operators can distinguish likely people-sharing from raw connection fan-out
 - app device records remain useful, but they are a separate app-first visibility layer and must not be shown as the only source of "connected devices"
 
+Admin funnel visibility uses two data families:
+
+- anonymous public-site events in `funnel_events` for page entry and CTA intent, stored without IP address or user-agent retention
+- known user and payment events from `events`, `pay_attempts`, and `external_orders` for cabinet/bot open, checkout start, paid confirmation, and connection confirmation
+
+This funnel is an operator diagnosis surface for “where did people stop?” and must not replace signed payment callbacks, fulfillment records, or Postgres entitlement truth.
+
 Required external geography check:
 
 - run an RU-based external probe every `6 hours`

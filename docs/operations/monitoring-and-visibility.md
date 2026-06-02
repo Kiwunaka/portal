@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-04-25
+Last updated: 2026-06-02
 
 ## Document Status
 
@@ -259,6 +259,15 @@ Operational rule:
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
 - newly enabled delivery nodes must be verified with both subscription output and panel `active_clients`; database `user_nodes` mappings alone do not prove the clients exist on the 3x-ui inbound
 
+Runtime telemetry wave `2026-06-02`:
+
+- `/api/admin/nodes/runtime` is a read-only live panel snapshot for operator diagnosis: panel auth result, panel latency, auth mode indicator, current online counts, server status, and managed inbound details
+- runtime panel fields must be labeled as execution confirmation only; they must not override Postgres truth for tariff, trial, premium/free access, subscription status, or user entitlement
+- a failed runtime snapshot for one node must not hide database health or metrics freshness for other nodes; admin UI should show partial results and the failing node error
+- `/api/funnel/events` stores anonymous marketing-site funnel events in `funnel_events` without IP address or user-agent retention
+- `/api/admin/funnel/summary` combines anonymous site events with known `events`, `pay_attempts`, and `external_orders` to show the operator path: site entry, cabinet/bot open, checkout start, paid confirmation, and connection confirmation
+- funnel counts are operational direction signals, not billing reconciliation; paid truth still comes from signed provider callbacks and fulfillment records
+
 Primary repository touchpoints:
 
 - `scripts/collect_node_metrics.py`
@@ -271,6 +280,9 @@ Primary repository touchpoints:
 - `infra/portal-node-observer.timer`
 - `/api/admin/metrics/status`
 - `/api/admin/nodes/health`
+- `/api/admin/nodes/runtime`
+- `/api/admin/funnel/summary`
+- `/api/funnel/events`
 - `/api/internal/observer/batches`
 
 Observer-lite rollout rule:

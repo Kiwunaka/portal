@@ -467,6 +467,57 @@ class PanelClient:
             "network_tx_bytes_per_sec": net_tx_bytes_per_sec,
         }
 
+    async def get_node_runtime_snapshot(self) -> dict:
+        """
+        Read-only runtime telemetry from the node panel.
+
+        3x-ui remains an execution layer; this snapshot is intentionally
+        best-effort and must not become subscription/source-of-truth data.
+        """
+        started = time.monotonic()
+        auth_ok = False
+        error = ""
+        status: dict | None = None
+        metrics: dict[str, float | int | None] = {}
+        inbound: dict | None = None
+        online: dict[str, int] = {"online_keys_now": 0, "online_connections_now": 0}
+        try:
+            auth_ok = await self.login()
+            auth_latency_ms = int(round((time.monotonic() - started) * 1000))
+            if not auth_ok:
+                return {
+                    "node_code": str(getattr(self.node, "code", "") or ""),
+                    "panel_auth_ok": False,
+                    "panel_latency_ms": auth_latency_ms,
+                    "csrf_mode": bool(self.csrf_token),
+                    "api_token_mode": bool(self._env("PANEL_API_TOKEN")),
+                    "error": "panel auth failed",
+                    "server_status": None,
+                    "system": {},
+                    "inbound": None,
+                    "online": online,
+                }
+            status = await self.get_server_status()
+            metrics = await self.get_system_metrics()
+            inbound = await self.get_inbound_snapshot()
+            online = await self.get_node_online_summary()
+            auth_latency_ms = int(round((time.monotonic() - started) * 1000))
+        except Exception as exc:
+            auth_latency_ms = int(round((time.monotonic() - started) * 1000))
+            error = str(exc)[:300]
+        return {
+            "node_code": str(getattr(self.node, "code", "") or ""),
+            "panel_auth_ok": bool(auth_ok),
+            "panel_latency_ms": auth_latency_ms,
+            "csrf_mode": bool(self.csrf_token),
+            "api_token_mode": bool(self._env("PANEL_API_TOKEN")),
+            "error": error,
+            "server_status": status or None,
+            "system": metrics or {},
+            "inbound": inbound,
+            "online": online or {"online_keys_now": 0, "online_connections_now": 0},
+        }
+
     async def get_inbound_snapshot(self, inbound_id: int | None = None) -> dict | None:
         target_id = int(inbound_id or self.node.inbound_id or 0)
         if target_id <= 0:

@@ -1092,6 +1092,88 @@ export type AdminMetricsTimeseries = {
   points: AdminMetricsPoint[];
 };
 
+export type AdminFunnelStage = {
+  key: string;
+  label: string;
+  entered: number;
+  reached_next: number;
+  dropped: number;
+  conversion_pct: number;
+};
+
+export type AdminFunnelSource = {
+  source: string;
+  visitors: number;
+  app_opens: number;
+  checkouts: number;
+  paid: number;
+  connected: number;
+};
+
+export type AdminFunnelRecentEvent = {
+  kind: "site" | "user" | string;
+  created_at?: string | null;
+  session_id?: string | null;
+  tg_id?: number | null;
+  event_name: string;
+  stage?: string | null;
+  source: string;
+  path?: string | null;
+};
+
+export type AdminFunnelSummary = {
+  period: { from: string; to: string };
+  totals: {
+    visitors: number;
+    app_opens: number;
+    checkouts: number;
+    paid: number;
+    connected: number;
+  };
+  stages: AdminFunnelStage[];
+  by_source: AdminFunnelSource[];
+  drop_reasons: Array<{ reason: string; count: number }>;
+  recent: AdminFunnelRecentEvent[];
+  notes: string[];
+};
+
+export type AdminNodeRuntimeRow = {
+  node_code: string;
+  node_name?: string;
+  node_host?: string;
+  node_enabled?: boolean;
+  expected_inbound_id?: number;
+  panel_auth_ok: boolean;
+  panel_latency_ms?: number | null;
+  csrf_mode: boolean;
+  api_token_mode: boolean;
+  error?: string;
+  system?: {
+    cpu_percent?: number | null;
+    memory_used_mb?: number | null;
+    memory_total_mb?: number | null;
+    disk_used_gb?: number | null;
+    disk_total_gb?: number | null;
+    network_rx_bytes_per_sec?: number | null;
+    network_tx_bytes_per_sec?: number | null;
+  };
+  inbound?: {
+    inbound_id?: number;
+    enable?: boolean;
+    port?: number;
+    protocol?: string;
+    network?: string;
+    security?: string;
+    dest?: string;
+    server_names?: string[];
+    short_ids?: string[];
+  } | null;
+  online?: {
+    online_keys_now?: number;
+    online_connections_now?: number;
+  };
+};
+
 export type AdminNodeTrafficRow = {
   date: string;
   node_code: string;
@@ -3217,6 +3299,22 @@ export function adminMetricsTimeseries(params?: { from?: string; to?: string }):
   if (params?.to) qs.set("to", params.to);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<AdminMetricsTimeseries>(`/api/admin/metrics/timeseries${suffix}`);
+}
+
+export function adminFunnelSummary(params?: { from?: string; to?: string }): Promise<AdminFunnelSummary> {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<AdminFunnelSummary>(`/api/admin/funnel/summary${suffix}`);
+}
+
+export async function adminNodesRuntime(params?: { only?: string[] }): Promise<AdminNodeRuntimeRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.only?.length) qs.set("only", params.only.join(","));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const data = await apiFetch<{ nodes: AdminNodeRuntimeRow[] }>(`/api/admin/nodes/runtime${suffix}`);
+  return Array.isArray(data.nodes) ? data.nodes : [];
 }
 
 export async function adminNodesTraffic(params?: { from?: string; to?: string }): Promise<AdminNodeTrafficRow[]> {

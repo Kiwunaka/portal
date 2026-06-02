@@ -438,6 +438,23 @@ class Event(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class FunnelEvent(Base):
+    __tablename__ = "funnel_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(96), index=True, nullable=False)
+    tg_id = Column(BigInteger, index=True, nullable=True)
+    channel = Column(String(32), index=True, default="site", nullable=False)
+    event_name = Column(String(64), index=True, nullable=False)
+    stage = Column(String(64), index=True, nullable=False)
+    source = Column(String(64), index=True, default="unknown", nullable=False)
+    path = Column(String(512), nullable=True)
+    referrer = Column(String(600), nullable=True)
+    campaign = Column(String(64), nullable=True)
+    meta_json = Column(String(4000), nullable=True)
+    created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+
+
 class ObserverBatch(Base):
     __tablename__ = "observer_batches"
     __table_args__ = (UniqueConstraint("node_id", "batch_id", name="uq_observer_batches_node_batch"),)

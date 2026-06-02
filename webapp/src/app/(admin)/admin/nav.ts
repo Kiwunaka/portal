@@ -88,6 +88,14 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     match: (path) => path === "/admin" || path.startsWith("/admin/dashboard"),
   },
   {
+    href: "/admin/funnel",
+    label: "Воронка",
+    icon: "route",
+    summary: "Кто пришел, где открыл кабинет или бот и на каком шаге остановился.",
+    categoryId: "diagnostics",
+    match: (path) => path.startsWith("/admin/funnel"),
+  },
+  {
     href: "/admin/release",
     label: "Релиз",
     icon: "rocket_launch",
