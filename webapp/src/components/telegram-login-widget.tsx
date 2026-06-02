@@ -67,11 +67,16 @@ export default function TelegramLoginWidget({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    let cancelled = false;
     host.innerHTML = "";
     if (!legacyWidget) {
-      setWidgetHint("");
+      queueMicrotask(() => {
+        if (!cancelled) setWidgetHint("");
+      });
       delete window.onTelegramAuth;
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     if (isLocalHost) {
@@ -115,6 +120,7 @@ export default function TelegramLoginWidget({
     }, 4500);
 
     return () => {
+      cancelled = true;
       window.clearTimeout(warnTimer);
       host.innerHTML = "";
       delete window.onTelegramAuth;

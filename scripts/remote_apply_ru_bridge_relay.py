@@ -196,16 +196,27 @@ def build_bridge_xray_config(
         else:
             allowed_domains.append(host)
 
-    allow_rule: dict[str, Any] = {
-        "type": "field",
-        "inboundTag": [BRIDGE_INBOUND_TAG],
-        "port": "443",
-        "outboundTag": BRIDGE_ALLOW_TAG,
-    }
-    if allowed_ips:
-        allow_rule["ip"] = allowed_ips
+    allow_rules: list[dict[str, Any]] = []
     if allowed_domains:
-        allow_rule["domain"] = allowed_domains
+        allow_rules.append(
+            {
+                "type": "field",
+                "inboundTag": [BRIDGE_INBOUND_TAG],
+                "port": "443",
+                "domain": allowed_domains,
+                "outboundTag": BRIDGE_ALLOW_TAG,
+            }
+        )
+    if allowed_ips:
+        allow_rules.append(
+            {
+                "type": "field",
+                "inboundTag": [BRIDGE_INBOUND_TAG],
+                "port": "443",
+                "ip": allowed_ips,
+                "outboundTag": BRIDGE_ALLOW_TAG,
+            }
+        )
 
     return {
         "log": {"loglevel": "warning"},
@@ -237,7 +248,7 @@ def build_bridge_xray_config(
         "routing": {
             "domainStrategy": "AsIs",
             "rules": [
-                allow_rule,
+                *allow_rules,
                 {"type": "field", "inboundTag": [BRIDGE_INBOUND_TAG], "outboundTag": BRIDGE_BLOCK_TAG},
             ],
         },

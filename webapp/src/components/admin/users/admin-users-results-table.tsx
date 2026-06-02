@@ -86,7 +86,7 @@ export function AdminUsersResultsTable({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Результаты</p>
-          <p className="mt-1 text-sm font-semibold text-slate-50" aria-live="polite">
+          <p className="mt-1 text-sm font-semibold text-slate-900" aria-live="polite">
             {loading
               ? "Обновляем список пользователей."
               : rows.length
@@ -107,7 +107,7 @@ export function AdminUsersResultsTable({
         <div className="max-h-[62vh] overflow-x-auto overflow-y-auto">
           <table className="min-w-[900px] text-sm">
             <thead className="sticky top-0 z-[1]">
-              <tr className="border-b border-[#22303c] bg-[#101821] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <th className="px-3 py-3">ID</th>
                 <th className="px-3 py-3">Observer</th>
                 <th className="px-3 py-3">User</th>
@@ -124,11 +124,11 @@ export function AdminUsersResultsTable({
                 rows.map((row) => (
                   <tr
                     key={`summary-${row.tg_id}`}
-                    className={`cursor-pointer border-t border-[#22303c] align-top transition hover:bg-[#111922] ${
+                    className={`cursor-pointer border-t border-slate-200 align-top transition hover:bg-emerald-50/45 ${
                       row.tg_id === selectedTgId
-                        ? "bg-[#18222b] text-white"
+                        ? "bg-emerald-50/80 text-emerald-950"
                         : isManualTestUserLike(row)
-                          ? "bg-sky-950/20"
+                          ? "bg-sky-50/80"
                           : ""
                     }`}
                     onClick={() => onSelect(row.tg_id)}
@@ -139,7 +139,7 @@ export function AdminUsersResultsTable({
                     </td>
                     <td className="px-3 py-3">
                       <div className="font-medium">{row.display_name || row.username || "Без имени"}</div>
-                      <div className={`mt-1 text-xs ${row.tg_id === selectedTgId ? "text-white/70" : "text-slate-500"}`}>
+                      <div className={`mt-1 text-xs ${row.tg_id === selectedTgId ? "text-emerald-800" : "text-slate-500"}`}>
                         {row.username ? `@${row.username}` : "без username"}
                         {row.linked_telegram_username ? ` · linked @${row.linked_telegram_username}` : ""}
                         {row.app_install_id ? ` · app ${row.app_install_id}` : ""}
@@ -152,7 +152,7 @@ export function AdminUsersResultsTable({
                       <AdminBadge>{originLabel(row.origin)}</AdminBadge>
                     </td>
                     <td className="px-3 py-3">{row.sub_type || "-"}</td>
-                    <td className={`px-3 py-3 text-xs ${row.tg_id === selectedTgId ? "text-white/70" : "text-slate-400"}`}>
+                    <td className={`px-3 py-3 text-xs ${row.tg_id === selectedTgId ? "text-emerald-800" : "text-slate-500"}`}>
                       {fmtRuDate(row.expiry_at)}
                     </td>
                   </tr>

@@ -159,6 +159,7 @@ from network_rollout import (
     load_network_rollout_config,
     normalized_network_rollout_config,
     ru_bridge_relay_config,
+    ru_bridge_relay_enabled,
     resolved_client_policy,
     transport_node_allowlist,
     transport_node_exclusions,
@@ -11644,6 +11645,7 @@ def _managed_manifest_payload(
             nodes=nodes,
             title=title,
             transport_profile=transport_profile,
+            rollout_config=effective_rollout_config,
         ),
     )
 
@@ -11817,23 +11819,42 @@ def _singbox_multi_node_config(
     nodes: list,
     title: str,
     transport_profile: str = LEGACY_REALITY_FALLBACK,
+    rollout_config: dict[str, Any] | None = None,
 ) -> dict:
     outbounds = []
     selector_opts = []
     selector_tag = "🌍 Страны"
+    bridge_enabled = bool(rollout_config and ru_bridge_relay_enabled(rollout_config))
+    bridge_tag = "POKROV мост"
+    bridge_excluded_codes = set(transport_node_exclusions(rollout_config or {}, RU_BRIDGE_RELAY)) if bridge_enabled else set()
+
+    def bridge_excluded(node: Any) -> bool:
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        base = _node_code_base(code)
+        return code in bridge_excluded_codes or base in bridge_excluded_codes
+
     for n in nodes:
         tag = _node_label_ru(getattr(n, "code", ""), getattr(n, "name", ""))
         selector_opts.append(tag)
-        outbounds.append(
-            _node_outbound_from_transport_profile(
-                user_uuid=user_uuid,
-                node=n,
-                tag=tag,
-                transport_profile=transport_profile,
-            )
+        direct_outbound = _node_outbound_from_transport_profile(
+            user_uuid=user_uuid,
+            node=n,
+            tag=tag,
+            transport_profile=transport_profile,
         )
+        outbounds.append(direct_outbound)
+
+        if bridge_enabled and not bridge_excluded(n):
+            bridge_node_tag = f"{tag} · Белые списки"
+            bridged_outbound = dict(direct_outbound)
+            bridged_outbound["tag"] = bridge_node_tag
+            bridged_outbound["detour"] = bridge_tag
+            outbounds.append(bridged_outbound)
+            selector_opts.append(bridge_node_tag)
 
     selector_default = selector_opts[0] if selector_opts else "direct"
+    if bridge_enabled:
+        outbounds.append(_ru_bridge_outbound(user_uuid=user_uuid, rollout_config=rollout_config or {}, tag=bridge_tag))
     outbounds.extend(
         [
             {
@@ -11847,6 +11868,10 @@ def _singbox_multi_node_config(
             {"type": "dns", "tag": "dns-out"},
         ]
     )
+
+    meta: dict[str, Any] = {"title": title}
+    if bridge_enabled:
+        meta["ru_bridge"] = {"enabled": True, "excluded_node_codes": sorted(bridge_excluded_codes)}
 
     return {
         "log": {"level": "warn", "timestamp": True},
@@ -11867,7 +11892,7 @@ def _singbox_multi_node_config(
         "experimental": {
             "cache_file": {"enabled": True},
         },
-        "_meta": {"title": title},
+        "_meta": meta,
     }
 
 
@@ -12466,6 +12491,7 @@ async def subscription(token: str, request: Request, format: str = Query(default
                 nodes=smart_nodes_for_user,
                 title="POKROV",
                 transport_profile=smart_transport_profile,
+                rollout_config=rollout_config,
             )
         )
         headers["Content-Disposition"] = 'attachment; filename="POKROV.json"'

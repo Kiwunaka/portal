@@ -34,7 +34,7 @@ export function AdminUserKeyPolicyEditor({
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-50">Keys and per-node policy</p>
+          <p className="text-sm font-semibold text-slate-900">Keys and per-node policy</p>
           <p className="mt-1 text-xs leading-5 text-slate-400">Use this to toggle keys, reset traffic, resync sub IDs, and apply traffic policy without leaving the selected account.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>
@@ -51,7 +51,7 @@ export function AdminUserKeyPolicyEditor({
             <div key={key.node_code} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-slate-50">
+                  <p className="font-semibold text-slate-900">
                     {key.node_name || key.node_code}
                     <span className="ml-2 text-xs text-slate-500">{key.node_code}</span>
                   </p>

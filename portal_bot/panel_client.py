@@ -95,6 +95,7 @@ class PanelClient:
     node: NodeRuntime
     session: aiohttp.ClientSession | None = None
     cookies: aiohttp.CookieJar | None = None
+    csrf_token: str | None = None
 
     def _env_name(self, suffix: str) -> str:
         import re
@@ -289,13 +290,50 @@ class PanelClient:
 
     async def ensure_session(self) -> None:
         if self.session is None:
-            self.session = aiohttp.ClientSession()
+            self.session = aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True))
 
     async def close(self) -> None:
         if self.session is not None:
             await self.session.close()
             self.session = None
             self.cookies = None
+            self.csrf_token = None
+
+    async def _refresh_csrf_token(self) -> bool:
+        """
+        3x-ui 3.x requires CSRF on unsafe session-authenticated requests.
+        Older x-ui/3x-ui builds do not expose this endpoint, so absence is not
+        an error and the caller falls back to the legacy cookie flow.
+        """
+        await self.ensure_session()
+        try:
+            async with self.session.get(
+                f"{self._base()}/csrf-token",
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=15),
+            ) as resp:
+                if resp.cookies:
+                    self.cookies = resp.cookies
+                if resp.status != 200:
+                    return False
+                data = await resp.json(content_type=None)
+        except Exception:
+            return False
+
+        if not isinstance(data, dict):
+            return False
+        token = data.get("obj") or data.get("csrfToken") or data.get("csrf_token") or data.get("token")
+        if not token:
+            return False
+        self.csrf_token = str(token)
+        return True
+
+    async def _csrf_headers(self, *, refresh: bool = True) -> dict[str, str]:
+        if refresh and not self.csrf_token:
+            await self._refresh_csrf_token()
+        if not self.csrf_token:
+            return {}
+        return {"X-CSRF-Token": self.csrf_token}
 
     async def login(self) -> bool:
         await self.ensure_session()
@@ -305,15 +343,19 @@ class PanelClient:
             logger.warning("panel credentials missing for node=%s (set %s/%s)", self.node.code, self._env_name("PANEL_USER"), self._env_name("PANEL_PASS"))
             return False
         try:
+            await self._refresh_csrf_token()
             async with self.session.post(
                 f"{self._base()}/login",
                 data={"username": user, "password": pwd},
+                headers=await self._csrf_headers(refresh=False),
+                cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as resp:
                 if resp.status != 200:
                     logger.warning("panel login failed (status=%s) node=%s", resp.status, self.node.code)
                     return False
-                self.cookies = resp.cookies
+                if resp.cookies:
+                    self.cookies = resp.cookies
                 return True
         except Exception as e:
             logger.exception("panel login error node=%s: %s", self.node.code, e)
@@ -734,6 +776,7 @@ class PanelClient:
             async with self.session.post(
                 f"{self._base()}/panel/api/inbounds/addClient",
                 json=payload,
+                headers=await self._csrf_headers(),
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
@@ -793,6 +836,7 @@ class PanelClient:
             async with self.session.post(
                 f"{self._base()}/panel/api/inbounds/updateClient/{updated['id']}",
                 json=payload,
+                headers=await self._csrf_headers(),
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
@@ -828,6 +872,7 @@ class PanelClient:
             try:
                 async with self.session.post(
                     f"{self._base()}{path}",
+                    headers=await self._csrf_headers(),
                     cookies=self.cookies,
                     timeout=aiohttp.ClientTimeout(total=20),
                 ) as resp:
@@ -881,6 +926,7 @@ class PanelClient:
             async with self.session.post(
                 f"{self._base()}/panel/api/inbounds/updateClient/{updated['id']}",
                 json=payload,
+                headers=await self._csrf_headers(),
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
@@ -914,6 +960,7 @@ class PanelClient:
         try:
             async with self.session.post(
                 f"{self._base()}/panel/api/inbounds/{int(inbound_id)}/delClient/{client_uuid}",
+                headers=await self._csrf_headers(),
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
@@ -1100,6 +1147,7 @@ class PanelClient:
             try:
                 async with self.session.post(
                     f"{self._base()}/panel/api/inbounds/{inbound_id}/delClient/{client_uuid}",
+                    headers=await self._csrf_headers(),
                     cookies=self.cookies,
                     timeout=aiohttp.ClientTimeout(total=20),
                 ) as resp:

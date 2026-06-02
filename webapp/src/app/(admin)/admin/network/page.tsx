@@ -130,7 +130,7 @@ export default function AdminNetworkPage() {
             <Route size={22} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold text-slate-50">Сеть и rollout</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Сеть и rollout</h2>
             <p className="mt-1 text-xs leading-5 text-slate-400">
               Здесь редактируется `network_rollout_config`: default transport profile, cohort/carrier overrides и operator lab allowlist.
             </p>
@@ -160,12 +160,12 @@ export default function AdminNetworkPage() {
 
           {loading ? (
             <div className="mb-3 grid gap-2" aria-busy="true" aria-live="polite">
-              <div className="h-3 w-44 animate-pulse rounded-full bg-slate-700" />
-              <div className="h-3 w-64 animate-pulse rounded-full bg-slate-800" />
+              <div className="h-3 w-44 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-64 animate-pulse rounded-full bg-slate-200" />
             </div>
           ) : null}
-          {error ? <p className="mb-3 text-sm text-rose-300">{error}</p> : null}
-          {notice ? <p className="mb-3 text-sm text-emerald-300">{notice}</p> : null}
+          {error ? <p className="mb-3 text-sm font-medium text-rose-700">{error}</p> : null}
+          {notice ? <p className="mb-3 text-sm font-medium text-emerald-700">{notice}</p> : null}
 
           <textarea
             className={`${adminTextAreaClass} min-h-[520px] font-mono text-[12px] leading-5`}
@@ -177,25 +177,25 @@ export default function AdminNetworkPage() {
 
         <aside className="space-y-4">
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-50">Сводка</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Сводка</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className={adminCompactCardClass}>
                 <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Version</p>
-                <p className="mt-1 text-lg font-semibold text-slate-50">{summary?.version ?? "—"}</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">{summary?.version ?? "—"}</p>
               </div>
               <div className={adminCompactCardClass}>
                 <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Defaults transport</p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">{summary?.defaults?.transport_profile ?? "—"}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">{summary?.defaults?.transport_profile ?? "—"}</p>
               </div>
               <div className={adminCompactCardClass}>
                 <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Routing / DNS</p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">
+                <p className="mt-1 text-sm font-semibold text-slate-800">
                   {summary?.defaults ? `${summary.defaults.routing_mode_default} / ${summary.defaults.dns_policy}` : "—"}
                 </p>
               </div>
               <div className={adminCompactCardClass}>
                 <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Overrides</p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">
+                <p className="mt-1 text-sm font-semibold text-slate-800">
                   {summary ? `${summary.carrierOverrides.length} carrier · ${summary.cohortOverrides.length} cohort` : "—"}
                 </p>
               </div>
@@ -207,13 +207,13 @@ export default function AdminNetworkPage() {
               </div>
               <div className={adminCompactCardClass}>
                 <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Expiry</p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">{summary?.operatorLabExpiry ?? "—"}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">{summary?.operatorLabExpiry ?? "—"}</p>
               </div>
             </div>
           </article>
 
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-50">Allowlist и feeds</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Allowlist и feeds</h3>
             <div className="space-y-2 text-sm">
               <p className={adminCompactCardClass}>
                 install ids: <strong>{summary?.operatorLabInstallIds ?? "—"}</strong>
@@ -237,12 +237,12 @@ export default function AdminNetworkPage() {
           </article>
 
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-50">Targeting selectors</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Targeting selectors</h3>
             <div className="space-y-3 text-sm">
               {selectorEntries.length ? (
                 selectorEntries.map(([key, value]) => (
                   <div key={key} className={adminCompactCardClass}>
-                    <p className="font-semibold text-slate-100">{key}</p>
+                    <p className="font-semibold text-slate-800">{key}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       transport: <strong>{value.transport_profile || "—"}</strong> · dns: <strong>{value.dns_policy || "—"}</strong>
                     </p>

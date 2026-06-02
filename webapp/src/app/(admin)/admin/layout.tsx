@@ -88,12 +88,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const openTickets = summary ? Number(summary.tickets.open || 0) : 0;
 
   useEffect(() => {
-    if (!user?.is_admin) {
-      setSummary(null);
-      return;
-    }
     let cancelled = false;
-    setSummaryError("");
+    if (!user?.is_admin) {
+      queueMicrotask(() => {
+        if (!cancelled) setSummary(null);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+    queueMicrotask(() => {
+      if (!cancelled) setSummaryError("");
+    });
     adminSummary()
       .then((payload) => {
         if (!cancelled) setSummary(payload);

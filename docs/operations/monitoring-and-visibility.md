@@ -257,6 +257,7 @@ Operational rule:
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
+- newly enabled delivery nodes must be verified with both subscription output and panel `active_clients`; database `user_nodes` mappings alone do not prove the clients exist on the 3x-ui inbound
 
 Primary repository touchpoints:
 

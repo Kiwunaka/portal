@@ -18,7 +18,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
   return (
     <div className="mt-3 space-y-3">
       <div className={adminInsetPanelClass}>
-        <p className="text-sm font-semibold text-slate-50">Connection summary</p>
+        <p className="text-sm font-semibold text-slate-900">Connection summary</p>
         <p className="mt-1 text-xs leading-5 text-slate-400">
           One place to compare runtime presence, panel state, billing context, and the current delivery footprint.
         </p>
@@ -55,7 +55,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
 
       <div className={adminInsetPanelClass}>
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-slate-50">Observer-lite</p>
+          <p className="text-sm font-semibold text-slate-900">Observer-lite</p>
           <span className={`badge ${observerStateBadgeClass(observer?.state || selected.user.observer_state)}`}>
             {observerStateLabel(observer?.state || selected.user.observer_state)}
           </span>
@@ -112,7 +112,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
       </div>
 
       <div className={adminInsetPanelClass}>
-        <p className="text-sm font-semibold text-slate-50">Recent tickets</p>
+        <p className="text-sm font-semibold text-slate-900">Recent tickets</p>
         {selected.tickets?.length ? (
           <div className="mt-3 space-y-2">
             {selected.tickets.map((ticket) => (
@@ -132,7 +132,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
 
       {loyalty?.tiers?.length ? (
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-50">Loyalty rewards</p>
+          <p className="text-sm font-semibold text-slate-900">Loyalty rewards</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {loyalty.tiers.map((tier) => (
               <div key={tier.reward_key} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3 text-xs">

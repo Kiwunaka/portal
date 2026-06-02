@@ -8,7 +8,7 @@
     "Do not ask for card details, private connection URLs, QR codes, raw subscription links, Telegram initData, passwords, private keys, or payment payloads.",
     "Do not claim store availability, stable 1.0.0, trusted Windows signing, raw Android physical-audit proof, or RU-origin readiness.",
     "Do not use VPN as a direct public product description; POKROV VPN may appear only as a legacy compatibility label. OS permission names such as Android/iOS VPN configuration may be used as technical system wording.",
-    "For beta/manual setup, call Hiddify, Happ, v2rayNG, v2rayN, Streisand, NekoBox, NekoRay, Shadowrocket, FoXray, V2Box, and sing-box compatible clients, not official POKROV apps.",
+    "For beta/manual setup, call Karing, Happ, Hiddify, v2rayNG, v2rayN, Streisand, NekoBox, NekoRay, Shadowrocket, FoXray, V2Box, and sing-box compatible clients, not official POKROV apps.",
     "Prefer safe next steps: POKROV app, cabinet, official bot, compatible-client guide, Telegram support fallback.",
     "Keep answers short for beginners: one likely cause, 2-4 concrete steps, and what to send support if it remains broken.",
     "Use a structured mini-format with short section labels, numbered steps, bullets when useful, and no HTML or tables."
@@ -40,7 +40,7 @@
     },
     {
       "id": "manual_path_when_app_unavailable",
-      "keywords": ["manual", "fallback", "ручная", "совместимый", "клиент", "не доступно приложение", "hiddify", "happ"],
+      "keywords": ["manual", "fallback", "ручная", "совместимый", "клиент", "не доступно приложение", "karing", "happ", "hiddify"],
       "body": "Если приложение POKROV еще недоступно или поддержка просит временный ручной путь, пользователь может взять личную ссылку подключения или QR в кабинете/боте и добавить ее в совместимый клиент. Подчеркивай, что аккаунт и срок доступа остаются в POKROV."
     },
     {
@@ -75,13 +75,13 @@
     },
     {
       "id": "choose_android_client",
-      "keywords": ["android", "андроид", "какой клиент", "hiddify", "happ", "v2rayng", "nekobox", "sing-box"],
-      "body": "Для Android большинству пользователей лучше начать с Hiddify или Happ. v2rayNG, NekoBox и sing-box for Android подходят тем, кто уже знаком с ручными клиентами или кому нужна расширенная настройка."
+      "keywords": ["android", "андроид", "какой клиент", "karing", "happ", "hiddify", "v2rayng", "nekobox", "sing-box"],
+      "body": "Для Android большинству пользователей лучше начать с Karing или Happ. Hiddify, v2rayNG, NekoBox и sing-box for Android подходят тем, кто уже знаком с ручными клиентами или кому нужна расширенная настройка."
     },
     {
       "id": "choose_windows_client",
-      "keywords": ["windows", "виндовс", "какой клиент", "hiddify", "happ", "v2rayn", "nekoray", "exe"],
-      "body": "Для Windows большинству пользователей лучше начать с Hiddify или Happ. v2rayN и NekoRay мощнее, но сложнее: они подходят опытным пользователям или случаям, когда поддержка просит проверить именно их."
+      "keywords": ["windows", "виндовс", "какой клиент", "karing", "happ", "hiddify", "v2rayn", "nekoray", "exe"],
+      "body": "Для Windows большинству пользователей лучше начать с Karing или Happ. Hiddify, v2rayN и NekoRay мощнее, но сложнее: они подходят опытным пользователям или случаям, когда поддержка просит проверить именно их."
     },
     {
       "id": "choose_ios_client",
@@ -90,8 +90,8 @@
     },
     {
       "id": "choose_macos_client",
-      "keywords": ["macos", "mac", "мак", "hiddify", "streisand", "apple silicon"],
-      "body": "Для macOS можно предложить Hiddify или совместимый клиент, который уже умеет добавлять subscription URL. Если пользователь не уверен, лучше попросить модель Mac/версию macOS и передать оператору."
+      "keywords": ["macos", "mac", "мак", "karing", "happ", "hiddify", "streisand", "apple silicon"],
+      "body": "Для macOS можно предложить Karing, Happ или другой совместимый клиент, который уже умеет добавлять subscription URL. Если пользователь не уверен, лучше попросить модель Mac/версию macOS и передать оператору."
     },
     {
       "id": "official_download_safety",
@@ -117,6 +117,11 @@
       "id": "one_active_client_rule",
       "keywords": ["два клиента", "another vpn", "already connected", "другое приложение", "конфликт", "одновременно"],
       "body": "На одном устройстве лучше держать активным только один сетевой клиент. Если включены два клиента одновременно, может не быть интернета, часть приложений может обходить маршрут, или подключение будет мигать."
+    },
+    {
+      "id": "karing_import",
+      "keywords": ["karing", "subscription", "profile", "url", "clipboard", "qr", "import"],
+      "body": "Для Karing: скопировать личную ссылку из кабинета POKROV или бота, открыть Karing, добавить профиль через Import/Add/Subscription URL, вставить ссылку или отсканировать QR, обновить профиль, выбрать локацию и подключиться. Если список пустой, сначала обновить профиль и проверить, что доступ активен."
     },
     {
       "id": "hiddify_import",
@@ -176,7 +181,7 @@
     {
       "id": "nekobox_nekoray_singbox",
       "keywords": ["nekobox", "nekoray", "sing-box", "singbox", "advanced", "эксперт", "опытный"],
-      "body": "NekoBox, NekoRay и sing-box for Android больше подходят опытным пользователям. Если человек впервые подключается вручную, лучше предложить Hiddify или Happ. Если пользователь уже в этих клиентах, попроси добавить subscription URL и обновить профиль."
+      "body": "NekoBox, NekoRay и sing-box for Android больше подходят опытным пользователям. Если человек впервые подключается вручную, лучше предложить Karing или Happ. Если пользователь уже в этих клиентах, попроси добавить subscription URL и обновить профиль."
     },
     {
       "id": "profile_empty",

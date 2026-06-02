@@ -106,7 +106,7 @@ export function AdminUserSidePanel({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Выбранный пользователь</p>
-            <h2 className="mt-1 font-display text-2xl font-semibold text-slate-50">
+            <h2 className="mt-1 font-display text-2xl font-semibold text-slate-900">
               {user.display_name || user.username || `Пользователь #${user.tg_id}`}
             </h2>
             <div className="mt-2 space-y-1 text-xs text-slate-400">
@@ -120,7 +120,7 @@ export function AdminUserSidePanel({
             <div className="flex flex-wrap items-center justify-end gap-2">
               <span className={`rounded-full px-2 py-1 text-xs ${userStatusBadgeClass(user.status)}`}>{userStatusLabel(user.status)}</span>
               <span className={`badge ${observerStateBadgeClass(user.observer_state)}`}>Observer {observerStateLabel(user.observer_state)}</span>
-              <span className="rounded-full border border-[#24313d] bg-[#0a1117] px-2 py-1 text-xs font-semibold text-slate-300">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">
                 {originLabel(user.origin)}
               </span>
             </div>
@@ -202,7 +202,7 @@ export function AdminUserSidePanel({
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-50">Device context</p>
+          <p className="text-sm font-semibold text-slate-900">Device context</p>
           <div className="mt-3 space-y-1 text-xs text-slate-400">
             <p>Install ID: <strong>{user.app_install_id || "not linked"}</strong></p>
             <p>Platform: <strong>{user.app_platform || "unknown"}</strong></p>
@@ -211,13 +211,13 @@ export function AdminUserSidePanel({
           </div>
         </div>
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-50">Recent payment orders</p>
+          <p className="text-sm font-semibold text-slate-900">Recent payment orders</p>
           {payment_orders.length ? (
             <div className="mt-3 space-y-2">
               {payment_orders.slice(0, 4).map((order) => (
                 <div key={`${order.provider}:${order.order_id}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-mono text-slate-100">{order.order_id}</p>
+                    <p className="font-mono text-slate-800">{order.order_id}</p>
                     <span className={`badge ${paymentStatusTone(order.status)}`}>{order.status}</span>
                   </div>
                   <p className="mt-1 text-slate-400">
@@ -241,7 +241,7 @@ export function AdminUserSidePanel({
 
       <div className={`${adminInsetPanelClass} mt-3`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-slate-50">Токены и ссылки</p>
+          <p className="text-sm font-semibold text-slate-900">Токены и ссылки</p>
           <button className={adminButtonClass("ghost", "xs")} type="button" onClick={onReload} disabled={busy}>
             Обновить
           </button>
