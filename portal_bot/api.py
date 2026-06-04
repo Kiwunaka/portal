@@ -297,7 +297,6 @@ WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
-SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
 NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
 NODE_METRICS_MEMORY_ALERT_PERCENT = _env_float("NODE_METRICS_MEMORY_ALERT_PERCENT", 85.0)
@@ -12659,49 +12658,12 @@ def _token_fingerprint(token: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
-async def _notify_admin_on_subscription_fallback(*, user_tg_id: int, token_fp: str) -> None:
-    admin_id = int(Settings.ADMIN_ID or 0)
-    if admin_id <= 0:
-        return
-    day_key = _utcnow().strftime("%Y%m%d")
-    campaign_key = f"sub_token_fallback:{int(user_tg_id)}:{day_key}"
-
-    s = SessionLocal()
-    try:
-        if not _mark_campaign_once(s, tg_id=admin_id, campaign_key=campaign_key):
-            return
-        s.commit()
-    except Exception:
-        s.rollback()
-        return
-    finally:
-        s.close()
-
-    try:
-        track_event(
-            tg_id=int(user_tg_id),
-            event_name="subscription_numeric_fallback",
-            source="subscription",
-            meta={"token_fp": token_fp},
-        )
-    except Exception:
-        logger.exception("failed to track subscription numeric fallback tg_id=%s", int(user_tg_id))
-
-    text = (
-        "⚠️ Обнаружен fallback подписки по `tg_id`.\n"
-        f"user_id: `{int(user_tg_id)}`\n"
-        f"token_fp: `{token_fp}`\n\n"
-        "Рекомендуется регенерация sub_token и проверка синка subId в панели."
-    )
-    await _telegram_send_message(chat_id=admin_id, text=text)
-
 
 @app.api_route("/s8Kx2mP7qR4wT/{token}", methods=["GET", "HEAD"])
 async def subscription(token: str, request: Request, format: str = Query(default="", alias="format")):
     """
     Multi-node subscription endpoint.
-    - token is usually `sub_token`
-    - legacy fallback: if token is numeric, treat it as `tg_id`
+    - token must be the user's high-entropy `sub_token` bearer secret
     """
     token_text = str(token or "").strip()
     token_fp = _token_fingerprint(token_text)
@@ -12713,17 +12675,6 @@ async def subscription(token: str, request: Request, format: str = Query(default
     try:
         user = s.query(User).filter_by(sub_token=token_text).first()
         lookup_mode = "sub_token"
-        if not user and token_text.isdigit():
-            if SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED:
-                user = s.query(User).filter_by(tg_id=int(token_text)).first()
-                if user:
-                    lookup_mode = "tg_id_fallback"
-            else:
-                logger.warning(
-                    "subscription numeric fallback disabled token_fp=%s token_len=%s",
-                    token_fp,
-                    len(token_text),
-                )
         if not user:
             logger.warning("subscription lookup failed token_fp=%s token_len=%s", token_fp, len(token_text))
             raise HTTPException(status_code=404, detail="User not found")
@@ -12771,15 +12722,6 @@ async def subscription(token: str, request: Request, format: str = Query(default
         request_host or "-",
         bool(is_connect_request),
     )
-    if lookup_mode == "tg_id_fallback":
-        logger.warning(
-            "subscription fallback detected token_fp=%s tg_id=%s action=%s",
-            token_fp,
-            int(user.tg_id),
-            "notify_admin_once_per_day",
-        )
-        await _notify_admin_on_subscription_fallback(user_tg_id=int(user.tg_id), token_fp=token_fp)
-
     header_expire = int(user.expiry_at.timestamp()) if user.expiry_at else 0
     total_bytes = _gb_to_bytes(_plan_total_gb(user))
     headers = {

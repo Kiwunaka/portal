@@ -293,7 +293,7 @@ Contract rule:
 Contract rule:
 
 - Telegram linking should also refresh the canonical linked username automatically when Telegram provides one
-- Raw `sub_token` values and `connect.pokrov.space` subscription URLs are bearer connection secrets for compatible clients only. They must not be accepted as Telegram-linking proof or as access-key redemption codes.
+- Raw `sub_token` values and `connect.pokrov.space` subscription URLs are bearer connection secrets for compatible clients only. The public subscription route must resolve only high-entropy `sub_token` values, never predictable Telegram `tg_id` path values, and these secrets must not be accepted as Telegram-linking proof or as access-key redemption codes.
 
 ## Telegram Bonus Claim Flow
 

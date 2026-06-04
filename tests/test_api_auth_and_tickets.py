@@ -56,7 +56,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "CHANNEL_PREMIUM_DAYS",
             "OPENING_PREMIUM_DAYS",
             "OPENING_PREMIUM_CAMPAIGN_KEY",
-            "SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED",
             "SUPPORT_UPLOAD_DIR",
             "SUPPORT_AI_ENABLED",
             "SUPPORT_AI_API_KEY",
@@ -75,7 +74,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["CHANNEL_PREMIUM_DAYS"] = "10"
         os.environ["OPENING_PREMIUM_DAYS"] = "14"
         os.environ["OPENING_PREMIUM_CAMPAIGN_KEY"] = "opening_premium_14d"
-        os.environ["SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED"] = "true"
         os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
         os.environ["SUPPORT_AI_ENABLED"] = "false"
         os.environ["SUPPORT_AI_API_KEY"] = ""
@@ -2146,7 +2144,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-    def test_subscription_endpoint_accepts_sub_token_and_tg_id_fallback(self) -> None:
+    def test_subscription_endpoint_accepts_sub_token_and_rejects_numeric_tg_id(self) -> None:
         from db import SessionLocal
         from models import User
 
@@ -2165,15 +2163,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         by_token = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure")
         self.assertEqual(by_token.status_code, 200, by_token.text)
 
-        with patch.object(self.api, "_telegram_send_message", new=AsyncMock(return_value=True)) as mocked_send:
-            by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
-        self.assertEqual(by_tg_id.status_code, 200, by_tg_id.text)
-        self.assertEqual(mocked_send.await_count, 1)
-        kwargs = mocked_send.await_args.kwargs
-        self.assertEqual(int(kwargs.get("chat_id") or 0), 9999)
-        self.assertIn("fallback подписки", str(kwargs.get("text") or ""))
+        by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
+        self.assertEqual(by_tg_id.status_code, 404, by_tg_id.text)
 
-    def test_subscription_endpoint_blocks_numeric_fallback_when_flag_disabled(self) -> None:
+    def test_subscription_endpoint_blocks_numeric_tg_id_lookup(self) -> None:
         from db import SessionLocal
         from models import User
 
@@ -2189,7 +2182,6 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        self.api.SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = False
         by_tg_id = self.client.get("/s8Kx2mP7qR4wT/1001")
         self.assertEqual(by_tg_id.status_code, 404, by_tg_id.text)
 
