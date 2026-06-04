@@ -55,6 +55,8 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
             panel_error_rate=0.0,
             active_clients=0,
             last_ok_at=None,
+            cpu_percent=0.0,
+            last_probe_at=None,
         )
 
     async def test_add_client_free_targets_free_pool(self) -> None:
@@ -74,6 +76,46 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
         cp.ensure_user_on_all_nodes = fake_ensure_user_on_all_nodes
 
         ok = await cp.add_client("uuid", "email", "FREE", 0, 123, "token")
+        self.assertTrue(ok)
+        self.assertEqual(calls, [["free"]])
+
+    async def test_add_client_bonus_targets_free_pool(self) -> None:
+        from control_panel import ControlPanel
+
+        cp = ControlPanel()
+        calls = []
+
+        async def fake_refresh():
+            return [self._node("free"), self._node("nl")]
+
+        async def fake_ensure_user_on_all_nodes(**kwargs):
+            calls.append(kwargs["only_node_codes"])
+            return {"free": True}
+
+        cp.refresh = fake_refresh
+        cp.ensure_user_on_all_nodes = fake_ensure_user_on_all_nodes
+
+        ok = await cp.add_client("uuid", "email", "BONUS", 0, 123, "token")
+        self.assertTrue(ok)
+        self.assertEqual(calls, [["free"]])
+
+    async def test_add_client_trial_targets_free_pool(self) -> None:
+        from control_panel import ControlPanel
+
+        cp = ControlPanel()
+        calls = []
+
+        async def fake_refresh():
+            return [self._node("free"), self._node("nl")]
+
+        async def fake_ensure_user_on_all_nodes(**kwargs):
+            calls.append(kwargs["only_node_codes"])
+            return {"free": True}
+
+        cp.refresh = fake_refresh
+        cp.ensure_user_on_all_nodes = fake_ensure_user_on_all_nodes
+
+        ok = await cp.add_client("uuid", "email", "TRIAL", 0, 123, "token")
         self.assertTrue(ok)
         self.assertEqual(calls, [["free"]])
 

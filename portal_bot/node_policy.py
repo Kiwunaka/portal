@@ -103,16 +103,16 @@ def user_uses_free_pool(user: Any) -> bool:
     sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
 
+    if sub_type.startswith("TRIAL"):
+        return True
+    if sub_type.startswith("BONUS") or sub_type in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}:
+        return True
     if plan_code in _PREMIUM_PLAN_CODES:
         return False
     if sub_type == "FREE":
         return True
     if sub_type in {"", "PENDING"}:
         return True
-    if sub_type.startswith("TRIAL"):
-        return False
-    if sub_type.startswith("BONUS") or sub_type in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}:
-        return False
     if sub_type in {"MANUAL", "PAID", "VIP", "PRO", "BASIC", "MONTHLY", "QUARTERLY", "HALF_YEAR", "YEARLY"}:
         return False
     if sub_type.startswith("PAID_") or sub_type.startswith("PREMIUM"):

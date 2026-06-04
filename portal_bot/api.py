@@ -12794,10 +12794,12 @@ async def subscription(token: str, request: Request, format: str = Query(default
         transport_profile=smart_transport_profile,
     )
 
-    # Explicit plain requests must stay on the legacy/manual path even for FREE accounts.
-    if not force_plain and ((user.sub_type or "").upper() == "FREE" or wants_smart):
-        if (user.sub_type or "").upper() == "FREE" and not smart_nodes_for_user:
-            # Dedicated free pool is required for FREE users.
+    uses_free_pool = user_uses_free_pool(user)
+
+    # Explicit plain requests must stay on the legacy/manual path even for free-pool accounts.
+    if not force_plain and (uses_free_pool or wants_smart):
+        if uses_free_pool and not smart_nodes_for_user:
+            # Dedicated free pool is required for free-pool users.
             return Response(content="", media_type="text/plain", status_code=503)
 
         cfg = (
@@ -12815,7 +12817,7 @@ async def subscription(token: str, request: Request, format: str = Query(default
                 title="POKROV (Free)",
                 transport_profile=smart_transport_profile,
             )
-            if (user.sub_type or "").upper() == "FREE"
+            if uses_free_pool
             else _singbox_multi_node_config(
                 user_uuid=user.uuid,
                 nodes=smart_nodes_for_user,

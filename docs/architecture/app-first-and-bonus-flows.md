@@ -327,6 +327,7 @@ Rules:
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` must use the paid pool: all enabled non-free delivery nodes
 - free-tier access states `free_monthly` and `free_soft_mode` must use the free pool: the dedicated `NL-free` node only
 - backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and `nl_only` for free-tier access
+- low-level `sub_type` markers `BONUS`, `TRIAL`, `CHANNEL_BONUS`, `OPENING_BONUS`, and `FRIEND_GIFT` are freemium/non-paid markers and must stay on the dedicated free pool unless a separate paid entitlement explicitly promotes the account
 
 ## Runtime Notes
 

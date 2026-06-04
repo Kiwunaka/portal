@@ -283,6 +283,36 @@ class PortalApiTests(unittest.TestCase):
         out = api._nodes_for_user(user, nodes)
         self.assertEqual([n.code for n in out], ["free"])
 
+    def test_nodes_for_bonus_user_only_use_canonical_free_node(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(tg_id=1004, sub_type="BONUS", current_plan_code="channel_bonus")
+        nodes = [
+            SimpleNamespace(code="pl_free"),
+            SimpleNamespace(code="free"),
+            SimpleNamespace(code="nl"),
+        ]
+        out = api._nodes_for_user(user, nodes)
+        self.assertEqual([n.code for n in out], ["free"])
+
+    def test_nodes_for_trial_sub_type_only_use_canonical_free_node(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(tg_id=1005, sub_type="TRIAL", current_plan_code="trial")
+        nodes = [
+            SimpleNamespace(code="pl_free"),
+            SimpleNamespace(code="free"),
+            SimpleNamespace(code="nl"),
+        ]
+        out = api._nodes_for_user(user, nodes)
+        self.assertEqual([n.code for n in out], ["free"])
+
     def test_node_labels_include_nl_and_nl_free(self) -> None:
         import importlib
 

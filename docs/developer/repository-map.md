@@ -70,6 +70,7 @@ Legacy filename note:
 - [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md) is the canonical doc for app-first username sync and free-vs-premium node-pool behavior
 - automatic username sync is the primary path; manual username sync remains compatibility/recovery only
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` target all enabled non-free delivery nodes
+- low-level `sub_type` markers `BONUS`, `TRIAL`, `CHANNEL_BONUS`, `OPENING_BONUS`, and `FRIEND_GIFT` are freemium/non-paid and must not by themselves provision or expose paid-pool nodes
 - free-tier access states `free_monthly` and `free_soft_mode` target only the dedicated `NL-free` node
 - smart-connect shortlist logic, RTT upload, and stickiness are part of that same app-first contract and must not be documented separately from the pool rule
 - split-tunnel persistence is part of that same contract through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields

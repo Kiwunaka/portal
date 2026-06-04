@@ -192,6 +192,7 @@ The expanded runtime KB expects `SUPPORT_AI_MAX_CONTEXT_CHARS=32000` or higher s
 
 - automatic username sync is the primary identity-sync path across app-first, web-login, and Telegram-link flows; manual username sync is compatibility/recovery tooling only
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` use the paid pool, which means all enabled non-free delivery nodes
+- low-level `sub_type` markers `BONUS`, `TRIAL`, `CHANNEL_BONUS`, `OPENING_BONUS`, and `FRIEND_GIFT` are freemium/non-paid and must not by themselves provision or expose paid-pool nodes
 - free-tier access states `free_monthly` and `free_soft_mode` use the free pool, which means the dedicated `NL-free` node only
 - smart-connect shortlist selection stays inside those pool boundaries; premium profiles can expose up to `5` eligible non-free nodes, while free stays `NL-free` only
 - the client-side RTT upload contract is `POST /api/client/nodes/latency-samples`; it stores install-scoped diagnostic evidence and does not bypass `UserNode` pinning
