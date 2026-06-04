@@ -889,6 +889,142 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
     assert referral["tier"]["tier_key"]
 
 
+def test_app_session_can_read_safe_bonus_history(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-bonus-history",
+            "device_name": "Windows PC",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    session_response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    account_id = int(session_response.json()["user"]["account_id"])
+
+    now = api._utcnow()
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(tg_id=account_id).first()
+        user.channel_bonus_claimed_at = now - timedelta(days=1)
+        db.add(
+            api.CampaignSend(
+                tg_id=account_id,
+                campaign_key=api.OPENING_PREMIUM_CAMPAIGN_KEY,
+                sent_at=now - timedelta(days=3),
+            )
+        )
+        db.add(api.PromoCode(code="APPDAYS", promo_type="days", value=7, uses_left=0))
+        db.add(api.PromoUsage(tg_id=account_id, promo_code="APPDAYS", used_at=now))
+        db.add(
+            api.Event(
+                tg_id=account_id,
+                event_name="promo_redeemed",
+                source="webapp",
+                meta_json='{"sub_token":"must-not-leak","code":"APPDAYS"}',
+                created_at=now,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    history_response = client.get(
+        "/api/bonuses/history",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    summary_response = client.get(
+        "/api/bonuses/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert history_response.status_code == 200, history_response.text
+    history = history_response.json()
+    assert history["ok"] is True
+    assert history["tg_id"] == account_id
+    assert history["next_cursor"] is None
+    assert len(history["items"]) == 3
+    assert [item["kind"] for item in history["items"]] == [
+        "promo",
+        "telegram_channel",
+        "opening_bonus",
+    ]
+    assert history["items"][0]["days"] == 7
+    assert history["items"][0]["code_preview"] == "...DAYS"
+    assert "APPDAYS" not in str(history)
+    assert "sub_token" not in str(history)
+    assert "must-not-leak" not in str(history)
+
+    assert summary_response.status_code == 200, summary_response.text
+    summary = summary_response.json()
+    assert summary["history"]["endpoint"] == "/api/bonuses/history"
+    assert summary["history"]["recent_count"] == 3
+
+
+def test_app_bonus_wheel_and_calendar_endpoints_are_feature_gated(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-gated-bonus-features",
+            "device_name": "Pixel",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    wheel_state = client.get("/api/bonuses/wheel/state", headers=headers)
+    wheel_spin = client.post("/api/bonuses/wheel/spin", headers=headers)
+    calendar_state = client.get("/api/bonuses/calendar", headers=headers)
+    calendar_checkin = client.post("/api/bonuses/calendar/checkin", headers=headers)
+
+    assert wheel_state.status_code == 200, wheel_state.text
+    wheel_payload = wheel_state.json()
+    assert wheel_payload["ok"] is True
+    assert wheel_payload["enabled"] is False
+    assert wheel_payload["state"] == "disabled_until_feature_flag"
+    assert wheel_payload["feature_flag_enabled"] is False
+    assert wheel_payload["spin_endpoint"] == "/api/bonuses/wheel/spin"
+
+    assert calendar_state.status_code == 200, calendar_state.text
+    calendar_payload = calendar_state.json()
+    assert calendar_payload["ok"] is True
+    assert calendar_payload["enabled"] is False
+    assert calendar_payload["state"] == "disabled_until_feature_flag"
+    assert calendar_payload["feature_flag_enabled"] is False
+    assert calendar_payload["checkin_endpoint"] == "/api/bonuses/calendar/checkin"
+
+    assert wheel_spin.status_code == 403, wheel_spin.text
+    assert wheel_spin.json()["detail"]["code"] == "bonus_feature_disabled"
+    assert wheel_spin.json()["detail"]["feature"] == "wheel"
+
+    assert calendar_checkin.status_code == 403, calendar_checkin.text
+    assert calendar_checkin.json()["detail"]["code"] == "bonus_feature_disabled"
+    assert calendar_checkin.json()["detail"]["feature"] == "calendar"
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(app_install_id="install-gated-bonus-features").first()
+        assert user.last_wheel_spin is None
+        assert int(user.streak_months or 0) == 0
+        assert db.query(api.RewardClaim).count() == 0
+    finally:
+        db.close()
+
+
 def test_app_session_can_redeem_promo_through_bonus_and_unified_endpoints(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
     _install_fake_panel(monkeypatch, api)

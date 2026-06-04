@@ -286,6 +286,8 @@ RUB_CHECKOUT_ENABLED = env_bool("RUB_CHECKOUT_ENABLED", default=False)
 PAID_CHECKOUT_LAUNCH_APPROVED = env_bool("PAID_CHECKOUT_LAUNCH_APPROVED", default=False)
 CHECKOUT_WIDGET_ENABLED = env_bool("CHECKOUT_WIDGET_ENABLED", default=False)
 CHANNEL_SPEED_BUMP_ENABLED = env_bool("CHANNEL_SPEED_BUMP_ENABLED", default=False)
+BONUS_WHEEL_ENABLED = env_bool("BONUS_WHEEL_ENABLED", default=False)
+BONUS_CALENDAR_ENABLED = env_bool("BONUS_CALENDAR_ENABLED", default=False)
 FREE_SPEED_BUMP_UNSUB_KBPS = max(1, env_int("FREE_SPEED_BUMP_UNSUB_KBPS", 1250))
 CHECKOUT_TICKET_SECRET = (
     (os.getenv("CHECKOUT_TICKET_SECRET") or "").strip()
@@ -7911,8 +7913,122 @@ def _bonus_referral_summary_payload(*, user: User, tg_id: int) -> dict[str, Any]
     }
 
 
+def _bonus_feature_disabled_detail(*, feature: str) -> dict[str, Any]:
+    return {
+        "code": "bonus_feature_disabled",
+        "feature": feature,
+        "message": "Feature is disabled until the public app contract and rollout flag are ready",
+    }
+
+
+def _bonus_history_payload(*, s, user: User, tg_id: int, limit: int = 20) -> dict[str, Any]:
+    max_items = max(1, min(int(limit or 20), 50))
+    rows: list[tuple[datetime, int, dict[str, Any]]] = []
+
+    def add_item(occurred_at: datetime | None, priority: int, payload: dict[str, Any]) -> None:
+        if not occurred_at:
+            return
+        item = {
+            "occurred_at": _safe_iso(occurred_at),
+            **payload,
+        }
+        rows.append((occurred_at, priority, item))
+
+    for usage, promo in (
+        s.query(PromoUsage, PromoCode)
+        .outerjoin(PromoCode, func.upper(PromoCode.code) == func.upper(PromoUsage.promo_code))
+        .filter(PromoUsage.tg_id == int(tg_id))
+        .order_by(PromoUsage.used_at.desc(), PromoUsage.id.desc())
+        .limit(max_items)
+        .all()
+    ):
+        promo_type = str(getattr(promo, "promo_type", "") or "").strip().lower()
+        promo_value = int(getattr(promo, "value", 0) or 0)
+        item = {
+            "kind": "promo",
+            "source": "promo",
+            "title": "Промокод активирован",
+            "code_preview": _access_key_safe_meta(str(usage.promo_code or "")).get("code_preview"),
+            "days": promo_value if promo_type == "days" else 0,
+            "discount_pct": promo_value if promo_type == "discount" else 0,
+        }
+        add_item(getattr(usage, "used_at", None), 30, item)
+
+    add_item(
+        getattr(user, "channel_bonus_claimed_at", None),
+        20,
+        {
+            "kind": "telegram_channel",
+            "source": "telegram",
+            "title": "Telegram-бонус получен",
+            "days": int(CHANNEL_PREMIUM_DAYS),
+            "channel_username": PUBLIC_CHANNEL,
+        },
+    )
+
+    opening_send = (
+        s.query(CampaignSend)
+        .filter(CampaignSend.tg_id == int(tg_id))
+        .filter(CampaignSend.campaign_key == str(OPENING_PREMIUM_CAMPAIGN_KEY))
+        .order_by(CampaignSend.sent_at.desc(), CampaignSend.id.desc())
+        .first()
+    )
+    if opening_send:
+        add_item(
+            getattr(opening_send, "sent_at", None),
+            10,
+            {
+                "kind": "opening_bonus",
+                "source": "app",
+                "title": "Стартовый бонус получен",
+                "days": int(OPENING_PREMIUM_DAYS),
+            },
+        )
+
+    rows.sort(key=lambda row: (row[0], row[1]), reverse=True)
+    items = [item for _, _, item in rows[:max_items]]
+    return {
+        "ok": True,
+        "tg_id": int(tg_id),
+        "items": items,
+        "limit": max_items,
+        "next_cursor": None,
+    }
+
+
+def _bonus_wheel_state_payload(*, user: User) -> dict[str, Any]:
+    rollout_flag_enabled = bool(BONUS_WHEEL_ENABLED)
+    return {
+        "ok": True,
+        "enabled": False,
+        "state": "disabled_until_reward_logic" if rollout_flag_enabled else "disabled_until_feature_flag",
+        "feature_flag": "BONUS_WHEEL_ENABLED",
+        "feature_flag_enabled": rollout_flag_enabled,
+        "spin_endpoint": "/api/bonuses/wheel/spin",
+        "last_spin_at": _safe_iso(getattr(user, "last_wheel_spin", None)),
+        "streak_months": int(getattr(user, "streak_months", 0) or 0),
+    }
+
+
+def _bonus_calendar_state_payload(*, user: User) -> dict[str, Any]:
+    rollout_flag_enabled = bool(BONUS_CALENDAR_ENABLED)
+    return {
+        "ok": True,
+        "enabled": False,
+        "state": "disabled_until_reward_logic" if rollout_flag_enabled else "disabled_until_feature_flag",
+        "feature_flag": "BONUS_CALENDAR_ENABLED",
+        "feature_flag_enabled": rollout_flag_enabled,
+        "checkin_endpoint": "/api/bonuses/calendar/checkin",
+        "streak_months": int(getattr(user, "streak_months", 0) or 0),
+        "last_wheel_spin": _safe_iso(getattr(user, "last_wheel_spin", None)),
+    }
+
+
 def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
     referral = _bonus_referral_summary_payload(user=user, tg_id=tg_id)
+    history = _bonus_history_payload(s=s, user=user, tg_id=tg_id, limit=20)
+    wheel = _bonus_wheel_state_payload(user=user)
+    calendar = _bonus_calendar_state_payload(user=user)
     channel_claimed_at = _safe_iso(getattr(user, "channel_bonus_claimed_at", None))
     opening_claimed = _has_campaign_mark(
         s,
@@ -7951,14 +8067,14 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
             "pending_discount_pct": int(user.pending_discount_pct or 0),
             "pending_discount_code": str(user.pending_discount_code or "").strip().upper(),
         },
-        "wheel": {
-            "enabled": False,
-            "state": "hidden_until_feature_flag",
+        "history": {
+            "enabled": True,
+            "endpoint": "/api/bonuses/history",
+            "recent_count": len(history["items"]),
+            "next_cursor": history.get("next_cursor"),
         },
-        "calendar": {
-            "enabled": False,
-            "state": "hidden_until_feature_flag",
-        },
+        "wheel": wheel,
+        "calendar": calendar,
     }
 
 
@@ -7988,6 +8104,82 @@ async def bonuses_referral_summary(request: Request, x_telegram_init_data: str =
         return _bonus_referral_summary_payload(user=user, tg_id=tg_id)
     finally:
         s.close()
+
+
+@app.get("/api/bonuses/history")
+async def bonuses_history(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return _bonus_history_payload(s=s, user=user, tg_id=tg_id, limit=limit)
+    finally:
+        s.close()
+
+
+@app.get("/api/bonuses/wheel/state")
+async def bonuses_wheel_state(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return _bonus_wheel_state_payload(user=user)
+    finally:
+        s.close()
+
+
+@app.post("/api/bonuses/wheel/spin")
+async def bonuses_wheel_spin(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_auth_user(x_telegram_init_data, request=request)
+    if not BONUS_WHEEL_ENABLED:
+        raise HTTPException(status_code=403, detail=_bonus_feature_disabled_detail(feature="wheel"))
+    raise HTTPException(
+        status_code=501,
+        detail={
+            "code": "bonus_feature_not_ready",
+            "feature": "wheel",
+            "message": "Wheel rewards require a separate rollout implementation",
+        },
+    )
+
+
+@app.get("/api/bonuses/calendar")
+async def bonuses_calendar(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return _bonus_calendar_state_payload(user=user)
+    finally:
+        s.close()
+
+
+@app.post("/api/bonuses/calendar/checkin")
+async def bonuses_calendar_checkin(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_auth_user(x_telegram_init_data, request=request)
+    if not BONUS_CALENDAR_ENABLED:
+        raise HTTPException(status_code=403, detail=_bonus_feature_disabled_detail(feature="calendar"))
+    raise HTTPException(
+        status_code=501,
+        detail={
+            "code": "bonus_feature_not_ready",
+            "feature": "calendar",
+            "message": "Calendar rewards require a separate rollout implementation",
+        },
+    )
 
 
 @app.post("/api/channel/subscriber/check")

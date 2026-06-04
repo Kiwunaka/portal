@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-06-03
+Last updated: 2026-06-04
 
 ## Document Status
 
@@ -179,6 +179,11 @@ Current live backend contract:
 - `POST /api/client/telegram/link`
 - `GET /api/bonuses/summary`
 - `GET /api/bonuses/referral/summary`
+- `GET /api/bonuses/history`
+- `GET /api/bonuses/wheel/state`
+- `POST /api/bonuses/wheel/spin`
+- `GET /api/bonuses/calendar`
+- `POST /api/bonuses/calendar/checkin`
 - `POST /api/bonuses/promo/redeem`
 - `POST /api/channel/subscriber/check`
 - `POST /api/bonuses/channel/claim`
@@ -323,14 +328,23 @@ Contract rule:
 
 - `GET /api/bonuses/summary` is the app-facing bonus summary for the Profile
   surface. It includes flat compatibility fields plus nested `referral`,
-  `channel_bonus`, `opening_bonus`, `promo`, `wheel`, and `calendar` sections.
+  `channel_bonus`, `opening_bonus`, `promo`, `history`, `wheel`, and
+  `calendar` sections.
 - `GET /api/bonuses/referral/summary` returns referral count, referral code,
   referral link, bonus days, and current points tier for the app-first account.
+- `GET /api/bonuses/history` returns an app-safe, compact recent bonus ledger
+  built from current platform truth: Telegram channel claim, opening campaign
+  mark, and promo usage. It must not return raw subscription links, full promo
+  codes, tokens, or event metadata.
 - `POST /api/bonuses/promo/redeem` reuses the existing promo validation and
   application rules, then returns the promo result plus a fresh summary payload.
 - `POST /api/redeem` also accepts promo codes and returns `kind=promo`.
-- Wheel and calendar sections remain disabled/hidden until dedicated app APIs,
-  feature flags, and product copy are approved.
+- `GET /api/bonuses/wheel/state` and `GET /api/bonuses/calendar` expose
+  disabled-by-default state payloads for future UI wiring.
+- `POST /api/bonuses/wheel/spin` and
+  `POST /api/bonuses/calendar/checkin` are app-facing placeholders guarded by
+  feature flags and return structured disabled errors until reward logic,
+  rollout policy, and product copy are approved.
 
 ## Access-State Continuation After Trial
 

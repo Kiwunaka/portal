@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-05-26
+Last updated: 2026-06-04
 
 ## Document Status
 
@@ -281,7 +281,8 @@ Product wording rule:
 
 - app-first bonus summary, referral summary, and promo-code redemption are backend-owned API contracts
 - the app may redeem promo codes through the unified code entry or the bonus promo endpoint
-- roulette, calendar, and rich loyalty mechanics remain hidden until dedicated API, feature-flag, and copy gates are green
+- bonus history is an app-safe backend contract and must show only compact reward events, not raw subscription links, full promo codes, tokens, or backend event metadata
+- roulette and calendar endpoint shells may exist behind feature flags, but the user-facing mechanics remain hidden until reward logic, feature-flag, and copy gates are green
 
 Official Telegram surfaces:
 

@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-05-15
+Last updated: 2026-06-04
 
 ## Document Status
 
@@ -468,6 +468,11 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `POST /api/client/telegram/link`
 - `GET /api/bonuses/summary`
 - `GET /api/bonuses/referral/summary`
+- `GET /api/bonuses/history`
+- `GET /api/bonuses/wheel/state`
+- `POST /api/bonuses/wheel/spin`
+- `GET /api/bonuses/calendar`
+- `POST /api/bonuses/calendar/checkin`
 - `GET /api/payments/providers`
 - `POST /api/payments/orders/create`
 - `POST /api/payments/orders/create-public`
@@ -479,6 +484,10 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `POST /api/bonuses/promo/redeem`
 - `POST /api/bonuses/channel/claim`
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
+
+App-facing wheel and calendar routes are intentionally disabled by default and
+must not be surfaced as active user rewards until their feature flags, reward
+ledger behavior, copy, and rollout evidence are green.
 
 The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
 
