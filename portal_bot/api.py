@@ -1744,6 +1744,14 @@ def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
     }
 
 
+def _is_legacy_gift_card_for_unified_redeem(*, card: GiftCard | None, meta: dict[str, Any] | None) -> bool:
+    if not card or not meta:
+        return False
+    if str(meta.get("kind") or "").strip() != "legacy_gift":
+        return False
+    return int(getattr(card, "created_by", 0) or 0) != 0
+
+
 def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime) -> dict[str, Any]:
     days = max(1, int(meta.get("days") or 0))
     current_expiry = getattr(user, "expiry_at", None)
@@ -8647,6 +8655,28 @@ async def unified_redeem(
     finally:
         s.close()
 
+    if _is_legacy_gift_card_for_unified_redeem(card=card, meta=card_meta):
+        result = await gift_redeem(
+            GiftRedeemIn(code=normalized),
+            request,
+            x_telegram_init_data,
+        )
+        s2 = SessionLocal()
+        try:
+            user = s2.query(User).filter_by(tg_id=tg_id).first()
+            summary = _bonus_summary_payload(s=s2, user=user, tg_id=tg_id) if user else None
+        finally:
+            s2.close()
+        payload_out: dict[str, Any] = {
+            "ok": True,
+            "kind": "gift",
+            **_access_key_safe_meta(normalized),
+            "result": result,
+        }
+        if summary:
+            payload_out["summary"] = summary
+        return payload_out
+
     if card and card_meta:
         result = await _redeem_access_key_for_auth_user(
             key=normalized,
@@ -8680,7 +8710,7 @@ async def unified_redeem(
         detail={
             "code": "redeem_code_not_supported",
             "message": "This activation code is not supported by the unified app endpoint yet.",
-            "supported_kinds": ["access_key", "promo"],
+            "supported_kinds": ["access_key", "gift", "promo"],
             **_access_key_safe_meta(normalized),
         },
     )

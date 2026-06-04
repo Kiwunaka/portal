@@ -207,7 +207,8 @@ Unified access-contract note:
 
 - `GET /api/dashboard`, `GET /api/user/{tg_id}`, and `GET /api/client/profile/managed` now carry the same identity/access family additions: `linked_identities`, `free_caps`, `redeem_eligibility`, `promo_slots`, `hidden_transport_matrix`, and `location_matrix`
 - the access-key redeem path returns the same access-state family so app, cabinet, and admin can refresh off one canonical contract
-- `POST /api/redeem` is the app-facing activation facade; it supports access keys and promo codes, returns `kind=access_key` or `kind=promo`, and keeps raw subscription links rejected as non-account proof
+- `POST /api/redeem` is the app-facing activation facade; it supports paid access keys, legacy gift-card codes, and promo codes, returns `kind=access_key`, `kind=gift`, or `kind=promo`, and keeps raw subscription links rejected as non-account proof
+- unified gift redemption routes through the existing gift-card service, preserves one-time/self-redeem/TOS/campaign guards, and returns a fresh bonus summary so the app can update Account without a second guess
 - `POST /api/redeem` must reject raw `connect.pokrov.space`, subscription, and proxy URLs with structured `code=subscription_link_not_redeem_code`; those links are connection/import artifacts, not account proof
 
 App/bot/cabinet parity smoke:
@@ -260,7 +261,7 @@ Contract rule:
 
 1. user opens public pricing, renewal continuation, or bot-side purchase
 2. hosted checkout sells an activation key against the canonical catalog
-3. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/redeem` in the app or `POST /api/access-keys/redeem` on legacy/cabinet surfaces
+3. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/redeem` in the app or `POST /api/access-keys/redeem` on legacy/cabinet surfaces; gift-card and promo codes also use the app-facing `POST /api/redeem` facade
 4. the backend refreshes managed access on the same app-first account
 5. app and web surfaces reload their unified access contract from the same identity root
 

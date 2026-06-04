@@ -340,7 +340,7 @@ def test_app_session_can_redeem_access_key_through_unified_endpoint(monkeypatch,
 
     db = api.SessionLocal()
     try:
-        db.add(api.GiftCard(code="POKROV-ACCESS-2026", card_type="standard", created_by=9999))
+        db.add(api.GiftCard(code="POKROV-ACCESS-2026", card_type="1_month", created_by=0))
         db.commit()
     finally:
         db.close()
@@ -363,6 +363,74 @@ def test_app_session_can_redeem_access_key_through_unified_endpoint(monkeypatch,
     assert body["code_preview"] == "...2026"
     assert body["result"]["access"]["access_state"]
     assert body["result"]["provisioning"]["managed_profile_path"] == "/api/client/profile/managed"
+
+
+def test_app_session_can_redeem_gift_card_through_unified_endpoint(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-redeem-gift-unified",
+            "device_name": "Windows PC",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    db = api.SessionLocal()
+    try:
+        db.add(api.GiftCard(code="POKROV-GIFT-2026", card_type="standard", created_by=7777))
+        db.commit()
+    finally:
+        db.close()
+
+    class FakeGiftPanel:
+        async def login(self):
+            return True
+
+        async def get_existing_client(self, _tg_id):
+            return None
+
+        async def add_client(self, *_args, **_kwargs):
+            return True
+
+        async def update_client_traffic(self, *_args, **_kwargs):
+            return True
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(sys.modules["control_panel"], "ControlPanel", FakeGiftPanel)
+
+    response = client.post(
+        "/api/redeem",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"code": "POKROV-GIFT-2026"},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["ok"] is True
+    assert body["kind"] == "gift"
+    assert body["code_preview"] == "...2026"
+    assert body["result"]["ok"] is True
+    assert body["result"]["card_type"] == "standard"
+    assert body["result"]["days"] == 30
+    assert body["summary"]["ok"] is True
+    assert body["summary"]["channel_bonus"]["premium_days"] == api.CHANNEL_PREMIUM_DAYS
+
+    db = api.SessionLocal()
+    try:
+        card = db.query(api.GiftCard).filter_by(code="POKROV-GIFT-2026").first()
+        account = db.query(api.User).filter_by(app_install_id="install-redeem-gift-unified").first()
+        assert int(card.redeemed_by or 0) == int(account.tg_id)
+        assert str(account.sub_type or "").upper() == "PAID"
+    finally:
+        db.close()
 
 
 def test_unified_redeem_rejects_subscription_links(monkeypatch, tmp_path):
