@@ -177,6 +177,9 @@ Current live backend contract:
 - `GET /api/admin/promo-slots`
 - `PUT /api/admin/promo-slots`
 - `POST /api/client/telegram/link`
+- `GET /api/bonuses/summary`
+- `GET /api/bonuses/referral/summary`
+- `POST /api/bonuses/promo/redeem`
 - `POST /api/channel/subscriber/check`
 - `POST /api/bonuses/channel/claim`
 - `GET /api/tickets`
@@ -198,7 +201,7 @@ Unified access-contract note:
 
 - `GET /api/dashboard`, `GET /api/user/{tg_id}`, and `GET /api/client/profile/managed` now carry the same identity/access family additions: `linked_identities`, `free_caps`, `redeem_eligibility`, `promo_slots`, `hidden_transport_matrix`, and `location_matrix`
 - the access-key redeem path returns the same access-state family so app, cabinet, and admin can refresh off one canonical contract
-- `POST /api/redeem` is the app-facing activation facade; the first live slice supports access keys by reusing the access-key redeem path and returns the same access/provisioning payload inside `result`
+- `POST /api/redeem` is the app-facing activation facade; it supports access keys and promo codes, returns `kind=access_key` or `kind=promo`, and keeps raw subscription links rejected as non-account proof
 - `POST /api/redeem` must reject raw `connect.pokrov.space`, subscription, and proxy URLs with structured `code=subscription_link_not_redeem_code`; those links are connection/import artifacts, not account proof
 
 Beta rate-limit contract:
@@ -315,6 +318,19 @@ Contract rule:
 5. backend checks membership for the linked Telegram account
 6. if membership is valid, backend grants `+10 days`
 7. if not linked or not eligible, backend returns the correct reason
+
+## Bonus Summary, Referral, And Promo Flow
+
+- `GET /api/bonuses/summary` is the app-facing bonus summary for the Profile
+  surface. It includes flat compatibility fields plus nested `referral`,
+  `channel_bonus`, `opening_bonus`, `promo`, `wheel`, and `calendar` sections.
+- `GET /api/bonuses/referral/summary` returns referral count, referral code,
+  referral link, bonus days, and current points tier for the app-first account.
+- `POST /api/bonuses/promo/redeem` reuses the existing promo validation and
+  application rules, then returns the promo result plus a fresh summary payload.
+- `POST /api/redeem` also accepts promo codes and returns `kind=promo`.
+- Wheel and calendar sections remain disabled/hidden until dedicated app APIs,
+  feature flags, and product copy are approved.
 
 ## Access-State Continuation After Trial
 

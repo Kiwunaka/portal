@@ -466,6 +466,8 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/admin/promo-slots`
 - `PUT /api/admin/promo-slots`
 - `POST /api/client/telegram/link`
+- `GET /api/bonuses/summary`
+- `GET /api/bonuses/referral/summary`
 - `GET /api/payments/providers`
 - `POST /api/payments/orders/create`
 - `POST /api/payments/orders/create-public`
@@ -474,6 +476,7 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/nodes/status`
 - `GET /api/reviews`
 - `POST /api/reviews`
+- `POST /api/bonuses/promo/redeem`
 - `POST /api/bonuses/channel/claim`
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
 

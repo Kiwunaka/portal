@@ -7888,6 +7888,108 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
         s.close()
 
 
+def _bonus_referral_summary_payload(*, user: User, tg_id: int) -> dict[str, Any]:
+    referral_code = str(user.referral_code or "").strip()
+    referral_link = (
+        f"https://t.me/{BOT_USERNAME}?start=ref_{referral_code}"
+        if referral_code and BOT_USERNAME
+        else ""
+    )
+    tier = referral_tier_snapshot(tg_id=tg_id)
+    return {
+        "ok": True,
+        "tg_id": tg_id,
+        "count": int(user.referral_count or 0),
+        "code": referral_code,
+        "link": referral_link,
+        "bonus_days": REFERRAL_BONUS_DAYS,
+        "tier": tier,
+        "referral_count": int(user.referral_count or 0),
+        "referral_code": referral_code,
+        "referral_bonus_days": REFERRAL_BONUS_DAYS,
+        "points_tier": tier,
+    }
+
+
+def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
+    referral = _bonus_referral_summary_payload(user=user, tg_id=tg_id)
+    channel_claimed_at = _safe_iso(getattr(user, "channel_bonus_claimed_at", None))
+    opening_claimed = _has_campaign_mark(
+        s,
+        tg_id=tg_id,
+        campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY,
+    )
+    return {
+        "ok": True,
+        "tg_id": tg_id,
+        "referral_count": int(user.referral_count or 0),
+        "referral_code": str(user.referral_code or "").strip(),
+        "referral_bonus_days": REFERRAL_BONUS_DAYS,
+        "streak_months": int(user.streak_months or 0),
+        "last_wheel_spin": _safe_iso(user.last_wheel_spin),
+        "channel_bonus_premium_days": int(CHANNEL_PREMIUM_DAYS),
+        "channel_bonus_claimed_at": channel_claimed_at,
+        "opening_bonus_premium_days": int(OPENING_PREMIUM_DAYS),
+        "opening_bonus_claimed": bool(opening_claimed),
+        "channel_username": PUBLIC_CHANNEL,
+        "points_tier": referral["tier"],
+        "referral": referral,
+        "channel_bonus": {
+            "premium_days": int(CHANNEL_PREMIUM_DAYS),
+            "claimed": bool(channel_claimed_at),
+            "claimed_at": channel_claimed_at,
+            "channel_username": PUBLIC_CHANNEL,
+        },
+        "opening_bonus": {
+            "premium_days": int(OPENING_PREMIUM_DAYS),
+            "claimed": bool(opening_claimed),
+        },
+        "promo": {
+            "redeem_supported": True,
+            "redeem_endpoint": "/api/bonuses/promo/redeem",
+            "unified_redeem_supported": True,
+            "pending_discount_pct": int(user.pending_discount_pct or 0),
+            "pending_discount_code": str(user.pending_discount_code or "").strip().upper(),
+        },
+        "wheel": {
+            "enabled": False,
+            "state": "hidden_until_feature_flag",
+        },
+        "calendar": {
+            "enabled": False,
+            "state": "hidden_until_feature_flag",
+        },
+    }
+
+
+@app.get("/api/bonuses/summary")
+async def bonuses_summary(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return _bonus_summary_payload(s=s, user=user, tg_id=tg_id)
+    finally:
+        s.close()
+
+
+@app.get("/api/bonuses/referral/summary")
+async def bonuses_referral_summary(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return _bonus_referral_summary_payload(user=user, tg_id=tg_id)
+    finally:
+        s.close()
+
+
 @app.post("/api/channel/subscriber/check")
 async def channel_subscriber_check(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
@@ -8059,6 +8161,21 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
         }
     finally:
         s.close()
+
+
+@app.post("/api/bonuses/promo/redeem")
+async def bonuses_promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    result = await promo_redeem(payload, request, x_telegram_init_data)
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=tg_id).first()
+        if user:
+            result["summary"] = _bonus_summary_payload(s=s, user=user, tg_id=tg_id)
+    finally:
+        s.close()
+    return result
 
 
 @app.post("/api/gift/redeem")
@@ -8329,6 +8446,7 @@ async def unified_redeem(
     try:
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == normalized).first()
         card_meta = _access_key_meta_from_card_type(s=s, card_type=str(getattr(card, "card_type", "") or "")) if card else None
+        promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == normalized).first()
     finally:
         s.close()
 
@@ -8347,12 +8465,25 @@ async def unified_redeem(
             "result": result,
         }
 
+    if promo:
+        result = await promo_redeem(
+            PromoRedeemIn(code=normalized),
+            request,
+            x_telegram_init_data,
+        )
+        return {
+            "ok": True,
+            "kind": "promo",
+            **_access_key_safe_meta(normalized),
+            "result": result,
+        }
+
     raise HTTPException(
         status_code=404,
         detail={
             "code": "redeem_code_not_supported",
             "message": "This activation code is not supported by the unified app endpoint yet.",
-            "supported_kinds": ["access_key"],
+            "supported_kinds": ["access_key", "promo"],
             **_access_key_safe_meta(normalized),
         },
     )

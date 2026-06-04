@@ -277,6 +277,12 @@ Product wording rule:
 - active public channel: `@pokrov_vpn`
 - `@pokrov_vpnbot` is an administrator in that channel
 
+### Promo And Referral Bonuses
+
+- app-first bonus summary, referral summary, and promo-code redemption are backend-owned API contracts
+- the app may redeem promo codes through the unified code entry or the bonus promo endpoint
+- roulette, calendar, and rich loyalty mechanics remain hidden until dedicated API, feature-flag, and copy gates are green
+
 Official Telegram surfaces:
 
 - main bot: `@pokrov_vpnbot`

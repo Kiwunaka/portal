@@ -821,3 +821,131 @@ def test_channel_subscriber_check_is_read_only_for_linked_app_account(monkeypatc
     assert payload["campaign_marked"] is False
 
     assert api.available_points(tg_id=account_id)[0] == 0
+
+
+def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-bonus-summary",
+            "device_name": "Pixel Fold",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    session_response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    account_id = int(session_response.json()["user"]["account_id"])
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(tg_id=account_id).first()
+        user.referral_count = 3
+        user.referral_code = "POKROV3"
+        user.channel_bonus_claimed_at = api._utcnow()
+        user.pending_discount_pct = 20
+        user.pending_discount_code = "APP20"
+        db.commit()
+    finally:
+        db.close()
+
+    summary_response = client.get(
+        "/api/bonuses/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    referral_response = client.get(
+        "/api/bonuses/referral/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert summary_response.status_code == 200, summary_response.text
+    summary = summary_response.json()
+    assert summary["ok"] is True
+    assert summary["referral_count"] == 3
+    assert summary["referral_code"] == "POKROV3"
+    assert summary["channel_bonus_claimed_at"]
+    assert summary["channel_bonus"]["claimed"] is True
+    assert summary["referral"]["count"] == 3
+    assert summary["referral"]["code"] == "POKROV3"
+    assert "start=ref_POKROV3" in summary["referral"]["link"]
+    assert summary["promo"]["redeem_endpoint"] == "/api/bonuses/promo/redeem"
+    assert summary["promo"]["pending_discount_pct"] == 20
+    assert summary["wheel"]["enabled"] is False
+    assert summary["calendar"]["enabled"] is False
+
+    assert referral_response.status_code == 200, referral_response.text
+    referral = referral_response.json()
+    assert referral["ok"] is True
+    assert referral["count"] == 3
+    assert referral["code"] == "POKROV3"
+    assert referral["bonus_days"] == api.REFERRAL_BONUS_DAYS
+    assert referral["tier"]["tier_key"]
+
+
+def test_app_session_can_redeem_promo_through_bonus_and_unified_endpoints(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-promo-redeem",
+            "device_name": "Windows PC",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    db = api.SessionLocal()
+    try:
+        db.add(api.PromoCode(code="APPDAYS", promo_type="days", value=7, uses_left=2))
+        db.add(api.PromoCode(code="APP20", promo_type="discount", value=20, uses_left=1))
+        db.commit()
+    finally:
+        db.close()
+
+    days_response = client.post(
+        "/api/bonuses/promo/redeem",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"code": "appdays"},
+    )
+    discount_response = client.post(
+        "/api/redeem",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"code": "APP20"},
+    )
+
+    assert days_response.status_code == 200, days_response.text
+    days = days_response.json()
+    assert days["ok"] is True
+    assert days["code"] == "APPDAYS"
+    assert days["promo_type"] == "days"
+    assert days["applied_days"] == 7
+    assert days["summary"]["promo"]["redeem_supported"] is True
+
+    assert discount_response.status_code == 200, discount_response.text
+    discount = discount_response.json()
+    assert discount["ok"] is True
+    assert discount["kind"] == "promo"
+    assert discount["code_preview"] == "...PP20"
+    assert discount["result"]["promo_type"] == "discount"
+    assert discount["result"]["pending_discount_pct"] == 20
+
+    db = api.SessionLocal()
+    try:
+        appdays = db.query(api.PromoCode).filter_by(code="APPDAYS").first()
+        app20 = db.query(api.PromoCode).filter_by(code="APP20").first()
+        assert int(appdays.uses_left or 0) == 1
+        assert int(app20.uses_left or 0) == 0
+        assert db.query(api.PromoUsage).count() == 2
+    finally:
+        db.close()
