@@ -365,6 +365,7 @@ restart a service.
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage verify`
 - wrapper steps stream child output, print heartbeat lines during quiet long-running steps, and enforce per-step timeouts unless the matching `--*-timeout-sec 0` option is used
 - the GitHub Actions release orchestrator is manual-only; its default mode is `dry-run`, and `full` should be selected only after current gates and operator deploy intent are explicit
+- dispatch inputs are passed through step environment variables and Bash argument arrays rather than interpolated into shell source; `NODE_PASS_BRAIN` is scoped to the orchestrator step, and secret-bearing remote runs are rejected unless `brain_ip` is the canonical `82.21.114.104` host with `pokrov.space` / `api.pokrov.space` domains
 
 ### Release handoff sync
 

@@ -1,4 +1,4 @@
-﻿name: Release Orchestrator (Manual)
+name: Release Orchestrator (Manual)
 
 on:
   workflow_dispatch:
@@ -53,8 +53,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      NODE_PASS_BRAIN: ${{ secrets.NODE_PASS_BRAIN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,22 +81,49 @@ jobs:
 
       - name: Run orchestrator
         shell: bash
+        env:
+          NODE_PASS_BRAIN: ${{ secrets.NODE_PASS_BRAIN }}
+          MODE: ${{ inputs.mode }}
+          BRAIN_IP: ${{ inputs.brain_ip }}
+          WEB_DOMAIN: ${{ inputs.web_domain }}
+          API_DOMAIN: ${{ inputs.api_domain }}
+          QUICK_GATE: ${{ inputs.quick_gate }}
+          ENSURE_METRICS_TIMER: ${{ inputs.ensure_metrics_timer }}
+          RELEASE_METADATA_FILE: ${{ inputs.release_metadata_file }}
+          RELEASE_ENV_FILE: ${{ inputs.release_env_file }}
         run: |
           set -euo pipefail
 
-          MODE="${{ github.event.inputs.mode }}"
-          BRAIN_IP="${{ github.event.inputs.brain_ip }}"
-          WEB_DOMAIN="${{ github.event.inputs.web_domain }}"
-          API_DOMAIN="${{ github.event.inputs.api_domain }}"
-          RELEASE_METADATA_FILE="${{ github.event.inputs.release_metadata_file }}"
-          RELEASE_ENV_FILE="${{ github.event.inputs.release_env_file }}"
+          case "$BRAIN_IP" in
+            82.21.114.104) ;;
+            *)
+              echo "::error::brain_ip must match the canonical control-plane host."
+              exit 2
+              ;;
+          esac
+
+          case "$WEB_DOMAIN" in
+            pokrov.space) ;;
+            *)
+              echo "::error::web_domain must match the canonical public host."
+              exit 2
+              ;;
+          esac
+
+          case "$API_DOMAIN" in
+            api.pokrov.space) ;;
+            *)
+              echo "::error::api_domain must match the canonical API host."
+              exit 2
+              ;;
+          esac
 
           CMD=(python scripts/release_orchestrator.py --brain-ip "$BRAIN_IP" --web-domain "$WEB_DOMAIN" --api-domain "$API_DOMAIN")
 
-          if [[ "${{ github.event.inputs.quick_gate }}" == "true" ]]; then
+          if [[ "$QUICK_GATE" == "true" ]]; then
             CMD+=(--quick-gate)
           fi
-          if [[ "${{ github.event.inputs.ensure_metrics_timer }}" == "true" ]]; then
+          if [[ "$ENSURE_METRICS_TIMER" == "true" ]]; then
             CMD+=(--ensure-metrics-timer)
           fi
           if [[ -n "$RELEASE_METADATA_FILE" ]]; then
