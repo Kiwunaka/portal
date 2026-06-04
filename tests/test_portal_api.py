@@ -1,5 +1,6 @@
 ﻿import os
 import sys
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -46,7 +47,7 @@ class PortalApiTests(unittest.TestCase):
         init_data = _sign_telegram_init_data(
             bot_token=os.environ["BOT_TOKEN"],
             params={
-                "auth_date": "1700000000",
+                "auth_date": str(int(time.time())),
                 "query_id": "AAEAAAE",
                 "user": '{"id":12345,"first_name":"Test","username":"t"}',
             },
@@ -72,7 +73,7 @@ class PortalApiTests(unittest.TestCase):
             init_data = _sign_telegram_init_data(
                 bot_token=original_token,
                 params={
-                    "auth_date": "1700000000",
+                    "auth_date": str(int(time.time())),
                     "query_id": "AAEAAAE",
                     "user": '{"id":54321,"first_name":"Test","username":"runtime"}',
                 },
@@ -83,6 +84,23 @@ class PortalApiTests(unittest.TestCase):
         finally:
             os.environ["BOT_TOKEN"] = original_token
             importlib.reload(config)
+
+    def test_verify_telegram_data_rejects_stale_auth_date(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        init_data = _sign_telegram_init_data(
+            bot_token=os.environ["BOT_TOKEN"],
+            params={
+                "auth_date": str(int(time.time()) - int(api.TELEGRAM_WEBAPP_INIT_DATA_MAX_AGE_SECONDS) - 5),
+                "query_id": "AAEAAAE",
+                "user": '{"id":12345,"first_name":"Test","username":"t"}',
+            },
+        )
+
+        self.assertIsNone(api._verify_telegram_data(init_data))
 
     def test_generate_vless_link_contains_reality_params(self) -> None:
         import importlib

@@ -1450,8 +1450,7 @@ function applyAuthHeaders(headers: Headers): void {
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
     headers.set("X-Web-Auth-Token", token);
-  }
-  if (initData) {
+  } else if (initData) {
     headers.set("X-Telegram-Init-Data", initData);
   }
 }

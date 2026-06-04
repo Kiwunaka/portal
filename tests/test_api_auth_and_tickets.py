@@ -140,11 +140,24 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": "1700000000",
+                "auth_date": str(int(time.time())),
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },
         )
+
+
+    def test_telegram_init_data_rejects_expired_auth_date(self) -> None:
+        init_data = _sign_telegram_init_data(
+            bot_token=self.bot_token,
+            params={
+                "auth_date": str(int(time.time()) - int(self.api.TELEGRAM_WEBAPP_INIT_DATA_MAX_AGE_SECONDS) - 5),
+                "query_id": "AAEAAAE",
+                "user": '{"id":1001,"first_name":"Test","username":"alice"}',
+            },
+        )
+
+        self.assertIsNone(self.api._verify_telegram_data(init_data))
 
     def _telegram_login_payload(self, tg_id: int, username: str, *, auth_date: int | None = None) -> dict:
         import hashlib
