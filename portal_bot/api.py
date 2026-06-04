@@ -498,7 +498,6 @@ WEB_SESSION_COOKIE_SAMESITE = (os.getenv("WEB_SESSION_COOKIE_SAMESITE") or "lax"
 PAYMENT_CALLBACK_MAX_BYTES = max(1024, env_int("PAYMENT_CALLBACK_MAX_BYTES", 256 * 1024))
 SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
 support_ai_last_reply_at: dict[int, float] = {}
-API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
     for x in (
@@ -2695,19 +2694,9 @@ def _is_allowed_dev_origin(raw: str) -> bool:
 
 
 def _is_local_request(request: Request | None) -> bool:
-    if request is None:
+    if request is None or request.client is None:
         return False
-    host = (request.url.hostname or "").strip().lower()
-    is_loopback_host = False
-    if host in API_LOCALHOST_DEV_HOSTS:
-        is_loopback_host = True
-    else:
-        try:
-            ip = ipaddress.ip_address(host)
-            is_loopback_host = ip.is_loopback
-        except Exception:
-            is_loopback_host = False
-    if not is_loopback_host:
+    if not _is_loopback_ip(request.client.host):
         return False
 
     origin = request.headers.get("origin", "")
