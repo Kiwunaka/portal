@@ -3643,16 +3643,7 @@ def _auth_actor_tg_id(auth_user: dict[str, Any] | None) -> int:
     direct_id = int((auth_user or {}).get("actor_tg_id") or (auth_user or {}).get("telegram_id") or 0)
     if direct_id > 0:
         return direct_id
-    account_id = int((auth_user or {}).get("id") or 0)
-    if account_id <= 0 or _is_admin_tg(account_id):
-        return account_id
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == account_id).first()
-        linked_id = _linked_telegram_id(user)
-        return linked_id or account_id
-    finally:
-        s.close()
+    return int((auth_user or {}).get("id") or 0)
 
 
 def _auth_user_is_recovery_scope(auth_user: dict[str, Any] | None) -> bool:
@@ -3683,7 +3674,6 @@ def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User
         int((auth_user or {}).get("id") or 0),
         _auth_actor_tg_id(auth_user),
         int(getattr(user, "tg_id", 0) or 0) if user else 0,
-        _linked_telegram_id(user),
     ]
     return any(_is_admin_tg(candidate) for candidate in candidates if candidate)
 

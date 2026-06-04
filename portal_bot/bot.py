@@ -2066,6 +2066,8 @@ def _bind_app_account_to_telegram(
         or int(account_tg_id) == int(telegram_id)
     ):
         return "invalid"
+    if int(telegram_id) == int(ADMIN_ID or 0) and int(account_tg_id) != int(ADMIN_ID or 0):
+        return "telegram_already_linked"
     raw_code = str(start_code or "").strip().lower()
     session = Session()
     try:
