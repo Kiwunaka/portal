@@ -79,6 +79,10 @@ Current `client_policy` contract:
 - `support_context.routing_mode`: `all_except_ru`
 - `support_context.ip_version_preference`: `ipv4_only`
 - `support_recovery_order`: `app`, `web`, `telegram`
+- `warp_policy`: sanitized enhanced-privacy/WARP metadata only; it may expose
+  `enabled`, `runtime_ready`, `state`, `mode`, `source`, and
+  `wireguard_config_available`, but must not expose WireGuard keys, account
+  IDs, access tokens, license keys, or generated config material
 
 First-run route-mode choice:
 
@@ -94,13 +98,16 @@ First-run route-mode choice:
 Rollout note:
 
 - `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
-- `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns a manifest with `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, and `support_context`
+- `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns a manifest with `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, and `warp_policy`
+- managed-profile `warp_policy` is the only app endpoint allowed to carry
+  backend-provisioned WireGuard config/account material, and only when
+  `runtime_ready=true`; public `client_policy` copies stay sanitized
 - allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
 - allowlisted carrier or cohort overrides may switch app-managed flows to `ru_bridge_relay` during a RU reachability incident; that manifest keeps countries as the top-level choice, nests `Обычный` and `Белые списки` via-`mini` choices under non-US countries, and leaves US as direct-only
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
 - manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `subscription_url` remains a compatibility and recovery artifact for manual import, legacy browser-visible delivery, and fallback when the managed manifest cannot be fetched
-- `network_rollout_config` carries `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `network_rollout_config` carries `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `warp_policy`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
 - `defaults` normally keep `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split`; incident response may temporarily promote `transport_profile=ru_bridge_relay` with rollback to `legacy_reality_fallback`
 - overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `operator_lab` is allowlist-only and must stay out of public UI and mass session/profile payloads

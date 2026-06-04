@@ -159,6 +159,7 @@ from observer_service import (
 from network_rollout import (
     NETWORK_ROLLOUT_CONFIG_KEY,
     load_network_rollout_config,
+    managed_warp_policy,
     normalized_network_rollout_config,
     ru_bridge_relay_config,
     ru_bridge_relay_enabled,
@@ -5924,6 +5925,7 @@ async def client_managed_profile(
             "support_context": dict(client_policy.get("support_context") or {}),
             "subscription_url": build_subscription_url(str(getattr(user, "sub_token", "") or "")),
             "smart_connect": smart_connect,
+            "warp_policy": managed_warp_policy(rollout_config),
             "linked_identities": _linked_identities_payload(s=s, user=user, auth_user=auth_user),
             "access": {
                 **access_policy,

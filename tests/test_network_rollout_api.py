@@ -266,6 +266,84 @@ def test_carrier_rollout_flows_through_dashboard_user_managed_manifest_and_subsc
     assert "serviceName=" not in plain_links
 
 
+def test_managed_profile_exposes_warp_policy_without_leaking_public_policy_secrets(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    rollout_payload = _rollout_payload()
+    rollout_payload["warp_policy"] = {
+        "enabled": True,
+        "mode": "proxy_over_warp",
+        "source": "backend_managed",
+        "wireguard_config": {
+            "private-key": "test-private-key",
+            "local-address-ipv4": "172.16.0.2",
+            "local-address-ipv6": "2606:4700:110:abcd::2",
+            "peer-public-key": "test-peer-public-key",
+            "client-id": "test-client-id",
+        },
+        "account": {
+            "account-id": "test-account-id",
+            "access-token": "test-access-token",
+        },
+    }
+
+    db = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=db, key="network_rollout_config", value=rollout_payload)
+        db.commit()
+    finally:
+        db.close()
+
+    start_trial = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-warp-policy",
+            "device_name": "Windows WARP Policy Device",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+    assert start_trial.status_code == 200, start_trial.text
+    start_body = start_trial.json()
+    public_policy = start_body["client_policy"]["warp_policy"]
+    assert public_policy == {
+        "enabled": True,
+        "runtime_ready": True,
+        "state": "ready",
+        "mode": "proxy_over_warp",
+        "source": "backend_managed",
+        "wireguard_config_available": True,
+    }
+    public_policy_json = json.dumps(start_body["client_policy"], sort_keys=True)
+    assert "test-private-key" not in public_policy_json
+    assert "test-access-token" not in public_policy_json
+    assert "wireguard_config" not in public_policy
+    assert "account" not in public_policy
+
+    auth_headers = {"Authorization": f"Bearer {start_body['session_token']}"}
+    dashboard = client.get("/api/dashboard", headers=auth_headers)
+    assert dashboard.status_code == 200, dashboard.text
+    dashboard_policy_json = json.dumps(dashboard.json()["client_policy"], sort_keys=True)
+    assert "test-private-key" not in dashboard_policy_json
+    assert "test-access-token" not in dashboard_policy_json
+
+    user_response = client.get(f"/api/user/{start_body['account_id']}", headers=auth_headers)
+    assert user_response.status_code == 200, user_response.text
+    user_policy_json = json.dumps(user_response.json()["client_policy"], sort_keys=True)
+    assert "test-private-key" not in user_policy_json
+    assert "test-access-token" not in user_policy_json
+
+    managed_manifest = client.get("/api/client/profile/managed", headers=auth_headers)
+    assert managed_manifest.status_code == 200, managed_manifest.text
+    warp_policy = managed_manifest.json()["warp_policy"]
+    assert warp_policy["enabled"] is True
+    assert warp_policy["runtime_ready"] is True
+    assert warp_policy["state"] == "ready"
+    assert warp_policy["mode"] == "proxy_over_warp"
+    assert warp_policy["wireguard_config"]["private-key"] == "test-private-key"
+    assert warp_policy["account"]["account-id"] == "test-account-id"
+
+
 def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)

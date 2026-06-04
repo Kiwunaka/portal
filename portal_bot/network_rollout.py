@@ -14,6 +14,8 @@ _POLICY_OVERRIDE_KEYS = {
     "routing_mode_default",
     "ip_version_preference",
 }
+_WARP_POLICY_KEY = "warp_policy"
+_WARP_MODES = {"proxy_over_warp", "warp_over_proxy"}
 
 
 def _utcnow() -> datetime:
@@ -147,6 +149,7 @@ def default_network_rollout_config() -> dict[str, Any]:
             "version": _clean_text(versions.get("ruleset_version"), fallback=version),
         },
         "support_recovery_order": [str(item) for item in recovery if _clean_text(item)],
+        _WARP_POLICY_KEY: _normalize_warp_policy({}),
     }
 
 
@@ -180,6 +183,83 @@ def _transport_metadata(transport_profile: str, *, version: str) -> dict[str, st
         "engine_hint": engine_hint,
         "profile_revision": f"{_clean_text(version, fallback=_default_rollout_version())}:{profile}",
     }
+
+
+def _normalize_warp_wireguard_config(value: Any) -> dict[str, str] | str:
+    if isinstance(value, str):
+        return _clean_text(value)
+    if not isinstance(value, dict):
+        return {}
+    aliases = {
+        "private-key": ("private-key", "private_key", "privateKey"),
+        "local-address-ipv4": ("local-address-ipv4", "local_address_ipv4", "localAddressIpv4", "localAddressIPv4"),
+        "local-address-ipv6": ("local-address-ipv6", "local_address_ipv6", "localAddressIpv6", "localAddressIPv6"),
+        "peer-public-key": ("peer-public-key", "peer_public_key", "peerPublicKey"),
+        "client-id": ("client-id", "client_id", "clientId"),
+    }
+    out: dict[str, str] = {}
+    for canonical, keys in aliases.items():
+        for key in keys:
+            text = _clean_text(value.get(key))
+            if text:
+                out[canonical] = text
+                break
+    return out
+
+
+def _warp_wireguard_config_available(value: dict[str, str] | str) -> bool:
+    if isinstance(value, str):
+        return bool(_clean_text(value))
+    return bool(value)
+
+
+def _normalize_warp_account(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    account_id = _clean_text(value.get("account-id") or value.get("account_id") or value.get("accountId"))
+    access_token = _clean_text(value.get("access-token") or value.get("access_token") or value.get("accessToken"))
+    out: dict[str, str] = {}
+    if account_id:
+        out["account-id"] = account_id
+    if access_token:
+        out["access-token"] = access_token
+    return out
+
+
+def _normalize_warp_policy(value: Any, *, include_secrets: bool = False) -> dict[str, Any]:
+    src = value if isinstance(value, dict) else {}
+    mode = _clean_text(src.get("mode"), fallback="proxy_over_warp")
+    if mode not in _WARP_MODES:
+        mode = "proxy_over_warp"
+    source = _clean_text(src.get("source"), fallback="backend_managed")
+    wireguard_config = _normalize_warp_wireguard_config(
+        src.get("wireguard_config") or src.get("wireguardConfig") or src.get("wireguard-config")
+    )
+    account = _normalize_warp_account(src.get("account"))
+    enabled = _as_bool(src.get("enabled"))
+    wireguard_available = _warp_wireguard_config_available(wireguard_config)
+    runtime_ready = enabled and wireguard_available
+    state = _clean_text(src.get("state"))
+    if runtime_ready:
+        state = state or "ready"
+    elif enabled:
+        state = "waiting_for_backend_provisioning" if not state or state == "ready" else state
+    else:
+        state = "disabled_until_runtime_proof" if not state or state == "ready" else state
+
+    out: dict[str, Any] = {
+        "enabled": enabled,
+        "runtime_ready": runtime_ready,
+        "state": state,
+        "mode": mode,
+        "source": source,
+        "wireguard_config_available": wireguard_available,
+    }
+    if include_secrets and runtime_ready:
+        out["wireguard_config"] = wireguard_config
+        if account:
+            out["account"] = account
+    return out
 
 
 def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
@@ -272,7 +352,16 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
             "version": _clean_text(routing_rules_feed.get("version"), fallback=defaults["routing_rules_feed"]["version"]),
         },
         "support_recovery_order": support_recovery_order,
+        _WARP_POLICY_KEY: _normalize_warp_policy(src.get(_WARP_POLICY_KEY), include_secrets=True),
     }
+
+
+def managed_warp_policy(config: dict[str, Any]) -> dict[str, Any]:
+    return _normalize_warp_policy((config or {}).get(_WARP_POLICY_KEY), include_secrets=True)
+
+
+def public_warp_policy(config: dict[str, Any]) -> dict[str, Any]:
+    return _normalize_warp_policy((config or {}).get(_WARP_POLICY_KEY), include_secrets=False)
 
 
 def load_network_rollout_config(*, session=None) -> dict[str, Any]:
@@ -435,6 +524,7 @@ def resolved_client_policy(
             "ip_version_preference": ip_version_preference,
         },
         "support_recovery_order": support_recovery_order,
+        _WARP_POLICY_KEY: public_warp_policy(config),
     }
 
 
