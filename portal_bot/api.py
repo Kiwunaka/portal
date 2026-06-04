@@ -17,7 +17,6 @@ import inspect
 import ipaddress
 import json
 import logging
-import mimetypes
 import os
 import re
 import secrets
@@ -1449,8 +1448,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class SupportUploadStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope: dict[str, Any]) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        return response
+
+
 SUPPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-app.mount(SUPPORT_UPLOAD_URL_PREFIX, StaticFiles(directory=str(SUPPORT_UPLOAD_DIR)), name="support_uploads")
+app.mount(SUPPORT_UPLOAD_URL_PREFIX, SupportUploadStaticFiles(directory=str(SUPPORT_UPLOAD_DIR)), name="support_uploads")
 
 
 def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
@@ -4201,25 +4209,39 @@ def _sanitize_ticket_upload_name(filename: str | None) -> str:
     return cleaned[:120] or "attachment"
 
 
-def _ticket_upload_kind(content_type: str) -> str:
+TICKET_UPLOAD_CONTENT_TYPES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "image/png": ("image", (".png",)),
+    "image/jpeg": ("image", (".jpg", ".jpeg")),
+    "image/gif": ("image", (".gif",)),
+    "image/webp": ("image", (".webp",)),
+    "video/mp4": ("video", (".mp4",)),
+    "video/webm": ("video", (".webm",)),
+    "video/quicktime": ("video", (".mov",)),
+    "application/pdf": ("file", (".pdf",)),
+    "text/plain": ("file", (".txt",)),
+    "application/octet-stream": ("file", (".bin",)),
+}
+
+
+def _ticket_upload_content_type_config(content_type: str) -> tuple[str, tuple[str, ...]]:
     normalized = str(content_type or "").split(";", 1)[0].strip().lower()
-    if normalized.startswith("image/"):
-        return "image"
-    if normalized.startswith("video/"):
-        return "video"
-    if normalized in {"application/pdf", "text/plain", "application/octet-stream"}:
-        return "file"
+    config = TICKET_UPLOAD_CONTENT_TYPES.get(normalized)
+    if config:
+        return config
     raise HTTPException(status_code=400, detail="Unsupported attachment type")
 
 
+def _ticket_upload_kind(content_type: str) -> str:
+    media_type, _extensions = _ticket_upload_content_type_config(content_type)
+    return media_type
+
+
 def _ticket_upload_suffix(filename: str, content_type: str) -> str:
+    _media_type, allowed_extensions = _ticket_upload_content_type_config(content_type)
     suffix = Path(filename).suffix.lower().strip()
-    if suffix and re.fullmatch(r"\.[a-z0-9]{1,10}", suffix):
+    if suffix in allowed_extensions:
         return suffix
-    guessed = mimetypes.guess_extension(content_type or "") or ""
-    if guessed and re.fullmatch(r"\.[a-z0-9]{1,10}", guessed.lower()):
-        return guessed.lower()
-    return ".bin"
+    return allowed_extensions[0]
 
 
 def _store_support_upload(*, filename: str | None, content_type: str | None, raw_bytes: bytes) -> dict[str, Any]:

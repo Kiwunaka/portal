@@ -1409,7 +1409,44 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         fetched = self.client.get(file_url)
         self.assertEqual(fetched.status_code, 200, fetched.text)
         self.assertEqual(fetched.headers.get("content-type"), "image/png")
+        self.assertEqual(fetched.headers.get("x-content-type-options"), "nosniff")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
+
+    def test_ticket_upload_does_not_preserve_active_filename_suffix(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        uploaded = self.client.post(
+            "/api/tickets/uploads",
+            headers={
+                **user_hdrs,
+                "Content-Type": "application/octet-stream",
+                "X-Upload-Filename": "poc.html",
+            },
+            content=b"<script>alert(1)</script>",
+        )
+        self.assertEqual(uploaded.status_code, 200, uploaded.text)
+        payload = uploaded.json()["attachment_payload"]
+        file_url = str(payload["url"] or "")
+        self.assertTrue(file_url.startswith("/uploads/support/"))
+        self.assertTrue(file_url.endswith(".bin"), file_url)
+        self.assertEqual(payload["name"], "poc.html")
+        self.assertEqual(payload["content_type"], "application/octet-stream")
+
+        fetched = self.client.get(file_url)
+        self.assertEqual(fetched.status_code, 200, fetched.text)
+        self.assertEqual(fetched.headers.get("content-type"), "application/octet-stream")
+        self.assertEqual(fetched.headers.get("x-content-type-options"), "nosniff")
+        self.assertEqual(fetched.content, b"<script>alert(1)</script>")
+
+    def test_ticket_upload_rejects_svg_active_content_type(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        uploaded = self.client.post(
+            "/api/tickets/uploads",
+            headers={**user_hdrs, "Content-Type": "image/svg+xml", "X-Upload-Filename": "poc.svg"},
+            content=b"<svg><script>alert(1)</script></svg>",
+        )
+        self.assertEqual(uploaded.status_code, 400, uploaded.text)
 
     def test_cors_credentials_do_not_use_wildcard_origin(self) -> None:
         cors_middleware = next(
