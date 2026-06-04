@@ -51,6 +51,8 @@ function errorMessage(err: unknown, fallback: string): string {
   return String((err as { message?: string })?.message || err || fallback);
 }
 
+const BULK_CONFIRMATION_PHRASE = "ПРИМЕНИТЬ";
+
 export default function AdminUsersPage() {
   const pathname = usePathname();
   const router = useRouter();
@@ -414,6 +416,14 @@ export default function AdminUsersPage() {
           return;
         }
 
+        if (!bulkAction.dryRun) {
+          const phrase = window.prompt(`Для подтверждения массового действия введите ${BULK_CONFIRMATION_PHRASE}`);
+          if (phrase !== BULK_CONFIRMATION_PHRASE) {
+            setError(`Массовое действие не запущено: требуется точная фраза ${BULK_CONFIRMATION_PHRASE}.`);
+            return;
+          }
+        }
+
         const nodeCodes = bulkAction.nodeCodes
           .split(",")
           .map((item) => item.trim())
@@ -694,6 +704,9 @@ export default function AdminUsersPage() {
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
                   Поиск: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Ноды: {bulkAction.nodeCodes.trim() || "все"}
+                </p>
+                <p className="mt-2 text-xs text-amber-700">
+                  После нажатия кнопки браузер запросит фразу <strong>{BULK_CONFIRMATION_PHRASE}</strong>. Это защищает действие от случайного клика и clickjacking.
                 </p>
                 <div className="mt-4 flex justify-end gap-2">
                   <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>

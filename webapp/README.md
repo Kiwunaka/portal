@@ -78,6 +78,7 @@ Canonical browser/runtime wiring:
 Rules:
 
 - frontend must not treat `https://app.pokrov.space/api/*` HTML fallback as valid API success
+- `app.pokrov.space` admin/cabinet exports must be deployed with anti-framing headers (`frame-ancestors 'none'` plus `X-Frame-Options: DENY`) because high-impact admin controls rely on browser-origin UI safeguards as well as typed confirmation
 - cabinet entry is continuation-first and must not be documented or styled like a second acquisition surface
 - first-layer cabinet UI should guide users through app install, device connection, renewal, and support before exposing manual connection details
 - the single public `ссылка подключения` and matching QR may appear only behind an explicit manual/recovery fallback or after a fulfilled commerce/support path that truly needs manual import
