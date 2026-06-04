@@ -337,6 +337,7 @@ def run_migrations(engine: Engine) -> None:
                 ("free_cycle_next_reset_at", "DATETIME"),
                 ("is_app_user", "BOOLEAN DEFAULT 0"),
                 ("app_install_id", "VARCHAR(128)"),
+                ("app_install_secret_hash", "VARCHAR(64)"),
                 ("app_device_name", "VARCHAR(120)"),
                 ("app_platform", "VARCHAR(32)"),
                 ("app_os_version", "VARCHAR(64)"),
@@ -1343,6 +1344,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "users", "current_plan_code", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "users", "is_app_user", "BOOLEAN DEFAULT FALSE")
         _postgres_add_column_if_missing(conn, "users", "app_install_id", "VARCHAR(128)")
+        _postgres_add_column_if_missing(conn, "users", "app_install_secret_hash", "VARCHAR(64)")
         _postgres_add_column_if_missing(conn, "users", "app_device_name", "VARCHAR(120)")
         _postgres_add_column_if_missing(conn, "users", "app_platform", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "users", "app_os_version", "VARCHAR(64)")

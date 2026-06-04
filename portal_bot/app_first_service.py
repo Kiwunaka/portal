@@ -207,6 +207,7 @@ def upsert_app_trial_user(
     now: datetime,
     trial_days: int,
     request_client_ip: str = "",
+    install_secret_hash: str | None = None,
 ) -> tuple[User, bool]:
     install_id = str(getattr(payload, "install_id", "") or "").strip()[:128]
     if not install_id:
@@ -240,6 +241,7 @@ def upsert_app_trial_user(
             is_app_user=True,
             display_name=device_name,
             app_install_id=install_id,
+            app_install_secret_hash=str(install_secret_hash or "").strip() or None,
             app_device_name=device_name,
             app_platform=str(getattr(payload, "platform", "") or "").strip()[:32],
             app_os_version=str(getattr(payload, "os_version", "") or "").strip()[:64] or None,
@@ -281,6 +283,8 @@ def upsert_app_trial_user(
             user.expiry_at = now + timedelta(days=canonical_trial_days)
         if user.is_active is None:
             user.is_active = True
+        if install_secret_hash:
+            user.app_install_secret_hash = str(install_secret_hash).strip()
         if not str(getattr(user, "route_mode", "") or "").strip():
             user.route_mode = ROUTE_MODE_ALL_TRAFFIC
         if getattr(user, "route_selected_apps_json", None) is None:

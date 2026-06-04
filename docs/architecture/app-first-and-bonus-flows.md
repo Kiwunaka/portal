@@ -46,14 +46,16 @@ Client-canon note:
    - `client_policy` payload with routing, DNS, transport, and recovery defaults
    - `access` payload with enforced `5-day` trial state
    - `provisioning` payload with explicit readiness state
+   - one-time `install_secret` for newly created app installs
    - experience payload
-7. client silently imports the profile
+7. client stores `install_secret` with the local app install state and silently imports the profile
 8. client asks how this device should be optimized before the first live route activation
 9. client saves the per-device route policy and then switches to `Quick Connect`
 
 Contract rule:
 
 - caller-controlled `trial_days` is no longer part of the canonical client contract; the backend always enforces the fixed `5-day` trial from shared truth
+- `install_id` alone is not an app account bearer credential; the backend issues `install_secret` once for a fresh install, stores only its server-side hash, and requires the secret for later `start-trial` retries against that existing `install_id`
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
 
 Current `client_policy` contract:
@@ -199,9 +201,9 @@ Unified access-contract note:
 Beta rate-limit contract:
 
 - externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, and support ticket create/upload apply backend-owned per-minute throttles
-- `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; retries for an existing `install_id` remain idempotent and should continue to return the existing app-first account
+- `POST /api/client/session/start-trial` persists fresh-install throttle counters in the backend database by hashed origin fingerprint; retries for an existing `install_id` bypass fresh-install throttling only after the caller proves possession of that install's `install_secret`
 - throttled requests return HTTP `429` with a `Retry-After` header and structured detail containing `code=rate_limited`, `scope`, and `retry_after_seconds`
-- rate-limit counters store hashed in-process fingerprints and can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables; they are beta abuse guardrails, not a durable cross-process quota ledger
+- rate-limit thresholds can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables; non-trial beta throttles may still use in-process hashed fingerprints, while fresh trial creation uses the durable database counter because it creates active VPN resources
 
 ## Web Login, Email Auth, And Session Continuation
 

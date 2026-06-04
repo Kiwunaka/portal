@@ -68,6 +68,7 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
     payload = start_trial_response.json()
     assert payload["ok"] is True
     assert payload["session_token"]
+    assert len(payload["install_secret"]) >= 32
 
     session_response = client.get(
         "/api/auth/session",
@@ -213,10 +214,16 @@ def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):
     }
 
     first = client.post("/api/client/session/start-trial", json=request_payload)
-    second = client.post("/api/client/session/start-trial", json=request_payload)
-
     assert first.status_code == 200
+
+    missing_secret = client.post("/api/client/session/start-trial", json=request_payload)
+    assert missing_secret.status_code == 401
+    assert missing_secret.json()["detail"]["code"] == "app_install_secret_required"
+
+    second_payload = {**request_payload, "install_secret": first.json()["install_secret"]}
+    second = client.post("/api/client/session/start-trial", json=second_payload)
     assert second.status_code == 200
+    assert second.json()["install_secret"] is None
 
     first_session = client.get(
         "/api/auth/session",
@@ -262,6 +269,7 @@ def test_start_trial_rate_limits_fresh_installs_by_origin(monkeypatch, tmp_path)
                 "install_id": "install-rate-one",
                 "device_name": "Pixel 10",
                 "platform": "android",
+                "install_secret": first.json()["install_secret"],
             },
         )
         blocked_new_install = client.post(

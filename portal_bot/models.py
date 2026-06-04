@@ -72,6 +72,7 @@ class User(Base):
     free_cycle_last_reset_at = Column(DateTime, nullable=True)
     free_cycle_next_reset_at = Column(DateTime, nullable=True)
     app_install_id = Column(String(128), index=True, nullable=True)
+    app_install_secret_hash = Column(String(64), nullable=True)
     app_device_name = Column(String(120), nullable=True)
     app_platform = Column(String(32), nullable=True)
     app_os_version = Column(String(64), nullable=True)

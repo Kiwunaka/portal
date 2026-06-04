@@ -823,6 +823,7 @@ class AppStartTrialIn(BaseModel):
     app_version: str | None = Field(default=None, max_length=32)
     locale: str | None = Field(default=None, max_length=32)
     time_zone: str | None = Field(default=None, max_length=64)
+    install_secret: str | None = Field(default=None, min_length=32, max_length=256)
 
 
 class AccessKeyRedeemIn(BaseModel):
@@ -2325,6 +2326,95 @@ def _enforce_beta_rate_limit(scope: str, request: Request | None, *, identity: s
 
     hits.append(now)
     _beta_rate_limit_state[key] = hits
+
+
+def _app_install_secret_signing_key() -> str:
+    return (
+        os.getenv("WEBAPP_SESSION_SECRET")
+        or os.getenv("TELEGRAM_WEB_LOGIN_SECRET")
+        or os.getenv("BOT_TOKEN")
+        or getattr(Settings, "WEBAPP_SESSION_SECRET", "")
+        or getattr(Settings, "BOT_TOKEN", "")
+        or ""
+    ).strip()
+
+
+def _generate_app_install_secret() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def _hash_app_install_secret(*, install_id: str, install_secret: str) -> str:
+    key = _app_install_secret_signing_key()
+    if not key:
+        raise HTTPException(status_code=500, detail="App install credentials are not configured")
+    normalized_install_id = str(install_id or "").strip()[:128]
+    normalized_secret = str(install_secret or "").strip()
+    return hmac.new(
+        key.encode("utf-8"),
+        f"app-install-v1:{normalized_install_id}:{normalized_secret}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _require_app_install_secret(user: User, *, install_id: str, install_secret: str | None) -> None:
+    stored_hash = str(getattr(user, "app_install_secret_hash", "") or "").strip()
+    if not stored_hash:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "app_install_reauth_required",
+                "message": "This app install needs to be re-linked before a session can be issued.",
+            },
+        )
+    supplied_secret = str(install_secret or "").strip()
+    if not supplied_secret:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "code": "app_install_secret_required",
+                "message": "install_secret is required for this app install.",
+            },
+        )
+    supplied_hash = _hash_app_install_secret(install_id=install_id, install_secret=supplied_secret)
+    if not hmac.compare_digest(stored_hash, supplied_hash):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "app_install_secret_invalid",
+                "message": "install_secret does not match this app install.",
+            },
+        )
+
+
+def _enforce_start_trial_creation_rate_limit(*, s, request: Request | None) -> None:
+    normalized_scope = "start_trial"
+    limit = _beta_rate_limit_per_minute(normalized_scope)
+    if limit <= 0:
+        return
+
+    now_ts = int(time.time())
+    retry_after = max(1, 60 - (now_ts % 60))
+    window_id = now_ts // 60
+    fingerprint = _beta_rate_limit_fingerprint(normalized_scope, request)
+    setting_key = f"rl:{normalized_scope}:{window_id}:{fingerprint}"[:64]
+    current = _get_app_setting_json(s=s, key=setting_key, default={})
+    count = int(current.get("count", 0) or 0) if isinstance(current, dict) else 0
+    if count >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "rate_limited",
+                "message": "Too many requests. Please retry later.",
+                "scope": normalized_scope,
+                "retry_after_seconds": retry_after,
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
+    _set_app_setting_json(
+        s=s,
+        key=setting_key,
+        value={"count": count + 1, "window": window_id, "updated_at": _utcnow().isoformat()},
+    )
 
 
 def _normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
@@ -5438,15 +5528,29 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     s = SessionLocal()
     try:
         install_id = str(payload.install_id or "").strip()[:128]
-        existing_app_account = s.query(User.tg_id).filter(User.app_install_id == install_id).first()
-        if not existing_app_account:
-            _enforce_beta_rate_limit("start_trial", request)
+        existing_app_account = s.query(User).filter(User.app_install_id == install_id).first()
+        issued_install_secret: str | None = None
+        install_secret_hash: str | None = None
+        if existing_app_account:
+            _require_app_install_secret(
+                existing_app_account,
+                install_id=install_id,
+                install_secret=payload.install_secret,
+            )
+        else:
+            _enforce_start_trial_creation_rate_limit(s=s, request=request)
+            issued_install_secret = _generate_app_install_secret()
+            install_secret_hash = _hash_app_install_secret(
+                install_id=install_id,
+                install_secret=issued_install_secret,
+            )
         user, created = app_first_service.upsert_app_trial_user(
             s=s,
             payload=payload,
             now=_utcnow(),
             trial_days=APP_TRIAL_DEFAULT_DAYS,
             request_client_ip=_request_client_ip(request),
+            install_secret_hash=install_secret_hash,
         )
         s.commit()
         s.refresh(user)
@@ -5522,6 +5626,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         "account_id": str(int(user.tg_id)),
         "subscription_url": start_trial_parts["subscription_url"],
         "sync_ok": bool(sync_ok),
+        "install_secret": issued_install_secret,
         "session": start_trial_parts["session"],
         "client_policy": start_trial_parts["client_policy"],
         "access": start_trial_parts["access"],

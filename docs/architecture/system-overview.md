@@ -198,9 +198,9 @@ Operational shaping rule:
 
 1. client generates `install_id`
 2. user taps `Try free`
-3. backend creates app account, device record, and app session
-4. backend returns canonical `session`, `client_policy`, `access`, and `provisioning` payloads plus a real subscription source
-5. client imports and activates the profile
+3. backend applies the durable fresh-install abuse throttle, then creates app account, device record, and app session
+4. backend returns canonical `session`, `client_policy`, `access`, and `provisioning` payloads plus a real subscription source and a one-time `install_secret` for that local install
+5. client stores `install_secret`, imports, and activates the profile; future `start-trial` retries for the same `install_id` must present that secret before the backend reissues a session
 
 App-first contract note:
 
