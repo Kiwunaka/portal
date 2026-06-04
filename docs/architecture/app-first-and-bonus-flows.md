@@ -293,6 +293,8 @@ Contract rule:
 Contract rule:
 
 - Telegram linking should also refresh the canonical linked username automatically when Telegram provides one
+- Linked Telegram identity is support, recovery, bonus, and diagnostics context only; it must not grant `/api/admin/*` authority to an app/email account.
+- The bot must reject attempts to bind the configured admin Telegram identity to any non-admin app/email account.
 - Raw `sub_token` values and `connect.pokrov.space` subscription URLs are bearer connection secrets for compatible clients only. They must not be accepted as Telegram-linking proof or as access-key redemption codes.
 
 ## Telegram Bonus Claim Flow

@@ -1786,6 +1786,8 @@ def _bind_app_account_to_telegram(
         user = session.query(User).filter(User.tg_id == int(account_tg_id)).first()
         if not user:
             return "not_found"
+        if int(telegram_id) == int(ADMIN_ID or 0) and int(account_tg_id) != int(ADMIN_ID or 0):
+            return "telegram_already_linked"
         other = (
             session.query(User)
             .filter(User.linked_telegram_id == int(telegram_id))

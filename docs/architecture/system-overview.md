@@ -238,11 +238,13 @@ Architecture rule:
 
 1. app-first account requests Telegram linking
 2. backend issues a deep link to `@pokrov_vpnbot`
-3. bot links Telegram identity to the app-first account
+3. bot links Telegram identity to the app-first account, except the configured admin Telegram identity cannot be bound to a non-admin app/email account
 4. app or web surfaces may call read-only subscriber status check
 5. reward grant still happens only on the explicit claim API
 6. backend validates membership in `@pokrov_vpn`
 7. backend grants `+10 days` when eligible
+
+Linked Telegram identity supports recovery, bonuses, support context, and diagnostics. Admin API authorization must come from the authenticated admin account/session itself, not from an account's linked Telegram identity.
 
 ### Checkout Continuation Flow
 

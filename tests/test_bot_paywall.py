@@ -125,6 +125,55 @@ class BotPaywallTests(unittest.TestCase):
             sys.modules["qrcode"] = self._saved_qrcode
         self._tmp.cleanup()
 
+    def test_app_link_rejects_admin_telegram_for_non_admin_account(self) -> None:
+        account_tg_id = 424242
+        admin_tg_id = 9999
+        code = "appadminbind"
+        session = self.bot_module.Session()
+        try:
+            session.add(
+                self.bot_module.User(
+                    tg_id=account_tg_id,
+                    username="attacker_app",
+                    uuid=str(uuid.uuid4()),
+                    sub_token="attacker-token",
+                )
+            )
+            session.add(
+                self.bot_module.User(
+                    tg_id=admin_tg_id,
+                    username="admin_owner",
+                    uuid=str(uuid.uuid4()),
+                    sub_token="admin-token",
+                )
+            )
+            session.add(
+                self.bot_module.StartLink(
+                    code=code,
+                    target_action=f"app_link:{account_tg_id}",
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        status = self.bot_module._bind_app_account_to_telegram(
+            account_tg_id=account_tg_id,
+            telegram_id=admin_tg_id,
+            telegram_username="admin_owner",
+            start_code=code,
+        )
+
+        self.assertEqual(status, "telegram_already_linked")
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=account_tg_id).first()
+            self.assertIsNotNone(user)
+            self.assertIsNone(user.linked_telegram_id)
+        finally:
+            session.close()
+
     def test_build_subscription_link_uses_canonical_connect_host(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
         session = self.bot_module.Session()
