@@ -3244,7 +3244,7 @@ def _set_external_order_meta(row: ExternalOrder, meta: dict[str, Any]) -> None:
 
 def _payload_amount(payload: dict[str, Any]) -> float:
     return _safe_float(
-        _payload_value(payload, "amount", "sum", "amount_paid", "OutSum")
+        _payload_value(payload, "amount", "AMOUNT", "sum", "amount_paid", "OutSum")
         or _payload_nested_value(payload, "contract", "amount")
         or _payload_nested_value(payload, "invoice", "amount")
         or _payload_nested_value(payload, "payment", "amount")
@@ -3253,7 +3253,7 @@ def _payload_amount(payload: dict[str, Any]) -> float:
 
 def _payload_currency(payload: dict[str, Any]) -> str:
     return (
-        _payload_value(payload, "currency", "cur", "ccy")
+        _payload_value(payload, "currency", "CURRENCY", "cur", "ccy")
         or _payload_nested_value(payload, "contract", "currency")
         or _payload_nested_value(payload, "invoice", "currency")
         or _payload_nested_value(payload, "payment", "currency")
@@ -3266,6 +3266,10 @@ def _payload_plan_code(payload: dict[str, Any]) -> str:
         _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
         or _payload_nested_value(payload, "clientUtm", "utm_term")
     ).strip().lower()
+
+
+def _payload_tg_id(payload: dict[str, Any]) -> int | None:
+    return _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
 
 
 def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: bool, provider: str = "") -> str:
@@ -3316,19 +3320,17 @@ def _upsert_external_order(
     if not row:
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
-    row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = _payload_plan_code(payload) or row.plan_code
-    row.source = (
+    row.tg_id = row.tg_id or _payload_tg_id(payload)
+    row.plan_code = row.plan_code or _payload_plan_code(payload)
+    row.source = row.source or (
         _payload_value(payload, "source", "checkout_source", "us_source")
         or _payload_nested_value(payload, "clientUtm", "utm_medium")
-        or row.source
     )
-    row.campaign = (
+    row.campaign = row.campaign or (
         _payload_value(payload, "campaign", "utm_campaign")
         or _payload_nested_value(payload, "clientUtm", "utm_campaign")
-        or row.campaign
     )
-    row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
+    row.promo_code = row.promo_code or _payload_value(payload, "promo_code", "coupon")
     meta = _external_order_meta(row)
     meta["callback"] = payload
     _set_external_order_meta(row, meta)
@@ -3416,7 +3418,8 @@ def _record_external_payment_event(
 
 
 def _validate_paid_callback_against_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
-    if _normalize_provider(provider) != "lavatop":
+    p = _normalize_provider(provider)
+    if p not in {"freekassa", "lavatop"}:
         return True, "ok"
     if not order_id:
         return False, "missing_order_id"
@@ -3424,7 +3427,7 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
     try:
         row = (
             s.query(ExternalOrder)
-            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .filter(ExternalOrder.provider == p, ExternalOrder.order_id == str(order_id))
             .first()
         )
         if not row:
@@ -3439,10 +3442,14 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return False, "amount_mismatch"
         expected_currency = str(row.currency or "RUB").strip().upper() or "RUB"
         actual_currency = _payload_currency(payload)
-        if not actual_currency:
+        if not actual_currency and p == "lavatop":
             return False, "missing_currency"
-        if actual_currency != expected_currency:
+        if actual_currency and actual_currency != expected_currency:
             return False, "currency_mismatch"
+        expected_tg_id = int(row.tg_id) if row.tg_id is not None else None
+        actual_tg_id = _payload_tg_id(payload)
+        if expected_tg_id is not None and actual_tg_id is not None and int(actual_tg_id) != expected_tg_id:
+            return False, "tg_id_mismatch"
         expected_plan = str(row.plan_code or "").strip().lower()
         actual_plan = _payload_plan_code(payload)
         if expected_plan and actual_plan and actual_plan != expected_plan:
@@ -3489,9 +3496,7 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
                 .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
                 .first()
             )
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
-        if tg_id is None and ext_order and ext_order.tg_id is not None:
-            tg_id = int(ext_order.tg_id)
+        tg_id = int(ext_order.tg_id) if ext_order and ext_order.tg_id is not None else _payload_tg_id(payload)
         if tg_id is None:
             return False, "missing_tg_id"
         ext_meta = _external_order_meta(ext_order) if ext_order else {}
@@ -3499,15 +3504,12 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
         if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
             return True, "already_applied"
 
-        plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
-            payload, "clientUtm", "utm_term"
-        )
-        if not plan_code and ext_order and ext_order.plan_code:
-            plan_code = str(ext_order.plan_code)
+        plan_code = str(ext_order.plan_code) if ext_order and ext_order.plan_code else _payload_plan_code(payload)
         plan_code = (plan_code or "1_month").strip().lower()
         plan_cfg = _resolve_plan_config(s=s, code=plan_code)
         if not plan_cfg:
             plan_code = "1_month"
+            plan_cfg = _resolve_plan_config(s=s, code=plan_code) or {}
         days = _rub_plan_days(plan_code)
 
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()

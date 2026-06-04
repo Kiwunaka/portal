@@ -498,12 +498,88 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         r = client.post("/api/payments/freekassa/notify", params=payload)
         self.assertEqual(r.status_code, 400, r.text)
 
+    def test_freekassa_notify_rejects_tampered_plan_metadata_for_existing_order(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, ExternalPaymentEvent, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2101,
+                    username="tamper",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2101",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="order-fk-tamper-1",
+                    provider="freekassa",
+                    tg_id=2101,
+                    plan_code="start_99",
+                    source="site",
+                    amount=99.0,
+                    currency="RUB",
+                    status="created",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        merchant_id = "69962"
+        amount = "99.00"
+        order_id = "order-fk-tamper-1"
+        sig = self._fk_sci_signature(
+            merchant_id=merchant_id,
+            amount=amount,
+            order_id=order_id,
+            secret_word_2="fk_sw2_test",
+        )
+        payload = {
+            "MERCHANT_ID": merchant_id,
+            "AMOUNT": amount,
+            "MERCHANT_ORDER_ID": order_id,
+            "SIGN": sig,
+            "us_tg_id": "2101",
+            "us_plan_code": "12_months",
+            "intid": "tx-fk-tamper-1",
+        }
+        r = client.post("/api/payments/freekassa/notify", params=payload)
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.text.strip(), "YES")
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 2101).first()
+            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == order_id).first()
+            event = s.query(ExternalPaymentEvent).filter(ExternalPaymentEvent.external_id == "tx-fk-tamper-1").first()
+            self.assertIsNotNone(user)
+            self.assertIsNotNone(row)
+            self.assertIsNotNone(event)
+            self.assertEqual(str(user.sub_type or ""), "FREE")
+            self.assertNotEqual(str(user.current_plan_code or ""), "12_months")
+            self.assertEqual(str(row.plan_code or ""), "start_99")
+            self.assertEqual(str(row.status or ""), "manual_review")
+            self.assertTrue(bool(event.signature_ok))
+            self.assertFalse(bool(event.processed_ok))
+            self.assertIn("plan_mismatch", str(row.meta_json or ""))
+        finally:
+            s.close()
+
     def test_freekassa_notify_awards_referrer_bonus_on_first_paid_purchase(self) -> None:
         client = TestClient(self.api.app)
 
         from datetime import datetime, timedelta
         from db import SessionLocal
-        from models import PointsLedger, ReferralBonusQueue, User
+        from models import ExternalOrder, PointsLedger, ReferralBonusQueue, User
 
         s = SessionLocal()
         try:
@@ -532,6 +608,19 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tos_accepted=True,
                     referrer_id=2002,
                     first_purchase_done=False,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="order-ref-first-1",
+                    provider="freekassa",
+                    tg_id=2003,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="created",
+                    created_at=self.api._utcnow(),
                 )
             )
             s.commit()
