@@ -73,7 +73,7 @@ export default function AdminNetworkPage() {
       setConfig(out.network_rollout_config);
       setJsonText(stringifyConfig(out.network_rollout_config));
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить network rollout config."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось загрузить настройки сети."));
     } finally {
       setLoading(false);
     }
@@ -112,9 +112,9 @@ export default function AdminNetworkPage() {
       const out = await adminNetworkRolloutConfigUpdate(parsed);
       setConfig(out.network_rollout_config);
       setJsonText(stringifyConfig(out.network_rollout_config));
-      setNotice("Network rollout config сохранен.");
+      setNotice("Настройки сети сохранены.");
     } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить network rollout config."));
+      setError(String((err as { message?: string })?.message || err || "Не удалось сохранить настройки сети."));
     } finally {
       setBusy(false);
     }
@@ -130,9 +130,9 @@ export default function AdminNetworkPage() {
             <Route size={22} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold text-slate-900">Сеть и rollout</h2>
+            <h2 className="text-xl font-semibold text-slate-900">Сеть и правила подключения</h2>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Здесь редактируется `network_rollout_config`: default transport profile, cohort/carrier overrides и operator lab allowlist.
+              Здесь задаются базовый профиль подключения, исключения для отдельных групп и список служебных тестов.
             </p>
           </div>
         </div>
@@ -142,9 +142,9 @@ export default function AdminNetworkPage() {
         <article className={adminPanelClass("neutral")}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <AdminPanelHeader
-              eyebrow="rollout config"
-              title="JSON-конфиг"
-              description="Редактируйте объект целиком. Сохранение идет через тот же admin API, что и остальные operator configs."
+              eyebrow="настройки сети"
+              title="JSON-настройки"
+              description="Редактируйте объект целиком. Сохранение идет через обычный админский API."
             />
             <div className="flex flex-wrap gap-2">
               <button className={adminButtonClass("secondary", "sm")} type="button" onClick={() => void load()} disabled={loading || busy}>
@@ -180,91 +180,91 @@ export default function AdminNetworkPage() {
             <h3 className="text-lg font-semibold text-slate-900">Сводка</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Version</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Версия</p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">{summary?.version ?? "—"}</p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Defaults transport</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Базовый профиль</p>
                 <p className="mt-1 text-sm font-semibold text-slate-800">{summary?.defaults?.transport_profile ?? "—"}</p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Routing / DNS</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Маршруты / DNS</p>
                 <p className="mt-1 text-sm font-semibold text-slate-800">
                   {summary?.defaults ? `${summary.defaults.routing_mode_default} / ${summary.defaults.dns_policy}` : "—"}
                 </p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Overrides</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Исключения</p>
                 <p className="mt-1 text-sm font-semibold text-slate-800">
-                  {summary ? `${summary.carrierOverrides.length} carrier · ${summary.cohortOverrides.length} cohort` : "—"}
+                  {summary ? `${summary.carrierOverrides.length} по провайдерам · ${summary.cohortOverrides.length} по группам` : "—"}
                 </p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Operator lab</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Служебные тесты</p>
                 <AdminBadge tone={summary?.operatorLabEnabled ? "warning" : "neutral"} className="mt-2">
-                  {summary?.operatorLabEnabled ? "enabled" : "disabled"}
+                  {summary?.operatorLabEnabled ? "включены" : "выключены"}
                 </AdminBadge>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Expiry</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Действует до</p>
                 <p className="mt-1 text-sm font-semibold text-slate-800">{summary?.operatorLabExpiry ?? "—"}</p>
               </div>
             </div>
           </article>
 
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-900">Allowlist и feeds</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Списки и источники</h3>
             <div className="space-y-2 text-sm">
               <p className={adminCompactCardClass}>
-                install ids: <strong>{summary?.operatorLabInstallIds ?? "—"}</strong>
+                установки приложения: <strong>{summary?.operatorLabInstallIds ?? "—"}</strong>
               </p>
               <p className={adminCompactCardClass}>
-                tg ids: <strong>{summary?.operatorLabTgIds ?? "—"}</strong>
+                Telegram ID: <strong>{summary?.operatorLabTgIds ?? "—"}</strong>
               </p>
               <p className={adminCompactCardClass}>
-                node codes: <strong>{summary?.operatorLabNodes ?? "—"}</strong>
+                ноды: <strong>{summary?.operatorLabNodes ?? "—"}</strong>
               </p>
               <p className={adminCompactCardClass}>
-                package feed: <strong className="break-all">{feedText(summary?.packageFeed)}</strong>
+                каталог приложений: <strong className="break-all">{feedText(summary?.packageFeed)}</strong>
               </p>
               <p className={adminCompactCardClass}>
-                routing feed: <strong className="break-all">{feedText(summary?.routingFeed)}</strong>
+                правила маршрутов: <strong className="break-all">{feedText(summary?.routingFeed)}</strong>
               </p>
               <p className={adminCompactCardClass}>
-                support recovery: <strong className="break-all">{summary?.recoveryOrder ?? "—"}</strong>
+                порядок помощи: <strong className="break-all">{summary?.recoveryOrder ?? "—"}</strong>
               </p>
             </div>
           </article>
 
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-900">Targeting selectors</h3>
+            <h3 className="text-lg font-semibold text-slate-900">Правила для групп</h3>
             <div className="space-y-3 text-sm">
               {selectorEntries.length ? (
                 selectorEntries.map(([key, value]) => (
                   <div key={key} className={adminCompactCardClass}>
                     <p className="font-semibold text-slate-800">{key}</p>
                     <p className="mt-1 text-xs text-slate-500">
-                      transport: <strong>{value.transport_profile || "—"}</strong> · dns: <strong>{value.dns_policy || "—"}</strong>
+                      профиль: <strong>{value.transport_profile || "—"}</strong> · dns: <strong>{value.dns_policy || "—"}</strong>
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      routing: <strong>{value.routing_mode_default || "—"}</strong> · ip: <strong>{value.ip_version_preference || "—"}</strong>
+                      маршрут: <strong>{value.routing_mode_default || "—"}</strong> · ip: <strong>{value.ip_version_preference || "—"}</strong>
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      install_ids: <strong className="break-all">{listText(value.install_ids)}</strong>
+                      установки приложения: <strong className="break-all">{listText(value.install_ids)}</strong>
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      tg_ids: <strong className="break-all">{numberListText(value.tg_ids)}</strong>
+                      Telegram ID: <strong className="break-all">{numberListText(value.tg_ids)}</strong>
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      linked_tg_ids: <strong className="break-all">{numberListText(value.linked_tg_ids)}</strong>
+                      привязанные Telegram ID: <strong className="break-all">{numberListText(value.linked_tg_ids)}</strong>
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      platforms: <strong className="break-all">{listText(value.platforms)}</strong>
+                      платформы: <strong className="break-all">{listText(value.platforms)}</strong>
                     </p>
                   </div>
                 ))
               ) : (
-                <AdminEmptyState className="min-h-[120px]" title="Selector overrides пока не заданы." />
+                <AdminEmptyState className="min-h-[120px]" title="Отдельные правила пока не заданы." />
               )}
             </div>
           </article>

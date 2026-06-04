@@ -135,6 +135,7 @@ Current supported auth paths:
 - in browser: additive email continuation is available only when delivery readiness is live; settings can link email to the current Telegram-backed account without leaving the cabinet
 - in settings: email-backed sessions can start Telegram linking through `/api/client/telegram/link`, then finish the link in the bot using the returned start code
 - from bot handoff: `web_session_token` should open the cabinet without manual token copy/paste
+- from app handoff: `handoff_token` is exchanged through `/api/auth/cabinet-handoff/exchange`, then removed from the URL before normal cabinet API calls; successful exchange honors the returned safe `target_path`, while expired/replayed handoffs show localized cabinet copy
 
 ## Local Run
 

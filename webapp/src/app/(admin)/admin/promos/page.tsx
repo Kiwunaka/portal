@@ -77,11 +77,48 @@ function createAssignmentState(
 }
 
 function formatContexts(values: string[]): string {
-  return values.join(" • ");
+  return values.map(formatContextLabel).join(" • ");
 }
 
 function formatPlanMeta(days: number, deviceLimit: number): string {
-  return `${days} days • up to ${deviceLimit} devices`;
+  return `${days} дн. • до ${deviceLimit} устройств`;
+}
+
+function formatSurfaceLabel(value: string | undefined): string {
+  const key = String(value || "").toLowerCase();
+  if (key === "app") return "Приложение";
+  if (key === "webapp") return "Кабинет";
+  if (key === "marketing") return "Сайт";
+  return value || "Раздел";
+}
+
+function formatContextLabel(value: string): string {
+  const labels: Record<string, string> = {
+    anonymous: "без входа",
+    expired_or_blocked: "доступ закончился",
+    free_monthly: "бесплатный режим",
+    free_soft_mode: "мягкое ограничение",
+    session: "есть сессия",
+    ticketed: "после обращения",
+    trial_premium: "тестовый доступ",
+  };
+  return labels[value] || value;
+}
+
+function formatContentOption(contentId: string): string {
+  const labels: Record<string, string> = {
+    redeem_key: "Активировать ключ",
+    support_recovery: "Обратиться в поддержку",
+    telegram_bonus: "Привязать Telegram и получить бонус",
+  };
+  return labels[contentId] || contentId;
+}
+
+function formatFallbackBehavior(value: string): string {
+  const labels: Record<string, string> = {
+    contextual_only_when_remote_unavailable: "показывать только базовые подсказки по ситуации",
+  };
+  return labels[value] || "использовать базовые подсказки";
 }
 
 function StatusBanner({ tone, text }: { tone: "success" | "error"; text: string }) {
@@ -148,12 +185,12 @@ export default function AdminPromosPage() {
       setRemoteMode(String(remote.mode || remoteCatalog?.mode || PROMO_CATALOG.mode));
       setRemoteAvailable(Boolean(remote.remote_available));
       setFallbackBehavior(String(remote.fallback_behavior || remoteCatalog?.fallback_behavior || PROMO_CATALOG.fallback_behavior));
-      setStatusText("Promo-slot config загружен из backend.");
+      setStatusText("Подсказки загружены.");
     } catch (nextError) {
       setSlotCatalog(DEFAULT_PROMO_SLOTS);
       setContentCatalog(DEFAULT_PROMO_CONTENT);
       setAssignments(createAssignmentState([], DEFAULT_PROMO_SLOTS, DEFAULT_PROMO_CONTENT));
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось загрузить promo slots."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось загрузить подсказки."));
     } finally {
       setLoading(false);
     }
@@ -180,7 +217,7 @@ export default function AdminPromosPage() {
           issuedAt: item.issued_at,
         })),
       );
-      setStatusText(`Выпущено ${payload.issued?.length || 0} access keys для плана ${payload.plan?.label || selectedPlan}.`);
+      setStatusText(`Выпущено ключей: ${payload.issued?.length || 0}. План: ${payload.plan?.label || selectedPlan}.`);
     } catch (nextError) {
       setError(String((nextError as { message?: string })?.message || nextError || "Не удалось выпустить ключи."));
     } finally {
@@ -191,7 +228,7 @@ export default function AdminPromosPage() {
   const lookupAccessKey = async (): Promise<void> => {
     const key = normalizeKey(lookupKey);
     if (!key) {
-      setError("Введите access key для проверки.");
+      setError("Введите ключ для проверки.");
       return;
     }
     setLookupBusy(true);
@@ -218,9 +255,9 @@ export default function AdminPromosPage() {
       setRemoteMode(String(payload.promo_slots.mode || remoteMode));
       setRemoteAvailable(Boolean(payload.promo_slots.remote_available));
       setFallbackBehavior(String(payload.promo_slots.fallback_behavior || fallbackBehavior));
-      setStatusText("Promo-slot config сохранён.");
+      setStatusText("Подсказки сохранены.");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось сохранить promo slots."));
+      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось сохранить подсказки."));
     } finally {
       setSaving(false);
     }
@@ -245,11 +282,10 @@ export default function AdminPromosPage() {
   return (
     <section className="space-y-5">
       <article className={adminPanelClass("neutral")}>
-        <h2 className="font-display text-xl font-bold">Access keys и promo slots</h2>
+        <h2 className="font-display text-xl font-bold">Ключи доступа и подсказки</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Эта панель больше не живёт в legacy gift/promo логике. Здесь оператор выпускает activation keys,
-          проверяет recovery-кейсы, держит единый tariff catalog перед глазами и управляет только first-party
-          promo slots из approved whitelist.
+          Здесь оператор выпускает ключи доступа, проверяет уже выданные ключи, сверяет тарифы и управляет
+          подсказками, которые видит пользователь в кабинете.
         </p>
       </article>
 
@@ -258,31 +294,31 @@ export default function AdminPromosPage() {
 
       <div className="grid gap-5 md:grid-cols-3">
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">public scope</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Платформы</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">Android + Windows</h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Публичный promise этой волны держим только на этих платформах. Apple host shells остаются
-            engineering lane, но не входят в release acceptance.
+            В этой волне пользователям показываем Android и Windows. Остальные платформы не обещаем,
+            пока для них нет готового пользовательского пути.
           </p>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">free baseline</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Бесплатный режим</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">
-            {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} GB
+            {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} ГБ
           </h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Monthly reset, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Mbps per IP, до{" "}
-            {ACCESS_MATRIX.free_tier.device_limit} устройства. После trial сюда падает default downgrade.
+            Сброс раз в месяц, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Мбит/с на IP, до{" "}
+            {ACCESS_MATRIX.free_tier.device_limit} устройства. После тестового периода пользователь остаётся здесь.
           </p>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">hidden transport order</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Порядок подключения</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">VLESS → VMess → Trojan → XHTTP</h3>
           <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Операторская видимость сохраняется, но массовый UI видит одну логическую локацию. XHTTP допускается
-            только при готовом CDN/static prerequisite.
+            Оператор видит технический порядок, а пользователь видит одну понятную локацию. XHTTP включаем
+            только когда подготовлена вся внешняя часть.
           </p>
         </article>
       </div>
@@ -293,11 +329,10 @@ export default function AdminPromosPage() {
             <div className="stat-icon stat-icon-emerald">
               <KeyRound size={20} />
             </div>
-            <h2 className="font-display text-xl font-bold">Issue access keys</h2>
+            <h2 className="font-display text-xl font-bold">Выпустить ключи</h2>
           </div>
           <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-            Key-first commerce начинается здесь: оператор выпускает ключи по canonical plan codes, а не через
-            legacy gift-code типы.
+            Выберите тариф и количество. Новые ключи можно передать пользователю для активации доступа.
           </p>
 
           <div className="grid gap-3 md:grid-cols-[1fr,120px,auto]">
@@ -326,7 +361,7 @@ export default function AdminPromosPage() {
               disabled={issuing}
                     className={adminButtonClass("primary")}
             >
-              {issuing ? "Выпускаем..." : "Issue"}
+              {issuing ? "Выпускаем..." : "Выпустить"}
             </button>
           </div>
 
@@ -346,14 +381,14 @@ export default function AdminPromosPage() {
                     className={adminButtonClass("secondary", "xs")}
                   >
                     <Copy size={14} />
-                    Copy
+                    Скопировать
                   </button>
                 </div>
               ))
             ) : (
               <div className="empty-state">
                 <KeyRound size={24} />
-                <p className="text-xs">Новые access keys появятся здесь после выпуска.</p>
+                <p className="text-xs">Новые ключи появятся здесь после выпуска.</p>
               </div>
             )}
           </div>
@@ -364,10 +399,10 @@ export default function AdminPromosPage() {
             <div className="stat-icon stat-icon-blue">
               <Search size={20} />
             </div>
-            <h2 className="font-display text-xl font-bold">Recovery lookup</h2>
+            <h2 className="font-display text-xl font-bold">Проверить ключ</h2>
           </div>
           <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-            Для ручных recovery-кейсов оператор может проверить конкретный key status без показа raw subscription link.
+            Введите ключ, чтобы понять, существует ли он, к какому тарифу относится и был ли уже активирован.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -383,7 +418,7 @@ export default function AdminPromosPage() {
               disabled={lookupBusy}
                     className={adminButtonClass("secondary")}
             >
-              {lookupBusy ? "Проверяем..." : "Lookup"}
+              {lookupBusy ? "Проверяем..." : "Проверить"}
             </button>
           </div>
 
@@ -406,14 +441,14 @@ export default function AdminPromosPage() {
           <div className="stat-icon stat-icon-amber">
             <ShieldCheck size={20} />
           </div>
-          <h2 className="font-display text-xl font-bold">Tariff catalog</h2>
+          <h2 className="font-display text-xl font-bold">Тарифы</h2>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {SHARED_PLANS.map((plan) => (
             <div key={plan.code} className="stat-card p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="badge badge-violet font-mono">{plan.code}</span>
-                <span className="badge badge-success">{plan.badge || "active"}</span>
+                <span className="badge badge-success">{plan.badge || "активен"}</span>
               </div>
               <p className="text-lg font-bold">{plan.label}</p>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{plan.amountRub} ₽</p>
@@ -430,9 +465,9 @@ export default function AdminPromosPage() {
             <LayoutTemplate size={20} />
           </div>
           <div>
-            <h2 className="font-display text-xl font-bold">Promo slot scheduling</h2>
+            <h2 className="font-display text-xl font-bold">Подсказки в кабинете</h2>
             <p className="text-xs text-slate-500">
-              version {remoteVersion} • mode {remoteMode} • remote {remoteAvailable ? "available" : "fallback"}
+              Версия {remoteVersion} • настройки {remoteAvailable ? "загружены" : "из резерва"}
             </p>
           </div>
           <div className="ml-auto flex gap-2">
@@ -443,7 +478,7 @@ export default function AdminPromosPage() {
                     className={adminButtonClass("secondary", "xs")}
             >
               <RefreshCw size={14} />
-              Refresh
+              Обновить
             </button>
             <button
               type="button"
@@ -452,14 +487,14 @@ export default function AdminPromosPage() {
                     className={adminButtonClass("primary", "xs")}
             >
               <Save size={14} />
-              {saving ? "Saving..." : "Save"}
+              {saving ? "Сохраняем..." : "Сохранить"}
             </button>
           </div>
         </div>
 
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
-          Разрешены только whitelist slots и first-party promo content. Если remote config недоступен, surface
-          падает в <strong>{fallbackBehavior}</strong>.
+          Здесь выбирается, какие подсказки показывать в разных местах кабинета. Если внешние настройки
+          недоступны, кабинет использует резервный режим: <strong>{formatFallbackBehavior(fallbackBehavior)}</strong>.
         </p>
 
         <div className="space-y-4">
@@ -471,13 +506,13 @@ export default function AdminPromosPage() {
               <div key={assignment.slot_id} className="node-card space-y-4 p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge badge-violet font-mono">{assignment.slot_id}</span>
-                  <span className="badge badge-info">{slot?.surface || "surface"}</span>
+                  <span className="badge badge-info">{formatSurfaceLabel(slot?.surface)}</span>
                   <span className="text-xs text-slate-500">{formatContexts(slot?.contexts || assignment.contexts || [])}</span>
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-[1fr,1fr,120px]">
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">content</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Подсказка</span>
                     <select
                       value={assignment.content_id}
                       onChange={(event) => updateAssignment(assignment.slot_id, { content_id: event.target.value })}
@@ -487,7 +522,7 @@ export default function AdminPromosPage() {
                         const content = contentById.get(contentId);
                         return (
                           <option key={contentId} value={contentId}>
-                            {content?.goal || contentId}
+                            {formatContentOption(content?.id || contentId)}
                           </option>
                         );
                       })}
@@ -495,7 +530,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">contexts</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Где показывать</span>
                     <input
                       value={(assignment.contexts || []).join(", ")}
                       onChange={(event) =>
@@ -511,7 +546,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">sort</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Порядок</span>
                     <input
                       value={assignment.sort_order}
                       onChange={(event) => updateAssignment(assignment.slot_id, { sort_order: Math.max(0, Number(event.target.value || 0)) })}
@@ -524,7 +559,7 @@ export default function AdminPromosPage() {
 
                 <div className="grid gap-3 lg:grid-cols-2">
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">title override</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Заголовок</span>
                     <input
                       value={assignment.title || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { title: event.target.value })}
@@ -533,7 +568,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">body override</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Текст</span>
                     <input
                       value={assignment.body || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { body: event.target.value })}
@@ -542,7 +577,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta label</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Текст кнопки</span>
                     <input
                       value={assignment.cta_label || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { cta_label: event.target.value })}
@@ -551,7 +586,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">cta href</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Ссылка кнопки</span>
                     <input
                       value={assignment.cta_href || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { cta_href: event.target.value })}
@@ -566,7 +601,7 @@ export default function AdminPromosPage() {
                     checked={assignment.enabled}
                     onChange={(event) => updateAssignment(assignment.slot_id, { enabled: event.target.checked })}
                   />
-                  Slot enabled
+                  Показывать подсказку
                 </label>
               </div>
             );

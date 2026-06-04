@@ -3,6 +3,7 @@
 import {
   authByTelegramWebLogin,
   clearWebSessionToken,
+  consumeCabinetHandoffTokenFromUrl,
   consumeWebSessionTokenFromUrl,
   finishTelegramOidcLogin,
   fetchAuthSession,
@@ -137,8 +138,9 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     }
 
     const completedOidcFromUrl = await consumeTelegramOidcRedirect();
+    const cabinetHandoffResult = await consumeCabinetHandoffTokenFromUrl();
     const consumedFromUrl = consumeWebSessionTokenFromUrl();
-    const hasSession = hasWebSessionToken() || completedOidcFromUrl || consumedFromUrl;
+    const hasSession = hasWebSessionToken() || completedOidcFromUrl || cabinetHandoffResult.exchanged || consumedFromUrl;
     if (!tgUser && !hasSession) {
       lastGoodRef.current = null;
       setUser(null);
@@ -147,6 +149,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       setRefreshing(false);
       setWebLoginBusy(false);
       setError("");
+      setWebLoginError(cabinetHandoffResult.errorMessage || "");
       setWebLoginRequired(true);
       return;
     }

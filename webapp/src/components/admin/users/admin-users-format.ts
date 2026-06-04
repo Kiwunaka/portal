@@ -60,7 +60,7 @@ export function actionLabel(action: string): string {
   if (!value) return "-";
   if (value.includes("regen") || value.includes("rotate")) return "Ротация токена";
   if (value.includes("reset")) return "Сброс трафика";
-  if (value.includes("resync")) return "Синхронизация sub ID";
+  if (value.includes("resync")) return "Синхронизация подписки";
   if (value.includes("move") || value.includes("node")) return "Перенос ноды";
   if (value.includes("disable") || value.includes("block")) return "Блокировка";
   if (value.includes("enable") || value.includes("unblock")) return "Разблокировка";
@@ -99,7 +99,7 @@ export function userStatusLabel(status: string): string {
   const value = String(status || "").toLowerCase();
   if (value === "active") return "Активен";
   if (value === "blocked") return "Заблокирован";
-  if (value === "manual_test") return "Manual/Test";
+  if (value === "manual_test") return "Тестовый";
   return "Истёк";
 }
 
@@ -115,15 +115,15 @@ export function originLabel(origin: string): string {
   const value = String(origin || "").toLowerCase();
   if (value === "app") return "Приложение";
   if (value === "hybrid") return "Приложение + Telegram";
-  if (value === "manual_test") return "Manual/Test";
+  if (value === "manual_test") return "Тестовый";
   return "Telegram";
 }
 
 export function observerStateLabel(state: AdminObserverState | string): string {
   const value = String(state || "").toLowerCase();
-  if (value === "watch") return "watch";
-  if (value === "suspicious") return "suspicious";
-  return "ok";
+  if (value === "watch") return "под наблюдением";
+  if (value === "suspicious") return "проверить";
+  return "норма";
 }
 
 export function observerStateBadgeClass(state: AdminObserverState | string): string {

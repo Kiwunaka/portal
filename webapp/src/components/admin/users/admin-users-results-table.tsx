@@ -96,7 +96,7 @@ export function AdminUsersResultsTable({
         </div>
         <div className="flex flex-wrap gap-2">
           <AdminBadge>Список</AdminBadge>
-          <AdminBadge tone="warning">Удаление только для manual/test</AdminBadge>
+          <AdminBadge tone="warning">Удаление только для тестовых аккаунтов</AdminBadge>
         </div>
       </div>
 
@@ -109,12 +109,12 @@ export function AdminUsersResultsTable({
             <thead className="sticky top-0 z-[1]">
               <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <th className="px-3 py-3">ID</th>
-                <th className="px-3 py-3">Observer</th>
-                <th className="px-3 py-3">User</th>
-                <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3">Origin</th>
-                <th className="px-3 py-3">Plan</th>
-                <th className="px-3 py-3">Expiry</th>
+                <th className="px-3 py-3">Проверка</th>
+                <th className="px-3 py-3">Пользователь</th>
+                <th className="px-3 py-3">Статус</th>
+                <th className="px-3 py-3">Источник</th>
+                <th className="px-3 py-3">Тариф</th>
+                <th className="px-3 py-3">Срок</th>
               </tr>
             </thead>
             <tbody>
@@ -135,14 +135,14 @@ export function AdminUsersResultsTable({
                   >
                     <td className="px-3 py-3 font-mono text-xs">{row.tg_id}</td>
                     <td className="px-3 py-3">
-                      <AdminBadge tone={observerTone(row)}>{`Observer ${observerStateLabel(row.observer_state)}`}</AdminBadge>
+                      <AdminBadge tone={observerTone(row)}>{observerStateLabel(row.observer_state)}</AdminBadge>
                     </td>
                     <td className="px-3 py-3">
                       <div className="font-medium">{row.display_name || row.username || "Без имени"}</div>
                       <div className={`mt-1 text-xs ${row.tg_id === selectedTgId ? "text-emerald-800" : "text-slate-500"}`}>
                         {row.username ? `@${row.username}` : "без username"}
-                        {row.linked_telegram_username ? ` · linked @${row.linked_telegram_username}` : ""}
-                        {row.app_install_id ? ` · app ${row.app_install_id}` : ""}
+                        {row.linked_telegram_username ? ` · Telegram @${row.linked_telegram_username}` : ""}
+                        {row.app_install_id ? ` · приложение ${row.app_install_id}` : ""}
                       </div>
                     </td>
                     <td className="px-3 py-3">
@@ -165,7 +165,7 @@ export function AdminUsersResultsTable({
             <AdminEmptyState
               className="m-3 min-h-[180px]"
               title="По текущим фильтрам пользователей нет."
-              description="Попробуйте очистить поиск или расширить фильтры по статусу, источнику и observer-состоянию."
+              description="Попробуйте очистить поиск или расширить фильтры по статусу, источнику и проверке."
             />
           ) : null}
         </div>

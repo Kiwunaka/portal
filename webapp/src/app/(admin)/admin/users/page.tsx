@@ -27,6 +27,8 @@ import { AdminUsersQueryPanel } from "@/components/admin/users/admin-users-query
 import { AdminUsersResultsTable } from "@/components/admin/users/admin-users-results-table";
 import { AdminUserSidePanel } from "@/components/admin/users/admin-user-side-panel";
 import {
+  ADMIN_USERS_BULK_ACTION_OPTIONS,
+  ADMIN_USERS_BULK_SEGMENT_OPTIONS,
   ADMIN_USERS_PAGE_SIZE,
   createDefaultBulkActionState,
   readAdminUsersQueryState,
@@ -49,6 +51,14 @@ type AdminActionDialog =
 
 function errorMessage(err: unknown, fallback: string): string {
   return String((err as { message?: string })?.message || err || fallback);
+}
+
+function bulkActionLabel(value: string): string {
+  return ADMIN_USERS_BULK_ACTION_OPTIONS.find((item) => item.value === value)?.label || value;
+}
+
+function bulkSegmentLabel(value: string): string {
+  return ADMIN_USERS_BULK_SEGMENT_OPTIONS.find((item) => item.value === value)?.label || value;
 }
 
 export default function AdminUsersPage() {
@@ -280,13 +290,13 @@ export default function AdminUsersPage() {
     setBusy(true);
     try {
       await adminDeleteTestUser(targetTgId);
-      setOkMessage("Manual/test пользователь удалён.");
+      setOkMessage("Тестовый пользователь удалён.");
       setDialog(null);
       selectedIdRef.current = 0;
       setSelected(null);
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Не удалось удалить manual/test пользователя."));
+      setError(errorMessage(err, "Не удалось удалить тестового пользователя."));
     } finally {
       setBusy(false);
     }
@@ -308,11 +318,11 @@ export default function AdminUsersPage() {
     setBusy(true);
     try {
       await adminManualCreate({ display_name: displayName, days });
-      setOkMessage("Manual/test пользователь создан.");
+      setOkMessage("Тестовый пользователь создан.");
       setDialog(null);
       await loadUsers({ preserveNotice: true });
     } catch (err) {
-      setError(errorMessage(err, "Не удалось создать manual/test пользователя."));
+      setError(errorMessage(err, "Не удалось создать тестового пользователя."));
     } finally {
       setBusy(false);
     }
@@ -340,7 +350,7 @@ export default function AdminUsersPage() {
               : "Ключ включён"
             : action === "reset"
               ? "Трафик сброшен"
-              : "Sub ID синхронизирован";
+              : "Подписка синхронизирована";
         setOkMessage(`${actionText} для ноды ${key.node_code}.`);
         await reloadSelected();
       } catch (err) {
@@ -360,7 +370,7 @@ export default function AdminUsersPage() {
       setOkMessage("");
       try {
         const result = await adminUserPresetRun(selectedTgId, preset);
-        setOkMessage(`Пресет ${preset} выполнен (${result.changed ?? 0} изменений, ${result.failed ?? 0} ошибок).`);
+        setOkMessage(`Действие выполнено: изменений ${result.changed ?? 0}, ошибок ${result.failed ?? 0}.`);
         if (result.subscription_url) {
           setDialog({ kind: "token", subscriptionUrl: result.subscription_url, syncOk: true });
         }
@@ -430,7 +440,7 @@ export default function AdminUsersPage() {
 
         setDialog(null);
         setBulkResult(
-          `Bulk ${out.action || bulkAction.action}: matched ${out.matched ?? 0}, changed ${out.changed ?? 0}, failed ${out.failed ?? 0}${out.dry_run ? " (dry-run)" : ""}.`,
+          `Найдено ${out.matched ?? 0}, изменено ${out.changed ?? 0}, ошибок ${out.failed ?? 0}${out.dry_run ? ". Изменения не применялись" : ""}.`,
         );
         if (!bulkAction.dryRun) {
           await reloadSelected();
@@ -450,7 +460,7 @@ export default function AdminUsersPage() {
       setBusy(true);
       try {
         const out = await adminUserLoyaltyGrant(selectedTgId, tierDays);
-        setOkMessage(`Loyalty-награда ${tierDays} дн. выдана${out.sync_ok ? "" : " (синхронизация панели может занять время)"}.`);
+        setOkMessage(`Бонус на ${tierDays} дн. выдан${out.sync_ok ? "" : ". Синхронизация панели может занять время"}.`);
         await reloadSelected();
       } catch (err) {
         setError(errorMessage(err, "Не удалось выдать loyalty-награду."));
@@ -642,8 +652,8 @@ export default function AdminUsersPage() {
 
             {dialog.kind === "create" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">Создать manual/test пользователя</h3>
-                <p className="mt-1 text-xs text-slate-500">Manual-аккаунты допустимы только для админских и тестовых задач.</p>
+                <h3 className="font-display text-xl font-semibold">Создать тестового пользователя</h3>
+                <p className="mt-1 text-xs text-slate-500">Используйте такие аккаунты только для проверки админки, поддержки и сценариев доступа.</p>
                 <input
                   value={dialog.displayName}
                   onChange={(event) => setDialog({ kind: "create", displayName: event.target.value, days: dialog.days })}
@@ -671,9 +681,9 @@ export default function AdminUsersPage() {
 
             {dialog.kind === "deleteConfirm" ? (
               <>
-                <h3 className="font-display text-xl font-semibold">Удалить manual/test пользователя</h3>
+                <h3 className="font-display text-xl font-semibold">Удалить тестового пользователя</h3>
                 <p className="mt-2 text-sm text-slate-500">
-                  Вы собираетесь удалить <strong>{dialog.displayName}</strong> ({dialog.tgId}). Это действие необратимо и доступно только для явных manual/test аккаунтов.
+                  Вы собираетесь удалить <strong>{dialog.displayName}</strong> ({dialog.tgId}). Это действие необратимо и доступно только для явных тестовых аккаунтов.
                 </p>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
                   <button className={adminButtonClass("secondary")} type="button" onClick={() => setDialog(null)}>
@@ -690,7 +700,7 @@ export default function AdminUsersPage() {
               <>
                 <h3 className="font-display text-xl font-semibold">Подтвердить массовое действие</h3>
                 <p className="mt-2 text-sm text-slate-500">
-                  Вы собираетесь запустить <strong>{bulkAction.action}</strong> для сегмента <strong>{bulkAction.segment}</strong>.
+                  Вы собираетесь запустить <strong>{bulkActionLabel(bulkAction.action)}</strong> для группы <strong>{bulkSegmentLabel(bulkAction.segment)}</strong>.
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
                   Поиск: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Ноды: {bulkAction.nodeCodes.trim() || "все"}

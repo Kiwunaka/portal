@@ -183,8 +183,15 @@ function mockTickets(): TicketMock[] {
   ];
 }
 
-async function registerCabinetMocks(page: Page, options: { seedWebSession?: boolean } = {}): Promise<void> {
+type HandoffMockMode = "ok" | "expired" | "used" | "invalid" | "rate_limited";
+
+async function registerCabinetMocks(
+  page: Page,
+  options: { seedWebSession?: boolean; handoff?: HandoffMockMode; handoffTargetPath?: string } = {},
+): Promise<void> {
   const seedWebSession = options.seedWebSession ?? true;
+  const handoffMode = options.handoff ?? "ok";
+  const handoffTargetPath = options.handoffTargetPath ?? "/dashboard/";
   await page.addInitScript((shouldSeedWebSession) => {
     if (shouldSeedWebSession) {
       window.localStorage.setItem("portal_web_session_token", "e2e_mock_token");
@@ -214,6 +221,27 @@ async function registerCabinetMocks(page: Page, options: { seedWebSession?: bool
 
     if (path === "/api/auth/session") {
       return json({ ok: true, user: { id: 1001, username: "qa_user" } });
+    }
+    if (path === "/api/auth/cabinet-handoff/exchange" && request.method() === "POST") {
+      const payload = JSON.parse(request.postData() || "{}");
+      if (payload.handoff_token !== "e2e_handoff_token" || handoffMode === "invalid") {
+        return json({ detail: { code: "cabinet_handoff_invalid" } }, 401);
+      }
+      if (handoffMode === "expired") {
+        return json({ detail: { code: "cabinet_handoff_expired" } }, 410);
+      }
+      if (handoffMode === "used") {
+        return json({ detail: { code: "cabinet_handoff_already_used" } }, 409);
+      }
+      if (handoffMode === "rate_limited") {
+        return json({ detail: { code: "rate_limited", scope: "cabinet_handoff_exchange" } }, 429);
+      }
+      return json({
+        ok: true,
+        token: "e2e_exchanged_session_token",
+        target_path: handoffTargetPath,
+        auth_origin: "app_cabinet_handoff",
+      });
     }
     if (path === "/api/dashboard") return json(dashboard);
     if (path.startsWith("/api/user/")) return json(sessionUser);
@@ -358,6 +386,50 @@ async function registerCabinetMocks(page: Page, options: { seedWebSession?: bool
 }
 
 test.describe("Cabinet session persistence", () => {
+  test("exchanges an app handoff token once and removes it from the URL", async ({ page }) => {
+    await registerCabinetMocks(page, { seedWebSession: false });
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("portal_web_session_token");
+    });
+
+    await page.goto("/dashboard/?handoff_token=e2e_handoff_token");
+
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("portal_web_session_token")))
+      .toBe("e2e_exchanged_session_token");
+    await expect(page.locator("main")).toContainText("Доступ активен");
+  });
+
+  test("uses the exchanged cabinet target path", async ({ page }) => {
+    await registerCabinetMocks(page, { seedWebSession: false, handoffTargetPath: "/settings/" });
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("portal_web_session_token");
+    });
+
+    await page.goto("/dashboard/?handoff_token=e2e_handoff_token");
+
+    await expect(page).toHaveURL(/\/settings\/?$/);
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("portal_web_session_token")))
+      .toBe("e2e_exchanged_session_token");
+  });
+
+  test("explains a reused app handoff link and removes it from the URL", async ({ page }) => {
+    await registerCabinetMocks(page, { seedWebSession: false, handoff: "used" });
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("portal_web_session_token");
+    });
+
+    await page.goto("/dashboard/?handoff_token=e2e_handoff_token");
+
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("portal_web_session_token")))
+      .toBeNull();
+    await expect(page.locator("main")).toContainText("Эта ссылка уже использована");
+  });
+
   test("reuses an email web session from the cookie fallback", async ({ page }) => {
     await registerCabinetMocks(page, { seedWebSession: false });
     await page.addInitScript(() => {
@@ -368,7 +440,7 @@ test.describe("Cabinet session persistence", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL(/\/dashboard\/?$/);
-    await expect(page.getByRole("heading", { name: "Доступ активен" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Доступ активен");
     await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toHaveCount(0);
   });
 });

@@ -107,7 +107,7 @@ function alertKindLabel(kind: string): string {
   if (value === "latency_high") return "Задержка";
   if (value === "error_rate_high") return "Ошибки";
   if (value === "active_clients_high" || value === "client_density_high") return "Клиенты";
-  if (value === "observer_push_stale") return "Observer";
+  if (value === "observer_push_stale") return "Данные пользователей устарели";
   if (value === "network_high") return "Ethernet";
   return kind;
 }
@@ -118,20 +118,20 @@ function nodeCodeKey(value: string): string {
 
 function transportHealthLabel(value?: unknown): { label: string; detail?: string } {
   if (value == null) return { label: "нет данных" };
-  if (typeof value === "string") return { label: value };
+  if (typeof value === "string") return { label: transportHealthValueText(value) };
   if (Array.isArray(value)) return { label: `список: ${value.length}` };
   if (typeof value === "object") {
     const data = value as Record<string, unknown>;
     const panelState = String(data.panel_state || "").trim();
     const dataplaneState = String(data.dataplane_state || "").trim();
     if (panelState || dataplaneState) {
-      let label = "degraded";
+      let label = "есть проблемы";
       if (panelState === "healthy" && dataplaneState === "healthy") {
-        label = "healthy";
+        label = "норма";
       } else if (panelState !== "healthy" && dataplaneState === "healthy") {
-        label = "panel failed / dataplane healthy";
+        label = "панель требует проверки";
       } else if (panelState === "healthy" && dataplaneState !== "healthy") {
-        label = "panel healthy / dataplane failed";
+        label = "подключение требует проверки";
       }
       const detail =
         data.root_cause_summary != null
@@ -149,7 +149,7 @@ function transportHealthLabel(value?: unknown): { label: string; detail?: string
         : data.detail != null
           ? String(data.detail)
           : data.enabled === false
-            ? "disabled"
+            ? "выключено"
             : undefined;
     return { label, detail };
   }
@@ -162,7 +162,14 @@ function transportHealthRecord(value?: unknown): Record<string, unknown> | null 
 
 function transportHealthValueText(value: unknown): string {
   if (value == null) return "нет данных";
-  if (typeof value === "string") return value || "нет данных";
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase();
+    if (normalized === "healthy" || normalized === "ok") return "норма";
+    if (normalized === "degraded" || normalized === "warning") return "есть проблемы";
+    if (normalized === "failed" || normalized === "fail" || normalized === "error") return "ошибка";
+    if (normalized === "unknown") return "неизвестно";
+    return value || "нет данных";
+  }
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return JSON.stringify(value);
 }
@@ -177,12 +184,12 @@ function transportProfileLabel(profile: {
   tls_server_name?: string | null;
 }): string {
   const parts = [profile.name, profile.kind, profile.port != null ? `:${profile.port}` : null].filter(Boolean);
-  const prefix = profile.enabled === false ? "off" : "on";
+  const prefix = profile.enabled === false ? "выкл" : "вкл";
   const suffix = [profile.inbound_id != null ? `#${profile.inbound_id}` : null, profile.tls_server_name ? profile.tls_server_name : null]
     .filter(Boolean)
     .join(" · ");
   const hostPart = profile.host ? ` @ ${profile.host}` : "";
-  return `${prefix} ${parts.join(" / ") || "profile"}${suffix ? ` · ${suffix}` : ""}${hostPart}`;
+  return `${prefix} ${parts.join(" / ") || "профиль"}${suffix ? ` · ${suffix}` : ""}${hostPart}`;
 }
 
 function probeFailureCopy(kind?: string | null, stage?: string | null, message?: string | null): { title: string; detail?: string; raw?: string } | null {
@@ -380,7 +387,7 @@ export default function AdminNodesPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-display text-xl font-bold">Живой снимок панелей</h3>
-            <p className="text-xs text-slate-500">3x-ui показывает только runtime: авторизация панели, отклик, онлайн и inbound. Тарифы и доступ остаются в POKROV.</p>
+            <p className="text-xs text-slate-500">3x-ui показывает рабочее состояние: доступ к панели, отклик, онлайн и входящее правило. Тарифы и права доступа остаются в POKROV.</p>
           </div>
           <span className="badge badge-info">{runtime.length ? `нод: ${runtime.length}` : "ожидаем данные"}</span>
         </div>
@@ -392,7 +399,7 @@ export default function AdminNodesPage() {
                 <th className="px-3 py-2.5">Панель</th>
                 <th className="px-3 py-2.5">Отклик</th>
                 <th className="px-3 py-2.5">Онлайн</th>
-                <th className="px-3 py-2.5">Inbound</th>
+                <th className="px-3 py-2.5">Правило</th>
                 <th className="px-3 py-2.5">Система</th>
                 <th className="px-3 py-2.5">Ошибка</th>
               </tr>
@@ -406,7 +413,7 @@ export default function AdminNodesPage() {
                     <td className="px-3 py-3 font-semibold">{String(row.node_code || "").toUpperCase()}</td>
                     <td className="px-3 py-3">
                       <span className={`badge ${row.panel_auth_ok ? "badge-success" : "badge-danger"}`}>{row.panel_auth_ok ? "доступ есть" : "нет доступа"}</span>
-                      <div className="mt-1 text-xs text-slate-500">{row.api_token_mode ? "API token" : row.csrf_mode ? "CSRF" : "cookie"}</div>
+                      <div className="mt-1 text-xs text-slate-500">{row.api_token_mode ? "токен API" : row.csrf_mode ? "CSRF" : "cookie"}</div>
                     </td>
                     <td className="px-3 py-3">{row.panel_latency_ms != null ? `${row.panel_latency_ms} ms` : "нет данных"}</td>
                     <td className="px-3 py-3">
@@ -417,10 +424,10 @@ export default function AdminNodesPage() {
                       {inbound ? (
                         <div>
                           <div className="font-medium">
-                            #{inbound.inbound_id ?? row.expected_inbound_id ?? "?"} · {inbound.protocol || "protocol?"} · {inbound.port || "port?"}
+                            #{inbound.inbound_id ?? row.expected_inbound_id ?? "?"} · {inbound.protocol || "протокол?"} · {inbound.port || "порт?"}
                           </div>
                           <div className="text-xs text-slate-500">
-                            {inbound.network || "network?"} / {inbound.security || "security?"}
+                            {inbound.network || "сеть?"} / {inbound.security || "защита?"}
                             {inbound.server_names?.length ? ` · SNI ${inbound.server_names.slice(0, 2).join(", ")}` : ""}
                           </div>
                         </div>
@@ -441,7 +448,7 @@ export default function AdminNodesPage() {
               {runtime.length === 0 ? (
                 <tr>
                   <td className="px-3 py-4 text-sm text-slate-500" colSpan={7}>
-                    Live runtime ещё не загрузился или панели недоступны.
+                    Живые данные ещё не загрузились или панели недоступны.
                   </td>
                 </tr>
               ) : null}
@@ -477,7 +484,7 @@ export default function AdminNodesPage() {
                   </div>
                   <div className="text-right text-xs text-slate-500">
                     <div>Порт: <strong>{row.runtime?.port ?? "—"}</strong></div>
-                    <div>Security: <strong>{row.runtime?.security || "—"}</strong></div>
+                    <div>Защита: <strong>{row.runtime?.security || "—"}</strong></div>
                   </div>
                 </div>
                 {row.mismatches.length > 0 ? (
@@ -546,7 +553,7 @@ export default function AdminNodesPage() {
 
               <div className="mt-4 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Отклик с brain</p>
+                  <p className="text-xs text-slate-500">Отклик с сервера</p>
                   <p className="text-sm font-bold">{node.panel_latency_ms ?? "нет данных"}{node.panel_latency_ms != null ? <span className="text-[10px] text-slate-400"> ms</span> : null}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
@@ -565,7 +572,7 @@ export default function AdminNodesPage() {
                   <p className="text-sm font-bold">{node.mapped_users}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Ключей online сейчас</p>
+                  <p className="text-xs text-slate-500">Ключей в сети</p>
                   <p className="text-sm font-bold">{node.online_keys_now}</p>
                 </div>
                 <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
@@ -628,7 +635,7 @@ export default function AdminNodesPage() {
                 <span className={`badge ${node.accepting_new_clients ? "badge-info" : "badge-warning"}`}>{node.accepting_new_clients ? "Принимает новых" : "Только текущие"}</span>
                 {node.is_draining ? <span className="badge badge-warning">В процессе разгрузки</span> : null}
                 {nodeFreshness ? <span className={`badge ${nodeFreshness.freshness === "fresh" ? "badge-success" : "badge-warning"}`}>{formatFreshness(nodeFreshness.freshness)}</span> : null}
-                {node.probe_classification ? <span className="badge badge-info">probe: {node.probe_classification}</span> : null}
+                {node.probe_classification ? <span className="badge badge-info">проверка: {node.probe_classification}</span> : null}
                 {node.ipv4_health ? <span className="badge badge-violet">ipv4: {node.ipv4_health}</span> : null}
                 {node.ipv6_health ? <span className="badge badge-violet">ipv6: {node.ipv6_health}</span> : null}
                 {(nodeFreshness?.alertKinds || []).map((kind) => (
@@ -640,18 +647,18 @@ export default function AdminNodesPage() {
 
               {(node.hoster_family || node.hoster_asn || node.subnet) ? (
                 <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
-                  <div className="mb-2 text-sm font-semibold">Hoster context</div>
+                  <div className="mb-2 text-sm font-semibold">Хостинг</div>
                   <div className="grid gap-2 text-xs sm:grid-cols-3">
-                    <p>Hoster: <strong>{node.hoster_family || "нет данных"}</strong></p>
+                    <p>Провайдер: <strong>{node.hoster_family || "нет данных"}</strong></p>
                     <p>ASN: <strong>{node.hoster_asn || "нет данных"}</strong></p>
-                    <p>Subnet: <strong>{node.subnet || "нет данных"}</strong></p>
+                    <p>Подсеть: <strong>{node.subnet || "нет данных"}</strong></p>
                   </div>
                 </div>
               ) : null}
 
               <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
-                  <span>Transport</span>
+                  <span>Подключение</span>
                   <span className={`badge ${transportHealth.label === "ok" || transportHealth.label === "healthy" ? "badge-success" : "badge-info"}`}>
                     {transportHealth.label}
                   </span>
@@ -660,14 +667,14 @@ export default function AdminNodesPage() {
                 {rootCauseSummary ? <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{rootCauseSummary}</p> : null}
                 {rootCauseDetail ? <p className="mt-1 text-xs text-slate-500">{rootCauseDetail}</p> : null}
                 <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                  <p>Panel / control plane: <strong>{panelState}</strong></p>
-                  <p>Dataplane probe: <strong>{dataplaneState}</strong></p>
-                  <p>Probe stage: <strong>{probeStage}</strong></p>
-                  <p>Probe classification: <strong>{probeClassification}</strong></p>
-                  <p>Telegram app path: <strong>{telegramAppPath}</strong></p>
-                  <p>Telegram web path: <strong>{telegramWebPath}</strong></p>
-                  <p>TLS handshake: <strong>{tlsHandshake}</strong></p>
-                  <p>REALITY target: <strong>{realityTarget}</strong></p>
+                  <p>Панель: <strong>{panelState}</strong></p>
+                  <p>Проверка подключения: <strong>{dataplaneState}</strong></p>
+                  <p>Шаг проверки: <strong>{probeStage}</strong></p>
+                  <p>Итог проверки: <strong>{probeClassification}</strong></p>
+                  <p>Путь Telegram App: <strong>{telegramAppPath}</strong></p>
+                  <p>Путь Telegram Web: <strong>{telegramWebPath}</strong></p>
+                  <p>TLS: <strong>{tlsHandshake}</strong></p>
+                  <p>REALITY: <strong>{realityTarget}</strong></p>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {transportProfiles.length ? (
@@ -677,7 +684,7 @@ export default function AdminNodesPage() {
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-slate-500">Каталог transport-профилей не пришёл, используем legacy only view.</span>
+                    <span className="text-xs text-slate-500">Список профилей подключения не пришёл, показываем базовый вид.</span>
                   )}
                 </div>
               </div>
@@ -704,22 +711,22 @@ export default function AdminNodesPage() {
                 <div className="mt-3 rounded-xl border border-rose-200/50 bg-rose-50/70 p-3 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10">
                   <div className="font-semibold">{probeFailure.title}</div>
                   {probeFailure.detail ? <div className="mt-1 text-slate-600 dark:text-slate-300">{probeFailure.detail}</div> : null}
-                  {probeFailure.raw ? <div className="mt-1 text-slate-500">raw error_kind: {probeFailure.raw}</div> : null}
+                  {probeFailure.raw ? <div className="mt-1 text-slate-500">код ошибки: {probeFailure.raw}</div> : null}
                 </div>
               ) : null}
 
               <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
-                  <span>Observer collector</span>
+                  <span>Сбор данных по пользователям</span>
                   <span className={`badge ${node.observer_is_stale || nodeFreshness?.observerIsStale ? "badge-warning" : "badge-success"}`}>
-                    {node.observer_is_stale || nodeFreshness?.observerIsStale ? "stale" : "fresh"}
+                    {node.observer_is_stale || nodeFreshness?.observerIsStale ? "устарело" : "свежо"}
                   </span>
                 </div>
                 <div className="grid gap-2 text-xs sm:grid-cols-2">
-                  <p>last push: <strong>{formatIso(node.observer_last_push_at || nodeFreshness?.observerLastPushAt || null)}</strong></p>
-                  <p>parse: <strong>{node.observer_parse_error_count}</strong></p>
-                  <p>unmatched: <strong>{node.observer_unmatched_count}</strong></p>
-                  <p>collector: <strong>{node.observer_is_stale || nodeFreshness?.observerIsStale ? "needs check" : "ok"}</strong></p>
+                  <p>последнее обновление: <strong>{formatIso(node.observer_last_push_at || nodeFreshness?.observerLastPushAt || null)}</strong></p>
+                  <p>ошибки разбора: <strong>{node.observer_parse_error_count}</strong></p>
+                  <p>без совпадения: <strong>{node.observer_unmatched_count}</strong></p>
+                  <p>сбор: <strong>{node.observer_is_stale || nodeFreshness?.observerIsStale ? "проверить" : "норма"}</strong></p>
                 </div>
               </div>
 

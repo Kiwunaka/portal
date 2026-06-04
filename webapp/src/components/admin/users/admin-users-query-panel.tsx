@@ -71,7 +71,7 @@ function AdminUsersSearchField({ initialQuery, loading, onQueryChange }: AdminUs
         onKeyDown={(event) => {
           if (event.key === "Enter") onQueryChange(queryDraft);
         }}
-        placeholder="Поиск по username, Telegram ID, имени или app install ID"
+        placeholder="Поиск по username, Telegram ID, имени или установке приложения"
         className={`${adminFieldClass} pl-9 pr-10 shadow-sm`}
         aria-label="Поиск пользователей"
       />
@@ -123,12 +123,12 @@ export function AdminUsersQueryPanel({
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Раздел пользователей</p>
           <h2 className="mt-1 text-lg font-semibold text-slate-900">Поиск аккаунтов и операторские действия</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Держите список плотным: фильтры сверху, таблица слева, карточка пользователя справа. Удаление оставляйте только для явных manual/test аккаунтов.
+            Фильтры сверху, список слева, карточка пользователя справа. Удаление доступно только для служебных тестовых аккаунтов.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <AdminBadge tone="accent">Показаны {pageStart}-{pageEnd || 0} из {totalRows}</AdminBadge>
             <AdminBadge>Страница {page} / {totalPages}</AdminBadge>
-            <AdminBadge tone="warning">Bulk actions запускайте через dry run</AdminBadge>
+            <AdminBadge tone="warning">Массовые действия сначала проверяйте без изменений</AdminBadge>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -136,7 +136,7 @@ export function AdminUsersQueryPanel({
             Обновить
           </button>
           <button className={adminButtonClass("primary", "sm")} type="button" onClick={onCreateManual} disabled={busy}>
-            Создать manual/test пользователя
+            Создать тестового пользователя
           </button>
         </div>
       </div>
@@ -174,7 +174,7 @@ export function AdminUsersQueryPanel({
       </div>
 
       <div className={`${adminInsetPanelClass} mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600`}>
-        <div>Показаны {pageStart}-{pageEnd || 0} из {totalRows} пользователей. Эффективный статус общий для web и bot admin.</div>
+        <div>Показаны {pageStart}-{pageEnd || 0} из {totalRows} пользователей. Статус один для кабинета и бота.</div>
         <div className="flex items-center gap-2">
           <button className={adminButtonClass("ghost", "xs")} type="button" disabled={page <= 1 || loading} onClick={onPrevPage}>
             Назад
@@ -191,10 +191,10 @@ export function AdminUsersQueryPanel({
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Массовое действие</p>
             <p className="mt-1 text-xs leading-5 text-slate-600">
-              Начинайте с dry run, если изменение затрагивает широкий сегмент или сразу несколько нод.
+              Сначала проверьте, сколько пользователей попадёт под действие. Применяйте изменения только после проверки.
             </p>
           </div>
-          <AdminBadge tone="warning">Bulk</AdminBadge>
+          <AdminBadge tone="warning">Массово</AdminBadge>
         </div>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -252,7 +252,7 @@ export function AdminUsersQueryPanel({
               checked={bulkAction.dryRun}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, dryRun: event.target.checked }))}
             />
-            Dry run
+            Только проверить
           </label>
           <label className="inline-flex items-center gap-2 text-xs text-slate-600">
             <input
@@ -260,7 +260,7 @@ export function AdminUsersQueryPanel({
               checked={bulkAction.force}
               onChange={(event) => setBulkAction((prev) => ({ ...prev, force: event.target.checked }))}
             />
-            Force
+            Выполнить принудительно
           </label>
           <button className={adminButtonClass("secondary", "sm")} type="button" onClick={onRunBulkAction} disabled={busy}>
             Запустить

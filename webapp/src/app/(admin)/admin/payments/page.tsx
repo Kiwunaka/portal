@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Ошибка",
   cancelled: "Отменён",
   refunded: "Возврат",
-  chargeback: "Chargeback",
+  chargeback: "Спор по оплате",
   manual_review: "Ручная проверка",
   pending_verification: "Ждёт проверки",
 };
@@ -159,9 +159,9 @@ export default function AdminPaymentsPage() {
     <section className="space-y-4">
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
-          eyebrow="paid beta finance"
+          eyebrow="оплата"
           title="Платёжный журнал"
-          description="Реальные заказы и callback-события из backend. Ручная сверка требует заметку аудита и не выдаёт доступ молча."
+          description="Реальные заказы и подтверждения от провайдера. Ручная сверка требует заметку и не выдаёт доступ молча."
           actions={
             <button type="button" className={adminButtonClass("secondary", "sm")} onClick={() => void loadOrders()} disabled={loading}>
               <RefreshCw size={14} />
@@ -172,7 +172,7 @@ export default function AdminPaymentsPage() {
         <div className="flex flex-wrap gap-2">
           <AdminBadge tone="accent">заказов: {total}</AdminBadge>
           <AdminBadge tone="warning">ручная проверка видна оператору</AdminBadge>
-          <AdminBadge>сырые payload провайдера не выводятся</AdminBadge>
+          <AdminBadge>полные данные провайдера не выводятся</AdminBadge>
         </div>
       </article>
 
@@ -232,9 +232,9 @@ export default function AdminPaymentsPage() {
 
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
-          eyebrow="orders and callbacks"
+          eyebrow="заказы и подтверждения"
           title="Заказы провайдера"
-          description="Строки идут из backend-таблиц оплаты. Callback показывается кратко, без печати полного payload."
+          description="Строки идут из таблиц оплаты. Подтверждение показывается кратко, без вывода полных данных провайдера."
         />
 
         {loading ? (
@@ -254,7 +254,7 @@ export default function AdminPaymentsPage() {
                     <th className="px-3 py-3">План</th>
                     <th className="px-3 py-3">Сумма</th>
                     <th className="px-3 py-3">Статус</th>
-                    <th className="px-3 py-3">Callback</th>
+                    <th className="px-3 py-3">Подтверждение</th>
                     <th className="px-3 py-3">Создан</th>
                     <th className="px-3 py-3" />
                   </tr>
@@ -288,15 +288,15 @@ export default function AdminPaymentsPage() {
                             <p>{order.last_event.event_type}</p>
                             <p className="font-mono text-slate-400">{order.last_event.external_id}</p>
                             <p className={order.last_event.signature_ok ? "text-emerald-700" : "text-rose-700"}>
-                              подпись {order.last_event.signature_ok ? "ok" : "bad"}
+                              подпись {order.last_event.signature_ok ? "в порядке" : "ошибка"}
                             </p>
                             <p className={order.last_event.processed_ok ? "text-emerald-700" : "text-amber-700"}>
-                              обработка {order.last_event.processed_ok ? "ok" : "нужна проверка"}
+                              обработка {order.last_event.processed_ok ? "готово" : "нужна проверка"}
                             </p>
                             <p className="text-slate-500">событий: {order.event_count}</p>
                           </div>
                         ) : (
-                          <span className="text-slate-500">callback не было</span>
+                          <span className="text-slate-500">подтверждения не было</span>
                         )}
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">{fmtRuDate(order.created_at)}</td>
@@ -313,8 +313,8 @@ export default function AdminPaymentsPage() {
           </div>
         ) : (
           <AdminEmptyState
-            title="Backend не вернул платёжные заказы"
-            description="Это явное пустое состояние, а не счётчик выручки и не фиктивный успешный экран."
+            title="Платёжных заказов нет"
+            description="Сервер не вернул заказы по текущим фильтрам. Это пустое состояние, а не скрытый счётчик выручки."
           />
         )}
       </article>
@@ -325,7 +325,7 @@ export default function AdminPaymentsPage() {
             <AdminPanelHeader
               eyebrow="ручная сверка"
               title={`Заказ ${dialog.order.order_id}`}
-              description="Запишите, что именно проверил оператор. Действие обновляет состояние журнала и пишет audit-метаданные; доступ само по себе не выдаёт."
+              description="Запишите, что именно проверил оператор. Действие обновляет журнал, но само по себе не выдаёт доступ."
             />
             <label className="block text-sm">
               <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">статус</span>

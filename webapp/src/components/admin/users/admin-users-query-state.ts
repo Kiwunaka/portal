@@ -35,7 +35,7 @@ export const ADMIN_USERS_STATUS_OPTIONS = [
   { value: "active", label: "Активные" },
   { value: "expired", label: "Истёкшие" },
   { value: "blocked", label: "Заблокированные" },
-  { value: "manual_test", label: "Manual/Test" },
+  { value: "manual_test", label: "Тестовые" },
 ];
 
 export const ADMIN_USERS_ORIGIN_OPTIONS = [
@@ -43,14 +43,14 @@ export const ADMIN_USERS_ORIGIN_OPTIONS = [
   { value: "telegram", label: "Telegram" },
   { value: "app", label: "Приложение" },
   { value: "hybrid", label: "Приложение + Telegram" },
-  { value: "manual_test", label: "Manual/Test" },
+  { value: "manual_test", label: "Тестовые" },
 ];
 
 export const ADMIN_USERS_OBSERVER_OPTIONS = [
-  { value: "all", label: "Observer: all" },
-  { value: "ok", label: "Observer: ok" },
-  { value: "watch", label: "Observer: watch" },
-  { value: "suspicious", label: "Observer: suspicious" },
+  { value: "all", label: "Проверка: все" },
+  { value: "ok", label: "Проверка: норма" },
+  { value: "watch", label: "Проверка: наблюдать" },
+  { value: "suspicious", label: "Проверка: проверить" },
 ];
 
 export const ADMIN_USERS_SORT_OPTIONS = [
@@ -65,7 +65,7 @@ export const ADMIN_USERS_BULK_ACTION_OPTIONS = [
   { value: "disable", label: "Отключить ключи" },
   { value: "enable", label: "Включить ключи" },
   { value: "reset", label: "Сбросить трафик" },
-  { value: "resync", label: "Синхронизировать subId" },
+  { value: "resync", label: "Синхронизировать подписку" },
 ] as const;
 
 export const ADMIN_USERS_BULK_SEGMENT_OPTIONS = [
@@ -76,7 +76,7 @@ export const ADMIN_USERS_BULK_SEGMENT_OPTIONS = [
   { value: "blocked", label: "Заблокированные" },
   { value: "paid", label: "Платные" },
   { value: "free", label: "Бесплатные" },
-  { value: "manual_test", label: "Manual/Test" },
+  { value: "manual_test", label: "Тестовые" },
 ] as const;
 
 export function createDefaultBulkActionState(): AdminUsersBulkActionState {

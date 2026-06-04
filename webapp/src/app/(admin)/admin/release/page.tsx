@@ -287,21 +287,21 @@ function buildRuntimeGates({
   return [
     {
       key: "apps",
-      label: "Android и Windows ссылки",
-      value: appLinksReady ? "ссылки beta подтверждены" : "нет подтверждения",
+      label: "Ссылки Android и Windows",
+      value: appLinksReady ? "ссылки беты подтверждены" : "нет подтверждения",
       detail: appLinksReady
-        ? "Backend отдает GitHub Releases APK/EXE, install docs URL, Android Play URL пустой. Это совпадает с outside-store beta handoff; при смене URL или артефакта нужен свежий runtime smoke."
-        : "Нужны GitHub Releases APK/EXE, docs URL https://pokrov.space/install/ и пустой Android Play URL в /api/client/apps.",
+        ? "API отдает APK/EXE из GitHub Releases, ссылку на инструкцию установки и пустую ссылку Google Play. Это подходит для беты вне магазинов; при смене файла нужна новая проверка загрузки."
+        : "Нужны GitHub Releases APK/EXE, инструкция https://pokrov.space/install/ и пустая ссылка Google Play в /api/client/apps.",
       tone: appLinksReady ? "success" : "danger",
     },
     {
       key: "payments",
-      label: "Гейт оплаты Lava.top",
-      value: payments?.blocked ? "закрыто" : lavaOnly ? "каталог открыт" : "проверить",
+      label: "Оплата Lava.top",
+      value: payments?.blocked ? "закрыто" : lavaOnly ? "список открыт" : "проверить",
       detail: payments?.blocked
         ? reasonList(payments.blocked_reason_texts || payments.blocked_reasons)
         : lavaOnly
-          ? "Live-каталог оплаты открыт и показывает только Lava.top. Для beta это совпадает с evidence pack 2026-05-15; production claim все еще требует refund/chargeback/reconciliation follow-up."
+          ? "Оплата открыта и показывает только Lava.top. Для беты это подтверждено 2026-05-15; для более сильных заявлений нужны отдельные проверки возвратов, споров и сверки."
           : "Каталог оплаты не доказывает готовность режима только Lava.top.",
       tone: lavaOnly ? "success" : payments?.blocked ? "warning" : "danger",
     },
@@ -310,17 +310,17 @@ function buildRuntimeGates({
       label: "Email-вход и доставка ключей",
       value: yesNo(emailReady),
       detail: emailReady
-        ? "Runtime-конфиг email зеленый: public mode включен, доставка настроена, debug echo выключен. Боевой inbox smoke verify/reset/key delivery остается post-deploy проверкой."
-        : `Email-гейт закрыт: ${reasonList(email?.blocked_reasons)}.`,
+        ? "Email включен, доставка настроена, отладочная отправка выключена. После деплоя всё равно нужна ручная проверка письма в реальном ящике."
+        : `Email закрыт: ${reasonList(email?.blocked_reasons)}.`,
       tone: emailReady ? "success" : "warning",
     },
     {
       key: "metrics",
-      label: "Метрики и алерты",
+      label: "Метрики и тревоги",
       value: metricsFresh ? "свежие" : metrics?.status || "нет данных",
       detail: metricsFresh
-        ? "Метрики админки свежие, активных алертов нет."
-        : `${(metrics?.active_alerts || []).length} активных алертов, статус ${metrics?.status || "нет данных"}.`,
+        ? "Метрики админки свежие, активных тревог нет."
+        : `${(metrics?.active_alerts || []).length} активных тревог, статус ${metrics?.status || "нет данных"}.`,
       tone: metricsFresh ? "success" : "warning",
     },
   ];
@@ -329,55 +329,55 @@ function buildRuntimeGates({
 const EXTERNAL_GATES: GateItem[] = [
   {
     key: "android-physical",
-    label: "Физический аудит Android-сборки",
+    label: "Проверка Android на устройстве",
     value: "OPERATOR_ATTESTED",
     detail:
-      "Физическая проверка текущего Android-кандидата принята как операторская аттестация. Это не raw repo validation и не магазинная публикация; публично можно говорить только об операторском подтверждении.",
+      "Проверка текущей Android-сборки на устройстве принята как подтверждение оператора. Это не публикация в магазине; публично можно говорить только об операторской проверке.",
     tone: "warning",
   },
   {
     key: "lavatop-live",
-    label: "Lava.top beta evidence",
+    label: "Подтверждение Lava.top для беты",
     value: "PASS_FOR_BETA",
-    detail: "Retained evidence от 2026-05-15 закрывает invoice, webhook, replay/idempotency, failed/manual-review, reconciliation и email-key delivery для outside-store beta. Refund/chargeback и production reconciliation остаются follow-up.",
+    detail: "Проверка от 2026-05-15 подтверждает создание счёта, уведомления провайдера, повторные события, ошибки, ручную проверку, сверку и отправку ключа по email для беты вне магазинов. Возвраты, споры и зрелая продовая сверка остаются отдельной задачей.",
     tone: "success",
   },
   {
     key: "paid-checkout-launch-evidence",
-    label: "Агрегированный гейт оплаты",
+    label: "Итоговая проверка оплаты",
     value: "PASS_FOR_BETA",
     detail:
-      "Последний retained paid-checkout evidence разрешает Lava.top-only paid checkout для beta. При новой проверке, смене провайдера или production claim нужен свежий датированный artifact.",
+      "Последняя проверка разрешает оплату только через Lava.top для беты. При смене провайдера или более сильных заявлениях нужна новая датированная проверка.",
     tone: "success",
   },
   {
     key: "machine-launch-decision",
-    label: "Машинный launch decision",
+    label: "Автоматическая проверка запуска",
     value: "GO_WITH_ACCEPTED_SKIPS",
     detail:
-      "Если release-status.json недоступен, cockpit опирается на retained decision 2026-05-15: public beta GO with accepted skips. Это не production/1.0.0 proof.",
+      "Если release-status.json недоступен, админка опирается на решение от 2026-05-15: публичная бета разрешена с принятыми пропусками. Это не подтверждение боевого запуска или 1.0.0.",
     tone: "success",
   },
   {
     key: "brain-post-deploy-live-probe",
-    label: "Brain-local email/Lava.top probe",
+    label: "Проверка email и Lava.top с сервера",
     value: "PASS_FOR_BETA",
     detail:
-      "Post-deploy probe 2026-05-15 зеленый для beta. Секреты остаются на brain; при новом deploy повторять только с redacted output.",
+      "Проверка после деплоя от 2026-05-15 зелёная для беты. Секреты остаются на сервере; при новом деплое повторять только с безопасным выводом.",
     tone: "success",
   },
   {
     key: "email-live",
     label: "Боевые подтверждения email-реле",
     value: "PASS_FOR_BETA",
-    detail: "Email auth, recovery и paid-key delivery имеют retained beta evidence. Новый sender, домен или release candidate требует fresh inbox smoke.",
+    detail: "Email-вход, восстановление и доставка оплаченного ключа подтверждены для беты. Новый отправитель, домен или кандидат релиза требует новой проверки реального письма.",
     tone: "success",
   },
   {
     key: "ru-origin",
-    label: "Доступность Telegram из RU-origin",
+    label: "Доступность Telegram из России",
     value: "SKIPPED_BY_OPERATOR",
-    detail: "RU-origin проверка пропущена оператором для этого beta-прохода. Это не подтверждает доступность Telegram из RU-origin и не должно звучать как публичное обещание.",
+    detail: "Проверка из России пропущена оператором для этого прохода беты. Это не подтверждает доступность Telegram из России и не должно звучать как публичное обещание.",
     tone: "warning",
   },
   {
@@ -393,7 +393,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "GitHub Releases и деплой",
     value: "PASS_FOR_BETA",
     detail:
-      "GitHub prerelease v0.2.0-beta.1 и runtime /api/client/apps подтверждены для outside-store beta. Telegram-анонс остается ручным действием владельца, не автоматическим блокером cockpit.",
+      "GitHub prerelease v0.2.0-beta.1 и /api/client/apps подтверждены для беты вне магазинов. Telegram-анонс остаётся ручным действием владельца, не автоматическим блокером админки.",
     tone: "success",
   },
 ];
@@ -405,10 +405,10 @@ function buildExternalGates(artifact: ReleaseStatusArtifact | null): GateItem[] 
         artifact,
         {
           key: "brain-origin-static-deploy",
-          label: "Brain-origin static deploy",
+          label: "Статический деплой с сервера",
           value: "PASS_STATIC_CONTEXT",
           detail:
-            "Static deploy evidence is useful context only: it does not authorize production, store, trusted-signing, RU-origin, or raw Android-audit claims by itself.",
+            "Проверка статического деплоя полезна как контекст, но сама по себе не разрешает заявления о боевом запуске, магазинах, доверенной подписи, доступности из России или полном Android-аудите.",
           tone: "success",
         },
         "brain_origin_static_deploy_verify",
@@ -419,9 +419,9 @@ function buildExternalGates(artifact: ReleaseStatusArtifact | null): GateItem[] 
         artifact,
         {
           key: "external-access-preflight",
-          label: "External access preflight",
+          label: "Внешняя проверка доступа",
           value: "BLOCKED_BY_ACCESS",
-          detail: "External access preflight is not safe for public publication.",
+          detail: "Внешняя проверка доступа не предназначена для публичных заявлений.",
           tone: "danger",
         },
         "external_access_preflight",
@@ -547,7 +547,7 @@ export default function AdminReleasePage() {
   const runtimeGates = useMemo(() => buildRuntimeGates({ apps, email, metrics, payments }), [apps, email, metrics, payments]);
   const externalGates = useMemo(() => buildExternalGates(releaseStatus), [releaseStatus]);
   const runtimeBlocks = runtimeGates.filter((gate) => gate.tone === "danger").length;
-  const runtimeLinksDetected = runtimeGates.find((gate) => gate.key === "apps")?.value.startsWith("ссылки beta") || false;
+  const runtimeLinksDetected = runtimeGates.find((gate) => gate.key === "apps")?.value.startsWith("ссылки беты") || false;
   const externalBlocks = externalGates.filter((gate) => gate.tone === "danger").length;
   const publicGo = runtimeBlocks === 0 && externalBlocks === 0;
   const androidUrl = firstUrl(apps?.android?.apk_url, apps?.android?.mirror_url);
@@ -565,61 +565,61 @@ export default function AdminReleasePage() {
   const safePublicClaims = artifactSafeClaims.length
     ? artifactSafeClaims
     : [
-        "POKROV готовит ограниченную Android и Windows бета вне магазинов.",
-        "POKROV открыт в outside-store public beta по evidence pack 2026-05-15.",
+        "POKROV готовит ограниченную бету Android и Windows вне магазинов.",
+        "POKROV открыт в публичной бете вне магазинов по проверке от 2026-05-15.",
         runtimeLinksDetected
-          ? "GitHub Releases APK/EXE обнаружены в runtime /api/client/apps; при смене ссылок нужен свежий runtime smoke."
-          : "GitHub prerelease assets подготовлены для проверки; runtime-ссылки пока не активны.",
+          ? "APK/EXE из GitHub Releases найдены в /api/client/apps; при смене ссылок нужна новая проверка загрузки."
+          : "Файлы GitHub prerelease подготовлены для проверки; рабочие ссылки пока не активны.",
         "Android-кандидат принят как операторски подтвержденный, Windows EXE остается неподписанной бета-сборкой.",
-        "Оплата работает через Lava.top для текущей beta; production payment maturity все еще требует refund/chargeback/reconciliation follow-up.",
-        "Email-вход и доставка ключей имеют retained beta evidence; свежий sender или deploy требует нового inbox smoke.",
+        "Оплата работает через Lava.top для текущей беты; зрелая продовая оплата всё ещё требует отдельной проверки возвратов, споров и сверки.",
+        "Email-вход и доставка ключей подтверждены для беты; новый отправитель или деплой требует новой проверки реального письма.",
       ];
   const unsafePublicClaims = artifactUnsafeClaims.length
     ? artifactUnsafeClaims
     : [
-        "POKROV уже готов к stable/1.0.0.",
-        "Оплата Lava.top является production-mature без refund/chargeback/reconciliation follow-up.",
-        "Android raw repo validation green или магазинная публикация уже разрешена.",
+        "POKROV уже готов к стабильной версии 1.0.0.",
+        "Оплата Lava.top полностью готова для боевого запуска без дополнительных проверок возвратов, споров и сверки.",
+        "Полная проверка Android-сборки или магазинная публикация уже разрешена.",
         "Windows подписан доверенным сертификатом.",
         runtimeLinksDetected
-          ? "Runtime-ссылки обнаружены, значит можно отправлять публичный анонс без подтвержденного sync GO и финального GO."
+          ? "Рабочие ссылки обнаружены, значит можно отправлять публичный анонс без финального подтверждения владельца."
           : "GitHub Releases уже являются рабочим путем загрузки в приложении или кабинете.",
       ];
   const operatorActions: OperatorAction[] = [
     runtimeLinksDetected
       ? {
           key: "runtime-links-detected",
-          title: "Runtime APP-ссылки",
-          status: "обнаружены для beta",
+          title: "Рабочие ссылки приложения",
+          status: "обнаружены для беты",
           detail:
-            "Backend уже отдает GitHub APK/EXE и install docs. Это соответствует retained beta decision; перед новым анонсом или заменой файла проверьте exact runtime-link handoff и свежий smoke.",
+            "API уже отдает GitHub APK/EXE и инструкцию установки. Перед новым анонсом или заменой файла проверьте, что ссылки открываются и скачивание работает.",
           command: RUNTIME_SYNC_AUDIT_TEXT,
           tone: "warning",
         }
       : {
           key: "runtime-link-go",
-          title: "Runtime APP-ссылки",
+          title: "Рабочие ссылки приложения",
           status: "нужен явный GO",
           detail:
-            "Чтобы включить APK/EXE в runtime /api/client/apps, оператор должен прислать этот narrow GO. Это не открывает оплату и не разрешает публичный анонс.",
+            "Чтобы включить APK/EXE в /api/client/apps, оператор должен явно подтвердить действие. Это не открывает оплату и не разрешает публичный анонс.",
           command: RUNTIME_SYNC_GO_TEXT,
           tone: "warning",
         },
     {
       key: "email-probe",
       title: "Email-доставка",
-      status: emailPublicReady ? "beta evidence есть" : "сначала включить public email",
+      status: emailPublicReady ? "для беты подтверждено" : "сначала включить публичный email",
       detail:
-        "Для текущей beta есть retained evidence. После нового deploy, sender change или release candidate нужен безопасный адрес для verify/reset и письма с тестовым ключом.",
+        "Для текущей беты проверка есть. После нового деплоя, смены отправителя или кандидата релиза нужен безопасный адрес для проверки входа, восстановления и письма с тестовым ключом.",
       command: EMAIL_PROBE_COMMAND,
       tone: emailPublicReady ? "success" : "warning",
     },
     {
       key: "lavatop-probe",
       title: "Lava.top",
-      status: "beta evidence есть",
+      status: "для беты подтверждено",
       detail:
-        "Checkout открыт для текущей beta. Новый production claim, смена провайдера или release candidate требует свежий Lava.top-прогон: invoice creation, webhook auth, replay/idempotency, failed/manual-review, reconciliation и email key delivery evidence.",
+        "Оплата открыта для текущей беты. Новое сильное заявление, смена провайдера или кандидат релиза требуют новой проверки Lava.top: счёт, уведомления, повторы, ошибки, ручная проверка, сверка и доставка ключа по email.",
       command: LAVATOP_PROBE_COMMAND,
       tone: "success",
     },
@@ -653,7 +653,7 @@ export default function AdminReleasePage() {
         <AdminPanelHeader
           eyebrow="релиз"
           title={publicGo ? "Публичная бета: GO" : "Публичная бета: требует внимания"}
-          description="Один экран для операторской проверки текущей beta-правды. GO относится к outside-store public beta; production, 1.0.0, store, trusted signing, raw Android audit и RU-origin остаются отдельными ручными gates."
+          description="Один экран для проверки текущей беты. GO относится только к публичной бете вне магазинов; боевой запуск, 1.0.0, магазины, доверенная подпись, полный Android-аудит и доступность из России остаются отдельными ручными проверками."
           actions={
             <button type="button" onClick={() => void load()} className={adminButtonClass("secondary", "sm")}>
               Обновить
@@ -661,10 +661,10 @@ export default function AdminReleasePage() {
           }
         />
         <div className="flex flex-wrap gap-2">
-          <AdminBadge tone={runtimeBlocks ? "warning" : "success"}>локальные блокеры: {runtimeBlocks}</AdminBadge>
+          <AdminBadge tone={runtimeBlocks ? "warning" : "success"}>локальные проблемы: {runtimeBlocks}</AdminBadge>
           <AdminBadge tone={externalBlocks ? "danger" : "success"}>внешние блокеры: {externalBlocks}</AdminBadge>
           <AdminBadge tone="warning">
-            {runtimeLinksDetected ? "Runtime-ссылки beta обнаружены" : "Runtime-ссылки не обнаружены"}
+            {runtimeLinksDetected ? "Рабочие ссылки беты обнаружены" : "Рабочие ссылки не обнаружены"}
           </AdminBadge>
           <AdminBadge tone="warning">Telegram пост — ручное действие владельца</AdminBadge>
         </div>
@@ -688,20 +688,20 @@ export default function AdminReleasePage() {
                 ? "Android Play URL должен оставаться пустым для беты вне магазинов."
                 : androidUrl
                   ? "Android ссылка должна быть GitHub Releases .apk."
-                  : "Backend не отдал GitHub Releases APK или mirror ссылку.",
+                  : "API не отдал GitHub Releases APK или запасную ссылку.",
             tone: androidUrlReady ? "success" : "danger",
           },
           {
             label: "Windows ссылка",
             value: windowsUrlReady ? "есть" : "нет",
-            hint: windowsUrlReady ? windowsUrl : windowsUrl ? "Windows ссылка должна быть GitHub Releases .exe." : "Backend не отдал GitHub Releases EXE или mirror ссылку.",
+            hint: windowsUrlReady ? windowsUrl : windowsUrl ? "Windows ссылка должна быть GitHub Releases .exe." : "API не отдал GitHub Releases EXE или запасную ссылку.",
             tone: windowsUrlReady ? "success" : "danger",
           },
           {
             label: "Оплата",
             value: payments?.ok ? "каталог найден" : "закрыто",
             hint: payments?.ok
-              ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; beta checkout разрешен для Lava.top-only, production hardening остается follow-up.`
+              ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; для беты разрешён только Lava.top, продовая проверка остаётся отдельной задачей.`
               : reasonList(payments?.blocked_reason_texts || payments?.blocked_reasons),
             tone: payments?.ok ? "warning" : "warning",
           },
@@ -712,9 +712,9 @@ export default function AdminReleasePage() {
             tone: "success",
           },
           {
-            label: "Email runtime",
+            label: "Email",
             value: email?.enabled ? "локально проверено" : "закрыто",
-            hint: email?.enabled ? "режим включен; боевой гейт ниже остается закрыт до post-deploy inbox smoke." : reasonList(email?.blocked_reasons),
+            hint: email?.enabled ? "режим включён; после деплоя нужна проверка реального письма." : reasonList(email?.blocked_reasons),
             tone: email?.enabled ? "warning" : "warning",
           },
         ]}
@@ -724,7 +724,7 @@ export default function AdminReleasePage() {
         <AdminPanelHeader
           eyebrow="следующие действия"
           title="Что нужно от оператора"
-          description="Короткий список ручных проверок для нового deploy, нового кандидата или более сильных claims. Они не закрываются агентом и не должны превращаться в скрытый blocker текущей beta."
+          description="Короткий список ручных проверок для нового деплоя, нового кандидата или более сильных публичных заявлений. Они не закрываются агентом и не должны превращаться в скрытый блокер текущей беты."
         />
         <div className="grid gap-3 xl:grid-cols-4">
           {operatorActions.map((action) => (
@@ -738,7 +738,7 @@ export default function AdminReleasePage() {
           <AdminPanelHeader
             eyebrow="локальные проверки"
             title="Что можно проверить из админки"
-            description="Эти пункты берутся из боевых API-ответов текущего окружения. Зеленые локальные проверки не заменяют аудит Android-сборки, подтверждения Lava.top и гейт публикации GitHub."
+            description="Эти пункты берутся из боевых API-ответов текущего окружения. Зеленые локальные проверки не заменяют аудит Android-сборки, подтверждения Lava.top и проверку публикации GitHub."
           />
           <div className="grid gap-3 md:grid-cols-2">
             {runtimeGates.map((gate) => (
@@ -766,7 +766,7 @@ export default function AdminReleasePage() {
           <AdminPanelHeader
             eyebrow="можно говорить"
             title="Что можно говорить публично"
-            description="Только outside-store beta, Lava.top beta checkout и явно обозначенные ограничения. Без production, store, trusted-signing, raw Android-audit и RU-origin claims."
+            description="Только бета вне магазинов, оплата Lava.top для беты и явно обозначенные ограничения. Без заявлений о боевом запуске, магазинах, доверенной подписи, полном Android-аудите и доступности из России."
           />
           <div className="space-y-2">
             {safePublicClaims.map((claim) => (
@@ -779,7 +779,7 @@ export default function AdminReleasePage() {
           <AdminPanelHeader
             eyebrow="нельзя говорить"
             title="Что нельзя публиковать"
-            description="Эти формулировки запрещены до отдельных production/store/trust/RU/raw-device доказательств."
+            description="Эти формулировки запрещены до отдельных подтверждений по боевому запуску, магазинам, доверенной подписи, России и полной проверке на устройстве."
           />
           <div className="space-y-2">
             {unsafePublicClaims.map((claim) => (
@@ -793,7 +793,7 @@ export default function AdminReleasePage() {
         <AdminPanelHeader
             eyebrow="рабочие экраны"
           title="Соседние рабочие экраны"
-          description="Релизный экран только фиксирует статус. Ручные разборы остаются в профильных admin-разделах."
+          description="Экран выпуска только фиксирует статус. Ручные разборы остаются в профильных разделах админки."
           actions={
             <>
               <AppRouteLink href="/admin/payments" className={adminButtonClass("secondary", "sm")}>

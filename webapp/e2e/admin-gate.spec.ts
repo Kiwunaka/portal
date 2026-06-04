@@ -1126,17 +1126,17 @@ test.describe("Admin gate", () => {
 
     await openRoute(page, "admin/promos/");
 
-    await expect(page.getByRole("heading", { name: "Issue access keys" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Выпустить ключи" })).toBeVisible();
     await page.locator('input[type="number"]').first().fill("1");
-    await page.getByRole("button", { name: "Issue" }).click();
+    await page.getByRole("button", { name: "Выпустить" }).click();
     await expect(page.locator("body")).toContainText("POKROV-TEST-0001");
 
     await page.getByPlaceholder("POKROV-XXXX-XXXX").fill("POKROV-TEST-0001");
-    await page.getByRole("button", { name: "Lookup" }).click();
+    await page.getByRole("button", { name: "Проверить" }).click();
     await expect(page.locator("body")).toContainText("1 month");
 
-    await page.getByRole("button", { name: /^Save$/ }).click();
-    await expect(page.locator("body")).toContainText("Promo-slot config");
+    await page.getByRole("button", { name: /^Сохранить$/ }).click();
+    await expect(page.locator("body")).toContainText("Подсказки сохранены.");
   });
 
   test("keeps an explicit path back to the cabinet from admin", async ({ page }) => {
@@ -1195,8 +1195,8 @@ test.describe("Admin gate", () => {
     await openRoute(page, "admin/users/");
     await expect(page.getByRole("link", { name: /Сводка/ }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: /Пользователи/ }).first()).toBeVisible();
-    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Создать manual/test пользователя" })).toBeVisible();
+    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или установке приложения")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Создать тестового пользователя" })).toBeVisible();
 
     await openRoute(page, "admin/nodes/");
     await expect(page.getByRole("heading", { name: "Ноды и состояние инфраструктуры" })).toBeVisible();
@@ -1232,7 +1232,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Показаны 81-81 из 81 пользователей.", { exact: true })).toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("User 081");
 
-    await page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID").fill("User 081");
+    await page.getByPlaceholder("Поиск по username, Telegram ID, имени или установке приложения").fill("User 081");
     await expect(page.getByText("Показаны 1-1 из 1 пользователей.", { exact: true })).toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("User 081");
   });
@@ -1251,16 +1251,16 @@ test.describe("Admin gate", () => {
     await registerApiMocks(page, { isAdmin: true, userRows });
     await openRoute(page, "admin/users/?q=User&status=all&origin=telegram&observer_state=all&sort=name_asc&page=2");
 
-    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toHaveValue("User");
+    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или установке приложения")).toHaveValue("User");
     await expect(page.locator("tbody tr").first()).toContainText("User 081");
 
-    await page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID").fill("User 008");
+    await page.getByPlaceholder("Поиск по username, Telegram ID, имени или установке приложения").fill("User 008");
     await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe("User 008");
     await expect.poll(() => new URL(page.url()).searchParams.get("page")).toBe("1");
-    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toHaveValue("User 008");
+    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или установке приложения")).toHaveValue("User 008");
 
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или app install ID")).toHaveValue("User 008");
+    await expect(page.getByPlaceholder("Поиск по username, Telegram ID, имени или установке приложения")).toHaveValue("User 008");
     await expect(page.locator("tbody tr").first()).toContainText("User 008");
   });
 
@@ -1292,13 +1292,13 @@ test.describe("Admin gate", () => {
     await expect(page.locator("tbody tr").first()).toContainText("Router Lab");
 
     await page.locator("tbody tr").first().click();
-    await expect(page.getByRole("button", { name: "Удалить manual/test пользователя" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Удалить тестового пользователя" }).first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Удалить manual/test пользователя" }).first().click();
-    await expect(page.getByRole("heading", { name: "Удалить manual/test пользователя" })).toBeVisible();
+    await page.getByRole("button", { name: "Удалить тестового пользователя" }).first().click();
+    await expect(page.getByRole("heading", { name: "Удалить тестового пользователя" })).toBeVisible();
     await page.getByRole("button", { name: "Удалить пользователя" }).click();
 
-    await expect(page.getByText("Manual/test пользователь удалён.")).toBeVisible();
+    await expect(page.getByText("Тестовый пользователь удалён.")).toBeVisible();
     await expect(page.getByText("По текущим фильтрам пользователей нет.").first()).toBeVisible();
   });
 
@@ -1335,10 +1335,10 @@ test.describe("Admin gate", () => {
     await openRoute(page, "admin/users/");
     await page.locator("select").nth(2).selectOption("suspicious");
     await expect(page.locator("tbody tr").first()).toContainText("Suspicious User");
-    await expect(page.locator("tbody tr").first()).toContainText("suspicious");
+    await expect(page.locator("tbody tr").first()).toContainText("проверить");
 
     await page.locator("tbody tr").first().click();
-    await expect(page.getByText("Observer-lite")).toBeVisible();
+    await expect(page.getByText("Проверка по IP и нодам")).toBeVisible();
     await expect(page.getByText("multi_node_overlap_10m").first()).toBeVisible();
     await expect(page.getByText("8.8.8.8")).toBeVisible();
     await expect(page.getByText("PL").first()).toBeVisible();
@@ -1354,7 +1354,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByText("Подтягиваем данные кабинета")).not.toBeVisible();
     await expect(page.locator("tbody tr").first()).toContainText("QA Admin");
     await page.locator("tbody tr").first().click();
-    await expect(page.getByText("Observer-lite")).toBeVisible();
+    await expect(page.getByText("Проверка по IP и нодам")).toBeVisible();
     await expect(page.getByText("Данных наблюдения пока нет.")).toBeVisible();
     await expect(page.getByText("No recent IPs.")).not.toBeVisible();
     await expect(page.getByText("No recent nodes.")).not.toBeVisible();
@@ -1390,7 +1390,7 @@ test.describe("Admin gate", () => {
     await page.locator("select").nth(0).selectOption("manual_test");
     await page.locator("select").nth(1).selectOption("manual_test");
     await page.locator("tbody tr").first().click();
-    await page.getByRole("button", { name: "Удалить manual/test пользователя" }).first().click();
+    await page.getByRole("button", { name: "Удалить тестового пользователя" }).first().click();
     await expect(page.getByRole("button", { name: "Отмена" })).toBeVisible();
     await page.getByRole("button", { name: "Отмена" }).click();
 
@@ -1491,10 +1491,10 @@ test.describe("Admin gate", () => {
     await expect(page.locator(".badge", { hasText: "Нужно проверить данные" }).first()).toBeVisible();
     await expect(page.getByText(/Сбой проверки/i)).toBeVisible();
     await expect(page.getByText("tls handshake failed")).toBeVisible();
-    await expect(page.getByText("US: Observer")).toBeVisible();
-    await expect(page.getByText("Observer collector")).toBeVisible();
-    await expect(page.getByText("parse: 2")).toBeVisible();
-    await expect(page.getByText("unmatched: 3")).toBeVisible();
+    await expect(page.getByText("US: Данные пользователей устарели")).toBeVisible();
+    await expect(page.getByText("Сбор данных по пользователям")).toBeVisible();
+    await expect(page.getByText("ошибки разбора: 2")).toBeVisible();
+    await expect(page.getByText("без совпадения: 3")).toBeVisible();
   });
 
   test("shows node context with separate panel, dataplane, and transport detail", async ({ page }) => {
@@ -1557,18 +1557,18 @@ test.describe("Admin gate", () => {
     });
 
     await openRoute(page, "admin/nodes/");
-    const nodeCard = page.locator("article").filter({ hasText: "Hoster context" }).first();
+    const nodeCard = page.locator("article").filter({ hasText: "Хостинг" }).first();
     await expect(nodeCard.getByText(/Hetzner/i)).toBeVisible();
     await expect(nodeCard.getByText(/AS24940/)).toBeVisible();
     await expect(nodeCard.getByText("5.45.67.0/24")).toBeVisible();
-    await expect(nodeCard.getByText(/Panel \/ control plane:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/Dataplane probe:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/Probe stage:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/Probe classification:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/Telegram app path:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/Telegram web path:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/TLS handshake:/i)).toBeVisible();
-    await expect(nodeCard.getByText(/REALITY target:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Панель:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Проверка подключения:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Шаг проверки:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Итог проверки:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Путь Telegram App:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/Путь Telegram Web:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/TLS:/i)).toBeVisible();
+    await expect(nodeCard.getByText(/REALITY:/i)).toBeVisible();
     await expect(nodeCard.getByText(/legacy_reality_fallback/i)).toBeVisible();
     await expect(nodeCard.getByText(/grpc_443_primary/i)).toBeVisible();
     await expect(nodeCard.getByText(/certificate names do not match expected reality target/i)).toBeVisible();
@@ -1583,8 +1583,8 @@ test.describe("Admin gate", () => {
     await openRoute(page, "admin/network/");
 
     const textarea = page.locator("textarea");
-    const feedsCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Allowlist" }) });
-    const targetingCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Targeting selectors" }) });
+    const feedsCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Списки и источники" }) });
+    const targetingCard = page.locator("article").filter({ has: page.locator("h3", { hasText: "Правила для групп" }) });
     await expect(textarea).toHaveValue(/"version": "2026-04-13-rollout"/);
     await expect(textarea).toHaveValue(/"install_ids": \[/);
     await expect(textarea).toHaveValue(/"linked_tg_ids": \[/);
@@ -1593,7 +1593,7 @@ test.describe("Admin gate", () => {
     await expect(feedsCard.getByText("rules-feed-v7", { exact: true })).toBeVisible();
     await expect(targetingCard.getByText("install-default-android")).toBeVisible();
     await expect(targetingCard.getByText("1001")).toBeVisible();
-    await expect(targetingCard.getByText(/platforms:/i).last()).toContainText("android");
+    await expect(targetingCard.getByText(/платформы:/i).last()).toContainText("android");
 
     const initialJson = await textarea.inputValue();
     const nextJson = initialJson
@@ -1601,7 +1601,7 @@ test.describe("Admin gate", () => {
       .replace('"version": "package-feed-v2"', '"version": "package-feed-v3"');
     await textarea.fill(nextJson);
     await page.getByRole("button", { name: /Сохранить/i }).click();
-    await expect(page.getByText(/Network rollout config/i)).toContainText(/сохран/i);
+    await expect(page.getByText(/Настройки сети сохранены/i)).toBeVisible();
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(textarea).toHaveValue(/"version": "2026-04-13-rollout"/);

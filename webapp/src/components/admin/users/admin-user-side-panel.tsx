@@ -55,6 +55,18 @@ function formatPaymentAmount(order: AdminPaymentOrder): string {
   return `${Number(order.amount || 0).toLocaleString("ru-RU")} ${order.currency || "RUB"}`;
 }
 
+function paymentStatusLabel(status: string): string {
+  const value = String(status || "").toLowerCase();
+  if (value === "paid") return "Оплачен";
+  if (value === "failed") return "Ошибка";
+  if (value === "cancelled") return "Отменён";
+  if (value === "refunded") return "Возврат";
+  if (value === "chargeback") return "Спор";
+  if (value === "manual_review") return "Проверить вручную";
+  if (value === "pending_verification") return "Ждёт проверки";
+  return status || "Неизвестно";
+}
+
 export function AdminUserSidePanel({
   selected,
   detailTab,
@@ -85,7 +97,7 @@ export function AdminUserSidePanel({
       <AdminEmptyState
         className="min-h-[420px]"
         title="Выберите пользователя"
-        description="Откройте строку из таблицы, чтобы посмотреть статус, ключи, observer-сигналы и операторские действия."
+        description="Откройте строку из таблицы, чтобы посмотреть статус, ключи, проверки и действия операторов."
       />
     );
   }
@@ -119,15 +131,15 @@ export function AdminUserSidePanel({
           <div className="space-y-2 text-right">
             <div className="flex flex-wrap items-center justify-end gap-2">
               <span className={`rounded-full px-2 py-1 text-xs ${userStatusBadgeClass(user.status)}`}>{userStatusLabel(user.status)}</span>
-              <span className={`badge ${observerStateBadgeClass(user.observer_state)}`}>Observer {observerStateLabel(user.observer_state)}</span>
+              <span className={`badge ${observerStateBadgeClass(user.observer_state)}`}>Проверка: {observerStateLabel(user.observer_state)}</span>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">
                 {originLabel(user.origin)}
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Linked Telegram: {user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет"}
+              Telegram: {user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет"}
             </p>
-            <p className="text-xs text-slate-400">App install ID: {user.app_install_id || "нет"}</p>
+            <p className="text-xs text-slate-400">Установка приложения: {user.app_install_id || "нет"}</p>
           </div>
         </div>
       </div>
@@ -151,13 +163,13 @@ export function AdminUserSidePanel({
         <div className={`${adminInsetPanelClass} mt-3 border-rose-200/80 bg-rose-50/88 dark:border-rose-500/20 dark:bg-rose-500/10`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-rose-200">Удаление только для manual/test</p>
+              <p className="text-sm font-semibold text-rose-700 dark:text-rose-200">Удаление только для тестовых аккаунтов</p>
               <p className="mt-1 text-xs leading-5 text-slate-400">
-                Деструктивная очистка доступна только для аккаунтов, которые явно помечены как manual или test.
+                Удаляйте только служебные аккаунты, созданные для проверки админки или сценариев поддержки.
               </p>
             </div>
             <button className={adminButtonClass("danger", "sm")} type="button" onClick={onDeleteTestUser} disabled={busy}>
-              Удалить manual/test пользователя
+              Удалить тестового пользователя
             </button>
           </div>
         </div>
@@ -188,53 +200,53 @@ export function AdminUserSidePanel({
         <div className={adminInsetPanelClass}>
           <div className="mb-2 flex items-center gap-2">
             <span className={`badge ${observerStateBadgeClass(observer?.state || user.observer_state)}`}>
-              Observer {observerStateLabel(observer?.state || user.observer_state)}
+              Проверка: {observerStateLabel(observer?.state || user.observer_state)}
             </span>
           </div>
           <p className="text-xs leading-5 text-slate-400">
-            {observer?.reasons?.length ? observer.reasons.join(", ") : "Observer данных пока нет."}
+            {observer?.reasons?.length ? observer.reasons.join(", ") : "Данных для проверки пока нет."}
           </p>
           <p className="mt-2 text-xs text-slate-400">
-            Panel state: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong>
+            Состояние панелей: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong>
           </p>
         </div>
       </div>
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-900">Device context</p>
+          <p className="text-sm font-semibold text-slate-900">Приложение и Telegram</p>
           <div className="mt-3 space-y-1 text-xs text-slate-400">
-            <p>Install ID: <strong>{user.app_install_id || "not linked"}</strong></p>
-            <p>Platform: <strong>{user.app_platform || "unknown"}</strong></p>
-            <p>Last seen: <strong>{fmtRuDate(user.app_last_seen_at)}</strong></p>
-            <p>Telegram: <strong>{user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "not linked"}</strong></p>
+            <p>Установка: <strong>{user.app_install_id || "не привязана"}</strong></p>
+            <p>Платформа: <strong>{user.app_platform || "неизвестно"}</strong></p>
+            <p>Последняя активность: <strong>{fmtRuDate(user.app_last_seen_at)}</strong></p>
+            <p>Telegram: <strong>{user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "не привязан"}</strong></p>
           </div>
         </div>
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-900">Recent payment orders</p>
+          <p className="text-sm font-semibold text-slate-900">Последние оплаты</p>
           {payment_orders.length ? (
             <div className="mt-3 space-y-2">
               {payment_orders.slice(0, 4).map((order) => (
                 <div key={`${order.provider}:${order.order_id}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-mono text-slate-800">{order.order_id}</p>
-                    <span className={`badge ${paymentStatusTone(order.status)}`}>{order.status}</span>
+                    <span className={`badge ${paymentStatusTone(order.status)}`}>{paymentStatusLabel(order.status)}</span>
                   </div>
                   <p className="mt-1 text-slate-400">
                     {order.provider} · {order.plan_code || "-"} · {formatPaymentAmount(order)}
                   </p>
                   {order.last_event ? (
                     <p className="mt-1 text-slate-500">
-                      callback {order.last_event.event_type}: {order.last_event.processed_ok ? "processed" : "needs review"}
+                      Событие {order.last_event.event_type}: {order.last_event.processed_ok ? "обработано" : "нужно проверить"}
                     </p>
                   ) : (
-                    <p className="mt-1 text-slate-500">No provider callback yet.</p>
+                    <p className="mt-1 text-slate-500">Подтверждения от провайдера ещё нет.</p>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-slate-400">No payment orders found for this account.</p>
+            <p className="mt-2 text-xs text-slate-400">Оплат по этому аккаунту пока нет.</p>
           )}
         </div>
       </div>
@@ -279,16 +291,16 @@ export function AdminUserSidePanel({
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("reset_key")} disabled={busy}>
-          Пресет: сбросить ключ
+          Сбросить ключ
         </button>
         <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("rotate_link")} disabled={busy}>
-          Пресет: обновить ссылку
+          Обновить ссылку
         </button>
         <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("extend_1d")} disabled={busy}>
-          Пресет: +1 день
+          Добавить 1 день
         </button>
         <button className={adminButtonClass("ghost", "xs")} type="button" onClick={() => onRunPreset("send_guide")} disabled={busy}>
-          Пресет: отправить инструкцию
+          Отправить инструкцию
         </button>
       </div>
 

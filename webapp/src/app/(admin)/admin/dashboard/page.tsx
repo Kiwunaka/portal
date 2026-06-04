@@ -164,14 +164,14 @@ export default function AdminDashboardPage() {
         : null,
       Number(summary.errors.payment_callback_failures_24h || 0) > 0
         ? {
-            title: "Проблемы с платёжными callback",
+            title: "Проблемы с подтверждениями оплаты",
             body: `${summary.errors.payment_callback_failures_24h} сбоев за 24 часа. Откройте платёжный журнал перед ручными действиями.`,
             tone: "warning" as const,
           }
         : null,
       Number(summary.errors.subscription_numeric_fallbacks_24h || 0) > 0
         ? {
-            title: "Срабатывал числовой фоллбэк подписок",
+            title: "Срабатывала резервная обработка подписок",
             body: `${summary.errors.subscription_numeric_fallbacks_24h} случаев за 24 часа. Проверьте миграцию на токены.`,
             tone: "warning" as const,
           }
@@ -284,7 +284,7 @@ export default function AdminDashboardPage() {
         <ShiftMetric label="Люди" value={`${summary.users.active}/${summary.users.total}`} hint={`Платные ${summary.users.paid} · бесплатные ${summary.users.free}`} icon={<UsersRound aria-hidden className="h-4 w-4" />} />
         <ShiftMetric label="Открытые тикеты" value={summary.tickets.open} hint={summary.tickets.open > 0 ? "Очередь поддержки ждёт ответа." : "Очередь поддержки пустая."} icon={<LifeBuoy aria-hidden className="h-4 w-4" />} tone={supportTone} />
         <ShiftMetric label="Узлов в норме" value={`${summary.nodes.healthy}/${summary.nodes.total}`} hint={unhealthyNodes > 0 ? `Проверить ${unhealthyNodes} узл.` : `Свежесть: ${metricsLabel(metrics)}`} icon={<Server aria-hidden className="h-4 w-4" />} tone={nodeTone} />
-        <ShiftMetric label="Платежи 24 ч" value={summary.errors.payment_callback_failures_24h} hint={paymentTone === "success" ? "Callback-сбоев нет." : "Есть сбои callback, проверьте журнал."} icon={<CreditCard aria-hidden className="h-4 w-4" />} tone={paymentTone} />
+        <ShiftMetric label="Платежи 24 ч" value={summary.errors.payment_callback_failures_24h} hint={paymentTone === "success" ? "Ошибок подтверждения нет." : "Есть сбои подтверждения, проверьте журнал."} icon={<CreditCard aria-hidden className="h-4 w-4" />} tone={paymentTone} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">

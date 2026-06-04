@@ -1,5 +1,6 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { classifyApiPayload, resolveCandidateApiBases, resolvePrimaryApiBase } from "./api-base.mjs";
+import { getCopyText } from "./portal";
 import { getInitData } from "./telegram";
 
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
@@ -10,6 +11,23 @@ const NODE_STATUS_CACHE_TTL_MS = 30000;
 let authSessionCacheKey = "";
 let authSessionCacheValue: AuthSessionPayload | null = null;
 let authSessionCachePromise: Promise<AuthSessionPayload> | null = null;
+
+type ApiErrorInfo = {
+  message: string;
+  code?: string | null;
+};
+
+class ApiResponseError extends Error {
+  readonly status: number;
+  readonly code?: string | null;
+
+  constructor(message: string, status: number, code?: string | null) {
+    super(message);
+    this.name = "ApiResponseError";
+    this.status = status;
+    this.code = code || null;
+  }
+}
 
 export type NodeInfo = {
   code: string;
@@ -1345,6 +1363,22 @@ export type AuthSessionPayload = {
   };
 };
 
+export type CabinetHandoffExchangeResult = {
+  ok: boolean;
+  token: string;
+  expires_in?: number;
+  target_path?: string;
+  auth_origin?: string;
+  scope?: string;
+};
+
+export type CabinetHandoffConsumeResult = {
+  attempted: boolean;
+  exchanged: boolean;
+  errorCode?: string | null;
+  errorMessage?: string;
+};
+
 export type EmailRegisterPayload = {
   email: string;
   password: string;
@@ -1493,6 +1527,113 @@ export function consumeWebSessionTokenFromUrl(): boolean {
   }
 }
 
+const CABINET_HANDOFF_QUERY_KEYS = ["handoff_token", "cabinet_handoff", "cabinet_handoff_token"];
+const cabinetHandoffInFlight = new Map<string, Promise<CabinetHandoffConsumeResult>>();
+
+function stripCabinetHandoffParams(current: URL): string {
+  for (const key of CABINET_HANDOFF_QUERY_KEYS) {
+    current.searchParams.delete(key);
+  }
+  return `${current.pathname}${current.search}${current.hash}` || "/";
+}
+
+function safeCabinetTargetPath(targetPath: string | null | undefined, fallbackPath: string): string {
+  const raw = String(targetPath || "").trim();
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return fallbackPath || "/";
+  try {
+    const target = new URL(raw, window.location.origin);
+    if (target.origin !== window.location.origin) return fallbackPath || "/";
+    for (const key of CABINET_HANDOFF_QUERY_KEYS) {
+      target.searchParams.delete(key);
+    }
+    target.searchParams.delete("token");
+    target.searchParams.delete("web_session_token");
+    target.searchParams.delete("web_session");
+    return `${target.pathname}${target.search}${target.hash}` || fallbackPath || "/";
+  } catch {
+    return fallbackPath || "/";
+  }
+}
+
+function cabinetHandoffErrorMessage(error: unknown): string {
+  const status = error instanceof ApiResponseError ? error.status : 0;
+  const code = error instanceof ApiResponseError ? String(error.code || "") : "";
+  if (code === "cabinet_handoff_expired") {
+    return getCopyText("cabinet.handoff.expired", "Ссылка устарела. Откройте кабинет из приложения снова.");
+  }
+  if (code === "cabinet_handoff_already_used") {
+    return getCopyText(
+      "cabinet.handoff.already_used",
+      "Эта ссылка уже использована. Если нужно открыть кабинет, запустите его из приложения.",
+    );
+  }
+  if (code === "rate_limited" || status === 429) {
+    return getCopyText(
+      "cabinet.handoff.rate_limited",
+      "Слишком много попыток. Подождите минуту и откройте кабинет из приложения.",
+    );
+  }
+  if (
+    code === "cabinet_handoff_invalid" ||
+    code === "cabinet_handoff_wrong_purpose" ||
+    code === "cabinet_handoff_token_required"
+  ) {
+    return getCopyText("cabinet.handoff.invalid", "Ссылка недействительна. Откройте кабинет из приложения.");
+  }
+  return getCopyText(
+    "cabinet.handoff.network_error",
+    "Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.",
+  );
+}
+
+async function consumeCabinetHandoffTokenFromUrlOnce(current: URL, handoffToken: string): Promise<CabinetHandoffConsumeResult> {
+  try {
+    const exchange = await unauthenticatedJsonPost<CabinetHandoffExchangeResult>(
+      "/api/auth/cabinet-handoff/exchange",
+      { handoff_token: handoffToken },
+    );
+    if (!exchange?.token) {
+      throw new Error("Cabinet handoff exchange did not return a session token");
+    }
+    setWebSessionToken(exchange.token);
+    const fallbackPath = stripCabinetHandoffParams(current);
+    const next = safeCabinetTargetPath(exchange.target_path, fallbackPath);
+    window.history.replaceState({}, "", next || "/");
+    return { attempted: true, exchanged: true };
+  } catch (error) {
+    clearAuthSessionCache();
+    const next = stripCabinetHandoffParams(current);
+    window.history.replaceState({}, "", next || "/");
+    return {
+      attempted: true,
+      exchanged: false,
+      errorCode: error instanceof ApiResponseError ? error.code : null,
+      errorMessage: cabinetHandoffErrorMessage(error),
+    };
+  }
+}
+
+export async function consumeCabinetHandoffTokenFromUrl(): Promise<CabinetHandoffConsumeResult> {
+  if (typeof window === "undefined") return { attempted: false, exchanged: false };
+  let current: URL;
+  let handoffToken = "";
+  try {
+    current = new URL(window.location.href);
+    handoffToken = String(CABINET_HANDOFF_QUERY_KEYS.map((key) => current.searchParams.get(key)).find(Boolean) || "").trim();
+    if (!handoffToken) return { attempted: false, exchanged: false };
+  } catch {
+    return { attempted: false, exchanged: false };
+  }
+
+  const existing = cabinetHandoffInFlight.get(handoffToken);
+  if (existing) return existing;
+  const next = consumeCabinetHandoffTokenFromUrlOnce(current, handoffToken).finally(() => {
+    cabinetHandoffInFlight.delete(handoffToken);
+  });
+  cabinetHandoffInFlight.set(handoffToken, next);
+  return next;
+}
+
 export function clearWebSessionToken(): void {
   if (typeof window === "undefined") return;
   clearAuthSessionCache();
@@ -1509,20 +1650,39 @@ function dispatchAuthRequired(detail?: { code?: string | null; message?: string 
   window.dispatchEvent(new CustomEvent("portal-auth-required", { detail: detail || {} }));
 }
 
-async function readApiError(r: Response): Promise<string> {
+function apiErrorInfoFromPayload(payload: any, fallback: string): ApiErrorInfo {
+  const detail = payload?.detail;
+  if (detail && typeof detail === "object") {
+    const code = typeof detail.code === "string" ? detail.code : null;
+    const message = String(detail.message || detail.error || detail.detail || code || fallback).trim();
+    return { code, message: message || fallback };
+  }
+  const code = typeof payload?.code === "string" ? payload.code : null;
+  const message = String(detail || payload?.message || payload?.error || fallback).trim();
+  return { code, message: message || fallback };
+}
+
+async function readApiErrorInfo(r: Response): Promise<ApiErrorInfo> {
   const authError = (r.headers.get("x-pokrov-auth-error") || "").trim();
   const text = (await r.text()).trim();
-  if (!text) return authError || `API error: ${r.status}`;
+  if (!text) return { code: authError || null, message: authError || `API error: ${r.status}` };
   if (classifyApiPayload({ bodyText: text, contentType: r.headers.get("content-type") || "" }) === "html") {
-    return "Received app shell instead of API response";
+    return { code: authError || null, message: "Received app shell instead of API response" };
   }
   try {
-    const parsed = JSON.parse(text) as { detail?: string; message?: string };
-    const message = String(parsed?.detail || parsed?.message || text);
-    return authError ? `${authError}: ${message}` : message;
+    const parsed = JSON.parse(text);
+    const info = apiErrorInfoFromPayload(parsed, text);
+    return {
+      code: authError || info.code || null,
+      message: authError ? `${authError}: ${info.message}` : info.message,
+    };
   } catch {
-    return authError ? `${authError}: ${text}` : text;
+    return { code: authError || null, message: authError ? `${authError}: ${text}` : text };
   }
+}
+
+async function readApiError(r: Response): Promise<string> {
+  return (await readApiErrorInfo(r)).message;
 }
 
 function candidateApiBases(): string[] {
@@ -1697,8 +1857,8 @@ async function unauthenticatedJsonPost<T>(path: string, payload: unknown, init?:
         signal: managedSignal.signal,
       });
       if (!response.ok) {
-        const text = await readApiError(response);
-        throw new Error(text || `API error: ${response.status}`);
+        const info = await readApiErrorInfo(response);
+        throw new ApiResponseError(info.message || `API error: ${response.status}`, response.status, info.code);
       }
       return await parseJsonResponse<T>(response);
     } catch (error: any) {
@@ -1735,15 +1895,15 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
       applyAuthHeaders(headers);
       const r = await fetch(`${base}${path}`, { ...requestInit, headers, signal: managedSignal.signal });
       if (!r.ok) {
-        const text = await readApiError(r);
+        const info = await readApiErrorInfo(r);
         if (r.status === 401) {
           clearWebSessionToken();
           dispatchAuthRequired({
-            code: r.headers.get("x-pokrov-auth-error"),
-            message: text,
+            code: r.headers.get("x-pokrov-auth-error") || info.code,
+            message: info.message,
           });
         }
-        throw new Error(text || `API error: ${r.status}`);
+        throw new ApiResponseError(info.message || `API error: ${r.status}`, r.status, info.code);
       }
       if (r.status === 204) return {} as T;
       return await parseJsonResponse<T>(r);

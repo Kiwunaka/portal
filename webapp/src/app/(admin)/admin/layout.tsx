@@ -171,8 +171,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <aside className={`${adminSidebarClass} p-4 2xl:sticky 2xl:top-3 2xl:self-start`}>
           <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">admin shell</p>
-              <h1 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-slate-900">POKROV Ops</h1>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">админка</p>
+              <h1 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-slate-900">POKROV для оператора</h1>
               <p className="mt-2 text-xs leading-5 text-slate-500">Операторский интерфейс: разделы, очереди, доступ, сеть и рабочие сообщения.</p>
             </div>
             <AdminBadge tone="accent">v2</AdminBadge>
@@ -253,7 +253,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200/60 pt-4 text-[11px] font-semibold text-slate-500">
               <AppRouteLink href="/admin/dashboard" className="transition hover:text-emerald-700">
-                POKROV Ops
+                Админка POKROV
               </AppRouteLink>
               <span>/</span>
               <AppRouteLink href={activeCategory.items[0]?.href || "/admin/dashboard"} className="transition hover:text-emerald-700">
