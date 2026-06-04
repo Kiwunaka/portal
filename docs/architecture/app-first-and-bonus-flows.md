@@ -319,7 +319,11 @@ Contract rule:
 - app-first support may start from prepared context even before a live thread exists
 - web and cabinet support must be documented as a real ticket lifecycle, not as decorative form state
 - attachment-capable ticket flows belong to authenticated browser and admin paths today
-- client UX must not promise a realtime in-app chat when the backed contract is asynchronous ticketing
+- client UX may poll the active ticket and show lifecycle hints such as
+  checking, operator reply, closed, or temporarily offline while the support
+  screen is open
+- client UX must not fake typing, read receipts, or operator-online presence
+  while the backed contract is asynchronous ticketing
 
 ## Telegram Linking Flow
 
