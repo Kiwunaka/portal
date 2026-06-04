@@ -459,6 +459,87 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_freekassa_sci_amount_currency_mismatch_goes_to_manual_review(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, ExternalPaymentEvent, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2450,
+                    username="fk_mismatch",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2450",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="order-fk-mismatch-2450",
+                    provider="freekassa",
+                    tg_id=2450,
+                    plan_code="12_months",
+                    source="site",
+                    amount=1499.0,
+                    currency="RUB",
+                    status="created",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        amount = "1.00"
+        order_id = "order-fk-mismatch-2450"
+        sig = self._fk_sci_signature(
+            merchant_id="69962",
+            amount=amount,
+            order_id=order_id,
+            secret_word_2="fk_sw2_test",
+        )
+        payload = {
+            "MERCHANT_ID": "69962",
+            "AMOUNT": amount,
+            "MERCHANT_ORDER_ID": order_id,
+            "SIGN": sig,
+            "us_tg_id": "2450",
+            "us_plan_code": "12_months",
+            "currency": "USD",
+            "intid": "tx-fk-mismatch-2450",
+        }
+
+        response = client.post("/api/payments/result/freekassa", params=payload)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body.get("ok"))
+        self.assertEqual(body.get("status"), "manual_review")
+        self.assertFalse(body.get("activated"))
+        self.assertEqual(body.get("activation_reason"), "amount_mismatch")
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == order_id).first()
+            user = s.query(User).filter(User.tg_id == 2450).first()
+            event = s.query(ExternalPaymentEvent).filter(ExternalPaymentEvent.external_id == "tx-fk-mismatch-2450").first()
+            self.assertIsNotNone(row)
+            self.assertIsNotNone(user)
+            self.assertIsNotNone(event)
+            self.assertEqual(str(row.status or ""), "manual_review")
+            self.assertEqual(float(row.amount or 0), 1499.0)
+            self.assertEqual(str(row.currency or ""), "RUB")
+            self.assertIsNone(row.paid_at)
+            self.assertEqual(str(user.sub_type or ""), "FREE")
+            self.assertFalse(bool(event.processed_ok))
+        finally:
+            s.close()
+
     def test_freekassa_notify_alias_returns_yes_for_valid_sci(self) -> None:
         client = TestClient(self.api.app)
         merchant_id = "69962"
@@ -503,7 +584,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         from datetime import datetime, timedelta
         from db import SessionLocal
-        from models import PointsLedger, ReferralBonusQueue, User
+        from models import ExternalOrder, PointsLedger, ReferralBonusQueue, User
 
         s = SessionLocal()
         try:
@@ -532,6 +613,19 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tos_accepted=True,
                     referrer_id=2002,
                     first_purchase_done=False,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="order-ref-first-1",
+                    provider="freekassa",
+                    tg_id=2003,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="created",
+                    created_at=self.api._utcnow(),
                 )
             )
             s.commit()

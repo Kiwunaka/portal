@@ -3244,7 +3244,7 @@ def _set_external_order_meta(row: ExternalOrder, meta: dict[str, Any]) -> None:
 
 def _payload_amount(payload: dict[str, Any]) -> float:
     return _safe_float(
-        _payload_value(payload, "amount", "sum", "amount_paid", "OutSum")
+        _payload_value(payload, "AMOUNT", "amount", "sum", "amount_paid", "OutSum")
         or _payload_nested_value(payload, "contract", "amount")
         or _payload_nested_value(payload, "invoice", "amount")
         or _payload_nested_value(payload, "payment", "amount")
@@ -3266,6 +3266,15 @@ def _payload_plan_code(payload: dict[str, Any]) -> str:
         _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code")
         or _payload_nested_value(payload, "clientUtm", "utm_term")
     ).strip().lower()
+
+
+def _is_freekassa_sci_payload(payload: dict[str, Any]) -> bool:
+    return bool(
+        _payload_value(payload, "MERCHANT_ID", "merchant_id", "shopId")
+        and _payload_value(payload, "AMOUNT", "amount")
+        and _payload_value(payload, "MERCHANT_ORDER_ID", "merchant_order_id", "order_id")
+        and _payload_value(payload, "SIGN", "sign", "signature")
+    )
 
 
 def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: bool, provider: str = "") -> str:
@@ -3335,7 +3344,10 @@ def _upsert_external_order(
     callback_amount = _payload_amount(payload)
     if callback_amount > 0 and float(row.amount or 0) <= 0:
         row.amount = callback_amount
-    row.currency = _payload_currency(payload) or row.currency or "RUB"
+    callback_currency = _payload_currency(payload)
+    if callback_currency and not row.currency:
+        row.currency = callback_currency
+    row.currency = row.currency or "RUB"
     row.status = status
     if mark_paid and not row.paid_at:
         row.paid_at = _utcnow()
@@ -3416,7 +3428,10 @@ def _record_external_payment_event(
 
 
 def _validate_paid_callback_against_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
-    if _normalize_provider(provider) != "lavatop":
+    normalized_provider = _normalize_provider(provider)
+    if normalized_provider == "freekassa" and not _is_freekassa_sci_payload(payload):
+        return True, "ok"
+    if normalized_provider not in {"freekassa", "lavatop"}:
         return True, "ok"
     if not order_id:
         return False, "missing_order_id"
@@ -3431,6 +3446,13 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return False, "unknown_order"
         if str(row.provider or "").strip().lower() != str(provider).strip().lower():
             return False, "provider_mismatch"
+        if normalized_provider == "freekassa":
+            merchant_id = _payload_value(payload, "MERCHANT_ID", "merchant_id", "shopId")
+            source = str(row.source or "site").strip().lower() or "site"
+            expected_shop = _fk_shop_by_source(source)
+            expected_merchant_id = str(expected_shop.get("shop_id") or "").strip()
+            if expected_merchant_id and str(merchant_id or "").strip() != expected_merchant_id:
+                return False, "merchant_mismatch"
         expected_amount = float(row.amount or 0)
         actual_amount = _payload_amount(payload)
         if expected_amount > 0 and actual_amount <= 0:
@@ -3439,6 +3461,8 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return False, "amount_mismatch"
         expected_currency = str(row.currency or "RUB").strip().upper() or "RUB"
         actual_currency = _payload_currency(payload)
+        if normalized_provider == "freekassa" and not actual_currency and expected_currency == "RUB":
+            actual_currency = "RUB"
         if not actual_currency:
             return False, "missing_currency"
         if actual_currency != expected_currency:
