@@ -485,9 +485,10 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `POST /api/bonuses/channel/claim`
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
 
-App-facing wheel and calendar routes are intentionally disabled by default and
-must not be surfaced as active user rewards until their feature flags, reward
-ledger behavior, copy, and rollout evidence are green.
+App-facing wheel and calendar routes are intentionally disabled by default.
+The client may surface them as safe Rewards Hub previews, but must not surface
+them as active user rewards until their feature flags, reward ledger behavior,
+copy, and rollout evidence are green.
 
 The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
 

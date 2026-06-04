@@ -348,7 +348,8 @@ Contract rule:
   application rules, then returns the promo result plus a fresh summary payload.
 - `POST /api/redeem` also accepts promo codes and returns `kind=promo`.
 - `GET /api/bonuses/wheel/state` and `GET /api/bonuses/calendar` expose
-  disabled-by-default state payloads for future UI wiring.
+  disabled-by-default state payloads that the app may render as safe Rewards
+  Hub previews.
 - `POST /api/bonuses/wheel/spin` and
   `POST /api/bonuses/calendar/checkin` are app-facing placeholders guarded by
   feature flags and return structured disabled errors until reward logic,

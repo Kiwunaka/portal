@@ -282,7 +282,7 @@ Product wording rule:
 - app-first bonus summary, referral summary, and promo-code redemption are backend-owned API contracts
 - the app may redeem promo codes through the unified code entry or the bonus promo endpoint
 - bonus history is an app-safe backend contract and must show only compact reward events, not raw subscription links, full promo codes, tokens, or backend event metadata
-- roulette and calendar endpoint shells may exist behind feature flags, but the user-facing mechanics remain hidden until reward logic, feature-flag, and copy gates are green
+- roulette and calendar endpoint shells may feed safe app Rewards Hub previews, but spin/check-in mechanics remain disabled until reward logic, feature-flag, rollout evidence, and copy gates are green
 
 Official Telegram surfaces:
 
