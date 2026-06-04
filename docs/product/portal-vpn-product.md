@@ -286,7 +286,7 @@ Product wording rule:
 - the app may show referral code, safe Telegram referral link, and copy/share/open actions from the referral summary contract; referral anti-abuse and bonus granting stay backend-owned
 - bonus history is an app-safe backend contract and must show only compact reward events, not raw subscription links, full promo codes, tokens, or backend event metadata
 - Rewards Hub may render only enabled first-party app promo slots from `GET /api/client/promo-slots?surface=app`; third-party ads, unsafe links, and tracking campaign payloads remain forbidden
-- roulette and calendar endpoint shells may feed safe app Rewards Hub previews, but spin/check-in mechanics remain disabled until reward logic, feature-flag, rollout evidence, and copy gates are green
+- roulette and calendar remain disabled by default, but their backend mutation routes are ledger-backed under `BONUS_WHEEL_ENABLED` / `BONUS_CALENDAR_ENABLED`; the app may show active spin/check-in controls only when backend summary state says the feature is enabled and ready
 
 Official Telegram surfaces:
 

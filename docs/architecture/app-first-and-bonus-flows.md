@@ -360,21 +360,25 @@ Contract rule:
   referral anti-abuse, bonus granting, and campaign tuning remain backend-owned.
 - `GET /api/bonuses/history` returns an app-safe, compact recent bonus ledger
   built from current platform truth: Telegram channel claim, opening campaign
-  mark, and promo usage. It must not return raw subscription links, full promo
-  codes, tokens, or event metadata.
+  mark, promo usage, and feature-flagged wheel/calendar reward claims. It must
+  not return raw subscription links, full promo codes, tokens, raw reward
+  configuration, or backend event metadata.
 - `POST /api/bonuses/promo/redeem` reuses the existing promo validation and
   application rules, then returns the promo result plus a fresh summary payload.
 - `POST /api/redeem` also accepts promo codes and returns `kind=promo`.
 - `GET /api/bonuses/wheel/state` and `GET /api/bonuses/calendar` expose
   disabled-by-default state payloads that the app may render as safe Rewards
-  Hub previews.
+  Hub previews. When `BONUS_WHEEL_ENABLED` or `BONUS_CALENDAR_ENABLED` is true,
+  they expose ready/cooldown/check-in state from the reward ledger.
 - `GET /api/client/promo-slots?surface=app` may feed Rewards Hub with enabled
   first-party promo slots only. Third-party ad SDKs, unsafe links, tracking
   pixels, and non-POKROV campaign rendering stay out of the app.
 - `POST /api/bonuses/wheel/spin` and
-  `POST /api/bonuses/calendar/checkin` are app-facing placeholders guarded by
-  feature flags and return structured disabled errors until reward logic,
-  rollout policy, and product copy are approved.
+  `POST /api/bonuses/calendar/checkin` are app-facing, feature-flagged mutation
+  routes. With flags off they return structured disabled errors. With flags on
+  they create `RewardClaim` ledger rows, extend the app-first access window by
+  the configured reward days, update safe achievement state, return a fresh
+  bonus summary, and best-effort sync the paid-bonus access state to the panel.
 
 ## Access-State Continuation After Trial
 

@@ -1093,6 +1093,92 @@ def test_app_bonus_wheel_and_calendar_endpoints_are_feature_gated(monkeypatch, t
         db.close()
 
 
+def test_app_bonus_wheel_calendar_and_achievements_write_live_ledger(monkeypatch, tmp_path):
+    monkeypatch.setenv("BONUS_WHEEL_ENABLED", "true")
+    monkeypatch.setenv("BONUS_CALENDAR_ENABLED", "true")
+    monkeypatch.setenv("BONUS_CALENDAR_REWARD_DAYS", "1")
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-live-bonus-ledger",
+            "device_name": "Pixel",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    db = api.SessionLocal()
+    try:
+        db.add(
+            api.AppSetting(
+                key="wheel_config",
+                value_json='{"preset":"test","weights":[{"days":3,"weight":1}],"cooldown_hours":168}',
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    wheel_state = client.get("/api/bonuses/wheel/state", headers=headers)
+    assert wheel_state.status_code == 200, wheel_state.text
+    assert wheel_state.json()["enabled"] is True
+    assert wheel_state.json()["can_spin"] is True
+
+    wheel_spin = client.post("/api/bonuses/wheel/spin", headers=headers)
+    assert wheel_spin.status_code == 200, wheel_spin.text
+    spin_payload = wheel_spin.json()
+    assert spin_payload["ok"] is True
+    assert spin_payload["reward_days"] == 3
+    assert spin_payload["reward_key"].startswith("wheel_")
+    assert spin_payload["summary"]["wheel"]["can_spin"] is False
+    assert spin_payload["summary"]["achievements"]["items"]
+
+    second_spin = client.post("/api/bonuses/wheel/spin", headers=headers)
+    assert second_spin.status_code == 409, second_spin.text
+    assert second_spin.json()["detail"]["code"] == "wheel_cooldown_active"
+
+    calendar_state = client.get("/api/bonuses/calendar", headers=headers)
+    assert calendar_state.status_code == 200, calendar_state.text
+    assert calendar_state.json()["enabled"] is True
+    assert calendar_state.json()["can_checkin"] is True
+
+    calendar_checkin = client.post("/api/bonuses/calendar/checkin", headers=headers)
+    assert calendar_checkin.status_code == 200, calendar_checkin.text
+    checkin_payload = calendar_checkin.json()
+    assert checkin_payload["ok"] is True
+    assert checkin_payload["reward_days"] == 1
+    assert checkin_payload["reward_key"].startswith("calendar_")
+    assert checkin_payload["summary"]["calendar"]["checked_in_today"] is True
+    assert checkin_payload["summary"]["achievements"]["unlocked_count"] >= 2
+
+    second_checkin = client.post("/api/bonuses/calendar/checkin", headers=headers)
+    assert second_checkin.status_code == 409, second_checkin.text
+    assert second_checkin.json()["detail"]["code"] == "calendar_already_checked_in"
+
+    history = client.get("/api/bonuses/history", headers=headers)
+    assert history.status_code == 200, history.text
+    kinds = [item["kind"] for item in history.json()["items"]]
+    assert "wheel_spin" in kinds
+    assert "calendar_checkin" in kinds
+    assert "raw_config" not in str(history.json())
+
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(app_install_id="install-live-bonus-ledger").first()
+        assert user is not None
+        assert user.last_wheel_spin is not None
+        assert int(user.streak_months or 0) == 1
+        assert db.query(api.RewardClaim).filter_by(tg_id=user.tg_id).count() == 2
+    finally:
+        db.close()
+
+
 def test_app_session_can_redeem_promo_through_bonus_and_unified_endpoints(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
     _install_fake_panel(monkeypatch, api)
