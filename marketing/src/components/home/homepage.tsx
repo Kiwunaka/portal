@@ -61,7 +61,7 @@ const SURFACE_PANELS = [
     text: "Не нужно искать ссылку, копировать конфиг или выбирать сервер из списка. Установили приложение, нажали «Подключить» и проверили свои сервисы.",
     bullets: ["Скачайте приложение", "Получите 5 дней", "Нажмите «Подключить»"],
     tone: "routing" as const,
-    imageSrc: "/home/feature-start.svg",
+    imageSrc: "/home/feature-start-premium.png",
   },
   {
     eyebrow: "Устройства",
@@ -69,7 +69,7 @@ const SURFACE_PANELS = [
     text: "Android и Windows остаются в одном кабинете: там видны загрузки, срок доступа, устройства и продление.",
     bullets: ["Android + Windows", "До 5 устройств в платных планах", "Один кабинет для управления"],
     tone: "devices" as const,
-    imageSrc: "/home/feature-devices.svg",
+    imageSrc: "/home/feature-devices-premium.png",
   },
   {
     eyebrow: "Вход",
@@ -77,7 +77,7 @@ const SURFACE_PANELS = [
     text: "Начать можно без Telegram. Почту и Telegram можно привязать позже для входа, бонуса, восстановления и поддержки.",
     bullets: ["Email-вход", "Telegram-бонус +10 дней", "Один профиль POKROV"],
     tone: "support" as const,
-    imageSrc: "/home/feature-account.svg",
+    imageSrc: "/home/feature-account-premium.png",
   },
 ];
 

@@ -1578,6 +1578,51 @@
       "allowed_public": false,
       "compliance_notes": "Shared app baseline for profile and continuation surfaces.",
       "ab_variant": "control"
+    },
+    "cabinet.handoff.expired": {
+      "surface": "cabinet",
+      "ru": "Ссылка устарела. Откройте кабинет из приложения снова.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "One-time app-to-cabinet handoff expired. No VPN wording.",
+      "ab_variant": "control"
+    },
+    "cabinet.handoff.already_used": {
+      "surface": "cabinet",
+      "ru": "Эта ссылка уже использована. Если нужно открыть кабинет, запустите его из приложения.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "One-time app-to-cabinet handoff replay. No VPN wording.",
+      "ab_variant": "control"
+    },
+    "cabinet.handoff.invalid": {
+      "surface": "cabinet",
+      "ru": "Ссылка недействительна. Откройте кабинет из приложения.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Invalid app-to-cabinet handoff. No VPN wording.",
+      "ab_variant": "control"
+    },
+    "cabinet.handoff.rate_limited": {
+      "surface": "cabinet",
+      "ru": "Слишком много попыток. Подождите минуту и откройте кабинет из приложения.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Rate-limited app-to-cabinet handoff exchange. No VPN wording.",
+      "ab_variant": "control"
+    },
+    "cabinet.handoff.network_error": {
+      "surface": "cabinet",
+      "ru": "Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Network or unknown app-to-cabinet handoff exchange failure. No VPN wording.",
+      "ab_variant": "control"
     }
   }
 }
