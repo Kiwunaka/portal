@@ -87,6 +87,8 @@ First-run route-mode choice:
 - `Only selected apps` is the split-tunneling path and must write per-device app/process selection state instead of revealing raw proxy or service controls
 - the chosen mode must round-trip through backend-owned `route_mode`, `selected_apps`, and `route_policy.*` fields so `start-trial`, `dashboard`, and recovery flows all agree on the live device state
 - Windows should use a known-app or executable picker; Android should use an installed-package picker
+- current P3 client work may use manual app/process identifiers as a bridge; Android app-managed profiles map selected package identifiers into sing-box `include_package`
+- native Android package picking and Windows process/exe picking remain follow-up work; raw rule editing must stay outside normal consumer UI
 - the saved route-mode choice must remain editable later from a dedicated route-mode screen rather than only through hidden advanced settings
 
 Rollout note:

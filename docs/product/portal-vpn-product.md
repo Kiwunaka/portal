@@ -72,7 +72,7 @@ Client-canon note:
 - public user-facing client version line: `0.x.x-beta`
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
-- public routing mode set: `All except RU` and `Full tunnel`
+- public routing mode set: `All except RU`, `Full tunnel`, and `Selected apps`
 - public recovery order: `POKROV app -> web cabinet -> Telegram fallback`
 - public wording may use direct `VPN` / `ВПН` terms on SEO/search-intent pages and metadata after the `2026-06-01` owner approval, but normal product copy should still prefer app, connection, routing, access, or support context when that is clearer and less spammy
 
@@ -147,6 +147,8 @@ First-run route-mode rule:
 - `Only selected apps` is the split-tunneling path and must save a per-device app/process selection instead of opening raw networking controls
 - the saved route choice must stay synchronized through backend-owned `route_mode`, `selected_apps`, and `requires_elevated_privileges` fields so app, cabinet, and support see the same device state
 - Windows should use an executable or process picker; Android should use an installed-app package picker
+- current P3 client work may use manual app/process identifiers as a bridge; Android app-managed profiles map selected package identifiers into sing-box `include_package`
+- native Android package picking and Windows process/exe picking remain follow-up work; raw rule editing must stay outside normal consumer UI
 - if the chosen desktop route mode requires elevated rights, the app must explain that clearly and tell the user to relaunch as administrator before connect
 - system proxy, raw service-mode toggles, and manual subscription share/edit actions stay out of normal quick access
 
