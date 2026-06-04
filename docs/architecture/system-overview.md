@@ -228,6 +228,7 @@ Architecture rule:
 
 - additive email auth is a live continuation lane only while sender identity, delivery configuration, and delivery confirmation are green
 - app handoff, Telegram, and email are the active browser-continuation entry families today when their readiness checks are green
+- Telegram WebApp `initData` is a bounded handoff credential only: the API verifies the HMAC and rejects missing, future, or older-than-`TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS` `auth_date` values before treating it as a session or invalid-browser-token fallback
 - email must land in the same cabinet session and linked-identity model rather than becoming a separate account track
 - public email auth depends on external transactional mail delivery and verified sender identity
 - if readiness fails, browser email entry must return to a truthful unavailable state instead of promising working verify or reset mail

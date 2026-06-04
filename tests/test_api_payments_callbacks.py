@@ -4,6 +4,7 @@ import importlib
 import json
 import os
 import sys
+import time
 import tempfile
 import unittest
 import uuid
@@ -162,7 +163,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
     @staticmethod
     def _sign_telegram_init_data(*, bot_token: str, tg_id: int, username: str) -> str:
         params = {
-            "auth_date": "1700000000",
+            "auth_date": str(int(time.time())),
             "query_id": "AAEAAAE",
             "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
         }

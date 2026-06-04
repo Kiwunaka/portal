@@ -220,6 +220,7 @@ Contract rule:
 - web login should continue the user into account or checkout, not into a dead-end landing
 - app handoff, Telegram, and email are the active browser-continuation entry families today
 - expired or deprecated Telegram Login Widget, Telegram OIDC, WebApp `initData`, and browser-session tokens must clear the stale browser token and show a human repeat-login CTA instead of surfacing raw `telegram_*` / `web_session_*` errors
+- backend WebApp `initData` validation must require a valid Telegram HMAC, present `auth_date`, non-future timestamp, and `TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS` freshness before it can be used as a Telegram session or as fallback after an invalid browser session
 - stale Telegram Login Widget payloads should be rejected client-side before the backend sees them; users should be guided through a fresh Telegram login attempt
 - additive email auth is live only when sender identity, delivery configuration, and delivery confirmation are green; if readiness fails, the UI must degrade back to unavailable instead of promising working verify or reset mail
 - additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility

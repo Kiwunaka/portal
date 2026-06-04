@@ -136,11 +136,11 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             pass
         self._tmp.cleanup()
 
-    def _init_data(self, tg_id: int, username: str) -> str:
+    def _init_data(self, tg_id: int, username: str, *, auth_date: int | None = None) -> str:
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": "1700000000",
+                "auth_date": str(int(auth_date if auth_date is not None else time.time())),
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },
@@ -1276,6 +1276,44 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.assertEqual(r.status_code, 200, r.text)
         self.assertEqual(int(r.json().get("user", {}).get("id", 0)), 1001)
+
+    def test_auth_session_rejects_stale_telegram_init_data(self) -> None:
+        stale_auth_date = int(time.time()) - int(self.api.TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS) - 5
+
+        r = self.client.get(
+            "/api/auth/session",
+            headers={"X-Telegram-Init-Data": self._init_data(1001, "alice", auth_date=stale_auth_date)},
+        )
+
+        self.assertEqual(r.status_code, 401, r.text)
+        self.assertEqual(r.headers.get("x-pokrov-auth-error"), "telegram_init_invalid")
+
+    def test_auth_session_rejects_future_telegram_init_data(self) -> None:
+        future_auth_date = int(time.time()) + 60
+
+        r = self.client.get(
+            "/api/auth/session",
+            headers={"X-Telegram-Init-Data": self._init_data(1001, "alice", auth_date=future_auth_date)},
+        )
+
+        self.assertEqual(r.status_code, 401, r.text)
+        self.assertEqual(r.headers.get("x-pokrov-auth-error"), "telegram_init_invalid")
+
+    def test_auth_session_rejects_invalid_web_session_with_stale_telegram_fallback(self) -> None:
+        token = self.api.create_web_session_token(tg_id=1001, username="alice")
+        stale_auth_date = int(time.time()) - int(self.api.TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS) - 5
+
+        with patch("web_auth_service.time.time", return_value=time.time() + int(self.api.SESSION_TTL_SECONDS) + 5):
+            r = self.client.get(
+                "/api/auth/session",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Telegram-Init-Data": self._init_data(1001, "alice", auth_date=stale_auth_date),
+                },
+            )
+
+        self.assertEqual(r.status_code, 401, r.text)
+        self.assertEqual(r.headers.get("x-pokrov-auth-error"), "web_session_expired")
 
     def test_auth_session_rejects_expired_web_session_with_reauth_message(self) -> None:
         token = self.api.create_web_session_token(tg_id=1001, username="alice")

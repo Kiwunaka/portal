@@ -299,6 +299,7 @@ PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
+TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS", 86400))
 NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
 NODE_METRICS_MEMORY_ALERT_PERCENT = _env_float("NODE_METRICS_MEMORY_ALERT_PERCENT", 85.0)
 NODE_METRICS_DISK_ALERT_PERCENT = _env_float("NODE_METRICS_DISK_ALERT_PERCENT", 90.0)
@@ -1471,8 +1472,19 @@ def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
         secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
-        if calculated_hash != check_hash:
+        if not hmac.compare_digest(calculated_hash, check_hash):
             return None
+
+        auth_date_raw = str(parsed.get("auth_date") or "").strip()
+        if not auth_date_raw:
+            return None
+        auth_date = int(auth_date_raw)
+        now_ts = int(time.time())
+        if auth_date > now_ts:
+            return None
+        if now_ts - auth_date > int(TELEGRAM_WEBAPP_INIT_MAX_AGE_SECONDS):
+            return None
+
         return json.loads(parsed.get("user", "{}"))
     except Exception:
         return None
