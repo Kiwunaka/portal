@@ -8898,7 +8898,17 @@ async def admin_delete_user(callback: CallbackQuery):
         session.query(UserKeyPolicy).filter_by(tg_id=tg_id).delete(synchronize_session=False)
         session.query(KeyActionHistory).filter_by(tg_id=tg_id).delete(synchronize_session=False)
         session.query(Event).filter_by(tg_id=tg_id).delete(synchronize_session=False)
-        session.query(SupportTicketMessage).filter_by(author_tg_id=tg_id).delete(synchronize_session=False)
+        ticket_ids = [
+            row[0]
+            for row in session.query(SupportTicket.id)
+            .filter_by(user_tg_id=tg_id)
+            .all()
+        ]
+        if ticket_ids:
+            session.query(SupportTicketMessage).filter(
+                SupportTicketMessage.ticket_id.in_(ticket_ids)
+            ).delete(synchronize_session=False)
+        session.query(SupportTicketMessage).filter_by(sender_tg_id=tg_id).delete(synchronize_session=False)
         session.query(SupportTicket).filter_by(user_tg_id=tg_id).delete(synchronize_session=False)
         session.query(PointsLedger).filter_by(tg_id=tg_id).delete(synchronize_session=False)
         session.query(AdminAudit).filter_by(target_tg_id=tg_id).delete(synchronize_session=False)

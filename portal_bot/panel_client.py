@@ -1192,27 +1192,77 @@ class PanelClient:
             if not ok:
                 return False
         await self.ensure_session()
+
+        target_uuid = str(client_uuid or "").strip()
+        matched_emails: list[str] = []
+        if target_uuid:
+            try:
+                for inb in self._selected_inbounds(await self._get_inbounds(), include_disabled=True):
+                    settings = self._decode_settings(inb.get("settings", "{}"))
+                    for client in settings.get("clients", []) or []:
+                        if str((client or {}).get("id", "") or "").strip() != target_uuid:
+                            continue
+                        email = str((client or {}).get("email", "") or "").strip()
+                        if email and email not in matched_emails:
+                            matched_emails.append(email)
+            except Exception as e:
+                logger.exception("delete_client_uuid lookup error node=%s: %s", self.node.code, e)
+
+        if matched_emails:
+            ok_all = True
+            ok_any = False
+            for email in matched_emails:
+                ok = await self.delete_client_email(email)
+                ok_any = ok_any or ok
+                ok_all = ok_all and ok
+            if ok_any and ok_all:
+                return True
+
+        if not target_uuid:
+            return False
+
         ok_any = False
-        ok_all = True
         for inbound_id in self._managed_inbound_ids(include_disabled=True):
             try:
                 async with self.session.post(
-                    f"{self._base()}/panel/api/inbounds/{inbound_id}/delClient/{client_uuid}",
+                    f"{self._base()}/panel/api/inbounds/{inbound_id}/delClient/{target_uuid}",
                     headers=await self._csrf_headers(),
                     cookies=self.cookies,
                     timeout=aiohttp.ClientTimeout(total=20),
                 ) as resp:
                     if resp.status != 200:
-                        ok_all = False
                         continue
                     data = await resp.json()
                     ok = bool(data.get("success"))
                     ok_any = ok_any or ok
-                    ok_all = ok_all and ok
             except Exception as e:
                 logger.exception("delete_client error node=%s inbound_id=%s: %s", self.node.code, inbound_id, e)
-                ok_all = False
-        return ok_any and ok_all
+        return ok_any
+
+    async def delete_client_email(self, email: str, *, keep_traffic: bool = False) -> bool:
+        clean_email = str(email or "").strip()
+        if not clean_email:
+            return False
+        if not self.cookies:
+            ok = await self.login()
+            if not ok:
+                return False
+        await self.ensure_session()
+        query = "?keepTraffic=1" if keep_traffic else ""
+        try:
+            async with self.session.post(
+                f"{self._base()}/panel/api/clients/del/{quote(clean_email, safe='')}{query}",
+                headers=await self._csrf_headers(),
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                if resp.status != 200:
+                    return False
+                data = await resp.json()
+                return bool(data.get("success"))
+        except Exception as e:
+            logger.exception("delete_client_email error node=%s email=%s: %s", self.node.code, clean_email, e)
+            return False
 
     async def update_client_comment_by_tgid(self, tg_id: int, comment: str) -> bool:
         matches = await self.find_clients_by_tgid(tg_id)

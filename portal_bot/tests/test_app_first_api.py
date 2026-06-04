@@ -4,6 +4,7 @@ import importlib
 import sys
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from fastapi.testclient import TestClient
 
@@ -44,6 +45,17 @@ def _load_api(monkeypatch, tmp_path: Path):
         sys.modules.pop(name, None)
 
     return importlib.import_module("api")
+
+
+def _install_fake_panel(monkeypatch, api):
+    class FakePanel:
+        async def add_client(self, **_kwargs):
+            return True
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(api, "ControlPanel", FakePanel)
 
 
 def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_path):
@@ -308,6 +320,335 @@ def test_access_key_status_rate_limit_returns_retry_contract(monkeypatch, tmp_pa
     assert detail["code"] == "rate_limited"
     assert detail["scope"] == "access_key_status"
     assert detail["retry_after_seconds"] >= 1
+
+
+def test_app_session_can_redeem_access_key_through_unified_endpoint(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-redeem-unified",
+            "device_name": "Windows PC",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    db = api.SessionLocal()
+    try:
+        db.add(api.GiftCard(code="POKROV-ACCESS-2026", card_type="standard", created_by=9999))
+        db.commit()
+    finally:
+        db.close()
+
+    async def fake_sync_control_panel_access(*, user):
+        return True
+
+    monkeypatch.setattr(api, "_sync_control_panel_access", fake_sync_control_panel_access)
+
+    response = client.post(
+        "/api/redeem",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"code": "POKROV-ACCESS-2026"},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["ok"] is True
+    assert body["kind"] == "access_key"
+    assert body["code_preview"] == "...2026"
+    assert body["result"]["access"]["access_state"]
+    assert body["result"]["provisioning"]["managed_profile_path"] == "/api/client/profile/managed"
+
+
+def test_unified_redeem_rejects_subscription_links(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-redeem-link",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    response = client.post(
+        "/api/redeem",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"code": "https://connect.pokrov.space/sub/example"},
+    )
+
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert detail["code"] == "subscription_link_not_redeem_code"
+    assert "subscription" in detail["message"]
+
+
+def test_unified_redeem_rate_limit_returns_retry_contract(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_RATE_LIMIT_UNIFIED_REDEEM_PER_MINUTE", "1")
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-redeem-rate",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Real-IP": "198.51.100.77",
+    }
+
+    first = client.post("/api/redeem", headers=headers, json={"code": "UNKNOWN-CODE-1"})
+    blocked = client.post("/api/redeem", headers=headers, json={"code": "UNKNOWN-CODE-2"})
+
+    assert first.status_code == 404
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"]
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "rate_limited"
+    assert detail["scope"] == "unified_redeem"
+
+
+def test_app_session_can_request_short_lived_cabinet_token(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-cabinet-token",
+            "device_name": "Surface Laptop",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    response = client.post(
+        "/api/client/cabinet-token",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"target_path": "/profile"},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["ok"] is True
+    assert body["token"]
+    assert body["handoff_token"] == body["token"]
+    assert body["expires_in"] <= 120
+    assert body["target_path"] == "/profile"
+    assert body["auth_origin"] == "app_cabinet_handoff"
+    assert body["scope"] == "cabinet_handoff"
+    assert body["handoff_url"].startswith("https://app.pokrov.space/profile")
+    parsed = urlparse(body["handoff_url"])
+    assert parse_qs(parsed.query)["handoff_token"] == [body["handoff_token"]]
+
+    direct_session_response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {body['handoff_token']}"},
+    )
+    assert direct_session_response.status_code == 401
+    assert direct_session_response.headers["x-pokrov-auth-error"] == "web_session_exchange_required"
+
+    exchange_response = client.post(
+        "/api/auth/cabinet-handoff/exchange",
+        json={"handoff_token": body["handoff_token"]},
+    )
+    assert exchange_response.status_code == 200, exchange_response.text
+    exchanged = exchange_response.json()
+    assert exchanged["ok"] is True
+    assert exchanged["token"]
+    assert exchanged["token"] != body["handoff_token"]
+    assert exchanged["target_path"] == "/profile"
+
+    session_response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {exchanged['token']}"},
+    )
+    assert session_response.status_code == 200, session_response.text
+    session_payload = session_response.json()
+    assert session_payload["user"]["auth_origin"] == "app_cabinet_handoff"
+
+    replay_response = client.post(
+        "/api/auth/cabinet-handoff/exchange",
+        json={"handoff_token": body["handoff_token"]},
+    )
+    assert replay_response.status_code == 409
+    assert replay_response.json()["detail"]["code"] == "cabinet_handoff_already_used"
+
+
+def test_cabinet_token_rejects_external_target_path(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-cabinet-token-external",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    response = client.post(
+        "/api/client/cabinet-token",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"target_path": "https://evil.example/"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_cabinet_target"
+
+
+def test_cabinet_token_rate_limit_returns_retry_contract(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_RATE_LIMIT_CABINET_TOKEN_PER_MINUTE", "1")
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-cabinet-rate",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Real-IP": "198.51.100.78",
+    }
+
+    first = client.post(
+        "/api/client/cabinet-token",
+        headers=headers,
+        json={"target_path": "/profile"},
+    )
+    blocked = client.post(
+        "/api/client/cabinet-token",
+        headers=headers,
+        json={"target_path": "/profile"},
+    )
+
+    assert first.status_code == 200, first.text
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"]
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "rate_limited"
+    assert detail["scope"] == "cabinet_token"
+
+
+def test_cabinet_token_cleans_old_handoff_ledger_rows(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    old_hash = "a" * 64
+    db = api.SessionLocal()
+    try:
+        db.add(
+            api.WebCabinetHandoffToken(
+                tg_id=404,
+                token_hash=old_hash,
+                target_path="/profile",
+                expires_at=api._utcnow() - timedelta(days=3),
+                used_at=api._utcnow() - timedelta(days=3),
+                created_at=api._utcnow() - timedelta(days=4),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-cabinet-cleanup",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+
+    response = client.post(
+        "/api/client/cabinet-token",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"target_path": "/profile"},
+    )
+
+    assert response.status_code == 200, response.text
+    db = api.SessionLocal()
+    try:
+        assert db.query(api.WebCabinetHandoffToken).filter_by(token_hash=old_hash).count() == 0
+        assert db.query(api.WebCabinetHandoffToken).count() == 1
+    finally:
+        db.close()
+
+
+def test_cabinet_handoff_exchange_rate_limit_returns_retry_contract(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_RATE_LIMIT_CABINET_HANDOFF_EXCHANGE_PER_MINUTE", "1")
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-cabinet-exchange-rate",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    handoff = client.post(
+        "/api/client/cabinet-token",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"target_path": "/profile"},
+    )
+    handoff_token = handoff.json()["handoff_token"]
+    headers = {"X-Real-IP": "198.51.100.88"}
+
+    first = client.post(
+        "/api/auth/cabinet-handoff/exchange",
+        headers=headers,
+        json={"handoff_token": "bad-handoff-token-1"},
+    )
+    blocked = client.post(
+        "/api/auth/cabinet-handoff/exchange",
+        headers=headers,
+        json={"handoff_token": handoff_token},
+    )
+
+    assert first.status_code == 401
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"]
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "rate_limited"
+    assert detail["scope"] == "cabinet_handoff_exchange"
 
 
 def test_app_session_can_create_support_ticket(monkeypatch, tmp_path):

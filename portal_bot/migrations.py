@@ -441,12 +441,30 @@ def run_migrations(engine: Engine) -> None:
                 """
             )
         )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS web_cabinet_handoff_tokens (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  token_hash VARCHAR(64) NOT NULL,
+                  target_path VARCHAR(512) NOT NULL,
+                  expires_at DATETIME NOT NULL,
+                  used_at DATETIME,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_identities_email_norm ON web_email_identities(email_norm);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_linked_tg_id ON web_email_identities(linked_tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_verified ON web_email_identities(is_verified);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_tokens_token_hash ON web_email_tokens(token_hash);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_identity_id ON web_email_tokens(identity_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_kind ON web_email_tokens(token_kind);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_cabinet_handoff_tokens_token_hash ON web_cabinet_handoff_tokens(token_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_cabinet_handoff_tokens_tg_id ON web_cabinet_handoff_tokens(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_cabinet_handoff_tokens_expires_at ON web_cabinet_handoff_tokens(expires_at);"))
 
         conn.execute(
             text(
@@ -1152,12 +1170,30 @@ def run_migrations(engine: Engine) -> None:
                 """
             )
         )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS web_cabinet_handoff_tokens (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  token_hash VARCHAR(64) NOT NULL,
+                  target_path VARCHAR(512) NOT NULL,
+                  expires_at TIMESTAMP NOT NULL,
+                  used_at TIMESTAMP,
+                  created_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_identities_email_norm ON web_email_identities(email_norm);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_linked_tg_id ON web_email_identities(linked_tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_identities_verified ON web_email_identities(is_verified);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_email_tokens_token_hash ON web_email_tokens(token_hash);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_identity_id ON web_email_tokens(identity_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_email_tokens_kind ON web_email_tokens(token_kind);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_web_cabinet_handoff_tokens_token_hash ON web_cabinet_handoff_tokens(token_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_cabinet_handoff_tokens_tg_id ON web_cabinet_handoff_tokens(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_web_cabinet_handoff_tokens_expires_at ON web_cabinet_handoff_tokens(expires_at);"))
 
         conn.execute(
             text(

@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-05-15
+Last updated: 2026-06-03
 
 ## Document Status
 
@@ -169,6 +169,9 @@ Current live backend contract:
 - `GET /api/public/catalog`
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`
+- `POST /api/redeem`
+- `POST /api/client/cabinet-token`
+- `POST /api/auth/cabinet-handoff/exchange`
 - `POST /api/admin/access-keys/issue`
 - `GET /api/client/promo-slots`
 - `GET /api/admin/promo-slots`
@@ -195,10 +198,12 @@ Unified access-contract note:
 
 - `GET /api/dashboard`, `GET /api/user/{tg_id}`, and `GET /api/client/profile/managed` now carry the same identity/access family additions: `linked_identities`, `free_caps`, `redeem_eligibility`, `promo_slots`, `hidden_transport_matrix`, and `location_matrix`
 - the access-key redeem path returns the same access-state family so app, cabinet, and admin can refresh off one canonical contract
+- `POST /api/redeem` is the app-facing activation facade; the first live slice supports access keys by reusing the access-key redeem path and returns the same access/provisioning payload inside `result`
+- `POST /api/redeem` must reject raw `connect.pokrov.space`, subscription, and proxy URLs with structured `code=subscription_link_not_redeem_code`; those links are connection/import artifacts, not account proof
 
 Beta rate-limit contract:
 
-- externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, and support ticket create/upload apply backend-owned per-minute throttles
+- externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, unified redeem, app-cabinet handoff token/exchange, and support ticket create/upload apply backend-owned per-minute throttles
 - `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; retries for an existing `install_id` remain idempotent and should continue to return the existing app-first account
 - throttled requests return HTTP `429` with a `Retry-After` header and structured detail containing `code=rate_limited`, `scope`, and `retry_after_seconds`
 - rate-limit counters store hashed in-process fingerprints and can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables; they are beta abuse guardrails, not a durable cross-process quota ledger
@@ -208,6 +213,9 @@ Beta rate-limit contract:
 Web surfaces support app-first continuation through:
 
 - app or bot handoff into an existing cabinet session
+- app handoff through `POST /api/client/cabinet-token`, which returns a short-lived signed one-time handoff token for a relative cabinet path on canonical `https://app.pokrov.space/`
+- cabinet entry exchanges that token through `POST /api/auth/cabinet-handoff/exchange`, stores the returned browser session token, removes the handoff token from the URL, and honors the returned safe relative `target_path`
+- failed cabinet handoff exchanges must clear URL token params and show localized cabinet copy for expired, already-used, invalid, and rate-limited states instead of dropping the user into an unexplained login wall
 - Telegram widget or Telegram OIDC login in browser
 - additive email signup, verification, login, recovery, and reset as a live browser continuation lane when delivery readiness is green
 - dashboard and checkout continuation from an existing web session
@@ -223,6 +231,9 @@ Contract rule:
 - stale Telegram Login Widget payloads should be rejected client-side before the backend sees them; users should be guided through a fresh Telegram login attempt
 - additive email auth is live only when sender identity, delivery configuration, and delivery confirmation are green; if readiness fails, the UI must degrade back to unavailable instead of promising working verify or reset mail
 - additive email auth must issue the same browser session family used by the cabinet, checkout, and support flows while exposing `auth_origin` and linked-identity summary for support/admin visibility
+- app cabinet handoff tokens use `auth_origin=app_cabinet_handoff`, `scope=cabinet_handoff`, and a `60..120` second TTL; they are not accepted by normal authenticated API calls until exchanged
+- handoff exchange is single-use through a backend ledger keyed by token hash; after exchange, the cabinet receives a normal browser session token with `scope=cabinet_session`
+- expired handoff ledger rows are retained briefly for diagnostics and cleaned opportunistically by the backend after `CABINET_HANDOFF_LEDGER_RETENTION_SECONDS` (minimum one hour, default one day)
 - the additive email-auth rollout uses endpoint families under `/api/auth/email/*` for register, verify, login, recovery, and reset
 - public email register, verify, and recovery can be shown as live only while transactional sender identity and delivery-confirmation/webhook visibility are live
 - browser entry screens in `webapp` are continuation-first and must not become a second landing-page pitch
@@ -234,7 +245,7 @@ Contract rule:
 
 1. user opens public pricing, renewal continuation, or bot-side purchase
 2. hosted checkout sells an activation key against the canonical catalog
-3. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/access-keys/redeem`
+3. the key is checked with `GET /api/access-keys/status/{key}` and then redeemed through `POST /api/redeem` in the app or `POST /api/access-keys/redeem` on legacy/cabinet surfaces
 4. the backend refreshes managed access on the same app-first account
 5. app and web surfaces reload their unified access contract from the same identity root
 

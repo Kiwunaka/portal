@@ -115,6 +115,18 @@ class WebEmailToken(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class WebCabinetHandoffToken(Base):
+    __tablename__ = "web_cabinet_handoff_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    target_path = Column(String(512), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class Achievement(Base):
     __tablename__ = "achievements"
 

@@ -358,16 +358,25 @@ def create_web_session_token(
     auth_type: str | None = None,
     auth_origin: str | None = None,
     email: str | None = None,
+    ttl_seconds: int | None = None,
+    purpose: str | None = None,
 ) -> str:
     now = int(time.time())
+    ttl = int(SESSION_TTL_SECONDS)
+    if ttl_seconds is not None:
+        try:
+            ttl = max(60, int(ttl_seconds))
+        except Exception:
+            ttl = int(SESSION_TTL_SECONDS)
     payload = {
         "id": int(tg_id),
         "username": (username or "").strip() or None,
         "auth_type": (auth_type or "").strip() or None,
         "auth_origin": (auth_origin or "").strip() or None,
         "email": (email or "").strip().lower() or None,
+        "purpose": (purpose or "").strip() or None,
         "iat": now,
-        "exp": now + SESSION_TTL_SECONDS,
+        "exp": now + ttl,
     }
     body = _b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8"))
     sig = _sign(body)
@@ -405,6 +414,7 @@ def inspect_web_session_token(token: str) -> tuple[dict[str, Any] | None, str | 
         "auth_type": payload.get("auth_type"),
         "auth_origin": payload.get("auth_origin"),
         "email": payload.get("email"),
+        "purpose": payload.get("purpose"),
     }, None
 
 

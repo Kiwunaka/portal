@@ -75,6 +75,7 @@ from models import (
     User,
     UserKeyPolicy,
     UserNode,
+    WebCabinetHandoffToken,
     WebEmailIdentity,
     WebEmailToken,
 )
@@ -299,6 +300,8 @@ PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
+CABINET_HANDOFF_TTL_SECONDS = max(60, min(120, env_int("CABINET_HANDOFF_TTL_SECONDS", 120)))
+CABINET_HANDOFF_LEDGER_RETENTION_SECONDS = max(3600, env_int("CABINET_HANDOFF_LEDGER_RETENTION_SECONDS", 86400))
 NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
 NODE_METRICS_MEMORY_ALERT_PERCENT = _env_float("NODE_METRICS_MEMORY_ALERT_PERCENT", 85.0)
 NODE_METRICS_DISK_ALERT_PERCENT = _env_float("NODE_METRICS_DISK_ALERT_PERCENT", 90.0)
@@ -827,6 +830,19 @@ class AppStartTrialIn(BaseModel):
 
 class AccessKeyRedeemIn(BaseModel):
     key: str = Field(min_length=3, max_length=64)
+
+
+class UnifiedRedeemIn(BaseModel):
+    code: str = Field(min_length=3, max_length=4096)
+
+
+class ClientCabinetTokenIn(BaseModel):
+    target_path: str = Field(default="/", min_length=1, max_length=512)
+
+
+class CabinetHandoffExchangeIn(BaseModel):
+    handoff_token: str | None = Field(default=None, max_length=4096)
+    token: str | None = Field(default=None, max_length=4096)
 
 
 class ClientRoutePolicyIn(BaseModel):
@@ -1693,6 +1709,20 @@ def _access_key_safe_meta(code: str) -> dict[str, Any]:
     }
 
 
+def _looks_like_subscription_or_proxy_link(value: str) -> bool:
+    raw = str(value or "").strip()
+    if not raw:
+        return False
+    parsed = urlparse(raw)
+    if parsed.scheme.lower() in {"http", "https"} and parsed.netloc:
+        host = (parsed.hostname or "").lower().strip()
+        path = (parsed.path or "").lower()
+        if host.endswith("connect.pokrov.space") or "/sub" in path or "subscription" in path:
+            return True
+        return True
+    return parsed.scheme.lower() in {"vless", "vmess", "trojan", "ss", "hysteria2", "tuic"}
+
+
 def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
     meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
     return {
@@ -2209,6 +2239,11 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
     if web_token:
         payload, reason = inspect_web_session_token(web_token)
         if payload:
+            if str(payload.get("purpose") or "").strip() == "cabinet_handoff":
+                raise _auth_http_exception(
+                    detail="Этот короткий переход нужно обменять в кабинете перед использованием.",
+                    code="web_session_exchange_required",
+                )
             return payload
         if init_data:
             user_data = _verify_telegram_data(init_data)
@@ -2279,6 +2314,9 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "start_trial": 12,
     "access_key_status": 60,
     "access_key_redeem": 20,
+    "unified_redeem": 20,
+    "cabinet_token": 10,
+    "cabinet_handoff_exchange": 30,
     "telegram_auth": 30,
     "email_auth": 20,
     "ticket_create": 20,
@@ -2812,6 +2850,58 @@ def _public_webapp_url() -> str:
     if configured:
         return configured
     return "https://app.pokrov.space/"
+
+
+def _normalize_cabinet_target_path(value: str | None) -> str:
+    raw = str(value or "/").strip() or "/"
+    parsed = urlparse(raw)
+    if parsed.scheme or parsed.netloc or raw.startswith("//"):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "invalid_cabinet_target",
+                "message": "Cabinet handoff target must be a relative app path.",
+            },
+        )
+    path = parsed.path or raw
+    if not path.startswith("/"):
+        path = f"/{path}"
+    path = re.sub(r"/{2,}", "/", path)
+    query = str(parsed.query or "").strip()
+    return f"{path}?{query}" if query else path
+
+
+def _build_cabinet_handoff_url(*, token: str, target_path: str) -> str:
+    base = _public_webapp_url() or "https://app.pokrov.space/"
+    base_parsed = urlparse(base)
+    base_host = (base_parsed.hostname or "").lower().strip()
+    if base_host in {"kiwunaka.space", "portal-privacy.online", "www.portal-privacy.online"}:
+        base_parsed = urlparse("https://app.pokrov.space/")
+    target_parsed = urlparse(_normalize_cabinet_target_path(target_path))
+    query = {
+        key: value
+        for key, value in parse_qsl(target_parsed.query, keep_blank_values=True)
+        if key not in {"token", "handoff_token", "web_session_token", "web_session"}
+    }
+    query["handoff_token"] = str(token or "").strip()
+    return base_parsed._replace(
+        path=target_parsed.path or "/",
+        query=urlencode(query),
+        fragment="",
+    ).geturl()
+
+
+def _cabinet_handoff_token_hash(token: str) -> str:
+    return hashlib.sha256(str(token or "").strip().encode("utf-8")).hexdigest()
+
+
+def _cleanup_expired_cabinet_handoff_tokens(s, *, now: datetime) -> int:
+    cutoff = now - timedelta(seconds=int(CABINET_HANDOFF_LEDGER_RETENTION_SECONDS))
+    return (
+        s.query(WebCabinetHandoffToken)
+        .filter(WebCabinetHandoffToken.expires_at < cutoff)
+        .delete(synchronize_session=False)
+    )
 
 
 def _public_checkout_url() -> str:
@@ -8069,16 +8159,18 @@ async def access_key_status(key: str, request: Request) -> dict[str, Any]:
         s.close()
 
 
-@app.post("/api/access-keys/redeem")
-async def access_key_redeem(
-    payload: AccessKeyRedeemIn,
+async def _redeem_access_key_for_auth_user(
+    *,
+    key: str,
     request: Request,
-    x_telegram_init_data: str = Header(default=""),
+    auth_user: dict[str, Any],
+    event_source: str,
+    enforce_rate_limit: bool = True,
 ) -> dict[str, Any]:
-    auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
-    _enforce_beta_rate_limit("access_key_redeem", request, identity=f"tg:{tg_id}")
-    code = str(payload.key or "").strip().upper()
+    if enforce_rate_limit:
+        _enforce_beta_rate_limit("access_key_redeem", request, identity=f"tg:{tg_id}")
+    code = str(key or "").strip().upper()
     if not code:
         raise HTTPException(status_code=400, detail="Access key is required")
 
@@ -8157,10 +8249,10 @@ async def access_key_redeem(
         track_event(
             tg_id=int(tg_id),
             event_name="access_key_redeemed",
-            source="webapp",
+            source=event_source,
             meta={
                 **_access_key_safe_meta(code),
-                "plan_code": key_status.get("plan", {}).get("code"),
+                "plan_code": (key_status.get("plan") or {}).get("code"),
                 "sync_ok": bool(sync_ok),
             },
         )
@@ -8190,6 +8282,231 @@ async def access_key_redeem(
             "dashboard_path": "/api/dashboard",
         },
     }
+
+
+@app.post("/api/access-keys/redeem")
+async def access_key_redeem(
+    payload: AccessKeyRedeemIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    return await _redeem_access_key_for_auth_user(
+        key=payload.key,
+        request=request,
+        auth_user=auth_user,
+        event_source="webapp",
+    )
+
+
+@app.post("/api/redeem")
+async def unified_redeem(
+    payload: UnifiedRedeemIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    _enforce_beta_rate_limit("unified_redeem", request, identity=f"tg:{tg_id}")
+    code = str(payload.code or "").strip()
+    if not code:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "redeem_code_required", "message": "Activation code is required."},
+        )
+    if _looks_like_subscription_or_proxy_link(code):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "subscription_link_not_redeem_code",
+                "message": "Raw subscription links are not redeem codes. Use account recovery or manual import instead.",
+                "manual_import_allowed": True,
+            },
+        )
+
+    normalized = code.upper()
+    s = SessionLocal()
+    try:
+        card = s.query(GiftCard).filter(func.upper(GiftCard.code) == normalized).first()
+        card_meta = _access_key_meta_from_card_type(s=s, card_type=str(getattr(card, "card_type", "") or "")) if card else None
+    finally:
+        s.close()
+
+    if card and card_meta:
+        result = await _redeem_access_key_for_auth_user(
+            key=normalized,
+            request=request,
+            auth_user=auth_user,
+            event_source="app",
+            enforce_rate_limit=False,
+        )
+        return {
+            "ok": True,
+            "kind": "access_key",
+            **_access_key_safe_meta(normalized),
+            "result": result,
+        }
+
+    raise HTTPException(
+        status_code=404,
+        detail={
+            "code": "redeem_code_not_supported",
+            "message": "This activation code is not supported by the unified app endpoint yet.",
+            "supported_kinds": ["access_key"],
+            **_access_key_safe_meta(normalized),
+        },
+    )
+
+
+@app.post("/api/client/cabinet-token")
+async def client_cabinet_token(
+    payload: ClientCabinetTokenIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    _enforce_beta_rate_limit("cabinet_token", request, identity=f"tg:{tg_id}")
+    target_path = _normalize_cabinet_target_path(payload.target_path)
+    now = _utcnow()
+    handoff_token = create_web_session_token(
+        tg_id=tg_id,
+        username=str(auth_user.get("username") or "").strip() or None,
+        auth_type=str(auth_user.get("auth_type") or "app").strip() or "app",
+        auth_origin="app_cabinet_handoff",
+        email=str(auth_user.get("email") or "").strip() or None,
+        ttl_seconds=CABINET_HANDOFF_TTL_SECONDS,
+        purpose="cabinet_handoff",
+    )
+    if not handoff_token:
+        raise HTTPException(status_code=500, detail="Cabinet handoff session is not configured")
+    s = SessionLocal()
+    try:
+        _cleanup_expired_cabinet_handoff_tokens(s, now=now)
+        s.add(
+            WebCabinetHandoffToken(
+                tg_id=tg_id,
+                token_hash=_cabinet_handoff_token_hash(handoff_token),
+                target_path=target_path,
+                expires_at=now + timedelta(seconds=int(CABINET_HANDOFF_TTL_SECONDS)),
+                created_at=now,
+            )
+        )
+        s.commit()
+    except IntegrityError:
+        s.rollback()
+        raise HTTPException(status_code=500, detail="Cabinet handoff token collision")
+    finally:
+        s.close()
+    return {
+        "ok": True,
+        "token": handoff_token,
+        "handoff_token": handoff_token,
+        "expires_in": int(CABINET_HANDOFF_TTL_SECONDS),
+        "target_path": target_path,
+        "handoff_url": _build_cabinet_handoff_url(token=handoff_token, target_path=target_path),
+        "auth_origin": "app_cabinet_handoff",
+        "scope": "cabinet_handoff",
+    }
+
+
+@app.post("/api/auth/cabinet-handoff/exchange")
+async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, request: Request) -> dict[str, Any]:
+    handoff_token = str(payload.handoff_token or payload.token or "").strip()
+    _enforce_beta_rate_limit("cabinet_handoff_exchange", request)
+    if not handoff_token:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "cabinet_handoff_token_required",
+                "message": "Cabinet handoff token is required.",
+            },
+        )
+    handoff_auth_user, reason = inspect_web_session_token(handoff_token)
+    if not handoff_auth_user:
+        raise HTTPException(
+            status_code=401 if reason != "expired" else 410,
+            detail={
+                "code": "cabinet_handoff_expired" if reason == "expired" else "cabinet_handoff_invalid",
+                "message": "Cabinet handoff token is invalid or expired.",
+            },
+        )
+    if str(handoff_auth_user.get("purpose") or "").strip() != "cabinet_handoff":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "cabinet_handoff_wrong_purpose",
+                "message": "This token is not a cabinet handoff token.",
+            },
+        )
+
+    token_hash = _cabinet_handoff_token_hash(handoff_token)
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(WebCabinetHandoffToken)
+            .filter(WebCabinetHandoffToken.token_hash == token_hash)
+            .with_for_update()
+            .first()
+        )
+        if not row:
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "code": "cabinet_handoff_invalid",
+                    "message": "Cabinet handoff token was not issued by this backend.",
+                },
+            )
+        if int(row.tg_id or 0) != int(handoff_auth_user.get("id") or 0):
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "code": "cabinet_handoff_invalid",
+                    "message": "Cabinet handoff token does not match the session user.",
+                },
+            )
+        if row.used_at is not None:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "cabinet_handoff_already_used",
+                    "message": "Cabinet handoff token was already used.",
+                },
+            )
+        if row.expires_at <= now:
+            raise HTTPException(
+                status_code=410,
+                detail={
+                    "code": "cabinet_handoff_expired",
+                    "message": "Cabinet handoff token has expired.",
+                },
+            )
+        session_token = create_web_session_token(
+            tg_id=int(handoff_auth_user.get("id") or 0),
+            username=str(handoff_auth_user.get("username") or "").strip() or None,
+            auth_type=str(handoff_auth_user.get("auth_type") or "app").strip() or "app",
+            auth_origin="app_cabinet_handoff",
+            email=str(handoff_auth_user.get("email") or "").strip() or None,
+            purpose="cabinet_session",
+        )
+        if not session_token:
+            raise HTTPException(status_code=500, detail="Cabinet session is not configured")
+        row.used_at = now
+        s.commit()
+        return {
+            "ok": True,
+            "token": session_token,
+            "expires_in": int(SESSION_TTL_SECONDS),
+            "target_path": _normalize_cabinet_target_path(str(row.target_path or "/")),
+            "auth_origin": "app_cabinet_handoff",
+            "scope": "cabinet_session",
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    finally:
+        s.close()
 
 
 @app.post("/api/reviews")
