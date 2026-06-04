@@ -350,6 +350,9 @@ Contract rule:
 - `GET /api/bonuses/wheel/state` and `GET /api/bonuses/calendar` expose
   disabled-by-default state payloads that the app may render as safe Rewards
   Hub previews.
+- `GET /api/client/promo-slots?surface=app` may feed Rewards Hub with enabled
+  first-party promo slots only. Third-party ad SDKs, unsafe links, tracking
+  pixels, and non-POKROV campaign rendering stay out of the app.
 - `POST /api/bonuses/wheel/spin` and
   `POST /api/bonuses/calendar/checkin` are app-facing placeholders guarded by
   feature flags and return structured disabled errors until reward logic,
