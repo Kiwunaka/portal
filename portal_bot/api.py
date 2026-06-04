@@ -315,7 +315,6 @@ SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uplo
 SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
 SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
 support_ai_last_reply_at: dict[int, float] = {}
-API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
     for x in (
@@ -2152,20 +2151,24 @@ def _is_allowed_dev_origin(raw: str) -> bool:
     return norm in WEBAPP_DEV_ALLOWED_ORIGINS
 
 
-def _is_local_request(request: Request | None) -> bool:
-    if request is None:
+def _is_loopback_peer(peer_host: str) -> bool:
+    host = str(peer_host or "").strip().lower()
+    if not host:
         return False
-    host = (request.url.hostname or "").strip().lower()
-    is_loopback_host = False
-    if host in API_LOCALHOST_DEV_HOSTS:
-        is_loopback_host = True
-    else:
-        try:
-            ip = ipaddress.ip_address(host)
-            is_loopback_host = ip.is_loopback
-        except Exception:
-            is_loopback_host = False
-    if not is_loopback_host:
+    if host == "localhost":
+        return True
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _is_local_request(request: Request | None) -> bool:
+    if request is None or request.client is None:
+        return False
+    if not _is_loopback_peer(request.client.host):
         return False
 
     origin = request.headers.get("origin", "")
