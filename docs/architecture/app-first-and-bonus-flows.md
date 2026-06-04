@@ -339,7 +339,9 @@ Contract rule:
   `channel_bonus`, `opening_bonus`, `promo`, `history`, `wheel`, and
   `calendar` sections.
 - `GET /api/bonuses/referral/summary` returns referral count, referral code,
-  referral link, bonus days, and current points tier for the app-first account.
+  safe Telegram referral link, bonus days, and current points tier for the
+  app-first account. The app may expose copy/share/open actions for that link;
+  referral anti-abuse, bonus granting, and campaign tuning remain backend-owned.
 - `GET /api/bonuses/history` returns an app-safe, compact recent bonus ledger
   built from current platform truth: Telegram channel claim, opening campaign
   mark, and promo usage. It must not return raw subscription links, full promo
