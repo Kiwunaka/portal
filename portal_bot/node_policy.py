@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
 FREE_NODE_CODE_PREFERENCES = ("nl-free", "nl_free", "free", "pl_free")
 _PREMIUM_PLAN_CODES = {"trial", "channel_bonus", "start_99"}
+_PREMIUM_FREE_PLAN_CODES = {"trial"}
+_PREMIUM_FREE_WINDOW_DAYS = (
+    max(1, int(os.getenv("APP_TRIAL_DEFAULT_DAYS", "5")))
+    + max(0, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
+    + 1
+)
 SMART_CONNECT_SHORTLIST_LIMIT = 5
 SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT = 15
 SMART_CONNECT_STALE_AFTER_SECONDS = 900
@@ -99,14 +106,26 @@ def node_backend_penalty(node: Any) -> int | None:
     return 0
 
 
+def _free_user_has_active_premium_window(user: Any, *, now: datetime | None = None) -> bool:
+    expiry = _normalize_utc_naive(getattr(user, "expiry_at", None))
+    if expiry is None:
+        return False
+    current = _normalize_utc_naive(now) or _utcnow()
+    if not bool(getattr(user, "is_active", False)) or expiry <= current:
+        return False
+    return expiry <= current + timedelta(days=_PREMIUM_FREE_WINDOW_DAYS)
+
+
 def user_uses_free_pool(user: Any) -> bool:
     sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
 
+    if sub_type == "FREE":
+        if plan_code in _PREMIUM_FREE_PLAN_CODES and _free_user_has_active_premium_window(user):
+            return False
+        return True
     if plan_code in _PREMIUM_PLAN_CODES:
         return False
-    if sub_type == "FREE":
-        return True
     if sub_type in {"", "PENDING"}:
         return True
     if sub_type.startswith("TRIAL"):

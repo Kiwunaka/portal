@@ -1,6 +1,7 @@
-﻿import os
+import os
 import sys
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import urlparse, parse_qs, unquote
@@ -259,7 +260,13 @@ class PortalApiTests(unittest.TestCase):
         api = importlib.import_module("api")
         importlib.reload(api)
 
-        user = SimpleNamespace(tg_id=1002, sub_type="FREE", current_plan_code="trial")
+        user = SimpleNamespace(
+            tg_id=1002,
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=datetime.now() + timedelta(days=5),
+        )
         nodes = [
             SimpleNamespace(code="free"),
             SimpleNamespace(code="nl"),
@@ -267,6 +274,27 @@ class PortalApiTests(unittest.TestCase):
         ]
         out = api._nodes_for_user(user, nodes)
         self.assertEqual([n.code for n in out], ["nl", "it"])
+
+    def test_nodes_for_stale_trial_code_free_user_use_free_pool(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(
+            tg_id=1004,
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=datetime.now() + timedelta(days=3650),
+        )
+        nodes = [
+            SimpleNamespace(code="free"),
+            SimpleNamespace(code="nl"),
+            SimpleNamespace(code="it"),
+        ]
+        out = api._nodes_for_user(user, nodes)
+        self.assertEqual([n.code for n in out], ["free"])
 
     def test_nodes_for_free_user_only_use_canonical_free_node(self) -> None:
         import importlib

@@ -10643,6 +10643,7 @@ async def monitor_expiry(bot: Bot) -> None:
                         if expiry and now > expiry:
                             # Auto-downgrade to Free instead of disabling access.
                             user.sub_type = "FREE"
+                            user.current_plan_code = "free_monthly"
                             # Keep Free usable for a long time; actual policies are controlled server-side.
                             auto_free_days = int(os.getenv("AUTO_FREE_DAYS", "3650"))
                             user.expiry_at = now + timedelta(days=auto_free_days)

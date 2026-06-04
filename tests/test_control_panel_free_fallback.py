@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
@@ -49,7 +50,9 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
             inbound_id=4,
             weight=100,
             health_score=0.0,
+            cpu_percent=0.0,
             last_health_at=None,
+            last_probe_at=None,
             is_healthy=True,
             panel_latency_ms=100,
             panel_error_rate=0.0,
@@ -76,6 +79,59 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
         ok = await cp.add_client("uuid", "email", "FREE", 0, 123, "token")
         self.assertTrue(ok)
         self.assertEqual(calls, [["free"]])
+
+    async def test_add_client_stale_trial_free_user_targets_free_pool(self) -> None:
+        from control_panel import ControlPanel
+        from models import User
+
+        cp = ControlPanel()
+        calls = []
+        fake_user = User(
+            tg_id=123,
+            uuid="uuid",
+            email="email",
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=datetime.now() + timedelta(days=3650),
+            sub_token="token",
+        )
+
+        async def fake_refresh():
+            return [self._node("nl-free"), self._node("de-paid"), self._node("us-paid")]
+
+        async def fake_ensure_user_on_all_nodes(**kwargs):
+            calls.append(kwargs["only_node_codes"])
+            return {"nl-free": True}
+
+        class _FakeQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def first(self):
+                return fake_user
+
+        class _FakeSession:
+            def query(self, *_args, **_kwargs):
+                return _FakeQuery()
+
+            def close(self):
+                return None
+
+        cp.refresh = fake_refresh
+        cp.ensure_user_on_all_nodes = fake_ensure_user_on_all_nodes
+
+        import control_panel as cp_mod
+
+        old_session_local = cp_mod.SessionLocal
+        cp_mod.SessionLocal = lambda: _FakeSession()
+        try:
+            ok = await cp.add_client("uuid", "email", "FREE", 0, 123, "token")
+        finally:
+            cp_mod.SessionLocal = old_session_local
+
+        self.assertTrue(ok)
+        self.assertEqual(calls, [["nl-free"]])
 
     async def test_add_client_free_returns_false_without_free_pool(self) -> None:
         from control_panel import ControlPanel

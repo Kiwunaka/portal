@@ -413,6 +413,7 @@ async def _switch_user_to_free(*, tg_id: int) -> bool:
         if not user:
             return False
         user.sub_type = "FREE"
+        user.current_plan_code = "free_monthly"
         user.is_active = True
         user.expiry_at = now + timedelta(days=max(30, int(AUTO_FREE_DAYS)))
         user.channel_bonus_active = False
