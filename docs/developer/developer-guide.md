@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-05-23
+Last updated: 2026-06-04
 
 ## Document Status
 
@@ -324,6 +324,7 @@ After the current premium/SEO/copy pass, keep this split explicit:
 Current platform-owned client gate verification from the repository root:
 
 ```powershell
+python scripts/app_bot_parity_smoke.py
 python scripts/run_client_release_gate.py preflight
 python scripts/run_client_release_gate.py test --suite portal
 python scripts/run_client_release_gate.py test --suite full
@@ -335,6 +336,7 @@ python scripts/run_client_release_gate.py build --target android-aab
 Client release-gate note:
 
 - Android outside-store beta may use the retained owner attestation from the `2026-05-15` launch decision; trusted, store, stable, or raw-audited Android claims stay blocked until a release-build audit proves there is no unauthenticated localhost proxy, DNS, command, or admin/control surface exposed to other apps
+- `python scripts/app_bot_parity_smoke.py` is the static app/bot/cabinet parity check for app-first endpoints, cabinet handoff, Telegram bonus, ticket support, safe redeem, and bot fallback entrypoints; live Telegram and same-account parity remain owner manual smoke
 - run `python scripts/client_security_smoke.py` before broader client release verification so the `POKROV-app` seed contract, Android host manifest, runtime-artifact pin, and Windows release seed fail fast in CI or local gates
 - `run_client_release_gate.py` now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default and fails fast when that workspace is missing or incomplete
 - `python scripts/run_client_release_gate.py preflight` verifies the `POKROV-app` seed workspace layout, wrapper scripts, host shells, and seed configs before client gates run

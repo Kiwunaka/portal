@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-05-23
+Last updated: 2026-06-04
 
 ## Document Status
 
@@ -97,6 +97,7 @@ Legacy filename note:
 
 - `admin_webapp_smoke.py`
 - `android_localhost_audit.py`
+- `app_bot_parity_smoke.py`
 - `api_lifecycle_smoke.py`
 - `client_security_smoke.py`
 - `release_gate_check.py`
@@ -186,6 +187,7 @@ Shared-facts and handoff note:
 
 ### Bot, support, and user surfaces
 
+- `tests/test_app_bot_parity_smoke.py`
 - `tests/test_bot_paywall.py`
 - `tests/test_public_copy_guardrails.py`
 - `tests/test_tickets_repo.py`

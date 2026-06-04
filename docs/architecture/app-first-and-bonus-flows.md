@@ -209,6 +209,12 @@ Unified access-contract note:
 - `POST /api/redeem` is the app-facing activation facade; it supports access keys and promo codes, returns `kind=access_key` or `kind=promo`, and keeps raw subscription links rejected as non-account proof
 - `POST /api/redeem` must reject raw `connect.pokrov.space`, subscription, and proxy URLs with structured `code=subscription_link_not_redeem_code`; those links are connection/import artifacts, not account proof
 
+App/bot/cabinet parity smoke:
+
+- run `python scripts/app_bot_parity_smoke.py` before a `1.0.0-beta` handoff when app-first account, cabinet, Telegram bonus, support ticket, or redeem contracts change
+- the smoke is static and secret-free; it verifies the platform API endpoints, webapp cabinet/support calls, Telegram bot entrypoints, and `POKROV-app` runtime adapter paths
+- real Telegram bot and live same-account parity still require owner-controlled sessions and must be reported as `MANUAL_OWNER_TEST`, not as a local automated pass
+
 Beta rate-limit contract:
 
 - externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, unified redeem, app-cabinet handoff token/exchange, and support ticket create/upload apply backend-owned per-minute throttles
