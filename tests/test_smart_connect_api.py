@@ -260,6 +260,8 @@ def test_managed_profile_exposes_top_five_eligible_premium_shortlist(monkeypatch
     penalties = {item["code"]: item for item in smart_connect["shortlist"]}
     assert penalties["nl"]["rank_hint"]["backend_penalty"] == 0
     assert penalties["nl"]["rank_hint"]["cpu_penalty"] == 0
+    assert penalties["pl"]["probe"]["host"] == "example.test"
+    assert penalties["pl"]["probe"]["port"] == 443
     assert "fr" not in {item["code"] for item in smart_connect["shortlist"]}
     assert "be" not in {item["code"] for item in smart_connect["shortlist"]}
     assert "nl-free" not in {item["code"] for item in smart_connect["shortlist"]}

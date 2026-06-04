@@ -108,11 +108,12 @@ Smart-connect contract:
 - `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`
 - premium users probe up to `5` eligible non-free nodes; free-tier users still probe only `NL-free`
 - the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= 90`, transport-incompatible, and rollout-blocked nodes before the client starts RTT checks
-- shortlist items expose `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, and `cpu_penalty`
+- shortlist items expose `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, and an internal `probe.host` / `probe.port` target for app-side RTT checks
 - the client compares candidates with `effective_score = rtt_ms + cpu_penalty + backend_penalty`
 - stickiness stays active with a `15%` threshold so the app does not flap between nodes on tiny wins
 - explicit `UserNode` mappings still take precedence; the shortlist is built from the user-assigned node set first instead of bypassing that pinning
-- the follow-up upload path is `POST /api/client/nodes/latency-samples`, which stores `install_id`, `carrier`, `platform`, accepted RTT samples, selected node, previous node, and whether stickiness was applied
+- the client performs best-effort TCP RTT probes only for shortlist items with a probe target, applies the stickiness threshold locally, and uploads accepted samples through `POST /api/client/nodes/latency-samples`
+- the follow-up upload path stores `install_id`, `carrier`, `platform`, accepted RTT samples, selected node, previous node, and whether stickiness was applied
 
 ## App Session Model
 

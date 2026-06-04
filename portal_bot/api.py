@@ -5786,11 +5786,16 @@ def _smart_connect_shortlist(
     shortlist_payload = []
     for index, node in enumerate(shortlist_nodes, start=1):
         code = str(getattr(node, "code", "") or "").strip().lower()
+        transport = _node_transport_profile(node, transport_profile)
+        probe_host = str(transport.get("host") or getattr(node, "host", "") or "").strip()
+        probe_port = int(transport.get("port") or getattr(node, "vless_port", 443) or 443)
+        probe_payload = {"host": probe_host, "port": probe_port} if probe_host and probe_port > 0 else None
         shortlist_payload.append(
             {
                 "code": code,
                 "country": _node_country_name(code),
                 "rank": index,
+                "probe": probe_payload,
                 "rank_hint": {
                     "health_score": float(getattr(node, "health_score", 0.0) or 0.0),
                     "cpu_percent": float(getattr(node, "cpu_percent", 0.0) or 0.0),
