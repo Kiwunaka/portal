@@ -1,0 +1,108 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "mode": "public_beta_external_access_preflight",
+  "safe_to_publish_public_beta": false,
+  "ready_to_run_access_gated_smokes": false,
+  "ready_to_run_runtime_app_download_smoke": true,
+  "ready_to_run_email_post_deploy_probe": false,
+  "ready_to_run_lavatop_post_deploy_probe": false,
+  "post_deploy_probe_modes": {
+    "email_public_probe": "BLOCKED_BY_ACCESS",
+    "lavatop_invoice_probe": "BLOCKED_BY_ACCESS",
+    "combined_payment_email_probe": "BLOCKED_BY_ACCESS"
+  },
+  "accepted_skips": [
+    "ru_origin_probe_evidence"
+  ],
+  "accepted_operator_attestations": [
+    "android_physical_audit"
+  ],
+  "public_claim_guardrails": [
+    "Не заявлять готовность RU-origin, если ru_origin_probe_evidence имеет статус SKIPPED_BY_OPERATOR.",
+    "Если RU-origin пропущен, публично можно говорить только, что RU-origin не проверялся в этой бета-волне.",
+    "Если Android physical audit имеет статус OPERATOR_ATTESTED, в публичных и релизных текстах можно говорить только об операторском подтверждении; не заявлять raw repo validation.",
+    "Email-доставку можно проверять после деплоя независимо от подтверждения Lava.top invoice.",
+    "Проверка Lava.top invoice не считается запуском платной оплаты без подтверждения webhook, replay/idempotency, failure и reconciliation."
+  ],
+  "inputs": {
+    "handoff_path": "C:\\Users\\kiwun\\Documents\\ai\\POKROV-app\\artifacts\\releases\\release-handoff.json",
+    "staged_apps_json": "..\\POKROV-app\\artifacts\\releases\\release-handoff.json",
+    "ru_origin_json": "docs\\audit-artifacts\\ru-origin-mini-2026-05-07.json",
+    "ru_origin_skip_evidence": "docs\\audit-artifacts\\ru-origin-skip-accepted-2026-05-08.md",
+    "client_build_evidence": "docs\\audit-artifacts\\client-build-evidence-2026-05-07.md",
+    "android_audit_validation": "docs\\audit-artifacts\\android-physical-audit-evidence-validation-2026-05-08.json",
+    "android_operator_attestation": "docs\\audit-artifacts\\android-physical-audit-operator-note-2026-05-08.md",
+    "runtime_app_download_smoke": "docs\\audit-artifacts\\runtime-app-download-smoke-brain-2026-06-04-rc-refresh.json",
+    "artifact_staging_authorization": "docs\\audit-artifacts\\public-beta-artifact-staging-authorization-2026-05-08.md"
+  },
+  "checks": [
+    {
+      "name": "android_physical_audit",
+      "status": "OPERATOR_ATTESTED",
+      "missing": [],
+      "note": "Operator attestation is attached. State Android physical audit evidence as operator-attested unless raw repo validation is also PASS.",
+      "source": "docs\\audit-artifacts\\android-physical-audit-operator-note-2026-05-08.md"
+    },
+    {
+      "name": "runtime_app_download_smoke_env",
+      "status": "PASS",
+      "missing": [],
+      "note": "Brain-local signed initData smoke passed without returning BOT_TOKEN or raw initData.",
+      "source": "docs\\audit-artifacts\\runtime-app-download-smoke-brain-2026-06-04-rc-refresh.json"
+    },
+    {
+      "name": "github_release_auth",
+      "status": "PASS",
+      "missing": [],
+      "note": "Authenticated GitHub CLI is available for the guarded gh release workflow.",
+      "source": "gh_cli_keyring"
+    },
+    {
+      "name": "email_live_probe_env",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "EMAIL_PROBE_TO"
+      ],
+      "note": "Needed for live verify/reset/paid-access-key delivery probes.",
+      "source": "environment"
+    },
+    {
+      "name": "lavatop_live_probe_env",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "LAVATOP_PROBE_EMAIL"
+      ],
+      "note": "Needed for live Lava.top invoice probe evidence.",
+      "source": "environment"
+    },
+    {
+      "name": "ru_origin_probe_evidence",
+      "status": "SKIPPED_BY_OPERATOR",
+      "missing": [],
+      "note": "Operator skip evidence is attached. Do not claim RU-origin readiness; state that RU-origin was not verified.",
+      "source": "docs\\audit-artifacts\\ru-origin-skip-accepted-2026-05-08.md"
+    },
+    {
+      "name": "windows_signing_or_unsigned_risk",
+      "status": "PASS",
+      "missing": [],
+      "note": "Unsigned Windows beta risk posture is explicitly accepted in retained client-build evidence.",
+      "source": "docs\\audit-artifacts\\client-build-evidence-2026-05-07.md"
+    },
+    {
+      "name": "staged_client_apps_payload",
+      "status": "PASS",
+      "missing": [],
+      "note": "Validates candidate /api/client/apps shape without probing URL reachability.",
+      "source": "..\\POKROV-app\\artifacts\\releases\\release-handoff.json"
+    },
+    {
+      "name": "public_beta_handoff_policy",
+      "status": "PASS",
+      "missing": [],
+      "note": "Handoff allows public beta publication if all other gates are still green.",
+      "source": "C:\\Users\\kiwun\\Documents\\ai\\POKROV-app\\artifacts\\releases\\release-handoff.json"
+    }
+  ]
+}

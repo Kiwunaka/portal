@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-05-26
+Last updated: 2026-06-03
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -180,6 +180,25 @@ Shell guidance:
 - prefer `bash` when it is the simpler and clearer path
 - explicitly fall back to `powershell` when quoting, SSH, Windows paths, or local tooling reliability is better
 - do not treat one shell as mandatory if the other is safer for the exact task
+
+## External Routing And Filter References
+
+Owner signal as of `2026-06-03`: ad-domain filtering is a strong product candidate for POKROV, especially as an optional user-facing routing feature in the app.
+
+Treat third-party routing and ad-domain lists as product-track research inputs, not product canon or deploy-ready dependencies until implementation evidence exists.
+
+Useful current references:
+
+- [zxc-rv/ad-filter](https://github.com/zxc-rv/ad-filter): Hagezi Pro-derived ad-domain release assets for Xray (`adlist.dat`), Sing-Box (`adlist.srs`), and Mihomo (`adlist.mrs`)
+- [0FL01/ad-filter](https://github.com/0FL01/ad-filter): forked Hagezi Ultimate-derived ad-domain release assets for Xray, Sing-Box, and Mihomo
+
+Rules for productizing these references:
+
+- prefer Sing-Box-compatible `.srs` work first because the default POKROV client core is `sing-box`; use Xray `.dat` only for compatibility/fallback work
+- design the first product version as an explicit user-controlled setting, not a hidden always-on behavior
+- before vendoring, hotlinking, or enabling any third-party filter list, record source freshness, release URL, license/redistribution assumptions, update cadence, failure behavior, and rollback path
+- when ad filtering becomes user-visible, update product/user docs, client routing contracts, support wording, and release notes in the same task
+- do not let ad-filter experiments override the canonical POKROV routing rules, node-pool assignment, RU-origin readiness rules, or release-gate honesty
 
 ## Canonical Docs
 
