@@ -131,6 +131,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage deploy`
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage verify`
 - wrapper steps stream child output, print heartbeat lines during quiet long-running steps, and enforce per-step timeouts unless the matching `--*-timeout-sec 0` option is used
+- the manual GitHub Actions release workflow passes dispatch inputs through step environment variables instead of interpolating them into shell source, scopes `NODE_PASS_BRAIN` only to the orchestrator step, and rejects secret-bearing remote runs unless `brain_ip` is the canonical `82.21.114.104` host with `pokrov.space` / `api.pokrov.space` domains
 
 ### Release handoff sync
 
