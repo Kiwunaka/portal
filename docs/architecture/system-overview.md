@@ -84,7 +84,7 @@ Reference-lane note:
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
 - `smart_connect` contains a rollout-compatible shortlist, internal probe targets, rejection counters, scoring hints, and stickiness metadata so the client can combine real RTT with backend health/load signals without guessing
-- `client_policy.warp_policy` remains sanitized; WireGuard config/account material may appear only in the authenticated managed-profile `warp_policy` when runtime proof marks it ready
+- `client_policy.warp_policy` remains sanitized; WireGuard config/account material may appear only in the authenticated managed-profile `warp_policy` when runtime proof marks it ready, and the client must still require explicit local user consent before setting Hiddify `warp.enable=true`
 - `POST /api/client/nodes/latency-samples` stores install-scoped RTT samples plus carrier/platform context for admin visibility and later shortlist stickiness
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path

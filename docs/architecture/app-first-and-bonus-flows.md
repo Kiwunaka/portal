@@ -102,6 +102,9 @@ Rollout note:
 - managed-profile `warp_policy` is the only app endpoint allowed to carry
   backend-provisioned WireGuard config/account material, and only when
   `runtime_ready=true`; public `client_policy` copies stay sanitized
+- the app must treat managed-profile WARP material as capability data, not
+  automatic consent; Hiddify `warp.enable=true` is allowed only after explicit
+  local user consent and a runtime-ready policy
 - allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
 - allowlisted carrier or cohort overrides may switch app-managed flows to `ru_bridge_relay` during a RU reachability incident; that manifest keeps countries as the top-level choice, nests `Обычный` and `Белые списки` via-`mini` choices under non-US countries, and leaves US as direct-only
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
