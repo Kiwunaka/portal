@@ -80,6 +80,7 @@ from models import (
     WebEmailIdentity,
     WebEmailToken,
     WarpEvent,
+    WarpMaterial,
 )
 from payment_providers import (
     PROVIDER_META,
@@ -161,9 +162,7 @@ from observer_service import (
 from network_rollout import (
     NETWORK_ROLLOUT_CONFIG_KEY,
     load_network_rollout_config,
-    managed_warp_policy,
     normalized_network_rollout_config,
-    public_warp_policy,
     ru_bridge_relay_config,
     ru_bridge_relay_enabled,
     resolved_client_policy,
@@ -188,7 +187,16 @@ from web_auth_service import (
     verify_telegram_login_payload,
     verify_telegram_oidc_state_token,
 )
-from warp_service import build_warp_status, record_warp_event
+from warp_service import (
+    build_warp_status,
+    managed_warp_policy_for_user,
+    mark_warp_material_rotation_requested,
+    provision_warp_material,
+    public_warp_policy_for_user,
+    record_warp_event,
+    revoke_warp_material,
+    warp_material_public_payload,
+)
 
 
 init_db()
@@ -874,6 +882,15 @@ class ClientWarpRuntimeEventIn(BaseModel):
     reason_code: str | None = Field(default=None, max_length=64)
     message: str | None = Field(default=None, max_length=500)
     meta: dict[str, Any] | None = None
+
+
+class AdminWarpMaterialPutIn(BaseModel):
+    tg_id: int = Field(gt=0)
+    install_id: str | None = Field(default=None, max_length=128)
+    source: str = Field(default="operator_provisioned", min_length=2, max_length=64)
+    mode: str = Field(default="proxy_over_warp", min_length=3, max_length=32)
+    wireguard_config: dict[str, Any] = Field(default_factory=dict)
+    account: dict[str, Any] | None = None
 
 
 class ReviewCreateIn(BaseModel):
@@ -5900,10 +5917,11 @@ async def client_managed_profile(
         _maybe_downgrade_expired_to_free(s, user)
         _ensure_free_cycle_state_persisted(s, user)
         rollout_config = load_network_rollout_config(session=s)
+        install_id = str(getattr(user, "app_install_id", "") or "").strip() or None
         client_policy = app_first_service.build_client_policy(
             session=s,
             user=user,
-            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            install_id=install_id,
             carrier=_request_carrier_header(x_portal_carrier),
             rollout_config=rollout_config,
         )
@@ -5947,7 +5965,12 @@ async def client_managed_profile(
             "support_context": dict(client_policy.get("support_context") or {}),
             "subscription_url": build_subscription_url(str(getattr(user, "sub_token", "") or "")),
             "smart_connect": smart_connect,
-            "warp_policy": managed_warp_policy(rollout_config),
+            "warp_policy": managed_warp_policy_for_user(
+                s,
+                user=user,
+                install_id=install_id,
+                rollout_config=rollout_config,
+            ),
             "linked_identities": _linked_identities_payload(s=s, user=user, auth_user=auth_user),
             "access": {
                 **access_policy,
@@ -6097,7 +6120,12 @@ def _client_warp_context(request: Request, x_telegram_init_data: str) -> tuple[A
         raise HTTPException(status_code=404, detail="User not found")
     install_id = str(getattr(user, "app_install_id", "") or "").strip()
     rollout_config = load_network_rollout_config(session=s)
-    policy = public_warp_policy(rollout_config)
+    policy = public_warp_policy_for_user(
+        s,
+        user=user,
+        install_id=install_id,
+        rollout_config=rollout_config,
+    )
     return s, user, install_id, policy
 
 
@@ -6180,6 +6208,7 @@ async def client_warp_revoke(
             consented=False,
             meta={"source": "app_action", "previous_state": status.get("state")},
         )
+        revoke_warp_material(s, user=user, install_id=install_id)
         s.commit()
         return build_warp_status(s, user=user, install_id=install_id, policy=policy)
     finally:
@@ -6208,6 +6237,7 @@ async def client_warp_rotate(
             consented=bool(status.get("consented")),
             meta={"source": "app_action", "previous_state": status.get("state")},
         )
+        mark_warp_material_rotation_requested(s, user=user, install_id=install_id)
         s.commit()
         return build_warp_status(s, user=user, install_id=install_id, policy=policy)
     finally:
@@ -11890,6 +11920,86 @@ async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_i
         },
     )
     return {"ok": True, "network_rollout_config": normalized}
+
+
+@app.put("/api/admin/client/warp/material")
+async def admin_client_warp_material_put(
+    payload: AdminWarpMaterialPutIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    row_id = 0
+    audit_meta: dict[str, Any] = {}
+    try:
+        user = s.query(User).filter(User.tg_id == int(payload.tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        install_id = (
+            str(payload.install_id or getattr(user, "app_install_id", "") or "").strip()
+            or None
+        )
+        row = provision_warp_material(
+            s,
+            user=user,
+            install_id=install_id,
+            wireguard_config=dict(payload.wireguard_config or {}),
+            account=dict(payload.account or {}),
+            source=payload.source,
+            mode=payload.mode,
+        )
+        s.flush()
+        policy = public_warp_policy_for_user(
+            s,
+            user=user,
+            install_id=install_id,
+            rollout_config=load_network_rollout_config(session=s),
+        )
+        record_warp_event(
+            s,
+            user=user,
+            install_id=install_id,
+            policy=policy,
+            event_name="material_provisioned",
+            state="ready_to_consent",
+            reason_code="admin_provisioned",
+            consented=False,
+            meta={"source": "admin", "actor_tg_id": actor, "material_id": int(row.id or 0)},
+        )
+        s.commit()
+        s.refresh(row)
+        row_id = int(row.id or 0)
+        policy = public_warp_policy_for_user(
+            s,
+            user=user,
+            install_id=install_id,
+            rollout_config=load_network_rollout_config(session=s),
+        )
+        material = warp_material_public_payload(row, policy=policy)
+        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
+        audit_meta = {
+            "material_id": row_id,
+            "install_id": install_id,
+            "material_hash": material.get("material_hash"),
+            "runtime_ready": bool(material.get("runtime_ready")),
+            "source": material.get("source"),
+        }
+        return {"ok": True, "material": material, "warp_status": status}
+    except ValueError as exc:
+        s.rollback()
+        raise HTTPException(status_code=400, detail={"code": "invalid_warp_material", "message": str(exc)}) from exc
+    except RuntimeError as exc:
+        s.rollback()
+        raise HTTPException(status_code=503, detail={"code": "warp_material_store_unavailable", "message": str(exc)}) from exc
+    finally:
+        s.close()
+        if row_id:
+            _audit_admin(
+                actor_tg_id=actor,
+                action="admin_warp_material_put",
+                target_tg_id=int(payload.tg_id),
+                meta=audit_meta,
+            )
 
 
 @app.get("/api/admin/promo-slots")

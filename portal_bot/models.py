@@ -465,6 +465,25 @@ class WarpEvent(Base):
     created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
 
 
+class WarpMaterial(Base):
+    __tablename__ = "warp_materials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    install_id = Column(String(128), index=True, nullable=True)
+    source = Column(String(64), default="operator_provisioned", nullable=False)
+    mode = Column(String(32), default="proxy_over_warp", nullable=False)
+    state = Column(String(32), default="ready", index=True, nullable=False)
+    wireguard_ciphertext = Column(Text, nullable=False)
+    account_ciphertext = Column(Text, nullable=True)
+    material_hash = Column(String(64), index=True, nullable=True)
+    is_active = Column(Boolean, default=True, index=True, nullable=False)
+    provisioned_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+    rotation_requested_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class FunnelEvent(Base):
     __tablename__ = "funnel_events"
 

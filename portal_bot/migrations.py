@@ -775,6 +775,42 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_created_at ON warp_events(created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_tg_created ON warp_events(tg_id, created_at);"))
 
+        # warp_materials: encrypted backend-owned WARP account/WireGuard material.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS warp_materials (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128),
+                  source VARCHAR(64) DEFAULT 'operator_provisioned' NOT NULL,
+                  mode VARCHAR(32) DEFAULT 'proxy_over_warp' NOT NULL,
+                  state VARCHAR(32) DEFAULT 'ready' NOT NULL,
+                  wireguard_ciphertext TEXT NOT NULL,
+                  account_ciphertext TEXT,
+                  material_hash VARCHAR(64),
+                  is_active BOOLEAN DEFAULT 1 NOT NULL,
+                  provisioned_at DATETIME NOT NULL,
+                  rotation_requested_at DATETIME,
+                  revoked_at DATETIME,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_tg_id ON warp_materials(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_install_id ON warp_materials(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_state ON warp_materials(state);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_material_hash ON warp_materials(material_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_is_active ON warp_materials(is_active);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_provisioned_at ON warp_materials(provisioned_at);"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_warp_materials_tg_install_active "
+                "ON warp_materials(tg_id, install_id, is_active);"
+            )
+        )
+
         conn.execute(
             text(
                 """
@@ -1594,6 +1630,40 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_state ON warp_events(state);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_created_at ON warp_events(created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_tg_created ON warp_events(tg_id, created_at);"))
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS warp_materials (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128),
+                  source VARCHAR(64) NOT NULL DEFAULT 'operator_provisioned',
+                  mode VARCHAR(32) NOT NULL DEFAULT 'proxy_over_warp',
+                  state VARCHAR(32) NOT NULL DEFAULT 'ready',
+                  wireguard_ciphertext TEXT NOT NULL,
+                  account_ciphertext TEXT,
+                  material_hash VARCHAR(64),
+                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                  provisioned_at TIMESTAMP NOT NULL,
+                  rotation_requested_at TIMESTAMP,
+                  revoked_at TIMESTAMP,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_tg_id ON warp_materials(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_install_id ON warp_materials(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_state ON warp_materials(state);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_material_hash ON warp_materials(material_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_is_active ON warp_materials(is_active);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_materials_provisioned_at ON warp_materials(provisioned_at);"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_warp_materials_tg_install_active "
+                "ON warp_materials(tg_id, install_id, is_active);"
+            )
+        )
         conn.execute(
             text(
                 """

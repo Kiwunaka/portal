@@ -345,6 +345,125 @@ def test_managed_profile_exposes_warp_policy_without_leaking_public_policy_secre
     assert warp_policy["account"]["account-id"] == "test-account-id"
 
 
+def test_admin_warp_material_store_encrypts_at_rest_and_scopes_managed_profile(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    start_trial = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-warp-material",
+            "device_name": "Windows WARP Material Device",
+            "platform": "windows",
+            "trial_days": 5,
+        },
+    )
+    assert start_trial.status_code == 200, start_trial.text
+    start_body = start_trial.json()
+    auth_headers = {"Authorization": f"Bearer {start_body['session_token']}"}
+
+    initial_status = client.get("/api/client/warp/status", headers=auth_headers)
+    assert initial_status.status_code == 200, initial_status.text
+    assert initial_status.json()["runtime_ready"] is False
+
+    provision = client.put(
+        "/api/admin/client/warp/material",
+        headers=_admin_headers(),
+        json={
+            "tg_id": start_body["account_id"],
+            "install_id": "install-warp-material",
+            "source": "operator_test",
+            "mode": "proxy_over_warp",
+            "wireguard_config": {
+                "private-key": "material-private-key",
+                "local-address-ipv4": "172.16.9.2",
+                "local-address-ipv6": "2606:4700:110:feed::2",
+                "peer-public-key": "material-peer-public-key",
+                "client-id": "material-client-id",
+            },
+            "account": {
+                "account-id": "material-account-id",
+                "access-token": "material-access-token",
+            },
+        },
+    )
+    assert provision.status_code == 200, provision.text
+    provision_body = provision.json()
+    assert provision_body["ok"] is True
+    assert provision_body["material"]["state"] == "ready"
+    assert provision_body["material"]["runtime_ready"] is True
+    assert provision_body["warp_status"]["runtime_ready"] is True
+    assert provision_body["warp_status"]["state"] == "ready_to_consent"
+    provision_json = json.dumps(provision_body, ensure_ascii=False, sort_keys=True)
+    assert "material-private-key" not in provision_json
+    assert "material-access-token" not in provision_json
+
+    db = api.SessionLocal()
+    try:
+        row = (
+            db.query(api.WarpMaterial)
+            .filter(api.WarpMaterial.tg_id == int(start_body["account_id"]))
+            .filter(api.WarpMaterial.install_id == "install-warp-material")
+            .one()
+        )
+        assert row.is_active is True
+        assert row.state == "ready"
+        assert row.wireguard_ciphertext
+        assert row.account_ciphertext
+        stored_json = json.dumps(
+            {
+                "wireguard_ciphertext": row.wireguard_ciphertext,
+                "account_ciphertext": row.account_ciphertext,
+                "material_hash": row.material_hash,
+            },
+            sort_keys=True,
+        )
+        assert "material-private-key" not in stored_json
+        assert "material-access-token" not in stored_json
+    finally:
+        db.close()
+
+    status = client.get("/api/client/warp/status", headers=auth_headers)
+    assert status.status_code == 200, status.text
+    assert status.json()["runtime_ready"] is True
+    assert status.json()["wireguard_config_available"] is True
+    assert "material-private-key" not in json.dumps(status.json(), ensure_ascii=False, sort_keys=True)
+
+    managed_manifest = client.get("/api/client/profile/managed", headers=auth_headers)
+    assert managed_manifest.status_code == 200, managed_manifest.text
+    warp_policy = managed_manifest.json()["warp_policy"]
+    assert warp_policy["runtime_ready"] is True
+    assert warp_policy["wireguard_config"]["private-key"] == "material-private-key"
+    assert warp_policy["account"]["access-token"] == "material-access-token"
+
+    dashboard = client.get("/api/dashboard", headers=auth_headers)
+    assert dashboard.status_code == 200, dashboard.text
+    dashboard_json = json.dumps(dashboard.json(), ensure_ascii=False, sort_keys=True)
+    assert "material-private-key" not in dashboard_json
+    assert "material-access-token" not in dashboard_json
+
+    revoke = client.post("/api/client/warp/revoke", headers=auth_headers, json={"reason_code": "user_disabled"})
+    assert revoke.status_code == 200, revoke.text
+    assert revoke.json()["state"] == "revoked"
+    assert revoke.json()["consented"] is False
+
+    after_revoke = client.get("/api/client/profile/managed", headers=auth_headers)
+    assert after_revoke.status_code == 200, after_revoke.text
+    after_revoke_policy = after_revoke.json()["warp_policy"]
+    assert after_revoke_policy["runtime_ready"] is False
+    assert "wireguard_config" not in after_revoke_policy
+    assert "account" not in after_revoke_policy
+
+    db = api.SessionLocal()
+    try:
+        revoked_row = db.query(api.WarpMaterial).filter(api.WarpMaterial.id == int(provision_body["material"]["id"])).one()
+        assert revoked_row.is_active is False
+        assert revoked_row.state == "revoked"
+        assert revoked_row.revoked_at is not None
+    finally:
+        db.close()
+
+
 def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)

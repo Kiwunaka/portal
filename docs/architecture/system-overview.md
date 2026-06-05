@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-06-04
+Last updated: 2026-06-05
 
 ## Document Status
 
@@ -55,7 +55,8 @@ Reference-lane note:
 - `portal_bot/warp_service.py`
   Bounded app-facing WARP lifecycle helper used by the API for readiness
   status, consent/revoke/rotation events, runtime fallback telemetry, and
-  secret redaction before ledger persistence.
+  secret redaction before ledger persistence. It also owns encrypted-at-rest
+  per-user/per-install WARP material shaping for managed profile delivery.
 - `portal_bot/bot.py`
   Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
@@ -89,6 +90,10 @@ Reference-lane note:
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
 - `smart_connect` contains a rollout-compatible shortlist, internal probe targets, rejection counters, scoring hints, and stickiness metadata so the client can combine real RTT with backend health/load signals without guessing
 - `client_policy.warp_policy` remains sanitized; WireGuard config/account material may appear only in the authenticated managed-profile `warp_policy` when runtime proof marks it ready, and the client must still require explicit backend-backed user consent before setting Hiddify `warp.enable=true`
+- scoped WARP material lives in `warp_materials` encrypted at rest; operators
+  provision it through `PUT /api/admin/client/warp/material`, while public
+  status and dashboard policy continue to expose only sanitized readiness
+  fields
 - `GET /api/client/warp/status`, `POST /api/client/warp/consent`,
   `POST /api/client/warp/revoke`, `POST /api/client/warp/rotate`, and
   `POST /api/client/warp/events` own the app-facing WARP lifecycle; these

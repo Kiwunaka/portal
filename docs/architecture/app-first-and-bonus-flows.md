@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-06-04
+Last updated: 2026-06-05
 
 ## Document Status
 
@@ -102,6 +102,13 @@ Rollout note:
 - managed-profile `warp_policy` is the only app endpoint allowed to carry
   backend-provisioned WireGuard config/account material, and only when
   `runtime_ready=true`; public `client_policy` copies stay sanitized
+- backend-owned WARP material is stored per user/install in `warp_materials`
+  using encrypted-at-rest WireGuard/account payloads; rollout-level WARP
+  material remains a compatibility fallback and must not become the default
+  long-lived source for real credentials
+- `PUT /api/admin/client/warp/material` is the operator provisioning endpoint
+  for scoped WARP material; responses expose only redacted material metadata,
+  a material hash, and sanitized WARP status, never raw WireGuard/account data
 - the app must treat managed-profile WARP material as capability data, not
   automatic consent; Hiddify `warp.enable=true` is allowed only after explicit
   local user consent and a runtime-ready policy
@@ -193,6 +200,7 @@ Current live backend contract:
 - `POST /api/client/warp/revoke`
 - `POST /api/client/warp/rotate`
 - `POST /api/client/warp/events`
+- `PUT /api/admin/client/warp/material`
 - `GET /api/public/catalog`
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`
