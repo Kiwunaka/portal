@@ -593,6 +593,13 @@ def test_warp_material_hardening_limits_stale_material_and_reports_summary(monke
     assert summary_body["events"]["recent_material_provisions"] == 1
     assert summary_body["events"]["recent_runtime_errors"] == 1
     assert summary_body["events"]["recent_rate_limits"] >= 2
+    assert summary_body["runtime"]["last_state"] == "error"
+    assert summary_body["runtime"]["last_reason_code"] == "handshake_failed"
+    assert summary_body["runtime"]["state_counts"]["error"] == 1
+    assert summary_body["runtime"]["recent_events"][0]["event_name"] == "runtime_error"
+    assert summary_body["runtime"]["recent_events"][0]["state"] == "error"
+    assert "message" not in summary_body["runtime"]["recent_events"][0]
+    assert "meta" not in summary_body["runtime"]["recent_events"][0]
     summary_json = json.dumps(summary_body, ensure_ascii=False, sort_keys=True)
     assert "hardening-private-key" not in summary_json
     assert "hardening-access-token" not in summary_json

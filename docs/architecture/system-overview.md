@@ -96,7 +96,8 @@ Reference-lane note:
   fields
 - scoped WARP provisioning and rotation are protected by per-hour backend
   limits; stale material is rejected from managed profiles after
-  `WARP_MATERIAL_MAX_AGE_HOURS`, and operators can inspect redacted counts via
+  `WARP_MATERIAL_MAX_AGE_HOURS`, and operators can inspect redacted material
+  counts plus runtime state/reason/event headers via
   `GET /api/admin/client/warp/summary`
 - `GET /api/client/warp/status`, `POST /api/client/warp/consent`,
   `POST /api/client/warp/revoke`, `POST /api/client/warp/rotate`, and

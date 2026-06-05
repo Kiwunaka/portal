@@ -138,6 +138,9 @@ Required fields:
 - active backend-backed consents
 - recent material provisions, provisioning failures, rotation requests,
   runtime errors/fallbacks, and rate-limit hits
+- redacted runtime summary: last runtime state, last reason code, per-state
+  counts, and the latest runtime event headers without user messages,
+  WireGuard/account material, or raw metadata
 - configured `material_max_age_hours`
 
 Operational rules:

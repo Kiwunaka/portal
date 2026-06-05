@@ -630,6 +630,40 @@ export type AdminSummaryPayload = {
   }>;
 };
 
+export type AdminClientWarpSummaryPayload = {
+  generated_at?: string | null;
+  window: { hours: number };
+  material_max_age_hours: number;
+  materials: {
+    total: number;
+    active: number;
+    stale_active: number;
+    revoked: number;
+    rotation_requested: number;
+  };
+  events: {
+    active_consents: number;
+    recent_material_provisions: number;
+    recent_provisioning_failures: number;
+    recent_rotation_requests: number;
+    recent_runtime_errors: number;
+    recent_rate_limits: number;
+  };
+  runtime: {
+    last_state?: string | null;
+    last_reason_code?: string | null;
+    last_event_at?: string | null;
+    state_counts: Record<string, number>;
+    recent_events: Array<{
+      event_name: string;
+      state: string;
+      reason_code?: string | null;
+      runtime_ready: boolean;
+      created_at?: string | null;
+    }>;
+  };
+};
+
 export type AdminUserStatus = "active" | "expired" | "blocked" | "manual_test";
 export type AdminUserOrigin = "telegram" | "app" | "hybrid" | "manual_test";
 export type AdminObserverState = "ok" | "watch" | "suspicious";
@@ -3467,6 +3501,10 @@ export function adminFunnelSummary(params?: { from?: string; to?: string }): Pro
   if (params?.to) qs.set("to", params.to);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<AdminFunnelSummary>(`/api/admin/funnel/summary${suffix}`);
+}
+
+export function adminClientWarpSummary(): Promise<AdminClientWarpSummaryPayload> {
+  return apiFetch<AdminClientWarpSummaryPayload>("/api/admin/client/warp/summary");
 }
 
 export async function adminNodesRuntime(params?: { only?: string[] }): Promise<AdminNodeRuntimeRow[]> {

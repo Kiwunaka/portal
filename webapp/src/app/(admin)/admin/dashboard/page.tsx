@@ -22,14 +22,17 @@ import {
   LifeBuoy,
   RefreshCw,
   Server,
+  ShieldCheck,
   UsersRound,
 } from "lucide-react";
 import {
+  adminClientWarpSummary,
   adminMetricsStatus,
   adminMetricsTimeseries,
   adminSummary,
   adminTickets,
   adminUsers,
+  type AdminClientWarpSummaryPayload,
   type AdminMetricsPoint,
   type AdminMetricsStatus,
   type AdminSummaryPayload,
@@ -81,6 +84,21 @@ function nodeScoreLabel(score: number): string {
   return "риск";
 }
 
+function warpSummaryTone(summary: AdminClientWarpSummaryPayload | null): DashboardTone {
+  if (!summary) return "neutral";
+  if (summary.events.recent_provisioning_failures > 0 || summary.events.recent_runtime_errors > 0) return "danger";
+  if (summary.materials.stale_active > 0 || summary.materials.rotation_requested > 0 || summary.events.recent_rate_limits > 0) return "warning";
+  if (summary.materials.active > 0 || summary.events.active_consents > 0) return "success";
+  return "neutral";
+}
+
+function warpRuntimeLabel(summary: AdminClientWarpSummaryPayload | null): string {
+  if (!summary) return "not available";
+  const state = summary.runtime.last_state || "quiet";
+  const reason = summary.runtime.last_reason_code ? ` / ${summary.runtime.last_reason_code}` : "";
+  return `${state}${reason}`;
+}
+
 function isAlertItem(item: AlertItem | null): item is AlertItem {
   return item != null;
 }
@@ -93,6 +111,7 @@ export default function AdminDashboardPage() {
   const [series, setSeries] = useState<AdminMetricsPoint[]>([]);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
+  const [warpSummary, setWarpSummary] = useState<AdminClientWarpSummaryPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
@@ -103,12 +122,13 @@ export default function AdminDashboardPage() {
     setError("");
     try {
       const range = lastDaysRange(7);
-      const [summaryPayload, metricsPayload, seriesPayload, usersPayload, ticketsPayload] = await Promise.all([
+      const [summaryPayload, metricsPayload, seriesPayload, usersPayload, ticketsPayload, warpPayload] = await Promise.all([
         adminSummary(),
         adminMetricsStatus(),
         adminMetricsTimeseries(range),
         adminUsers({ page_size: 5 }),
         adminTickets("", 5),
+        adminClientWarpSummary().catch(() => null),
       ]);
 
       setSummary(summaryPayload);
@@ -116,6 +136,7 @@ export default function AdminDashboardPage() {
       setSeries(seriesPayload.points || []);
       setUsers(usersPayload.users || []);
       setTickets(ticketsPayload || []);
+      setWarpSummary(warpPayload);
       setLastRefreshedAt(new Date());
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось загрузить административную сводку."));
@@ -239,6 +260,7 @@ export default function AdminDashboardPage() {
   const supportTone: DashboardTone = summary.tickets.open > 0 ? "warning" : "success";
   const paymentTone: DashboardTone = summary.errors.payment_callback_failures_24h > 0 ? "warning" : "success";
   const fallbackTone: DashboardTone = summary.errors.subscription_numeric_fallbacks_24h > 0 ? "warning" : "success";
+  const warpTone = warpSummaryTone(warpSummary);
 
   return (
     <section className="space-y-4">
@@ -280,7 +302,8 @@ export default function AdminDashboardPage() {
         />
       </article>
 
-      <div className="grid gap-3 lg:grid-cols-4">
+      <div className="grid gap-3 lg:grid-cols-5">
+        <ShiftMetric label="WARP" value={warpSummary ? `${warpSummary.materials.active}/${warpSummary.materials.total}` : "n/a"} hint={warpSummary ? `Runtime: ${warpRuntimeLabel(warpSummary)}` : "Summary endpoint unavailable."} icon={<ShieldCheck aria-hidden className="h-4 w-4" />} tone={warpTone} />
         <ShiftMetric label="Люди" value={`${summary.users.active}/${summary.users.total}`} hint={`Платные ${summary.users.paid} · бесплатные ${summary.users.free}`} icon={<UsersRound aria-hidden className="h-4 w-4" />} />
         <ShiftMetric label="Открытые тикеты" value={summary.tickets.open} hint={summary.tickets.open > 0 ? "Очередь поддержки ждёт ответа." : "Очередь поддержки пустая."} icon={<LifeBuoy aria-hidden className="h-4 w-4" />} tone={supportTone} />
         <ShiftMetric label="Узлов в норме" value={`${summary.nodes.healthy}/${summary.nodes.total}`} hint={unhealthyNodes > 0 ? `Проверить ${unhealthyNodes} узл.` : `Свежесть: ${metricsLabel(metrics)}`} icon={<Server aria-hidden className="h-4 w-4" />} tone={nodeTone} />
@@ -307,6 +330,7 @@ export default function AdminDashboardPage() {
 
         <DashboardCell title="В работе" subtitle="Очереди, которые оператор должен открыть после проверки тревог.">
           <div className="grid gap-3 sm:grid-cols-2">
+            <WorkQueueCard title="WARP lifecycle" value={warpSummary?.events.recent_runtime_errors ?? 0} hint={warpSummary ? `Runtime: ${warpRuntimeLabel(warpSummary)} · consents: ${warpSummary.events.active_consents}` : "Summary endpoint unavailable."} href="/admin/network" tone={warpTone} />
             <WorkQueueCard title="Поддержка" value={summary.tickets.open} hint="Открытые обращения, где пользователю нужен ответ." href="/admin/tickets" tone={supportTone} />
             <WorkQueueCard title="Истекает за 3 дня" value={summary.retention.expiring_3d} hint={`Истекли за 7 дней: ${summary.retention.expired_7d}`} href="/admin/users" tone={summary.retention.expiring_3d > 0 ? "warning" : "neutral"} />
             <WorkQueueCard title="К реактивации" value={summary.retention.reactivation_candidates} hint="Кандидаты на возврат без ручного поиска." href="/admin/users" tone={summary.retention.reactivation_candidates > 0 ? "accent" : "neutral"} />

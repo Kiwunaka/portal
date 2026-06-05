@@ -421,6 +421,8 @@ def build_warp_admin_summary(session, *, now: datetime | None = None) -> dict[st
     recent_rotation_requests = 0
     recent_runtime_errors = 0
     recent_rate_limits = 0
+    recent_runtime_events: list[dict[str, Any]] = []
+    runtime_state_counts: dict[str, int] = {}
 
     for row in events:
         event_name = str(getattr(row, "event_name", "") or "")
@@ -449,6 +451,21 @@ def build_warp_admin_summary(session, *, now: datetime | None = None) -> dict[st
             recent_rate_limits += 1
         if event_name.startswith("runtime_") and state in {"error", "failed", "fallback"}:
             recent_runtime_errors += 1
+        if event_name.startswith("runtime_"):
+            normalized_state = state or "unknown"
+            runtime_state_counts[normalized_state] = runtime_state_counts.get(normalized_state, 0) + 1
+            recent_runtime_events.append(
+                {
+                    "event_name": event_name,
+                    "state": normalized_state,
+                    "reason_code": str(getattr(row, "reason_code", "") or "") or None,
+                    "runtime_ready": bool(getattr(row, "runtime_ready", False)),
+                    "created_at": _iso(created_at),
+                }
+            )
+
+    recent_runtime_events.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
+    last_runtime_event = recent_runtime_events[0] if recent_runtime_events else {}
 
     return {
         "generated_at": _iso(current),
@@ -468,6 +485,13 @@ def build_warp_admin_summary(session, *, now: datetime | None = None) -> dict[st
             "recent_rotation_requests": recent_rotation_requests,
             "recent_runtime_errors": recent_runtime_errors,
             "recent_rate_limits": recent_rate_limits,
+        },
+        "runtime": {
+            "last_state": last_runtime_event.get("state"),
+            "last_reason_code": last_runtime_event.get("reason_code"),
+            "last_event_at": last_runtime_event.get("created_at"),
+            "state_counts": runtime_state_counts,
+            "recent_events": recent_runtime_events[:5],
         },
     }
 

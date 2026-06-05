@@ -128,6 +128,10 @@ Rollout note:
   rotation request, and runtime fallback/error events; request/ledger metadata
   must be sanitized so WireGuard keys, account tokens, subscription URLs, and
   bearer-like material are never stored in this ledger
+- `GET /api/admin/client/warp/summary` exposes only redacted operator
+  telemetry: material counts, active consents, lifecycle counters, last runtime
+  state/reason, per-state counts, and recent runtime event headers without
+  client messages or raw metadata
 - allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
 - allowlisted carrier or cohort overrides may switch app-managed flows to `ru_bridge_relay` during a RU reachability incident; that manifest keeps countries as the top-level choice, nests `Обычный` and `Белые списки` via-`mini` choices under non-US countries, and leaves US as direct-only
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
