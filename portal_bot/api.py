@@ -79,6 +79,7 @@ from models import (
     WebCabinetHandoffToken,
     WebEmailIdentity,
     WebEmailToken,
+    WarpEvent,
 )
 from payment_providers import (
     PROVIDER_META,
@@ -162,6 +163,7 @@ from network_rollout import (
     load_network_rollout_config,
     managed_warp_policy,
     normalized_network_rollout_config,
+    public_warp_policy,
     ru_bridge_relay_config,
     ru_bridge_relay_enabled,
     resolved_client_policy,
@@ -186,6 +188,7 @@ from web_auth_service import (
     verify_telegram_login_payload,
     verify_telegram_oidc_state_token,
 )
+from warp_service import build_warp_status, record_warp_event
 
 
 init_db()
@@ -854,6 +857,23 @@ class ClientRoutePolicyIn(BaseModel):
     route_mode: str = Field(default=app_first_service.ROUTE_MODE_ALL_TRAFFIC, min_length=3, max_length=32)
     selected_apps: list[str] = Field(default_factory=list, max_length=128)
     requires_elevated_privileges: bool | None = None
+
+
+class ClientWarpConsentIn(BaseModel):
+    consent: bool = True
+    reason_code: str | None = Field(default=None, max_length=64)
+
+
+class ClientWarpActionIn(BaseModel):
+    reason_code: str | None = Field(default=None, max_length=64)
+
+
+class ClientWarpRuntimeEventIn(BaseModel):
+    event_name: str = Field(min_length=2, max_length=64)
+    state: str | None = Field(default=None, max_length=32)
+    reason_code: str | None = Field(default=None, max_length=64)
+    message: str | None = Field(default=None, max_length=500)
+    meta: dict[str, Any] | None = None
 
 
 class ReviewCreateIn(BaseModel):
@@ -6063,6 +6083,162 @@ async def client_nodes_latency_samples(
             "accepted_samples": len(accepted_samples),
             "preferred_node_code": selected_node_code or None,
         }
+    finally:
+        s.close()
+
+
+def _client_warp_context(request: Request, x_telegram_init_data: str) -> tuple[Any, User, str, dict[str, Any]]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    user = s.query(User).filter(User.tg_id == tg_id).first()
+    if not user:
+        s.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    install_id = str(getattr(user, "app_install_id", "") or "").strip()
+    rollout_config = load_network_rollout_config(session=s)
+    policy = public_warp_policy(rollout_config)
+    return s, user, install_id, policy
+
+
+def _warp_not_ready_detail(status: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "code": "warp_not_runtime_ready",
+        "state": str(status.get("state") or "not_ready"),
+        "policy_state": str(status.get("policy_state") or ""),
+        "message": "Extended protection is not ready for this device yet.",
+    }
+
+
+@app.get("/api/client/warp/status")
+async def client_warp_status(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    s, user, install_id, policy = _client_warp_context(request, x_telegram_init_data)
+    try:
+        return build_warp_status(s, user=user, install_id=install_id, policy=policy)
+    finally:
+        s.close()
+
+
+@app.post("/api/client/warp/consent")
+async def client_warp_consent(
+    payload: ClientWarpConsentIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, install_id, policy = _client_warp_context(request, x_telegram_init_data)
+    try:
+        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
+        if not bool(status.get("runtime_ready")):
+            raise HTTPException(status_code=409, detail=_warp_not_ready_detail(status))
+        if not payload.consent:
+            record_warp_event(
+                s,
+                user=user,
+                install_id=install_id,
+                policy=policy,
+                event_name="revoke",
+                state="revoked",
+                reason_code=payload.reason_code or "consent_declined",
+                consented=False,
+                meta={"source": "app_consent", "action": "decline"},
+            )
+        else:
+            record_warp_event(
+                s,
+                user=user,
+                install_id=install_id,
+                policy=policy,
+                event_name="consent",
+                state="consented",
+                reason_code=payload.reason_code or "user_consented",
+                consented=True,
+                meta={"source": "app_consent", "action": "accept"},
+            )
+        s.commit()
+        return build_warp_status(s, user=user, install_id=install_id, policy=policy)
+    finally:
+        s.close()
+
+
+@app.post("/api/client/warp/revoke")
+async def client_warp_revoke(
+    payload: ClientWarpActionIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, install_id, policy = _client_warp_context(request, x_telegram_init_data)
+    try:
+        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
+        record_warp_event(
+            s,
+            user=user,
+            install_id=install_id,
+            policy=policy,
+            event_name="revoke",
+            state="revoked",
+            reason_code=payload.reason_code or "user_disabled",
+            consented=False,
+            meta={"source": "app_action", "previous_state": status.get("state")},
+        )
+        s.commit()
+        return build_warp_status(s, user=user, install_id=install_id, policy=policy)
+    finally:
+        s.close()
+
+
+@app.post("/api/client/warp/rotate")
+async def client_warp_rotate(
+    payload: ClientWarpActionIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, install_id, policy = _client_warp_context(request, x_telegram_init_data)
+    try:
+        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
+        if not bool(status.get("runtime_ready")):
+            raise HTTPException(status_code=409, detail=_warp_not_ready_detail(status))
+        record_warp_event(
+            s,
+            user=user,
+            install_id=install_id,
+            policy=policy,
+            event_name="rotate_requested",
+            state="rotation_requested",
+            reason_code=payload.reason_code or "user_requested",
+            consented=bool(status.get("consented")),
+            meta={"source": "app_action", "previous_state": status.get("state")},
+        )
+        s.commit()
+        return build_warp_status(s, user=user, install_id=install_id, policy=policy)
+    finally:
+        s.close()
+
+
+@app.post("/api/client/warp/events")
+async def client_warp_events(
+    payload: ClientWarpRuntimeEventIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, install_id, policy = _client_warp_context(request, x_telegram_init_data)
+    try:
+        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
+        event_meta = dict(payload.meta or {})
+        if payload.message:
+            event_meta["message"] = payload.message
+        record_warp_event(
+            s,
+            user=user,
+            install_id=install_id,
+            policy=policy,
+            event_name=payload.event_name,
+            state=payload.state or str(status.get("state") or "not_ready"),
+            reason_code=payload.reason_code,
+            consented=bool(status.get("consented")),
+            meta=event_meta,
+        )
+        s.commit()
+        return {"ok": True, **build_warp_status(s, user=user, install_id=install_id, policy=policy)}
     finally:
         s.close()
 

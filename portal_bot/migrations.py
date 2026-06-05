@@ -749,6 +749,32 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
 
+        # warp_events: app-facing enhanced protection lifecycle ledger.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS warp_events (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128),
+                  event_name VARCHAR(64) NOT NULL,
+                  state VARCHAR(32) NOT NULL,
+                  reason_code VARCHAR(64),
+                  runtime_ready BOOLEAN DEFAULT 0 NOT NULL,
+                  consented BOOLEAN DEFAULT 0 NOT NULL,
+                  meta_json TEXT,
+                  created_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_tg_id ON warp_events(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_install_id ON warp_events(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_event_name ON warp_events(event_name);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_state ON warp_events(state);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_created_at ON warp_events(created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_tg_created ON warp_events(tg_id, created_at);"))
+
         conn.execute(
             text(
                 """
@@ -1544,6 +1570,30 @@ def _run_postgres_migrations(engine: Engine) -> None:
         # Multi-column indexes from P0.
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS warp_events (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128),
+                  event_name VARCHAR(64) NOT NULL,
+                  state VARCHAR(32) NOT NULL,
+                  reason_code VARCHAR(64),
+                  runtime_ready BOOLEAN DEFAULT FALSE NOT NULL,
+                  consented BOOLEAN DEFAULT FALSE NOT NULL,
+                  meta_json TEXT,
+                  created_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_tg_id ON warp_events(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_install_id ON warp_events(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_event_name ON warp_events(event_name);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_state ON warp_events(state);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_created_at ON warp_events(created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_warp_events_tg_created ON warp_events(tg_id, created_at);"))
         conn.execute(
             text(
                 """

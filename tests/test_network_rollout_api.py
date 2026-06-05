@@ -61,6 +61,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "gift_cards_service",
         "payment_providers",
         "shared_surface_facts",
+        "warp_service",
     ]:
         sys.modules.pop(name, None)
 
@@ -342,6 +343,150 @@ def test_managed_profile_exposes_warp_policy_without_leaking_public_policy_secre
     assert warp_policy["mode"] == "proxy_over_warp"
     assert warp_policy["wireguard_config"]["private-key"] == "test-private-key"
     assert warp_policy["account"]["account-id"] == "test-account-id"
+
+
+def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    rollout_payload = _rollout_payload()
+    rollout_payload["warp_policy"] = {
+        "enabled": True,
+        "mode": "proxy_over_warp",
+        "source": "backend_managed",
+        "wireguard_config": {
+            "private-key": "test-private-key",
+            "local-address-ipv4": "172.16.0.2",
+            "peer-public-key": "test-peer-public-key",
+            "client-id": "test-client-id",
+        },
+        "account": {
+            "account-id": "test-account-id",
+            "access-token": "test-access-token",
+        },
+    }
+
+    db = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=db, key="network_rollout_config", value=rollout_payload)
+        db.commit()
+    finally:
+        db.close()
+
+    start_trial = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-warp-lifecycle",
+            "device_name": "Windows WARP Lifecycle Device",
+            "platform": "windows",
+        },
+    )
+    assert start_trial.status_code == 200, start_trial.text
+    auth_headers = {"Authorization": f"Bearer {start_trial.json()['session_token']}"}
+
+    status = client.get("/api/client/warp/status", headers=auth_headers)
+    assert status.status_code == 200, status.text
+    body = status.json()
+    assert body["feature"] == "extended_protection"
+    assert body["public_label"] == "Расширенная защита"
+    assert body["technical_label"] == "WARP"
+    assert body["state"] == "ready_to_consent"
+    assert body["runtime_ready"] is True
+    assert body["consented"] is False
+    status_json = json.dumps(body, ensure_ascii=False, sort_keys=True)
+    assert "test-private-key" not in status_json
+    assert "test-access-token" not in status_json
+    assert "wireguard_config" not in body
+    assert "account" not in body
+
+    consent = client.post("/api/client/warp/consent", headers=auth_headers, json={"consent": True})
+    assert consent.status_code == 200, consent.text
+    assert consent.json()["state"] == "consented"
+    assert consent.json()["consented"] is True
+    assert consent.json()["consented_at"]
+
+    event = client.post(
+        "/api/client/warp/events",
+        headers=auth_headers,
+        json={
+            "event_name": "runtime_fallback",
+            "state": "fallback",
+            "reason_code": "handshake_failed",
+            "message": "baseline fallback used",
+            "meta": {
+                "wireguard_config": {"private-key": "test-private-key"},
+                "account": {"access-token": "test-access-token"},
+                "subscription_url": "https://connect.pokrov.space/s8Kx2mP7qR4wT/secret",
+                "safe_detail": "fallback",
+            },
+        },
+    )
+    assert event.status_code == 200, event.text
+    assert event.json()["ok"] is True
+    assert event.json()["state"] == "fallback"
+
+    after_event = client.get("/api/client/warp/status", headers=auth_headers)
+    assert after_event.status_code == 200, after_event.text
+    after_body = after_event.json()
+    assert after_body["state"] == "fallback"
+    assert after_body["last_event"]["event_name"] == "runtime_fallback"
+    after_json = json.dumps(after_body, ensure_ascii=False, sort_keys=True)
+    assert "test-private-key" not in after_json
+    assert "test-access-token" not in after_json
+    assert "connect.pokrov.space/s8Kx2mP7qR4wT/secret" not in after_json
+
+    rotate = client.post("/api/client/warp/rotate", headers=auth_headers, json={"reason_code": "user_requested"})
+    assert rotate.status_code == 200, rotate.text
+    assert rotate.json()["state"] == "rotation_requested"
+    assert rotate.json()["consented"] is True
+
+    revoke = client.post("/api/client/warp/revoke", headers=auth_headers, json={"reason_code": "user_disabled"})
+    assert revoke.status_code == 200, revoke.text
+    assert revoke.json()["state"] == "revoked"
+    assert revoke.json()["consented"] is False
+    assert revoke.json()["revoked_at"]
+
+    db = api.SessionLocal()
+    try:
+        rows = db.query(api.WarpEvent).order_by(api.WarpEvent.id.asc()).all()
+        assert [row.event_name for row in rows] == [
+            "consent",
+            "runtime_fallback",
+            "rotate_requested",
+            "revoke",
+        ]
+        ledger_json = "\n".join(str(row.meta_json or "") for row in rows)
+        assert "test-private-key" not in ledger_json
+        assert "test-access-token" not in ledger_json
+        assert "connect.pokrov.space/s8Kx2mP7qR4wT/secret" not in ledger_json
+        assert "fallback" in ledger_json
+    finally:
+        db.close()
+
+
+def test_client_warp_consent_rejects_not_ready_policy(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    start_trial = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-warp-not-ready",
+            "device_name": "Android WARP Not Ready Device",
+            "platform": "android",
+        },
+    )
+    assert start_trial.status_code == 200, start_trial.text
+    auth_headers = {"Authorization": f"Bearer {start_trial.json()['session_token']}"}
+
+    status = client.get("/api/client/warp/status", headers=auth_headers)
+    assert status.status_code == 200, status.text
+    assert status.json()["state"] == "not_ready"
+    assert status.json()["runtime_ready"] is False
+    assert status.json()["can_enable"] is False
+
+    consent = client.post("/api/client/warp/consent", headers=auth_headers, json={"consent": True})
+    assert consent.status_code == 409, consent.text
+    assert consent.json()["detail"]["code"] == "warp_not_runtime_ready"
 
 
 def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch, tmp_path) -> None:

@@ -52,6 +52,10 @@ Reference-lane note:
   Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
   Bounded Telegram bonus helper used by the API for read-only subscriber checks and explicit claim flow.
+- `portal_bot/warp_service.py`
+  Bounded app-facing WARP lifecycle helper used by the API for readiness
+  status, consent/revoke/rotation events, runtime fallback telemetry, and
+  secret redaction before ledger persistence.
 - `portal_bot/bot.py`
   Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
@@ -84,7 +88,12 @@ Reference-lane note:
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
 - `smart_connect` contains a rollout-compatible shortlist, internal probe targets, rejection counters, scoring hints, and stickiness metadata so the client can combine real RTT with backend health/load signals without guessing
-- `client_policy.warp_policy` remains sanitized; WireGuard config/account material may appear only in the authenticated managed-profile `warp_policy` when runtime proof marks it ready, and the client must still require explicit local user consent before setting Hiddify `warp.enable=true`
+- `client_policy.warp_policy` remains sanitized; WireGuard config/account material may appear only in the authenticated managed-profile `warp_policy` when runtime proof marks it ready, and the client must still require explicit backend-backed user consent before setting Hiddify `warp.enable=true`
+- `GET /api/client/warp/status`, `POST /api/client/warp/consent`,
+  `POST /api/client/warp/revoke`, `POST /api/client/warp/rotate`, and
+  `POST /api/client/warp/events` own the app-facing WARP lifecycle; these
+  routes write `WarpEvent` rows and redact runtime secrets from public status
+  and ledger metadata
 - `POST /api/client/nodes/latency-samples` stores install-scoped RTT samples plus carrier/platform context for admin visibility and later shortlist stickiness
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path
@@ -460,6 +469,11 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `POST /api/auth/telegram/web-login`
 - additive email-auth rollout endpoints under `/api/auth/email/*` for register, verify, login, recovery, and reset
 - `POST /api/client/session/start-trial`
+- `GET /api/client/warp/status`
+- `POST /api/client/warp/consent`
+- `POST /api/client/warp/revoke`
+- `POST /api/client/warp/rotate`
+- `POST /api/client/warp/events`
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`
 - `POST /api/admin/access-keys/issue`

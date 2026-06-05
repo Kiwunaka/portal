@@ -105,6 +105,15 @@ Rollout note:
 - the app must treat managed-profile WARP material as capability data, not
   automatic consent; Hiddify `warp.enable=true` is allowed only after explicit
   local user consent and a runtime-ready policy
+- app-facing WARP lifecycle state is backend-owned through
+  `GET /api/client/warp/status`, `POST /api/client/warp/consent`,
+  `POST /api/client/warp/revoke`, `POST /api/client/warp/rotate`, and
+  `POST /api/client/warp/events`; the client may cache the result for UI
+  responsiveness but must not treat an in-memory toggle as consent truth
+- WARP lifecycle routes write `WarpEvent` ledger rows for consent, revoke,
+  rotation request, and runtime fallback/error events; request/ledger metadata
+  must be sanitized so WireGuard keys, account tokens, subscription URLs, and
+  bearer-like material are never stored in this ledger
 - allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
 - allowlisted carrier or cohort overrides may switch app-managed flows to `ru_bridge_relay` during a RU reachability incident; that manifest keeps countries as the top-level choice, nests `Обычный` and `Белые списки` via-`mini` choices under non-US countries, and leaves US as direct-only
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
@@ -179,6 +188,11 @@ Current live backend contract:
 - `POST /api/client/session/start-trial`
 - `GET /api/client/profile/managed`
 - `POST /api/client/nodes/latency-samples`
+- `GET /api/client/warp/status`
+- `POST /api/client/warp/consent`
+- `POST /api/client/warp/revoke`
+- `POST /api/client/warp/rotate`
+- `POST /api/client/warp/events`
 - `GET /api/public/catalog`
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`

@@ -450,6 +450,21 @@ class Event(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class WarpEvent(Base):
+    __tablename__ = "warp_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    install_id = Column(String(128), index=True, nullable=True)
+    event_name = Column(String(64), index=True, nullable=False)
+    state = Column(String(32), index=True, nullable=False)
+    reason_code = Column(String(64), nullable=True)
+    runtime_ready = Column(Boolean, default=False, nullable=False)
+    consented = Column(Boolean, default=False, nullable=False)
+    meta_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+
+
 class FunnelEvent(Base):
     __tablename__ = "funnel_events"
 
