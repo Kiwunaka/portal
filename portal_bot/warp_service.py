@@ -5,7 +5,7 @@ import hashlib
 import json
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -41,6 +41,8 @@ _MATERIAL_SECRET_ENV_KEYS = (
     "CHECKOUT_TICKET_SECRET",
     "BOT_TOKEN",
 )
+_DEFAULT_MATERIAL_MAX_AGE_HOURS = 24 * 30
+_SUMMARY_WINDOW_HOURS = 24
 
 
 def _utcnow() -> datetime:
@@ -69,6 +71,20 @@ def _clean_event(value: Any, *, fallback: str = "runtime_event") -> str:
     return raw
 
 
+def _env_int(
+    name: str,
+    *,
+    default: int,
+    minimum: int = 0,
+    maximum: int = 1_000_000,
+) -> int:
+    try:
+        value = int(str(os.getenv(name) or "").strip() or default)
+    except Exception:
+        value = default
+    return max(minimum, min(maximum, value))
+
+
 def _material_fernet() -> Fernet:
     secret = ""
     for key in _MATERIAL_SECRET_ENV_KEYS:
@@ -79,6 +95,29 @@ def _material_fernet() -> Fernet:
         raise RuntimeError("WARP material encryption secret is not configured")
     digest = hashlib.sha256(secret.encode("utf-8")).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def warp_material_max_age_hours() -> int:
+    return _env_int(
+        "WARP_MATERIAL_MAX_AGE_HOURS",
+        default=_DEFAULT_MATERIAL_MAX_AGE_HOURS,
+        minimum=1,
+        maximum=24 * 365,
+    )
+
+
+def warp_material_stale_cutoff(*, now: datetime | None = None) -> datetime:
+    base = now or _utcnow()
+    return base - timedelta(hours=warp_material_max_age_hours())
+
+
+def warp_material_is_stale(row: WarpMaterial, *, now: datetime | None = None) -> bool:
+    if not bool(getattr(row, "is_active", False)):
+        return False
+    provisioned_at = getattr(row, "provisioned_at", None)
+    if not isinstance(provisioned_at, datetime):
+        return True
+    return provisioned_at < warp_material_stale_cutoff(now=now)
 
 
 def _canonical_json(value: Any) -> str:
@@ -186,11 +225,15 @@ def _warp_policy_from_material(
     return managed_warp_policy(wrapper) if include_secrets else public_warp_policy(wrapper)
 
 
-def _material_unavailable_policy(*, include_secrets: bool) -> dict[str, Any]:
+def _material_unavailable_policy(
+    *,
+    include_secrets: bool,
+    state: str = "material_unavailable",
+) -> dict[str, Any]:
     wrapper = {
         "warp_policy": {
             "enabled": True,
-            "state": "material_unavailable",
+            "state": state,
             "mode": "proxy_over_warp",
             "source": "backend_material_store",
         }
@@ -208,6 +251,8 @@ def managed_warp_policy_for_user(
     row = _query_active_warp_material(session, user=user, install_id=install_id)
     if not row:
         return managed_warp_policy(rollout_config)
+    if warp_material_is_stale(row):
+        return _material_unavailable_policy(include_secrets=True, state="material_stale")
     try:
         return _warp_policy_from_material(row, include_secrets=True)
     except RuntimeError:
@@ -224,6 +269,8 @@ def public_warp_policy_for_user(
     row = _query_active_warp_material(session, user=user, install_id=install_id)
     if not row:
         return public_warp_policy(rollout_config)
+    if warp_material_is_stale(row):
+        return _material_unavailable_policy(include_secrets=False, state="material_stale")
     try:
         return _warp_policy_from_material(row, include_secrets=False)
     except RuntimeError:
@@ -344,6 +391,84 @@ def warp_material_public_payload(row: WarpMaterial, *, policy: dict[str, Any] | 
         "rotation_requested_at": _iso(getattr(row, "rotation_requested_at", None)),
         "revoked_at": _iso(getattr(row, "revoked_at", None)),
         "updated_at": _iso(getattr(row, "updated_at", None)),
+    }
+
+
+def build_warp_admin_summary(session, *, now: datetime | None = None) -> dict[str, Any]:
+    current = now or _utcnow()
+    recent_since = current - timedelta(hours=_SUMMARY_WINDOW_HOURS)
+    materials = list(session.query(WarpMaterial).all())
+    active_materials = [
+        row for row in materials if bool(getattr(row, "is_active", False))
+    ]
+    stale_materials = [row for row in active_materials if warp_material_is_stale(row, now=current)]
+    revoked_materials = [
+        row
+        for row in materials
+        if str(getattr(row, "state", "") or "") == "revoked"
+        or getattr(row, "revoked_at", None) is not None
+    ]
+    rotation_requested_materials = [
+        row
+        for row in active_materials
+        if str(getattr(row, "state", "") or "") == "rotation_requested"
+    ]
+
+    events = list(session.query(WarpEvent).order_by(WarpEvent.id.asc()).all())
+    latest_consent: dict[tuple[int, str], bool] = {}
+    recent_material_provisions = 0
+    recent_provisioning_failures = 0
+    recent_rotation_requests = 0
+    recent_runtime_errors = 0
+    recent_rate_limits = 0
+
+    for row in events:
+        event_name = str(getattr(row, "event_name", "") or "")
+        state = str(getattr(row, "state", "") or "")
+        key = (
+            int(getattr(row, "tg_id", 0) or 0),
+            str(getattr(row, "install_id", "") or ""),
+        )
+        if event_name == "consent":
+            latest_consent[key] = True
+        elif event_name == "revoke":
+            latest_consent[key] = False
+        elif bool(getattr(row, "consented", False)):
+            latest_consent[key] = True
+
+        created_at = getattr(row, "created_at", None)
+        if not isinstance(created_at, datetime) or created_at < recent_since:
+            continue
+        if event_name == "material_provisioned":
+            recent_material_provisions += 1
+        if event_name == "material_provision_failed":
+            recent_provisioning_failures += 1
+        if event_name == "rotate_requested":
+            recent_rotation_requests += 1
+        if event_name.endswith("_rate_limited") or state == "rate_limited":
+            recent_rate_limits += 1
+        if event_name.startswith("runtime_") and state in {"error", "failed", "fallback"}:
+            recent_runtime_errors += 1
+
+    return {
+        "generated_at": _iso(current),
+        "window": {"hours": _SUMMARY_WINDOW_HOURS},
+        "material_max_age_hours": warp_material_max_age_hours(),
+        "materials": {
+            "total": len(materials),
+            "active": len(active_materials),
+            "stale_active": len(stale_materials),
+            "revoked": len(revoked_materials),
+            "rotation_requested": len(rotation_requested_materials),
+        },
+        "events": {
+            "active_consents": sum(1 for value in latest_consent.values() if value),
+            "recent_material_provisions": recent_material_provisions,
+            "recent_provisioning_failures": recent_provisioning_failures,
+            "recent_rotation_requests": recent_rotation_requests,
+            "recent_runtime_errors": recent_runtime_errors,
+            "recent_rate_limits": recent_rate_limits,
+        },
     }
 
 

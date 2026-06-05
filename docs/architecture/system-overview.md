@@ -94,6 +94,10 @@ Reference-lane note:
   provision it through `PUT /api/admin/client/warp/material`, while public
   status and dashboard policy continue to expose only sanitized readiness
   fields
+- scoped WARP provisioning and rotation are protected by per-hour backend
+  limits; stale material is rejected from managed profiles after
+  `WARP_MATERIAL_MAX_AGE_HOURS`, and operators can inspect redacted counts via
+  `GET /api/admin/client/warp/summary`
 - `GET /api/client/warp/status`, `POST /api/client/warp/consent`,
   `POST /api/client/warp/revoke`, `POST /api/client/warp/rotate`, and
   `POST /api/client/warp/events` own the app-facing WARP lifecycle; these

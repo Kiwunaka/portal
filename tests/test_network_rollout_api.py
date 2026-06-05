@@ -7,6 +7,7 @@ import importlib
 import json
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -462,6 +463,139 @@ def test_admin_warp_material_store_encrypts_at_rest_and_scopes_managed_profile(m
         assert revoked_row.revoked_at is not None
     finally:
         db.close()
+
+
+def test_warp_material_hardening_limits_stale_material_and_reports_summary(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("WARP_MATERIAL_PROVISION_LIMIT_PER_HOUR", "1")
+    monkeypatch.setenv("WARP_ROTATION_LIMIT_PER_HOUR", "1")
+    monkeypatch.setenv("WARP_MATERIAL_MAX_AGE_HOURS", "1")
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    start_trial = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-warp-hardening",
+            "device_name": "Windows WARP Hardening Device",
+            "platform": "windows",
+        },
+    )
+    assert start_trial.status_code == 200, start_trial.text
+    start_body = start_trial.json()
+    auth_headers = {"Authorization": f"Bearer {start_body['session_token']}"}
+    admin_headers = _admin_headers()
+
+    material_payload = {
+        "tg_id": start_body["account_id"],
+        "install_id": "install-warp-hardening",
+        "source": "operator_test",
+        "mode": "proxy_over_warp",
+        "wireguard_config": {
+            "private-key": "hardening-private-key",
+            "local-address-ipv4": "172.16.10.2",
+            "peer-public-key": "hardening-peer-public-key",
+            "client-id": "hardening-client-id",
+        },
+        "account": {
+            "account-id": "hardening-account-id",
+            "access-token": "hardening-access-token",
+        },
+    }
+
+    provision = client.put(
+        "/api/admin/client/warp/material",
+        headers=admin_headers,
+        json=material_payload,
+    )
+    assert provision.status_code == 200, provision.text
+
+    rate_limited_provision = client.put(
+        "/api/admin/client/warp/material",
+        headers=admin_headers,
+        json={
+            **material_payload,
+            "wireguard_config": {
+                **material_payload["wireguard_config"],
+                "private-key": "second-private-key",
+            },
+        },
+    )
+    assert rate_limited_provision.status_code == 429, rate_limited_provision.text
+    assert rate_limited_provision.json()["detail"]["code"] == "warp_material_rate_limited"
+
+    consent = client.post("/api/client/warp/consent", headers=auth_headers, json={"consent": True})
+    assert consent.status_code == 200, consent.text
+    assert consent.json()["consented"] is True
+
+    rotate = client.post("/api/client/warp/rotate", headers=auth_headers, json={"reason_code": "user_requested"})
+    assert rotate.status_code == 200, rotate.text
+    assert rotate.json()["state"] == "rotation_requested"
+
+    rate_limited_rotate = client.post(
+        "/api/client/warp/rotate",
+        headers=auth_headers,
+        json={"reason_code": "user_requested_again"},
+    )
+    assert rate_limited_rotate.status_code == 429, rate_limited_rotate.text
+    assert rate_limited_rotate.json()["detail"]["code"] == "warp_rotation_rate_limited"
+
+    runtime_error = client.post(
+        "/api/client/warp/events",
+        headers=auth_headers,
+        json={
+            "event_name": "runtime_error",
+            "state": "error",
+            "reason_code": "handshake_failed",
+            "message": "baseline fallback used",
+            "meta": {
+                "safe_detail": "handshake failed",
+                "account": {"access-token": "hardening-access-token"},
+            },
+        },
+    )
+    assert runtime_error.status_code == 200, runtime_error.text
+
+    db = api.SessionLocal()
+    try:
+        material = (
+            db.query(api.WarpMaterial)
+            .filter(api.WarpMaterial.tg_id == int(start_body["account_id"]))
+            .filter(api.WarpMaterial.install_id == "install-warp-hardening")
+            .one()
+        )
+        material.provisioned_at = api._utcnow() - timedelta(hours=2, minutes=5)
+        material.updated_at = api._utcnow() - timedelta(hours=2)
+        db.commit()
+    finally:
+        db.close()
+
+    managed_manifest = client.get("/api/client/profile/managed", headers=auth_headers)
+    assert managed_manifest.status_code == 200, managed_manifest.text
+    stale_policy = managed_manifest.json()["warp_policy"]
+    assert stale_policy["state"] == "material_stale"
+    assert stale_policy["runtime_ready"] is False
+    assert "wireguard_config" not in stale_policy
+    assert "account" not in stale_policy
+
+    status = client.get("/api/client/warp/status", headers=auth_headers)
+    assert status.status_code == 200, status.text
+    assert status.json()["state"] == "not_ready"
+    assert status.json()["policy_state"] == "material_stale"
+
+    summary = client.get("/api/admin/client/warp/summary", headers=admin_headers)
+    assert summary.status_code == 200, summary.text
+    summary_body = summary.json()
+    assert summary_body["materials"]["total"] == 1
+    assert summary_body["materials"]["active"] == 1
+    assert summary_body["materials"]["stale_active"] == 1
+    assert summary_body["materials"]["rotation_requested"] == 1
+    assert summary_body["events"]["active_consents"] == 1
+    assert summary_body["events"]["recent_material_provisions"] == 1
+    assert summary_body["events"]["recent_runtime_errors"] == 1
+    assert summary_body["events"]["recent_rate_limits"] >= 2
+    summary_json = json.dumps(summary_body, ensure_ascii=False, sort_keys=True)
+    assert "hardening-private-key" not in summary_json
+    assert "hardening-access-token" not in summary_json
 
 
 def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(monkeypatch, tmp_path) -> None:

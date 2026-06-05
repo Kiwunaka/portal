@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-06-02
+Last updated: 2026-06-05
 
 ## Document Status
 
@@ -118,6 +118,39 @@ Smart-connect visibility rule:
 - accepted client RTT uploads are stored through the `smart_connect_latency_sample` event with `install_id`, `carrier`, `platform`, selected node, previous node, and accepted RTT samples
 - operators should be able to reason about recent RTT quality by node, carrier, and platform without exposing raw samples in public consumer UI
 - shortlist evidence must respect the paid-pool vs `NL-free` pool boundary; a “better ping” does not authorize crossing the access-tier rule
+
+## WARP Material Visibility
+
+WARP is a backend-backed lifecycle feature, but production WARP readiness still
+requires Android and Windows release-build proof. Operator monitoring must keep
+that distinction explicit.
+
+Current WARP operator summary:
+
+- `GET /api/admin/client/warp/summary`
+- admin-only
+- redacted by construction; it returns counts and timestamps, not WireGuard
+  keys, account tokens, subscription URLs, or raw config material
+
+Required fields:
+
+- total, active, stale-active, revoked, and rotation-requested WARP materials
+- active backend-backed consents
+- recent material provisions, provisioning failures, rotation requests,
+  runtime errors/fallbacks, and rate-limit hits
+- configured `material_max_age_hours`
+
+Operational rules:
+
+- material older than `WARP_MATERIAL_MAX_AGE_HOURS` is stale and must not be
+  returned through managed profile material delivery
+- provisioning is limited by `WARP_MATERIAL_PROVISION_LIMIT_PER_HOUR`
+- app-requested rotation is limited by `WARP_ROTATION_LIMIT_PER_HOUR`
+- rate-limit and provisioning-failure events should be investigated as abuse,
+  misconfigured automation, or operator workflow issues before blaming the
+  client runtime
+- a green summary does not prove production WARP; production proof still needs
+  Android and Windows release-build connect/disconnect/fallback evidence
 
 ## External RU Probe Policy
 

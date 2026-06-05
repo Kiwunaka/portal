@@ -109,6 +109,13 @@ Rollout note:
 - `PUT /api/admin/client/warp/material` is the operator provisioning endpoint
   for scoped WARP material; responses expose only redacted material metadata,
   a material hash, and sanitized WARP status, never raw WireGuard/account data
+- WARP material provisioning and app-requested rotation are rate-limited through
+  `WARP_MATERIAL_PROVISION_LIMIT_PER_HOUR` and
+  `WARP_ROTATION_LIMIT_PER_HOUR`; rate-limit hits are recorded as sanitized
+  `WarpEvent` rows for operator visibility
+- active WARP material older than `WARP_MATERIAL_MAX_AGE_HOURS` is treated as
+  `material_stale`; stale material must not be returned in managed profiles
+  until re-provisioned
 - the app must treat managed-profile WARP material as capability data, not
   automatic consent; Hiddify `warp.enable=true` is allowed only after explicit
   local user consent and a runtime-ready policy
@@ -201,6 +208,7 @@ Current live backend contract:
 - `POST /api/client/warp/rotate`
 - `POST /api/client/warp/events`
 - `PUT /api/admin/client/warp/material`
+- `GET /api/admin/client/warp/summary`
 - `GET /api/public/catalog`
 - `GET /api/access-keys/status/{key}`
 - `POST /api/access-keys/redeem`

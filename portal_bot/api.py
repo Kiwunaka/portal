@@ -188,6 +188,7 @@ from web_auth_service import (
     verify_telegram_oidc_state_token,
 )
 from warp_service import (
+    build_warp_admin_summary,
     build_warp_status,
     managed_warp_policy_for_user,
     mark_warp_material_rotation_requested,
@@ -6129,6 +6130,75 @@ def _client_warp_context(request: Request, x_telegram_init_data: str) -> tuple[A
     return s, user, install_id, policy
 
 
+def _warp_env_int(
+    name: str,
+    *,
+    default: int,
+    minimum: int = 0,
+    maximum: int = 1_000_000,
+) -> int:
+    try:
+        value = int(str(os.getenv(name) or "").strip() or default)
+    except Exception:
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+def _warp_event_count(
+    session,
+    *,
+    user: User,
+    install_id: str | None,
+    event_name: str,
+    window_seconds: int,
+) -> int:
+    since = _utcnow() - timedelta(seconds=max(1, int(window_seconds)))
+    query = (
+        session.query(func.count(WarpEvent.id))
+        .filter(WarpEvent.tg_id == int(user.tg_id))
+        .filter(WarpEvent.event_name == str(event_name))
+        .filter(WarpEvent.created_at >= since)
+    )
+    clean_install = str(install_id or "").strip()
+    if clean_install:
+        query = query.filter(WarpEvent.install_id == clean_install)
+    return int(query.scalar() or 0)
+
+
+def _warp_rate_limit_detail(*, code: str, limit: int, window_seconds: int) -> dict[str, Any]:
+    return {
+        "code": code,
+        "limit": int(limit),
+        "window_seconds": int(window_seconds),
+        "retry_after_seconds": int(window_seconds),
+        "message": "WARP action is rate limited. Try again later.",
+    }
+
+
+def _warp_material_provision_limit() -> tuple[int, int]:
+    return (
+        _warp_env_int(
+            "WARP_MATERIAL_PROVISION_LIMIT_PER_HOUR",
+            default=6,
+            minimum=0,
+            maximum=1000,
+        ),
+        3600,
+    )
+
+
+def _warp_rotation_limit() -> tuple[int, int]:
+    return (
+        _warp_env_int(
+            "WARP_ROTATION_LIMIT_PER_HOUR",
+            default=3,
+            minimum=0,
+            maximum=1000,
+        ),
+        3600,
+    )
+
+
 def _warp_not_ready_detail(status: dict[str, Any]) -> dict[str, Any]:
     return {
         "code": "warp_not_runtime_ready",
@@ -6226,6 +6296,34 @@ async def client_warp_rotate(
         status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
         if not bool(status.get("runtime_ready")):
             raise HTTPException(status_code=409, detail=_warp_not_ready_detail(status))
+        limit, window_seconds = _warp_rotation_limit()
+        if limit and _warp_event_count(
+            s,
+            user=user,
+            install_id=install_id,
+            event_name="rotate_requested",
+            window_seconds=window_seconds,
+        ) >= limit:
+            record_warp_event(
+                s,
+                user=user,
+                install_id=install_id,
+                policy=policy,
+                event_name="rotate_rate_limited",
+                state="rate_limited",
+                reason_code=payload.reason_code or "rotation_limit",
+                consented=bool(status.get("consented")),
+                meta={"source": "app_action", "previous_state": status.get("state")},
+            )
+            s.commit()
+            raise HTTPException(
+                status_code=429,
+                detail=_warp_rate_limit_detail(
+                    code="warp_rotation_rate_limited",
+                    limit=limit,
+                    window_seconds=window_seconds,
+                ),
+            )
         record_warp_event(
             s,
             user=user,
@@ -11931,14 +12029,52 @@ async def admin_client_warp_material_put(
     s = SessionLocal()
     row_id = 0
     audit_meta: dict[str, Any] = {}
+    user_for_failure: User | None = None
+    install_id_for_failure: str | None = None
     try:
         user = s.query(User).filter(User.tg_id == int(payload.tg_id)).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        user_for_failure = user
         install_id = (
             str(payload.install_id or getattr(user, "app_install_id", "") or "").strip()
             or None
         )
+        install_id_for_failure = install_id
+        limit, window_seconds = _warp_material_provision_limit()
+        if limit and _warp_event_count(
+            s,
+            user=user,
+            install_id=install_id,
+            event_name="material_provisioned",
+            window_seconds=window_seconds,
+        ) >= limit:
+            policy = public_warp_policy_for_user(
+                s,
+                user=user,
+                install_id=install_id,
+                rollout_config=load_network_rollout_config(session=s),
+            )
+            record_warp_event(
+                s,
+                user=user,
+                install_id=install_id,
+                policy=policy,
+                event_name="material_provision_rate_limited",
+                state="rate_limited",
+                reason_code="provision_limit",
+                consented=False,
+                meta={"source": "admin", "actor_tg_id": actor},
+            )
+            s.commit()
+            raise HTTPException(
+                status_code=429,
+                detail=_warp_rate_limit_detail(
+                    code="warp_material_rate_limited",
+                    limit=limit,
+                    window_seconds=window_seconds,
+                ),
+            )
         row = provision_warp_material(
             s,
             user=user,
@@ -11987,6 +12123,25 @@ async def admin_client_warp_material_put(
         return {"ok": True, "material": material, "warp_status": status}
     except ValueError as exc:
         s.rollback()
+        if user_for_failure is not None:
+            policy = public_warp_policy_for_user(
+                s,
+                user=user_for_failure,
+                install_id=install_id_for_failure,
+                rollout_config=load_network_rollout_config(session=s),
+            )
+            record_warp_event(
+                s,
+                user=user_for_failure,
+                install_id=install_id_for_failure,
+                policy=policy,
+                event_name="material_provision_failed",
+                state="provision_failed",
+                reason_code="invalid_material",
+                consented=False,
+                meta={"source": "admin", "actor_tg_id": actor},
+            )
+            s.commit()
         raise HTTPException(status_code=400, detail={"code": "invalid_warp_material", "message": str(exc)}) from exc
     except RuntimeError as exc:
         s.rollback()
@@ -12000,6 +12155,16 @@ async def admin_client_warp_material_put(
                 target_tg_id=int(payload.tg_id),
                 meta=audit_meta,
             )
+
+
+@app.get("/api/admin/client/warp/summary")
+async def admin_client_warp_summary(x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return build_warp_admin_summary(s)
+    finally:
+        s.close()
 
 
 @app.get("/api/admin/promo-slots")
