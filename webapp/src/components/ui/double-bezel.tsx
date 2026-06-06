@@ -12,8 +12,8 @@ interface DoubleBezelProps {
 }
 
 export function DoubleBezel({ children, className = "", innerClassName = "", tone = "default", delay = 0 }: DoubleBezelProps) {
-  const baseOuter = "relative transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]";
-  const baseInner = "relative h-full w-full overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]";
+  const baseOuter = "relative transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]";
+  const baseInner = "relative h-full w-full overflow-hidden transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]";
 
   let outerColors = "";
   let innerColors = "";
@@ -47,11 +47,10 @@ export function DoubleBezel({ children, className = "", innerClassName = "", ton
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.98, filter: "blur(4px)" }}
-      whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: 10, scale: 0.995 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-10%" }}
-      transition={{ duration: 0.8, delay, ease: [0.32, 0.72, 0, 1] }}
-      whileHover={{ y: -2, scale: 1.005 }}
+      transition={{ duration: 0.28, delay, ease: [0.32, 0.72, 0, 1] }}
       className={`${baseOuter} ${outerColors} ${className}`}
     >
       <div className={`${baseInner} ${innerColors} ${innerClassName}`}>

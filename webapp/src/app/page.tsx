@@ -6,7 +6,6 @@ import { PortalSessionProvider, usePortalSession } from "@/lib/session";
 import { useEffect } from "react";
 
 import { DoubleBezel } from "@/components/ui/double-bezel";
-import { FadeUp } from "@/components/ui/fade-up";
 import { Preloader } from "@/components/ui/preloader";
 
 import { pokrovBranding } from "./branding";
@@ -49,7 +48,7 @@ function EntryBody() {
     return (
       <main className="mx-auto flex min-h-[100dvh] w-full max-w-[880px] items-center px-4 py-8 sm:px-6">
         <DoubleBezel tone="danger" className="w-full" innerClassName="p-6 sm:p-8">
-          <FadeUp delay={0.1}>
+          <div>
             <PokrovLogo
               showWordmark
               className="inline-flex items-center gap-3"
@@ -57,8 +56,8 @@ function EntryBody() {
               caption={pokrovBranding.cabinetName}
               label="POKROV cabinet"
             />
-          </FadeUp>
-          <FadeUp delay={0.2} className="mt-6">
+          </div>
+          <div className="mt-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-600 dark:text-rose-300">
               Нужен повторный вход
             </p>
@@ -68,8 +67,8 @@ function EntryBody() {
             <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
               {error}
             </p>
-          </FadeUp>
-          <FadeUp delay={0.3} className="mt-8 flex flex-wrap gap-3">
+          </div>
+          <div className="mt-8 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => void refresh()}
@@ -90,7 +89,7 @@ function EntryBody() {
             >
               Поддержка
             </AppRouteLink>
-          </FadeUp>
+          </div>
         </DoubleBezel>
       </main>
     );
@@ -101,7 +100,7 @@ function EntryBody() {
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(209,250,229,0.3),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.05),transparent_50%)]" />
 
       <DoubleBezel tone="glass" className="w-full" innerClassName="p-5 sm:p-7">
-        <FadeUp delay={0.1} className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <PokrovLogo
             showWordmark
             className="inline-flex items-center gap-3"
@@ -116,20 +115,20 @@ function EntryBody() {
           >
             На сайт
           </AppRouteLink>
-        </FadeUp>
+        </div>
 
-        <FadeUp delay={0.2} className="mt-8">
+        <div className="mt-8">
           <h1 className="font-display text-[clamp(2.15rem,7vw,3.2rem)] font-semibold leading-[1.02] text-slate-950 dark:text-slate-50">
             Кабинет POKROV
           </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
             Войдите, чтобы скачать приложение, проверить доступ, продлить срок или написать в поддержку.
           </p>
-        </FadeUp>
+        </div>
 
-        <FadeUp delay={0.3} className="mt-7">
+        <div className="mt-7">
           <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />
-        </FadeUp>
+        </div>
       </DoubleBezel>
     </main>
   );

@@ -34,23 +34,23 @@ const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
 };
 
 export const adminShellFrameClass =
-  "rounded-[1.3rem] border border-slate-200/60 bg-slate-50/60 text-slate-800 shadow-[0_36px_80px_-54px_rgba(15,23,42,0.10)]";
+  "rounded-xl border border-slate-200/60 bg-slate-50/60 text-slate-800 shadow-[0_28px_64px_-52px_rgba(15,23,42,0.10)]";
 
 export const adminSidebarClass =
-  "rounded-[1.25rem] border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.10)] backdrop-blur-xl";
+  "rounded-xl border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.10)] backdrop-blur-xl";
 
 export const adminTopbarClass =
-  "rounded-[1.15rem] border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_22px_48px_-38px_rgba(15,23,42,0.08)] backdrop-blur-xl";
+  "rounded-xl border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_18px_42px_-38px_rgba(15,23,42,0.08)] backdrop-blur-xl";
 
 export const adminRailCardClass =
-  "rounded-[1rem] border border-slate-200/60 bg-white/70 p-4 text-slate-800 shadow-[0_18px_36px_-32px_rgba(15,23,42,0.08)] backdrop-blur-xl";
+  "rounded-lg border border-slate-200/60 bg-white/70 p-3 text-slate-800 shadow-[0_14px_30px_-28px_rgba(15,23,42,0.08)] backdrop-blur-xl";
 
 export function adminPanelClass(tone: AdminTone = "neutral"): string {
-  return cn("overflow-hidden rounded-[1.05rem] border p-4 backdrop-blur-sm", PANEL_TONE_CLASSES[tone]);
+  return cn("overflow-hidden rounded-xl border p-3.5 backdrop-blur-sm", PANEL_TONE_CLASSES[tone]);
 }
 
 export const adminInsetPanelClass =
-  "rounded-[0.95rem] border border-slate-200/50 bg-white/60 p-3 backdrop-blur-sm";
+  "rounded-lg border border-slate-200/50 bg-white/60 p-3 backdrop-blur-sm";
 
 export const adminFieldClass =
   "min-h-10 w-full rounded-[0.9rem] border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/30";
@@ -60,10 +60,10 @@ export const adminTextAreaClass = cn(adminFieldClass, "min-h-[120px] resize-y py
 export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-500";
 
 export const adminTableShellClass =
-  "overflow-hidden rounded-[1rem] border border-slate-200/60 bg-white/80 backdrop-blur-sm";
+  "overflow-hidden rounded-lg border border-slate-200/60 bg-white/80 backdrop-blur-sm";
 
 export const adminCompactCardClass =
-  "rounded-[0.9rem] border border-slate-200/50 bg-white/60 p-3 text-slate-800 backdrop-blur-sm";
+  "rounded-lg border border-slate-200/50 bg-white/60 p-3 text-slate-800 backdrop-blur-sm";
 
 export function adminIconFrameClass(tone: AdminTone = "neutral"): string {
   const palette: Record<AdminTone, string> = {
@@ -74,7 +74,7 @@ export function adminIconFrameClass(tone: AdminTone = "neutral"): string {
     accent: "border-sky-200 bg-sky-100 text-sky-700",
   };
 
-  return cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.8rem] border", palette[tone]);
+  return cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border", palette[tone]);
 }
 
 export const adminProgressTrackClass = "h-2 overflow-hidden rounded-full bg-slate-200";

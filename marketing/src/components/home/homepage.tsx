@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { FadeUp } from "../ui/fade-up";
 
 import JsonLd from "../json-ld";
 import styles from "./homepage.module.css";
@@ -27,8 +26,6 @@ type HomeLinks = {
   checkoutHref: string;
   installHref: string;
   cabinetHref: string;
-  supportHref: string;
-  channelHref: string;
 };
 
 const HOW_IT_WORKS = [
@@ -54,61 +51,11 @@ const HOW_IT_WORKS = [
   },
 ];
 
-const SURFACE_PANELS = [
-  {
-    eyebrow: "Старт",
-    title: "Одна кнопка вместо настроек",
-    text: "Не нужно искать ссылку, копировать конфиг или выбирать сервер из списка. Установили приложение, нажали «Подключить» и проверили свои сервисы.",
-    bullets: ["Скачайте приложение", "Получите 5 дней", "Нажмите «Подключить»"],
-    tone: "routing" as const,
-    imageSrc: "/home/feature-start-premium.png",
-  },
-  {
-    eyebrow: "Устройства",
-    title: "Телефон и компьютер вместе",
-    text: "Android и Windows остаются в одном кабинете: там видны загрузки, срок доступа, устройства и продление.",
-    bullets: ["Android + Windows", "До 5 устройств в платных планах", "Один кабинет для управления"],
-    tone: "devices" as const,
-    imageSrc: "/home/feature-devices-premium.png",
-  },
-  {
-    eyebrow: "Вход",
-    title: "Почта и Telegram ведут в один аккаунт",
-    text: "Начать можно без Telegram. Почту и Telegram можно привязать позже для входа, бонуса, восстановления и поддержки.",
-    bullets: ["Email-вход", "Telegram-бонус +10 дней", "Один профиль POKROV"],
-    tone: "support" as const,
-    imageSrc: "/home/feature-account-premium.png",
-  },
-];
-
 const HERO_HOOKS = [
   { value: "5 дней", label: "без карты и автосписаний" },
   { value: "от 99 ₽", label: "за 30 дней после теста" },
   { value: "Android + Windows", label: "beta-сборки" },
   { value: "до 5 устройств", label: "в платном доступе" },
-];
-
-const VALUE_CARDS = [
-  {
-    icon: "event_available",
-    title: "Карта не нужна",
-    text: "5 дней теста без платежных данных и автосписаний. Сначала проверяете POKROV на своих сервисах, потом решаете.",
-  },
-  {
-    icon: "phone_android",
-    title: "Одна кнопка вместо настроек",
-    text: "POKROV сам применит нужные параметры. Никаких конфигов, ручных профилей и выбора серверов на первом экране.",
-  },
-  {
-    icon: "devices",
-    title: "Телефон и компьютер вместе",
-    text: "Android и Windows управляются вместе. В платных планах можно подключить до 5 личных устройств.",
-  },
-  {
-    icon: "security",
-    title: "Telegram как бонус",
-    text: "Начать можно без Telegram. Привяжете позже — получите +10 дней, восстановление и быстрый канал поддержки.",
-  },
 ];
 
 function buildCheckoutHref(planCode: string): string {
@@ -139,8 +86,6 @@ function buildLinks(defaultPlanCode: string): HomeLinks {
     checkoutHref: buildCheckoutHref(defaultPlanCode),
     installHref: MARKETING_CANONICAL_PATHS.install,
     cabinetHref: config.webappUrl,
-    supportHref: config.contactFormUrl || config.supportTelegramUrl || config.helpbotUrl,
-    channelHref: config.newsChannelUrl,
   };
 }
 
@@ -149,14 +94,6 @@ function CheckIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className={styles.check}>
       <path d="M3 8L6.5 11.5L13 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path d="M3 9H15M15 9L10 4M15 9L10 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -254,7 +191,7 @@ function Hero({ links }: { links: HomeLinks }) {
   const primaryCta = getCopyText("marketing.hero.primary_cta", "Попробовать 5 дней бесплатно");
 
   return (
-    <FadeUp delay={0.1} as="section" className={styles.container}>
+    <section className={styles.container}>
       <div className={styles.hero}>
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
@@ -306,43 +243,18 @@ function Hero({ links }: { links: HomeLinks }) {
           </div>
         </div>
       </div>
-    </FadeUp>
-  );
-}
-
-function ValueCards() {
-  return (
-    <FadeUp delay={0.25} as="section" className={styles.container} id="why-pokrov">
-        <div className={styles.section}>
-          <div className={styles.sectionHead}>
-            <span className={styles.eyebrow}>почему POKROV</span>
-            <h2>Конкретно: пробуете, подключаете, решаете</h2>
-            <p>Карта не нужна на старте, Telegram не обязателен, а тарифы видны до оплаты.</p>
-          </div>
-        <div className={styles.valueGrid}>
-          {VALUE_CARDS.map((card) => (
-            <article key={card.title} className={styles.valueCard}>
-              <div className={styles.valueIcon}>
-                <UiIcon name={card.icon} size={22} />
-              </div>
-              <h3>{card.title}</h3>
-              <p>{card.text}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </FadeUp>
+    </section>
   );
 }
 
 function HowItWorks() {
   return (
-    <FadeUp delay={0.3} as="section" className={styles.container}>
-        <div className={styles.section} id="how-it-works">
-          <div className={styles.sectionHead}>
-            <span className={styles.eyebrow}>как начать</span>
-          <h2>Старт за пару минут</h2>
-          <p>Сначала приложение и бесплатный период, затем тариф в том же аккаунте. Кабинет показывает срок, устройства, оплату и поддержку.</p>
+    <section className={styles.container}>
+      <div className={styles.section} id="how-it-works">
+        <div className={styles.sectionHead}>
+          <span className={styles.eyebrow}>как начать</span>
+          <h2>Скачали, включили, проверили</h2>
+          <p>Один короткий путь: приложение, бесплатный период, подключение и продление в том же аккаунте.</p>
         </div>
         <div className={styles.stepsGrid}>
           {HOW_IT_WORKS.map((item) => (
@@ -354,59 +266,7 @@ function HowItWorks() {
           ))}
         </div>
       </div>
-    </FadeUp>
-  );
-}
-
-function SurfaceMock({ imageSrc, title }: { imageSrc: string; title: string }) {
-  return (
-    <div className={styles.mockVisual}>
-      <img className={styles.surfaceImage} src={imageSrc} alt={`Мокап: ${title}`} loading="lazy" decoding="async" />
-    </div>
-  );
-}
-
-function Features() {
-  return (
-    <FadeUp delay={0.4} as="section" className={styles.container}>
-        <div className={styles.section}>
-          <div className={styles.sectionHead}>
-            <span className={styles.eyebrow}>возможности</span>
-          <h2>POKROV сразу ведет к делу</h2>
-          <p>Скачайте приложение, войдите в аккаунт и включайте доступ. В кабинете рядом срок, устройства, оплата и поддержка.</p>
-        </div>
-        <div className={styles.surfaceGrid}>
-          {SURFACE_PANELS.map((panel) => (
-            <article key={panel.title} className={styles.surfaceCard}>
-              <div>
-                <span className={styles.eyebrow} style={{ marginBottom: 12, fontSize: "0.7rem", padding: "6px 10px" }}>
-                  {panel.eyebrow}
-                </span>
-                <h3>{panel.title}</h3>
-                <p>{panel.text}</p>
-              </div>
-              <SurfaceMock imageSrc={panel.imageSrc} title={panel.title} />
-              <ul className={styles.surfaceBullets}>
-                {panel.bullets.map((bullet) => (
-                  <li key={bullet}>{bullet}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-        <div className={styles.inlineActions}>
-          <Link href={MARKETING_CANONICAL_PATHS.install} className={styles.inlineLink}>
-            Установить приложение <ArrowRightIcon />
-          </Link>
-          <a href={config.contactFormUrl || config.supportTelegramUrl || config.helpbotUrl} className={styles.inlineLink}>
-            Поддержка <ArrowRightIcon />
-          </a>
-          <a href={config.newsChannelUrl} className={styles.inlineLink}>
-            Канал POKROV <ArrowRightIcon />
-          </a>
-        </div>
-      </div>
-    </FadeUp>
+    </section>
   );
 }
 
@@ -430,10 +290,10 @@ function Pricing({ links }: { links: HomeLinks }) {
   ];
 
   return (
-    <FadeUp delay={0.5} as="section" className={styles.container} id="pricing">
-        <div className={styles.section}>
-          <div className={styles.sectionHead}>
-            <span className={styles.eyebrow}>сколько стоит</span>
+    <section className={styles.container} id="pricing">
+      <div className={styles.section}>
+        <div className={styles.sectionHead}>
+          <span className={styles.eyebrow}>сколько стоит</span>
           <h2>Сначала попробуйте, потом платите</h2>
           <p>Получите 5 дней в приложении без карты. В beta-кассе сейчас открыт стартовый срок: цена, лимит устройств и условия видны до оплаты.</p>
         </div>
@@ -453,7 +313,7 @@ function Pricing({ links }: { links: HomeLinks }) {
                 </li>
               ))}
             </ul>
-              <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`} style={{ marginTop: "auto" }}>
+            <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`} style={{ marginTop: "auto" }}>
               Попробовать 5 дней бесплатно
             </Link>
           </div>
@@ -496,22 +356,16 @@ function Pricing({ links }: { links: HomeLinks }) {
           </div>
         </div>
       </div>
-    </FadeUp>
+    </section>
   );
 }
 
 function FinalCta({ links }: { links: HomeLinks }) {
   return (
-    <FadeUp delay={0.6} as="section" className={styles.container} id="final-cta">
+    <section className={styles.container} id="final-cta">
       <div className={styles.finalCta}>
         <div className={styles.finalCopy}>
-          <span className={styles.eyebrow} style={{ borderColor: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff" }}>
-            первый шаг
-          </span>
           <h2>Получите 5 дней бесплатно. Дальше решите сами</h2>
-          <p>
-            Android и Windows остаются beta-сборками. Кабинет показывает тарифы, устройства и поддержку, а Telegram добавляет бонус и запасной способ связи.
-          </p>
         </div>
         <div className={styles.finalActions}>
           <Link href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}>
@@ -520,21 +374,15 @@ function FinalCta({ links }: { links: HomeLinks }) {
           <Link href={links.checkoutHref} className={styles.btnOutline}>
             Выбрать срок
           </Link>
-          <a href={links.cabinetHref} className={styles.btnOutline}>
-            Кабинет
-          </a>
-          <a href={links.supportHref} className={styles.btnOutline}>
-            Поддержка
-          </a>
         </div>
       </div>
-    </FadeUp>
+    </section>
   );
 }
 
 function FaqSection() {
   return (
-    <FadeUp delay={0.56} as="section" className={styles.container} id="faq">
+    <section className={styles.container} id="faq">
       <div className={styles.section}>
         <div className={styles.sectionHead}>
           <span className={styles.eyebrow}>FAQ</span>
@@ -553,7 +401,7 @@ function FaqSection() {
           ))}
         </div>
       </div>
-    </FadeUp>
+    </section>
   );
 }
 
@@ -575,14 +423,14 @@ export default function MarketingHomePage() {
             <img className={styles.brandMark} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
             <span className={styles.brandText}>
               <strong>POKROV</strong>
-              <small>5 дней бесплатно • Android и Windows</small>
+              <small>Android и Windows beta</small>
             </span>
           </Link>
 
           <nav className={styles.nav} aria-label="Навигация по главной">
-            <a href="#why-pokrov">Преимущества</a>
-            <a href="#how-it-works">Как работает</a>
-            <a href="#pricing">Планы</a>
+            <a href="#how-it-works">Как начать</a>
+            <a href="#pricing">Тарифы</a>
+            <a href="#faq">FAQ</a>
             <a href="#final-cta">Начать</a>
           </nav>
 
@@ -598,10 +446,8 @@ export default function MarketingHomePage() {
 
         <main id="main-content">
           <Hero links={links} />
-          <ValueCards />
           <Pricing links={links} />
           <HowItWorks />
-          <Features />
           <FaqSection />
           <FinalCta links={links} />
         </main>

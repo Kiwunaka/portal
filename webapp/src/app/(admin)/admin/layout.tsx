@@ -25,16 +25,19 @@ function formatOperatorName(user: { display_name?: string | null; username?: str
 
 function adminAttentionCount(summary: AdminSummaryPayload | null, href: string): number {
   if (!summary) return 0;
-  if (href.startsWith("/admin/tickets")) return Number(summary.tickets.open || 0);
-  if (href.startsWith("/admin/payments")) return Number(summary.errors.payment_callback_failures_24h || 0);
-  if (href.startsWith("/admin/nodes")) return Number(summary.errors.unhealthy_nodes || 0);
-  if (href.startsWith("/admin/users")) return Number(summary.retention.expiring_3d || 0);
+  const errors = (summary.errors ?? {}) as Partial<AdminSummaryPayload["errors"]>;
+  const retention = (summary.retention ?? {}) as Partial<AdminSummaryPayload["retention"]>;
+  const tickets = (summary.tickets ?? {}) as Partial<AdminSummaryPayload["tickets"]>;
+  if (href.startsWith("/admin/tickets")) return Number(tickets.open || 0);
+  if (href.startsWith("/admin/payments")) return Number(errors.payment_callback_failures_24h || 0);
+  if (href.startsWith("/admin/nodes")) return Number(errors.unhealthy_nodes || 0);
+  if (href.startsWith("/admin/users")) return Number(retention.expiring_3d || 0);
   if (href.startsWith("/admin/dashboard")) {
     return (
-      Number(summary.tickets.open || 0) +
-      Number(summary.errors.unhealthy_nodes || 0) +
-      Number(summary.errors.payment_callback_failures_24h || 0) +
-      Number(summary.errors.subscription_numeric_fallbacks_24h || 0)
+      Number(tickets.open || 0) +
+      Number(errors.unhealthy_nodes || 0) +
+      Number(errors.payment_callback_failures_24h || 0) +
+      Number(errors.subscription_numeric_fallbacks_24h || 0)
     );
   }
   return 0;
@@ -83,9 +86,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const activeCategory = useMemo(() => findAdminNavCategory(pathname), [pathname]);
   const siblingItems = activeCategory.items.filter((item) => item.href !== activeItem.href);
   const operatorName = formatOperatorName(user);
-  const unhealthyNodes = summary ? Math.max(0, Number(summary.nodes.total || 0) - Number(summary.nodes.healthy || 0)) : 0;
-  const paymentsToCheck = summary ? Number(summary.errors.payment_callback_failures_24h || 0) : 0;
-  const openTickets = summary ? Number(summary.tickets.open || 0) : 0;
+  const summaryErrors = (summary?.errors ?? {}) as Partial<AdminSummaryPayload["errors"]>;
+  const summaryNodes = summary?.nodes ?? { healthy: 0, total: 0 };
+  const summaryTickets = summary?.tickets ?? { open: 0 };
+  const unhealthyNodes = summary ? Math.max(0, Number(summaryNodes.total || 0) - Number(summaryNodes.healthy || 0)) : 0;
+  const paymentsToCheck = summary ? Number(summaryErrors.payment_callback_failures_24h || 0) : 0;
+  const openTickets = summary ? Number(summaryTickets.open || 0) : 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -167,8 +173,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <main className="min-h-[100dvh] bg-slate-50 px-3 py-3 text-slate-800 sm:px-4">
-      <div className="grid min-h-[calc(100dvh-1.5rem)] gap-4 2xl:grid-cols-[264px_minmax(0,1fr)_300px]">
-        <aside className={`${adminSidebarClass} p-4 2xl:sticky 2xl:top-3 2xl:self-start`}>
+      <div className="grid min-h-[calc(100dvh-1.5rem)] gap-4 xl:grid-cols-[232px_minmax(0,1fr)] 2xl:grid-cols-[232px_minmax(0,1fr)_280px]">
+        <aside className={`${adminSidebarClass} p-4 xl:sticky xl:top-3 xl:self-start`}>
           <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">админка</p>
@@ -183,7 +189,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <section key={group.id} className="space-y-2">
                 <div className="px-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{group.label}</p>
-                  <p className="mt-1 text-[11px] leading-5 text-slate-500">{group.description}</p>
                 </div>
                 <div className="space-y-1.5">
                   {group.items.map((item) => {
@@ -232,7 +237,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <AdminBadge tone="accent">{activeCategory.label}</AdminBadge>
                   <AdminBadge>{activeItem.label}</AdminBadge>
-                  <AdminBadge tone="success">Веб-админка — основной путь</AdminBadge>
+                  <AdminBadge>Веб-админка — основной путь</AdminBadge>
                 </div>
                 <h1 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.04em] text-slate-900">{activeItem.label}</h1>
                 <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500">{activeCategory.primaryHint}</p>
@@ -242,36 +247,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <AppRouteLink href="/dashboard/" className={adminButtonClass("secondary", "sm")}>
                   Вернуться в кабинет
                 </AppRouteLink>
-                <AppRouteLink href={MARKETING_SITE_URL} hardNavigate className={adminButtonClass("secondary", "sm")}>
-                  {pokrovBranding.siteLinkLabel}
-                </AppRouteLink>
                 <button type="button" onClick={logoutWebSession} className={adminButtonClass("danger", "sm")}>
                   Сменить аккаунт
                 </button>
               </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200/60 pt-4 text-[11px] font-semibold text-slate-500">
-              <AppRouteLink href="/admin/dashboard" className="transition hover:text-emerald-700">
-                Админка POKROV
-              </AppRouteLink>
-              <span>/</span>
-              <AppRouteLink href={activeCategory.items[0]?.href || "/admin/dashboard"} className="transition hover:text-emerald-700">
-                {activeCategory.label}
-              </AppRouteLink>
-              <span>/</span>
-              <span className="text-slate-900">{activeItem.label}</span>
             </div>
           </header>
 
           <div className="min-w-0">{children}</div>
         </section>
 
-        <aside className="space-y-4 2xl:sticky 2xl:top-3 2xl:self-start">
+        <aside className="space-y-4 xl:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-3 2xl:self-start">
           <section className={adminRailCardClass}>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Смена</p>
             <h2 className="mt-2 text-lg font-semibold text-slate-900">{operatorName}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Рабочий экран: {activeItem.label}. Веб-админка остаётся основным путём, Telegram — запасной канал.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Сейчас открыт раздел: {activeItem.label}.</p>
             <div className="mt-3 grid gap-2 text-xs">
               <div className="flex items-center justify-between rounded-[0.85rem] border border-slate-200/70 bg-white/70 px-3 py-2">
                 <span className="text-slate-500">Открытые тикеты</span>
@@ -317,14 +307,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
           </section>
 
-          <section className={adminRailCardClass}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Операторский режим</p>
-            <div className="mt-3 space-y-2 text-xs leading-5 text-slate-500">
-              <p>Сначала смотрите очередь, свежесть данных и тревоги. Потом переходите к точечным действиям.</p>
-              <p>Не растаскивайте смену по чатам: рабочая навигация, таблицы и карточки должны жить здесь.</p>
-              <p>Telegram оставляйте только как запасной канал, когда нужно быстро закрыть уже разобранный кейс.</p>
-            </div>
-          </section>
         </aside>
       </div>
     </main>

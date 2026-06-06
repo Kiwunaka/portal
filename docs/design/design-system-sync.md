@@ -30,6 +30,7 @@ Last updated: 2026-04-28
 - Marketing, checkout, cabinet, admin, and client docs must stay visually aligned around the `Atlas Glass` direction and the retained `quiet-core-luminous-edge` product truth.
 - Android and Windows public visuals must not imply public readiness until signing, handoff, and audit gates pass.
 - Admin views should use the `admin` density and favor compact evidence over large promotional layouts.
+- The active web/admin/site density pass is tracked in `docs/design/2026-06-06-web-admin-site-density-plan.md`. Its priority order is public marketing homepage density first, admin operator-prose trim second, and webapp entry-motion cleanup without reopening the implemented cabinet reset.
 - Public surfaces may link to `/install/` as gated help, but public download claims require runtime handoff evidence.
 
 ## Review Checklist
