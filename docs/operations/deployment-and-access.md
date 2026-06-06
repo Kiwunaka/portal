@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-05-28
+Last updated: 2026-06-05
 
 ## Document Status
 
@@ -116,6 +116,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out` and `webapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
 - before bundling, static deploy appends the release id as `?v=<release>` to `/_next/static/*` references inside exported HTML so browsers do not keep stale cabinet chunks after a deploy; `app.pokrov.space` should also serve `Cache-Control: no-cache, must-revalidate` from Caddy
+- public Caddy on `brain` should keep HTTP/3 disabled with `servers { protocols h1 h2 }` and should serve `Alt-Svc: clear` on public HTTPS responses while browsers may still have the previous `h3=":8444"` alternative cached; this avoids user networks that fail QUIC or non-standard UDP paths while preserving standard HTTPS on `443`
 
 ### Bot token / username switch
 
@@ -447,6 +448,7 @@ At minimum, verify:
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
 - `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required listeners on `443` or `8444` are missing, or if the built-in HTTP and subscription probes fail
+- public HTTPS checks for `pokrov.space`, `app.pokrov.space`, and `api.pokrov.space` should confirm that responses no longer advertise `Alt-Svc: h3=":8444"`; expected incident-recovery state is `Alt-Svc: clear` plus `200`/healthy status over standard HTTPS
 - marketing and checkout probes should use route/function markers such as `Android + Windows`, `app.pokrov.space`, `checkout-shell`, `ключ доступа`, and canonical URLs, not old hero copy that can change without a deploy failure
 - transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`
 - transport front verification with `scripts/remote_transport_front_smoke.py`

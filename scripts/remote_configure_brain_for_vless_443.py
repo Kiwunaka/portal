@@ -81,10 +81,17 @@ def main() -> int:
     panel_user = str(brain["panel_user"])
     panel_pass = str(brain["panel_pass"])
 
-    caddyfile = f"""{args.domain}:8444 {{
+    caddyfile = f"""{{
+  servers {{
+    protocols h1 h2
+  }}
+}}
+
+{args.domain}:8444 {{
   tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
 
   encode gzip
+  header Alt-Svc "clear"
 
   # Keep WebApp same-origin with the API to avoid CORS pain.
   # NOTE: use `handle` (not `handle_path`) so upstream keeps the `/api/...` prefix.

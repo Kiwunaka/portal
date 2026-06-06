@@ -350,6 +350,7 @@ WantedBy=multi-user.target
   tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
 
   encode gzip
+  header Alt-Svc "clear"
 
   @webapp path /webapp/*
   handle @webapp {{
@@ -370,6 +371,7 @@ WantedBy=multi-user.target
   tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
 
   encode gzip
+  header Alt-Svc "clear"
 
   handle_path /webapp/* {{
     root * /var/www/portal/webapp
@@ -385,10 +387,17 @@ WantedBy=multi-user.target
 
         caddyfile_api = f"""{args.domain}:2096 {{
   tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
+  header Alt-Svc "clear"
   reverse_proxy 127.0.0.1:8080
 }}
 """
-        caddyfile = caddyfile_site + "\n" + caddyfile_webapp_compat + "\n" + caddyfile_api
+        caddyfile_options = """{
+  servers {
+    protocols h1 h2
+  }
+}
+"""
+        caddyfile = caddyfile_options + "\n" + caddyfile_site + "\n" + caddyfile_webapp_compat + "\n" + caddyfile_api
 
         # Install services + caddyfile
         _run(brain, "mkdir -p /etc/systemd/system", timeout=60)
