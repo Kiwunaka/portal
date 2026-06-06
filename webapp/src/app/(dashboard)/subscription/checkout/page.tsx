@@ -1,14 +1,10 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
-import {
-  getPricingPreviewDiscountPercent,
-  getTariffPlans,
-  normalizePlanCode,
-} from "@/lib/portal";
+import { getPricingPreviewDiscountPercent, getTariffPlans, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -43,6 +39,10 @@ const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
     deviceLimit: Number(plan.device_limit || 1),
     note: plan.cabinet_note || plan.marketing_note || plan.label,
   }));
+
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
+}
 
 function normalizePromo(raw: string): string {
   return String(raw || "").trim().toUpperCase();
@@ -108,7 +108,6 @@ export default function CheckoutPage() {
     };
 
     void load();
-
     return () => {
       cancelled = true;
     };
@@ -171,169 +170,96 @@ export default function CheckoutPage() {
     }
   };
 
-  const selectedPlanCards = plans.map((plan) => {
-    const selected = plan.code === activePlan?.code;
-    return {
-      key: plan.code,
-      title: `${plan.label} · ${plan.amountRub} ₽`,
-      body: `${formatDuration(plan.days)} · до ${plan.deviceLimit} устройств. ${plan.note}`,
-      badge: selected ? "Выбрано" : plan.badge || "Вариант",
-      tone: selected ? ("success" as const) : plan.days >= 180 ? ("info" as const) : ("neutral" as const),
-      action: (
-        <button
-          type="button"
-          onClick={() => setSelectedCode(plan.code)}
-          className="text-sm font-semibold text-emerald-800 dark:text-emerald-300"
-        >
-          {selected ? "Оставить" : "Выбрать"}
-        </button>
-      ),
-    };
-  });
+  const providerWarning = !checkoutReady
+    ? providerReasons.length
+      ? `Оплата временно недоступна: ${providerReasons.join("; ")}.`
+      : "Оплата временно недоступна. Попробуйте позже или откройте поддержку."
+    : "";
 
   return (
-    <CabinetRoute
-      eyebrow="Продление"
-      title="Продлить доступ"
-      description="Выберите срок, проверьте сумму и перейдите на страницу оплаты. Если после оплаты нужен код активации, его можно применить в приложении или кабинете."
-      actions={
-        <>
-          <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60">
-            Перейти к оплате
+    <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <CabinetStatus
+        title="Продлить доступ"
+        meta={resolvePlanLabel(dash, user)}
+        body="Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле."
+        tone={checkoutReady ? "success" : "warning"}
+        action={
+          <button
+            type="button"
+            onClick={startCheckout}
+            disabled={!checkoutReady || checkoutBusy}
+            className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60 sm:w-auto"
+          >
+            {checkoutBusy ? "Открываем..." : "Перейти к оплате"}
           </button>
-          <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            У меня уже есть код
-          </AppRouteLink>
-        </>
-      }
-      metrics={[
-        {
-          label: "Сейчас у вас",
-          value: resolvePlanLabel(dash, user),
-          hint: "Продление останется на текущем профиле.",
-          tone: dash?.is_active ? "success" : "warning",
-        },
-        {
-          label: "Выбранный срок",
-          value: activePlan?.label || "1 месяц",
-          hint: `${activePlan?.days || 30} дней · до ${activePlan?.deviceLimit || 1} устройств.`,
-          tone: "neutral",
-        },
-        {
-          label: "Скидка",
-          value: discountPercent > 0 ? `${discountPercent}%` : "Нет",
-          hint: discountPercent > 0 ? "Промокод применен к сумме." : "Можно оставить поле пустым.",
-          tone: discountPercent > 0 ? "success" : "neutral",
-        },
-        {
-          label: "К оплате",
-          value: `${totalAmount} ₽`,
-          hint: "Итог перед переходом на страницу оплаты.",
-          tone: "neutral",
-        },
-      ]}
-    >
-      <CabinetHero
-        eyebrow="Из личного кабинета"
-        badge="Продолжение из кабинета"
-        badgeTone="success"
-        title="Покупка проходит на платежной странице POKROV"
-        description="Кабинет помогает выбрать срок и возвращает вас к текущему профилю. Личные ссылки и ручные настройки здесь не показываются."
-        actions={
-          <>
-            <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60">
-              Перейти к оплате
-            </button>
-            <AppRouteLink href="/subscription/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Назад к тарифам
-            </AppRouteLink>
-          </>
         }
-        details={[
-          {
-            label: "Профиль",
-            value: resolvePlanLabel(dash, user),
-            hint: "Продление не создает новый аккаунт.",
-            tone: "neutral",
-          },
-          {
-            label: "Ключ после оплаты",
-            value: "Код активации",
-            hint: "Если код уже есть, используйте раздел активации.",
-            tone: "neutral",
-          },
-          {
-            label: "Если оплата не обновилась",
-            value: "Откройте поддержку",
-            hint: "Мы проверим платеж и продолжим одно обращение.",
-            tone: "neutral",
-          },
-        ]}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <CabinetSection
-          eyebrow="Срок"
-          title="Выберите вариант"
-          description="Берите тот срок, который нужен сейчас. Остальное можно изменить при следующем продлении."
-        >
-          <CabinetCardGrid items={selectedPlanCards} className="xl:grid-cols-2" />
-          {catalogError ? (
-            <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
-              Каталог не обновился автоматически, показываем сохраненные варианты: {catalogError}
-            </p>
-          ) : null}
-        </CabinetSection>
+      <CabinetGroup title="Срок">
+        {plans.map((plan) => {
+          const selected = plan.code === activePlan?.code;
+          return (
+            <CabinetRow
+              key={plan.code}
+              icon={icon(selected ? "check_circle" : "calendar_month")}
+              label={plan.label}
+              hint={`${formatDuration(plan.days)} · до ${plan.deviceLimit} устройств`}
+              value={`${plan.amountRub} ₽`}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setSelectedCode(plan.code)}
+                  className="text-sm font-semibold text-emerald-800 dark:text-emerald-300"
+                >
+                  {selected ? "Выбрано" : "Выбрать"}
+                </button>
+              }
+            />
+          );
+        })}
+      </CabinetGroup>
+      {catalogError ? <p className="px-1 text-sm text-amber-700 dark:text-amber-200">Каталог не обновился: {catalogError}</p> : null}
 
-        <CabinetSection
-          eyebrow="Итог"
-          title="Проверьте перед оплатой"
-          description="Сумма и срок видны до перехода на платежную страницу."
-        >
-          <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-            Промокод
-          </label>
+      <CabinetGroup title="Итог">
+        <div className="space-y-3 p-4">
           <input
             value={promoInput}
             onChange={(event) => setPromoInput(event.target.value)}
-            placeholder="Например: POKROV10"
-            className="mt-2 w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+            placeholder="Промокод"
+            className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
           />
-
-          <div className="mt-4 rounded-[1.3rem] border border-slate-200/80 bg-slate-50/90 p-4 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
-            <p>
-              Базовая цена: <strong>{activePlan?.amountRub} ₽</strong>
-            </p>
-            <p>
-              Скидка: <strong>{discountAmount > 0 ? `${discountAmount} ₽` : "нет"}</strong>
-            </p>
-            <p className="mt-2 text-base font-semibold text-slate-950 dark:text-white">К оплате: {totalAmount} ₽</p>
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
+            <div className="flex justify-between gap-3">
+              <span>Базовая цена</span>
+              <strong>{activePlan?.amountRub} ₽</strong>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Скидка</span>
+              <strong>{discountAmount > 0 ? `${discountAmount} ₽` : "нет"}</strong>
+            </div>
+            <div className="mt-2 flex justify-between gap-3 text-base text-slate-950 dark:text-white">
+              <span className="font-semibold">К оплате</span>
+              <strong>{totalAmount} ₽</strong>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={startCheckout}
+            disabled={!checkoutReady || checkoutBusy}
+            className="btn-primary w-full rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
+          >
+            {checkoutBusy ? "Открываем..." : "Перейти к оплате"}
+          </button>
+          {providerWarning ? <p className="text-sm text-amber-700 dark:text-amber-200">{providerWarning}</p> : null}
+          {checkoutError ? <p className="text-sm text-rose-700 dark:text-rose-200">{checkoutError}</p> : null}
+        </div>
+      </CabinetGroup>
 
-          <div className="mt-5 grid gap-3">
-            <button type="button" onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} className="btn-primary block rounded-2xl py-3 text-center text-sm font-semibold disabled:opacity-60">
-              Перейти к оплате
-            </button>
-            <AppRouteLink href="/redeem/" className="outline-btn block rounded-2xl py-3 text-center text-sm font-semibold">
-              Активировать уже купленный код
-            </AppRouteLink>
-          </div>
-
-          {checkoutError ? <p className="mt-4 text-sm text-rose-700 dark:text-rose-200">{checkoutError}</p> : null}
-          {!checkoutReady ? (
-            <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">
-              {providerReasons.length
-                ? `Оплата временно недоступна: ${providerReasons.join("; ")}.`
-                : "Lava.top для beta должен быть единственным публичным способом оплаты. Если каталог недоступен, попробуйте позже или напишите в поддержку."}
-            </p>
-          ) : null}
-
-          <div className="mt-5 rounded-[1.3rem] border border-slate-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300">
-            <p>Пробный период начинается в приложении на первом подходящем устройстве.</p>
-            <p className="mt-2">Telegram остается для бонуса, восстановления и поддержки, если браузерный вход недоступен.</p>
-          </div>
-        </CabinetSection>
-      </div>
-    </CabinetRoute>
+      <CabinetGroup title="Что дальше">
+        <CabinetRow icon={icon("key")} label="У меня уже есть код" hint="Активировать оплату, подарок или промокод" href="/redeem/" />
+        <CabinetRow icon={icon("support_agent")} label="Оплата не обновилась" hint="Откройте одно обращение в поддержке" href="/support/" />
+        <CabinetRow icon={icon("arrow_back")} label="Назад к доступу" hint="Сроки, ручная ссылка и загрузки" href="/subscription/" />
+      </CabinetGroup>
+    </main>
   );
 }

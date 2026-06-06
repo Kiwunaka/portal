@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
 import {
   getAccessState,
@@ -38,105 +38,27 @@ function fallbackPlans(): PlanCatalogRow[] {
 }
 
 function formatDate(value?: string | null): string {
-  if (!value) return "Уточним позже";
+  if (!value) return "уточняется";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Уточним позже";
+  if (Number.isNaN(parsed.getTime())) return "уточняется";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(parsed);
 }
 
-function nodePolicyLabel(value?: string | null): string {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "free_single_location" || normalized === "nl_only") return "базовое направление";
-  if (normalized === "managed_premium" || normalized === "paid_pool") return "больше направлений";
-  return "по вашему профилю";
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
 }
 
-const manualStepCards = [
-  {
-    key: "copy",
-    title: "Скопируйте личную ссылку",
-    body: "Нужна только для ручной установки. Не отправляйте ее в бот и не используйте как код активации.",
-    badge: "1",
-    tone: "neutral" as const,
-  },
-  {
-    key: "client",
-    title: "Установите клиент",
-    body: "Если приложения POKROV нет под рукой, используйте совместимый клиент только как ручной recovery-путь. Ниже есть варианты для Android и Windows.",
-    badge: "2",
-    tone: "neutral" as const,
-  },
-  {
-    key: "import",
-    title: "Добавьте ссылку в клиент",
-    body: "Нажмите плюс, вставьте ссылку из буфера и обновите профиль. Обычно этого достаточно.",
-    badge: "3",
-    tone: "neutral" as const,
-  },
-  {
-    key: "connect",
-    title: "Подключитесь",
-    body: "Выберите добавленный профиль и включите подключение. Ручные параметры вводить не нужно.",
-    badge: "4",
-    tone: "neutral" as const,
-  },
-];
-
-const manualClientCards = [
-  {
-    key: "hiddify",
-    title: "Совместимый клиент",
-    body: "Android и Windows. Recovery-вариант, если приложение POKROV недоступно на устройстве.",
-    badge: "Recovery",
-    tone: "neutral" as const,
-    action: (
-      <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-        Скачать
-      </a>
-    ),
-  },
-  {
-    key: "v2rayn",
-    title: "v2rayN",
-    body: "Windows. Подходит, если нужен привычный настольный клиент.",
-    badge: "Windows",
-    tone: "neutral" as const,
-    action: (
-      <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-        Скачать
-      </a>
-    ),
-  },
-  {
-    key: "nekobox",
-    title: "NekoBox",
-    body: "Android. Подходит, если нужен другой совместимый клиент для ручного восстановления.",
-    badge: "Android",
-    tone: "neutral" as const,
-    action: (
-      <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-        Скачать
-      </a>
-    ),
-  },
-  {
-    key: "sfa",
-    title: "sing-box for Android",
-    body: "Android. Минимальный вариант для тех, кто уже пользовался ручными клиентами.",
-    badge: "SFA",
-    tone: "neutral" as const,
-    action: (
-      <a href="https://sing-box.sagernet.org/clients/android/" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-        Открыть
-      </a>
-    ),
-  },
-];
+function planHint(plan: PlanCatalogRow): string {
+  const days = Number(plan.days || 0);
+  const deviceLimit = Number(plan.device_limit || 0);
+  const parts = [];
+  if (days > 0) parts.push(`${days} дней`);
+  if (deviceLimit > 0) parts.push(`до ${deviceLimit} устройств`);
+  return parts.join(" · ") || "срок уточняется";
+}
 
 export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
@@ -198,11 +120,11 @@ export default function SubscriptionPage() {
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
   const premiumMode = paidMode || trialMode;
   const accessHint = paidMode
-    ? "Полный доступ действует до указанной даты."
+    ? `Полный доступ до ${formatDate(dash?.expiry_at || user?.expiry_at)}.`
     : trialMode
-      ? "Сейчас идет бесплатный полный доступ."
+      ? `Пробный период до ${formatDate(dash?.expiry_at || user?.expiry_at)}.`
       : freeMode
-        ? `Доступно ${freeLimitGb || 5} ГБ на ${nextResetAt ? `период до ${formatDate(nextResetAt)}` : "30 дней"} для 1 устройства.`
+        ? `${freeLimitGb || 5} ГБ на 30 дней${nextResetAt ? `, сброс ${formatDate(nextResetAt)}` : ""}.`
         : "Продлите срок, чтобы снова подключаться в приложении.";
 
   const copySubscriptionUrl = async () => {
@@ -218,284 +140,122 @@ export default function SubscriptionPage() {
     }
   };
 
-  const planCards = plans.slice(0, 4).map((plan) => {
-    const normalizedCode = normalizePlanCode(plan.code);
-    const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
-    const amountRub = Number(plan.amount_rub || 0);
-    const days = Number(plan.days || 0);
-    const deviceLimit = Number(plan.device_limit || 0);
-
-    return {
-      key: plan.code,
-      title: `${amountRub} ₽`,
-      body: `${plan.label} · ${days} дней · до ${deviceLimit} устройств · ${nodePolicyLabel(plan.node_policy)}`,
-      badge: isCurrent ? "Действует" : plan.badge || "Тариф",
-      tone: isCurrent ? ("success" as const) : days >= 180 ? ("info" as const) : ("neutral" as const),
-      action: isCurrent ? (
-        <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Действует сейчас</span>
-      ) : (
-        <AppRouteLink
-          href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
-          className="text-sm font-semibold text-emerald-800 dark:text-emerald-300"
-        >
-          Выбрать
-        </AppRouteLink>
-      ),
-    };
-  });
-
-  const paymentCards = [
-    {
-      key: "checkout",
-      title: "Продлить доступ",
-      body: "Выберите срок и проверьте сумму до оплаты. После оплаты доступ обновится в этом же аккаунте.",
-      badge: "Основной способ",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/subscription/checkout/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Оплатить
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "redeem",
-      title: "Активировать код",
-      body: "Если у вас уже есть подарочный или оплаченный код, примените его в этом разделе.",
-      badge: "Если код уже есть",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/redeem/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Активировать код
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "support",
-      title: "Если после оплаты статус не обновился",
-      body: "Не оплачивайте второй раз. Откройте поддержку, и оператор проверит платеж.",
-      badge: "Поддержка",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Поддержка
-        </AppRouteLink>
-      ),
-    },
-  ];
-
-  const modeCards = [
-    {
-      key: "paid",
-      title: paidMode ? "Полный доступ активен" : "Полный доступ на каждый день",
-      body: paidMode
-        ? `Доступ действует до ${formatDate(dash?.expiry_at)}. После окончания срока останется базовый режим.`
-        : "Если не хочется думать о месячном лимите, продлите полный доступ от 99 ₽.",
-      badge: paidMode ? "Сейчас так" : "Вариант",
-      tone: paidMode ? ("success" as const) : ("neutral" as const),
-    },
-    {
-      key: "trial",
-      title: trialMode ? "Пробный период уже идет" : "Пробный период показывает POKROV в полном доступе",
-      body: trialMode ? `Он действует до ${formatDate(dash?.expiry_at)}.` : "После него можно решить, нужен ли платный срок дальше.",
-      badge: trialMode ? "Активен" : "Как это работает",
-      tone: trialMode ? ("warning" as const) : ("neutral" as const),
-    },
-    {
-      key: "free",
-      title: freeMode ? "Базовый режим сейчас активен" : "Базовый режим остается запасным",
-      body: freeMode
-        ? `Сейчас доступно ${freeLimitGb || 5} ГБ на 30 дней для 1 устройства.`
-        : "После окончания полного доступа остается базовый режим: 5 ГБ на 30 дней для 1 устройства.",
-      badge: freeMode ? "Сейчас так" : "Базовый режим",
-      tone: freeMode && !softMode ? ("info" as const) : softMode ? ("warning" as const) : ("neutral" as const),
-    },
-  ];
+  const statusTone = dash?.is_active ? (softMode ? "warning" : "success") : "warning";
+  const statusBody = premiumMode
+    ? "Можно продлить заранее: устройства и настройки останутся на месте."
+    : dash?.is_active
+      ? "Можно перейти на полный доступ без месячного лимита."
+      : "Выберите срок или активируйте код.";
 
   return (
-    <CabinetRoute
-      eyebrow="Тарифы и оплата"
-      title="Продлить доступ"
-      description={
-        dash?.is_active
-          ? "Выберите срок. Устройства, настройки и история останутся на месте."
-          : "Выберите срок или активируйте код, чтобы снова подключаться в приложении."
-      }
-      actions={
-        <>
-          <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+    <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <CabinetStatus
+        title="Продлить доступ"
+        meta={`${resolvePlanLabel(dash, user)} · ${accessHint}`}
+        body={statusBody}
+        tone={statusTone}
+        action={
+          <AppRouteLink href="/subscription/checkout/" className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
             Оплатить
           </AppRouteLink>
-          <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Активировать код
-          </AppRouteLink>
-        </>
-      }
-    >
-      <CabinetSection
-        eyebrow="Варианты"
-        title="Сроки видно сразу"
-        description="Цена, срок и лимит устройств показаны в карточках до оплаты."
-      >
-        <CabinetCardGrid items={planCards} className="xl:grid-cols-4" />
-        {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть данных не обновилась автоматически: {error}</p> : null}
-      </CabinetSection>
-
-      <CabinetHero
-        eyebrow="Сейчас по профилю"
-        badge={dash?.is_active ? "Можно продлить" : "Нужно действие"}
-        badgeTone={dash?.is_active ? "success" : "warning"}
-        title={premiumMode ? "Полный доступ можно продлить заранее" : dash?.is_active ? "Базовый режим можно заменить полным доступом" : "Сначала верните срок действия"}
-        description={
-          premiumMode
-            ? "Если POKROV подходит, продлите срок до окончания доступа: устройства и история останутся на месте."
-            : dash?.is_active
-              ? "Базовый режим останется, а полный доступ добавит больше устройств и уберет месячный лимит."
-              : "Как только срок снова станет активным, устройства и история останутся на месте."
         }
-        actions={
-          <>
-            <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Оплатить
-            </AppRouteLink>
-            <AppRouteLink href="/redeem/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Активировать код
-            </AppRouteLink>
-          </>
-        }
-        details={[
-          {
-            label: "План сейчас",
-            value: resolvePlanLabel(dash, user),
-            hint: paidMode || trialMode ? `Полный доступ до ${formatDate(dash?.expiry_at || user?.expiry_at)}` : accessHint,
-            tone: "neutral",
-          },
-          {
-            label: "Полный режим",
-            value: paidMode ? "Активен" : "Можно включить",
-            hint: paidMode ? "Без месячного лимита трафика." : "До 5 устройств и больше направлений для подключения.",
-            tone: paidMode ? "success" : "neutral",
-          },
-          {
-            label: "Если оплата уже была",
-            value: "Открыть поддержку",
-            hint: "Если статус не обновился, лучше сразу продолжить обращение в поддержке.",
-            tone: "neutral",
-          },
-        ]}
       />
 
-      <CabinetSection
-        eyebrow="Основные действия"
-        title="Оплатить или активировать код"
-        description="Почти всегда нужен один из этих путей. Если статус после оплаты не обновился, не оплачивайте второй раз — напишите в поддержку."
-      >
-        <CabinetCardGrid items={paymentCards} className="xl:grid-cols-3" />
-      </CabinetSection>
-
-      <div id="manual-setup" className="scroll-mt-24">
-        <CabinetSection
-          eyebrow="Запасной способ"
-          title="Ручная настройка, если приложение не подходит"
-          description="Используйте этот вариант только для восстановления или совместимого клиента. Личная ссылка не является кодом оплаты и не привязывает Telegram."
-          tone={manualAccessReady ? "info" : "warning"}
-          actions={
-            <AppRouteLink href="/downloads/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-              Загрузки
-            </AppRouteLink>
-          }
-        >
-          <div className="rounded-[1.3rem] border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] p-4">
-            <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
-              {manualAccessReady
-                ? "Сначала попробуйте приложение POKROV. Ссылку показываем отдельно, чтобы ее случайно не скопировали на чужое устройство."
-                : "После оплаты или активации кода здесь появится личная ссылка и QR-код."}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => setManualAccessOpen((value) => !value)}
-                disabled={!manualAccessReady}
-                className="outline-btn rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
-              >
-                {manualAccessOpen ? "Скрыть ссылку" : "Показать ссылку и QR"}
-              </button>
-              {!manualAccessReady ? (
-                <AppRouteLink href="/subscription/checkout/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                  Оплатить
-                </AppRouteLink>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <CabinetCardGrid items={manualStepCards} className="xl:grid-cols-2" />
-          </div>
-
-          <div className="mt-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--atlas-text-muted)]">
-              Совместимые клиенты
-            </p>
-            <CabinetCardGrid items={manualClientCards} className="xl:grid-cols-1" />
-          </div>
-
-          {manualAccessOpen ? (
-            <div className="mt-5 grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
-              <div className="min-w-0">
-                <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm leading-6 text-[var(--atlas-text-soft)]">
-                  Скопируйте ссылку или отсканируйте QR-код только на устройстве, которому доверяете. Ссылка дает доступ к профилю подключения.
-                </p>
-                <div className="mt-4 rounded-[1.1rem] border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 py-3">
-                  <p className="break-all font-mono text-xs leading-6 text-[var(--atlas-text)]">{subscriptionUrl}</p>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void copySubscriptionUrl()}
-                    disabled={!manualAccessReady}
-                    className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+      <CabinetGroup title="Срок">
+        {plans.slice(0, 4).map((plan) => {
+          const normalizedCode = normalizePlanCode(plan.code);
+          const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
+          const amountRub = Number(plan.amount_rub || 0);
+          return (
+            <CabinetRow
+              key={plan.code}
+              icon={icon(isCurrent ? "check_circle" : "calendar_month")}
+              label={plan.label}
+              hint={planHint(plan)}
+              value={`${amountRub} ₽`}
+              action={
+                isCurrent ? (
+                  <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Действует</span>
+                ) : (
+                  <AppRouteLink
+                    href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
+                    className="text-sm font-semibold text-emerald-800 dark:text-emerald-300"
                   >
-                    Скопировать ссылку
-                  </button>
-                  <a href={subscriptionUrl} target="_blank" rel="noreferrer" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-                    Открыть ссылку
-                  </a>
+                    Выбрать
+                  </AppRouteLink>
+                )
+              }
+            />
+          );
+        })}
+      </CabinetGroup>
+      {error ? <p className="px-1 text-sm text-amber-700 dark:text-amber-200">Часть тарифов не обновилась: {error}</p> : null}
+
+      <CabinetGroup title="Действия">
+        <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
+        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android APK и Windows beta" href="/downloads/" />
+        <CabinetRow icon={icon("support_agent")} label="Помощь" hint="Если оплата не обновилась" href="/support/" />
+      </CabinetGroup>
+
+      <section id="manual-setup" className="scroll-mt-24 space-y-2">
+        <div className="flex items-center justify-between gap-3 px-1">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Ручная настройка</h2>
+          <button
+            type="button"
+            onClick={() => setManualAccessOpen((value) => !value)}
+            disabled={!manualAccessReady}
+            className="outline-btn rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-60"
+          >
+            {manualAccessOpen ? "Скрыть" : "Показать"}
+          </button>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/86 dark:border-white/10 dark:bg-white/[0.04]">
+          <CabinetRow
+            icon={icon("qr_code_2")}
+            label="Личная ссылка и QR"
+            hint={manualAccessReady ? "Только для восстановления или совместимого клиента" : "Появится после активации"}
+            value={manualAccessOpen ? "открыто" : "скрыто"}
+          />
+          {manualAccessOpen ? (
+            <div className="space-y-5 border-t border-slate-200/70 p-4 dark:border-white/10">
+              <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
+                <div className="min-w-0">
+                  <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    Скопируйте ссылку только на устройстве, которому доверяете. Она открывает профиль подключения.
+                  </p>
+                  <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 dark:border-white/10 dark:bg-white/[0.04]">
+                    <p className="break-all font-mono text-xs leading-6 text-slate-800 dark:text-slate-200">{subscriptionUrl}</p>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void copySubscriptionUrl()}
+                      disabled={!manualAccessReady}
+                      className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
+                    >
+                      Скопировать ссылку
+                    </button>
+                    <a href={subscriptionUrl} target="_blank" rel="noreferrer" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+                      Открыть ссылку
+                    </a>
+                  </div>
+                  {copyStatus ? <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{copyStatus}</p> : null}
                 </div>
-                {copyStatus ? <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{copyStatus}</p> : null}
+              </div>
+
+              <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Совместимые клиенты</p>
+                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/72 dark:border-white/10 dark:bg-white/[0.03]">
+                  <CabinetRow label="Hiddify" value="Android и Windows" action={<a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Скачать</a>} />
+                  <CabinetRow label="v2rayN" value="Windows" action={<a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Скачать</a>} />
+                  <CabinetRow label="NekoBox" value="Android" action={<a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Скачать</a>} />
+                </div>
               </div>
             </div>
           ) : null}
-        </CabinetSection>
-      </div>
-
-      <CabinetSection
-        eyebrow="История"
-        title="История оплат"
-        description="Когда история станет доступна, она появится прямо здесь."
-        actions={
-          <AppRouteLink href="/support/" className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-            Поддержка
-          </AppRouteLink>
-        }
-        tone="info"
-      >
-        <div className="rounded-[1.3rem] border border-dashed border-sky-200/80 bg-white/72 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-sky-400/20 dark:bg-white/[0.04] dark:text-slate-300">
-          <p className="font-semibold text-slate-950 dark:text-slate-50">Оплаты появятся здесь.</p>
-          <p className="mt-2">
-            Если уже платили, а срок не обновился, не оплачивайте второй раз. Откройте поддержку: оператор проверит платеж и продолжит одно обращение.
-          </p>
         </div>
-      </CabinetSection>
-
-      <CabinetSection
-        eyebrow="Коротко о режимах"
-        title="Как на это смотреть"
-        description="Если не хочется разбираться в терминах, этой короткой сводки обычно достаточно."
-      >
-        <CabinetCardGrid items={modeCards} />
-      </CabinetSection>
-    </CabinetRoute>
+      </section>
+    </main>
   );
 }

@@ -2,244 +2,110 @@
 
 import type { ReactNode } from "react";
 
-import { StatusBadge } from "@/components/atlas";
+import AppRouteLink from "@/components/app-route-link";
 import { cn } from "@/components/utils";
-import { DoubleBezel } from "@/components/ui/double-bezel";
-import { FadeUp } from "@/components/ui/fade-up";
 
 export type CabinetTone = "success" | "warning" | "danger" | "info" | "neutral";
 
-export type CabinetMetric = {
-  label: ReactNode;
-  value: ReactNode;
-  hint?: ReactNode;
-  tone?: CabinetTone;
+const LABEL_CLASS = "text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
+
+const STATUS_TONE_CLASSES: Record<CabinetTone, string> = {
+  success: "border-emerald-200/70 bg-emerald-50/80 text-emerald-950 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-100",
+  warning: "border-amber-200/80 bg-amber-50/85 text-amber-950 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100",
+  danger: "border-rose-200/80 bg-rose-50/85 text-rose-950 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-100",
+  info: "border-sky-200/80 bg-sky-50/85 text-sky-950 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-100",
+  neutral: "border-slate-200/80 bg-white/86 text-slate-950 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-50",
 };
 
-export type CabinetListItem = {
-  key: string;
+type CabinetStatusProps = {
   title: ReactNode;
+  meta?: ReactNode;
   body?: ReactNode;
-  badge?: ReactNode;
   tone?: CabinetTone;
   action?: ReactNode;
+  children?: ReactNode;
+  className?: string;
 };
 
-export type CabinetDetail = {
-  label: ReactNode;
-  value: ReactNode;
-  hint?: ReactNode;
-  tone?: CabinetTone;
-};
-
-const LABEL_CLASS = "text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
-const TEXT_SOFT = "text-slate-600 dark:text-slate-300";
-
-type CabinetRouteProps = {
-  eyebrow?: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  actions?: ReactNode;
-  metrics?: CabinetMetric[];
-  children: ReactNode;
-};
-
-export function CabinetRoute({ eyebrow, title, description, actions, metrics, children }: CabinetRouteProps) {
+export function CabinetStatus({ title, meta, body, tone = "neutral", action, children, className }: CabinetStatusProps) {
   return (
-    <main className="space-y-6">
-      <FadeUp delay={0.1}>
-        <div className="px-1 py-2 sm:px-2">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              {eyebrow ? <p className={LABEL_CLASS}>{eyebrow}</p> : null}
-              <h1 className="mt-2 font-display text-[clamp(1.7rem,2.4vw,2.35rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-slate-950 dark:text-slate-50">
-                {title}
-              </h1>
-              {description ? <p className={cn("mt-3 max-w-3xl text-sm leading-relaxed", TEXT_SOFT)}>{description}</p> : null}
-            </div>
-            {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
-          </div>
+    <section className={cn("rounded-2xl border p-4 sm:p-5", STATUS_TONE_CLASSES[tone], className)}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          {meta ? <p className="text-[13px] font-medium leading-5 opacity-75">{meta}</p> : null}
+          <h1 className="mt-1 text-[1.45rem] font-semibold leading-tight tracking-[-0.02em] sm:text-[1.65rem]">{title}</h1>
+          {body ? <p className="mt-2 max-w-2xl text-sm leading-6 opacity-80">{body}</p> : null}
         </div>
-      </FadeUp>
-
-      {metrics?.length ? <CabinetKpiRow items={metrics} /> : null}
-
-      {children}
-    </main>
-  );
-}
-
-type CabinetKpiRowProps = {
-  items: CabinetMetric[];
-  className?: string;
-};
-
-export function CabinetKpiRow({ items, className }: CabinetKpiRowProps) {
-  return (
-    <FadeUp delay={0.2} className={cn("grid gap-4 md:grid-cols-2 xl:grid-cols-4", className)}>
-      {items.map((item, index) => (
-        <DoubleBezel
-          key={String(item.label) + index}
-          tone={item.tone === "neutral" ? "default" : item.tone}
-          innerClassName="px-5 py-5"
-        >
-          <p className={LABEL_CLASS}>{item.label}</p>
-          <div className="mt-3 font-mono text-[1.4rem] font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            {item.value}
-          </div>
-          {item.hint ? <p className={cn("mt-2 text-[13px] leading-relaxed", TEXT_SOFT)}>{item.hint}</p> : null}
-        </DoubleBezel>
-      ))}
-    </FadeUp>
-  );
-}
-
-type CabinetHeroProps = {
-  eyebrow?: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  badge?: ReactNode;
-  badgeTone?: CabinetTone;
-  actions?: ReactNode;
-  details?: CabinetDetail[];
-  footer?: ReactNode;
-  className?: string;
-};
-
-export function CabinetHero({
-  eyebrow,
-  title,
-  description,
-  badge,
-  badgeTone = "neutral",
-  actions,
-  details,
-  footer,
-  className,
-}: CabinetHeroProps) {
-  return (
-    <FadeUp delay={0.3} className={className}>
-      <DoubleBezel tone="default" innerClassName="p-6 sm:p-8">
-        <div className="grid gap-8 xl:grid-cols-[1.16fr_0.84fr]">
-          <div className="min-w-0">
-            {eyebrow ? <p className={LABEL_CLASS}>{eyebrow}</p> : null}
-            {badge ? <StatusBadge tone={badgeTone} className={eyebrow ? "mt-4" : ""}>{badge}</StatusBadge> : null}
-            <h2 className="mt-4 font-display text-[clamp(2rem,3vw,3rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-slate-950 dark:text-slate-50">
-              {title}
-            </h2>
-            {description ? <p className={cn("mt-4 max-w-3xl text-[15px] leading-relaxed", TEXT_SOFT)}>{description}</p> : null}
-            {actions ? <div className="mt-6 flex flex-wrap gap-4">{actions}</div> : null}
-          </div>
-
-          {details?.length ? (
-            <aside className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              {details.map((detail, index) => (
-                <div
-                  key={index}
-                  className="rounded-[1.3rem] border border-slate-200/50 bg-slate-50/50 p-5 dark:border-white/5 dark:bg-white/[0.02]"
-                >
-                  <p className={LABEL_CLASS}>{detail.label}</p>
-                  <p className="mt-2 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                    {detail.value}
-                  </p>
-                  {detail.hint ? <p className={cn("mt-2 text-[13px] leading-relaxed", TEXT_SOFT)}>{detail.hint}</p> : null}
-                </div>
-              ))}
-            </aside>
-          ) : null}
-        </div>
-
-        {footer ? <div className="mt-8 border-t border-slate-200/50 pt-6 dark:border-white/10">{footer}</div> : null}
-      </DoubleBezel>
-    </FadeUp>
-  );
-}
-
-type CabinetSectionProps = {
-  eyebrow?: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  actions?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  tone?: CabinetTone;
-};
-
-export function CabinetSection({ eyebrow, title, description, actions, children, className, tone = "neutral" }: CabinetSectionProps) {
-  return (
-    <FadeUp delay={0.4} as="section" className={className}>
-      <DoubleBezel tone={tone === "neutral" ? "default" : tone} innerClassName="p-6 sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            {eyebrow ? <p className={LABEL_CLASS}>{eyebrow}</p> : null}
-            <h2 className="mt-3 font-display text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.03em] text-slate-950 dark:text-slate-50">
-              {title}
-            </h2>
-            {description ? <p className={cn("mt-3 max-w-3xl text-[15px] leading-relaxed", TEXT_SOFT)}>{description}</p> : null}
-          </div>
-          {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
-        </div>
-
-        <div className="mt-6">{children}</div>
-      </DoubleBezel>
-    </FadeUp>
-  );
-}
-
-type CabinetListProps = {
-  items: CabinetListItem[];
-  empty?: ReactNode;
-  className?: string;
-};
-
-export function CabinetList({ items, empty, className }: CabinetListProps) {
-  if (!items.length) {
-    return empty ? (
-      <div className={cn("rounded-[1.2rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-sm leading-relaxed text-slate-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-400", className)}>
-        {empty}
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-    ) : null;
+      {children ? <div className="mt-4 border-t border-current/10 pt-4">{children}</div> : null}
+    </section>
+  );
+}
+
+type CabinetGroupProps = {
+  title?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+};
+
+export function CabinetGroup({ title, action, children, className }: CabinetGroupProps) {
+  return (
+    <section className={cn("space-y-2", className)}>
+      {(title || action) ? (
+        <div className="flex items-center justify-between gap-3 px-1">
+          {title ? <h2 className={LABEL_CLASS}>{title}</h2> : <span />}
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+      ) : null}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/86 shadow-[0_18px_44px_-36px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-white/[0.04]">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+type CabinetRowProps = {
+  icon?: ReactNode;
+  label: ReactNode;
+  value?: ReactNode;
+  hint?: ReactNode;
+  action?: ReactNode;
+  href?: string;
+  className?: string;
+};
+
+export function CabinetRow({ icon, label, value, hint, action, href, className }: CabinetRowProps) {
+  const content = (
+    <>
+      {icon ? (
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200">
+          {icon}
+        </span>
+      ) : null}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-slate-950 dark:text-slate-50">{label}</span>
+        {hint ? <span className="mt-0.5 block truncate text-[13px] leading-5 text-slate-500 dark:text-slate-400">{hint}</span> : null}
+      </span>
+      {value ? <span className="min-w-0 max-w-[48%] truncate text-right text-sm font-medium text-slate-600 dark:text-slate-300">{value}</span> : null}
+      {action ? <span className="shrink-0">{action}</span> : null}
+      {href ? <span className="material-symbols-rounded shrink-0 text-[19px] text-slate-400">chevron_right</span> : null}
+    </>
+  );
+  const classes = cn(
+    "flex min-h-[58px] items-center gap-3 border-b border-slate-200/70 px-4 py-3 last:border-b-0 dark:border-white/8",
+    href ? "transition hover:bg-slate-50/80 active:scale-[0.99] active:opacity-80 dark:hover:bg-white/[0.03]" : "",
+    className,
+  );
+
+  if (href) {
+    return (
+      <AppRouteLink href={href} className={classes}>
+        {content}
+      </AppRouteLink>
+    );
   }
 
-  return (
-    <div className={cn("space-y-4", className)}>
-      {items.map((item, index) => (
-        <article key={item.key} className="group relative overflow-hidden rounded-[1.4rem] border border-slate-200/50 bg-slate-50/50 px-5 py-5 transition-colors hover:bg-emerald-50/50 hover:border-emerald-200/50 dark:border-white/5 dark:bg-white/[0.02] dark:hover:bg-white/[0.04] dark:hover:border-white/10">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3">
-                <StatusBadge tone={item.tone || "neutral"}>{item.badge || String(index + 1).padStart(2, "0")}</StatusBadge>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">{item.title}</h3>
-              </div>
-              {item.body ? <p className={cn("mt-3 text-[14px] leading-relaxed", TEXT_SOFT)}>{item.body}</p> : null}
-            </div>
-            {item.action ? <div className="shrink-0">{item.action}</div> : null}
-          </div>
-        </article>
-      ))}
-    </div>
-  );
-}
-
-type CabinetCardGridProps = {
-  items: CabinetListItem[];
-  className?: string;
-};
-
-export function CabinetCardGrid({ items, className }: CabinetCardGridProps) {
-  return (
-    <div className={cn("grid gap-4 md:grid-cols-2 xl:grid-cols-3", className)}>
-      {items.map((item) => (
-        <article
-          key={item.key}
-          className="group flex min-h-[12rem] flex-col overflow-hidden rounded-[1.6rem] border border-slate-200/60 bg-white p-5 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-1 hover:shadow-[0_20px_40px_-20px_rgba(15,23,42,0.1)] dark:border-white/10 dark:bg-[#101713] dark:hover:shadow-[0_20px_40px_-20px_rgba(0,0,0,0.5)]"
-        >
-          <StatusBadge tone={item.tone || "neutral"}>{item.badge || "Далее"}</StatusBadge>
-          <h3 className="mt-4 text-[15px] font-semibold text-slate-950 dark:text-slate-50">{item.title}</h3>
-          {item.body ? <p className={cn("mt-3 flex-1 text-[14px] leading-relaxed", TEXT_SOFT)}>{item.body}</p> : null}
-          {item.action ? <div className="mt-5">{item.action}</div> : null}
-        </article>
-      ))}
-    </div>
-  );
+  return <div className={classes}>{content}</div>;
 }

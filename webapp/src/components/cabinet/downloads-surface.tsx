@@ -4,25 +4,33 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection, type CabinetListItem } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { fetchClientApps, type ClientAppsPayload } from "@/lib/api";
 import { getPortalPublicConfig } from "@/lib/portal";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
-type DownloadCard = CabinetListItem & {
+type DownloadRow = {
+  key: string;
+  icon: string;
+  label: string;
+  hint: string;
+  value: string;
   href?: string;
+  action?: ReactNode;
 };
 
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
+}
+
 function formatDate(value?: string | null): string {
-  if (!value) return "Обновим позже";
+  if (!value) return "обновим позже";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Обновим позже";
+  if (Number.isNaN(parsed.getTime())) return "обновим позже";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(parsed);
 }
 
@@ -34,7 +42,7 @@ function externalAction(href: string, label: string): ReactNode {
   );
 }
 
-function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
+function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
   const androidApk = payload?.android?.apk_url || "";
   const androidMirror = payload?.android?.mirror_url || "";
   const windowsExe = payload?.windows?.exe_url || "";
@@ -45,10 +53,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     androidApk
       ? {
           key: "android-apk",
-          title: "Android-приложение",
-          body: "Скачивайте файл только отсюда или по ссылке от поддержки, чтобы не поставить старую сборку.",
-          badge: "Android",
-          tone: "warning",
+          icon: "android",
+          label: "Android-приложение",
+          hint: "Бета-доступ · скачивайте APK только отсюда",
+          value: "APK",
           href: androidApk,
           action: externalAction(androidApk, "Скачать"),
         }
@@ -56,10 +64,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     androidMirror
       ? {
           key: "android-mirror",
-          title: "Резервная ссылка для Android",
-          body: "Если обычная ссылка не открылась, попробуйте эту. Если и она не помогла, лучше написать в поддержку.",
-          badge: "Резерв",
-          tone: "warning",
+          icon: "backup",
+          label: "Резерв Android",
+          hint: "Если основная ссылка не открылась",
+          value: "резерв",
           href: androidMirror,
           action: externalAction(androidMirror, "Открыть"),
         }
@@ -67,10 +75,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     windowsExe
       ? {
           key: "windows-exe",
-          title: "Windows-приложение",
-          body: "Скачайте установщик и войдите в тот же аккаунт. Windows может показать предупреждение, пока приложение в бете.",
-          badge: "Windows",
-          tone: "warning",
+          icon: "desktop_windows",
+          label: "Windows-приложение",
+          hint: "Бета-доступ · Windows может показать предупреждение",
+          value: "EXE",
           href: windowsExe,
           action: externalAction(windowsExe, "Скачать"),
         }
@@ -78,10 +86,10 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     windowsMirror
       ? {
           key: "windows-mirror",
-          title: "Резервная ссылка для Windows",
-          body: "Запасная ссылка на тот же установщик. Предупреждение Windows возможно, пока приложение в бете.",
-          badge: "Резерв",
-          tone: "warning",
+          icon: "backup",
+          label: "Резерв Windows",
+          hint: "Та же beta-сборка через запасную ссылку",
+          value: "резерв",
           href: windowsMirror,
           action: externalAction(windowsMirror, "Открыть"),
         }
@@ -89,15 +97,15 @@ function buildCards(payload: ClientAppsPayload | null): DownloadCard[] {
     docsUrl
       ? {
           key: "docs",
-          title: "Короткая инструкция",
-          body: "Если нужен быстрый ориентир по установке и первым шагам, он здесь.",
-          badge: "Подсказка",
-          tone: "neutral",
+          icon: "description",
+          label: "Короткая инструкция",
+          hint: "Если нужна установка с первого раза",
+          value: "гайд",
           href: docsUrl,
           action: externalAction(docsUrl, "Открыть"),
         }
       : null,
-  ].filter(Boolean) as DownloadCard[];
+  ].filter(Boolean) as DownloadRow[];
 }
 
 export function CabinetDownloadsSurface() {
@@ -127,148 +135,57 @@ export function CabinetDownloadsSurface() {
     };
   }, []);
 
-  const cards = useMemo(() => buildCards(payload), [payload]);
-  const hasAndroid = cards.some((item) => item.key.startsWith("android"));
-  const hasWindows = cards.some((item) => item.key.startsWith("windows"));
-  const hasDocs = cards.some((item) => item.key === "docs");
-
-  const helperCards: CabinetListItem[] = [
-    {
-      key: "step-install",
-      title: "Поставьте приложение на нужный экран",
-      body: "Сначала просто откройте нужную ссылку. Кабинет не должен мешать этому шагу.",
-      badge: "Шаг 1",
-      tone: "neutral",
-      action: hasAndroid || hasWindows ? null : (
-        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Ссылки появятся</span>
-      ),
-    },
-    {
-      key: "step-login",
-      title: "Войдите в тот же аккаунт",
-      body: "Профиль подтянется сам. Ключи и скрытые настройки вручную искать не нужно.",
-      badge: "Шаг 2",
-      tone: "neutral",
-    },
-    {
-      key: "step-help",
-      title: "Если что-то не пошло, напишите в поддержку",
-      body: "Так быстрее и для вас, и для поддержки: весь контекст будет рядом.",
-      badge: "Шаг 3",
-      tone: "neutral",
-      action: (
-        <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Поддержка
-        </AppRouteLink>
-      ),
-    },
-  ];
+  const rows = useMemo(() => buildRows(payload), [payload]);
+  const hasAndroid = rows.some((item) => item.key.startsWith("android"));
+  const hasWindows = rows.some((item) => item.key.startsWith("windows"));
+  const firstDownload = rows.find((item) => item.key === "android-apk") || rows.find((item) => item.key === "windows-exe") || rows[0] || null;
 
   return (
-    <CabinetRoute
-      eyebrow="Загрузки"
-      title="Скачать POKROV"
-      description="Скачивайте приложение только отсюда: так меньше риска взять старый или чужой файл."
-      actions={
-        <>
-          <AppRouteLink href="/devices/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Устройства
-          </AppRouteLink>
-          <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Поддержка
-          </AppRouteLink>
-        </>
-      }
-      metrics={[
-        {
-          label: "Android",
-          value: hasAndroid ? "Ссылки готовы" : "Подтянем позже",
-          hint: "Официальная APK-ссылка для текущей беты.",
-          tone: hasAndroid ? "warning" : "neutral",
-        },
-        {
-          label: "Windows",
-          value: hasWindows ? "Ссылка готова" : "Подтянем позже",
-          hint: "Windows может показать предупреждение, пока сборка в бете.",
-          tone: hasWindows ? "warning" : "neutral",
-        },
-        {
-          label: "Инструкция",
-          value: hasDocs ? "Под рукой" : "Не обязательна",
-          hint: "Короткий ориентир, если нужна установка с первого раза.",
-          tone: "neutral",
-        },
-        {
-          label: "Обновлено",
-          value: formatDate(payload?.updated_at),
-          hint: "Если ссылка ведет себя странно, лучше сразу открыть поддержку.",
-          tone: error ? "warning" : "neutral",
-        },
-      ]}
-    >
-      <CabinetHero
-        eyebrow="Что делать сейчас"
-        badge={cards.length ? "Бета-доступ" : "Ссылки подтягиваются"}
-        badgeTone={cards.length ? "success" : "info"}
-        title={cards.length ? "Сначала загрузка, потом вход" : "Часть ссылок подтянем позже"}
-        description={
-          cards.length
-            ? "Обычно хватает двух шагов: скачать файл и войти в тот же аккаунт. Остальное POKROV подтянет сам."
-            : "Кабинет продолжает работать. Если нужной ссылки нет прямо сейчас, лучше не искать обходной путь, а открыть поддержку."
-        }
-        actions={
-          <>
-            {cards[0]?.href ? (
-              <a href={cards[0].href} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                Скачать
-              </a>
-            ) : null}
-            <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Нужна помощь
+    <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <CabinetStatus
+        title="Загрузки"
+        meta={rows.length ? "Бета-доступ" : "Ссылки подтягиваются"}
+        body="Скачайте Android APK или Windows beta отсюда, затем войдите в тот же аккаунт."
+        tone={rows.length ? "success" : "neutral"}
+        action={
+          firstDownload?.href ? (
+            <a href={firstDownload.href} target="_blank" rel="noreferrer" className="btn-primary w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+              Скачать
+            </a>
+          ) : (
+            <AppRouteLink href="/support/" className="btn-primary w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+              Поддержка
             </AppRouteLink>
-          </>
+          )
         }
-        details={[
-          {
-            label: "Что скачать",
-            value: hasAndroid ? "Android APK" : hasWindows ? "Установщик Windows" : "Поддержка",
-            hint: "Берите обычный путь первым. Запасные ссылки нужны редко.",
-            tone: "neutral",
-          },
-          {
-            label: "После установки",
-            value: "Войти в тот же аккаунт",
-            hint: "Профиль, режим и история подтянутся сами.",
-            tone: "neutral",
-          },
-          {
-            label: "Если что-то не открылось",
-            value: "Написать в поддержку",
-            hint: "Быстрее сразу продолжить одно обращение в поддержке.",
-            tone: error ? "warning" : "neutral",
-          },
-        ]}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.06fr_0.94fr]">
-        <CabinetSection
-          eyebrow="Платформы"
-          title="Куда можно перейти сейчас"
-          description="Показываем только те ссылки, которые сейчас доступны."
-        >
-          <CabinetCardGrid items={cards} className="xl:grid-cols-2" />
-          {error ? <p className="mt-4 text-sm text-amber-700 dark:text-amber-200">Часть ссылок не удалось обновить автоматически: {error}</p> : null}
-        </CabinetSection>
+      <CabinetGroup title="Файлы">
+        {rows.length ? (
+          rows.map((item) => (
+            <CabinetRow
+              key={item.key}
+              icon={icon(item.icon)}
+              label={item.label}
+              hint={item.hint}
+              value={item.value}
+              action={item.action}
+            />
+          ))
+        ) : (
+          <CabinetRow icon={icon("hourglass_empty")} label="Ссылки подтягиваются" hint="Если срочно, откройте поддержку" href="/support/" />
+        )}
+      </CabinetGroup>
 
-        <CabinetSection
-          eyebrow="Коротко"
-          title="Что важно помнить"
-          description="Этих трех заметок обычно хватает, чтобы довести установку до конца."
-        >
-          <CabinetCardGrid items={helperCards} className="xl:grid-cols-1" />
-        </CabinetSection>
-      </div>
-    </CabinetRoute>
+      {error ? <p className="px-1 text-sm text-amber-700 dark:text-amber-200">Часть ссылок не удалось обновить: {error}</p> : null}
+
+      <CabinetGroup title="После скачивания">
+        <CabinetRow icon={icon("login")} label="Войти в тот же аккаунт" hint="Профиль подтянется сам" value={hasAndroid || hasWindows ? "важно" : undefined} />
+        <CabinetRow icon={icon("devices")} label="Проверить устройство" hint="После входа оно появится в списке" href="/devices/" />
+        <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Если файл не открылся или вход не прошел" href="/support/" />
+        <CabinetRow icon={icon("update")} label="Обновлено" hint="По данным API загрузок" value={formatDate(payload?.updated_at)} />
+      </CabinetGroup>
+    </main>
   );
 }
 

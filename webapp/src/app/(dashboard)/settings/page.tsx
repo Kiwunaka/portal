@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import {
   checkChannelSubscriberStatus,
@@ -19,15 +19,17 @@ import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
+}
+
 function formatDate(value?: string | null): string {
-  if (!value) return "Уточним позже";
+  if (!value) return "уточняется";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Уточним позже";
+  if (Number.isNaN(parsed.getTime())) return "уточняется";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(parsed);
 }
 
@@ -43,10 +45,8 @@ function isSyntheticEmailAccountId(value?: number | string | null): boolean {
 }
 
 type BonusCheckState = {
-  checked: boolean;
   subscriber: boolean;
   alreadyClaimed: boolean;
-  linkRequired: boolean;
   bonusDays: number;
   message: string;
 };
@@ -84,7 +84,7 @@ export default function SettingsPage() {
     ? linkedTelegramUsername
       ? `@${linkedTelegramUsername}`
       : profileLabel(user?.username, user?.tg_id)
-    : "Не подключен";
+    : "не подключен";
   const deviceLimit = getDeviceLimit(dash, user);
   const channelLink = user?.channel?.link || "";
   const supportLink = user?.support?.link || "/support/";
@@ -93,6 +93,11 @@ export default function SettingsPage() {
   const channelBonusReady = Boolean(user?.bonuses?.channel_bonus?.can_claim);
   const canClaimBonus = !channelBonusClaimedAt && (channelBonusReady || Boolean(bonusCheck?.subscriber && !bonusCheck.alreadyClaimed));
   const canLinkEmail = Boolean(emailReady && !linkedEmail);
+  const bonusStatusText =
+    bonusMessage ||
+    (channelBonusClaimedAt
+      ? `Бонус уже добавлен ${formatDate(channelBonusClaimedAt)}.`
+      : bonusCheck?.message || (channelBonusReady ? `Можно забрать +${channelBonusDays} дней.` : "Проверьте подписку на канал."));
 
   useEffect(() => {
     let cancelled = false;
@@ -127,111 +132,6 @@ export default function SettingsPage() {
     }
   }
 
-  const linkedItems = [
-    {
-      key: "telegram",
-      title: "Telegram",
-      body: hasLinkedTelegram
-        ? "Привязан к этому аккаунту. Можно входить быстрее, восстанавливать доступ и получать бонусы."
-        : "Привяжите Telegram, чтобы входить быстрее, восстановить аккаунт и получить +10 дней.",
-      badge: telegramName,
-      tone: hasLinkedTelegram ? ("success" as const) : ("warning" as const),
-      action: hasLinkedTelegram ? (
-        <AppRouteLink href={supportLink} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Поддержка
-        </AppRouteLink>
-      ) : (
-        <button
-          type="button"
-          onClick={() => void onTelegramLink()}
-          disabled={telegramLinkBusy}
-          className="text-sm font-semibold text-emerald-800 disabled:opacity-60 dark:text-emerald-300"
-        >
-          {telegramLinkBusy ? "Открываем..." : "Привязать Telegram"}
-        </button>
-      ),
-    },
-    {
-      key: "email",
-      title: "Email",
-      body: linkedEmail
-        ? "Привязан к этому аккаунту. Можно входить без Telegram, получать письма и восстанавливать доступ."
-        : emailReady
-          ? "Добавьте почту для входа без Telegram, чеков и восстановления доступа."
-          : "Почтовый вход появится после финальной проверки доставки писем.",
-      badge: linkedEmail || (emailReady ? "Можно добавить" : "Скоро"),
-      tone: linkedEmail ? ("info" as const) : ("neutral" as const),
-      action: canLinkEmail ? (
-        <a href="#email-link" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Добавить почту
-        </a>
-      ) : emailReady ? (
-        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Готово</span>
-      ) : undefined,
-    },
-    {
-      key: "access",
-      title: "Статус доступа",
-      body: dash?.is_active
-        ? "Профиль готов для приложения, продления и поддержки."
-        : "Доступ можно вернуть через раздел оплаты.",
-      badge: dash?.is_active ? "Активен" : "Нужно продление",
-      tone: dash?.is_active ? ("success" as const) : ("warning" as const),
-      action: (
-        <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Тарифы и оплата
-        </AppRouteLink>
-      ),
-    },
-  ];
-
-  const quickActions = [
-    {
-      key: "devices",
-      title: "Проверить устройства",
-      body: "Посмотрите, какие телефоны и компьютеры уже связаны с аккаунтом.",
-      badge: "Устройства",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/devices/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Перейти
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "downloads",
-      title: "Открыть загрузки",
-      body: "Android и Windows beta-сборки лежат в отдельном разделе кабинета.",
-      badge: "Загрузки",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Перейти
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "support",
-      title: "Продолжить поддержку",
-      body: "Если вопрос уже был, держите его в одном обращении: так быстрее разобраться.",
-      badge: "Поддержка",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть
-        </AppRouteLink>
-      ),
-    },
-  ];
-
-  const bonusStatusText = useMemo(() => {
-    if (bonusMessage) return bonusMessage;
-    if (channelBonusClaimedAt) return `Бонус уже добавлен ${formatDate(channelBonusClaimedAt)}.`;
-    if (bonusCheck?.message) return bonusCheck.message;
-    if (channelBonusReady) return `Можно забрать +${channelBonusDays} дней после проверки подписки.`;
-    return "Подпишитесь на канал, проверьте статус и заберите бонус, если аккаунт подходит.";
-  }, [bonusCheck?.message, bonusMessage, channelBonusClaimedAt, channelBonusDays, channelBonusReady]);
-
   const onCheckBonus = async (): Promise<void> => {
     setBonusBusy("check");
     setBonusError("");
@@ -241,10 +141,8 @@ export default function SettingsPage() {
       const subscriber = Boolean(payload.subscriber);
       const alreadyClaimed = Boolean(payload.already_claimed);
       setBonusCheck({
-        checked: true,
         subscriber,
         alreadyClaimed,
-        linkRequired: Boolean(payload.link_required),
         bonusDays: Number(payload.bonus_days || channelBonusDays || 10),
         message: alreadyClaimed
           ? "Бонус уже был добавлен раньше."
@@ -253,12 +151,7 @@ export default function SettingsPage() {
             : "Подписка пока не подтверждена. Откройте канал и попробуйте еще раз.",
       });
     } catch (error) {
-      setBonusError(
-        userFacingErrorMessage(
-          error,
-          "Не удалось проверить подписку. Откройте канал и попробуйте позже или напишите в поддержку.",
-        ),
-      );
+      setBonusError(userFacingErrorMessage(error, "Не удалось проверить подписку. Попробуйте позже или откройте поддержку."));
     } finally {
       setBonusBusy("");
     }
@@ -273,7 +166,7 @@ export default function SettingsPage() {
       const days = Number(payload.premium_days || channelBonusDays || 10);
       setBonusMessage(payload.already_claimed ? "Бонус уже был добавлен раньше." : `Бонус +${days} дней добавлен.`);
     } catch (error) {
-      setBonusError(userFacingErrorMessage(error, "Не удалось добавить бонус. Попробуйте позже или напишите в поддержку."));
+      setBonusError(userFacingErrorMessage(error, "Не удалось добавить бонус. Попробуйте позже или откройте поддержку."));
     } finally {
       setBonusBusy("");
     }
@@ -292,9 +185,7 @@ export default function SettingsPage() {
       });
       setEmailLinkMessage("Письмо отправлено. Введите код подтверждения из письма.");
     } catch (error) {
-      setEmailLinkError(
-        userFacingErrorMessage(error, "Не удалось отправить письмо. Проверьте email и попробуйте еще раз."),
-      );
+      setEmailLinkError(userFacingErrorMessage(error, "Не удалось отправить письмо. Проверьте email и попробуйте еще раз."));
     } finally {
       setEmailLinkPassword("");
       setEmailLinkBusy("");
@@ -311,7 +202,6 @@ export default function SettingsPage() {
       if (payload?.token) {
         setWebSessionToken(payload.token);
       }
-      setEmailLinkMessage("Email подтвержден. Обновляем данные аккаунта.");
       await refresh();
       setEmailLinkPassword("");
       setEmailLinkMessage("Email подтвержден и привязан к текущему аккаунту.");
@@ -323,121 +213,72 @@ export default function SettingsPage() {
   };
 
   return (
-    <CabinetRoute
-      eyebrow="Настройки"
-      title="Настройки и бонусы"
-      description="Здесь видно, что привязано к аккаунту: Telegram, почта, бонусы и быстрые действия."
-      actions={
-        <>
-          {canLinkEmail ? (
-            <a href="#email-link" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Добавить почту
-            </a>
-          ) : null}
-          {!hasLinkedTelegram ? (
-            <button
-              type="button"
-              onClick={() => void onTelegramLink()}
-              disabled={telegramLinkBusy}
-              className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
-            >
-              {telegramLinkBusy ? "Открываем Telegram..." : "Привязать Telegram и получить +10 дней"}
-            </button>
-          ) : null}
-          <AppRouteLink href="/subscription/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-            Продлить доступ
+    <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <CabinetStatus
+        title="Аккаунт"
+        meta={profileName}
+        body={dash?.is_active ? "Доступ, вход и бонусы собраны здесь." : "Продлите доступ или откройте поддержку, если что-то не сходится."}
+        tone={dash?.is_active ? "success" : "warning"}
+        action={
+          <AppRouteLink href="/subscription/" className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
+            Продлить
           </AppRouteLink>
-          <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Поддержка
-          </AppRouteLink>
-        </>
-      }
-      metrics={[
-        {
-          label: "Профиль",
-          value: profileName,
-          hint: "Это тот же аккаунт, который используют ваши устройства.",
-          tone: "neutral",
-        },
-        {
-          label: "Текущий доступ",
-          value: resolvePlanLabel(dash, user),
-          hint: resolveTrafficStatusText(dash, user),
-          tone: dash?.is_active ? "success" : "warning",
-        },
-        {
-          label: "Срок",
-          value: formatDate(dash?.expiry_at || user?.expiry_at),
-          hint: dash?.is_active ? "Доступ уже активен." : "Если срок закончился, верните его в разделе оплаты.",
-          tone: dash?.is_active ? "neutral" : "warning",
-        },
-        {
-          label: "Устройства",
-          value: `До ${deviceLimit}`,
-          hint: "Лимит относится ко всему профилю.",
-          tone: "neutral",
-        },
-      ]}
-    >
-      <CabinetHero
-        eyebrow="Главное по аккаунту"
-        badge={dash?.is_active ? "Профиль в порядке" : "Нужно действие"}
-        badgeTone={dash?.is_active ? "success" : "warning"}
-        title={profileName}
-        description={
-          dash?.is_active
-            ? "Здесь удобно проверить связки, забрать Telegram-бонус и быстро перейти к нужному разделу."
-            : "Если срок закончился, здесь видно, через какие разделы быстрее вернуть рабочий статус."
         }
-        details={[
-          {
-            label: "Telegram",
-            value: telegramName,
-            hint: hasLinkedTelegram ? "Telegram и этот аккаунт POKROV уже связаны." : "Привяжите Telegram для входа, бонуса и восстановления.",
-            tone: hasLinkedTelegram ? "success" : "warning",
-          },
-          {
-            label: "Email",
-            value: linkedEmail || (emailReady ? "Можно добавить" : "Скоро"),
-            hint: linkedEmail ? "Почта ведет в тот же аккаунт." : emailReady ? "Добавляется прямо в настройках." : "Появится после проверки писем.",
-            tone: linkedEmail ? "info" : "neutral",
-          },
-          {
-            label: "Нужна помощь",
-            value: dash?.is_active ? "Проверить устройства" : "Оплатить",
-            hint: dash?.is_active ? "Полезно перед новым устройством." : "Самый прямой путь, если срок закончился.",
-            tone: "neutral",
-          },
-        ]}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <CabinetSection
-          eyebrow="Связки"
-          title="Способы входа и восстановления"
-          description="Telegram и почта должны вести в один аккаунт POKROV. Если чего-то не хватает, действие видно здесь."
-        >
-          <CabinetList items={linkedItems} />
-        </CabinetSection>
+      <CabinetGroup title="Профиль">
+        <CabinetRow icon={icon("verified_user")} label="Доступ" hint={resolveTrafficStatusText(dash, user)} value={resolvePlanLabel(dash, user)} href="/subscription/" />
+        <CabinetRow icon={icon("calendar_month")} label="Срок" hint="По текущему профилю" value={formatDate(dash?.expiry_at || user?.expiry_at)} />
+        <CabinetRow icon={icon("devices")} label="Устройства" hint="Лимит профиля" value={`до ${deviceLimit}`} href="/devices/" />
+      </CabinetGroup>
 
-        <CabinetSection
-          eyebrow="Полезное рядом"
-          title="Быстрые действия"
-          description="Если не знаете, куда идти дальше, вот самые частые действия."
-        >
-          <CabinetCardGrid items={quickActions} className="xl:grid-cols-1" />
-        </CabinetSection>
-      </div>
+      <CabinetGroup title="Вход и восстановление">
+        <CabinetRow
+          icon={icon("send")}
+          label="Telegram"
+          hint={hasLinkedTelegram ? "Подключен к этому профилю" : "Для входа, бонуса и восстановления"}
+          value={telegramName}
+          action={
+            hasLinkedTelegram ? (
+              <AppRouteLink href={supportLink} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Поддержка
+              </AppRouteLink>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void onTelegramLink()}
+                disabled={telegramLinkBusy}
+                className="text-sm font-semibold text-emerald-800 disabled:opacity-60 dark:text-emerald-300"
+              >
+                {telegramLinkBusy ? "Открываем..." : "Подключить Telegram"}
+              </button>
+            )
+          }
+        />
+        <CabinetRow
+          icon={icon("alternate_email")}
+          label="Email"
+          hint={linkedEmail ? "Дополнительный вход подключен" : emailReady ? "Можно добавить к этому профилю" : "Появится после проверки писем"}
+          value={linkedEmail || (emailReady ? "доступен" : "скоро")}
+          action={
+            canLinkEmail ? (
+              <a href="#email-link" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Добавить
+              </a>
+            ) : null
+          }
+        />
+      </CabinetGroup>
 
       {telegramLinkPayload || telegramLinkError ? (
-        <div className="rounded-[1.3rem] border border-emerald-200/70 bg-emerald-50/85 px-5 py-4 text-sm leading-6 text-emerald-900 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-100">
+        <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/85 px-5 py-4 text-sm leading-6 text-emerald-900 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-100">
           {telegramLinkError ? (
             <p className="font-semibold text-rose-700 dark:text-rose-200">{telegramLinkError}</p>
           ) : telegramLinkPayload?.linked ? (
             <p className="font-semibold">Telegram уже подключен к этому профилю.</p>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-semibold">Откройте бота и завершите привязку Telegram к текущему профилю.</p>
+              <p className="font-semibold">Откройте бота и завершите привязку Telegram.</p>
               <AppRouteLink
                 href={telegramLinkPayload?.bot_url || supportLink}
                 target="_blank"
@@ -451,19 +292,14 @@ export default function SettingsPage() {
         </div>
       ) : null}
 
-      {emailLinkMessage && !canLinkEmail ? (
-        <div className="rounded-[1.3rem] border border-emerald-200/70 bg-emerald-50/85 px-5 py-4 text-sm font-semibold text-emerald-800 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-100">
-          {emailLinkMessage}
-        </div>
-      ) : null}
-
       {canLinkEmail ? (
-        <div id="email-link" className="scroll-mt-24">
-          <CabinetSection
-            eyebrow="Email"
-            title="Добавить почту к текущему аккаунту"
-            description="Останетесь в этом же профиле: отправим письмо, вы введете код, и почта станет дополнительным способом входа."
-          >
+        <section id="email-link" className="scroll-mt-24 space-y-2">
+          <div className="px-1">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              Подключить email к текущему аккаунту
+            </h2>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white/86 p-4 dark:border-white/10 dark:bg-white/[0.04]">
             <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
               <form className="space-y-3" onSubmit={onEmailLinkRequest}>
                 <input
@@ -479,7 +315,7 @@ export default function SettingsPage() {
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
                   value={emailLinkName}
                   onChange={(event) => setEmailLinkName(event.target.value)}
-                  placeholder="Имя для писем"
+                  placeholder="Как обращаться"
                   autoComplete="name"
                 />
                 <input
@@ -521,70 +357,63 @@ export default function SettingsPage() {
                 {emailLinkError ? <p className="text-sm leading-6 text-rose-700 dark:text-rose-200">{emailLinkError}</p> : null}
               </form>
             </div>
-          </CabinetSection>
-        </div>
+          </div>
+        </section>
+      ) : emailLinkMessage ? (
+        <p className="px-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{emailLinkMessage}</p>
       ) : null}
 
-      <CabinetSection
-        eyebrow="Telegram-бонус"
-        title="Проверить канал и забрать +10 дней"
-        description="Бонус добавляется только после явной проверки и отдельного нажатия. Если что-то не сходится, поддержку лучше открыть отсюда."
-      >
-        <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-          <div className="rounded-[1.3rem] border border-emerald-200/70 bg-emerald-50/85 p-4 dark:border-emerald-400/25 dark:bg-emerald-400/10">
-            <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{bonusStatusText}</p>
-            {bonusError ? <p className="mt-3 text-sm leading-6 text-rose-700 dark:text-rose-200">{bonusError}</p> : null}
-            <div className="mt-4 flex flex-wrap gap-3">
-              {channelLink ? (
-                <AppRouteLink href={channelLink} target="_blank" hardNavigate={false} className="outline-btn rounded-full px-4 py-2 text-sm font-semibold">
-                  Открыть канал
-                </AppRouteLink>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => void onCheckBonus()}
-                disabled={bonusBusy !== ""}
-                className="outline-btn rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-60"
-              >
-                {bonusBusy === "check" ? "Проверяем..." : "Проверить подписку"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void onClaimBonus()}
-                disabled={bonusBusy !== "" || Boolean(channelBonusClaimedAt) || (!canClaimBonus && !bonusCheck?.subscriber)}
-                className="btn-primary rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-60"
-              >
-                {bonusBusy === "claim" ? "Добавляем..." : `Забрать +${channelBonusDays} дней`}
-              </button>
-            </div>
-          </div>
+      <CabinetGroup title="Telegram-бонус">
+        <CabinetRow
+          icon={icon("campaign")}
+          label="Канал"
+          hint="Официальные новости и бонус"
+          value="@pokrov_vpn"
+          action={
+            channelLink ? (
+              <AppRouteLink href={channelLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Открыть
+              </AppRouteLink>
+            ) : null
+          }
+        />
+        <CabinetRow
+          icon={icon("fact_check")}
+          label="Проверка"
+          hint={bonusStatusText}
+          action={
+            <button
+              type="button"
+              onClick={() => void onCheckBonus()}
+              disabled={bonusBusy !== ""}
+              className="text-sm font-semibold text-emerald-800 disabled:opacity-60 dark:text-emerald-300"
+            >
+              {bonusBusy === "check" ? "Проверяем..." : "Проверить подписку"}
+            </button>
+          }
+        />
+        <CabinetRow
+          icon={icon("add_circle")}
+          label={`Бонус +${channelBonusDays} дней`}
+          hint={bonusError || (channelBonusClaimedAt ? "Уже добавлен" : "После подтверждения канала")}
+          action={
+            <button
+              type="button"
+              onClick={() => void onClaimBonus()}
+              disabled={bonusBusy !== "" || Boolean(channelBonusClaimedAt) || (!canClaimBonus && !bonusCheck?.subscriber)}
+              className="text-sm font-semibold text-emerald-800 disabled:opacity-50 dark:text-emerald-300"
+            >
+              {bonusBusy === "claim" ? "Добавляем..." : `Забрать +${channelBonusDays} дней`}
+            </button>
+          }
+        />
+      </CabinetGroup>
 
-          <CabinetCardGrid
-            className="lg:grid-cols-1"
-            items={[
-              {
-                key: "bonus-rules",
-                title: "Как это работает",
-                body: "Сначала проверяем подписку на официальный канал. Затем отдельной кнопкой добавляем дни к текущему профилю.",
-                badge: "+10 дней",
-                tone: "neutral" as const,
-              },
-              {
-                key: "bonus-support",
-                title: "Если бонус не сработал",
-                body: "Откройте поддержку. Достаточно написать, что проверка канала не прошла.",
-                badge: "Поможем",
-                tone: "neutral" as const,
-                action: (
-                  <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                    Поддержка
-                  </AppRouteLink>
-                ),
-              },
-            ]}
-          />
-        </div>
-      </CabinetSection>
-    </CabinetRoute>
+      <CabinetGroup title="Действия">
+        <CabinetRow icon={icon("devices")} label="Устройства" hint="Связанные телефоны и компьютеры" href="/devices/" />
+        <CabinetRow icon={icon("download")} label="Загрузки" hint="Android APK и Windows beta" href="/downloads/" />
+        <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Обращения, вложения и Telegram" href="/support/" />
+      </CabinetGroup>
+    </main>
   );
 }

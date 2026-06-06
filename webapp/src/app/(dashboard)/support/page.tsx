@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import {
   createTicket,
   fetchTickets,
@@ -20,40 +20,32 @@ type TicketCategory = "Не могу подключиться" | "Вопрос �
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 const CATEGORIES: TicketCategory[] = ["Не могу подключиться", "Вопрос по оплате", "Медленно работает", "Другое"];
 
-const CATEGORY_PRESETS: Record<
-  TicketCategory,
-  {
-    intro: string;
-    subject: string;
-    body: string;
-    checklist: string[];
-  }
-> = {
+const CATEGORY_PRESETS: Record<TicketCategory, { subject: string; body: string; hint: string }> = {
   "Не могу подключиться": {
-    intro: "Подходит, если приложение не подключается, профиль не подтягивается или новое устройство не появляется в кабинете.",
     subject: "Не получается подключить устройство",
-    body: "Что происходит:\n\nНа каком устройстве это видно:\n\nЧто уже пробовали сделать:",
-    checklist: ["Модель устройства", "Где остановились: установили / вошли / нажали «Подключить»", "Что уже пробовали"],
+    body: "Что происходит:\n\nУстройство:\n\nЧто уже пробовали:",
+    hint: "Устройство, шаг подключения и текст ошибки, если он есть.",
   },
   "Вопрос по оплате": {
-    intro: "Подходит, если возник вопрос по продлению, платежу или статус не обновился после оплаты.",
     subject: "Вопрос по оплате или продлению",
     body: "Что ожидали увидеть:\n\nЧто произошло вместо этого:\n\nПримерное время оплаты:",
-    checklist: ["Какой вариант выбирали", "Примерное время платежа", "Скрин шага оплаты, если удобно"],
+    hint: "Срок, способ оплаты и примерное время операции.",
   },
   "Медленно работает": {
-    intro: "Подходит, если доступ стал заметно медленнее или соединение ведет себя нестабильно.",
     subject: "Нестабильная скорость или подключение",
-    body: "Как выглядит проблема:\n\nНа каком устройстве это заметно:\n\nЧто меняется между Wi-Fi и мобильной сетью:",
-    checklist: ["Тип сети", "Когда это началось", "Скрин или короткое видео, если удобно"],
+    body: "Как выглядит проблема:\n\nУстройство:\n\nWi-Fi или мобильная сеть:",
+    hint: "Где заметно замедление и когда оно началось.",
   },
   Другое: {
-    intro: "Подходит для любых остальных вопросов по кабинету, доступу и связанным устройствам.",
     subject: "Вопрос по кабинету POKROV",
-    body: "Коротко опишите вопрос:\n\nКакой результат нужен:\n\nНужны ли вложения:",
-    checklist: ["Короткое описание", "Желаемый результат", "Нужны ли файлы или скриншоты"],
+    body: "Коротко опишите вопрос:\n\nКакой результат нужен:",
+    hint: "Любой вопрос по кабинету, доступу или устройствам.",
   },
 };
+
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
+}
 
 function statusLabel(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
@@ -64,9 +56,9 @@ function statusLabel(status: string): string {
 }
 
 function formatDate(value?: string | null): string {
-  if (!value) return "только что";
+  if (!value) return "недавно";
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "обновлено недавно";
+  if (Number.isNaN(parsed.getTime())) return "недавно";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "short",
@@ -93,20 +85,20 @@ export default function SupportPage() {
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState("");
 
   const supportLink = user?.support?.link || config.supportTelegramUrl;
   const latestTicket = tickets[0] || null;
   const openCount = tickets.filter((ticket) => String(ticket.status || "").toLowerCase() !== "closed").length;
-  const preset = CATEGORY_PRESETS[category];
   const activeConnections = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0;
   const deviceCount = user?.sync?.device_count ?? user?.devices?.length ?? 0;
   const deviceLimit = getDeviceLimit(dash, user);
+  const preset = CATEGORY_PRESETS[category];
 
   const loadTickets = async (): Promise<void> => {
     setLoadingTickets(true);
     try {
-      const rows = await fetchTickets(30);
+      const rows = await fetchTickets(20);
       setTickets(rows);
       setError("");
     } catch (nextError) {
@@ -120,135 +112,13 @@ export default function SupportPage() {
     void loadTickets();
   }, []);
 
-  const ticketItems = useMemo(
-    () =>
-      tickets.map((ticket) => ({
-        key: String(ticket.id),
-        title: ticket.subject || `Обращение #${ticket.id}`,
-        body: ticket.last_message_preview || "Сообщений пока нет.",
-        badge: `${statusLabel(ticket.status)} · #${ticket.id}`,
-        tone:
-          String(ticket.status || "").toLowerCase() === "closed"
-            ? ("neutral" as const)
-            : String(ticket.status || "").toLowerCase() === "in_progress"
-              ? ("info" as const)
-              : ("warning" as const),
-        action: (
-          <AppRouteLink href={`/support/thread/?id=${ticket.id}`} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Открыть
-          </AppRouteLink>
-        ),
-      })),
-    [tickets],
-  );
-
-  const helpCards = [
-    {
-      key: "continue",
-      title: latestTicket ? "Лучше продолжать уже открытое обращение" : "Если вопрос уже понятен, можно сразу написать",
-      body: latestTicket
-        ? "Так не теряется история, вложения и то, что вы уже успели объяснить."
-        : "Особенно если нужен скриншот, видео или история переписки.",
-      badge: "Кабинет",
-      tone: "neutral" as const,
-      action: latestTicket ? (
-        <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Продолжить
-        </AppRouteLink>
-      ) : (
-        <button type="button" onClick={() => setComposeOpen(true)} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Новый вопрос
-        </button>
-      ),
-    },
-    {
-      key: "telegram",
-      title: "Telegram удобен для быстрого живого ответа",
-      body: "Если нужен короткий человеческий контакт без вложений, это обычно самый быстрый путь.",
-      badge: "Telegram",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "legal",
-      title: "Юридические документы тоже под рукой",
-      body: "Если вопрос касается оплаты или формальных условий, не нужно искать ссылки вручную.",
-      badge: "Документы",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/support/legal/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть
-        </AppRouteLink>
-      ),
-    },
-  ];
-
-  const openPresetTicket = (nextCategory: TicketCategory): void => {
+  const openComposer = (nextCategory: TicketCategory = category): void => {
     const nextPreset = CATEGORY_PRESETS[nextCategory];
     setCategory(nextCategory);
-    setSubject(nextPreset.subject);
-    setBody(nextPreset.body);
+    setSubject((current) => current || nextPreset.subject);
+    setBody((current) => current || nextPreset.body);
+    setNotice("");
     setComposeOpen(true);
-  };
-
-  const guideCards = [
-    {
-      key: "connect-device",
-      title: "Хочу подключить устройство",
-      body: "Выберите Android или Windows, скачайте приложение и войдите тем же способом. Если приложения нет под рукой, там же есть ручной вариант.",
-      badge: "Старт",
-      tone: "success" as const,
-      action: (
-        <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Перейти
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "redeem-code",
-      title: "Активировать код",
-      body: "Код оплаты, подарка или промокод вводится в разделе активации. Длинная ссылка подключения туда не подходит.",
-      badge: "Код",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/redeem/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Активировать
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "manual-link",
-      title: "У меня есть личная ссылка",
-      body: "Это запасной способ для совместимого клиента. Ссылку не отправляют боту и не используют для привязки Telegram.",
-      badge: "Ссылка",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/subscription/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Открыть
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "not-working",
-      title: "Подключение не работает",
-      body: "Откроем короткое обращение с нужными полями: устройство, шаг, на котором остановились, и что уже пробовали.",
-      badge: "Помощь",
-      tone: "warning" as const,
-      action: (
-        <button type="button" onClick={() => openPresetTicket("Не могу подключиться")} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Разобраться
-        </button>
-      ),
-    },
-  ];
-
-  const prepareTemplate = (): void => {
-    if (!subject.trim()) setSubject(preset.subject);
-    if (!body.trim()) setBody(preset.body);
   };
 
   const onCreateTicket = async (): Promise<void> => {
@@ -256,13 +126,13 @@ export default function SupportPage() {
     const normalizedSubject = subject.trim();
 
     if (!normalizedBody) {
-      setMessage("Добавьте пару строк: что делали, где сломалось и что видите сейчас.");
+      setNotice("Добавьте пару строк: что делали, где сломалось и что видите сейчас.");
       return;
     }
 
     setBusy(true);
     setError("");
-    setMessage("");
+    setNotice("");
 
     try {
       let attachment: TicketAttachmentInput | undefined;
@@ -271,16 +141,15 @@ export default function SupportPage() {
         attachment = uploaded.attachment;
       }
 
-      const nextSubject = normalizedSubject ? `[${category}] ${normalizedSubject}` : `[${category}] Обращение из кабинета`;
-      const created = await createTicket(nextSubject, normalizedBody, attachment || undefined);
+      const title = normalizedSubject ? `[${category}] ${normalizedSubject}` : `[${category}] Обращение из кабинета`;
+      const created = await createTicket(title, normalizedBody, attachment || undefined);
 
       setComposeOpen(false);
-      setCategory(CATEGORIES[0]);
       setSubject("");
       setBody("");
       setAttachmentFile(null);
       await loadTickets();
-      setMessage(`Обращение #${created.id} создано. Его можно продолжить из списка.`);
+      setNotice(`Обращение #${created.id} создано.`);
     } catch (nextError) {
       setError(String((nextError as { message?: string })?.message || nextError || ""));
     } finally {
@@ -290,318 +159,184 @@ export default function SupportPage() {
 
   return (
     <>
-      <CabinetRoute
-        eyebrow="Поддержка"
-        title="Что случилось?"
-        description="Опишите по-человечески: что делали, на каком устройстве и что пошло не так. Ответим в кабинете или Telegram."
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={() => document.getElementById("quick-help")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="outline-btn rounded-full px-5 py-3 text-sm font-semibold"
-            >
-              Помогите разобраться
-            </button>
-            <button type="button" onClick={() => setComposeOpen(true)} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+      <main className="mx-auto w-full max-w-[840px] space-y-5">
+        <CabinetStatus
+          title="Помощь"
+          meta={latestTicket ? `${statusLabel(latestTicket.status)} · #${latestTicket.id}` : "Кабинет и Telegram"}
+          body={
+            latestTicket
+              ? "Продолжайте уже открытое обращение: история, вложения и контекст останутся в одном месте."
+              : "Опишите проблему коротко. Личные ссылки, коды оплаты и банковские данные присылать не нужно."
+          }
+          tone={openCount ? "info" : "neutral"}
+          action={
+            <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
               Новый вопрос
             </button>
-            <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Telegram
-            </AppRouteLink>
-          </>
-        }
-        metrics={[
-          {
-            label: "Профиль",
-            value: user?.username ? `@${user.username}` : `ID ${user?.tg_id || "—"}`,
-            hint: "Поддержка увидит тот же профиль, что и ваши устройства.",
-            tone: "neutral",
-          },
-          {
-            label: "Открытых обращений",
-            value: String(openCount),
-            hint: latestTicket ? `Последнее обновление ${formatDate(latestTicket.updated_at || latestTicket.created_at)}.` : "Если вопросов еще не было, просто задайте первый вопрос.",
-            tone: openCount ? "warning" : "success",
-          },
-          {
-            label: "Текущий режим",
-            value: resolvePlanLabel(dash, user),
-            hint: "Это помогает нам быстрее понять контекст.",
-            tone: "neutral",
-          },
-          {
-            label: "Быстрый путь",
-            value: "Telegram",
-            hint: "Подходит для живого диалога и коротких уточнений.",
-            tone: "neutral",
-          },
-        ]}
-      >
-        <CabinetHero
-          eyebrow="Что делать сейчас"
-          badge={latestTicket ? "Есть обращение, которое можно продолжить" : "Можно задать первый вопрос"}
-          badgeTone={latestTicket ? "success" : "info"}
-          title={latestTicket ? latestTicket.subject || `Обращение #${latestTicket.id}` : "Не нужно начинать заново каждый раз"}
-          description={
-            latestTicket
-              ? latestTicket.last_message_preview || "Если вопрос еще не решен, удобнее продолжить именно это обращение."
-              : "Если вопрос уже понятен, задайте его здесь и продолжайте в одном месте. Так поддержка видит всю историю рядом."
           }
-          actions={
-            <>
-              {latestTicket ? (
-                <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                  Продолжить обращение
-                </AppRouteLink>
-              ) : (
-                <button type="button" onClick={() => setComposeOpen(true)} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                  Задать вопрос
-                </button>
-              )}
-              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-                Telegram
-              </AppRouteLink>
-            </>
-          }
-          details={[
-            {
-              label: "Статус последнего обращения",
-              value: latestTicket ? statusLabel(latestTicket.status) : "Пока нет",
-              hint: latestTicket ? `#${latestTicket.id}` : "Первый вопрос можно задать отсюда.",
-              tone: latestTicket ? "success" : "neutral",
-            },
-            {
-              label: "Открытых обращений",
-              value: String(openCount),
-              hint: "Если вопрос один, лучше держать его в одном месте.",
-              tone: openCount ? "warning" : "neutral",
-            },
-            {
-              label: "Если нужен быстрый ответ",
-              value: "Telegram",
-              hint: "Подходит для коротких уточнений и живого контакта.",
-              tone: "neutral",
-            },
-          ]}
         />
 
-        <CabinetSection
-          eyebrow="Помогите разобраться"
-          title="Выберите, что у вас сейчас"
-          description="Не нужно знать протоколы и названия клиентов. Начните с ситуации, а кабинет подставит нужные поля."
-          tone="info"
+        <CabinetGroup
+          title="Последнее обращение"
+          action={
+            latestTicket ? (
+              <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Открыть
+              </AppRouteLink>
+            ) : null
+          }
         >
-          <div className="mb-4 rounded-[1.2rem] border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
-            Не отправляйте пароли, коды оплаты, личные ссылки подключения и скриншоты банка. Если они понадобятся, поддержка попросит безопасный вариант.
-          </div>
-          <div id="quick-help" className="scroll-mt-28">
-            <CabinetCardGrid items={guideCards} className="xl:grid-cols-4" />
-          </div>
-        </CabinetSection>
+          {loadingTickets ? (
+            <CabinetRow icon={icon("hourglass_empty")} label="Загружаем обращения" hint="Обычно это занимает несколько секунд" />
+          ) : latestTicket ? (
+            <CabinetRow
+              icon={icon("forum")}
+              label={latestTicket.subject || `Обращение #${latestTicket.id}`}
+              hint={latestTicket.last_message_preview || "Сообщений пока нет"}
+              value={formatDate(latestTicket.updated_at || latestTicket.created_at)}
+              href={`/support/thread/?id=${latestTicket.id}`}
+            />
+          ) : (
+            <CabinetRow icon={icon("chat_bubble")} label="Обращений пока нет" hint="Создайте первый вопрос, если что-то пошло не так" />
+          )}
+        </CabinetGroup>
 
-        <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-          <CabinetSection
-            eyebrow="История"
-            title="Ваши обращения"
-            description="Если вопрос уже был, лучше продолжать то же обращение. Так быстрее."
-            actions={
-              <button type="button" onClick={() => setComposeOpen(true)} className="outline-btn rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em]">
-                Новый вопрос
+        <CabinetGroup title="Быстрые действия">
+          <CabinetRow
+            icon={icon("add_comment")}
+            label="Новый вопрос"
+            hint="Короткая форма с вложением"
+            action={
+              <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Написать
               </button>
             }
-          >
-            {loadingTickets ? (
-              <div className="rounded-[1.3rem] border border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
-                Загружаем историю обращений...
-              </div>
-            ) : (
-              <CabinetList items={ticketItems} empty="Пока обращений нет. Если что-то пошло не так, задайте первый вопрос отсюда." />
-            )}
-            {error ? <p className="mt-4 text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
-          </CabinetSection>
-
-          <CabinetSection
-            eyebrow="Куда идти"
-            title="Быстрые варианты"
-            description="Если сомневаетесь, обычно достаточно выбрать один из этих путей."
-          >
-            <CabinetCardGrid items={helpCards} className="xl:grid-cols-1" />
-          </CabinetSection>
-        </div>
-
-        <CabinetSection
-          eyebrow="Безопасная диагностика"
-          title="Что мы можем передать в обращение"
-          description="Только полезный контекст из кабинета. Личные ссылки, коды активации, адреса точек доступа и публичный адрес устройства не показываем и не просим присылать."
-        >
-          <CabinetCardGrid
-            items={[
-              {
-                key: "access",
-                title: "Режим доступа",
-                body: resolvePlanLabel(dash, user),
-                badge: dash?.is_active ? "Активен" : "Нужно действие",
-                tone: dash?.is_active ? ("success" as const) : ("warning" as const),
-              },
-              {
-                key: "devices",
-                title: "Устройства",
-                body: `${deviceCount} из ${deviceLimit} уже связаны с профилем.`,
-                badge: "Профиль",
-                tone: "neutral" as const,
-              },
-              {
-                key: "connections",
-                title: "Подключения сейчас",
-                body: `${activeConnections} активных подключений по профилю.`,
-                badge: "Сводка",
-                tone: activeConnections > 0 ? ("success" as const) : ("neutral" as const),
-              },
-            ]}
           />
-        </CabinetSection>
-
-        <CabinetSection
-          eyebrow="Что помогает нам ответить быстрее"
-          title="Пара полезных деталей"
-          description="Не нужно писать длинно. Достаточно короткого и честного описания."
-        >
-          <CabinetCardGrid
-            items={preset.checklist.map((item, index) => ({
-              key: `${item}-${index}`,
-              title: item,
-              body:
-                index === 0
-                  ? "Это помогает понять среду, в которой все произошло."
-                  : index === 1
-                    ? "Так быстрее видно, с чего начать проверку."
-                    : "Даже короткое уточнение часто экономит много времени.",
-              badge: `Пункт ${index + 1}`,
-              tone: "neutral" as const,
-            }))}
+          <CabinetRow
+            icon={icon("send")}
+            label="Telegram"
+            hint="Удобно для быстрого живого ответа"
+            action={
+              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Открыть
+              </AppRouteLink>
+            }
           />
-        </CabinetSection>
-      </CabinetRoute>
+          <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android APK и Windows beta" href="/downloads/" />
+          <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
+        </CabinetGroup>
+
+        <CabinetGroup title="Диагностика">
+          <CabinetRow icon={icon("verified_user")} label="Доступ" hint="Без личных ссылок и ключей" value={resolvePlanLabel(dash, user)} />
+          <CabinetRow icon={icon("devices")} label="Устройства" hint="Сколько связано с профилем" value={`${deviceCount} из ${deviceLimit}`} />
+          <CabinetRow icon={icon("wifi_tethering")} label="Подключения" hint="Только безопасная сводка" value={String(activeConnections)} />
+          <CabinetRow icon={icon("description")} label="Документы" hint="Оплата и условия" href="/support/legal/" />
+        </CabinetGroup>
+
+        {notice ? <p className="px-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{notice}</p> : null}
+        {error ? <p className="px-1 text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
+      </main>
 
       {composeOpen ? (
-        <div className="fixed inset-0 z-[230] grid place-items-center bg-slate-950/48 p-4" onClick={() => setComposeOpen(false)}>
+        <div className="fixed inset-0 z-[230] grid place-items-end bg-slate-950/48 p-0 sm:place-items-center sm:p-4" onClick={() => setComposeOpen(false)}>
           <div
-            className="w-full max-w-3xl rounded-[1.8rem] border border-slate-200/80 bg-white/96 p-5 shadow-[0_32px_80px_-50px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#101713]/96 sm:p-6"
+            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-slate-200/80 bg-white/96 p-5 shadow-[0_32px_80px_-50px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#101713]/96 sm:rounded-3xl sm:p-6"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Новый вопрос</p>
-                <h2 className="mt-2 font-display text-2xl font-semibold text-slate-950 dark:text-slate-50">Опишите вопрос коротко и по делу</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{preset.intro}</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Новое обращение</p>
+                <h2 className="mt-2 text-2xl font-semibold leading-tight text-slate-950 dark:text-slate-50">Новый вопрос</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{preset.hint}</p>
               </div>
               <button type="button" onClick={() => setComposeOpen(false)} className="outline-btn rounded-xl p-2" aria-label="Закрыть">
                 <span className="material-symbols-rounded">close</span>
               </button>
             </div>
 
-            <div className="mt-5 grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
-              <div className="space-y-4">
-                <div className="rounded-[1.3rem] border border-slate-200/80 bg-slate-50/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                  <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                    Категория
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(event) => setCategory(event.target.value as TicketCategory)}
-                    className="mt-3 w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/[0.04]"
-                  >
-                    {CATEGORIES.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={prepareTemplate}
-                    className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-800 dark:text-emerald-300"
-                  >
-                    Подставить шаблон
-                  </button>
-                </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {CATEGORIES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => {
+                    const nextPreset = CATEGORY_PRESETS[item];
+                    setCategory(item);
+                    setSubject(nextPreset.subject);
+                    setBody(nextPreset.body);
+                  }}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-[0.98] ${
+                    item === category
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-100"
+                      : "border-slate-200 bg-white text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
 
-                <div className="rounded-[1.3rem] border border-slate-200/80 bg-slate-50/90 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Что стоит добавить</p>
-                  <ul className="mt-3 space-y-2">
-                    {preset.checklist.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                        <span className="mt-2 h-2 w-2 rounded-full bg-emerald-700 dark:bg-emerald-400" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+            <div className="mt-5 space-y-4">
+              <input
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                placeholder="Коротко: что случилось"
+              />
+              <textarea
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                rows={7}
+                className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                placeholder="Опишите, что делали, где сломалось и что видите сейчас."
+              />
 
-              <div className="space-y-4">
+              <label className="block rounded-2xl border border-dashed border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">
+                <span className="block font-medium text-slate-900 dark:text-slate-50">Вложение</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  Скриншот, видео, PDF или текстовый файл до 20 МБ.
+                </span>
                 <input
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
-                  placeholder="Коротко: что случилось"
+                  type="file"
+                  accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                  className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500/15 file:px-4 file:py-2 file:font-medium file:text-emerald-700 dark:text-slate-300 dark:file:bg-emerald-500/20 dark:file:text-emerald-200"
+                  onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
                 />
-                <textarea
-                  value={body}
-                  onChange={(event) => setBody(event.target.value)}
-                  rows={8}
-                  className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
-                  placeholder="Напишите коротко: что делали, на каком устройстве и что видите сейчас."
-                />
+                {attachmentFile ? (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
+                    <span className="truncate">{attachmentFile.name}</span>
+                    <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
+                      Убрать
+                    </button>
+                  </div>
+                ) : null}
+                {attachmentFile ? <p className="mt-2 text-xs text-slate-500">{formatFileSize(attachmentFile.size)}</p> : null}
+              </label>
 
-                <label className="block rounded-[1.3rem] border border-dashed border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">
-                  <span className="block font-medium text-slate-900 dark:text-slate-50">Вложение</span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
-                    Скриншот, видео, PDF или текстовый файл до 20 МБ.
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                    className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500/15 file:px-4 file:py-2 file:font-medium file:text-emerald-700 dark:text-slate-300 dark:file:bg-emerald-500/20 dark:file:text-emerald-200"
-                    onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
-                  />
-                  {attachmentFile ? (
-                    <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
-                      <span className="truncate">{attachmentFile.name}</span>
-                      <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
-                        Убрать
-                      </button>
-                    </div>
-                  ) : null}
-                  {attachmentFile ? <p className="mt-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">{formatFileSize(attachmentFile.size)}</p> : null}
-                </label>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    disabled={busy || !body.trim()}
-                    onClick={() => void onCreateTicket()}
-                    className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] disabled:opacity-60"
-                  >
-                    {busy ? "Отправляем..." : "Отправить вопрос"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSubject("");
-                      setBody("");
-                      setAttachmentFile(null);
-                      setMessage("");
-                    }}
-                    className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]"
-                  >
-                    Очистить
-                  </button>
-                </div>
-                {message ? <p className="text-sm text-emerald-700 dark:text-emerald-300">{message}</p> : null}
-                {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={busy || !body.trim()}
+                  onClick={() => void onCreateTicket()}
+                  className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
+                >
+                  {busy ? "Отправляем..." : "Отправить вопрос"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubject("");
+                    setBody("");
+                    setAttachmentFile(null);
+                    setNotice("");
+                  }}
+                  className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold"
+                >
+                  Очистить
+                </button>
               </div>
+              {notice ? <p className="text-sm text-emerald-700 dark:text-emerald-300">{notice}</p> : null}
+              {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
             </div>
           </div>
         </div>

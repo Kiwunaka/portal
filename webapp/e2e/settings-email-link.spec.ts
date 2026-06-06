@@ -186,7 +186,7 @@ test("root auth clears the password field after an email login attempt", async (
   await page.goto("/?clear_web_session=1");
 
   const passwordInput = page.locator("input[type='password'][autocomplete='current-password']");
-  await page.getByPlaceholder("email@example.com").fill("reader@pokrov.test");
+  await page.getByPlaceholder("name@example.com").fill("reader@pokrov.test");
   await passwordInput.fill("StrongPass123!");
   await page.locator("form").filter({ has: passwordInput }).locator("button[type='submit']").click();
 
@@ -277,10 +277,11 @@ test("root auth keeps email hidden when delivery proof is incomplete", async ({ 
 
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Готовим аккуратно" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Кабинет POKROV" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Создать аккаунт" })).toHaveCount(0);
-  await expect(page.getByPlaceholder("email@example.com")).toHaveCount(0);
-  await expect(page.locator("main")).toContainText("используйте Telegram");
+  await expect(page.getByPlaceholder("name@example.com")).toHaveCount(0);
+  await expect(page.locator("main")).toContainText("Email-вход пока проверяется");
+  await expect(page.locator("main")).toContainText("войти через Telegram");
 });
 
 test("root auth prefills email relay tokens and keeps verify recovery inputs separate", async ({ page }) => {
@@ -307,16 +308,17 @@ test("root auth prefills email relay tokens and keeps verify recovery inputs sep
   await page.goto("/?clear_web_session=1&email_token=verify-from-link");
 
   await expect(page.getByPlaceholder("Код подтверждения")).toHaveValue("verify-from-link");
-  await expect(page.locator("main")).toContainText("Код подтверждения из письма уже подставлен.");
+  await expect(page.locator("main")).toContainText("Код подтверждения уже подставлен.");
   await expect(page).not.toHaveURL(/email_token=/);
 
-  await page.getByRole("button", { name: "Восстановить доступ" }).click();
+  await page.getByRole("button", { name: "Вернуться ко входу" }).click();
+  await page.getByRole("button", { name: "Забыли пароль?" }).click();
 
-  await expect(page.getByPlaceholder("Код восстановления")).toHaveValue("");
+  await expect(page.getByPlaceholder("Заполните, когда письмо придет")).toHaveValue("");
 
   await page.goto("/?clear_web_session=1&email_reset_token=reset-from-link");
 
-  await expect(page.getByPlaceholder("Код восстановления")).toHaveValue("reset-from-link");
-  await expect(page.locator("main")).toContainText("Код восстановления из письма уже подставлен.");
+  await expect(page.getByPlaceholder("Заполните, когда письмо придет")).toHaveValue("reset-from-link");
+  await expect(page.locator("main")).toContainText("Код восстановления уже подставлен.");
   await expect(page).not.toHaveURL(/email_reset_token=/);
 });

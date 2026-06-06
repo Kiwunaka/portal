@@ -3,9 +3,13 @@
 import { useMemo } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetList, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { getAccessState, getDeviceLimit, getTrafficLimitGb, isFreeMonthlyState, isPaidUnlimitedState, isTrialPremiumState } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
+
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
+}
 
 function formatDate(value?: string | null): string {
   if (!value) return "еще не появлялось";
@@ -14,8 +18,6 @@ function formatDate(value?: string | null): string {
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(parsed);
 }
 
@@ -46,195 +48,57 @@ export default function DevicesPage() {
   const knownNodes = dash?.connection_snapshot?.known_nodes ?? user?.nodes?.length ?? 0;
   const knownAppDevices = user?.sync?.device_count ?? user?.devices?.length ?? 0;
 
-  const devices = useMemo(
-    () =>
-      (user?.devices || []).map((device) => ({
-        key: device.id,
-        title: deviceTitle(device.name, device.platform),
-        body: device.is_current
-          ? "Это текущее устройство."
-          : device.last_seen_at
-            ? `Последний раз в сети ${formatDate(device.last_seen_at)}.`
-            : "Появится здесь после первого входа в приложение.",
-        badge: device.is_current ? "Сейчас здесь" : device.is_active ? "Связано" : "Без активности",
-        tone: device.is_current || device.is_active ? ("success" as const) : ("neutral" as const),
-      })),
-    [user?.devices],
-  );
-
-  const transferCards = [
-    {
-      key: "install",
-      title: "Поставить приложение на новый экран",
-      body: "Сначала просто откройте загрузки и поставьте нужную версию для Android или Windows.",
-      badge: "Шаг 1",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/downloads/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Загрузки
-        </AppRouteLink>
-      ),
-    },
-    {
-      key: "login",
-      title: "Войти в тот же аккаунт",
-      body: "Так профиль подтянется сам, без ручной раздачи скрытых данных.",
-      badge: "Шаг 2",
-      tone: "neutral" as const,
-    },
-    {
-      key: "support",
-      title: "Если что-то не появилось, открыть поддержку",
-      body: "Одно обращение лучше любого обходного пути. Так весь контекст уже будет рядом.",
-      badge: "Шаг 3",
-      tone: "neutral" as const,
-      action: (
-        <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-          Поддержка
-        </AppRouteLink>
-      ),
-    },
-  ];
-
-  const modeCards = [
-    {
-      key: "paid",
-      title: paidMode ? "Сейчас полный режим" : "Полный режим дает больше запаса",
-      body: paidMode
-        ? "У профиля есть запас по устройствам и нет месячного лимита трафика."
-        : "Если устройств становится больше и не хочется думать о лимитах, смотреть стоит туда.",
-      badge: paidMode ? "Сейчас так" : "Если нужно",
-      tone: paidMode ? ("success" as const) : ("neutral" as const),
-    },
-    {
-      key: "trial",
-      title: trialMode ? "Пробный период уже помогает проверить сервис на нескольких экранах" : "Пробный период подходит для проверки на нескольких экранах",
-      body: trialMode
-        ? "Это хороший момент, чтобы подключить основные устройства и проверить их в деле."
-        : "Если он у вас активируется, используйте это время для проверки на своих устройствах.",
-      badge: trialMode ? "Активен" : "Как это работает",
-      tone: trialMode ? ("warning" as const) : ("neutral" as const),
-    },
-    {
-      key: "free",
-      title: freeMode ? "В базовом режиме лимиты строже" : "Базовый режим остается запасным",
-      body: freeMode
-        ? `Сейчас ориентир до ${deviceLimit} устройств и около ${freeLimitGb || 5} ГБ в месяц.`
-        : "Он подходит для знакомства с сервисом, но может быть теснее по лимитам.",
-      badge: freeMode ? "Сейчас так" : "Базовый режим",
-      tone: freeMode ? ("info" as const) : ("neutral" as const),
-    },
-  ];
+  const devices = useMemo(() => user?.devices || [], [user?.devices]);
+  const modeHint = paidMode
+    ? "Полный доступ: больше запаса для устройств."
+    : trialMode
+      ? "Пробный период подходит для проверки основных устройств."
+      : freeMode
+        ? `Базовый режим: до ${deviceLimit} устройств и около ${freeLimitGb || 5} ГБ в месяц.`
+        : "Если срок закончился, сначала верните доступ.";
 
   return (
-    <CabinetRoute
-      eyebrow="Устройства"
-      title="Что уже связано с профилем"
-      description="Здесь видно, какие устройства уже появились в кабинете и как подключить новый экран."
-      actions={
-        <>
-          <AppRouteLink href="/downloads/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-            Открыть загрузки
+    <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <CabinetStatus
+        title="Устройства"
+        meta={`${formatCount(knownAppDevices)} из ${formatCount(deviceLimit)} в профиле`}
+        body="Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения."
+        tone={devices.length ? "success" : "neutral"}
+        action={
+          <AppRouteLink href="/downloads/" className="btn-primary w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+            Скачать
           </AppRouteLink>
-          <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Поддержка
-          </AppRouteLink>
-        </>
-      }
-      metrics={[
-        {
-          label: "Подключений сейчас",
-          value: `${formatCount(activeConnections)} из ${formatCount(deviceLimit)}`,
-          hint: "Это живые подключения по профилю прямо сейчас.",
-          tone: "neutral",
-        },
-        {
-          label: "Известных устройств",
-          value: formatCount(knownAppDevices),
-          hint: "То, что уже успело связаться с аккаунтом.",
-          tone: "neutral",
-        },
-        {
-          label: "Точек доступа",
-          value: `${formatCount(activeNodes)} из ${formatCount(knownNodes)}`,
-          hint: "Короткая сводка по доступным точкам.",
-          tone: "neutral",
-        },
-        {
-          label: "Людей онлайн",
-          value: formatCount(activeUsersEstimate),
-          hint: "Это ориентир по живой активности сети.",
-          tone: "neutral",
-        },
-      ]}
-    >
-      <CabinetHero
-        eyebrow="Главное сейчас"
-        badge={devices.length ? "Профиль уже связан с устройствами" : "Новый экран можно добавить"}
-        badgeTone={devices.length ? "success" : "info"}
-        title={devices.length ? "Сначала смотрим список, потом переносим доступ" : "Новый экран начинается с загрузки"}
-        description={
-          devices.length
-            ? "Если хотите перенести доступ на новый экран, сначала проверьте, что уже связано с профилем. Так легче не потерять лишнее."
-            : "Когда в списке пока пусто, почти всегда достаточно просто поставить приложение и войти в тот же аккаунт."
         }
-        actions={
-          <>
-            <AppRouteLink href="/downloads/" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Скачать приложение
-            </AppRouteLink>
-            <AppRouteLink href="/subscription/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Проверить тариф
-            </AppRouteLink>
-          </>
-        }
-        details={[
-          {
-            label: "Лимит профиля",
-            value: `До ${deviceLimit} устройств`,
-            hint: "Лимит относится ко всему профилю, а не к одному экрану.",
-            tone: "neutral",
-          },
-          {
-            label: "Сейчас в кабинете",
-            value: formatCount(knownAppDevices),
-            hint: "Сколько устройств уже успели связаться с аккаунтом.",
-            tone: devices.length ? "success" : "neutral",
-          },
-          {
-            label: "Если нужно больше запаса",
-            value: paidMode ? "Он уже есть" : "Смотреть в оплате",
-            hint: paidMode ? "Полный режим уже активен." : "Полный режим удобнее, если устройств становится больше.",
-            tone: paidMode ? "success" : "neutral",
-          },
-        ]}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <CabinetSection
-          eyebrow="Список"
-          title="Устройства в кабинете"
-          description="Если переносите доступ на новый экран, сначала проверьте, появился ли он здесь."
-        >
-          <CabinetList items={devices} empty="Пока устройств нет. Обычно они появляются после первого входа в приложение на Android или Windows." />
-        </CabinetSection>
+      <CabinetGroup title="Сводка">
+        <CabinetRow icon={icon("wifi_tethering")} label="Подключений сейчас" hint="Живые подключения по профилю" value={`${formatCount(activeConnections)} из ${formatCount(deviceLimit)}`} />
+        <CabinetRow icon={icon("devices")} label="Известных устройств" hint="Уже связались с аккаунтом" value={formatCount(knownAppDevices)} />
+        <CabinetRow icon={icon("hub")} label="Точек доступа" hint="Счетчик готовности, без адресов" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} />
+        <CabinetRow icon={icon("group")} label="Людей онлайн" hint="Ориентир по активности сети" value={formatCount(activeUsersEstimate)} />
+      </CabinetGroup>
 
-        <CabinetSection
-          eyebrow="Перенос"
-          title="Как добавить еще одно устройство"
-          description="Лучше идти коротким и безопасным путем, а не искать скрытые ссылки вручную."
-        >
-          <CabinetCardGrid items={transferCards} className="xl:grid-cols-1" />
-        </CabinetSection>
-      </div>
+      <CabinetGroup title="Список">
+        {devices.length ? (
+          devices.map((device) => (
+            <CabinetRow
+              key={device.id}
+              icon={icon(device.platform === "windows" ? "desktop_windows" : "smartphone")}
+              label={deviceTitle(device.name, device.platform)}
+              hint={device.is_current ? "Это текущее устройство" : device.last_seen_at ? `Было в сети ${formatDate(device.last_seen_at)}` : "Появится после входа в приложение"}
+              value={device.is_current ? "сейчас" : device.is_active ? "связано" : "нет активности"}
+            />
+          ))
+        ) : (
+          <CabinetRow icon={icon("add_circle")} label="Пока устройств нет" hint="Поставьте приложение и войдите в тот же аккаунт" href="/downloads/" />
+        )}
+      </CabinetGroup>
 
-      <CabinetSection
-        eyebrow="Лимиты"
-        title="Что важно помнить"
-        description="Если не хочется вникать глубоко, этих трех заметок обычно достаточно."
-      >
-        <CabinetCardGrid items={modeCards} />
-      </CabinetSection>
-    </CabinetRoute>
+      <CabinetGroup title="Действия">
+        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android APK и Windows beta" href="/downloads/" />
+        <CabinetRow icon={icon("payments")} label="Проверить доступ" hint={modeHint} href="/subscription/" />
+        <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Если устройство не появилось" href="/support/" />
+      </CabinetGroup>
+    </main>
   );
 }

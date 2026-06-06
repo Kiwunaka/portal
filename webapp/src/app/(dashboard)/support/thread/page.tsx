@@ -1,12 +1,15 @@
-﻿"use client";
+"use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { SupportMessageBody } from "@/components/support-message-body";
 import { addTicketMessage, getTicket, resolveApiUrl, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
-import { LifeBuoy, ListChecks, MessageSquareText, RefreshCw, type LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
+}
 
 function statusTitle(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
@@ -32,28 +35,23 @@ type ParsedAttachment = {
 type QuickReplyAction = {
   label: string;
   body: string;
-  icon: LucideIcon;
 };
 
 const QUICK_REPLY_ACTIONS: QuickReplyAction[] = [
   {
     label: "Не получилось",
-    icon: RefreshCw,
     body: "Не получилось после этих шагов.\n\nУстройство:\nКлиент:\nНа каком шаге остановилось:\nЧто видно на экране:",
   },
   {
     label: "Дайте шаги",
-    icon: ListChecks,
     body: "Можно, пожалуйста, пошагово для моего устройства?\n\nУстройство:\nКлиент, если уже установлен:\nЧто хочу сделать:",
   },
   {
     label: "Уточнить",
-    icon: MessageSquareText,
     body: "Уточняю детали:\n\nЧто пробовал:\nЧто изменилось:\nТекст ошибки, если есть:",
   },
   {
     label: "Нужен оператор",
-    icon: LifeBuoy,
     body: "Нужна ручная проверка оператором.\n\nКоротко что случилось:\nПримерное время проблемы:\nСкриншот могу приложить без личной ссылки и QR.",
   },
 ];
@@ -122,8 +120,8 @@ export default function SupportTicketThreadPage() {
       const data = await getTicket(ticketId);
       setTicket(data);
       setError("");
-    } catch (error) {
-      setError(String((error as { message?: string })?.message || error));
+    } catch (nextError) {
+      setError(String((nextError as { message?: string })?.message || nextError));
     } finally {
       setLoading(false);
     }
@@ -151,8 +149,8 @@ export default function SupportTicketThreadPage() {
       setTicket(updated);
       setMessage("");
       setAttachmentFile(null);
-    } catch (error) {
-      setReplyError(String((error as { message?: string })?.message || error));
+    } catch (nextError) {
+      setReplyError(String((nextError as { message?: string })?.message || nextError));
     } finally {
       setBusy(false);
     }
@@ -168,217 +166,177 @@ export default function SupportTicketThreadPage() {
 
   if (loading) {
     return (
-      <CabinetRoute eyebrow="Поддержка" title="Загружаем обращение" description="Подтягиваем историю обращения и вложения.">
-        <CabinetSection eyebrow="История" title="Пожалуйста, подождите" description="Обычно это занимает несколько секунд.">
-          <div className="atlas-skeleton min-h-40 rounded-[var(--pokrov-radius-card,0.875rem)]" />
-        </CabinetSection>
-      </CabinetRoute>
+      <main className="mx-auto w-full max-w-[840px] space-y-5">
+        <CabinetStatus title="Загружаем обращение" meta="Поддержка" body="Подтягиваем историю и вложения." tone="neutral" />
+        <CabinetGroup title="История">
+          <CabinetRow icon={icon("hourglass_empty")} label="Пожалуйста, подождите" hint="Обычно это занимает несколько секунд" />
+        </CabinetGroup>
+      </main>
     );
   }
 
   if (error || !ticket) {
     return (
-      <CabinetRoute
-        eyebrow="Поддержка"
-        title="Не удалось открыть обращение"
-        description={error || "Обращение не найдено."}
-        actions={
-          <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-            Назад в поддержку
-          </AppRouteLink>
-        }
-      >
-        <CabinetSection eyebrow="Что дальше" title="Вернитесь к списку обращений" description="Если обращение было закрыто или ссылка устарела, создайте новое обращение из раздела поддержки.">
-          <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            Открыть поддержку
-          </AppRouteLink>
-        </CabinetSection>
-      </CabinetRoute>
+      <main className="mx-auto w-full max-w-[840px] space-y-5">
+        <CabinetStatus
+          title="Не удалось открыть обращение"
+          meta="Поддержка"
+          body={error || "Обращение не найдено."}
+          tone="warning"
+          action={
+            <AppRouteLink href="/support/" className="outline-btn w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+              Назад
+            </AppRouteLink>
+          }
+        />
+        <CabinetGroup title="Что дальше">
+          <CabinetRow icon={icon("support_agent")} label="Открыть поддержку" hint="Создайте новое обращение или выберите другое" href="/support/" />
+        </CabinetGroup>
+      </main>
     );
   }
 
   return (
-    <CabinetRoute
-      eyebrow="Поддержка"
-      title={ticket.subject || "Обращение без темы"}
-      description={`Обращение #${ticket.id}. Статус: ${statusTitle(ticket.status)}. Обновлено ${fmtDate(ticket.updated_at)}.`}
-      actions={
-        <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-          К списку
-        </AppRouteLink>
-      }
-      metrics={[
-        {
-          label: "Обращение",
-          value: `#${ticket.id}`,
-          hint: "Этот номер можно назвать поддержке.",
-          tone: "neutral",
-        },
-        {
-          label: "Статус",
-          value: statusTitle(ticket.status),
-          hint: canReply ? "Можно отправить ответ." : "Обращение закрыто.",
-          tone: canReply ? "info" : "neutral",
-        },
-        {
-          label: "Сообщений",
-          value: String(ticket.messages.length),
-          hint: "Вся история остается здесь.",
-          tone: "neutral",
-        },
-        {
-          label: "Вложения",
-          value: attachmentFile ? "Готово" : "По желанию",
-          hint: "Скриншот или видео можно добавить к ответу.",
-          tone: attachmentFile ? "success" : "neutral",
-        },
-      ]}
-    >
-      <CabinetHero
-        eyebrow="Диалог"
-        badge={statusTitle(ticket.status)}
-        badgeTone={canReply ? "info" : "neutral"}
-        title="Продолжайте это обращение"
-        description="Так не теряется история, вложения и контекст. Не присылайте личные ссылки или коды активации, если поддержка прямо их не запросила."
-        details={[
-          {
-            label: "Тема",
-            value: ticket.subject || "Без темы",
-            hint: "Можно уточнить детали ниже.",
-            tone: "neutral",
-          },
-          {
-            label: "Последнее обновление",
-            value: fmtDate(ticket.updated_at),
-            hint: "Время берется из этого обращения.",
-            tone: "neutral",
-          },
-          {
-            label: "Ответ",
-            value: canReply ? "Доступен" : "Закрыт",
-            hint: canReply ? "Напишите коротко, что изменилось." : "Для нового вопроса создайте новое обращение.",
-            tone: canReply ? "success" : "neutral",
-          },
-        ]}
+    <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <CabinetStatus
+        title={`Обращение #${ticket.id}`}
+        meta={statusTitle(ticket.status)}
+        body={ticket.subject || "Обращение без темы"}
+        tone={canReply ? "info" : "neutral"}
+        action={
+          <AppRouteLink href="/support/" className="outline-btn w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+            К списку
+          </AppRouteLink>
+        }
       />
 
-      <CabinetSection eyebrow="История" title="Сообщения по обращению" description="Здесь только переписка и вложения к этому обращению.">
-        <div className="max-h-[52vh] space-y-4 overflow-y-auto pr-1">
+      <CabinetGroup title="Сводка">
+        <CabinetRow icon={icon("label")} label="Тема" hint="В этом обращении" value={ticket.subject || "Без темы"} />
+        <CabinetRow icon={icon("pending_actions")} label="Статус" hint={canReply ? "Можно отправить ответ" : "Обращение закрыто"} value={statusTitle(ticket.status)} />
+        <CabinetRow icon={icon("chat_bubble")} label="Сообщений" hint="Вся история остается здесь" value={String(ticket.messages.length)} />
+        <CabinetRow icon={icon("schedule")} label="Обновлено" hint="Последнее изменение" value={fmtDate(ticket.updated_at)} />
+      </CabinetGroup>
+
+      <CabinetGroup title="История">
+        <div className="max-h-[52vh] space-y-4 overflow-y-auto p-4">
           {ticket.messages.length === 0 ? (
-            <div className="rounded-[var(--pokrov-radius-card,0.875rem)] border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] px-4 py-3 text-sm text-[var(--atlas-text-soft)]">История сообщений пока пустая.</div>
-            ) : (
-              ticket.messages.map((msg) => {
-                const isAdmin = msg.sender_role === "admin";
-                const isAssistant = msg.sender_role === "assistant";
-                const senderLabel = isAdmin ? "Оператор" : isAssistant ? "AI-помощник" : "Вы";
-                const attachment = ticketAttachment(msg);
-                return (
-                  <div key={msg.id} className={`flex ${isAdmin || isAssistant ? "justify-start" : "justify-end"}`}>
-                    <div className={`max-w-[86%] rounded-2xl border border-[color:var(--atlas-border)] px-4 py-3 text-sm leading-6 ${isAdmin ? "bg-[var(--atlas-surface)]" : isAssistant ? "bg-[var(--atlas-glass)]" : "bg-[var(--atlas-status-info-bg)]"}`}>
-                      <p className="text-xs font-semibold text-[var(--atlas-text-muted)]">{senderLabel}</p>
-                      <SupportMessageBody body={msg.body} className="mt-1" />
-                      {attachment?.kind === "image" ? (
-                        <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-[color:var(--atlas-border)]">
-                          <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
-                        </a>
-                      ) : null}
-                      {attachment?.kind === "video" ? (
-                        <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-2xl border border-[color:var(--atlas-border)] bg-slate-950/60" />
-                      ) : null}
-                      {attachment && attachment.kind !== "image" && attachment.kind !== "video" ? (
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 py-2 text-xs"
-                        >
-                          <span className="truncate">{attachment.name || "Вложение"}</span>
-                          <span className="shrink-0 text-[var(--atlas-text-muted)]">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
-                        </a>
-                      ) : null}
-                      <p className="mt-2 text-xs text-[var(--atlas-text-muted)]">{fmtDate(msg.created_at)}</p>
-                    </div>
+            <p className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+              История сообщений пока пустая.
+            </p>
+          ) : (
+            ticket.messages.map((msg) => {
+              const isAdmin = msg.sender_role === "admin";
+              const isAssistant = msg.sender_role === "assistant";
+              const senderLabel = isAdmin ? "Оператор" : isAssistant ? "AI-помощник" : "Вы";
+              const attachment = ticketAttachment(msg);
+              return (
+                <div key={msg.id} className={`flex ${isAdmin || isAssistant ? "justify-start" : "justify-end"}`}>
+                  <div className={`max-w-[88%] rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                    isAdmin
+                      ? "border-slate-200/80 bg-white/86 dark:border-white/10 dark:bg-white/[0.04]"
+                      : isAssistant
+                        ? "border-sky-200/80 bg-sky-50/85 dark:border-sky-500/25 dark:bg-sky-500/10"
+                        : "border-emerald-200/80 bg-emerald-50/85 dark:border-emerald-500/25 dark:bg-emerald-500/10"
+                  }`}>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{senderLabel}</p>
+                    <SupportMessageBody body={msg.body} className="mt-1" />
+                    {attachment?.kind === "image" ? (
+                      <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-slate-200/80 dark:border-white/10">
+                        <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
+                      </a>
+                    ) : null}
+                    {attachment?.kind === "video" ? (
+                      <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-2xl border border-slate-200/80 bg-slate-950/60 dark:border-white/10" />
+                    ) : null}
+                    {attachment && attachment.kind !== "image" && attachment.kind !== "video" ? (
+                      <a
+                        href={attachment.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/[0.04]"
+                      >
+                        <span className="truncate">{attachment.name || "Вложение"}</span>
+                        <span className="shrink-0 text-slate-500 dark:text-slate-400">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
+                      </a>
+                    ) : null}
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{fmtDate(msg.created_at)}</p>
                   </div>
+                </div>
               );
             })
           )}
           <div ref={listEndRef} />
         </div>
+      </CabinetGroup>
 
-        <div className="mt-4 border-t border-[color:var(--atlas-border)] pt-4">
-          {!canReply ? (
-            <p className="text-sm text-[var(--atlas-text-soft)]">Обращение закрыто. Для нового вопроса создайте новое обращение.</p>
-          ) : (
-            <>
-              <textarea
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                rows={4}
-                placeholder="Напишите ответ..."
-                className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[var(--atlas-surface)] px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
+      <CabinetGroup title="Ответ">
+        {!canReply ? (
+          <CabinetRow icon={icon("lock")} label="Обращение закрыто" hint="Для нового вопроса создайте новое обращение" href="/support/" />
+        ) : (
+          <div className="space-y-3 p-4">
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              rows={4}
+              placeholder="Напишите ответ..."
+              className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+            />
+            <div className="flex flex-wrap gap-2">
+              {QUICK_REPLY_ACTIONS.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={() => applyQuickReply(action.body)}
+                  className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-400/60 hover:bg-emerald-500/10 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+            <label className="block rounded-2xl border border-dashed border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">
+              <span className="block font-medium">Добавить вложение</span>
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
+              <input
+                type="file"
+                accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500/15 file:px-4 file:py-2 file:font-medium file:text-emerald-700 dark:text-slate-300 dark:file:bg-emerald-500/20 dark:file:text-emerald-200"
+                onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
               />
-              <div className="mt-3 flex flex-wrap gap-2">
-                {QUICK_REPLY_ACTIONS.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <button
-                      key={action.label}
-                      type="button"
-                      onClick={() => applyQuickReply(action.body)}
-                      className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-3 text-xs font-semibold text-[var(--atlas-text)] transition hover:border-emerald-400/60 hover:bg-emerald-500/10 active:scale-[0.98]"
-                      title={`Вставить шаблон: ${action.label}`}
-                    >
-                      <Icon size={14} aria-hidden="true" />
-                      {action.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <label className="mt-3 block rounded-2xl border border-dashed border-[color:var(--atlas-border)] bg-[var(--atlas-glass)] px-4 py-4 text-sm">
-                <span className="block font-medium">Добавить вложение</span>
-                <span className="mt-1 block text-xs text-[var(--atlas-text-muted)]">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
-                <input
-                  type="file"
-                  accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                  className="mt-3 block w-full cursor-pointer text-sm text-[var(--atlas-text-soft)] file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500/15 file:px-4 file:py-2 file:font-medium file:text-emerald-700 dark:file:bg-emerald-500/20 dark:file:text-emerald-200"
-                  onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
-                />
-                {attachmentFile ? (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-[var(--atlas-surface)] px-3 py-2 text-xs">
-                    <span className="truncate">{attachmentFile.name}</span>
-                    <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
-                      Убрать
-                    </button>
-                  </div>
-                ) : null}
-                {attachmentFile ? <p className="mt-2 text-xs text-[var(--atlas-text-muted)]">{formatFileSize(attachmentFile.size)}</p> : null}
-              </label>
-              <div className="mt-3 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => void onSendReply()}
-                  disabled={busy || !message.trim()}
-                  className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
-                >
-                  {busy ? "Отправляем..." : "Отправить"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMessage("");
-                    setAttachmentFile(null);
-                    setReplyError("");
-                  }}
-                  className="outline-btn rounded-xl px-5 py-2.5 text-sm font-semibold"
-                >
-                  Очистить
-                </button>
-              </div>
-              {replyError ? <p className="mt-2 text-xs text-rose-500">{replyError}</p> : null}
-            </>
-          )}
-        </div>
-      </CabinetSection>
-    </CabinetRoute>
+              {attachmentFile ? (
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
+                  <span className="truncate">{attachmentFile.name}</span>
+                  <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
+                    Убрать
+                  </button>
+                </div>
+              ) : null}
+              {attachmentFile ? <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatFileSize(attachmentFile.size)}</p> : null}
+            </label>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void onSendReply()}
+                disabled={busy || !message.trim()}
+                className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
+              >
+                {busy ? "Отправляем..." : "Отправить"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMessage("");
+                  setAttachmentFile(null);
+                  setReplyError("");
+                }}
+                className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold"
+              >
+                Очистить
+              </button>
+            </div>
+            {replyError ? <p className="text-sm text-rose-600 dark:text-rose-300">{replyError}</p> : null}
+          </div>
+        )}
+      </CabinetGroup>
+    </main>
   );
 }

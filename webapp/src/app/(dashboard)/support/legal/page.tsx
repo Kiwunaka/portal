@@ -1,7 +1,7 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetCardGrid, CabinetHero, CabinetRoute, CabinetSection } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { CANONICAL_MARKETING_SITE_URL } from "@/lib/portal";
 
 function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
@@ -20,131 +20,57 @@ function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
   return `${CANONICAL_MARKETING_SITE_URL}${pathname}`;
 }
 
+function icon(name: string) {
+  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
+}
+
 export default function SupportLegalPage() {
   const offerUrl = marketingDocumentUrl("/offer/");
   const privacyUrl = marketingDocumentUrl("/privacy/");
 
   return (
-    <CabinetRoute
-      eyebrow="Документы"
-      title="Юридическая информация"
-      description="Актуальные публичные документы POKROV: оферта и политика конфиденциальности. Кабинет только ведет к ним, не дублируя отдельную версию текста."
-      actions={
-        <AppRouteLink href="/support/" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-          Назад в поддержку
-        </AppRouteLink>
-      }
-      metrics={[
-        {
-          label: "Оферта",
-          value: "Публичный документ",
-          hint: "Условия доступа, оплаты, продления и ответственности сторон.",
-          tone: "neutral",
-        },
-        {
-          label: "Конфиденциальность",
-          value: "Публичный документ",
-          hint: "Как используются данные аккаунта, оплаты и поддержки.",
-          tone: "neutral",
-        },
-        {
-          label: "Где открывается",
-          value: "pokrov.space",
-          hint: "Юридические документы живут на публичной поверхности.",
-          tone: "neutral",
-        },
-        {
-          label: "Если есть вопрос",
-          value: "Одно обращение",
-          hint: "Поддержка быстрее передаст запрос нужному специалисту.",
-          tone: "info",
-        },
-      ]}
-    >
-      <CabinetHero
-        eyebrow="Коротко"
-        badge="Документы на публичном сайте"
-        badgeTone="info"
-        title="Откройте нужный документ или вернитесь в поддержку"
-        description="Если вопрос касается оплаты, условий или данных аккаунта, создайте обращение в кабинете и укажите тему. Так запрос не потеряется."
-        actions={
-          <>
-            <a href={offerUrl} target="_blank" rel="noreferrer" className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-              Открыть оферту
-            </a>
-            <a href={privacyUrl} target="_blank" rel="noreferrer" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
-              Открыть политику
-            </a>
-          </>
+    <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <CabinetStatus
+        title="Документы"
+        meta="pokrov.space"
+        body="Оферта и политика открываются на публичном сайте. В кабинете оставляем только быстрые входы и поддержку."
+        tone="neutral"
+        action={
+          <AppRouteLink href="/support/" className="outline-btn w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+            В поддержку
+          </AppRouteLink>
         }
-        details={[
-          {
-            label: "Оплата и продление",
-            value: "Оферта",
-            hint: "Начните с нее, если вопрос финансовый.",
-            tone: "neutral",
-          },
-          {
-            label: "Данные аккаунта",
-            value: "Политика",
-            hint: "Там описана работа с данными.",
-            tone: "neutral",
-          },
-          {
-            label: "Спорный случай",
-            value: "Поддержка",
-            hint: "Лучше открыть одно обращение с коротким описанием.",
-            tone: "info",
-          },
-        ]}
       />
 
-      <CabinetSection
-        eyebrow="Документы"
-        title="Что можно открыть"
-        description="Обе ссылки ведут на публичную поверхность POKROV."
-      >
-        <CabinetCardGrid
-          items={[
-            {
-              key: "offer",
-              title: "Публичная оферта",
-              body: "Условия предоставления доступа, оплаты, продления и ответственности сторон.",
-              badge: "Оферта",
-              tone: "neutral",
-              action: (
-                <a href={offerUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  Открыть
-                </a>
-              ),
-            },
-            {
-              key: "privacy",
-              title: "Политика конфиденциальности",
-              body: "Какие данные используются для работы аккаунта, оплаты и поддержки.",
-              badge: "Данные",
-              tone: "neutral",
-              action: (
-                <a href={privacyUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  Открыть
-                </a>
-              ),
-            },
-            {
-              key: "support",
-              title: "Вопрос по документам",
-              body: "Создайте обращение и укажите, какой документ или платежный случай нужно проверить.",
-              badge: "Обращение",
-              tone: "info",
-              action: (
-                <AppRouteLink href="/support/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                  Поддержка
-                </AppRouteLink>
-              ),
-            },
-          ]}
+      <CabinetGroup title="Ссылки">
+        <CabinetRow
+          icon={icon("contract")}
+          label="Оферта"
+          hint="Условия доступа, оплаты и продления"
+          value="pokrov.space"
+          action={
+            <a href={offerUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              Открыть
+            </a>
+          }
         />
-      </CabinetSection>
-    </CabinetRoute>
+        <CabinetRow
+          icon={icon("privacy_tip")}
+          label="Политика"
+          hint="Данные аккаунта, оплаты и поддержки"
+          value="pokrov.space"
+          action={
+            <a href={privacyUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              Открыть
+            </a>
+          }
+        />
+      </CabinetGroup>
+
+      <CabinetGroup title="Вопрос по документам">
+        <CabinetRow icon={icon("support_agent")} label="Написать в поддержку" hint="Укажите документ или платежный случай" href="/support/" />
+        <CabinetRow icon={icon("payments")} label="Оплата и доступ" hint="Вернуться к продлению" href="/subscription/" />
+      </CabinetGroup>
+    </main>
   );
 }

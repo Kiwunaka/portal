@@ -31,38 +31,23 @@ const CABINET_SITE_URL = pokrovBranding.marketingUrl;
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
-    icon: "space_dashboard",
+    icon: "shield",
     label: "Главная",
-    description: "Статус и следующие шаги",
-    match: (pathname) => pathname === "/dashboard" || (pathname.startsWith("/dashboard/") && !pathname.startsWith("/dashboard/downloads")),
+    description: "Статус и устройство",
+    match: (pathname) =>
+      pathname === "/dashboard" ||
+      pathname.startsWith("/devices") ||
+      pathname.startsWith("/statistics") ||
+      (pathname.startsWith("/dashboard/") && !pathname.startsWith("/dashboard/downloads")),
   },
   {
     href: "/subscription",
     icon: "payments",
-    label: "Тарифы и оплата",
-    description: "Продление, планы и коды",
-    match: (pathname) => pathname.startsWith("/subscription") || pathname.startsWith("/redeem"),
-  },
-  {
-    href: "/devices",
-    icon: "devices",
-    label: "Устройства",
-    description: "Что уже подключено",
-    match: (pathname) => pathname.startsWith("/devices"),
-  },
-  {
-    href: "/statistics",
-    icon: "query_stats",
-    label: "Статистика",
-    description: "Безопасные сводки",
-    match: (pathname) => pathname.startsWith("/statistics"),
-  },
-  {
-    href: "/downloads",
-    icon: "download",
-    label: "Загрузки",
-    description: "Приложения и быстрый старт",
+    label: "Доступ",
+    description: "Продление и коды",
     match: (pathname) =>
+      pathname.startsWith("/subscription") ||
+      pathname.startsWith("/redeem") ||
       pathname === "/downloads" ||
       pathname.startsWith("/downloads/") ||
       pathname === "/dashboard/downloads" ||
@@ -71,25 +56,34 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/support",
     icon: "support_agent",
-    label: "Поддержка",
-    description: "Тикеты и живой диалог",
+    label: "Помощь",
+    description: "Вопросы и диалоги",
     match: (pathname) => pathname.startsWith("/support"),
   },
   {
     href: "/settings",
     icon: "account_circle",
-    label: "Настройки",
-    description: "Вход, почта и бонусы",
+    label: "Аккаунт",
+    description: "Вход и бонусы",
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
   },
 ];
 
 const MOBILE_NAV_ITEMS: Array<{ href: string; icon: string; label: string; match: (pathname: string) => boolean }> = [
-  { href: "/dashboard", icon: "shield", label: "Главная", match: (p) => p === "/dashboard" || (p.startsWith("/dashboard/") && !p.startsWith("/dashboard/downloads")) },
-  { href: "/subscription", icon: "payments", label: "Тариф", match: (p) => p.startsWith("/subscription") || p.startsWith("/redeem") },
-  { href: "/devices", icon: "devices", label: "Устройства", match: (p) => p.startsWith("/devices") },
-  { href: "/statistics", icon: "query_stats", label: "Статистика", match: (p) => p.startsWith("/statistics") },
-  { href: "/support", icon: "support_agent", label: "Поддержка", match: (p) => p.startsWith("/support") },
+  {
+    href: "/dashboard",
+    icon: "shield",
+    label: "Главная",
+    match: (p) => p === "/dashboard" || p.startsWith("/devices") || p.startsWith("/statistics") || (p.startsWith("/dashboard/") && !p.startsWith("/dashboard/downloads")),
+  },
+  {
+    href: "/subscription",
+    icon: "payments",
+    label: "Доступ",
+    match: (p) => p.startsWith("/subscription") || p.startsWith("/redeem") || p.startsWith("/downloads") || p.startsWith("/dashboard/downloads"),
+  },
+  { href: "/support", icon: "support_agent", label: "Помощь", match: (p) => p.startsWith("/support") },
+  { href: "/settings", icon: "account_circle", label: "Аккаунт", match: (p) => p.startsWith("/settings") || p.startsWith("/profile") },
 ];
 
 const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta }> = [
@@ -99,31 +93,31 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
       pathname.startsWith("/downloads/") ||
       pathname === "/dashboard/downloads" ||
       pathname.startsWith("/dashboard/downloads/"),
-    meta: { title: "Загрузки", subtitle: "Прямые ссылки на приложения и короткий путь к установке." },
+    meta: { title: "Доступ", subtitle: "Приложения и восстановление доступа." },
   },
   {
     match: (pathname) => pathname === "/dashboard" || (pathname.startsWith("/dashboard/") && !pathname.startsWith("/dashboard/downloads")),
-    meta: { title: "Главная", subtitle: "Только статус, что требует внимания и что делать дальше." },
+    meta: { title: "Главная", subtitle: "Статус и следующее действие." },
   },
   {
     match: (pathname) => pathname.startsWith("/subscription") || pathname.startsWith("/redeem"),
-    meta: { title: "Тарифы и оплата", subtitle: "Текущий доступ, варианты продления и код активации." },
+    meta: { title: "Доступ", subtitle: "Продление, коды и установка." },
   },
   {
     match: (pathname) => pathname.startsWith("/devices"),
-    meta: { title: "Устройства", subtitle: "Что уже связано с аккаунтом и как подключить новый экран." },
+    meta: { title: "Главная", subtitle: "Устройства и подключение." },
   },
   {
     match: (pathname) => pathname.startsWith("/statistics"),
-    meta: { title: "Статистика", subtitle: "Безопасные сводки без личных ссылок и технических деталей." },
+    meta: { title: "Главная", subtitle: "Короткая сводка." },
   },
   {
     match: (pathname) => pathname.startsWith("/support"),
-    meta: { title: "Поддержка", subtitle: "Один разговор на весь вопрос, без потери контекста." },
+    meta: { title: "Помощь", subtitle: "Обращения и Telegram." },
   },
   {
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
-    meta: { title: "Настройки", subtitle: "Способы входа, почта, Telegram и бонусы." },
+    meta: { title: "Аккаунт", subtitle: "Вход, бонусы и настройки." },
   },
 ];
 
@@ -430,7 +424,6 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               caption={pokrovBranding.cabinetName}
               label="POKROV cabinet navigation"
             />
-            <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">{pokrovBranding.cabinetTagline}</p>
           </div>
 
           <nav className="mt-4 space-y-1">
@@ -581,7 +574,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         {sidebar}
 
         <div className="min-w-0 flex-1 pb-24 lg:pb-8" style={{ paddingTop: "max(0.5rem, var(--tg-safe-area-top, 0px))" }}>
-          <header className="mb-4 rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-5">
+          <header className="mb-4 rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-4 py-3 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.15)] dark:border-white/10 dark:bg-[#101713]/88 sm:px-5 lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <button
