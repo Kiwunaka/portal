@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-05-28
+Last updated: 2026-06-06
 
 This directory is split into two classes of material:
 
@@ -96,6 +96,7 @@ Current-vs-history boundary:
 - [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 - [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
+- [docs/operations/2026-06-06-plans-decisions-closure-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
 - [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md)
 - [docs/operations/payment-reconciliation.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/payment-reconciliation.md)
 - [docs/operations/android-release-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-release-audit.md)
@@ -112,6 +113,7 @@ Current-vs-history boundary:
 
 ### Launch
 
+- [docs/launch/open-source-client-rollout-plan.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/open-source-client-rollout-plan.md)
 - [docs/launch/open-beta-release-notes.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/open-beta-release-notes.md)
 - [docs/launch/telegram-announcement.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/telegram-announcement.md)
 - [docs/launch/support-macros.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/support-macros.md)

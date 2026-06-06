@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-06-05
+Last updated: 2026-06-06
 
 ## Document Status
 
@@ -30,7 +30,7 @@ The new target architecture for the global rework freezes these boundaries befor
 - one app-first account becomes the identity root for `install_id`, email, Telegram, devices, and activation keys
 - public acquisition, pricing, and paywall move entirely onto `marketing/`, with trial, install, and first connection as the primary public CTA path and checkout as explicit continuation, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
-- user-facing cabinet IA is `Dashboard / Subscription / Devices / Statistics / Support`, with `downloads`, `redeem`, and hosted-checkout continuation treated as task routes rather than parallel acquisition surfaces
+- visible user-facing cabinet IA is `Главная / Доступ / Помощь / Аккаунт`, with `/devices/`, `/statistics/`, `/downloads/`, `/redeem/`, support thread/legal routes, and hosted-checkout continuation treated as task/detail routes rather than parallel acquisition surfaces
 - commerce moves to hosted checkout plus activation-key issuance and redemption instead of raw subscription-link-first UX
 - remote promo content is limited to approved first-party promo slots; third-party ad SDKs remain out of scope
 - the public location story collapses to one logical location per user, while the transport matrix stays hidden behind rollout, diagnostics, and admin controls

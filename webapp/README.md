@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-05-26
+Last updated: 2026-06-06
 
 ## Document Status
 
@@ -11,8 +11,8 @@ This file is the local authority for `webapp/` and the browser cabinet/admin sur
 `webapp/` is the continuation-first cabinet and admin surface for:
 
 - browser entry and web-login continuation from app handoff, Telegram, and email when the runtime email delivery gate is fully ready
-- personal cabinet flows with top-level IA `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
-- task routes for downloads, redeem, and hosted-checkout continuation inside that same cabinet model
+- personal cabinet flows with visible IA `Главная`, `Доступ`, `Помощь`, and `Аккаунт`
+- task/detail routes for devices, statistics, downloads, redeem, support threads/legal docs, and hosted-checkout continuation inside that same compact cabinet model
 - hosted key-first checkout continuation
 - the primary admin operator surface
 
@@ -23,12 +23,15 @@ It is not the public marketing or SEO surface, and it must not become a second l
 Current user-facing route families in `webapp/src/app/`:
 
 - `/` for browser entry, Telegram web-login, and bot handoff continuation
-- `/dashboard/` for the main cabinet snapshot
-- `/subscription/` for subscription state, renewal entry, and the main `Тарифы и оплата` surface
-- `/devices/` for device visibility
-- `/statistics/` for usage and account visibility summaries inside the cabinet
-- `/downloads/` for app-download continuation and install handoff
-- `/support/` plus support thread/legal routes
+- visible cabinet nav:
+  - `Главная` -> `/dashboard/`
+  - `Доступ` -> `/subscription/`
+  - `Помощь` -> `/support/`
+  - `Аккаунт` -> `/settings/`
+- `/devices/` for device visibility as a `Главная` detail route
+- `/statistics/` for usage and account visibility summaries as a `Главная` detail route
+- `/downloads/` for app-download continuation and install handoff as a `Доступ` task route
+- `/support/` plus support thread/legal routes for ticket continuation and documents
 - `/settings/` for account links, Telegram bonus actions, and safe continuation settings
 - `/profile/` only as a compatibility redirect to `/settings/`
 - `/dashboard/downloads/` only as a compatibility redirect to `/downloads/`

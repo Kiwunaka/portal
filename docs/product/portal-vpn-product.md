@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-06-04
+Last updated: 2026-06-06
 
 ## Document Status
 
@@ -46,7 +46,7 @@ The current program is locked around these target product decisions:
 - commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
 - `marketing` is the only public acquisition, pricing, and paywall surface, and its default public path is `trial -> install -> first connection`; checkout remains an honest continuation after product check or explicit plan intent. `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
-- user-facing cabinet IA becomes `Dashboard / Subscription / Devices / Statistics / Support`, with entry, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects treated as task routes rather than parallel public-entry surfaces
+- visible user-facing cabinet IA becomes `Главная / Доступ / Помощь / Аккаунт`, backed by `/dashboard/`, `/subscription/`, `/support/`, and `/settings/`; `devices`, `statistics`, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects are task/detail routes rather than parallel public-entry surfaces
 - app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
 - normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
 - target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
@@ -177,7 +177,8 @@ Current cabinet role:
 - cabinet is continuation-first; it must not become a second landing page or re-pitch the public marketing story
 - public email signup, verification, and recovery are live continuation paths when email readiness is green, but they must not be described as a premium-trial replacement for the app
 - email forms are gated by `/api/auth/email/status`; the default degrades to unavailable unless public enablement, delivery configuration, and non-debug runtime state are all green
-- current top-level cabinet IA is `Dashboard`, `Subscription`, `Devices`, `Statistics`, and `Support`
+- current visible cabinet IA is `Главная`, `Доступ`, `Помощь`, and `Аккаунт`
+- `/devices/`, `/statistics/`, `/downloads/`, `/redeem/`, `/subscription/checkout/`, `/support/thread/`, and `/support/legal/` remain deep-linkable task/detail routes inside that compact cabinet model
 - task routes currently include cabinet entry, hosted-checkout continuation, redeem, downloads, and support threads
 - `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
 - `webapp` is also the primary admin operator surface
