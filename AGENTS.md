@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-06-03
+Last updated: 2026-06-07
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -38,7 +38,11 @@ Use it to answer four questions before touching code:
 - Android outside-store public beta may use the retained `2026-05-15` operator-attested physical-device release-build localhost/control-surface audit; raw physical audit evidence remains a manual owner test before stronger Android safety claims
 - RU-origin probe readiness is an operational dependency for `POKROV` public hosts, API, and delivery-node reachability; `mini` / `RFMINI` is the canonical RU-origin operator sandbox when SSH access is current
 - Payment provider launch truth: Lava.top paid checkout is evidence-backed for the outside-store public beta as of `2026-05-15`; production maturity still requires refund/chargeback, reconciliation, and fulfillment-ledger hardening evidence with secrets redacted
-- Current release gate snapshot: outside-store public Android + Windows beta is `GO` as of `2026-05-15` with accepted skips; broad/stable/store/trusted release and `1.0.0` labeling remain blocked until the separate P0/manual gates are green
+- Current release gate snapshot: outside-store public Android + Windows beta is `GO` as of `2026-05-15` with accepted skips; repo-side `1.0.0-beta` implementation and release artifacts exist, but owner manual install/connect review, signing, store, trusted Windows, RU-origin, and stable `1.0.0` claims remain separate gates
+- Public binary delivery decision: keep user-download APK/EXE assets on GitHub Releases, not a first-party download domain or committed git files
+- GitHub private release asset URLs return unauthenticated `404`; public-user download links require a public GitHub Releases surface or another explicitly approved public release surface
+- Startup update model: the client checks release/update metadata at launch or resume and asks the user to update; do not claim silent auto-update
+- Dynamic content model: important posts, notices, and promo/banner slots are backend-owned JSON surfaces; do not render arbitrary HTML/JS, ad SDKs, tracking pixels, or remote security/routing behavior from promo content without a new owner-approved product policy
 - Design source of truth: root `DESIGN.md` plus `shared/design-tokens.json` and `shared/design-tokens.schema.json`
 
 ## Current Release Gate Snapshot
@@ -50,7 +54,7 @@ Current beta gate labels:
 - Lava.top provider proof: `PASS` for beta, production refund/chargeback/reconciliation evidence still follow-up
 - runtime app-download smoke with brain-signed env-only Telegram init data: `PASS`; real-user Telegram WebApp opening remains manual owner test
 - Android physical release-build localhost/control-surface audit: `OPERATOR_ATTESTED` for beta; raw device evidence remains optional replacement/manual test
-- public Android/Windows handoff URLs: `PASS` for GitHub Releases APK/EXE and install docs URLs
+- public Android/Windows handoff URLs: GitHub Releases APK/EXE handoff evidence exists; if the source/release repo is private, anonymous public download proof remains blocked until assets are moved to a public GitHub Releases surface or the repo visibility changes
 - RU-origin `POKROV` host/API/node probe evidence: `SKIPPED_BY_OPERATOR`; do not claim RU-origin readiness
 - deploy/brain-origin evidence for the exact beta candidate: `PASS`
 
@@ -66,6 +70,24 @@ Do not change public copy, deploy notes, or launch announcements to imply store 
 - Generated asset policy: [docs/design/generated-assets-policy.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/generated-assets-policy.md)
 
 Generated assets for public, client, store, support, or release use must include source prompt/reference, source master, final dimensions, intended surface, review note, and release-scope note before shipping.
+
+## Active Plans Quick Access
+
+Use these first for current client and release work:
+
+- [Client Delivery, Update Check, And Dynamic Content Plan](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
+- [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
+- [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
+- [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
+- [POKROV App Final Beta Closure Except Manual Tests And Signing](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-final-beta-closure-except-manual-tests-signing.md)
+- [POKROV App Phase 6 Release Beta Handoff](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-phase-6-release-beta-handoff.md)
+- [POKROV App WARP Runtime Proof Checklist](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/warp-runtime-proof-checklist.md)
+- [POKROV App Responsive Golden Capture Plan](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/responsive-golden-capture-plan.md)
+
+Completed implementation maps, consilium notes, old visual explorations, and
+the ignored Karing reopen / clean-room gate notes are retained reference
+material only. Do not use them as the starting point for current `1.0.0-beta`
+work unless the owner explicitly reopens that lane.
 
 ## External Design And Copy Model Consults
 
@@ -337,6 +359,7 @@ When behavior changes, update the matching canonical docs in the same task.
 | App-first session flow, Telegram linking, username sync primary path, node-pool assignment, Telegram reward, support flow | `docs/architecture/app-first-and-bonus-flows.md` |
 | Deploy flow, server access, release procedures, secret locations | `docs/operations/deployment-and-access.md` |
 | Hostname policy, metrics freshness, node alerts, probe visibility, operator telemetry | `docs/operations/monitoring-and-visibility.md` |
+| Client binary delivery, update-check behavior, public download URLs, dynamic app notices, promo/banner slots | `docs/operations/client-delivery-update-content-plan.md`, `docs/architecture/client-downloads-flow.md`, `C:/Users/kiwun/Documents/ai/POKROV-app/docs/*` when client behavior changes |
 | Repository workflow, tests, local commands, script usage, cleanup policy | `docs/developer/developer-guide.md`, `docs/developer/repository-map.md` |
 | User-facing onboarding, support, trial, Telegram bonus, renewal | `docs/user/portal-vpn-user-guide-ru.md` |
 | Client UX, client contracts, client roadmap | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/*` for the active client lane; update `docs/archive/client-lanes/*` only when archive-summary labels or evidence notes themselves change |

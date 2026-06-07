@@ -65,6 +65,20 @@ Current-vs-history boundary:
 - [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
 - [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
 
+## Current Active Plans
+
+- [Client Delivery, Update Check, And Dynamic Content Plan](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
+- [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
+- [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
+- [POKROV App Final Beta Closure Except Manual Tests And Signing](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-final-beta-closure-except-manual-tests-signing.md)
+- [POKROV App Phase 6 Release Beta Handoff](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-phase-6-release-beta-handoff.md)
+- [POKROV App WARP Runtime Proof Checklist](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/warp-runtime-proof-checklist.md)
+- [POKROV App Responsive Golden Capture Plan](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/responsive-golden-capture-plan.md)
+
+Completed implementation plans and older design maps are retained as reference
+evidence, not quick-start authority. Deprecated Karing reopen / clean-room gate
+notes stay legacy unless the owner explicitly reopens that lane.
+
 ## Retired Client Summaries
 
 - [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md)
@@ -95,6 +109,7 @@ Current-vs-history boundary:
 - [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 - [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 - [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
+- [docs/operations/client-delivery-update-content-plan.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
 - [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
 - [docs/operations/2026-06-06-plans-decisions-closure-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
 - [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md)
