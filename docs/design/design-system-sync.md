@@ -1,6 +1,6 @@
 # Design System Sync
 
-Last updated: 2026-04-28
+Last updated: 2026-06-07
 
 `DESIGN.md` is the root design contract for this repository. `shared/design-tokens.json` is the machine-readable token source for marketing, cabinet, admin, and release-support UI.
 
@@ -32,6 +32,13 @@ Last updated: 2026-04-28
 - Admin views should use the `admin` density and favor compact evidence over large promotional layouts.
 - The active web/admin/site density pass is tracked in `docs/design/2026-06-06-web-admin-site-density-plan.md`. Its priority order is public marketing homepage density first, admin operator-prose trim second, and webapp entry-motion cleanup without reopening the implemented cabinet reset.
 - Public surfaces may link to `/install/` as gated help, but public download claims require runtime handoff evidence.
+- Admin route layout applies the `admin` density token set to the admin subtree.
+  Shared admin helpers should use token-backed radius, padding, and shadow
+  variables; new arbitrary numeric radii in shared admin helpers should fail
+  `tests/test_admin_design_guardrails.py`.
+- Marketing `--lp-*` variables should bridge through `--pokrov-*` variables
+  emitted by `getDesignTokenCssVariables("public")`; hard-coded route
+  exceptions need a route-local reason.
 
 ## Review Checklist
 

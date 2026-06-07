@@ -136,6 +136,25 @@ Status as of `2026-06-07`:
 - Add a marketing density README that records which component owns `/` and
   which template owns SEO landing pages.
 
+### P2 Implementation Notes
+
+Status as of `2026-06-07`:
+
+- Admin route layout now applies `getDesignTokenCssVariables("admin")` to the
+  admin subtree, so shared admin helpers use admin density rather than cabinet
+  density.
+- Shared admin shell helpers now use token-backed radius, padding, and shadow
+  classes such as `--pokrov-radius-panel`, `--pokrov-radius-card`,
+  `--pokrov-radius-control`, `--pokrov-panel-padding`, and
+  `--pokrov-card-padding`.
+- Marketing `--lp-*` CSS variables now bridge through `--pokrov-*` design
+  token variables with local fallbacks instead of standalone first-choice
+  constants.
+- `tests/test_admin_design_guardrails.py` protects the shared admin helper
+  layer from new arbitrary-radius drift and checks the marketing token bridge.
+- `marketing/README.md` records route-density ownership for `/`, reusable SEO
+  landing pages, `/vpn/`, checkout/install, and legal pages.
+
 ## Verification
 
 Required for this pass:

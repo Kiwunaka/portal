@@ -1,6 +1,7 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
+import type { CSSProperties } from "react";
 import {
   AdminBadge,
   adminButtonClass,
@@ -9,6 +10,7 @@ import {
   adminTopbarClass,
 } from "@/components/admin/admin-shell";
 import { adminSummary, type AdminSummaryPayload } from "@/lib/api";
+import { getDesignTokenCssVariables } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -17,6 +19,7 @@ import { pokrovBranding } from "@/app/branding";
 import { ADMIN_NAV_GROUPS, findAdminNavCategory, findAdminNavItem } from "./nav";
 
 const MARKETING_SITE_URL = pokrovBranding.marketingUrl;
+const ADMIN_DESIGN_TOKEN_VARS = getDesignTokenCssVariables("admin") as CSSProperties;
 
 function formatOperatorName(user: { display_name?: string | null; username?: string | null; tg_id?: number | null } | null): string {
   if (!user) return "Оператор";
@@ -172,7 +175,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-slate-50 px-3 py-3 text-slate-800 sm:px-4">
+    <main className="min-h-[100dvh] bg-slate-50 px-3 py-3 text-slate-800 sm:px-4" style={ADMIN_DESIGN_TOKEN_VARS}>
       <div className="grid min-h-[calc(100dvh-1.5rem)] gap-4 xl:grid-cols-[232px_minmax(0,1fr)] 2xl:grid-cols-[232px_minmax(0,1fr)_280px]">
         <aside className={`${adminSidebarClass} p-4 xl:sticky xl:top-3 xl:self-start`}>
           <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4">

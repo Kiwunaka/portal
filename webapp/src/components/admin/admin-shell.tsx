@@ -28,42 +28,42 @@ const BUTTON_TONE_CLASSES: Record<AdminButtonTone, string> = {
 };
 
 const BUTTON_SIZE_CLASSES: Record<AdminButtonSize, string> = {
-  md: "min-h-10 rounded-xl px-4 text-sm",
-  sm: "min-h-9 rounded-lg px-3 text-xs",
-  xs: "min-h-8 rounded-lg px-2.5 text-[11px]",
+  md: "min-h-10 rounded-[var(--pokrov-radius-control)] px-4 text-sm",
+  sm: "min-h-9 rounded-[var(--pokrov-radius-control)] px-3 text-xs",
+  xs: "min-h-8 rounded-[var(--pokrov-radius-control)] px-2.5 text-[11px]",
 };
 
 export const adminShellFrameClass =
-  "rounded-xl border border-slate-200/60 bg-slate-50/60 text-slate-800 shadow-[0_28px_64px_-52px_rgba(15,23,42,0.10)]";
+  "rounded-[var(--pokrov-radius-panel)] border border-slate-200/60 bg-slate-50/60 text-slate-800 shadow-[var(--pokrov-shadow-medium)]";
 
 export const adminSidebarClass =
-  "rounded-xl border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.10)] backdrop-blur-xl";
+  "rounded-[var(--pokrov-radius-panel)] border border-slate-200/60 bg-white/80 text-slate-800 shadow-[var(--pokrov-shadow-soft)] backdrop-blur-xl";
 
 export const adminTopbarClass =
-  "rounded-xl border border-slate-200/60 bg-white/80 text-slate-800 shadow-[0_18px_42px_-38px_rgba(15,23,42,0.08)] backdrop-blur-xl";
+  "rounded-[var(--pokrov-radius-panel)] border border-slate-200/60 bg-white/80 text-slate-800 shadow-[var(--pokrov-shadow-soft)] backdrop-blur-xl";
 
 export const adminRailCardClass =
-  "rounded-lg border border-slate-200/60 bg-white/70 p-3 text-slate-800 shadow-[0_14px_30px_-28px_rgba(15,23,42,0.08)] backdrop-blur-xl";
+  "rounded-[var(--pokrov-radius-card)] border border-slate-200/60 bg-white/70 p-[var(--pokrov-card-padding)] text-slate-800 shadow-[var(--pokrov-shadow-soft)] backdrop-blur-xl";
 
 export function adminPanelClass(tone: AdminTone = "neutral"): string {
-  return cn("overflow-hidden rounded-xl border p-3.5 backdrop-blur-sm", PANEL_TONE_CLASSES[tone]);
+  return cn("overflow-hidden rounded-[var(--pokrov-radius-panel)] border p-[var(--pokrov-panel-padding)] backdrop-blur-sm", PANEL_TONE_CLASSES[tone]);
 }
 
 export const adminInsetPanelClass =
-  "rounded-lg border border-slate-200/50 bg-white/60 p-3 backdrop-blur-sm";
+  "rounded-[var(--pokrov-radius-card)] border border-slate-200/50 bg-white/60 p-[var(--pokrov-card-padding)] backdrop-blur-sm";
 
 export const adminFieldClass =
-  "min-h-10 w-full rounded-[0.9rem] border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/30";
+  "min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/30";
 
 export const adminTextAreaClass = cn(adminFieldClass, "min-h-[120px] resize-y py-3");
 
 export const adminCheckboxLabelClass = "inline-flex items-center gap-2 text-[11px] font-medium text-slate-500";
 
 export const adminTableShellClass =
-  "overflow-hidden rounded-lg border border-slate-200/60 bg-white/80 backdrop-blur-sm";
+  "overflow-hidden rounded-[var(--pokrov-radius-card)] border border-slate-200/60 bg-white/80 backdrop-blur-sm";
 
 export const adminCompactCardClass =
-  "rounded-lg border border-slate-200/50 bg-white/60 p-3 text-slate-800 backdrop-blur-sm";
+  "rounded-[var(--pokrov-radius-card)] border border-slate-200/50 bg-white/60 p-[var(--pokrov-card-padding)] text-slate-800 backdrop-blur-sm";
 
 export function adminIconFrameClass(tone: AdminTone = "neutral"): string {
   const palette: Record<AdminTone, string> = {
@@ -74,7 +74,7 @@ export function adminIconFrameClass(tone: AdminTone = "neutral"): string {
     accent: "border-sky-200 bg-sky-100 text-sky-700",
   };
 
-  return cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border", palette[tone]);
+  return cn("inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--pokrov-radius-card)] border", palette[tone]);
 }
 
 export const adminProgressTrackClass = "h-2 overflow-hidden rounded-full bg-slate-200";

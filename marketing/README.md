@@ -57,6 +57,19 @@ Current priority:
    marketing blocks.
 5. Keep checkout/install/legal SEO facts accurate.
 
+## Density Ownership
+
+| Route family | Owner | Density rule |
+| --- | --- | --- |
+| `/` | `marketing/src/components/home/homepage.tsx` | Homepage-specific acquisition path; keep one primary story and one primary CTA above the fold. |
+| `/mobile/`, `/devices/`, `/telegram/`, `/youtube/`, `/tiktok/` | `marketing/src/components/marketing-landing.tsx` | Reusable SEO landing template; keep the compact sequence `hero -> scenario -> pricing -> FAQ -> related links -> CTA`. |
+| `/vpn/` | `marketing/src/app/vpn/page.tsx` | Dedicated search-intent longform surface; explicit `VPN` / `ВПН` wording is allowed only here and in matching metadata when it stays visible and useful. |
+| `/checkout/`, `/install/`, legal pages | route-local pages under `marketing/src/app/` | Task pages, not acquisition proof walls; keep facts and release limits accurate. |
+
+Marketing CSS variables should bridge through `shared/design-tokens.json` via
+`getDesignTokenCssVariables("public")`; route-specific exceptions need a clear
+reason in the route or this README.
+
 ## Verification
 
 Run from `marketing/`:
