@@ -38,6 +38,33 @@
             "apk_url": {
               "type": "string"
             },
+            "apk_arm64_url": {
+              "type": "string"
+            },
+            "apk_armeabi_v7a_url": {
+              "type": "string"
+            },
+            "apk_variants": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "abi": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "type": "string"
+                  },
+                  "size_bytes": {
+                    "type": "integer"
+                  }
+                }
+              }
+            },
             "mirror_url": {
               "type": "string"
             }
@@ -70,13 +97,49 @@
         "APP_ANDROID_APK_URL": {
           "type": "string"
         },
+        "APP_ANDROID_APK_ARM64_URL": {
+          "type": "string"
+        },
+        "APP_ANDROID_APK_ARMEABI_V7A_URL": {
+          "type": "string"
+        },
         "APP_ANDROID_MIRROR_URL": {
+          "type": "string"
+        },
+        "APP_ANDROID_VERSION": {
+          "type": "string"
+        },
+        "APP_ANDROID_SHA256": {
+          "type": "string"
+        },
+        "APP_ANDROID_SIZE_BYTES": {
+          "type": "string"
+        },
+        "APP_ANDROID_ARM64_SHA256": {
+          "type": "string"
+        },
+        "APP_ANDROID_ARM64_SIZE_BYTES": {
+          "type": "string"
+        },
+        "APP_ANDROID_ARMEABI_V7A_SHA256": {
+          "type": "string"
+        },
+        "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES": {
           "type": "string"
         },
         "APP_WINDOWS_EXE_URL": {
           "type": "string"
         },
         "APP_WINDOWS_MIRROR_URL": {
+          "type": "string"
+        },
+        "APP_WINDOWS_VERSION": {
+          "type": "string"
+        },
+        "APP_WINDOWS_SHA256": {
+          "type": "string"
+        },
+        "APP_WINDOWS_SIZE_BYTES": {
           "type": "string"
         },
         "APP_DOCS_URL": {

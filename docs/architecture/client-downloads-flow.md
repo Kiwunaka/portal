@@ -21,8 +21,11 @@ X-Telegram-Init-Data: <redacted>
 
 The response keeps the legacy URL fields and adds metadata under
 `android.update` / `windows.update` plus a top-level `update_check` summary.
-The backend returns `update_policy: none` unless the client sends a matching
-`platform` and `current_version`.
+For Android split APK delivery, `android.apk_url` remains the default
+`arm64-v8a` APK for backward compatibility, while `android.apk_variants[]`
+lists the default `arm64-v8a` file and the legacy `armeabi-v7a` file with URL,
+SHA-256, and size metadata. The backend returns `update_policy: none` unless
+the client sends a matching `platform` and `current_version`.
 
 ## Handoff Source
 

@@ -52,6 +52,13 @@ export type ClientPlatformAndroidApps = {
   play_url: string;
   apk_url: string;
   mirror_url: string;
+  apk_variants?: Array<{
+    abi: string;
+    label: string;
+    url: string;
+    sha256?: string;
+    size?: number;
+  }>;
 };
 
 export type ClientPlatformWindowsApps = {

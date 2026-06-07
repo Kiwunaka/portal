@@ -20,6 +20,9 @@ Implementation note:
   `Kiwunaka/pokrov`, and `v1.0.0-beta` assets were published there. Anonymous
   range smoke returned `206` for Android APK, Windows setup EXE, Windows
   portable ZIP, Windows manifest, and `SHA256SUMS.txt`.
+- `2026-06-07`: Android public download was switched from one universal APK to
+  split ARM APKs: `pokrov-android-arm64-v8a.apk` is the default app/API URL,
+  and `pokrov-android-armeabi-v7a.apk` is exposed as the legacy ARMv7 variant.
 
 This plan records the current owner decision for how the Android and Windows
 client should be delivered, how the app should discover newer versions, and how
@@ -55,7 +58,8 @@ Recommended release topology:
 
 Canonical asset shape:
 
-- `pokrov-android-universal.apk`
+- `pokrov-android-arm64-v8a.apk`
+- `pokrov-android-armeabi-v7a.apk`
 - `pokrov-windows-setup-x64.exe`
 - `SHA256SUMS.txt`
 - optional `release-manifest.json`
@@ -229,9 +233,10 @@ Forbidden until a deliberate product-policy change:
 ### P0: Release Surface And Metadata
 
 - choose the public GitHub Releases surface: complete, `Kiwunaka/pokrov`
-- upload current APK/EXE/checksums there: complete for `v1.0.0-beta`
+- upload current split APK/EXE/checksums there: complete for `v1.0.0-beta`
 - update release-handoff metadata and `/api/client/apps` runtime values:
-  handoff metadata updated; live runtime sync remains deploy/app-session gated
+  complete; brain-local signed `/api/client/apps` smoke returns split APK
+  variants, hashes, sizes, Windows EXE, and docs URL
 - prove anonymous public download with unauthenticated range smoke: complete,
   `206`
 

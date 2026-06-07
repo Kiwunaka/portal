@@ -1267,10 +1267,19 @@ class ClientAppUpdateInfo(BaseModel):
     force_after: str | None = None
 
 
+class ClientAndroidApkVariant(BaseModel):
+    abi: str
+    label: str
+    url: str
+    sha256: str = ""
+    size: int = 0
+
+
 class ClientAndroidApps(BaseModel):
     play_url: str = ""
     apk_url: str = ""
     mirror_url: str = ""
+    apk_variants: list[ClientAndroidApkVariant] = Field(default_factory=list)
     version: str = ""
     sha256: str = ""
     size: int = 0
@@ -8287,7 +8296,26 @@ async def client_apps(
     release_channel = str(channel or getattr(Settings, "APP_RELEASE_CHANNEL", "beta") or "beta").strip().lower() or "beta"
     requested_platform = str(platform or "").strip().lower()
     android_url = _safe_public_url(Settings.APP_ANDROID_APK_URL)
+    android_arm64_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_ARM64_URL", ""))
+    android_armeabi_v7a_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_ARMEABI_V7A_URL", ""))
     windows_url = _safe_public_url(Settings.APP_WINDOWS_EXE_URL)
+    android_variants = [
+        ClientAndroidApkVariant(
+            abi="arm64-v8a",
+            label="Android ARM64",
+            url=android_arm64_url,
+            sha256=str(getattr(Settings, "APP_ANDROID_ARM64_SHA256", "") or "").strip(),
+            size=max(0, int(getattr(Settings, "APP_ANDROID_ARM64_SIZE_BYTES", 0) or 0)),
+        ),
+        ClientAndroidApkVariant(
+            abi="armeabi-v7a",
+            label="Android ARMv7",
+            url=android_armeabi_v7a_url,
+            sha256=str(getattr(Settings, "APP_ANDROID_ARMEABI_V7A_SHA256", "") or "").strip(),
+            size=max(0, int(getattr(Settings, "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES", 0) or 0)),
+        ),
+    ]
+    android_variants = [variant for variant in android_variants if variant.url]
     android_update = _client_app_update_info(
         platform="android",
         requested_platform=requested_platform,
@@ -8322,6 +8350,7 @@ async def client_apps(
             play_url="",
             apk_url=android_url,
             mirror_url=_safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
+            apk_variants=android_variants,
             version=str(getattr(Settings, "APP_ANDROID_VERSION", "") or "").strip(),
             sha256=str(getattr(Settings, "APP_ANDROID_SHA256", "") or "").strip(),
             size=max(0, int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0)),

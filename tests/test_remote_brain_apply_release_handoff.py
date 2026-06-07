@@ -160,12 +160,14 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
         preview = self.module._release_values_preview(
             {
                 "APP_ANDROID_APK_URL": "https://github.com/example/release.apk",
+                "APP_ANDROID_APK_ARM64_URL": "https://github.com/example/release-arm64.apk",
                 "APP_WINDOWS_EXE_URL": "https://github.com/example/release.exe",
                 "APP_DOCS_URL": "https://pokrov.space/install/",
             }
         )
 
         self.assertIn("APP_ANDROID_APK_URL=https://github.com/example/release.apk", preview)
+        self.assertIn("APP_ANDROID_APK_ARM64_URL=https://github.com/example/release-arm64.apk", preview)
         self.assertIn("APP_WINDOWS_EXE_URL=https://github.com/example/release.exe", preview)
         self.assertIn("APP_DOCS_URL=https://pokrov.space/install/", preview)
         self.assertIn("APP_ANDROID_PLAY_URL=", preview)

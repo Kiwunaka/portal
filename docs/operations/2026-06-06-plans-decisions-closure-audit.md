@@ -119,4 +119,4 @@ Closed on `2026-06-07`:
 
 - anonymous public download proof now uses the public release-only repository
   `Kiwunaka/pokrov`; unauthenticated range requests returned `206` for the
-  Android APK, Windows EXE, portable ZIP, manifest, and `SHA256SUMS`.
+  Android split APKs, Windows EXE, portable ZIP, manifest, and `SHA256SUMS`.

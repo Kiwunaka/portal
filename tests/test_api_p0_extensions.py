@@ -79,7 +79,13 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             "WEBAPP_DEV_TG_ID",
             "APP_ANDROID_PLAY_URL",
             "APP_ANDROID_APK_URL",
+            "APP_ANDROID_APK_ARM64_URL",
+            "APP_ANDROID_APK_ARMEABI_V7A_URL",
             "APP_ANDROID_MIRROR_URL",
+            "APP_ANDROID_ARM64_SHA256",
+            "APP_ANDROID_ARM64_SIZE_BYTES",
+            "APP_ANDROID_ARMEABI_V7A_SHA256",
+            "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES",
             "APP_WINDOWS_EXE_URL",
             "APP_WINDOWS_MIRROR_URL",
             "APP_DOCS_URL",
@@ -96,7 +102,13 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["WEBAPP_DEV_TG_ID"] = "1001"
         os.environ["APP_ANDROID_PLAY_URL"] = ""
         os.environ["APP_ANDROID_APK_URL"] = ""
+        os.environ["APP_ANDROID_APK_ARM64_URL"] = ""
+        os.environ["APP_ANDROID_APK_ARMEABI_V7A_URL"] = ""
         os.environ["APP_ANDROID_MIRROR_URL"] = ""
+        os.environ["APP_ANDROID_ARM64_SHA256"] = ""
+        os.environ["APP_ANDROID_ARM64_SIZE_BYTES"] = "0"
+        os.environ["APP_ANDROID_ARMEABI_V7A_SHA256"] = ""
+        os.environ["APP_ANDROID_ARMEABI_V7A_SIZE_BYTES"] = "0"
         os.environ["APP_WINDOWS_EXE_URL"] = ""
         os.environ["APP_WINDOWS_MIRROR_URL"] = ""
         os.environ["APP_DOCS_URL"] = ""
@@ -356,7 +368,13 @@ class ApiP0ExtensionsTests(unittest.TestCase):
 
     def test_client_apps_endpoint_returns_outside_store_configured_urls(self) -> None:
         self.api.Settings.APP_ANDROID_PLAY_URL = "https://play.google.com/store/apps/details?id=space.pokrov.vpn"
-        self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android.apk"
+        self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-arm64.apk"
+        self.api.Settings.APP_ANDROID_APK_ARM64_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-arm64.apk"
+        self.api.Settings.APP_ANDROID_APK_ARMEABI_V7A_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-armv7.apk"
+        self.api.Settings.APP_ANDROID_ARM64_SHA256 = "a" * 64
+        self.api.Settings.APP_ANDROID_ARM64_SIZE_BYTES = 123
+        self.api.Settings.APP_ANDROID_ARMEABI_V7A_SHA256 = "b" * 64
+        self.api.Settings.APP_ANDROID_ARMEABI_V7A_SIZE_BYTES = 456
         self.api.Settings.APP_ANDROID_MIRROR_URL = "https://downloads.example.com/mobile/pokrov-vpn-android.apk"
         self.api.Settings.APP_WINDOWS_EXE_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-windows.exe"
         self.api.Settings.APP_WINDOWS_MIRROR_URL = "https://downloads.example.com/desktop/pokrov-vpn-windows.exe"
@@ -370,6 +388,25 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["android"]["play_url"], "")
         self.assertEqual(body["android"]["apk_url"], self.api.Settings.APP_ANDROID_APK_URL)
         self.assertEqual(body["android"]["mirror_url"], self.api.Settings.APP_ANDROID_MIRROR_URL)
+        self.assertEqual(
+            body["android"]["apk_variants"],
+            [
+                {
+                    "abi": "arm64-v8a",
+                    "label": "Android ARM64",
+                    "url": self.api.Settings.APP_ANDROID_APK_ARM64_URL,
+                    "sha256": "a" * 64,
+                    "size": 123,
+                },
+                {
+                    "abi": "armeabi-v7a",
+                    "label": "Android ARMv7",
+                    "url": self.api.Settings.APP_ANDROID_APK_ARMEABI_V7A_URL,
+                    "sha256": "b" * 64,
+                    "size": 456,
+                },
+            ],
+        )
         self.assertEqual(body["windows"]["exe_url"], self.api.Settings.APP_WINDOWS_EXE_URL)
         self.assertEqual(body["windows"]["mirror_url"], self.api.Settings.APP_WINDOWS_MIRROR_URL)
         self.assertEqual(body["docs_url"], self.api.Settings.APP_DOCS_URL)

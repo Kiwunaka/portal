@@ -44,13 +44,23 @@ function externalAction(href: string, label: string): ReactNode {
 
 function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
   const androidApk = payload?.android?.apk_url || "";
+  const androidVariants = (payload?.android?.apk_variants || []).filter((item) => item.url);
   const androidMirror = payload?.android?.mirror_url || "";
   const windowsExe = payload?.windows?.exe_url || "";
   const windowsMirror = payload?.windows?.mirror_url || "";
   const docsUrl = payload?.docs_url || config.docsUrl;
 
   return [
-    androidApk
+    ...androidVariants.map((variant) => ({
+      key: `android-${variant.abi || "apk"}`,
+      icon: "android",
+      label: variant.abi === "armeabi-v7a" ? "Android APK для старых устройств" : "Android APK для новых устройств",
+      hint: variant.abi === "armeabi-v7a" ? "ARMv7 · если телефон очень старый" : "ARM64 · основной файл для большинства телефонов",
+      value: "APK",
+      href: variant.url,
+      action: externalAction(variant.url, "Скачать"),
+    })),
+    !androidVariants.length && androidApk
       ? {
           key: "android-apk",
           icon: "android",
