@@ -795,6 +795,10 @@ class PanelClient:
         flow: str,
         inbound_id: int | None = None,
     ) -> bool:
+        target_inbound_id = int(inbound_id or self.node.inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
+
         if not self.cookies:
             ok = await self.login()
             if not ok:
@@ -819,9 +823,6 @@ class PanelClient:
             "limitIp": limit_ip,
             "reset": 0,
         }
-        target_inbound_id = int(inbound_id or self.node.inbound_id or 0)
-        if target_inbound_id <= 0:
-            return False
         payload = {"id": target_inbound_id, "settings": json.dumps({"clients": [client_obj]})}
         try:
             async with self.session.post(
@@ -831,12 +832,87 @@ class PanelClient:
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
+                if resp.status == 404:
+                    return await self._add_client_modern(
+                        client_obj=client_obj,
+                        inbound_id=target_inbound_id,
+                    )
                 if resp.status != 200:
+                    logger.warning(
+                        "add_client legacy endpoint failed status=%s node=%s inbound=%s",
+                        resp.status,
+                        self.node.code,
+                        target_inbound_id,
+                    )
                     return False
                 data = await resp.json()
-                return bool(data.get("success"))
+                ok = bool(data.get("success"))
+                if not ok:
+                    logger.warning(
+                        "add_client legacy endpoint returned false node=%s inbound=%s msg=%s",
+                        self.node.code,
+                        target_inbound_id,
+                        str(data.get("msg") or "")[:200],
+                    )
+                return ok
         except Exception as e:
             logger.exception("add_client error node=%s: %s", self.node.code, e)
+            return False
+
+    async def _add_client_modern(self, *, client_obj: dict, inbound_id: int) -> bool:
+        """
+        3x-ui React builds moved client creation from the legacy
+        /panel/api/inbounds/addClient endpoint to /panel/api/clients/add.
+        Keep the legacy path as the first try so older x-ui nodes continue to
+        work, and fall back here when a newer panel returns 404.
+        """
+        payload = {
+            "client": {
+                "email": client_obj.get("email", ""),
+                "subId": client_obj.get("subId", ""),
+                "id": client_obj.get("id", ""),
+                "password": client_obj.get("password", ""),
+                "auth": client_obj.get("auth", ""),
+                "flow": client_obj.get("flow", ""),
+                "totalGB": client_obj.get("totalGB", 0),
+                "expiryTime": client_obj.get("expiryTime", 0),
+                "reset": client_obj.get("reset", 0),
+                "limitIp": client_obj.get("limitIp", 0),
+                "tgId": self._to_int(str(client_obj.get("tgId", "") or ""), 0),
+                "group": client_obj.get("group", ""),
+                "comment": client_obj.get("comment", ""),
+                "enable": bool(client_obj.get("enable", True)),
+            },
+            "inboundIds": [int(inbound_id)],
+        }
+        try:
+            async with self.session.post(
+                f"{self._base()}/panel/api/clients/add",
+                json=payload,
+                headers=await self._csrf_headers(),
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                if resp.status != 200:
+                    logger.warning(
+                        "add_client modern endpoint failed status=%s node=%s inbound=%s",
+                        resp.status,
+                        self.node.code,
+                        inbound_id,
+                    )
+                    return False
+                data = await resp.json(content_type=None)
+                ok = bool(data.get("success")) if isinstance(data, dict) else False
+                if not ok:
+                    logger.warning(
+                        "add_client modern endpoint returned false node=%s inbound=%s msg=%s",
+                        self.node.code,
+                        inbound_id,
+                        str((data or {}).get("msg") if isinstance(data, dict) else "")[:200],
+                    )
+                return ok
+        except Exception as e:
+            logger.exception("add_client modern endpoint error node=%s: %s", self.node.code, e)
             return False
 
     async def update_client_enable(
@@ -891,12 +967,82 @@ class PanelClient:
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
+                if resp.status == 404:
+                    return await self._update_client_modern(
+                        updated=updated,
+                        inbound_id=target_inbound_id,
+                    )
                 if resp.status != 200:
+                    logger.warning(
+                        "update_client legacy endpoint failed status=%s node=%s inbound=%s",
+                        resp.status,
+                        self.node.code,
+                        target_inbound_id,
+                    )
                     return False
                 data = await resp.json()
-                return bool(data.get("success"))
+                ok = bool(data.get("success"))
+                if not ok:
+                    logger.warning(
+                        "update_client legacy endpoint returned false node=%s inbound=%s msg=%s",
+                        self.node.code,
+                        target_inbound_id,
+                        str(data.get("msg") or "")[:200],
+                    )
+                return ok
         except Exception as e:
             logger.exception("update_client_enable error node=%s: %s", self.node.code, e)
+            return False
+
+    async def _update_client_modern(self, *, updated: dict, inbound_id: int) -> bool:
+        email = str(updated.get("email", "") or "").strip()
+        if not email:
+            return False
+        payload = {
+            "email": email,
+            "subId": str(updated.get("subId", "") or ""),
+            "id": str(updated.get("id", "") or ""),
+            "password": str(updated.get("password", "") or ""),
+            "auth": str(updated.get("auth", "") or ""),
+            "flow": str(updated.get("flow", "") or ""),
+            "totalGB": int(updated.get("totalGB", 0) or 0),
+            "expiryTime": int(updated.get("expiryTime", 0) or 0),
+            "reset": int(updated.get("reset", 0) or 0),
+            "limitIp": int(updated.get("limitIp", 0) or 0),
+            "tgId": self._to_int(str(updated.get("tgId", "") or ""), 0),
+            "group": str(updated.get("group", "") or ""),
+            "comment": str(updated.get("comment", "") or ""),
+            "enable": bool(updated.get("enable", True)),
+            "inboundIds": [int(inbound_id)],
+        }
+        try:
+            async with self.session.post(
+                f"{self._base()}/panel/api/clients/update/{quote(email, safe='')}",
+                json=payload,
+                headers=await self._csrf_headers(),
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                if resp.status != 200:
+                    logger.warning(
+                        "update_client modern endpoint failed status=%s node=%s inbound=%s",
+                        resp.status,
+                        self.node.code,
+                        inbound_id,
+                    )
+                    return False
+                data = await resp.json(content_type=None)
+                ok = bool(data.get("success")) if isinstance(data, dict) else False
+                if not ok:
+                    logger.warning(
+                        "update_client modern endpoint returned false node=%s inbound=%s msg=%s",
+                        self.node.code,
+                        inbound_id,
+                        str((data or {}).get("msg") if isinstance(data, dict) else "")[:200],
+                    )
+                return ok
+        except Exception as e:
+            logger.exception("update_client modern endpoint error node=%s: %s", self.node.code, e)
             return False
 
     async def _reset_client_traffic_by_email(self, *, email: str, inbound_id: int | None = None) -> bool:

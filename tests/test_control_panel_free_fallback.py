@@ -55,6 +55,8 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
             panel_error_rate=0.0,
             active_clients=0,
             last_ok_at=None,
+            cpu_percent=None,
+            last_probe_at=None,
         )
 
     async def test_add_client_free_targets_free_pool(self) -> None:

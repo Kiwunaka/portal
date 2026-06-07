@@ -56,6 +56,8 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
             panel_error_rate=0.0,
             active_clients=0,
             last_ok_at=None,
+            cpu_percent=None,
+            last_probe_at=None,
         )
 
     async def test_cleanup_cross_inbound_conflicts(self) -> None:
@@ -149,6 +151,117 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertTrue(ok)
         self.assertEqual(captured.get("sub_id"), "secure-42")
+
+    async def test_add_client_falls_back_to_modern_clients_api(self) -> None:
+        from panel_client import PanelClient
+
+        class FakeResponse:
+            def __init__(self, status: int, payload: dict):
+                self.status = status
+                self._payload = payload
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def json(self, *args, **kwargs):
+                return self._payload
+
+        class FakeSession:
+            def __init__(self):
+                self.posts: list[tuple[str, dict]] = []
+
+            def post(self, url: str, **kwargs):
+                self.posts.append((url, kwargs))
+                if url.endswith("/panel/api/inbounds/addClient"):
+                    return FakeResponse(404, {"success": False})
+                if url.endswith("/panel/api/clients/add"):
+                    return FakeResponse(200, {"success": True})
+                return FakeResponse(500, {"success": False})
+
+        fake_session = FakeSession()
+        client = PanelClient(self._node("de"))
+        client.session = fake_session
+        client.cookies = {"session": "ok"}
+        client.csrf_token = "csrf"
+
+        ok = await client.add_client(
+            client_uuid="uuid-42",
+            email="User_42",
+            tg_id=42,
+            sub_id="secure-42",
+            enable=True,
+            flow="xtls-rprx-vision",
+            inbound_id=1,
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(len(fake_session.posts), 2)
+        modern_url, modern_kwargs = fake_session.posts[1]
+        self.assertTrue(modern_url.endswith("/xui/panel/api/clients/add"))
+        self.assertEqual(modern_kwargs["headers"], {"X-CSRF-Token": "csrf"})
+        modern_payload = modern_kwargs["json"]
+        self.assertEqual(modern_payload["inboundIds"], [1])
+        self.assertEqual(modern_payload["client"]["email"], "User_42")
+        self.assertEqual(modern_payload["client"]["id"], "uuid-42")
+        self.assertEqual(modern_payload["client"]["tgId"], 42)
+        self.assertEqual(modern_payload["client"]["subId"], "secure-42")
+
+    async def test_update_client_falls_back_to_modern_clients_api(self) -> None:
+        from panel_client import PanelClient
+
+        class FakeResponse:
+            def __init__(self, status: int, payload: dict):
+                self.status = status
+                self._payload = payload
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+            async def json(self, *args, **kwargs):
+                return self._payload
+
+        class FakeSession:
+            def __init__(self):
+                self.posts: list[tuple[str, dict]] = []
+
+            def post(self, url: str, **kwargs):
+                self.posts.append((url, kwargs))
+                if "/panel/api/inbounds/updateClient/" in url:
+                    return FakeResponse(404, {"success": False})
+                if "/panel/api/clients/update/" in url:
+                    return FakeResponse(200, {"success": True})
+                return FakeResponse(500, {"success": False})
+
+        fake_session = FakeSession()
+        client = PanelClient(self._node("de"))
+        client.session = fake_session
+        client.cookies = {"session": "ok"}
+        client.csrf_token = "csrf"
+
+        ok = await client.update_client_enable(
+            {"id": "uuid-42", "email": "User_42", "tgId": "42", "subId": "legacy"},
+            True,
+            sub_id="secure-42",
+            inbound_id=1,
+            flow="xtls-rprx-vision",
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(len(fake_session.posts), 2)
+        modern_url, modern_kwargs = fake_session.posts[1]
+        self.assertTrue(modern_url.endswith("/xui/panel/api/clients/update/User_42"))
+        modern_payload = modern_kwargs["json"]
+        self.assertEqual(modern_payload["inboundIds"], [1])
+        self.assertEqual(modern_payload["email"], "User_42")
+        self.assertEqual(modern_payload["id"], "uuid-42")
+        self.assertEqual(modern_payload["tgId"], 42)
+        self.assertEqual(modern_payload["subId"], "secure-42")
 
 
 if __name__ == "__main__":

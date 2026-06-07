@@ -5808,7 +5808,21 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
                 sub_token=str(user.sub_token or ""),
             )
         )
-    except Exception:
+        if not sync_ok:
+            logger.warning(
+                "app start-trial panel sync returned false tg_id=%s plan=%s sub_type=%s",
+                int(user.tg_id),
+                str(getattr(user, "current_plan_code", "") or ""),
+                str(getattr(user, "sub_type", "") or ""),
+            )
+    except Exception as exc:
+        logger.exception(
+            "app start-trial panel sync failed tg_id=%s plan=%s sub_type=%s err=%s",
+            int(user.tg_id),
+            str(getattr(user, "current_plan_code", "") or ""),
+            str(getattr(user, "sub_type", "") or ""),
+            exc,
+        )
         sync_ok = False
     finally:
         await panel.close()
@@ -6109,6 +6123,14 @@ async def client_managed_profile(
         transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        sync_ok = await _sync_control_panel_access(user=user)
+        if not sync_ok:
+            logger.warning(
+                "managed profile panel sync returned false tg_id=%s plan=%s sub_type=%s",
+                int(user.tg_id),
+                str(getattr(user, "current_plan_code", "") or ""),
+                str(getattr(user, "sub_type", "") or ""),
+            )
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
         access_policy = _build_access_policy(
             user=user,
@@ -6168,6 +6190,11 @@ async def client_managed_profile(
             ),
             "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=nodes_for_user, client_policy=client_policy),
             "location_matrix": _location_matrix_payload(user=user, nodes=nodes_for_user, client_policy=client_policy),
+            "provisioning": {
+                "status": "ready" if sync_ok else "pending_sync",
+                "sync_ok": bool(sync_ok),
+                "managed_profile_path": "/api/client/profile/managed",
+            },
         }
     finally:
         s.close()
