@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import JsonLd from "../../components/json-ld";
+import { MarketingBrandLogo } from "../../components/marketing-brand-logo";
 import { buildMarketingMetadata } from "../../components/marketing-landing";
 import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
@@ -29,7 +30,7 @@ export default function OfferPage() {
         <header className="lp-nav">
           <div className="lp-nav-shell">
             <Link href="/" className="lp-brand">
-              <img src="/pokrov-logo.svg" alt="" aria-hidden="true" className="lp-brand-logo" />
+              <MarketingBrandLogo className="lp-brand-logo" priority />
               <span>{CANONICAL_PLATFORM_BRAND}</span>
             </Link>
             <nav className="lp-menu" aria-label="Навигация по юридическим страницам">

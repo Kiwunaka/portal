@@ -1,6 +1,7 @@
 # Plans And Decisions Closure Audit
 
 Date: 2026-06-06
+Last updated: 2026-06-07
 Status: repo-side closure / manual-gate boundary
 
 ## Scope
@@ -32,6 +33,7 @@ Active client implementation plans:
 Active root WebApp plan:
 
 - `C:/Users/kiwun/Documents/ai/VPN/docs/design/2026-06-05-webapp-cabinet-ux-reset-plan.md`
+- `C:/Users/kiwun/Documents/ai/VPN/docs/design/2026-06-06-web-admin-site-density-plan.md`
 
 Explicitly ignored archive inputs per owner direction:
 
@@ -56,6 +58,10 @@ Closed for the current `1.0.0-beta` repo scope:
   row-first continuation surfaces;
 - root canonical docs updated so the cabinet IA no longer points at the old
   five-item English first layer.
+- web/admin/site density pass closed through P3 cleanup: marketing homepage and
+  reusable SEO landings are compacted, admin shell uses token-backed density
+  helpers, marketing route ownership is documented, and public logo rendering is
+  centralized through one `next/image` component.
 
 ## Remaining External Gates
 
@@ -83,6 +89,8 @@ Safe now:
 - `1.0.0-beta` repo-side product contour is implemented for outside-store beta.
 - WebApp personal cabinet is compact, continuation-first, and aligned to the
   current four-item visible IA.
+- Public marketing and admin density guardrails are repo-side closed through
+  the `2026-06-07` P3 cleanup pass.
 - WARP/enhanced protection is implemented as a guarded beta feature with
   backend lifecycle and redaction contracts.
 

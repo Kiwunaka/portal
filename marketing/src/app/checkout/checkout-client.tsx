@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { MarketingBrandLogo } from "../../components/marketing-brand-logo";
 import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import {
   getPricingPreviewDiscountPercent,
@@ -257,7 +258,7 @@ export function CheckoutLoadingFallback() {
     <main id="main-content" className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
         <div className="checkout-brand" aria-label="POKROV">
-          <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
+          <MarketingBrandLogo />
           <span>POKROV</span>
         </div>
         <div className="checkout-kicker">Тарифы и код активации</div>
@@ -411,7 +412,7 @@ export default function CheckoutClient() {
     <main id="main-content" className="checkout-shell lp-route-shell lp-route-shell--checkout">
       <section className="checkout-hero">
         <div className="checkout-brand" aria-label="POKROV">
-          <img src="/pokrov-logo.svg" alt="" aria-hidden="true" />
+          <MarketingBrandLogo />
           <span>POKROV</span>
         </div>
         <div className="checkout-kicker">После 5 дней в приложении можно выбрать срок</div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import JsonLd from "../json-ld";
+import { MarketingBrandLogo } from "../marketing-brand-logo";
 import styles from "./homepage.module.css";
 import { buildFaqJsonLd, buildSoftwareApplicationJsonLd, MARKETING_CANONICAL_PATHS, MARKETING_FAQ } from "../../lib/marketing-site";
 import {
@@ -228,7 +229,7 @@ function Hero({ links }: { links: HomeLinks }) {
               </div>
               <div className={styles.laptopScreen}>
                 <div style={{ textAlign: "center", color: "#0d5c3b" }}>
-                  <img className={styles.heroScreenLogo} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
+                  <MarketingBrandLogo className={styles.heroScreenLogo} width={72} height={72} priority />
                   <p style={{ margin: "8px 0 0", fontSize: 14, fontWeight: 700 }}>POKROV</p>
                   <p style={{ margin: 0, fontSize: 12, opacity: 0.6 }}>Подключено</p>
                 </div>
@@ -420,7 +421,7 @@ export default function MarketingHomePage() {
       <div className={styles.page}>
         <header className={styles.topbar}>
           <Link href="/" className={styles.brand}>
-            <img className={styles.brandMark} src="/pokrov-logo.svg" alt="" aria-hidden="true" />
+            <MarketingBrandLogo className={styles.brandMark} priority />
             <span className={styles.brandText}>
               <strong>POKROV</strong>
               <small>Android и Windows beta</small>

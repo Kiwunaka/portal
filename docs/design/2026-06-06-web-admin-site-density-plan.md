@@ -155,6 +155,21 @@ Status as of `2026-06-07`:
 - `marketing/README.md` records route-density ownership for `/`, reusable SEO
   landing pages, `/vpn/`, checkout/install, and legal pages.
 
+## P3 Cleanup
+
+Goal: make the web/admin/site pass quieter and easier to keep clean without
+changing the approved IA or adding new public claims.
+
+Status as of `2026-06-07`:
+
+- Marketing logo images now use one shared `MarketingBrandLogo` component
+  backed by `next/image` with `unoptimized` SVG export behavior.
+- The repeated raw `<img src="/pokrov-logo.svg">` usage was removed from the
+  homepage, checkout, install, legal, and `/vpn/` public marketing routes.
+- This cleanup is intentionally limited to build-warning hygiene and asset
+  consistency; it does not change public copy, checkout behavior, release
+  claims, cabinet IA, or admin workflows.
+
 ## Verification
 
 Required for this pass:
