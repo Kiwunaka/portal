@@ -1,6 +1,6 @@
 # Web, Admin, And Site Density Plan
 
-Last updated: 2026-06-06
+Last updated: 2026-06-07
 
 ## Status
 
@@ -111,6 +111,23 @@ Acceptance metrics:
   like nested card walls.
 - Add a dedicated responsive screenshot pass for marketing routes.
 
+### P1 Implementation Notes
+
+Status as of `2026-06-07`:
+
+- `/` remains owned by the homepage-specific `MarketingHomePage`.
+- `/mobile/`, `/devices/`, `/telegram/`, `/youtube/`, and `/tiktok/` remain on
+  `MarketingLanding`, but the template is now compressed around hero,
+  scenarios, pricing, FAQ, related links, and a final CTA.
+- `/vpn/` remains a separate longform search-intent surface because it is the
+  only public page intentionally using explicit `VPN` / `ВПН` SEO wording.
+- The old secondary-page proof wall, downloads block, review/default feedback
+  block, related card grid, and oversized footer rail are no longer part of
+  the reusable secondary landing template.
+- `marketing/scripts/check-marketing-responsive.mjs` is the dedicated
+  responsive smoke/screenshot pass for `/`, secondary landing pages, and
+  `/vpn/` at `390`, `700`, and `1180` px widths.
+
 ## P2 Follow-Up
 
 - Move remaining marketing/admin style constants closer to
@@ -125,10 +142,11 @@ Required for this pass:
 
 - `npm.cmd run build` in `marketing/`
 - `npm.cmd run check:seo` in `marketing/`
+- `npm.cmd run check:responsive` in `marketing/` for marketing route layout
+  changes
 - `npm.cmd run build` in `webapp/`
 - `npm.cmd run test:e2e:admin` in `webapp/` when admin shell changes
 - `npm.cmd run test:e2e:cabinet` in `webapp/` when entry/cabinet boundary
   changes
 - root copy guards when visible Russian copy changes:
   `python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q`
-

@@ -43,20 +43,6 @@ type ScenarioCard = {
   desc: string;
 };
 
-type HeroSignal = {
-  label: string;
-  value: string;
-  detail: string;
-};
-
-type DownloadCard = {
-  title: string;
-  status: string;
-  desc: string;
-  href: string;
-  cta: string;
-};
-
 type PlanCard = {
   code: string;
   label: string;
@@ -68,24 +54,6 @@ type PlanCard = {
 };
 
 type GlyphName = "route" | "shield" | "signal" | "window" | "readiness" | "arc";
-
-const HERO_SIGNALS: HeroSignal[] = [
-  {
-    label: "Платформы",
-    value: "Android + Windows",
-    detail: "Текущая пользовательская бета собрана для телефона и компьютера.",
-  },
-  {
-    label: "Стартовый доступ",
-    value: "5 дней бесплатно",
-    detail: "Проверьте POKROV на своем устройстве до оплаты.",
-  },
-  {
-    label: "Запуск",
-    value: "В приложении",
-    detail: "Первый экран ведет к кнопке «Подключить».",
-  },
-];
 
 const DEFAULT_SCENARIOS: ScenarioCard[] = [
   {
@@ -108,11 +76,10 @@ const DEFAULT_SCENARIOS: ScenarioCard[] = [
   },
 ];
 
-const KEY_FLOW_STEPS = [
-  "Установите приложение для Android или Windows.",
-  "Запустите 5 дней бесплатного доступа на первом устройстве.",
-  "Если бесплатный период закончился, остается базовый режим с лимитом на месяц.",
-  "Выберите срок и продолжайте тот же аккаунт POKROV.",
+const LANDING_FLOW_STEPS = [
+  "Установите приложение.",
+  "Включите 5 дней бесплатно.",
+  "Продлите срок или напишите в поддержку.",
 ];
 
 const RELATED_PAGES = [
@@ -122,10 +89,6 @@ const RELATED_PAGES = [
   { href: MARKETING_CANONICAL_PATHS.youtube, label: "YouTube" },
   { href: MARKETING_CANONICAL_PATHS.tiktok, label: "TikTok" },
 ];
-
-function buildInstallHref(): string {
-  return buildMarketingUrl(MARKETING_CANONICAL_PATHS.install);
-}
 
 function buildCheckoutHref(planCode: string): string {
   return `/checkout/?plan=${encodeURIComponent(planCode)}`;
@@ -137,27 +100,6 @@ function buildPlatformLabel(): string {
     if (item === "windows") return "Windows";
     return item;
   }).join(" + ");
-}
-
-function buildDownloadCards(): DownloadCard[] {
-  const installHref = buildInstallHref();
-
-  return [
-    {
-      title: "Android",
-      status: "APK beta",
-      desc: "Android-версия этой волны скачивается через кабинет, без публикации в сторах.",
-      href: installHref,
-      cta: "Открыть установку",
-    },
-    {
-      title: "Windows",
-      status: "EXE beta",
-      desc: "Windows-сборка скачивается через кабинет. Если система покажет предупреждение, это ожидаемо для текущей беты.",
-      href: installHref,
-      cta: "Открыть установку",
-    },
-  ];
 }
 
 function buildPlanCards(): PlanCard[] {
@@ -371,7 +313,6 @@ export default function MarketingLanding({
 }: MarketingLandingProps) {
   const reviews = featuredReviews?.length ? featuredReviews : [];
   const plans = buildPlanCards();
-  const downloadCards = buildDownloadCards();
   const relatedPages = RELATED_PAGES.filter((item) => item.href !== pagePath);
   const currentScenarios = scenarioCards?.length ? scenarioCards : DEFAULT_SCENARIOS;
   const defaultCheckoutHref = buildCheckoutHref(plans.find((plan) => plan.code === "start_99")?.code || plans[0]?.code || "start_99");
@@ -390,7 +331,7 @@ export default function MarketingLanding({
         <div className="lp-header-shell">
           <div className="lp-brand">
             <Link href="/">POKROV</Link>
-            <span>5 дней бесплатно • Android и Windows</span>
+            <span>Android и Windows beta</span>
           </div>
           <div className="lp-theme-toggle-wrap">
             <button
@@ -398,8 +339,9 @@ export default function MarketingLanding({
               className="lp-theme-toggle"
               data-theme-toggle
               aria-pressed="false"
-              aria-label="Переключить тему"
-              title="Переключить тему"
+              aria-label="Переключить на тёмную тему"
+              title="Переключить на тёмную тему"
+              suppressHydrationWarning
             >
               <span className="lp-theme-toggle__track" aria-hidden="true">
                 <span className="lp-theme-toggle__icon lp-theme-toggle__icon--sun">
@@ -453,31 +395,20 @@ export default function MarketingLanding({
                 Посмотреть тарифы
               </Link>
             </div>
-            <dl className="lp-proof">
-              {HERO_SIGNALS.map((signal) => (
-                <div key={signal.label}>
-                  <dt>{signal.label}</dt>
-                  <dd>
-                    <span className="lp-proof-value">{signal.value}</span>
-                    <span className="lp-proof-detail">{signal.detail}</span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
           </div>
 
-          <div className="lp-hero-stage">
+          <aside className="lp-hero-stage" aria-label="Короткий сценарий">
             <article className="lp-stage-card lp-stage-card--primary">
               <div className="lp-stage-label">
                 <LandingGlyph name="route" />
-                Старт в приложении
+                Один путь
               </div>
-              <h2>Видно главное: устройство, срок и кнопка.</h2>
+              <h2>Сначала приложение. Остальное рядом.</h2>
               <p>
-                На первом экране есть <strong>{buildPlatformLabel()}</strong>, 5 дней бесплатно и понятный старт. Сложные параметры остаются внутри продукта.
+                {buildPlatformLabel()}, 5 дней бесплатно и кабинет для продления, устройств и поддержки.
               </p>
               <ol className="lp-stage-steps">
-                {KEY_FLOW_STEPS.map((step, index) => (
+                {LANDING_FLOW_STEPS.map((step, index) => (
                   <li key={step}>
                     <span>{`0${index + 1}`}</span>
                     <div>
@@ -487,45 +418,16 @@ export default function MarketingLanding({
                 ))}
               </ol>
             </article>
-
-            <article className="lp-stage-card">
-              <div className="lp-stage-label">
-                <LandingGlyph name="signal" />
-                Telegram остается рядом
-              </div>
-              <p>
-                Telegram помогает с восстановлением, бонусом +10 дней, новостями и поддержкой. Первый старт все равно начинается в приложении.
-              </p>
-              <div className="lp-stage-links">
-                <a href={config.newsChannelUrl} target="_blank" rel="noreferrer">
-                  Канал
-                </a>
-                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer">
-                  Поддержка
-                </a>
-                <a href={config.webappUrl} target="_blank" rel="noreferrer">
-                  Кабинет
-                </a>
-              </div>
-            </article>
-
-            <article className="lp-stage-card lp-stage-card--quote">
-              <div className="lp-stage-label">
-                <LandingGlyph name="arc" />
-                Статус беты
-              </div>
-              <blockquote>POKROV доступен в бета-контуре для Android и Windows; загрузки остаются в кабинете, а поддержка помогает с установкой и продлением.</blockquote>
-              <span>Бета-контур • Android + Windows</span>
-            </article>
-          </div>
+          </aside>
         </section>
 
         <section className="lp-section">
           <div className="lp-section-head">
-            <span>Почему это удобно</span>
-            <h2>POKROV дает понятный результат без технической возни.</h2>
+            <span>Почему удобно</span>
+            <h2>{scenarioTitle || "Один сценарий под эту задачу."}</h2>
             <p>
-              Android и Windows ведут к приложению, бесплатному старту и кабинету. Первый экран не заставляет выбирать протоколы, файлы и серверы.
+              {scenarioBody ||
+                "Сайт объясняет, приложение дает первый опыт, кабинет помогает продолжить. Без серверных списков и ручных профилей на первом шаге."}
             </p>
           </div>
           <div className="lp-trust-grid">
@@ -542,37 +444,12 @@ export default function MarketingLanding({
           </div>
         </section>
 
-        <section id="downloads" className="lp-section">
-          <div className="lp-section-head">
-            <span>Приложение</span>
-            <h2>Старт начинается с установки и одной кнопки.</h2>
-            <p>
-              Android и Windows составляют текущую пользовательскую бету. Если сборка пока не открыта вашему аккаунту, кабинет покажет статус или поддержку.
-            </p>
-          </div>
-          <div className="lp-download-grid">
-            {downloadCards.map((card, index) => (
-              <article key={card.title} className={`lp-platform-card${index === 0 ? " lp-platform-card--featured" : ""}`}>
-                <div className="lp-stage-label">
-                  <LandingGlyph name={card.title === "Android" ? "arc" : card.title === "Windows" ? "window" : "readiness"} />
-                  {card.status}
-                </div>
-                <h3>{card.title}</h3>
-                <p>{card.desc}</p>
-                <a href={card.href} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                  {card.cta}
-                </a>
-              </article>
-            ))}
-          </div>
-        </section>
-
         <section id="pricing" className="lp-section">
           <div className="lp-section-head">
             <span>Тарифы</span>
-            <h2>Тарифы показывают цену, срок и лимит устройств.</h2>
+            <h2>Цена, срок и лимит видны до оплаты.</h2>
             <p>
-              В beta-кассе открыт стартовый срок. Сумма и условия видны заранее; более сильные production/payment claims остаются отдельным follow-up.
+              В beta-кассе открыт стартовый срок. Сначала 5 дней в приложении без карты, затем продление того же аккаунта.
             </p>
           </div>
           <div className="lp-pricing-shell">
@@ -581,15 +458,10 @@ export default function MarketingLanding({
                 <LandingGlyph name="shield" />
                 Продление
               </div>
-              <h3>Выберите срок и продолжайте тот же аккаунт.</h3>
+              <h3>Платная часть только после теста.</h3>
               <p>
-                Приложение и кабинет продолжают одну историю. Сайт показывает цену, ограничения беты и действие без ручных настроек.
+                Приложение, кабинет и checkout продолжают один аккаунт POKROV. Без автосписания на первом старте.
               </p>
-              <ul className="lp-pricing-points">
-                <li>После бесплатного периода остается базовый режим с месячным лимитом.</li>
-                <li>Telegram используется для восстановления, поддержки и бонуса.</li>
-                <li>Промо остаются собственными и не превращаются в стороннюю рекламу.</li>
-              </ul>
             </aside>
 
             <div className="lp-plan-grid">
@@ -612,66 +484,24 @@ export default function MarketingLanding({
           </div>
         </section>
 
-        <section className="lp-section lp-section--split">
-          <div className="lp-conversation-grid">
-            <div>
-              <div className="lp-section-head">
-                <span>Опыт</span>
-                <h2>{scenarioTitle || "Проба, помощь и продление должны быть на одном аккаунте"}</h2>
-                <p>
-                  {scenarioBody ||
-                    "Сначала 5 дней в приложении, потом базовый режим или продление. Сайт, кабинет и Telegram не должны противоречить друг другу."}
-                </p>
-              </div>
-              {reviews.length ? (
-                <div className="lp-review-list">
-                  {reviews.map((item) => (
-                    <article key={`${item.name}-${item.role}`} className="lp-review-card">
-                      <p className="lp-review-text">{item.text}</p>
-                      <div className="lp-review-meta">
-                        <strong>{item.name}</strong>
-                        <span>{item.role}</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="lp-review-list">
-                  <article className="lp-review-card">
-                    <p className="lp-review-text">
-                      Публичные отзывы появятся только после модерации через официальный канал обратной связи.
-                    </p>
-                    <div className="lp-review-meta">
-                      <strong>POKROV</strong>
-                      <span>только проверенная обратная связь</span>
-                    </div>
-                  </article>
-                </div>
-              )}
-            </div>
-
-            <div id="faq">
-              <div className="lp-section-head">
-                <span>FAQ</span>
-                <h2>Короткие ответы для выбора следующего шага</h2>
-                <p>Ниже только то, что помогает начать, установить приложение, открыть кабинет или обратиться в поддержку.</p>
-              </div>
-              <div className="lp-faq-list">
-                {MARKETING_FAQ.map((item) => (
-                  <div key={item.question}>
-                    <details className="lp-faq-item">
-                      <summary className="lp-faq-q">
-                        <span>{item.question}</span>
-                        <span className="lp-faq-icon" aria-hidden="true">
-                          +
-                        </span>
-                      </summary>
-                      <p className="lp-faq-a">{item.answer}</p>
-                    </details>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <section className="lp-section" id="faq">
+          <div className="lp-section-head">
+            <span>FAQ</span>
+            <h2>Короткие ответы перед следующим шагом.</h2>
+            <p>Только то, что помогает начать, установить приложение, открыть кабинет или обратиться в поддержку.</p>
+          </div>
+          <div className="lp-faq-list">
+            {MARKETING_FAQ.map((item) => (
+              <details key={item.question} className="lp-faq-item">
+                <summary className="lp-faq-q">
+                  <span>{item.question}</span>
+                  <span className="lp-faq-icon" aria-hidden="true">
+                    +
+                  </span>
+                </summary>
+                <p className="lp-faq-a">{item.answer}</p>
+              </details>
+            ))}
           </div>
         </section>
 
@@ -684,21 +514,13 @@ export default function MarketingLanding({
                 "Эти страницы раскрывают установку, устройства, Telegram и видео-задачи без смешивания ролей сайта, приложения и кабинета."}
             </p>
           </div>
-          <div className="lp-related-grid">
+          <nav className="lp-related-strip" aria-label="Похожие страницы">
             {relatedPages.map((item) => (
-              <article key={item.href} className="lp-related-card">
-                <div className="lp-stage-label">
-                  <LandingGlyph name="route" />
-                  Похожая задача
-                </div>
-                <h3>{item.label}</h3>
-                <p>Та же логика: сайт объясняет, приложение дает первый опыт, кабинет и Telegram помогают продолжить или восстановить доступ.</p>
-                <Link href={item.href} className="lp-btn lp-btn--ghost">
-                  Открыть страницу
-                </Link>
-              </article>
+              <Link key={item.href} href={item.href} className="lp-related-pill">
+                {item.label}
+              </Link>
             ))}
-          </div>
+          </nav>
         </section>
 
         <section className="lp-section">
@@ -710,20 +532,6 @@ export default function MarketingLanding({
                 Если нужен первый старт, идите в приложение. Если нужен платный срок, выбирайте тариф и продолжайте тот же доступ через ключ в кабинете.
               </p>
             </div>
-            <div className="lp-footer-rail">
-              <div>
-                <strong>Android + Windows</strong>
-                <span>бета с честными ограничениями</span>
-              </div>
-              <div>
-                <strong>5 дней</strong>
-                <span>бесплатно в приложении</span>
-              </div>
-              <div>
-                <strong>+10 дней</strong>
-                <span>после привязки Telegram</span>
-              </div>
-            </div>
             <div className="lp-footer-actions">
               <Link href={MARKETING_CANONICAL_PATHS.install} className="lp-btn lp-btn--primary">
                 Установить приложение
@@ -734,15 +542,6 @@ export default function MarketingLanding({
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                 Открыть кабинет
               </a>
-              <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                Поддержка
-              </a>
-              <Link href={MARKETING_CANONICAL_PATHS.offer} className="lp-btn lp-btn--ghost">
-                Оферта
-              </Link>
-              <Link href={MARKETING_CANONICAL_PATHS.privacy} className="lp-btn lp-btn--ghost">
-                Политика
-              </Link>
             </div>
           </div>
         </section>

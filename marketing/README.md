@@ -1,6 +1,6 @@
 # POKROV Marketing
 
-Last updated: 2026-06-06
+Last updated: 2026-06-07
 
 ## Document Status
 
@@ -48,11 +48,14 @@ The active public-site density plan is
 
 Current priority:
 
-1. Compress the homepage first path.
-2. Keep one clear primary CTA above the fold.
-3. Reduce repeated proof cards and section descriptions.
-4. Keep checkout/install/legal SEO facts accurate.
-5. Apply the same density audit to SEO landing pages after the homepage pass.
+1. Keep `/` as a homepage-specific, short acquisition path.
+2. Keep `/mobile/`, `/devices/`, `/telegram/`, `/youtube/`, and `/tiktok/`
+   on the reusable `MarketingLanding` template.
+3. Keep `/vpn/` as a separate search-intent longform page because it has
+   explicit `VPN` / `ВПН` SEO wording and a different evidence/copy boundary.
+4. Reduce repeated proof cards and section descriptions before adding new
+   marketing blocks.
+5. Keep checkout/install/legal SEO facts accurate.
 
 ## Verification
 
@@ -61,6 +64,7 @@ Run from `marketing/`:
 ```powershell
 npm.cmd run build
 npm.cmd run check:seo
+npm.cmd run check:responsive
 ```
 
 Run from the repository root when visible Russian copy changes:
@@ -68,4 +72,3 @@ Run from the repository root when visible Russian copy changes:
 ```powershell
 python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q
 ```
-

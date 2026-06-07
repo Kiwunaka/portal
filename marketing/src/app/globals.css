@@ -394,7 +394,7 @@ svg {
 }
 
 .lp-section {
-  margin-top: clamp(68px, 8vw, 112px);
+  margin-top: clamp(42px, 5.6vw, 76px);
 }
 
 .lp-section-head {
@@ -424,8 +424,8 @@ svg {
   margin: 0;
   max-width: 900px;
   font-family: var(--font-display);
-  font-size: clamp(38px, 5vw, 68px);
-  line-height: 0.94;
+  font-size: clamp(32px, 4vw, 54px);
+  line-height: 0.98;
   letter-spacing: -0.02em;
   text-wrap: balance;
 }
@@ -434,8 +434,8 @@ svg {
   margin: 0;
   max-width: 720px;
   color: var(--lp-text-soft);
-  line-height: 1.75;
-  font-size: 16px;
+  line-height: 1.62;
+  font-size: 15px;
 }
 
 .lp-hero {
@@ -444,7 +444,7 @@ svg {
   grid-template-columns: minmax(0, 1.12fr) minmax(340px, 0.88fr);
   gap: 22px;
   overflow: hidden;
-  padding: clamp(30px, 5vw, 52px);
+  padding: clamp(24px, 4vw, 42px);
   border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 44px;
   background:
@@ -511,7 +511,7 @@ svg {
   margin: 10px 0 0;
   max-width: 720px;
   font-family: var(--font-display);
-  font-size: clamp(54px, 8vw, 108px);
+  font-size: clamp(48px, 6.8vw, 88px);
   font-weight: 600;
   line-height: 0.9;
   letter-spacing: -0.035em;
@@ -522,8 +522,8 @@ svg {
   margin: 18px 0 0;
   max-width: 660px;
   color: var(--lp-text-soft);
-  font-size: 17px;
-  line-height: 1.82;
+  font-size: 16px;
+  line-height: 1.68;
 }
 
 .lp-hero-actions,
@@ -618,7 +618,7 @@ svg {
   gap: 14px;
   align-content: start;
   width: 100%;
-  max-width: 460px;
+  max-width: 390px;
   justify-self: end;
 }
 
@@ -723,7 +723,7 @@ svg {
 }
 
 .lp-stage-card h2 {
-  font-size: clamp(34px, 4vw, 50px);
+  font-size: clamp(28px, 3vw, 40px);
 }
 
 .lp-stage-card p,
@@ -748,7 +748,7 @@ svg {
 .lp-info-card p {
   margin: 12px 0 0;
   color: var(--lp-text-soft);
-  line-height: 1.74;
+  line-height: 1.58;
 }
 
 .lp-stage-card--primary p {
@@ -757,7 +757,7 @@ svg {
 
 .lp-stage-steps {
   list-style: none;
-  margin: 22px 0 0;
+  margin: 18px 0 0;
   padding: 0;
   display: grid;
   gap: 14px;
@@ -768,7 +768,7 @@ svg {
   grid-template-columns: auto 1fr;
   gap: 14px;
   align-items: start;
-  padding-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -850,9 +850,9 @@ svg {
 .lp-related-grid,
 .lp-legal-grid,
 .lp-info-band__grid {
-  margin-top: 28px;
+  margin-top: 22px;
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .lp-trust-grid,
@@ -924,10 +924,10 @@ svg {
 .lp-platform-card h3,
 .lp-plan-card h3,
 .lp-related-card h3 {
-  margin: 18px 0 0;
+  margin: 14px 0 0;
   font-family: var(--font-display);
-  font-size: clamp(28px, 3vw, 40px);
-  line-height: 0.98;
+  font-size: clamp(24px, 2.6vw, 34px);
+  line-height: 1.02;
   text-wrap: balance;
 }
 
@@ -952,7 +952,7 @@ svg {
 }
 
 .lp-pricing-shell {
-  margin-top: 28px;
+  margin-top: 22px;
   display: grid;
   grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
   gap: 18px;
@@ -970,7 +970,7 @@ svg {
 }
 
 .lp-pricing-intro h3 {
-  font-size: clamp(34px, 4vw, 50px);
+  font-size: clamp(28px, 3vw, 40px);
 }
 
 .lp-pricing-points {
@@ -1047,9 +1047,9 @@ svg {
 
 .lp-review-list,
 .lp-faq-list {
-  margin-top: 28px;
+  margin-top: 22px;
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .lp-review-text {
@@ -1123,7 +1123,7 @@ svg {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
   gap: 24px;
-  padding: clamp(28px, 4vw, 44px);
+  padding: clamp(24px, 3.4vw, 36px);
   border-radius: 36px;
   background:
     radial-gradient(circle at 100% 0%, rgba(184, 160, 119, 0.2), transparent 34%),
@@ -1133,7 +1133,7 @@ svg {
 }
 
 .lp-footer-copy h2 {
-  font-size: clamp(44px, 5.2vw, 76px);
+  font-size: clamp(34px, 4.2vw, 58px);
   text-wrap: balance;
 }
 
@@ -1169,6 +1169,29 @@ svg {
 
 .lp-footer-actions {
   grid-column: 1 / -1;
+}
+
+.lp-related-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.lp-related-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 10px 16px;
+  color: var(--lp-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .lp-footer-cta .lp-btn--primary {
@@ -1508,6 +1531,7 @@ input.checkout-secondary::placeholder {
 .btn:focus-visible,
 .lp-menu a:focus-visible,
 .lp-chip:focus-visible,
+.lp-related-pill:focus-visible,
 input.checkout-secondary:focus-visible,
 .lp-faq-q:focus-visible {
   outline: 2px solid rgba(13, 90, 70, 0.34);
@@ -1533,6 +1557,7 @@ input.checkout-secondary:focus-visible,
 [data-theme="dark"] .lp-chip,
 [data-theme="dark"] .lp-stage-links a,
 [data-theme="dark"] .lp-btn--ghost,
+[data-theme="dark"] .lp-related-pill,
 [data-theme="dark"] .btn,
 [data-theme="dark"] .checkout-secondary,
 [data-theme="dark"] .checkout-kicker {
@@ -1678,20 +1703,13 @@ input.checkout-secondary:focus-visible,
   .btn,
   .checkout-submit,
   .checkout-secondary,
-  .lp-stage-card,
-  .lp-trust-card,
-  .lp-platform-card,
-  .lp-plan-card,
-  .lp-review-card,
-  .lp-related-card,
   .lp-faq-item,
   .checkout-plan,
   .checkout-provider,
   .lp-menu a,
   .lp-chip,
   .lp-theme-toggle,
-  .lp-info-card,
-  .lp-legal-panel,
+  .lp-related-pill,
   input.checkout-secondary {
     transition:
       transform 0.24s ease,
@@ -1705,16 +1723,9 @@ input.checkout-secondary:focus-visible,
   .btn:hover,
   .checkout-submit:hover:not(:disabled):not(.checkout-submit--disabled),
   .checkout-secondary:hover,
-  .lp-stage-card:hover,
-  .lp-trust-card:hover,
-  .lp-platform-card:hover,
-  .lp-plan-card:hover,
-  .lp-review-card:hover,
-  .lp-related-card:hover,
   .checkout-plan:hover,
   .checkout-provider:hover,
-  .lp-info-card:hover,
-  .lp-legal-panel:hover {
+  .lp-related-pill:hover {
     transform: translateY(-2px);
   }
 
@@ -2033,9 +2044,18 @@ input.checkout-secondary:focus-visible,
     width: 100%;
   }
 
-.lp-footer-actions {
-  gap: 10px;
-}
+  .lp-related-strip {
+    display: grid;
+  }
+
+  .lp-related-pill {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .lp-footer-actions {
+    gap: 10px;
+  }
 }
 
 .mk-topbar {
@@ -4097,6 +4117,7 @@ body::before,
 .lp-chip,
 .lp-btn--ghost,
 .lp-theme-toggle,
+.lp-related-pill,
 .home-v2-button--ghost,
 .home-v2-button--secondary,
 .home-v2-button--outline,

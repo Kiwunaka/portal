@@ -85,6 +85,8 @@ function sendFunnelEvent(payload: {
 
 export default function FunnelTracker() {
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_FUNNEL === "1") return;
+
     const sessionId = getSessionId();
     const params = new URLSearchParams(window.location.search);
     const source = sourceFromLocation(params);
