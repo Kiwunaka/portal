@@ -654,6 +654,29 @@ Then copy the resulting URLs into runtime env:
 - `APP_WINDOWS_MIRROR_URL`
 - `APP_DOCS_URL`
 
+Prompt-based app update metadata is optional but should be set for release
+handoff builds:
+
+- `APP_RELEASE_CHANNEL`
+- `APP_ANDROID_VERSION`
+- `APP_ANDROID_MIN_SUPPORTED_VERSION`
+- `APP_ANDROID_SHA256`
+- `APP_ANDROID_SIZE_BYTES`
+- `APP_ANDROID_RELEASE_NOTES`
+- `APP_ANDROID_RELEASE_NOTES_URL`
+- `APP_ANDROID_PUBLISHED_AT`
+- `APP_WINDOWS_VERSION`
+- `APP_WINDOWS_MIN_SUPPORTED_VERSION`
+- `APP_WINDOWS_SHA256`
+- `APP_WINDOWS_SIZE_BYTES`
+- `APP_WINDOWS_RELEASE_NOTES`
+- `APP_WINDOWS_RELEASE_NOTES_URL`
+- `APP_WINDOWS_PUBLISHED_AT`
+
+These fields feed `/api/client/apps` and only support prompt-based update UI.
+They do not imply silent auto-update, store delivery, trusted Windows signing,
+or stable `1.0.0`.
+
 Preferred automation path:
 
 ```powershell

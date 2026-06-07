@@ -12,6 +12,18 @@ to update when the backend marks a newer version as optional, recommended, or
 required. The current beta contract is prompt-based; do not claim silent
 auto-update.
 
+Current request shape:
+
+```http
+GET /api/client/apps?platform=android&current_version=1.0.0-beta&channel=beta
+X-Telegram-Init-Data: <redacted>
+```
+
+The response keeps the legacy URL fields and adds metadata under
+`android.update` / `windows.update` plus a top-level `update_check` summary.
+The backend returns `update_policy: none` unless the client sends a matching
+`platform` and `current_version`.
+
 ## Handoff Source
 
 Client release metadata lives in

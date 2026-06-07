@@ -4,6 +4,19 @@ Last updated: 2026-06-07
 
 Status: active product/operations plan
 
+Implementation note:
+
+- `2026-06-07`: backend contract work that does not require owner action is
+  implemented. `/api/client/apps` now returns prompt-mode update metadata, and
+  `/api/client/promo-slots` supports safe banner fields such as placement,
+  image URL, dismissibility, and scheduling. Client UI wiring, public GitHub
+  release-surface visibility, and manual install/connect smoke remain separate
+  gates.
+- `2026-06-07`: shared app shell update prompt is implemented. On startup and
+  resume, Android/Windows clients can call `/api/client/apps` with their current
+  version and open the returned GitHub Releases asset through the normal
+  platform handoff path when the backend returns `recommended` or `required`.
+
 This plan records the current owner decision for how the Android and Windows
 client should be delivered, how the app should discover newer versions, and how
 news/promo surfaces may change without shipping a new binary.
@@ -58,6 +71,8 @@ Each public asset record should expose:
 Current platform contract:
 
 - `/api/client/apps` is the existing client download endpoint
+- `/api/client/apps?platform=<android|windows>&current_version=<version>&channel=beta`
+  returns prompt-mode update metadata for the requested platform
 - `config/release-handoff.seed.json` in `POKROV-app` is the repo-owned handoff
   seed for current binary metadata
 - unauthenticated GitHub release asset range smoke is the evidence required
@@ -84,6 +99,24 @@ Suggested update payload fields:
 - `published_at`
 - optional `rollout_percent`
 - optional `force_after`
+
+Current backend env/config fields:
+
+- `APP_RELEASE_CHANNEL`
+- `APP_ANDROID_VERSION`
+- `APP_ANDROID_MIN_SUPPORTED_VERSION`
+- `APP_ANDROID_SHA256`
+- `APP_ANDROID_SIZE_BYTES`
+- `APP_ANDROID_RELEASE_NOTES`
+- `APP_ANDROID_RELEASE_NOTES_URL`
+- `APP_ANDROID_PUBLISHED_AT`
+- `APP_WINDOWS_VERSION`
+- `APP_WINDOWS_MIN_SUPPORTED_VERSION`
+- `APP_WINDOWS_SHA256`
+- `APP_WINDOWS_SIZE_BYTES`
+- `APP_WINDOWS_RELEASE_NOTES`
+- `APP_WINDOWS_RELEASE_NOTES_URL`
+- `APP_WINDOWS_PUBLISHED_AT`
 
 Client behavior:
 
@@ -143,6 +176,7 @@ Existing platform surface:
 
 - `/api/client/promo-slots?surface=app`
 - `/api/admin/promo-slots`
+- app-safe slots are allowlisted in `shared/promo-slots.json`
 
 Allowed first version:
 
@@ -156,6 +190,14 @@ Allowed first version:
 - active start/end
 - dismissibility
 - audience targeting by access state or surface
+
+Runtime safeguards now enforced:
+
+- slot IDs and content IDs must be allowlisted
+- `cta_href` and `image_url` accept only `https://` or `tg://`
+- scheduled slots are hidden before `starts_at` and after `ends_at`
+- unsupported unsafe URLs are dropped in client runtime payloads and rejected in
+  strict admin writes
 
 Suggested placements:
 
@@ -189,9 +231,10 @@ Forbidden until a deliberate product-policy change:
 ### P1: App Update Prompt
 
 - send current app version/platform/channel from the client
-- return update policy and asset metadata from backend
-- show optional/recommended/required update UI
-- open APK or Windows installer through the platform-safe path
+- return update policy and asset metadata from backend: implemented
+- show optional/recommended/required update UI: implemented for app shell
+- open APK or Windows installer through the platform-safe path: implemented via
+  existing download handoff
 
 ### P2: In-App Notices
 
@@ -201,9 +244,13 @@ Forbidden until a deliberate product-policy change:
 
 ### P3: Promo Slots
 
-- expand promo-slot placement/targeting if current schema is too narrow
-- add admin controls for placement, priority, dismissibility, and scheduling
-- render a muted, polished, dismissible app slot
+- expand promo-slot placement/targeting if current schema is too narrow:
+  implemented for app banner placements
+- add admin controls for placement, priority, dismissibility, and scheduling:
+  backend contract implemented
+- render a muted, polished, dismissible app slot: existing rewards promo rows
+  consume the extended model; first-screen home/global banner placement remains
+  a UI taste decision for a later pass if needed
 
 ### P4: Release Ops
 

@@ -981,8 +981,13 @@ class AdminPromoSlotAssignmentIn(BaseModel):
     enabled: bool = True
     title: str | None = Field(default=None, max_length=160)
     body: str | None = Field(default=None, max_length=500)
+    image_url: str | None = Field(default=None, max_length=600)
     cta_label: str | None = Field(default=None, max_length=80)
     cta_href: str | None = Field(default=None, max_length=600)
+    placement: str | None = Field(default=None, max_length=64)
+    dismissible: bool = True
+    starts_at: str | None = Field(default=None, max_length=64)
+    ends_at: str | None = Field(default=None, max_length=64)
     contexts: list[str] = Field(default_factory=list, max_length=32)
     sort_order: int = Field(default=100, ge=0, le=10_000)
 
@@ -1246,15 +1251,45 @@ class NodeDiagnosticsResponse(BaseModel):
     summary: str
 
 
+class ClientAppUpdateInfo(BaseModel):
+    platform: str
+    channel: str = "beta"
+    latest_version: str = ""
+    min_supported_version: str = ""
+    update_policy: str = "none"
+    url: str = ""
+    sha256: str = ""
+    size: int = 0
+    release_notes: str = ""
+    release_notes_url: str = ""
+    published_at: str = ""
+    rollout_percent: int = 100
+    force_after: str | None = None
+
+
 class ClientAndroidApps(BaseModel):
     play_url: str = ""
     apk_url: str = ""
     mirror_url: str = ""
+    version: str = ""
+    sha256: str = ""
+    size: int = 0
+    release_notes: str = ""
+    release_notes_url: str = ""
+    published_at: str = ""
+    update: ClientAppUpdateInfo
 
 
 class ClientWindowsApps(BaseModel):
     exe_url: str = ""
     mirror_url: str = ""
+    version: str = ""
+    sha256: str = ""
+    size: int = 0
+    release_notes: str = ""
+    release_notes_url: str = ""
+    published_at: str = ""
+    update: ClientAppUpdateInfo
 
 
 class ClientAppsResponse(BaseModel):
@@ -1262,6 +1297,7 @@ class ClientAppsResponse(BaseModel):
     windows: ClientWindowsApps
     docs_url: str = ""
     updated_at: str
+    update_check: dict[str, Any]
 
 
 class ManualUserCreateRequest(BaseModel):
@@ -2020,14 +2056,46 @@ def _normalize_promo_slot_assignment(raw: dict[str, Any], *, strict: bool) -> di
     if not contexts:
         contexts = list(allowed_contexts)
 
+    def safe_promo_url(raw_url: Any, *, field: str) -> str | None:
+        url = str(raw_url or "").strip()
+        if not url:
+            return None
+        parsed = urlparse(url)
+        if parsed.scheme not in {"https", "tg"}:
+            if strict:
+                raise HTTPException(status_code=400, detail=f"Promo {field} must use https:// or tg://")
+            return None
+        if parsed.scheme == "https" and not parsed.netloc:
+            if strict:
+                raise HTTPException(status_code=400, detail=f"Promo {field} must include a host")
+            return None
+        return url[:600]
+
+    def safe_schedule(raw_dt: Any, *, field: str) -> str | None:
+        value = str(raw_dt or "").strip()
+        if not value:
+            return None
+        try:
+            _parse_optional_datetime(value)
+        except HTTPException:
+            if strict:
+                raise HTTPException(status_code=400, detail=f"Promo {field} must be an ISO datetime")
+            return None
+        return value[:64]
+
     return {
         "slot_id": slot_id,
         "content_id": content_id,
         "enabled": bool(raw.get("enabled", True)),
         "title": str(raw.get("title") or "").strip()[:160] or None,
         "body": str(raw.get("body") or "").strip()[:500] or None,
+        "image_url": safe_promo_url(raw.get("image_url"), field="image_url"),
         "cta_label": str(raw.get("cta_label") or "").strip()[:80] or None,
-        "cta_href": str(raw.get("cta_href") or "").strip()[:600] or None,
+        "cta_href": safe_promo_url(raw.get("cta_href"), field="cta_href"),
+        "placement": str(raw.get("placement") or slot_facts.get("placement") or "").strip()[:64] or None,
+        "dismissible": bool(raw.get("dismissible", True)),
+        "starts_at": safe_schedule(raw.get("starts_at"), field="starts_at"),
+        "ends_at": safe_schedule(raw.get("ends_at"), field="ends_at"),
         "contexts": contexts,
         "sort_order": max(0, int(raw.get("sort_order") or 100)),
     }
@@ -2071,7 +2139,14 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
     ]
 
     slots: list[dict[str, Any]] = []
+    now = _utcnow()
     for assignment in list(normalized.get("assignments") or []):
+        starts_at = _parse_optional_datetime(assignment.get("starts_at"))
+        ends_at = _parse_optional_datetime(assignment.get("ends_at"))
+        if starts_at and starts_at > now:
+            continue
+        if ends_at and ends_at <= now:
+            continue
         slot_id = str(assignment.get("slot_id") or "").strip()
         slot_facts = slot_map.get(slot_id)
         if not slot_facts:
@@ -2091,8 +2166,13 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
                 "contexts": list(assignment.get("contexts") or []),
                 "title": assignment.get("title"),
                 "body": assignment.get("body"),
+                "image_url": assignment.get("image_url"),
                 "cta_label": assignment.get("cta_label"),
                 "cta_href": assignment.get("cta_href"),
+                "placement": assignment.get("placement") or str(slot_facts.get("placement") or "").strip() or None,
+                "dismissible": bool(assignment.get("dismissible", True)),
+                "starts_at": assignment.get("starts_at"),
+                "ends_at": assignment.get("ends_at"),
                 "sort_order": int(assignment.get("sort_order") or 100),
                 "goal": str(content_facts.get("goal") or "").strip() or None,
                 "kind": str(content_facts.get("kind") or "").strip() or None,
@@ -2894,6 +2974,97 @@ def _require_admin(x_telegram_init_data: str, request: Request | None = None) ->
 
 def _safe_public_url(value: str) -> str:
     return str(value or "").strip()
+
+
+def _version_parts(value: str | None) -> tuple[int, ...]:
+    raw = str(value or "").strip().lower().lstrip("v")
+    if not raw:
+        return ()
+    nums = [int(part) for part in re.findall(r"\d+", raw)[:4]]
+    while nums and nums[-1] == 0:
+        nums.pop()
+    return tuple(nums)
+
+
+def _compare_versions(left: str | None, right: str | None) -> int:
+    a = _version_parts(left)
+    b = _version_parts(right)
+    if not a and not b:
+        return 0
+    if not a:
+        return -1
+    if not b:
+        return 1
+    width = max(len(a), len(b))
+    aa = a + (0,) * (width - len(a))
+    bb = b + (0,) * (width - len(b))
+    if aa < bb:
+        return -1
+    if aa > bb:
+        return 1
+    return 0
+
+
+def _client_update_policy(
+    *,
+    platform: str,
+    requested_platform: str,
+    current_version: str,
+    latest_version: str,
+    min_supported_version: str,
+    url: str,
+) -> str:
+    if not url or not latest_version:
+        return "none"
+    if str(platform or "").strip().lower() != str(requested_platform or "").strip().lower():
+        return "none"
+    if not str(current_version or "").strip():
+        return "none"
+    if min_supported_version and _compare_versions(current_version, min_supported_version) < 0:
+        return "required"
+    if _compare_versions(current_version, latest_version) < 0:
+        return "recommended"
+    return "none"
+
+
+def _client_app_update_info(
+    *,
+    platform: str,
+    requested_platform: str,
+    current_version: str,
+    channel: str,
+    latest_version: str,
+    min_supported_version: str,
+    url: str,
+    sha256: str,
+    size: int,
+    release_notes: str,
+    release_notes_url: str,
+    published_at: str,
+) -> ClientAppUpdateInfo:
+    safe_url = _safe_public_url(url)
+    return ClientAppUpdateInfo(
+        platform=str(platform or "").strip().lower(),
+        channel=str(channel or "beta").strip().lower() or "beta",
+        latest_version=str(latest_version or "").strip(),
+        min_supported_version=str(min_supported_version or "").strip(),
+        update_policy=_client_update_policy(
+            platform=platform,
+            requested_platform=requested_platform,
+            current_version=current_version,
+            latest_version=latest_version,
+            min_supported_version=min_supported_version,
+            url=safe_url,
+        ),
+        url=safe_url,
+        sha256=str(sha256 or "").strip(),
+        size=max(0, int(size or 0)),
+        release_notes=str(release_notes or "").strip()[:1000],
+        release_notes_url=_safe_public_url(release_notes_url),
+        published_at=str(published_at or "").strip(),
+        rollout_percent=100,
+        force_after=None,
+    )
 
 
 def _public_webapp_url() -> str:
@@ -8105,21 +8276,80 @@ async def dashboard_snapshot(
 
 
 @app.get("/api/client/apps")
-async def client_apps(request: Request, x_telegram_init_data: str = Header(default="")) -> ClientAppsResponse:
+async def client_apps(
+    request: Request,
+    platform: str = Query(default="", max_length=16),
+    current_version: str = Query(default="", max_length=48),
+    channel: str = Query(default="", max_length=32),
+    x_telegram_init_data: str = Header(default=""),
+) -> ClientAppsResponse:
     _require_auth_user(x_telegram_init_data, request=request)
+    release_channel = str(channel or getattr(Settings, "APP_RELEASE_CHANNEL", "beta") or "beta").strip().lower() or "beta"
+    requested_platform = str(platform or "").strip().lower()
+    android_url = _safe_public_url(Settings.APP_ANDROID_APK_URL)
+    windows_url = _safe_public_url(Settings.APP_WINDOWS_EXE_URL)
+    android_update = _client_app_update_info(
+        platform="android",
+        requested_platform=requested_platform,
+        current_version=current_version,
+        channel=release_channel,
+        latest_version=getattr(Settings, "APP_ANDROID_VERSION", ""),
+        min_supported_version=getattr(Settings, "APP_ANDROID_MIN_SUPPORTED_VERSION", ""),
+        url=android_url or _safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
+        sha256=getattr(Settings, "APP_ANDROID_SHA256", ""),
+        size=int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0),
+        release_notes=getattr(Settings, "APP_ANDROID_RELEASE_NOTES", ""),
+        release_notes_url=getattr(Settings, "APP_ANDROID_RELEASE_NOTES_URL", ""),
+        published_at=getattr(Settings, "APP_ANDROID_PUBLISHED_AT", ""),
+    )
+    windows_update = _client_app_update_info(
+        platform="windows",
+        requested_platform=requested_platform,
+        current_version=current_version,
+        channel=release_channel,
+        latest_version=getattr(Settings, "APP_WINDOWS_VERSION", ""),
+        min_supported_version=getattr(Settings, "APP_WINDOWS_MIN_SUPPORTED_VERSION", ""),
+        url=windows_url or _safe_public_url(Settings.APP_WINDOWS_MIRROR_URL),
+        sha256=getattr(Settings, "APP_WINDOWS_SHA256", ""),
+        size=int(getattr(Settings, "APP_WINDOWS_SIZE_BYTES", 0) or 0),
+        release_notes=getattr(Settings, "APP_WINDOWS_RELEASE_NOTES", ""),
+        release_notes_url=getattr(Settings, "APP_WINDOWS_RELEASE_NOTES_URL", ""),
+        published_at=getattr(Settings, "APP_WINDOWS_PUBLISHED_AT", ""),
+    )
     return ClientAppsResponse(
         android=ClientAndroidApps(
             # Public beta distribution is outside app stores; keep the compatibility field empty.
             play_url="",
-            apk_url=_safe_public_url(Settings.APP_ANDROID_APK_URL),
+            apk_url=android_url,
             mirror_url=_safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
+            version=str(getattr(Settings, "APP_ANDROID_VERSION", "") or "").strip(),
+            sha256=str(getattr(Settings, "APP_ANDROID_SHA256", "") or "").strip(),
+            size=max(0, int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0)),
+            release_notes=str(getattr(Settings, "APP_ANDROID_RELEASE_NOTES", "") or "").strip()[:1000],
+            release_notes_url=_safe_public_url(getattr(Settings, "APP_ANDROID_RELEASE_NOTES_URL", "")),
+            published_at=str(getattr(Settings, "APP_ANDROID_PUBLISHED_AT", "") or "").strip(),
+            update=android_update,
         ),
         windows=ClientWindowsApps(
-            exe_url=_safe_public_url(Settings.APP_WINDOWS_EXE_URL),
+            exe_url=windows_url,
             mirror_url=_safe_public_url(Settings.APP_WINDOWS_MIRROR_URL),
+            version=str(getattr(Settings, "APP_WINDOWS_VERSION", "") or "").strip(),
+            sha256=str(getattr(Settings, "APP_WINDOWS_SHA256", "") or "").strip(),
+            size=max(0, int(getattr(Settings, "APP_WINDOWS_SIZE_BYTES", 0) or 0)),
+            release_notes=str(getattr(Settings, "APP_WINDOWS_RELEASE_NOTES", "") or "").strip()[:1000],
+            release_notes_url=_safe_public_url(getattr(Settings, "APP_WINDOWS_RELEASE_NOTES_URL", "")),
+            published_at=str(getattr(Settings, "APP_WINDOWS_PUBLISHED_AT", "") or "").strip(),
+            update=windows_update,
         ),
         docs_url=_safe_public_url(Settings.APP_DOCS_URL),
         updated_at=f"{_utcnow().replace(microsecond=0).isoformat()}Z",
+        update_check={
+            "requested_platform": requested_platform or None,
+            "current_version": str(current_version or "").strip() or None,
+            "channel": release_channel,
+            "mode": "prompt",
+            "silent_update": False,
+        },
     )
 
 

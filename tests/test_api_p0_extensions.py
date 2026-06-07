@@ -1,4 +1,5 @@
 import importlib
+import json
 import os
 import sys
 import tempfile
@@ -372,6 +373,94 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["windows"]["exe_url"], self.api.Settings.APP_WINDOWS_EXE_URL)
         self.assertEqual(body["windows"]["mirror_url"], self.api.Settings.APP_WINDOWS_MIRROR_URL)
         self.assertEqual(body["docs_url"], self.api.Settings.APP_DOCS_URL)
+
+    def test_client_apps_endpoint_returns_prompt_update_metadata(self) -> None:
+        self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/pokrov/releases/download/v1.0.0-beta/pokrov-android-universal.apk"
+        self.api.Settings.APP_ANDROID_VERSION = "1.0.0-beta"
+        self.api.Settings.APP_ANDROID_MIN_SUPPORTED_VERSION = "0.9.0"
+        self.api.Settings.APP_ANDROID_SHA256 = "a" * 64
+        self.api.Settings.APP_ANDROID_SIZE_BYTES = 123456
+        self.api.Settings.APP_ANDROID_RELEASE_NOTES = "Beta refresh"
+        self.api.Settings.APP_ANDROID_RELEASE_NOTES_URL = "https://github.com/example/pokrov/releases/tag/v1.0.0-beta"
+        self.api.Settings.APP_ANDROID_PUBLISHED_AT = "2026-06-07T00:00:00Z"
+
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = client.get("/api/client/apps?platform=android&current_version=0.9.5&channel=beta", headers=hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        self.assertEqual(body["update_check"]["mode"], "prompt")
+        self.assertFalse(body["update_check"]["silent_update"])
+        self.assertEqual(body["android"]["version"], "1.0.0-beta")
+        self.assertEqual(body["android"]["sha256"], "a" * 64)
+        self.assertEqual(body["android"]["size"], 123456)
+        self.assertEqual(body["android"]["update"]["platform"], "android")
+        self.assertEqual(body["android"]["update"]["channel"], "beta")
+        self.assertEqual(body["android"]["update"]["latest_version"], "1.0.0-beta")
+        self.assertEqual(body["android"]["update"]["min_supported_version"], "0.9.0")
+        self.assertEqual(body["android"]["update"]["update_policy"], "recommended")
+        self.assertEqual(body["android"]["update"]["url"], self.api.Settings.APP_ANDROID_APK_URL)
+        self.assertEqual(body["windows"]["update"]["update_policy"], "none")
+
+        required = client.get("/api/client/apps?platform=android&current_version=0.8.9", headers=hdrs)
+        self.assertEqual(required.status_code, 200, required.text)
+        self.assertEqual(required.json()["android"]["update"]["update_policy"], "required")
+
+    def test_client_promo_slots_support_safe_banner_fields(self) -> None:
+        from db import SessionLocal
+        from models import AppSetting
+
+        s = SessionLocal()
+        try:
+            s.add(
+                AppSetting(
+                    key=self.api.PROMO_SLOTS_CONFIG_KEY,
+                    value_json=json.dumps(
+                        {
+                            "assignments": [
+                                {
+                                    "slot_id": "app.home.banner",
+                                    "content_id": "partner_promo",
+                                    "title": "Partner",
+                                    "body": "Short owner-approved banner",
+                                    "image_url": "https://cdn.example.com/banner.png",
+                                    "cta_label": "Open",
+                                    "cta_href": "https://partner.example.com/",
+                                    "placement": "home_banner",
+                                    "dismissible": True,
+                                    "contexts": ["free_monthly"],
+                                    "sort_order": 10,
+                                },
+                                {
+                                    "slot_id": "app.home.banner",
+                                    "content_id": "partner_promo",
+                                    "title": "Unsafe",
+                                    "cta_href": "javascript:alert(1)",
+                                    "contexts": ["free_monthly"],
+                                    "sort_order": 20,
+                                },
+                            ]
+                        },
+                        ensure_ascii=False,
+                    ),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        r = client.get("/api/client/promo-slots?surface=app", headers=hdrs)
+        self.assertEqual(r.status_code, 200, r.text)
+        body = r.json()
+        slots = [slot for slot in body["slots"] if slot["slot_id"] == "app.home.banner"]
+        self.assertEqual(len(slots), 2)
+        self.assertEqual(slots[0]["placement"], "home_banner")
+        self.assertEqual(slots[0]["image_url"], "https://cdn.example.com/banner.png")
+        self.assertEqual(slots[0]["cta_href"], "https://partner.example.com/")
+        self.assertTrue(slots[0]["dismissible"])
+        self.assertIsNone(slots[1]["cta_href"])
 
     def test_start_trial_returns_session_and_subscription_url(self) -> None:
         calls: list[dict[str, object]] = []

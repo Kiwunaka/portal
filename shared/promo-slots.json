@@ -6,14 +6,51 @@
     {
       "id": "app.protection.contextual",
       "surface": "app",
+      "placement": "protection_contextual",
       "contexts": ["trial_premium", "free_monthly", "free_soft_mode"],
       "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery"]
     },
     {
+      "id": "app.home.corner",
+      "surface": "app",
+      "placement": "home_corner",
+      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery", "release_update", "partner_promo"]
+    },
+    {
+      "id": "app.home.banner",
+      "surface": "app",
+      "placement": "home_banner",
+      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery", "release_update", "partner_promo", "incident_notice"]
+    },
+    {
       "id": "app.profile.contextual",
       "surface": "app",
+      "placement": "account",
       "contexts": ["free_monthly", "free_soft_mode", "expired_or_blocked"],
-      "allowed_content_ids": ["redeem_key", "support_recovery"]
+      "allowed_content_ids": ["redeem_key", "support_recovery", "partner_promo"]
+    },
+    {
+      "id": "app.rewards.banner",
+      "surface": "app",
+      "placement": "rewards",
+      "contexts": ["trial_premium", "free_monthly", "free_soft_mode"],
+      "allowed_content_ids": ["telegram_bonus", "partner_promo"]
+    },
+    {
+      "id": "app.support.banner",
+      "surface": "app",
+      "placement": "support",
+      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "allowed_content_ids": ["support_recovery", "incident_notice"]
+    },
+    {
+      "id": "app.global.banner",
+      "surface": "app",
+      "placement": "global_banner",
+      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "allowed_content_ids": ["release_update", "partner_promo", "incident_notice"]
     },
     {
       "id": "webapp.subscription.contextual",
@@ -52,6 +89,24 @@
       "kind": "first_party_promo",
       "goal": "support_or_manual_recovery",
       "default_enabled": true
+    },
+    {
+      "id": "release_update",
+      "kind": "first_party_notice",
+      "goal": "client_update_or_release_note",
+      "default_enabled": true
+    },
+    {
+      "id": "incident_notice",
+      "kind": "first_party_notice",
+      "goal": "incident_or_maintenance_notice",
+      "default_enabled": true
+    },
+    {
+      "id": "partner_promo",
+      "kind": "owner_approved_partner_promo",
+      "goal": "partner_or_advertising_slot",
+      "default_enabled": false
     }
   ]
 }
