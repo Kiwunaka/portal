@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-06-05
+Last updated: 2026-06-07
 
 ## Document Status
 
@@ -11,6 +11,7 @@ Quick handoff runbooks:
 - [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
 - [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
 - [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
+- [Support Macros](C:/Users/kiwun/Documents/ai/VPN/docs/launch/support-macros.md)
 
 ## Canonical Hostname Policy
 

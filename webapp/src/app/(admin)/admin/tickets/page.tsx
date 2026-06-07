@@ -4,7 +4,25 @@ import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClas
 import { SupportMessageBody } from "@/components/support-message-body";
 import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
 import { fmtRuDate } from "@/lib/date-format";
-import { CheckCircle, Clock, CreditCard, Inbox, LifeBuoy, ListChecks, Loader2, MessageCircle, RefreshCw, Send, Smartphone, type LucideIcon } from "lucide-react";
+import { SUPPORT_REPLY_MACROS, type SupportMacroIcon } from "@/lib/support-macros";
+import {
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Download,
+  Gift,
+  Inbox,
+  LifeBuoy,
+  Link2,
+  ListChecks,
+  Loader2,
+  MessageCircle,
+  Monitor,
+  RefreshCw,
+  Send,
+  Smartphone,
+  type LucideIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const STATUS_META: Record<string, { color: string; badge: string; icon: typeof Clock }> = {
@@ -13,34 +31,16 @@ const STATUS_META: Record<string, { color: string; badge: string; icon: typeof C
   closed: { color: "badge-success", badge: "Закрыт", icon: CheckCircle },
 };
 
-type AdminReplyTemplate = {
-  label: string;
-  body: string;
-  icon: LucideIcon;
+const SUPPORT_MACRO_ICONS: Record<SupportMacroIcon, LucideIcon> = {
+  credit_card: CreditCard,
+  download: Download,
+  gift: Gift,
+  life_buoy: LifeBuoy,
+  link: Link2,
+  monitor: Monitor,
+  smartphone: Smartphone,
+  steps: ListChecks,
 };
-
-const ADMIN_REPLY_TEMPLATES: AdminReplyTemplate[] = [
-  {
-    label: "Данные",
-    icon: Smartphone,
-    body: "Уточните, пожалуйста:\n\n1. Устройство и версия системы.\n2. Название клиента или приложения.\n3. На каком шаге возникла ошибка.\n4. Текст ошибки или скриншот без личной ссылки и QR.",
-  },
-  {
-    label: "Шаги",
-    icon: ListChecks,
-    body: "**Что сделать:**\n1. Обновите профиль/подписку в клиенте.\n2. Выберите другую локацию.\n3. Выключите другие сетевые клиенты.\n4. Переподключитесь и напишите, что изменилось.",
-  },
-  {
-    label: "Оплата",
-    icon: CreditCard,
-    body: "По оплате проверим вручную. Пришлите, пожалуйста, примерное время оплаты, выбранный план и пришёл ли ключ доступа. Данные карты присылать не нужно.",
-  },
-  {
-    label: "Оператор",
-    icon: LifeBuoy,
-    body: "Передал обращение на ручную проверку. Оператор посмотрит историю и вернется с ответом в этом же треде.",
-  },
-];
 
 function normalizeTicketStatus(ticket: Pick<TicketInfo, "status" | "status_title"> | null | undefined): keyof typeof STATUS_META {
   const raw = String(ticket?.status || "").toLowerCase().replace(/\s+/g, "_");
@@ -238,11 +238,11 @@ export default function AdminTicketsPage() {
 
             <div className="mt-3 space-y-2">
               <div className="flex flex-wrap gap-2">
-                {ADMIN_REPLY_TEMPLATES.map((template) => {
-                  const Icon = template.icon;
+                {SUPPORT_REPLY_MACROS.map((template) => {
+                  const Icon = SUPPORT_MACRO_ICONS[template.icon] || LifeBuoy;
                   return (
                     <button
-                      key={template.label}
+                      key={template.id}
                       type="button"
                       onClick={() => insertReplyTemplate(template.body)}
                       className={adminButtonClass("ghost", "xs")}

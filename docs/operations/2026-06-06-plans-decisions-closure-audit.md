@@ -62,6 +62,9 @@ Closed for the current `1.0.0-beta` repo scope:
   reusable SEO landings are compacted, admin shell uses token-backed density
   helpers, marketing route ownership is documented, and public logo rendering is
   centralized through one `next/image` component.
+- support macro follow-up closed repo-side: operator canned replies now come
+  from `shared/support-macros.ts`, admin tickets import the shared catalog, and
+  `docs/launch/support-macros.md` mirrors the beta-safe reply pack.
 
 ## Remaining External Gates
 
@@ -91,6 +94,8 @@ Safe now:
   current four-item visible IA.
 - Public marketing and admin density guardrails are repo-side closed through
   the `2026-06-07` P3 cleanup pass.
+- Support macros are available to operators in admin tickets and documented as
+  a beta-safe launch/support pack.
 - WARP/enhanced protection is implemented as a guarded beta feature with
   backend lifecycle and redaction contracts.
 
