@@ -54,7 +54,8 @@ def test_marketing_landing_has_quiet_luxury_structure() -> None:
     assert "lp-trust-grid" in landing
     assert "lp-pricing-shell" in landing
     assert "lp-footer-cta" in landing
-    assert '<details className="lp-faq-item">' in landing
+    assert 'className="lp-faq-item"' in landing
+    assert 'className="lp-faq-q"' in landing
 
 
 def test_marketing_sitemap_includes_checkout_route() -> None:
@@ -69,12 +70,13 @@ def test_marketing_sitemap_includes_checkout_route() -> None:
 
 def test_homepage_free_trial_ctas_start_with_install_not_checkout() -> None:
     homepage = _read("components", "home", "homepage.tsx")
-    hero = homepage.split("function Hero", 1)[1].split("function ProofStrip", 1)[0]
+    hero = homepage.split("function Hero", 1)[1].split("function HowItWorks", 1)[0]
     free_plan = homepage.split("<div className={styles.pricingIntro}>", 1)[1].split("<div className={styles.planGrid}>", 1)[0]
     final_cta = homepage.split("function FinalCta", 1)[1].split("export default", 1)[0]
 
     assert "href={links.installHref}" in hero
     assert "href={links.checkoutHref}" not in hero
+    assert 'href="#pricing"' in hero
     assert "href={links.installHref}" in free_plan
     assert "href={links.checkoutHref}" not in free_plan
     assert 'href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}' in final_cta
@@ -84,7 +86,8 @@ def test_cabinet_dashboard_download_ctas_point_to_install_route() -> None:
     dashboard = _read_webapp("app", "(dashboard)", "dashboard", "page.tsx")
 
     assert "https://pokrov.space/#download" not in dashboard
-    assert "https://pokrov.space/install/" in dashboard
+    assert 'const primaryHref = isActive ? "/downloads/" : "/subscription/checkout/";' in dashboard
+    assert 'href={primaryHref}' in dashboard
 
 
 def test_outside_store_beta_copy_avoids_store_distribution_claims() -> None:
@@ -101,7 +104,10 @@ def test_outside_store_beta_copy_avoids_store_distribution_claims() -> None:
     assert "production signing" not in combined
     assert "до signing" not in combined
     assert "физического аудита" not in combined
-    assert "GitHub Releases" in combined
+
+    known_limits = (REPO_ROOT / "shared" / "beta-known-limitations.json").read_text(encoding="utf-8")
+    assert "outside_store_beta" in known_limits
+    assert "GitHub Releases" in known_limits
 
 
 def test_email_auth_enabled_ui_stays_ru_only() -> None:
@@ -124,5 +130,6 @@ def test_email_auth_enabled_ui_stays_ru_only() -> None:
     for text in forbidden:
         assert text not in entry
     assert "Войти" in entry
-    assert "Создать аккаунт" in entry
-    assert "Восстановить доступ" in entry
+    assert "Зарегистрироваться" in entry
+    assert "Забыли пароль?" in entry
+    assert "Восстановление" in entry

@@ -1,12 +1,35 @@
 # Known Issues
 
-Last updated: 2026-05-26
+Last updated: 2026-06-07
 
-- Android APK and Windows EXE are outside-store beta artifacts distributed through the official cabinet/GitHub Releases path.
-- Runtime download links were verified for the `2026-05-15` beta evidence pack; re-check `/api/client/apps` before any new artifact, URL, or release-candidate announcement.
-- Windows beta may be unsigned or show an unknown-publisher warning.
-- Downloads may be unavailable for accounts outside the approved beta.
-- Paid checkout is Lava.top-only for the current public beta; production refund, chargeback, and reconciliation evidence is still a follow-up before stronger payment claims.
-- RU-origin reachability was skipped by operator for the beta decision and must be checked separately before any Russia-origin or Telegram-from-Russia claim.
-- Android physical release-build audit is owner-attested for the beta; raw device evidence is not attached as a public proof.
-- Support is best-effort during beta.
+Structured source: `shared/beta-known-limitations.json`
+
+This launch-facing page mirrors `docs/product/beta-known-limitations.md` so
+release notes, support handoffs, and public copy stay inside the same beta
+claim boundary.
+
+## Current Issues
+
+- `outside_store_beta`: Android APK and Windows EXE are outside-store beta
+  artifacts distributed through the official cabinet and GitHub Releases path.
+  They are not app-store releases.
+- `runtime_download_recheck`: runtime download links were verified for the
+  `2026-05-15` beta evidence pack; re-check `/api/client/apps` before any new
+  artifact, URL, or release-candidate announcement.
+- `windows_unsigned`: Windows beta may remain unsigned and may show Microsoft
+  Defender SmartScreen or unknown-publisher warnings.
+- `downloads_limited`: downloads may be unavailable for accounts outside the
+  approved beta access path.
+- `payment_beta`: paid checkout is Lava.top-only for the current public beta;
+  production refund, chargeback, reconciliation, and fulfillment-ledger
+  evidence remains follow-up before stronger payment claims.
+- `ru_origin_not_claimed`: RU-origin reachability was skipped by operator for
+  the beta decision and must be checked separately before any Russia-origin,
+  Telegram-from-Russia, or RU readiness claim.
+- `android_audit_attested`: Android physical release-build audit is
+  owner-attested for the beta; raw device evidence is not attached as public
+  proof, and stronger Android safety claims remain follow-up.
+- `support_best_effort`: support is best-effort during beta through the cabinet
+  and `@pokrov_supportbot`.
+- `apple_readiness_only`: iOS and macOS are readiness tracks only and are not
+  release platforms for this beta wave.

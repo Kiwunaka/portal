@@ -65,6 +65,10 @@ Closed for the current `1.0.0-beta` repo scope:
 - support macro follow-up closed repo-side: operator canned replies now come
   from `shared/support-macros.ts`, admin tickets import the shared catalog, and
   `docs/launch/support-macros.md` mirrors the beta-safe reply pack.
+- beta known-issues follow-up closed repo-side: outside-store beta limitations
+  now come from `shared/beta-known-limitations.json`, with product and launch
+  mirrors in `docs/product/beta-known-limitations.md`,
+  `docs/launch/known-issues.md`, and `docs/launch/open-beta-release-notes.md`.
 
 ## Remaining External Gates
 
@@ -96,6 +100,8 @@ Safe now:
   the `2026-06-07` P3 cleanup pass.
 - Support macros are available to operators in admin tickets and documented as
   a beta-safe launch/support pack.
+- Beta limitations and known issues are available as a shared contract and
+  mirrored in product and launch docs.
 - WARP/enhanced protection is implemented as a guarded beta feature with
   backend lifecycle and redaction contracts.
 

@@ -1,0 +1,65 @@
+{
+  "version": "2026-06-07",
+  "scope": "outside-store-public-beta",
+  "source_docs": [
+    "docs/product/beta-known-limitations.md",
+    "docs/launch/known-issues.md",
+    "docs/launch/open-beta-release-notes.md"
+  ],
+  "limitations": [
+    {
+      "id": "outside_store_beta",
+      "severity": "beta_limit",
+      "summary": "Android APK and Windows EXE are outside-store beta artifacts distributed through the official cabinet and GitHub Releases path.",
+      "operator_note": "Do not imply Google Play, Microsoft Store, WinGet, Apple, stable, or broad public-store availability."
+    },
+    {
+      "id": "runtime_download_recheck",
+      "severity": "release_check",
+      "summary": "Runtime download links were verified for the 2026-05-15 beta evidence pack and must be rechecked through /api/client/apps before a new artifact, URL, or release-candidate announcement.",
+      "operator_note": "Live APP_* sync proof remains a deploy/runtime check after future artifact URL changes."
+    },
+    {
+      "id": "windows_unsigned",
+      "severity": "manual_gate",
+      "summary": "Windows beta may remain unsigned and may show Microsoft Defender SmartScreen or unknown-publisher warnings.",
+      "operator_note": "Do not claim trusted Windows signing, SmartScreen reputation, Microsoft Store, or WinGet readiness."
+    },
+    {
+      "id": "downloads_limited",
+      "severity": "beta_limit",
+      "summary": "Downloads may be unavailable for accounts outside the approved beta access path.",
+      "operator_note": "Anonymous public download proof is not available while the release repository remains private."
+    },
+    {
+      "id": "payment_beta",
+      "severity": "manual_gate",
+      "summary": "Paid checkout is Lava.top-only for the current public beta.",
+      "operator_note": "Production refund, chargeback, reconciliation, and fulfillment-ledger evidence remains follow-up before stronger payment claims."
+    },
+    {
+      "id": "ru_origin_not_claimed",
+      "severity": "manual_gate",
+      "summary": "RU-origin reachability was skipped by operator for the beta decision and must be checked separately before any RU-origin readiness claim.",
+      "operator_note": "Do not claim Russia-origin, Telegram-from-Russia, or RU delivery-node readiness without current redacted probe evidence."
+    },
+    {
+      "id": "android_audit_attested",
+      "severity": "manual_gate",
+      "summary": "Android physical release-build localhost/control-surface audit is owner-attested for beta.",
+      "operator_note": "Raw device audit proof, Play/store signing, and stronger Android safety claims remain manual follow-up."
+    },
+    {
+      "id": "support_best_effort",
+      "severity": "beta_limit",
+      "summary": "Support is best-effort during beta through the cabinet and @pokrov_supportbot.",
+      "operator_note": "Do not imply SLA-backed support until live operator workflow evidence exists."
+    },
+    {
+      "id": "apple_readiness_only",
+      "severity": "scope_limit",
+      "summary": "iOS and macOS are readiness tracks only and are not release platforms for this beta wave.",
+      "operator_note": "Do not imply App Store, TestFlight, notarized macOS, or Apple launch availability."
+    }
+  ]
+}
