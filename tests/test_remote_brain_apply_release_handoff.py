@@ -156,6 +156,20 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
         self.assertIn("APP_DOCS_URL=https://pokrov.space/install/", updated)
         self.assertEqual(updated.count("APP_ANDROID_APK_URL="), 1)
 
+    def test_release_values_preview_includes_runtime_download_keys(self) -> None:
+        preview = self.module._release_values_preview(
+            {
+                "APP_ANDROID_APK_URL": "https://github.com/example/release.apk",
+                "APP_WINDOWS_EXE_URL": "https://github.com/example/release.exe",
+                "APP_DOCS_URL": "https://pokrov.space/install/",
+            }
+        )
+
+        self.assertIn("APP_ANDROID_APK_URL=https://github.com/example/release.apk", preview)
+        self.assertIn("APP_WINDOWS_EXE_URL=https://github.com/example/release.exe", preview)
+        self.assertIn("APP_DOCS_URL=https://pokrov.space/install/", preview)
+        self.assertIn("APP_ANDROID_PLAY_URL=", preview)
+
 
 if __name__ == "__main__":
     unittest.main()

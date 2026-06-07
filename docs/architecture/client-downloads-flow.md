@@ -42,7 +42,8 @@ The current owner-approved delivery direction is GitHub Releases:
 - avoid a first-party download domain for public binaries unless the owner
   deliberately changes this policy
 - if the development repository stays private, publish public-user binaries to a
-  public GitHub Releases surface or make the relevant release surface public
+  public GitHub Releases surface; current release-only surface is
+  `https://github.com/Kiwunaka/pokrov`
 - private GitHub release assets return unauthenticated `404`; authenticated CLI
   proof alone is not public-user download proof
 

@@ -39,8 +39,8 @@ Use it to answer four questions before touching code:
 - RU-origin probe readiness is an operational dependency for `POKROV` public hosts, API, and delivery-node reachability; `mini` / `RFMINI` is the canonical RU-origin operator sandbox when SSH access is current
 - Payment provider launch truth: Lava.top paid checkout is evidence-backed for the outside-store public beta as of `2026-05-15`; production maturity still requires refund/chargeback, reconciliation, and fulfillment-ledger hardening evidence with secrets redacted
 - Current release gate snapshot: outside-store public Android + Windows beta is `GO` as of `2026-05-15` with accepted skips; repo-side `1.0.0-beta` implementation and release artifacts exist, but owner manual install/connect review, signing, store, trusted Windows, RU-origin, and stable `1.0.0` claims remain separate gates
-- Public binary delivery decision: keep user-download APK/EXE assets on GitHub Releases, not a first-party download domain or committed git files
-- GitHub private release asset URLs return unauthenticated `404`; public-user download links require a public GitHub Releases surface or another explicitly approved public release surface
+- Public binary delivery decision: keep user-download APK/EXE assets on GitHub Releases, not a first-party download domain or committed git files; current public release-only repo is `https://github.com/Kiwunaka/pokrov`
+- GitHub private release asset URLs return unauthenticated `404`; current public-user `v1.0.0-beta` download links use `Kiwunaka/pokrov` and unauthenticated range smoke returned `206` for APK/EXE/checksums
 - Startup update model: the client checks release/update metadata at launch or resume and asks the user to update; do not claim silent auto-update
 - Dynamic content model: important posts, notices, and promo/banner slots are backend-owned JSON surfaces; do not render arbitrary HTML/JS, ad SDKs, tracking pixels, or remote security/routing behavior from promo content without a new owner-approved product policy
 - Design source of truth: root `DESIGN.md` plus `shared/design-tokens.json` and `shared/design-tokens.schema.json`
@@ -54,7 +54,7 @@ Current beta gate labels:
 - Lava.top provider proof: `PASS` for beta, production refund/chargeback/reconciliation evidence still follow-up
 - runtime app-download smoke with brain-signed env-only Telegram init data: `PASS`; real-user Telegram WebApp opening remains manual owner test
 - Android physical release-build localhost/control-surface audit: `OPERATOR_ATTESTED` for beta; raw device evidence remains optional replacement/manual test
-- public Android/Windows handoff URLs: GitHub Releases APK/EXE handoff evidence exists; if the source/release repo is private, anonymous public download proof remains blocked until assets are moved to a public GitHub Releases surface or the repo visibility changes
+- public Android/Windows handoff URLs: `PASS` for public `Kiwunaka/pokrov` GitHub Releases APK/EXE/checksums unauthenticated range smoke; exact app-session `/api/client/apps` and owner install/connect smoke remain manual gates
 - RU-origin `POKROV` host/API/node probe evidence: `SKIPPED_BY_OPERATOR`; do not claim RU-origin readiness
 - deploy/brain-origin evidence for the exact beta candidate: `PASS`
 

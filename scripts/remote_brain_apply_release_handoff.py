@@ -116,6 +116,13 @@ def _validate_release_env(values: dict[str, str]) -> list[str]:
     return failures
 
 
+def _release_values_preview(values: dict[str, str]) -> str:
+    lines = []
+    for key in RELEASE_KEYS:
+        lines.append(f"{key}={values.get(key, '')}")
+    return "\n".join(lines)
+
+
 def _rewrite_env(text: str, values: dict[str, str]) -> str:
     lines = text.splitlines()
     out: list[str] = []
@@ -186,12 +193,18 @@ def main() -> int:
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--remote-env-file", default="/root/portal_bot/.env")
     ap.add_argument("--restart", default="portal-api,portal-bot")
+    ap.add_argument("--dry-run", action="store_true", help="Validate and print release values without SSH writes or restarts.")
     args = ap.parse_args()
 
     values, source_path = _resolve_release_values(args.metadata_file, args.env_file)
     failures = _validate_release_env(values)
     if failures:
         raise SystemExit("; ".join(failures))
+
+    if args.dry_run:
+        print(f"DRY-RUN release handoff from {source_path}")
+        print(_release_values_preview(values))
+        return 0
 
     pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_passwords(Path(args.passwords))
     if not pw:

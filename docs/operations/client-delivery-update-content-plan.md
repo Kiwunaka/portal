@@ -16,6 +16,10 @@ Implementation note:
   resume, Android/Windows clients can call `/api/client/apps` with their current
   version and open the returned GitHub Releases asset through the normal
   platform handoff path when the backend returns `recommended` or `required`.
+- `2026-06-07`: owner created the public release-only repository
+  `Kiwunaka/pokrov`, and `v1.0.0-beta` assets were published there. Anonymous
+  range smoke returned `206` for Android APK, Windows setup EXE, Windows
+  portable ZIP, Windows manifest, and `SHA256SUMS.txt`.
 
 This plan records the current owner decision for how the Android and Windows
 client should be delivered, how the app should discover newer versions, and how
@@ -44,8 +48,8 @@ Recommended release topology:
 
 - keep `POKROV-app/main` as the active private development repository until the
   owner decides otherwise
-- publish binaries to a dedicated public release-only repository, or make the
-  client repository public later only if that becomes the chosen open-source path
+- publish binaries to the dedicated public release-only repository
+  `https://github.com/Kiwunaka/pokrov`
 - attach binaries as release assets, not tracked git files
 - keep checksums and release notes next to every binary
 
@@ -76,7 +80,8 @@ Current platform contract:
 - `config/release-handoff.seed.json` in `POKROV-app` is the repo-owned handoff
   seed for current binary metadata
 - unauthenticated GitHub release asset range smoke is the evidence required
-  before a URL is treated as public-user-ready
+  before a URL is treated as public-user-ready; current `v1.0.0-beta` public
+  repo smoke is `PASS_PUBLIC_GITHUB_RELEASES_206`
 
 ## Startup Update Check
 
@@ -223,10 +228,12 @@ Forbidden until a deliberate product-policy change:
 
 ### P0: Release Surface And Metadata
 
-- choose the public GitHub Releases surface
-- upload current APK/EXE/checksums there
-- update release-handoff metadata and `/api/client/apps` runtime values
-- prove anonymous public download with unauthenticated range smoke
+- choose the public GitHub Releases surface: complete, `Kiwunaka/pokrov`
+- upload current APK/EXE/checksums there: complete for `v1.0.0-beta`
+- update release-handoff metadata and `/api/client/apps` runtime values:
+  handoff metadata updated; live runtime sync remains deploy/app-session gated
+- prove anonymous public download with unauthenticated range smoke: complete,
+  `206`
 
 ### P1: App Update Prompt
 
@@ -254,7 +261,7 @@ Forbidden until a deliberate product-policy change:
 
 ### P4: Release Ops
 
-- verify public GitHub asset range smoke
+- verify public GitHub asset range smoke: complete for public release repo
 - verify `/api/client/apps` points to the same public assets
 - keep owner manual install/connect tests as the final local gate
 

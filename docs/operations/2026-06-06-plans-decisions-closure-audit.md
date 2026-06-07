@@ -113,4 +113,10 @@ Not safe until external gates pass:
 - raw Android audit proof;
 - production WARP;
 - RU-origin readiness;
-- anonymous public download proof from the current private GitHub repository.
+- owner/manual live install, connect, and app-session smoke on real devices.
+
+Closed on `2026-06-07`:
+
+- anonymous public download proof now uses the public release-only repository
+  `Kiwunaka/pokrov`; unauthenticated range requests returned `206` for the
+  Android APK, Windows EXE, portable ZIP, manifest, and `SHA256SUMS`.
