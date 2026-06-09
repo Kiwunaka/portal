@@ -369,9 +369,16 @@ def test_latency_samples_are_ingested_and_exposed_as_sticky_hint(monkeypatch, tm
 
     managed = client.get("/api/client/profile/managed", headers=headers)
     assert managed.status_code == 200, managed.text
-    sticky = managed.json()["smart_connect"]["stickiness"]
+    managed_payload = managed.json()
+    sticky = managed_payload["smart_connect"]["stickiness"]
     assert sticky["preferred_node_code"] == "it"
     assert sticky["threshold_percent"] == 15
+    selector = next(
+        item
+        for item in managed_payload["config_payload"]["outbounds"]
+        if item.get("type") == "selector" and item.get("tag") == "🌍 Страны"
+    )
+    assert selector["default"] == "🇮🇹 Италия"
 
     db = api.SessionLocal()
     try:

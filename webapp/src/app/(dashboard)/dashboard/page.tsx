@@ -76,12 +76,12 @@ export default function DashboardPage() {
   const isActive = Boolean(dash?.is_active);
 
   const statusTone = !isActive ? "warning" : softMode ? "warning" : "success";
-  const statusTitle = !isActive ? "Доступ закончился" : softMode ? "Нужна скорость" : "Доступ активен";
+  const statusTitle = !isActive ? "Доступ закончился" : softMode ? "Скорость ограничена" : "Доступ активен";
   const statusMeta = isActive ? `${planLabel} · до ${formatDate(dash?.expiry_at)}` : "Продление вернет доступ в этом аккаунте";
   const statusBody = !isActive
     ? "Продлите срок и снова подключайтесь в приложении."
     : softMode
-      ? `Лимит обновится ${nextResetAt ? formatDate(nextResetAt) : "скоро"}.`
+      ? `Лимит обновится ${nextResetAt ? formatDate(nextResetAt) : "после обновления профиля"}.`
       : trialMode
         ? `Пробный период работает${daysRemaining !== null ? `, осталось ${formatCount(daysRemaining)} дн.` : "."}`
         : "Откройте приложение и нажмите Подключить.";

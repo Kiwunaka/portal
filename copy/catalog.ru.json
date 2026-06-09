@@ -4,7 +4,7 @@
   "items": {
     "marketing.meta.title": {
       "surface": "marketing.meta",
-      "ru": "POKROV для YouTube, TikTok и нужных вам сайтов | Android и Windows",
+      "ru": "POKROV открывает YouTube, TikTok и другие сервисы | Android и Windows",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -31,7 +31,7 @@
     },
     "marketing.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV для YouTube, TikTok и нужных вам сайтов",
+      "ru": "POKROV открывает YouTube, TikTok и другие сервисы",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -67,7 +67,7 @@
     },
     "marketing.hero.overline": {
       "surface": "marketing.home.hero",
-      "ru": "Beta-сборки POKROV для Android и Windows.",
+      "ru": "POKROV для Android и Windows: 5 дней бесплатно.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -139,7 +139,7 @@
     },
     "marketing.support.subtitle": {
       "surface": "marketing.home.support",
-      "ru": "Если не открылась сборка, не подтянулся аккаунт или возник вопрос по оплате, поддержка подскажет, что делать.",
+      "ru": "Если не открылся файл, не вошли в аккаунт или возник вопрос по оплате, поддержка подскажет, что делать.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -337,7 +337,7 @@
     },
     "marketing.downloads.subtitle": {
       "surface": "marketing.home.downloads",
-      "ru": "Если сборка доступна вашему аккаунту, она откроется в кабинете. Если нет — покажем инструкцию или поддержку.",
+      "ru": "Если файл доступен вашему аккаунту, он откроется в кабинете. Если нет — покажем инструкцию или поддержку.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -472,7 +472,7 @@
     },
     "marketing.install.meta.description": {
       "surface": "marketing.install",
-      "ru": "Как открыть сборку POKROV для Android или Windows, что делать если файл недоступен, и куда обратиться за помощью.",
+      "ru": "Как открыть приложение POKROV для Android или Windows, что делать если файл недоступен, и куда обратиться за помощью.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -499,7 +499,7 @@
     },
     "marketing.install.subtitle": {
       "surface": "marketing.install",
-      "ru": "Бета-сборки открываются через кабинет. Если файла пока нет в вашем аккаунте, покажем инструкцию или поддержку.",
+      "ru": "Файлы установки открываются через кабинет. Если файла нет в вашем аккаунте, покажем инструкцию или поддержку.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -553,7 +553,7 @@
     },
     "marketing.install.help_body": {
       "surface": "marketing.install",
-      "ru": "Если сборки нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем, что делать дальше.",
+      "ru": "Если файла нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем, что делать дальше.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -643,7 +643,7 @@
     },
     "marketing.faq.3.a": {
       "surface": "marketing.home.faq",
-      "ru": "Откройте личный кабинет или персональную ссылку из Telegram. Checkout покажет доступные способы, сумму и срок.",
+      "ru": "Откройте личный кабинет или персональную ссылку из Telegram. Страница оплаты покажет доступные способы, сумму и срок.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -805,7 +805,7 @@
     },
     "webapp.entry.card_body": {
       "surface": "webapp.entry",
-      "ru": "Сейчас быстрее всего войти через Telegram. Email скоро подключим. После входа вы увидите доступ, поддержку и шаги по подключению.",
+      "ru": "Войдите через email или Telegram. После входа вы увидите доступ, поддержку и шаги по подключению.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -967,7 +967,7 @@
     },
     "bot.welcome": {
       "surface": "bot.main",
-      "ru": "Откройте кабинет, проверьте доступ или начните подключение. 5 дней бесплатно доступны на старте; ручные ссылки нужны только как запасной вариант.",
+      "ru": "Откройте кабинет, проверьте доступ или начните подключение. 5 дней бесплатно доступны на старте; ручная ссылка нужна только как запасной вариант.",
       "variables": [],
       "tone": "helpful",
       "allowed_public": false,
@@ -1077,7 +1077,7 @@
     },
     "marketing.install.downloads.title": {
       "surface": "marketing.install.downloads",
-      "ru": "Бета-сборки в кабинете",
+      "ru": "Файлы установки в кабинете",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1086,7 +1086,7 @@
     },
     "marketing.install.downloads.subtitle": {
       "surface": "marketing.install.downloads",
-      "ru": "Публичная страница не выдает случайные файлы. Доступные сборки открываются в вашем кабинете.",
+      "ru": "Доступные файлы установки открываются в вашем кабинете.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1095,7 +1095,7 @@
     },
     "marketing.install.android.status": {
       "surface": "marketing.install.android",
-      "ru": "Android beta в кабинете",
+      "ru": "Android доступен в кабинете",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1104,7 +1104,7 @@
     },
     "marketing.install.android.title": {
       "surface": "marketing.install.android",
-      "ru": "APK для Android",
+      "ru": "Приложение для Android",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1122,7 +1122,7 @@
     },
     "marketing.install.windows.status": {
       "surface": "marketing.install.windows",
-      "ru": "Windows beta в кабинете",
+      "ru": "Windows доступен в кабинете",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1131,7 +1131,7 @@
     },
     "marketing.install.windows.title": {
       "surface": "marketing.install.windows",
-      "ru": "Бета-сборка для Windows",
+      "ru": "Приложение для Windows",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1167,7 +1167,7 @@
     },
     "marketing.install.apple.desc": {
       "surface": "marketing.install.apple",
-      "ru": "Версию для Apple скоро подключим. Пока можно открыть кабинет, чтобы следить за статусом и получить подсказки.",
+      "ru": "Версия для Apple не входит в текущую бету. Откройте кабинет, чтобы следить за статусом и получить подсказки.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1275,7 +1275,7 @@
     },
     "cabinet.downloads.subtitle": {
       "surface": "cabinet.downloads",
-      "ru": "Актуальные сборки для Android и Windows собраны здесь.",
+      "ru": "Актуальные файлы для Android и Windows собраны здесь.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -1401,7 +1401,7 @@
     },
     "admin.users.search_placeholder": {
       "surface": "admin.users",
-      "ru": "Поиск по имени, Telegram, email или install_id",
+      "ru": "Поиск по имени, Telegram, email или ID устройства",
       "variables": [],
       "tone": "operational",
       "allowed_public": false,
@@ -1419,7 +1419,7 @@
     },
     "admin.network.subtitle": {
       "surface": "admin.network",
-      "ru": "Смотрите здоровье панели, трафика и роллаута без скрытых состояний.",
+      "ru": "Смотрите состояние панели, трафика и развёртывания без скрытых статусов.",
       "variables": [],
       "tone": "operational",
       "allowed_public": false,

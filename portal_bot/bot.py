@@ -2778,7 +2778,7 @@ def _plan_mode_label(sub_type: str | None) -> str:
     st = _normalize_sub_type(sub_type or "")
     if st in {"FREE", "TRIAL", "BONUS"}:
         return f"до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств, до {FREE_SPEED_MBIT} Мбит/с"
-    return f"полный доступ, до {PAID_LIMIT_IP} устройств"
+    return f"платный срок, до {PAID_LIMIT_IP} устройств"
 
 
 def _plan_label_ru(sub_type: str | None) -> str:
@@ -2918,20 +2918,18 @@ async def check_subscription(user_id: int, bot: Bot) -> bool:
 TEXTS = {
     "welcome": (
         "🛡 *POKROV*\n\n"
-        f"{get_copy_text('bot.welcome', 'Откройте кабинет, проверьте доступ или начните подключение. Ручные ссылки нужны только как запасной вариант.')}\n\n"
+        f"{get_copy_text('bot.welcome', 'Откройте кабинет, скачайте приложение или проверьте доступ. Ручные ссылки нужны только как запасной вариант.')}\n\n"
         "Выберите действие:"
     ),
     "choose_tariff": (
-        "💎 *Выберите удобный старт*\n\n"
-        f"{get_copy_text('bot.choose_tariff', 'Можно начать с 5 дней бесплатно или сразу открыть полный доступ. Я покажу срок, цену и действие перед оплатой.')}\n\n"
-        "👇 *Доступные варианты:*"
+        "*Выберите старт*\n\n"
+        f"{get_copy_text('bot.choose_tariff', 'Можно начать с 5 дней бесплатно или сразу выбрать платный срок. Я покажу срок, цену и действие перед оплатой.')}\n\n"
+        "*Доступные варианты:*"
     ),
     "pokrov_ready": (
         "✅ *Доступ разрешён*\n"
-        "➖➖➖➖➖➖➖➖➖➖\n"
         "🔑 *Статус:* `АКТИВЕН`\n"
-        "⏳ *Истекает:* `{expiry}`\n"
-        "➖➖➖➖➖➖➖➖➖➖\n\n"
+        "⏳ *Истекает:* `{expiry}`\n\n"
         "Дальше откройте кабинет или приложение POKROV. Ручная ссылка нужна только как запасной вариант."
     ),
     "already_active": (
@@ -2942,24 +2940,22 @@ TEXTS = {
     ),
     "status": (
         "👤 *Ваш доступ*\n"
-        "➖➖➖➖➖➖➖➖➖➖\n"
         "🆔 ID: `{tg_id}`\n"
         "🛡 Статус: {status_icon} *{status_text}*\n"
         "📦 Режим: `{plan_label}`\n"
         "📅 До: `{expiry}`\n"
-        "💳 Продление: `кабинет / Lava.top`\n"
-        "➖➖➖➖➖➖➖➖➖➖"
+        "💳 Продление: `кабинет`"
     ),
     "no_subscription": (
         "⛔️ *Сейчас доступа нет*\n\n"
-        "Дальше запустите 5 дней бесплатно или выберите полный доступ."
+        "Дальше запустите 5 дней бесплатно или выберите платный срок."
     ),
     "instruction": (
         "📲 *Как начать*\n\n"
         "1. Скачайте POKROV для своего устройства\n"
         "2. Войдите через почту или Telegram\n"
         "3. Нажмите «Подключить»\n\n"
-        "Если приложения POKROV пока нет на устройстве, начните с Karing или Happ. Личную ссылку берите только в кабинете POKROV или здесь в боте."
+        "Если приложение не открылось или доступ не подтянулся, напишите в поддержку. Ручная ссылка остается запасным вариантом."
     ),
     "admin_stats": (
         "📊 *Центр управления*\n\n"
@@ -2967,7 +2963,7 @@ TEXTS = {
         "🟢 Активных: `{active}`\n"
         "💰 Оборот: `{stars}` Stars"
     ),
-    "trial_used": "❌ 5 дней бесплатно уже были включены. Теперь можно выбрать полный доступ.",
+    "trial_used": "❌ 5 дней бесплатно уже были включены. Теперь можно выбрать платный срок.",
     "payment_success": "✅ *Оплата принята.* Доступ обновляется в этом аккаунте. Откройте POKROV и нажмите «Подключить».",
     "gift_success": "✅ Подписка выдана пользователю {tg_id} на {days} дней."
 }
@@ -3125,13 +3121,13 @@ def build_choose_tariff_text() -> str:
     payment_hint = "_Выберите вариант ниже, и я открою нужное действие._"
 
     return (
-        "💎 *С чего начнём?*\n\n"
-        f"🎁 *5 дней бесплатно* — старт на {free_label}\n"
-        f"⚡ *Полный доступ* — {paid_count} стран: {paid_list}\n\n"
+        "*С чего начнём?*\n\n"
+        f"*5 дней бесплатно* — старт на {free_label}\n"
+        f"*Платный срок* — {paid_count} стран: {paid_list}\n\n"
         f"Бесплатный старт: 5 дней, до {TRIAL_LIMIT_GB} ГБ и до {FREE_LIMIT_IP} устройства, чтобы проверить, подходит ли вам POKROV.\n"
-        f"Полный доступ: все доступные страны, до {PAID_LIMIT_IP} устройств и комфортный запас по скорости.\n"
-        "Если захотите перейти на полный доступ без паузы, есть приветственный вариант за 99 ₽.\n\n"
-        f"💰 *Чем длиннее срок, тем выгоднее:*{savings_line}\n\n"
+        f"Платный срок: все доступные страны, до {PAID_LIMIT_IP} устройств, без снижения скорости в обычном режиме.\n"
+        "Если захотите продлить без паузы, есть приветственный вариант за 99 ₽.\n\n"
+        f"*Чем длиннее срок, тем выгоднее:*{savings_line}\n\n"
         f"{payment_hint}"
     )
 
@@ -3289,14 +3285,14 @@ def _enabled_bot_rub_providers() -> list[dict[str, Any]]:
 def _bot_checkout_blocked_reasons(*, include_provider_check: bool = True) -> list[str]:
     reasons: list[str] = []
     if not RUB_CHECKOUT_ENABLED:
-        reasons.append("рублёвая оплата выключена")
+        reasons.append("оплата временно недоступна")
     if not PAID_CHECKOUT_LAUNCH_APPROVED:
-        reasons.append("Lava.top ждёт финальную проверку")
+        reasons.append("оплата временно недоступна")
     if not CHECKOUT_TICKET_SECRET:
-        reasons.append("checkout-сессия не настроена")
+        reasons.append("оплата временно недоступна")
     if include_provider_check and not any(bool(row.get("supports_bot")) for row in enabled_provider_catalog()):
-        reasons.append("платёжный провайдер не настроен")
-    return reasons
+        reasons.append("оплата временно недоступна")
+    return list(dict.fromkeys(reasons))
 
 
 def _rub_provider_by_code(provider_code: str) -> dict[str, Any] | None:
@@ -3401,13 +3397,13 @@ def _dual_pay_text(*, show_trial: bool) -> str:
     rub_hint = (
         f"В рублях доступны: {provider_names}."
         if provider_names
-        else f"Оплата пока закрыта: {'; '.join(blocked_reasons) or 'провайдер не включен'}."
+        else f"Оплата пока закрыта: {'; '.join(blocked_reasons) or 'оплата временно недоступна'}."
     )
     if show_trial:
         return (
             "🚀 *Как удобнее начать?*\n\n"
             "Можно взять 5 дней бесплатно и проверить всё в деле.\n"
-            "Если полный доступ нужен уже сейчас, выберите тариф и оплату в рублях.\n"
+            "Если хотите продлить сразу, выберите тариф и оплату в рублях.\n"
             f"{rub_hint}\n"
             "После оплаты всё включится автоматически.\n\n"
             "Выберите действие:"
@@ -3444,8 +3440,8 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             ),
         ],
         [
-            _btn_spec(text="📦 Проверить доступ", callback_data="status"),
-            _btn_spec(text="🆘 Помощь", callback_data="support"),
+            _btn_spec(text="Проверить доступ", callback_data="status"),
+            _btn_spec(text="Помощь", callback_data="confused_help"),
         ],
         [
             _btn_spec(text="🌐 Кабинет", web_app_url=WEBAPP_URL),
@@ -3726,7 +3722,7 @@ async def cmd_start(message: Message):
             return
         if reason == "already_paid_active":
             await message.answer(
-                "✅ У вас уже есть полный доступ.\n\n"
+                "✅ У вас уже есть платный доступ.\n\n"
                 "Открываю главное меню.",
                 reply_markup=main_keyboard(tg_id),
             )
@@ -3763,7 +3759,7 @@ async def cmd_start(message: Message):
                 return
             if reason == "already_paid_active":
                 await message.answer(
-                    "✅ У вас уже есть полный доступ.\n\n"
+                    "✅ У вас уже есть платный доступ.\n\n"
                     "Открываю главное меню.",
                     reply_markup=main_keyboard(tg_id),
                 )
@@ -4147,7 +4143,7 @@ async def show_key(callback: CallbackQuery):
         free_note = (
             "\n\n🆓 Сейчас бесплатный режим: "
             f"до {FREE_TOTAL_GB} ГБ на 30 дней и до {FREE_LIMIT_IP} устройства. "
-            f"Полный доступ откроет платные локации и до {PAID_LIMIT_IP} устройств."
+            f"Платный доступ откроет платные локации и до {PAID_LIMIT_IP} устройств."
         )
 
     kb = InlineKeyboardMarkup(
@@ -4158,12 +4154,11 @@ async def show_key(callback: CallbackQuery):
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
-    
+
     await msg.edit_text(
         f"🔗 *Ручное подключение*\n\n"
-        "Это запасной способ, если приложение POKROV не импортировало профиль автоматически.\n\n"
-        "Ссылка ниже не подходит для входа в аккаунт, активации кода или привязки Telegram. "
-        "Не отправляйте ее посторонним.\n\n"
+        "Это запасной способ, если POKROV не подключился сам. Сначала попробуйте приложение; ссылку используйте только для ручного подключения.\n\n"
+        "Это личная ссылка для подключения. Не пересылайте её: по ней можно пользоваться вашим доступом.\n\n"
         f"`{sub_link}`\n\n"
         "Если приложения POKROV пока нет на устройстве, используйте Karing или Happ и добавьте туда эту личную ссылку.\n"
         f"{free_note}",
@@ -4504,7 +4499,7 @@ async def menu_more(callback: CallbackQuery):
                 InlineKeyboardButton(text="🎟️ Ввести промокод", callback_data="promo_activate_prompt"),
             ],
             [InlineKeyboardButton(text="ℹ️ Помощь по промокоду", callback_data="promo_help")],
-            [InlineKeyboardButton(text="⭐ Оставить отзыв", callback_data="review_start")],
+            [InlineKeyboardButton(text="Оставить отзыв", callback_data="review_start")],
             [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
@@ -4576,25 +4571,25 @@ async def review_start(callback: CallbackQuery):
     if not user or not user.is_active:
         await callback.answer("❌ Сначала включите доступ, потом можно оставить отзыв для сайта.", show_alert=True)
         return
-    
+
     if has_user_review(tg_id):
         await callback.answer("❌ Отзыв уже сохранён. Спасибо!", show_alert=True)
         return
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="⭐", callback_data="rate_1"),
-            InlineKeyboardButton(text="⭐⭐", callback_data="rate_2"),
-            InlineKeyboardButton(text="⭐⭐⭐", callback_data="rate_3"),
-            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data="rate_4"),
-            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data="rate_5"),
+            InlineKeyboardButton(text="1", callback_data="rate_1"),
+            InlineKeyboardButton(text="2", callback_data="rate_2"),
+            InlineKeyboardButton(text="3", callback_data="rate_3"),
+            InlineKeyboardButton(text="4", callback_data="rate_4"),
+            InlineKeyboardButton(text="5", callback_data="rate_5"),
         ],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")]
     ])
-    
+
     await callback.message.edit_text(
-        "⭐ *Поделитесь впечатлением*\n\n"
-        "Поставьте оценку от 1 до 5 звёзд. Затем при желании можно добавить короткий текст для сайта.",
+        "*Поделитесь впечатлением*\n\n"
+        "Выберите оценку от 1 до 5. Потом можно добавить короткий текст для сайта.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -4976,7 +4971,7 @@ async def show_gift_cards(callback: CallbackQuery):
         return
     buttons = []
     for key, card in GIFT_CARD_TYPES.items():
-        text = f"{card['name']} — {card['days']} дн. — {card['stars']} ⭐"
+        text = f"{card['name']} — {card['days']} дн. — {card['stars']} Stars"
         buttons.append([InlineKeyboardButton(text=text, callback_data=f"buy_giftcard_{key}")])
     
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
@@ -5147,18 +5142,18 @@ async def review_command(message: Message):
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="⭐", callback_data="rate_1"),
-            InlineKeyboardButton(text="⭐⭐", callback_data="rate_2"),
-            InlineKeyboardButton(text="⭐⭐⭐", callback_data="rate_3"),
-            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data="rate_4"),
-            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data="rate_5"),
+            InlineKeyboardButton(text="1", callback_data="rate_1"),
+            InlineKeyboardButton(text="2", callback_data="rate_2"),
+            InlineKeyboardButton(text="3", callback_data="rate_3"),
+            InlineKeyboardButton(text="4", callback_data="rate_4"),
+            InlineKeyboardButton(text="5", callback_data="rate_5"),
         ],
         [InlineKeyboardButton(text="◀️ Отмена", callback_data="back")]
     ])
-    
+
     await message.answer(
-        "⭐ *Поделитесь впечатлением*\n\n"
-        "Поставьте оценку от 1 до 5 звёзд. Затем при желании можно добавить короткий текст для сайта.",
+        "*Поделитесь впечатлением*\n\n"
+        "Выберите оценку от 1 до 5. Потом можно добавить короткий текст для сайта.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5178,7 +5173,7 @@ async def rate_review(callback: CallbackQuery):
     ])
     
     await callback.message.edit_text(
-        f"Твоя оценка: {'⭐' * rating}\n\n"
+        f"Твоя оценка: {rating}/5\n\n"
         "Следующий шаг: напишите короткий отзыв (до 200 символов).\n\n"
         "_Или нажмите «Пропустить», чтобы оставить только оценку._",
         reply_markup=kb,
@@ -5198,7 +5193,7 @@ async def skip_review_text(callback: CallbackQuery):
     if success:
         await callback.message.edit_text(
             f"✅ *Спасибо за отзыв!*\n\n"
-            f"Оценка: {'⭐' * rating}\n"
+            f"Оценка: {rating}/5\n"
             "Если отзыв подойдёт для сайта, мы покажем его после модерации.",
             parse_mode=ParseMode.MARKDOWN
         )
@@ -5405,7 +5400,7 @@ async def handle_text_input(message: Message):
             await message.answer(
                 f"👤 `{user.tg_id}` @{safe_username}\n"
                 f"{status} | До: {expiry}\n"
-                f"⭐ Stars: {user.stars_paid or 0}\n"
+                f"Stars: {user.stars_paid or 0}\n"
                 f"🔥 Streak: {user.streak_months or 0} | 🏆 {ach_count}",
                 reply_markup=kb,
                 parse_mode=ParseMode.MARKDOWN
@@ -5838,7 +5833,7 @@ async def handle_text_input(message: Message):
         if success:
             await message.answer(
                 f"✅ *Спасибо за отзыв!*\n\n"
-                f"Оценка: {'⭐' * rating}\n"
+                f"Оценка: {rating}/5\n"
                 f"_{text}_\n\n"
                 "Если отзыв подойдёт для сайта, мы покажем его после модерации.",
                 parse_mode=ParseMode.MARKDOWN
@@ -6385,7 +6380,7 @@ async def show_admin_panel(callback: CallbackQuery):
         ],
         [
             InlineKeyboardButton(text="🎫 Промокоды", callback_data="admin_promos"),
-            InlineKeyboardButton(text="⭐ Отзывы", callback_data="admin_reviews")
+            InlineKeyboardButton(text="Отзывы", callback_data="admin_reviews")
         ],
         [
             InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast_menu"),
@@ -6604,12 +6599,12 @@ async def admin_reviews_menu(callback: CallbackQuery):
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📝 Все отзывы", callback_data="admin_reviews_all")],
-        [InlineKeyboardButton(text="⭐ Избранные", callback_data="admin_reviews_featured")],
+        [InlineKeyboardButton(text="На главной", callback_data="admin_reviews_featured")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
     
     await callback.message.edit_text(
-        f"⭐ *Отзывы*\n\n"
+        f"*Отзывы*\n\n"
         f"Всего: {total}\n"
         f"Избранных: {featured}\n\n"
         f"_Команда: /reviews_",
@@ -6843,13 +6838,13 @@ async def _render_reviews_page(*, callback: CallbackQuery, featured_only: bool, 
     pages = max(1, (total + per_page - 1) // per_page)
     page = min(page, pages - 1)
 
-    title = "⭐ Отзывы на главной" if featured_only else "📝 Все отзывы"
+    title = "Отзывы на главной" if featured_only else "Все отзывы"
     if not rows:
         kb = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(text="📝 Все", callback_data="admin_reviews_all:0"),
-                    InlineKeyboardButton(text="⭐ На главную", callback_data="admin_reviews_featured:0"),
+                    InlineKeyboardButton(text="Все", callback_data="admin_reviews_all:0"),
+                    InlineKeyboardButton(text="На главной", callback_data="admin_reviews_featured:0"),
                 ],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
             ]
@@ -6860,23 +6855,23 @@ async def _render_reviews_page(*, callback: CallbackQuery, featured_only: bool, 
     lines = [f"{title}\nВсего: {total} | Стр {page+1}/{pages}\n"]
     kb_rows: list[list[InlineKeyboardButton]] = [
         [
-            InlineKeyboardButton(text="📝 Все", callback_data="admin_reviews_all:0"),
-            InlineKeyboardButton(text="⭐ На главную", callback_data="admin_reviews_featured:0"),
+            InlineKeyboardButton(text="Все", callback_data="admin_reviews_all:0"),
+            InlineKeyboardButton(text="На главной", callback_data="admin_reviews_featured:0"),
         ]
     ]
 
     for r in rows:
         masked = _mask_review_username(r.username)
         u = f"@{masked}" if masked != "Пользователь" else masked
-        stars = "⭐" * int(r.rating or 0)
+        rating = f"{int(r.rating or 0)}/5"
         txt = (r.text or "").strip()
         if len(txt) > 120:
             txt = txt[:120] + "…"
-        lines.append(f"ID {r.id} | {u} {stars}\n{txt or '—'}\n")
+        lines.append(f"ID {r.id} | {u} | оценка {rating}\n{txt or '—'}\n")
         kb_rows.append(
             [
                 InlineKeyboardButton(
-                    text="⭐" if not r.is_featured else "❌",
+                    text="На сайт" if not r.is_featured else "Снять",
                     callback_data=f"review_toggle_{r.id}",
                 ),
                 InlineKeyboardButton(text="🗑", callback_data=f"review_delete_{r.id}"),
@@ -8490,15 +8485,15 @@ async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
     recommended_price = int(TARIFFS["6_months"]["stars"])
     text = (
         "2️⃣ *Проверьте доступ*\n\n"
-        "Можно начать с 5 дней бесплатно. Если полный доступ нужен сразу, выберите срок ниже.\n\n"
+        "Можно начать с 5 дней бесплатно. Если хотите продлить сразу, выберите срок ниже.\n\n"
         "После активации откройте приложение и нажмите «Подключить»."
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎁 Начать с 5 дней бесплатно", callback_data="trial_direct")],
-        [InlineKeyboardButton(text=f"⚡ Рекомендуем: 6 месяцев за {recommended_price} ₽", callback_data="buy_6_months")],
-        [InlineKeyboardButton(text=f"📅 Начать с 1 месяца за {starter_price} ₽", callback_data="buy_1_month")],
-        [InlineKeyboardButton(text="💳 Посмотреть все планы", callback_data="charge")],
-        [InlineKeyboardButton(text=f"🎁 Забрать ещё {CHANNEL_PREMIUM_DAYS} дней за канал", callback_data="bonus_offer_trial")],
+        [InlineKeyboardButton(text="Начать с 5 дней бесплатно", callback_data="trial_direct")],
+        [InlineKeyboardButton(text=f"6 месяцев за {recommended_price} ₽", callback_data="buy_6_months")],
+        [InlineKeyboardButton(text=f"1 месяц за {starter_price} ₽", callback_data="buy_1_month")],
+        [InlineKeyboardButton(text="Все планы", callback_data="charge")],
+        [InlineKeyboardButton(text=f"Telegram +{CHANNEL_PREMIUM_DAYS} дней", callback_data="bonus_offer_trial")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="mode_simple")],
     ])
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
@@ -8530,10 +8525,10 @@ async def _activate_trial_tariff(
     expiry = _naive_utc(user.expiry_at) if user else None
     has_active = bool(user and user.is_active and expiry and expiry > now)
     if has_active and _is_freemium_sub_type(current_sub):
-        await callback.answer("5 дней бесплатно уже включены. Следующий шаг — открыть ссылку или выбрать полный доступ.", show_alert=True)
+        await callback.answer("5 дней бесплатно уже включены. Следующий шаг — открыть POKROV или выбрать платный срок.", show_alert=True)
         return
     if has_active and not _is_freemium_sub_type(current_sub):
-        await callback.answer("Полный доступ уже активен. Следующий шаг — открыть POKROV или ручную ссылку.", show_alert=True)
+        await callback.answer("Платный срок уже активен. Следующий шаг — открыть POKROV.", show_alert=True)
         return
 
     await callback.answer("⏳ Включаю бесплатный старт...")
@@ -8597,7 +8592,7 @@ async def channel_bonus_claim(callback: CallbackQuery, bot: Bot):
             ]
         )
         await callback.message.edit_text(
-            f"✅ *Бонус включён*\n\nПолный доступ добавлен на *{CHANNEL_PREMIUM_DAYS} дней*.\n\nСледующий шаг — открыть POKROV или запасную ручную ссылку.",
+            f"✅ *Бонус включён*\n\nПлатный доступ добавлен на *{CHANNEL_PREMIUM_DAYS} дней*.\n\nСледующий шаг — открыть POKROV или запасную ручную ссылку.",
             reply_markup=kb,
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -8683,7 +8678,7 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
         f"📡 Режим: <b>{html.escape(_plan_mode_label(plan))}</b>\n"
         f"🌐 Онлайн: <b>{panel_online_line}</b>\n"
         f"🕓 Последний онлайн: <b>{panel_last_online_line}</b>\n"
-        f"⭐ Stars: <b>{int(user.stars_paid or 0)}</b>"
+        f"Stars: <b>{int(user.stars_paid or 0)}</b>"
         f"{free_usage_line}"
     )
     
@@ -8733,11 +8728,11 @@ async def admin_tariff_menu(callback: CallbackQuery):
     p12 = int(TARIFFS["12_months"]["stars"])
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🆓 Бесплатный (соцсети + AI)", callback_data=f"adm_set_{tg_id}_trial")],
-        [InlineKeyboardButton(text=f"📅 1 Месяц ({p1} ⭐)", callback_data=f"adm_set_{tg_id}_1_month")],
-        [InlineKeyboardButton(text=f"📅 3 Месяца ({p3} ⭐)", callback_data=f"adm_set_{tg_id}_3_months")],
-        [InlineKeyboardButton(text=f"📅 6 Месяцев ({p6} ⭐)", callback_data=f"adm_set_{tg_id}_6_months")],
-        [InlineKeyboardButton(text=f"📅 9 Месяцев ({p9} ⭐)", callback_data=f"adm_set_{tg_id}_9_months")],
-        [InlineKeyboardButton(text=f"📅 12 Месяцев ({p12} ⭐)", callback_data=f"adm_set_{tg_id}_12_months")],
+        [InlineKeyboardButton(text=f"📅 1 Месяц ({p1} Stars)", callback_data=f"adm_set_{tg_id}_1_month")],
+        [InlineKeyboardButton(text=f"📅 3 Месяца ({p3} Stars)", callback_data=f"adm_set_{tg_id}_3_months")],
+        [InlineKeyboardButton(text=f"📅 6 Месяцев ({p6} Stars)", callback_data=f"adm_set_{tg_id}_6_months")],
+        [InlineKeyboardButton(text=f"📅 9 Месяцев ({p9} Stars)", callback_data=f"adm_set_{tg_id}_9_months")],
+        [InlineKeyboardButton(text=f"📅 12 Месяцев ({p12} Stars)", callback_data=f"adm_set_{tg_id}_12_months")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data=f"adm_user_{tg_id}")]
     ])
     
@@ -8757,9 +8752,9 @@ async def admin_gift_menu(callback: CallbackQuery):
     standard_price = int(GIFT_CARD_TYPES["standard"]["stars"])
     premium_price = int(GIFT_CARD_TYPES["premium"]["stars"])
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"🎫 Создать Mini (7д / {mini_price}⭐)", callback_data="admin_giftcode_mini")],
-        [InlineKeyboardButton(text=f"🎫 Создать Standard (30д / {standard_price}⭐)", callback_data="admin_giftcode_standard")],
-        [InlineKeyboardButton(text=f"🎫 Создать Premium (90д / {premium_price}⭐)", callback_data="admin_giftcode_premium")],
+        [InlineKeyboardButton(text=f"🎫 Создать Mini (7д / {mini_price} Stars)", callback_data="admin_giftcode_mini")],
+        [InlineKeyboardButton(text=f"🎫 Создать Standard (30д / {standard_price} Stars)", callback_data="admin_giftcode_standard")],
+        [InlineKeyboardButton(text=f"🎫 Создать Premium (90д / {premium_price} Stars)", callback_data="admin_giftcode_premium")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
     
@@ -8960,7 +8955,7 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
 @router.callback_query(F.data.startswith("pay_stars_"))
 async def process_buy_stars(callback: CallbackQuery, bot: Bot):
     if not TELEGRAM_STARS_CHECKOUT_ENABLED:
-        await callback.answer("Оплата Stars сейчас закрыта. Используйте рублёвую оплату после финальной проверки Lava.top.", show_alert=True)
+        await callback.answer("Оплата через Stars сейчас не используется. Выберите оплату в ₽ или напишите в поддержку, если уже оплатили.", show_alert=True)
         return
     raw_key = callback.data.replace("pay_stars_", "")
     tariff_key = normalize_tariff_key(raw_key)
@@ -8987,7 +8982,7 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
         currency="XTR",
     )
     if not attempt:
-        await callback.message.answer("❌ Не удалось создать попытку оплаты. Попробуйте позже.")
+        await callback.message.answer("Не смог подготовить оплату. Попробуйте ещё раз через минуту; если повторится, напишите в поддержку.")
         return
 
     invoice_payload = f"portal_{tariff_key}_{tg_id}_{mode_label}_a{int(attempt.id)}_p{int(points_to_use)}"
@@ -8999,7 +8994,7 @@ async def process_buy_stars(callback: CallbackQuery, bot: Bot):
     if pending_discount_pct > 0:
         discount_chunks.append(f"-{pending_discount_pct}% промо")
     discount_note = f" ({', '.join(discount_chunks)})" if discount_chunks else ""
-    points_note = f" + points -{points_to_use}⭐" if points_to_use > 0 else ""
+    points_note = f" + points -{points_to_use} Stars" if points_to_use > 0 else ""
     prices = [LabeledPrice(label=tariff["name"] + discount_note + points_note, amount=int(final_stars))]
     description = f"Безлимит на {tariff['days']} дней{discount_note}{points_note}"
     track_event(
@@ -9089,7 +9084,7 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
     await callback.message.edit_text(
         f"💳 *{tariff['name']}*\n\n"
         f"Сумма: *{rub_price} ₽*\n"
-        f"Касса: *{provider_label}*.\n\n"
+        f"Способ оплаты: *{provider_label}*.\n\n"
         "Следующий шаг: откройте оплату по кнопке ниже.\n"
         "Если банк не откроется внутри Telegram, используйте кнопку «Открыть через сайт» "
         "или обычный браузер.\n\n"
@@ -9244,12 +9239,10 @@ async def payment_success(message: Message, bot: Bot):
             )
             receipt_text = (
                 "🧾 *Квитанция об оплате*\n"
-                "➖➖➖➖➖➖➖➖➖➖\n"
                 f"📦 Товар: *{tariff['name']}*\n"
                 f"💳 Сумма: *{payment.total_amount} XTR*\n"
                 f"📅 Дата: *{_utcnow().strftime('%d.%m.%Y %H:%M')} UTC*\n"
-                f"🆔 TransID: `{payload}`\n"
-                "➖➖➖➖➖➖➖➖➖➖\n"
+                f"🆔 TransID: `{payload}`\n\n"
                 "✅ *Лицензия активирована успешно*"
             )
             receipt_rows = [[
@@ -9573,7 +9566,7 @@ async def admin_user_search(message: Message):
         f"📦 Тариф: `{user.sub_type or '—'}`\n"
         f"📅 До: `{expiry}`\n"
         f"📡 Режим: `{_plan_mode_label(user.sub_type)}`\n"
-        f"⭐ Оплачено: `{user.stars_paid or 0}` Stars\n\n"
+        f"Оплачено: `{user.stars_paid or 0}` Stars\n\n"
         f"🔥 Streak: `{user.streak_months or 0}` мес\n"
         f"🏆 Ачивки: `{ach_count}`\n"
         f"👥 Рефералы: `{user.referral_count or 0}`\n\n"
@@ -9626,7 +9619,7 @@ async def admin_view_logs(callback: CallbackQuery):
     
     # Get reviews
     review = session.query(Review).filter_by(tg_id=tg_id).first()
-    review_text = f"  {'⭐' * review.rating} {review.text[:50] if review.text else ''}" if review else "  Нет"
+    review_text = f"  Оценка {review.rating}/5 {review.text[:50] if review.text else ''}" if review else "  Нет"
     
     session.close()
     
@@ -9683,7 +9676,7 @@ async def admin_back_to_profile(callback: CallbackQuery):
         f"Статус: {status}\n\n"
         f"📦 Тариф: `{user.sub_type or '—'}`\n"
         f"📅 До: `{expiry}`\n"
-        f"⭐ Оплачено: `{user.stars_paid or 0}` Stars\n\n"
+        f"Оплачено: `{user.stars_paid or 0}` Stars\n\n"
         f"🔥 Streak: `{user.streak_months or 0}` мес\n"
         f"🏆 Ачивки: `{ach_count}`\n"
         f"👥 Рефералы: `{user.referral_count or 0}`\n\n"
@@ -10205,10 +10198,10 @@ async def reviews_moderation(message: Message):
     session = Session()
     if show_featured:
         reviews = session.query(Review).filter_by(is_featured=True).order_by(Review.created_at.desc()).limit(10).all()
-        title = "⭐ Отзывы на главной"
+        title = "Отзывы на главной"
     else:
         reviews = session.query(Review).order_by(Review.created_at.desc()).limit(10).all()
-        title = "📝 Последние отзывы"
+        title = "Последние отзывы"
     
     session.close()
     
@@ -10217,19 +10210,19 @@ async def reviews_moderation(message: Message):
         return
     
     for r in reviews:
-        featured = "⭐" if r.is_featured else ""
+        featured = "На главной · " if r.is_featured else ""
         masked = _mask_review_username(r.username)
         label = f"@{masked}" if masked != "Пользователь" else masked
         text = r.text[:100] if r.text else "—"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="⭐ На главную" if not r.is_featured else "❌ Снять с главной", 
+                InlineKeyboardButton(text="На главную" if not r.is_featured else "Снять с главной",
                                      callback_data=f"review_toggle_{r.id}"),
                 InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"review_delete_{r.id}")
             ]
         ])
         await message.answer(
-            f"{featured} *{label}* {'⭐' * r.rating}\n"
+            f"{featured}*{label}* · оценка {r.rating}/5\n"
             f"_{text}_\n"
             f"`ID:{r.id}`",
             reply_markup=kb,
@@ -10255,8 +10248,8 @@ async def toggle_review_featured(callback: CallbackQuery):
     # If this toggle was triggered from the admin list view, refresh the list.
     try:
         txt = (callback.message.text or "").strip()
-        if ("Стр " in txt) and ("Все отзывы" in txt or "Избранные отзывы" in txt):
-            featured_only = txt.startswith("⭐")
+        if ("Стр " in txt) and ("Все отзывы" in txt or "Отзывы на главной" in txt):
+            featured_only = txt.startswith("Отзывы на главной")
             import re
 
             m = re.search(r"Стр\\s+(\\d+)/(\\d+)", txt)
@@ -10282,8 +10275,8 @@ async def delete_review(callback: CallbackQuery):
     # Refresh admin list view if this action came from it; otherwise just confirm.
     try:
         txt = (callback.message.text or "").strip()
-        if ("Стр " in txt) and ("Все отзывы" in txt or "Избранные отзывы" in txt):
-            featured_only = txt.startswith("⭐")
+        if ("Стр " in txt) and ("Все отзывы" in txt or "Отзывы на главной" in txt):
+            featured_only = txt.startswith("Отзывы на главной")
             import re
 
             m = re.search(r"Стр\\s+(\\d+)/(\\d+)", txt)
@@ -10380,7 +10373,7 @@ async def admin_broadcast(message: Message, bot: Bot):
             await bot.send_message(
                 user.tg_id,
                 f"🔄 *Обновление подписки*\n\n"
-                f"Мы установили важное обновление: ваш трафик стал еще более защищенным и невидимым.\n\n"
+                f"Мы обновили подключение. Чтобы всё продолжило работать, обновите профиль в приложении.\n\n"
                 f"🔗 *Ваша новая ссылка подписки:*\n"
                 f"`{sub_link}`\n\n"
                 f"📋 _Пожалуйста, обновите ссылку в вашем приложении._\n\n"
@@ -10617,7 +10610,7 @@ async def admin_gift(message: Message, bot: Bot):
             f"🎁 *Вам подарили доступ к POKROV!*\n\n"
             f"📦 Тариф: {name}\n"
             f"📅 Дней: {days}\n"
-            f"📡 Режим: полный доступ\n\n"
+            f"📡 Режим: платный доступ\n\n"
             "Следующий шаг: откройте кабинет или бот, выберите «Подключить устройство» и войдите тем же способом. "
             "Ручная ссылка доступна отдельно, если приложение пока не подходит.",
             parse_mode=ParseMode.MARKDOWN
@@ -10689,14 +10682,14 @@ async def monitor_expiry(bot: Bot) -> None:
                                 pass
 
                             if user.tg_id > 0 and user.tg_id not in PROTECTED_USERS:
-                                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⚡ Вернуть полный доступ", callback_data="charge")]])
+                                kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Продлить", callback_data="charge")]])
                                 try:
                                     await bot.send_message(
                                         chat_id=user.tg_id,
                                         text=(
-                                            "⌛️ *Полный доступ закончился*\n\n"
+                                            "*Платный срок закончился*\n\n"
                                             "Но вы не остались без связи: я перевёл вас в бесплатный режим.\n"
-                                            "Если хотите вернуть все доступные локации и нормальный запас по устройствам, нажмите кнопку ниже."
+                                            "Если хотите вернуть все доступные локации и лимит устройств, нажмите кнопку ниже."
                                         ),
                                         reply_markup=kb,
                                         parse_mode=ParseMode.MARKDOWN,

@@ -161,7 +161,7 @@ export default function AdminPaymentsPage() {
         <AdminPanelHeader
           eyebrow="оплата"
           title="Платёжный журнал"
-          description="Реальные заказы и подтверждения от провайдера. Ручная сверка требует заметку и не выдаёт доступ молча."
+          description="Реальные заказы и подтверждения от платёжной системы. Ручная сверка требует заметку и не выдаёт доступ молча."
           actions={
             <button type="button" className={adminButtonClass("secondary", "sm")} onClick={() => void loadOrders()} disabled={loading}>
               <RefreshCw size={14} />
@@ -172,7 +172,7 @@ export default function AdminPaymentsPage() {
         <div className="flex flex-wrap gap-2">
           <AdminBadge tone="accent">заказов: {total}</AdminBadge>
           <AdminBadge tone="warning">ручная проверка видна оператору</AdminBadge>
-          <AdminBadge>полные данные провайдера не выводятся</AdminBadge>
+          <AdminBadge>полные платёжные данные не выводятся</AdminBadge>
         </div>
       </article>
 
@@ -200,9 +200,9 @@ export default function AdminPaymentsPage() {
               syncFilters({ provider: event.target.value });
             }}
             className={adminFieldClass}
-            aria-label="Провайдер"
+            aria-label="Платёжная система"
           >
-            <option value="">Все провайдеры</option>
+            <option value="">Все способы оплаты</option>
             {providers.map((item) => (
               <option key={item} value={item}>
                 {item}
@@ -218,7 +218,7 @@ export default function AdminPaymentsPage() {
                 syncFilters({ q: event.target.value });
               }}
               className={`${adminFieldClass} pl-9`}
-              placeholder="заказ, провайдер, план, кампания, Telegram ID"
+              placeholder="заказ, способ оплаты, план, кампания, Telegram ID"
             />
           </label>
           <button type="button" className={adminButtonClass("primary")} onClick={() => void loadOrders()} disabled={loading}>
@@ -233,8 +233,8 @@ export default function AdminPaymentsPage() {
       <article className={adminPanelClass("neutral")}>
         <AdminPanelHeader
           eyebrow="заказы и подтверждения"
-          title="Заказы провайдера"
-          description="Строки идут из таблиц оплаты. Подтверждение показывается кратко, без вывода полных данных провайдера."
+          title="Платёжные заказы"
+          description="Строки идут из таблиц оплаты. Подтверждение показывается кратко, без вывода полных платёжных данных."
         />
 
         {loading ? (
@@ -343,7 +343,7 @@ export default function AdminPaymentsPage() {
                 value={dialog.note}
                 onChange={(event) => setDialog({ ...dialog, note: event.target.value })}
                 className={adminTextAreaClass}
-                placeholder="Что видно в кабинете провайдера, какой пользователь или тикет связан с заказом, почему выбран этот статус."
+                placeholder="Что видно на стороне оплаты, какой пользователь или тикет связан с заказом, почему выбран этот статус."
                 rows={5}
               />
             </label>

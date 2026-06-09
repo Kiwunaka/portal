@@ -331,7 +331,7 @@ export default function MarketingLanding({
         <div className="lp-header-shell">
           <div className="lp-brand">
             <Link href="/">POKROV</Link>
-            <span>Android и Windows beta</span>
+            <span>Android и Windows · бета</span>
           </div>
           <div className="lp-theme-toggle-wrap">
             <button
@@ -380,9 +380,9 @@ export default function MarketingLanding({
           <div className="lp-hero-copy">
             <div className="lp-kicker">{heroKicker || "POKROV • 5 дней без карты"}</div>
             <p className="lp-overline">
-              Android и Windows beta: приложение для старта, кабинет для продления и поддержки.
+              Android и Windows: приложение для старта, кабинет для продления и поддержки.
             </p>
-            <h1>{heroTitle || "POKROV для YouTube, TikTok и нужных вам сайтов"}</h1>
+            <h1>{heroTitle || "POKROV открывает YouTube, TikTok и другие сервисы"}</h1>
             <p className="lp-hero-lead">
               {heroSubtitle ||
                 "Сначала приложение для Android или Windows и 5 дней бесплатно без карты. Дальше выберите срок и продолжайте в том же аккаунте."}
@@ -449,7 +449,7 @@ export default function MarketingLanding({
             <span>Тарифы</span>
             <h2>Цена, срок и лимит видны до оплаты.</h2>
             <p>
-              В beta-кассе открыт стартовый срок. Сначала 5 дней в приложении без карты, затем продление того же аккаунта.
+              Сначала 5 дней в приложении без карты, затем продление того же аккаунта.
             </p>
           </div>
           <div className="lp-pricing-shell">
@@ -460,7 +460,7 @@ export default function MarketingLanding({
               </div>
               <h3>Платная часть только после теста.</h3>
               <p>
-                Приложение, кабинет и checkout продолжают один аккаунт POKROV. Без автосписания на первом старте.
+                Приложение, кабинет и оплата продолжают один аккаунт POKROV. Без автосписания на первом старте.
               </p>
             </aside>
 

@@ -189,7 +189,7 @@ def _entry_keyboard(entry_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⭐ На сайт", callback_data=f"fb_feature_{entry_id}"),
+                InlineKeyboardButton(text="На сайт", callback_data=f"fb_feature_{entry_id}"),
                 InlineKeyboardButton(text="🗑️ Удалить", callback_data=f"fb_delete_{entry_id}"),
             ],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="fb_admin_queue")],

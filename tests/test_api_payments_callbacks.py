@@ -789,6 +789,80 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(body.get("amount_rub") or 0), 199)
         self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.fk.money/?"))
 
+    def test_start99_public_order_ignores_referral_and_pending_discounts(self) -> None:
+        client = TestClient(self.api.app)
+
+        from datetime import datetime, timedelta
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=2004,
+                    username="ref_start99",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2004",
+                    sub_type="PAID",
+                    is_active=True,
+                    tos_accepted=True,
+                    expiry_at=datetime.utcnow() + timedelta(days=30),
+                )
+            )
+            s.add(
+                User(
+                    tg_id=2005,
+                    username="start99_invited",
+                    uuid=str(uuid.uuid4()),
+                    email="user_2005",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                    referrer_id=2004,
+                    first_purchase_done=False,
+                    pending_discount_pct=20,
+                    pending_discount_code="WELCOME20",
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=2005,
+            plan_code="start_99",
+            promo_code="WELCOME20",
+            campaign_key="start99_no_discount",
+            source="site",
+        )
+        response = client.post(
+            "/api/payments/freekassa/orders/create-public",
+            json={"plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body.get("ok"))
+        self.assertFalse(body.get("discount_applied"))
+        self.assertEqual(int(body.get("discount_pct") or 0), 0)
+        self.assertEqual(int(body.get("base_amount_rub") or 0), 99)
+        self.assertEqual(int(body.get("amount_rub") or 0), 99)
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter(User.tg_id == 2005).first()
+            self.assertIsNotNone(user)
+            self.assertEqual(int(user.pending_discount_pct or 0), 20)
+            self.assertEqual(str(user.pending_discount_code or ""), "WELCOME20")
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 2005, ExternalOrder.provider == "freekassa").first()
+            self.assertIsNotNone(row)
+            self.assertIn("\"discount_pct\":0", str(row.meta_json or ""))
+            self.assertIn("\"final_amount_rub\":99", str(row.meta_json or ""))
+            self.assertIn("\"referral_discount_eligible\":false", str(row.meta_json or ""))
+        finally:
+            s.close()
+
     def test_create_public_order_rejects_plan_mismatch_with_ticket(self) -> None:
         client = TestClient(self.api.app)
 

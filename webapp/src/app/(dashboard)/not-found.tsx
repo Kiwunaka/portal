@@ -13,7 +13,7 @@ export default function DashboardNotFound() {
           actions={
             <>
               <AppRouteLink href="/dashboard/" className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
-                В дашборд
+                На главную кабинета
               </AppRouteLink>
               <AppRouteLink href="/support/" className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em]">
                 В поддержку
@@ -25,7 +25,7 @@ export default function DashboardNotFound() {
         <div className="mt-6 rounded-[1.5rem] border border-white/70 bg-white/62 p-5 dark:border-white/10 dark:bg-white/[0.04]">
           <Timeline
             items={[
-              { title: "Вернитесь на старт", description: "Дашборд показывает рабочие данные и все быстрые действия.", tone: "success" },
+              { title: "Вернитесь на старт", description: "Главная кабинета показывает рабочие данные и все быстрые действия.", tone: "success" },
               { title: "Проверьте ссылку", description: "Если вы пришли по старой закладке, страница могла быть переименована.", tone: "warning" },
               { title: "Спросите поддержку", description: "Команда поможет найти правильный экран и не потерять контекст.", tone: "info" },
             ]}

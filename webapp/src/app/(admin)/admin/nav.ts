@@ -139,7 +139,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     href: "/admin/payments",
     label: "Платёжный журнал",
     icon: "receipt_long",
-    summary: "Заказы, подтверждения провайдера, ручная проверка и сверка.",
+    summary: "Заказы, подтверждения оплаты, ручная проверка и сверка.",
     categoryId: "payments",
     match: (path) => path.startsWith("/admin/payments"),
   },

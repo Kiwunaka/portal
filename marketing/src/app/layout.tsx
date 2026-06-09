@@ -17,7 +17,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV для YouTube, TikTok и нужных вам сайтов | Android и Windows",
+    default: "POKROV открывает YouTube, TikTok и другие сервисы | Android и Windows",
     template: "%s",
   },
   description:
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV для YouTube, TikTok и нужных вам сайтов",
+    title: "POKROV открывает YouTube, TikTok и другие сервисы",
     description: "Android и Windows, 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней и поддержка рядом.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [

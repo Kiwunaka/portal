@@ -104,7 +104,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         state: callback.state,
       });
       if (!auth?.token) {
-        throw new Error("Не получен web session token");
+        throw new Error("Не получилось открыть вход. Войдите снова или напишите в поддержку.");
       }
       setWebSessionToken(auth.token);
       return true;
@@ -262,7 +262,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         throw new Error(message);
       }
       const auth = await authByTelegramWebLogin(payload);
-      if (!auth?.token) throw new Error("Не получен web session token");
+      if (!auth?.token) throw new Error("Не получилось открыть вход. Войдите снова или напишите в поддержку.");
       setWebSessionToken(auth.token);
       if (typeof window !== "undefined") {
         const current = new URL(window.location.href);

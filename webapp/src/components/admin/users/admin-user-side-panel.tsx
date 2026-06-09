@@ -240,7 +240,7 @@ export function AdminUserSidePanel({
                       Событие {order.last_event.event_type}: {order.last_event.processed_ok ? "обработано" : "нужно проверить"}
                     </p>
                   ) : (
-                    <p className="mt-1 text-slate-500">Подтверждения от провайдера ещё нет.</p>
+                    <p className="mt-1 text-slate-500">Подтверждения оплаты ещё нет.</p>
                   )}
                 </div>
               ))}

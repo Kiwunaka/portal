@@ -388,7 +388,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <DashboardCell title="Люди под разбор" subtitle="Пять последних записей из users view: статус, происхождение и срок доступа." actions={<AppRouteLink href="/admin/users" className={adminButtonClass("secondary", "xs")}>Все люди<ArrowRight aria-hidden className="h-3.5 w-3.5" /></AppRouteLink>}>
+        <DashboardCell title="Люди под разбор" subtitle="Пять последних записей из списка пользователей: статус, происхождение и срок доступа." actions={<AppRouteLink href="/admin/users" className={adminButtonClass("secondary", "xs")}>Все люди<ArrowRight aria-hidden className="h-3.5 w-3.5" /></AppRouteLink>}>
           <CompactTableShell>
             <div className="overflow-x-auto">
               <div className="min-w-[620px]">
@@ -488,7 +488,7 @@ export default function AdminDashboardPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Устойчивость</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <AdminBadge tone={resilienceSummary.free_node_enabled ? "success" : "warning"}>NL-free {resilienceSummary.free_node_enabled ? "включён" : "выключен"}</AdminBadge>
-                  <AdminBadge tone={resilienceSummary.single_point_risk ? "danger" : "success"}>{resilienceSummary.single_point_risk ? "single point risk" : "резерв есть"}</AdminBadge>
+                  <AdminBadge tone={resilienceSummary.single_point_risk ? "danger" : "success"}>{resilienceSummary.single_point_risk ? "нет резерва" : "резерв есть"}</AdminBadge>
                 </div>
               </div>
               <div className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">

@@ -2,16 +2,7 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
-import {
-  finishEmailRecovery,
-  getEmailAuthStatus,
-  loginByEmail,
-  registerByEmail,
-  setWebSessionToken,
-  startEmailRecovery,
-  verifyEmailToken,
-} from "@/lib/api";
-import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
+import { finishEmailRecovery, loginByEmail, registerByEmail, setWebSessionToken, startEmailRecovery, verifyEmailToken } from "@/lib/api";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -39,7 +30,6 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const { webLoginBusy, webLoginError } = usePortalSession();
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const newPasswordRef = useRef<HTMLInputElement | null>(null);
-  const [emailReady, setEmailReady] = useState(false);
   const [emailMode, setEmailMode] = useState<EmailMode>("login");
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
@@ -50,20 +40,6 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const [recoveryToken, setRecoveryToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getEmailAuthStatus()
-      .then((payload) => {
-        if (!cancelled) setEmailReady(isEmailAuthPublicReady(payload));
-      })
-      .catch(() => {
-        if (!cancelled) setEmailReady(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -114,7 +90,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
   const completeEmailLogin = (nextToken?: string | null): void => {
     if (!nextToken) {
-      setEmailError("Не получен токен email-сессии.");
+      setEmailError("Не получилось завершить вход по email. Попробуйте ещё раз.");
       return;
     }
     clearSensitiveInputs();
@@ -249,8 +225,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           ))}
         </div>
 
-        {emailReady ? (
-          <div className="mt-6">
+        <div className="mt-6">
             {emailMode === "login" ? (
               <form className="space-y-4" onSubmit={submitLogin}>
                 <div>
@@ -348,7 +323,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Код восстановления</label>
+                  <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">Код из письма для восстановления</label>
                   <input
                     className={inputClass}
                     value={recoveryToken}
@@ -387,12 +362,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                 </button>
               </form>
             ) : null}
-          </div>
-        ) : (
-          <div className="mt-6 rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
-            Email-вход пока проверяется. Самый быстрый путь сейчас — войти через Telegram.
-          </div>
-        )}
+        </div>
       </div>
 
       {emailMessage ? (

@@ -222,7 +222,7 @@ export default function SupportPage() {
               </AppRouteLink>
             }
           />
-          <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android APK и Windows beta" href="/downloads/" />
+          <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
           <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
         </CabinetGroup>
 

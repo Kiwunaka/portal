@@ -141,9 +141,6 @@ export default function CheckoutPage() {
   const discountPercent = getPricingPreviewDiscountPercent(promoCode);
   const discountAmount = Math.round((Number(activePlan?.amountRub || 0) * discountPercent) / 100);
   const totalAmount = Math.max(0, Number(activePlan?.amountRub || 0) - discountAmount);
-  const providerReasons = providerState?.blocked_reason_texts?.length
-    ? providerState.blocked_reason_texts
-    : providerState?.blocked_reasons || [];
   const checkoutReady = Boolean(providerState?.ok && !providerState?.blocked && providerCode);
 
   const startCheckout = async (): Promise<void> => {
@@ -171,9 +168,7 @@ export default function CheckoutPage() {
   };
 
   const providerWarning = !checkoutReady
-    ? providerReasons.length
-      ? `Оплата временно недоступна: ${providerReasons.join("; ")}.`
-      : "Оплата временно недоступна. Попробуйте позже или откройте поддержку."
+    ? "Оплата временно недоступна. Попробуйте позже или откройте поддержку."
     : "";
 
   return (
@@ -258,7 +253,7 @@ export default function CheckoutPage() {
       <CabinetGroup title="Что дальше">
         <CabinetRow icon={icon("key")} label="У меня уже есть код" hint="Активировать оплату, подарок или промокод" href="/redeem/" />
         <CabinetRow icon={icon("support_agent")} label="Оплата не обновилась" hint="Откройте одно обращение в поддержке" href="/support/" />
-        <CabinetRow icon={icon("arrow_back")} label="Назад к доступу" hint="Сроки, ручная ссылка и загрузки" href="/subscription/" />
+        <CabinetRow icon={icon("arrow_back")} label="Назад к доступу" hint="Сроки, ссылка подключения и загрузки" href="/subscription/" />
       </CabinetGroup>
     </main>
   );

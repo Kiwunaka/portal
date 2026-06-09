@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
@@ -8,14 +8,12 @@ import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/li
 import {
   checkChannelSubscriberStatus,
   claimChannelBonus,
-  getEmailAuthStatus,
   registerByEmail,
   setWebSessionToken,
   startTelegramLink,
   type TelegramLinkStartResult,
   verifyEmailToken,
 } from "@/lib/api";
-import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
@@ -57,7 +55,6 @@ export default function SettingsPage() {
   const [bonusMessage, setBonusMessage] = useState("");
   const [bonusError, setBonusError] = useState("");
   const [bonusBusy, setBonusBusy] = useState<"check" | "claim" | "">("");
-  const [emailReady, setEmailReady] = useState(false);
   const [emailLinkEmail, setEmailLinkEmail] = useState("");
   const [emailLinkName, setEmailLinkName] = useState("");
   const [emailLinkPassword, setEmailLinkPassword] = useState("");
@@ -92,26 +89,12 @@ export default function SettingsPage() {
   const channelBonusClaimedAt = user?.bonuses?.channel_bonus?.claimed_at || null;
   const channelBonusReady = Boolean(user?.bonuses?.channel_bonus?.can_claim);
   const canClaimBonus = !channelBonusClaimedAt && (channelBonusReady || Boolean(bonusCheck?.subscriber && !bonusCheck.alreadyClaimed));
-  const canLinkEmail = Boolean(emailReady && !linkedEmail);
+  const canLinkEmail = !linkedEmail;
   const bonusStatusText =
     bonusMessage ||
     (channelBonusClaimedAt
       ? `Бонус уже добавлен ${formatDate(channelBonusClaimedAt)}.`
       : bonusCheck?.message || (channelBonusReady ? `Можно забрать +${channelBonusDays} дней.` : "Проверьте подписку на канал."));
-
-  useEffect(() => {
-    let cancelled = false;
-    void getEmailAuthStatus()
-      .then((payload) => {
-        if (!cancelled) setEmailReady(isEmailAuthPublicReady(payload));
-      })
-      .catch(() => {
-        if (!cancelled) setEmailReady(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function onTelegramLink(): Promise<void> {
     setTelegramLinkBusy(true);
@@ -217,7 +200,7 @@ export default function SettingsPage() {
       <CabinetStatus
         title="Аккаунт"
         meta={profileName}
-        body={dash?.is_active ? "Доступ, вход и бонусы собраны здесь." : "Продлите доступ или откройте поддержку, если что-то не сходится."}
+        body={dash?.is_active ? "Вход, устройства и бонусы этого профиля." : "Продлите доступ или откройте поддержку, если что-то не сходится."}
         tone={dash?.is_active ? "success" : "warning"}
         action={
           <AppRouteLink href="/subscription/" className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
@@ -258,8 +241,8 @@ export default function SettingsPage() {
         <CabinetRow
           icon={icon("alternate_email")}
           label="Email"
-          hint={linkedEmail ? "Дополнительный вход подключен" : emailReady ? "Можно добавить к этому профилю" : "Появится после проверки писем"}
-          value={linkedEmail || (emailReady ? "доступен" : "скоро")}
+          hint={linkedEmail ? "Дополнительный вход подключен" : "Можно добавить к этому профилю"}
+          value={linkedEmail || "доступен"}
           action={
             canLinkEmail ? (
               <a href="#email-link" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
@@ -411,7 +394,7 @@ export default function SettingsPage() {
 
       <CabinetGroup title="Действия">
         <CabinetRow icon={icon("devices")} label="Устройства" hint="Связанные телефоны и компьютеры" href="/devices/" />
-        <CabinetRow icon={icon("download")} label="Загрузки" hint="Android APK и Windows beta" href="/downloads/" />
+        <CabinetRow icon={icon("download")} label="Загрузки" hint="Android и Windows" href="/downloads/" />
         <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Обращения, вложения и Telegram" href="/support/" />
       </CabinetGroup>
     </main>

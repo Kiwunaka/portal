@@ -10,7 +10,7 @@
     {
       "id": "outside_store_beta",
       "severity": "beta_limit",
-      "summary": "Android APK and Windows EXE are outside-store beta artifacts distributed through the official cabinet and GitHub Releases path.",
+      "summary": "Android and Windows install files are distributed through the official cabinet and GitHub Releases path for the outside-store beta.",
       "operator_note": "Do not imply Google Play, Microsoft Store, WinGet, Apple, stable, or broad public-store availability."
     },
     {
@@ -22,7 +22,7 @@
     {
       "id": "windows_unsigned",
       "severity": "manual_gate",
-      "summary": "Windows beta may remain unsigned and may show Microsoft Defender SmartScreen or unknown-publisher warnings.",
+      "summary": "The Windows file may remain unsigned during beta and may show Microsoft Defender SmartScreen or unknown-publisher warnings.",
       "operator_note": "Do not claim trusted Windows signing, SmartScreen reputation, Microsoft Store, or WinGet readiness."
     },
     {

@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-06-06
+Last updated: 2026-06-08
 
 ## Document Status
 
@@ -305,6 +305,7 @@ Official Telegram surfaces:
 - after `5 GB` is exhausted, the account stays usable in `soft mode` until the next reset
 - `paid` remains unlimited traffic with up to `5 devices`
 - `start_99` is a one-time user plan; checkout must reject repeat attempts before provider invoice creation when the account has already made a first purchase or already has any successful paid Lava.top order
+- `start_99` is already the first-month action price and must not receive referral, promo, or pending-discount reductions; discount mechanics apply only to standard paid plans when backend eligibility allows them
 
 ## Advanced Settings Policy
 

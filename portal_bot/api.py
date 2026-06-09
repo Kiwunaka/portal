@@ -6123,6 +6123,14 @@ async def client_managed_profile(
         transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        smart_connect = _smart_connect_shortlist(
+            session=s,
+            user=user,
+            nodes=nodes_for_user,
+            transport_profile=transport_profile,
+            rollout_config=rollout_config,
+            profile_revision=str(client_policy.get("profile_revision") or ""),
+        )
         sync_ok = await _sync_control_panel_access(user=user)
         if not sync_ok:
             logger.warning(
@@ -6141,20 +6149,16 @@ async def client_managed_profile(
             rollout_config=rollout_config,
             transport_profile=transport_profile,
         )
+        effective_nodes = _prefer_smart_connect_node_order(
+            nodes=effective_nodes,
+            preferred_node_code=str((smart_connect.get("stickiness") or {}).get("preferred_node_code") or ""),
+        )
         config_format, config_payload = _managed_manifest_payload(
             user=user,
             nodes=effective_nodes,
             title="POKROV",
             transport_profile=transport_profile,
             rollout_config=rollout_config,
-        )
-        smart_connect = _smart_connect_shortlist(
-            session=s,
-            user=user,
-            nodes=nodes_for_user,
-            transport_profile=transport_profile,
-            rollout_config=rollout_config,
-            profile_revision=str(client_policy.get("profile_revision") or ""),
         )
         return {
             "version": str(rollout_config.get("version") or ""),
@@ -6714,16 +6718,20 @@ async def _rub_create_order_internal(
         final_amount = base_amount
         discount_pct = 0
         discount_applied = False
+        discount_allowed = normalized_plan_code != "start_99"
         effective_promo = (promo_code or "").strip().upper()[:32]
         pending_code = (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20] if user else ""
         pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0) if user else 0
         referral_discount_eligible = bool(
-            user and getattr(user, "referrer_id", None) and not bool(getattr(user, "first_purchase_done", False))
+            discount_allowed
+            and user
+            and getattr(user, "referrer_id", None)
+            and not bool(getattr(user, "first_purchase_done", False))
         )
         working_amount = int(base_amount)
         if referral_discount_eligible and working_amount > 0:
             working_amount = max(1, int(round(working_amount * 0.8)))
-        if pending_pct > 0:
+        if discount_allowed and pending_pct > 0:
             working_amount, _ = _price_with_pending_discount(amount_rub=working_amount, pending_pct=pending_pct)
             if not effective_promo and pending_code:
                 effective_promo = pending_code[:32]
@@ -13592,6 +13600,21 @@ def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, roll
     if str(transport_profile or LEGACY_REALITY_FALLBACK).strip() == LEGACY_REALITY_FALLBACK and filtered:
         return filtered
     return [_synthetic_transport_node()]
+
+
+def _prefer_smart_connect_node_order(*, nodes: list[Any], preferred_node_code: str) -> list[Any]:
+    preferred = str(preferred_node_code or "").strip().lower()
+    if not preferred or len(nodes) < 2:
+        return nodes
+    ordered = list(nodes)
+    ordered.sort(
+        key=lambda node: (
+            0
+            if str(getattr(node, "code", "") or "").strip().lower() == preferred
+            else 1
+        )
+    )
+    return ordered
 
 
 def _xray_multi_node_config(*, user_uuid: str, nodes: list, title: str, transport_profile: str) -> dict[str, Any]:

@@ -33,7 +33,7 @@ const HOW_IT_WORKS = [
   {
     step: "1",
     title: "Скачайте приложение",
-    text: "Выберите Android или Windows. Если сборка доступна вашему аккаунту, кабинет покажет файл и шаги установки.",
+    text: "Выберите Android или Windows. Если файл доступен вашему аккаунту, кабинет покажет его и шаги установки.",
   },
   {
     step: "2",
@@ -53,9 +53,8 @@ const HOW_IT_WORKS = [
 ];
 
 const HERO_HOOKS = [
-  { value: "5 дней", label: "без карты и автосписаний" },
   { value: "от 99 ₽", label: "за 30 дней после теста" },
-  { value: "Android + Windows", label: "beta-сборки" },
+  { value: "Android + Windows", label: "приложение POKROV" },
   { value: "до 5 устройств", label: "в платном доступе" },
 ];
 
@@ -184,7 +183,7 @@ function UiIcon({ name, size = 20 }: { name: string; size?: number }) {
 /* ── Sections ── */
 
 function Hero({ links }: { links: HomeLinks }) {
-  const heroTitle = getCopyText("marketing.hero.title", "POKROV для YouTube, TikTok и нужных вам сайтов");
+  const heroTitle = getCopyText("marketing.hero.title", "POKROV открывает YouTube, TikTok и другие сервисы");
   const heroSubtitle = getCopyText(
     "marketing.hero.subtitle",
     "Установите приложение на Android или Windows, нажмите «Подключить» и проверьте свои сервисы. 5 дней бесплатно, карту не просим.",
@@ -228,16 +227,29 @@ function Hero({ links }: { links: HomeLinks }) {
                 <span /><span /><span />
               </div>
               <div className={styles.laptopScreen}>
-                <div style={{ textAlign: "center", color: "#0d5c3b" }}>
-                  <MarketingBrandLogo className={styles.heroScreenLogo} width={72} height={72} priority />
-                  <p style={{ margin: "8px 0 0", fontSize: 14, fontWeight: 700 }}>POKROV</p>
-                  <p style={{ margin: 0, fontSize: 12, opacity: 0.6 }}>Подключено</p>
+                <div className={styles.appPreview}>
+                  <div className={styles.appPreviewTop}>
+                    <MarketingBrandLogo className={styles.heroScreenLogo} width={72} height={72} priority />
+                    <span>Готово</span>
+                  </div>
+                  <div className={styles.connectPreviewRing}>
+                    <span>Подключить</span>
+                  </div>
+              <div className={styles.previewPills} aria-label="Короткий статус приложения">
+                    <span>Telegram +10</span>
+                    <span>Android · Windows</span>
+                  </div>
                 </div>
               </div>
               <div className={styles.phone}>
                 <div className={styles.phoneNotch} />
                 <div className={styles.phoneScreen}>
-                  <UiIcon name="shield" size={30} />
+                  <div className={styles.phoneMiniApp}>
+                    <UiIcon name="shield" size={24} />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
               </div>
             </div>
@@ -296,7 +308,7 @@ function Pricing({ links }: { links: HomeLinks }) {
         <div className={styles.sectionHead}>
           <span className={styles.eyebrow}>сколько стоит</span>
           <h2>Сначала попробуйте, потом платите</h2>
-          <p>Получите 5 дней в приложении без карты. В beta-кассе сейчас открыт стартовый срок: цена, лимит устройств и условия видны до оплаты.</p>
+          <p>Получите 5 дней в приложении без карты. Если POKROV подходит, стартовое продление на 30 дней стоит 99 ₽.</p>
         </div>
 
         <div className={styles.pricingLayout}>
@@ -304,7 +316,7 @@ function Pricing({ links }: { links: HomeLinks }) {
             <div className={`${styles.badge} ${styles.badgeEmerald}`}>старт</div>
             <h3>5 дней бесплатно без карты</h3>
             <p>
-              Проверьте POKROV на YouTube, TikTok и нужных сайтах. Если нужен платный срок, стартовое продление на 30 дней стоит 99 ₽.
+              Проверьте POKROV на YouTube, TikTok и других сервисах. Если нужен платный срок, стартовое продление на 30 дней стоит 99 ₽.
             </p>
             <ul className={styles.planFeatures}>
               {freeFeatures.map((f) => (
@@ -349,7 +361,7 @@ function Pricing({ links }: { links: HomeLinks }) {
                     className={isFeatured ? styles.btnPrimary : styles.btnSecondary}
                     style={{ marginTop: "auto", borderRadius: "var(--radius-pill)" }}
                   >
-                    {isFeatured ? "Выбрать beta-старт" : "Выбрать срок"}
+                    {isFeatured ? "Выбрать 30 дней" : "Выбрать срок"}
                   </Link>
                 </article>
               );
@@ -424,7 +436,7 @@ export default function MarketingHomePage() {
             <MarketingBrandLogo className={styles.brandMark} priority />
             <span className={styles.brandText}>
               <strong>POKROV</strong>
-              <small>Android и Windows beta</small>
+              <small>Android и Windows · бета</small>
             </span>
           </Link>
 

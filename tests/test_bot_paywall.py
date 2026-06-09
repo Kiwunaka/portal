@@ -804,7 +804,7 @@ class BotPaywallTests(unittest.TestCase):
         upper_labels = [label.upper() for label in labels]
         self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
         self.assertTrue(any("ПОДКЛЮЧИТЬ УСТРОЙСТВО" in label for label in upper_labels))
-        self.assertTrue(any("Я ЗАПУТАЛСЯ" in label for label in upper_labels))
+        self.assertTrue(any("ПОМОЩЬ" in label for label in upper_labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
         self.assertFalse(any("РУЧНАЯ ССЫЛКА" in label for label in upper_labels))
         self.assertFalse(any("БОНУСЫ" in label for label in upper_labels))

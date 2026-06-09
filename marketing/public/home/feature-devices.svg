@@ -24,12 +24,12 @@
 
     <rect x="252" y="440" width="470" height="70" rx="22" fill="#eff8f2" stroke="#cfe0d7"/>
     <circle cx="296" cy="475" r="18" fill="url(#green)"/>
-    <text x="334" y="484" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#17202f">Android beta</text>
+    <text x="334" y="484" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#17202f">Android</text>
     <text x="594" y="484" font-family="Inter, Arial, sans-serif" font-size="20" fill="#0b4832">активен</text>
 
     <rect x="252" y="536" width="470" height="70" rx="22" fill="#ffffff" stroke="#d8e6de"/>
     <circle cx="296" cy="571" r="18" fill="url(#green)"/>
-    <text x="334" y="580" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#17202f">Windows beta</text>
+    <text x="334" y="580" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#17202f">Windows</text>
     <text x="584" y="580" font-family="Inter, Arial, sans-serif" font-size="20" fill="#0b4832">готов</text>
   </g>
 

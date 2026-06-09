@@ -193,7 +193,7 @@ export default function RedeemPage() {
       <CabinetGroup title="Что дальше">
         <CabinetRow icon={icon("payments")} label="Купить доступ" hint="Если кода еще нет" href="/subscription/checkout/" />
         <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Если код уже использован или не найден" href="/support/" />
-        <CabinetRow icon={icon("qr_code_2")} label="Ручная ссылка" hint="Только для совместимого клиента" href="/subscription/#manual-setup" />
+        <CabinetRow icon={icon("qr_code_2")} label="Ссылка для совместимого клиента" hint="Только если приложение не подключилось само" href="/subscription/#manual-setup" />
       </CabinetGroup>
     </main>
   );

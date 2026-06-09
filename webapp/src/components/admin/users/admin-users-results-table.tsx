@@ -69,6 +69,32 @@ function AdminUsersRowsSkeleton() {
   );
 }
 
+function AdminUsersCardsSkeleton() {
+  return (
+    <div className="space-y-3 lg:hidden">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <article key={`mobile-skeleton-${index}`} className="rounded-[var(--pokrov-radius-card)] border border-slate-200/60 bg-white/70 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
+              <div className="mt-3 h-5 w-40 animate-pulse rounded-full bg-slate-100" />
+            </div>
+            <div className="h-7 w-20 animate-pulse rounded-full bg-slate-100" />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {Array.from({ length: 4 }).map((_, itemIndex) => (
+              <div key={itemIndex} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
+                <div className="h-2.5 w-14 animate-pulse rounded-full bg-slate-200" />
+                <div className="mt-2 h-3 w-20 animate-pulse rounded-full bg-slate-100" />
+              </div>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function AdminUsersResultsTable({
   rows,
   loading,
@@ -103,7 +129,66 @@ export function AdminUsersResultsTable({
       {loading ? <p className="mb-3 text-sm text-slate-400">Загружаем список пользователей…</p> : null}
       {error ? <p className="mb-3 text-sm text-rose-500">{error}</p> : null}
 
-      <div className={adminTableShellClass}>
+      {loading ? <AdminUsersCardsSkeleton /> : null}
+      {!loading && rows.length ? (
+        <div className="space-y-3 lg:hidden">
+          {rows.map((row) => (
+            <button
+              key={`mobile-${row.tg_id}`}
+              type="button"
+              className={`w-full rounded-[var(--pokrov-radius-card)] border p-4 text-left transition ${
+                row.tg_id === selectedTgId
+                  ? "border-emerald-300 bg-emerald-50/90 text-emerald-950"
+                  : isManualTestUserLike(row)
+                    ? "border-sky-200 bg-sky-50/80"
+                    : "border-slate-200/70 bg-white/80 hover:border-emerald-200 hover:bg-emerald-50/35"
+              }`}
+              onClick={() => onSelect(row.tg_id)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-slate-500">ID {row.tg_id}</p>
+                  <p className="mt-1 truncate text-base font-semibold">{row.display_name || row.username || "Без имени"}</p>
+                  <p className="mt-1 truncate text-xs text-slate-500">
+                    {row.username ? `@${row.username}` : "без username"}
+                    {row.linked_telegram_username ? ` · tg @${row.linked_telegram_username}` : ""}
+                  </p>
+                </div>
+                <AdminBadge tone={statusTone(row)}>{userStatusLabel(row.status)}</AdminBadge>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
+                  <p className="text-slate-500">Проверка</p>
+                  <div className="mt-2">
+                    <AdminBadge tone={observerTone(row)}>{observerStateLabel(row.observer_state)}</AdminBadge>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
+                  <p className="text-slate-500">Источник</p>
+                  <p className="mt-2 font-semibold text-slate-800">{originLabel(row.origin)}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
+                  <p className="text-slate-500">Тариф</p>
+                  <p className="mt-2 font-semibold text-slate-800">{row.sub_type || "-"}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
+                  <p className="text-slate-500">Срок</p>
+                  <p className="mt-2 font-semibold text-slate-800">{fmtRuDate(row.expiry_at)}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!loading && !error && !rows.length ? (
+        <AdminEmptyState
+          className="min-h-[180px] lg:hidden"
+          title="По текущим фильтрам пользователей нет."
+          description="Очистите поиск или расширьте фильтры по статусу, источнику и проверке."
+        />
+      ) : null}
+
+      <div className={`${adminTableShellClass} hidden lg:block`}>
         <div className="max-h-[62vh] overflow-x-auto overflow-y-auto">
           <table className="min-w-[900px] text-sm">
             <thead className="sticky top-0 z-[1]">

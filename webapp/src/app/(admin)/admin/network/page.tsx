@@ -196,7 +196,7 @@ export default function AdminNetworkPage() {
               <div className={adminCompactCardClass}>
                 <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Исключения</p>
                 <p className="mt-1 text-sm font-semibold text-slate-800">
-                  {summary ? `${summary.carrierOverrides.length} по провайдерам · ${summary.cohortOverrides.length} по группам` : "—"}
+                  {summary ? `${summary.carrierOverrides.length} по операторам · ${summary.cohortOverrides.length} по группам` : "—"}
                 </p>
               </div>
               <div className={adminCompactCardClass}>

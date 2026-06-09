@@ -2,7 +2,7 @@
   "updatedAt": "2026-06-03",
   "intendedSurface": "marketing home feature cards",
   "reviewNote": "Premium bitmap product-shot mockups generated after owner feedback that the earlier SVG cards looked too flat, then regenerated with Russian in-image UI text and the mark-only POKROV logo used as visual reference. Local review checked that the assets stay within current POKROV beta facts and avoid store, stable, RU-origin, hidden SEO, raw-link, personal-identifier, and unsupported safety claims.",
-  "releaseScopeNote": "Public marketing beta assets; use only current POKROV facts: 5-day trial, Android/Windows beta, Telegram +10 days, one account/cabinet/support flow. No store/stable/RU-origin claims.",
+  "releaseScopeNote": "Public marketing beta assets; use only current POKROV facts: 5-day trial, Android and Windows files, Telegram +10 days, one account/cabinet/support flow. No store/stable/RU-origin claims.",
   "assets": [
     {
       "path": "marketing/public/home/feature-start-premium.png",
@@ -37,7 +37,7 @@
       "path": "marketing/public/home/feature-devices.svg",
       "tool": "deterministic SVG",
       "finalDimensions": "1600x900 SVG",
-      "sourcePrompt": "Earlier real product mockup for one cabinet managing Android beta and Windows beta devices.",
+      "sourcePrompt": "Earlier real product mockup for one cabinet managing Android and Windows devices.",
       "sourceMaster": "POKROV design tokens and canonical public product facts",
       "status": "retained fallback; no longer referenced by homepage"
     },

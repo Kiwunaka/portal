@@ -376,7 +376,7 @@ export default function AdminUsersPage() {
         }
         await reloadSelected();
       } catch (err) {
-        setError(errorMessage(err, "Не удалось выполнить пресет."));
+        setError(errorMessage(err, "Не удалось применить настройку."));
       } finally {
         setBusy(false);
       }

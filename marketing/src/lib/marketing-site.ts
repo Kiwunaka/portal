@@ -45,7 +45,7 @@ const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
 const SEO_LAST_REVIEWED_DATE = "2026-06-01";
 
 export const MARKETING_FEATURE_LIST = [
-  "Android и Windows beta",
+  "Android и Windows, 5 дней бесплатно",
   "5 дней бесплатно без карты",
   "Одна кнопка подключения в приложении",
   "Продление от 99 ₽ за 30 дней",
@@ -104,7 +104,7 @@ export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
     question: "Нужно ли настраивать профили вручную?",
     answer:
-      "Нет. Основной путь идет через приложение: установите сборку, войдите в аккаунт и нажмите подключение. Ручные режимы остаются только для восстановления и совместимости.",
+      "Нет. Основной путь идет через приложение: установите его, войдите в аккаунт и нажмите подключение. Ручные режимы остаются только для восстановления и совместимости.",
   },
   {
     question: "Как устроено продление?",
@@ -119,10 +119,10 @@ export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
     question: "Если что-то не получается, куда идти?",
     answer:
-      "Откройте кабинет или напишите в поддержку. Мы подскажем, где скачать сборку, как войти, забрать Telegram-бонус или продлить срок.",
+      "Откройте кабинет или напишите в поддержку. Мы подскажем, где скачать приложение, как войти, забрать Telegram-бонус или продлить срок.",
   },
   {
-    question: "Что если сборка пока недоступна?",
+    question: "Что если файл пока недоступен?",
     answer:
       "POKROV остается в бете. Если файл не открыт вашему аккаунту, сайт покажет кабинет, инструкцию или поддержку вместо пустой кнопки.",
   },
@@ -268,7 +268,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
       priceCurrency: "RUB",
       availability: "https://schema.org/LimitedAvailability",
       description:
-        "Outside-store public beta: Android APK and Windows EXE are available through official POKROV surfaces; store, trusted-signing, and production claims are not included.",
+        "POKROV install files for Android and Windows are available through official POKROV surfaces; public store and production claims are not included.",
       url: buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout),
     },
     hasOfferCatalog: buildOfferCatalogJsonLd(),

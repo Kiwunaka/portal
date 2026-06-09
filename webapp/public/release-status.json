@@ -85,7 +85,7 @@
       "status": "PASS",
       "missing": [],
       "source": "docs\\audit-artifacts\\brain-runtime-app-download-smoke-2026-05-15.json",
-      "note": "Brain-signed /api/client/apps smoke returned Android APK, Windows EXE, and docs URLs."
+      "note": "Brain-signed /api/client/apps smoke returned Android and Windows download URLs plus docs URLs."
     },
     {
       "name": "runtime_link_sync_guard",
@@ -134,7 +134,7 @@
       "status": "PASS",
       "missing": [],
       "source": "docs\\audit-artifacts\\client-build-evidence-2026-05-07.md",
-      "note": "Unsigned Windows beta risk is accepted for this outside-store release."
+      "note": "Unsigned Windows file risk is accepted for this outside-store release."
     },
     {
       "name": "android_physical_audit",
@@ -146,7 +146,7 @@
   ],
   "safe_public_claims": [
     "POKROV открыт в публичной бете для Android и Windows вне магазинов приложений.",
-    "Android APK и Windows EXE доступны через GitHub Releases на странице установки POKROV и в кабинете.",
+    "Файлы Android и Windows доступны через GitHub Releases на странице установки POKROV и в кабинете.",
     "Оплата работает через Lava.top; другие платёжные провайдеры и Telegram Stars не используются для этой публичной беты.",
     "Вход по email, восстановление доступа и доставка оплаченного ключа на email включены.",
     "Windows-сборка в этой бете может показывать предупреждение системы, потому что установщик не подписан доверенным сертификатом.",

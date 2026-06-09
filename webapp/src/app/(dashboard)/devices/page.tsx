@@ -95,7 +95,7 @@ export default function DevicesPage() {
       </CabinetGroup>
 
       <CabinetGroup title="Действия">
-        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android APK и Windows beta" href="/downloads/" />
+        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
         <CabinetRow icon={icon("payments")} label="Проверить доступ" hint={modeHint} href="/subscription/" />
         <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Если устройство не появилось" href="/support/" />
       </CabinetGroup>

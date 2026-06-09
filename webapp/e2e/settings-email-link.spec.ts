@@ -279,9 +279,9 @@ test("root auth keeps email hidden when delivery proof is incomplete", async ({ 
 
   await expect(page.getByRole("heading", { name: "Кабинет POKROV" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Создать аккаунт" })).toHaveCount(0);
-  await expect(page.getByPlaceholder("name@example.com")).toHaveCount(0);
-  await expect(page.locator("main")).toContainText("Email-вход пока проверяется");
-  await expect(page.locator("main")).toContainText("войти через Telegram");
+  await expect(page.getByPlaceholder("name@example.com")).toBeVisible();
+  await expect(page.getByPlaceholder("Пароль")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Войти через Telegram" })).toBeVisible();
 });
 
 test("root auth prefills email relay tokens and keeps verify recovery inputs separate", async ({ page }) => {

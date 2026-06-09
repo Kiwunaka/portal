@@ -54,7 +54,7 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
     ...androidVariants.map((variant) => ({
       key: `android-${variant.abi || "apk"}`,
       icon: "android",
-      label: variant.abi === "armeabi-v7a" ? "Android APK для старых устройств" : "Android APK для новых устройств",
+      label: variant.abi === "armeabi-v7a" ? "Android для старых устройств" : "Android для новых устройств",
       hint: variant.abi === "armeabi-v7a" ? "ARMv7 · если телефон очень старый" : "ARM64 · основной файл для большинства телефонов",
       value: "APK",
       href: variant.url,
@@ -64,8 +64,8 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
       ? {
           key: "android-apk",
           icon: "android",
-          label: "Android-приложение",
-          hint: "Бета-доступ · скачивайте APK только отсюда",
+          label: "Приложение для Android",
+          hint: "Публичная бета · скачивайте файл только отсюда",
           value: "APK",
           href: androidApk,
           action: externalAction(androidApk, "Скачать"),
@@ -86,8 +86,8 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
       ? {
           key: "windows-exe",
           icon: "desktop_windows",
-          label: "Windows-приложение",
-          hint: "Бета-доступ · Windows может показать предупреждение",
+          label: "Приложение для Windows",
+          hint: "Windows может показать предупреждение о неизвестном издателе",
           value: "EXE",
           href: windowsExe,
           action: externalAction(windowsExe, "Скачать"),
@@ -97,8 +97,8 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
       ? {
           key: "windows-mirror",
           icon: "backup",
-          label: "Резерв Windows",
-          hint: "Та же beta-сборка через запасную ссылку",
+          label: "Запасная ссылка для Windows",
+          hint: "Если основной файл не скачался",
           value: "резерв",
           href: windowsMirror,
           action: externalAction(windowsMirror, "Открыть"),
@@ -154,8 +154,8 @@ export function CabinetDownloadsSurface() {
     <main className="mx-auto w-full max-w-[840px] space-y-5">
       <CabinetStatus
         title="Загрузки"
-        meta={rows.length ? "Бета-доступ" : "Ссылки подтягиваются"}
-        body="Скачайте Android APK или Windows beta отсюда, затем войдите в тот же аккаунт."
+        meta={rows.length ? "Публичная бета" : "Файлы подгружаются"}
+        body="Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт."
         tone={rows.length ? "success" : "neutral"}
         action={
           firstDownload?.href ? (
@@ -183,7 +183,7 @@ export function CabinetDownloadsSurface() {
             />
           ))
         ) : (
-          <CabinetRow icon={icon("hourglass_empty")} label="Ссылки подтягиваются" hint="Если срочно, откройте поддержку" href="/support/" />
+          <CabinetRow icon={icon("hourglass_empty")} label="Файлы подгружаются" hint="Если срочно, откройте поддержку" href="/support/" />
         )}
       </CabinetGroup>
 
@@ -193,7 +193,7 @@ export function CabinetDownloadsSurface() {
         <CabinetRow icon={icon("login")} label="Войти в тот же аккаунт" hint="Профиль подтянется сам" value={hasAndroid || hasWindows ? "важно" : undefined} />
         <CabinetRow icon={icon("devices")} label="Проверить устройство" hint="После входа оно появится в списке" href="/devices/" />
         <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Если файл не открылся или вход не прошел" href="/support/" />
-        <CabinetRow icon={icon("update")} label="Обновлено" hint="По данным API загрузок" value={formatDate(payload?.updated_at)} />
+        <CabinetRow icon={icon("update")} label="Обновлено" hint="По данным страницы загрузок" value={formatDate(payload?.updated_at)} />
       </CabinetGroup>
     </main>
   );

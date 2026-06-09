@@ -80,12 +80,12 @@ export default function InstallPage() {
           <section className="lp-hero">
             <div className="lp-hero-copy">
               <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка POKROV")}</div>
-              <p className="lp-overline">Android и Windows beta, кабинет и поддержка на одной странице.</p>
+              <p className="lp-overline">Android, Windows, кабинет и поддержка на одной странице.</p>
               <h1>{getCopyText("marketing.install.title", "Скачать POKROV или получить помощь")}</h1>
               <p className="lp-hero-lead">
                 {getCopyText(
                   "marketing.install.subtitle",
-                  "Бета-сборки выдаются через кабинет или поддержку. Если файл пока не доступен вашему аккаунту, страница покажет, куда обратиться дальше.",
+                  "Файлы установки открываются через кабинет. Если файл недоступен вашему аккаунту, рядом остаётся инструкция и поддержка.",
                 )}
               </p>
               <div className="lp-hero-actions">
@@ -101,24 +101,23 @@ export default function InstallPage() {
             <div className="lp-hero-stage">
               <article className="lp-stage-card lp-stage-card--primary">
                 <div className="lp-stage-label">Сначала кабинет, потом файл</div>
-                <h2>Каждый шаг либо доступен, либо честно объяснен.</h2>
+                <h2>Откройте кабинет и скачайте нужную версию.</h2>
                 <p>
-                  Если бета-сборка уже доступна вашему аккаунту, кабинет покажет актуальный файл. Если нет, страница покажет инструкцию,
-                  текущий статус и канал помощи.
+                  Если версия уже доступна вашему аккаунту, кабинет покажет актуальный файл. Если нет, рядом будет инструкция и канал помощи.
                 </p>
                 <ol className="lp-stage-steps">
                   <li>
                     <span>01</span>
                     <div>
                       <strong>Android</strong>
-                      <p>Внутренний APK доступен только для одобренных бета-пользователей через кабинет или поддержку.</p>
+                      <p>APK открывается в кабинете для аккаунтов, которым доступна Android-версия.</p>
                     </div>
                   </li>
                   <li>
                     <span>02</span>
                     <div>
                       <strong>Windows</strong>
-                      <p>Windows может показать предупреждение перед установкой, пока приложение в бете.</p>
+                      <p>Windows может показать предупреждение перед установкой, пока приложение не подписано.</p>
                     </div>
                   </li>
                   <li>
@@ -134,8 +133,7 @@ export default function InstallPage() {
               <article className="lp-stage-card">
                 <div className="lp-stage-label">Если доступа к файлу нет</div>
                 <p>
-                  Если релиз еще не выдан вашему аккаунту, мы показываем кабинет,
-                  инструкцию и помощь человека там, где она действительно нужна.
+                  Если файл ещё не выдан вашему аккаунту, откройте инструкцию или напишите в поддержку.
                 </p>
                 <div className="lp-stage-links">
                   <a href={helpHref}>Открыть инструкцию</a>
@@ -152,12 +150,12 @@ export default function InstallPage() {
 
           <section className="lp-section">
             <div className="lp-section-head">
-              <span>Бета-сборки</span>
-              <h2>{getCopyText("marketing.install.downloads.title", "Откройте кабинет для бета-файлов")}</h2>
+              <span>Файлы установки</span>
+              <h2>{getCopyText("marketing.install.downloads.title", "Откройте кабинет для файлов установки")}</h2>
               <p>
                 {getCopyText(
                   "marketing.install.downloads.subtitle",
-                  "Публичная страница не выдаёт прямые загрузки. Если сборка доступна вашему аккаунту, она откроется в кабинете; если нет, рядом остаётся помощь.",
+                  "Если версия доступна вашему аккаунту, она откроется в кабинете. Если нет, рядом остаётся помощь.",
                 )}
               </p>
             </div>
@@ -166,9 +164,9 @@ export default function InstallPage() {
               <article className="lp-platform-card lp-platform-card--featured">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">●</span>
-                  {getCopyText("marketing.install.android.status", androidHasArtifact ? "Android beta в кабинете" : "Android beta не выдана")}
+                  {getCopyText("marketing.install.android.status", androidHasArtifact ? "Android доступен в кабинете" : "Проверьте Android в кабинете")}
                 </div>
-                <h3>{getCopyText("marketing.install.android.title", "APK для Android")}</h3>
+                <h3>{getCopyText("marketing.install.android.title", "Приложение для Android")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.android.desc",
@@ -177,7 +175,7 @@ export default function InstallPage() {
                 </p>
                 {androidHasArtifact ? (
                   <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.android.cta", "Открыть кабинет")}
+                    {getCopyText("marketing.download.android.cta", "Скачать в кабинете")}
                   </a>
                 ) : (
                   <a href={helpHref} className="lp-btn lp-btn--primary">
@@ -189,9 +187,9 @@ export default function InstallPage() {
               <article className="lp-platform-card">
                 <div className="lp-stage-label">
                   <span aria-hidden="true">■</span>
-                  {getCopyText("marketing.install.windows.status", windowsHasArtifact ? "Windows beta в кабинете" : "Windows beta не выдана")}
+                  {getCopyText("marketing.install.windows.status", windowsHasArtifact ? "Windows доступен в кабинете" : "Проверьте Windows в кабинете")}
                 </div>
-                <h3>{getCopyText("marketing.install.windows.title", "Бета-сборка для Windows")}</h3>
+                <h3>{getCopyText("marketing.install.windows.title", "Приложение для Windows")}</h3>
                 <p>
                   {getCopyText(
                     "marketing.install.windows.desc",
@@ -200,7 +198,7 @@ export default function InstallPage() {
                 </p>
                 {windowsHasArtifact ? (
                   <a href={windowsHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.windows.cta", "Открыть кабинет")}
+                    {getCopyText("marketing.download.windows.cta", "Скачать в кабинете")}
                   </a>
                 ) : (
                   <a href={helpHref} className="lp-btn lp-btn--primary">
@@ -216,7 +214,7 @@ export default function InstallPage() {
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если файла пока нет в кабинете</span>
                 <h3>Откройте инструкцию или поддержку</h3>
-                <p>Если сборка ещё не доступна аккаунту, мы покажем рабочий вариант: кабинет, инструкцию или Telegram-поддержку.</p>
+                <p>Если файл ещё не доступен аккаунту, мы покажем рабочий вариант: кабинет, инструкцию или Telegram-поддержку.</p>
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен доступ</span>
@@ -239,7 +237,7 @@ export default function InstallPage() {
                 <p>
                   {getCopyText(
                     "marketing.install.help_body",
-                    "Если сборки нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем, что делать дальше.",
+                    "Если файла нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем, что делать дальше.",
                   )}
                 </p>
               </div>

@@ -290,8 +290,8 @@ function buildRuntimeGates({
       label: "Ссылки Android и Windows",
       value: appLinksReady ? "ссылки беты подтверждены" : "нет подтверждения",
       detail: appLinksReady
-        ? "API отдает APK/EXE из GitHub Releases, ссылку на инструкцию установки и пустую ссылку Google Play. Это подходит для беты вне магазинов; при смене файла нужна новая проверка загрузки."
-        : "Нужны GitHub Releases APK/EXE, инструкция https://pokrov.space/install/ и пустая ссылка Google Play в /api/client/apps.",
+        ? "API отдаёт файлы приложения из GitHub Releases, ссылку на инструкцию установки и пустую ссылку Google Play. Это подходит для беты вне магазинов; при смене файла нужна новая проверка загрузки."
+        : "Нужны файлы GitHub Releases, инструкция https://pokrov.space/install/ и пустая ссылка Google Play в /api/client/apps.",
       tone: appLinksReady ? "success" : "danger",
     },
     {
@@ -332,14 +332,14 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Проверка Android на устройстве",
     value: "OPERATOR_ATTESTED",
     detail:
-      "Проверка текущей Android-сборки на устройстве принята как подтверждение оператора. Это не публикация в магазине; публично можно говорить только об операторской проверке.",
+      "Проверка текущего Android-файла на устройстве принята как подтверждение оператора. Это не публикация в магазине; публично можно говорить только об операторской проверке.",
     tone: "warning",
   },
   {
     key: "lavatop-live",
     label: "Подтверждение Lava.top для беты",
     value: "PASS_FOR_BETA",
-    detail: "Проверка от 2026-05-15 подтверждает создание счёта, уведомления провайдера, повторные события, ошибки, ручную проверку, сверку и отправку ключа по email для беты вне магазинов. Возвраты, споры и зрелая продовая сверка остаются отдельной задачей.",
+    detail: "Проверка от 2026-05-15 подтверждает создание счёта, уведомления платёжной системы, повторные события, ошибки, ручную проверку, сверку и отправку ключа по email для беты вне магазинов. Возвраты, споры и зрелая продовая сверка остаются отдельной задачей.",
     tone: "success",
   },
   {
@@ -347,7 +347,7 @@ const EXTERNAL_GATES: GateItem[] = [
     label: "Итоговая проверка оплаты",
     value: "PASS_FOR_BETA",
     detail:
-      "Последняя проверка разрешает оплату только через Lava.top для беты. При смене провайдера или более сильных заявлениях нужна новая датированная проверка.",
+      "Последняя проверка разрешает оплату только через Lava.top для беты. При смене платёжной системы или более сильных заявлениях нужна новая датированная проверка.",
     tone: "success",
   },
   {
@@ -568,9 +568,9 @@ export default function AdminReleasePage() {
         "POKROV готовит ограниченную бету Android и Windows вне магазинов.",
         "POKROV открыт в публичной бете вне магазинов по проверке от 2026-05-15.",
         runtimeLinksDetected
-          ? "APK/EXE из GitHub Releases найдены в /api/client/apps; при смене ссылок нужна новая проверка загрузки."
+          ? "Файлы GitHub Releases найдены в /api/client/apps; при смене ссылок нужна новая проверка загрузки."
           : "Файлы GitHub prerelease подготовлены для проверки; рабочие ссылки пока не активны.",
-        "Android-кандидат принят как операторски подтвержденный, Windows EXE остается неподписанной бета-сборкой.",
+        "Android-кандидат принят как операторски подтверждённый, Windows-файл остаётся неподписанным бета-файлом.",
         "Оплата работает через Lava.top для текущей беты; зрелая продовая оплата всё ещё требует отдельной проверки возвратов, споров и сверки.",
         "Email-вход и доставка ключей подтверждены для беты; новый отправитель или деплой требует новой проверки реального письма.",
       ];
@@ -579,7 +579,7 @@ export default function AdminReleasePage() {
     : [
         "POKROV уже готов к стабильной версии 1.0.0.",
         "Оплата Lava.top полностью готова для боевого запуска без дополнительных проверок возвратов, споров и сверки.",
-        "Полная проверка Android-сборки или магазинная публикация уже разрешена.",
+        "Полная проверка Android-файла или магазинная публикация уже разрешена.",
         "Windows подписан доверенным сертификатом.",
         runtimeLinksDetected
           ? "Рабочие ссылки обнаружены, значит можно отправлять публичный анонс без финального подтверждения владельца."
@@ -592,7 +592,7 @@ export default function AdminReleasePage() {
           title: "Рабочие ссылки приложения",
           status: "обнаружены для беты",
           detail:
-            "API уже отдает GitHub APK/EXE и инструкцию установки. Перед новым анонсом или заменой файла проверьте, что ссылки открываются и скачивание работает.",
+            "API уже отдаёт файлы GitHub Releases и инструкцию установки. Перед новым анонсом или заменой файла проверьте, что ссылки открываются и скачивание работает.",
           command: RUNTIME_SYNC_AUDIT_TEXT,
           tone: "warning",
         }
@@ -601,7 +601,7 @@ export default function AdminReleasePage() {
           title: "Рабочие ссылки приложения",
           status: "нужен явный GO",
           detail:
-            "Чтобы включить APK/EXE в /api/client/apps, оператор должен явно подтвердить действие. Это не открывает оплату и не разрешает публичный анонс.",
+            "Чтобы включить файлы приложения в /api/client/apps, оператор должен явно подтвердить действие. Это не открывает оплату и не разрешает публичный анонс.",
           command: RUNTIME_SYNC_GO_TEXT,
           tone: "warning",
         },
@@ -619,7 +619,7 @@ export default function AdminReleasePage() {
       title: "Lava.top",
       status: "для беты подтверждено",
       detail:
-        "Оплата открыта для текущей беты. Новое сильное заявление, смена провайдера или кандидат релиза требуют новой проверки Lava.top: счёт, уведомления, повторы, ошибки, ручная проверка, сверка и доставка ключа по email.",
+        "Оплата открыта для текущей беты. Новое сильное заявление, смена платёжной системы или кандидат релиза требуют новой проверки Lava.top: счёт, уведомления, повторы, ошибки, ручная проверка, сверка и доставка ключа по email.",
       command: LAVATOP_PROBE_COMMAND,
       tone: "success",
     },
@@ -652,7 +652,7 @@ export default function AdminReleasePage() {
       <article className={adminPanelClass(publicGo ? "success" : "danger")}>
         <AdminPanelHeader
           eyebrow="релиз"
-          title={publicGo ? "Публичная бета: GO" : "Публичная бета: требует внимания"}
+          title={publicGo ? "Публичная бета: можно выпускать" : "Публичная бета: требует внимания"}
           description="Один экран для проверки текущей беты. GO относится только к публичной бете вне магазинов; боевой запуск, 1.0.0, магазины, доверенная подпись, полный Android-аудит и доступность из России остаются отдельными ручными проверками."
           actions={
             <button type="button" onClick={() => void load()} className={adminButtonClass("secondary", "sm")}>
@@ -661,8 +661,8 @@ export default function AdminReleasePage() {
           }
         />
         <div className="flex flex-wrap gap-2">
-          <AdminBadge tone={runtimeBlocks ? "warning" : "success"}>локальные проблемы: {runtimeBlocks}</AdminBadge>
-          <AdminBadge tone={externalBlocks ? "danger" : "success"}>внешние блокеры: {externalBlocks}</AdminBadge>
+          <AdminBadge tone={runtimeBlocks ? "warning" : "success"}>что проверяет админка: {runtimeBlocks}</AdminBadge>
+          <AdminBadge tone={externalBlocks ? "danger" : "success"}>что проверяется вручную: {externalBlocks}</AdminBadge>
           <AdminBadge tone="warning">
             {runtimeLinksDetected ? "Рабочие ссылки беты обнаружены" : "Рабочие ссылки не обнаружены"}
           </AdminBadge>
@@ -701,14 +701,14 @@ export default function AdminReleasePage() {
             label: "Оплата",
             value: payments?.ok ? "каталог найден" : "закрыто",
             hint: payments?.ok
-              ? `провайдеры: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; для беты разрешён только Lava.top, продовая проверка остаётся отдельной задачей.`
+              ? `платёжные системы: ${(payments.providers || []).map((provider) => provider.code).join(", ")}; для беты разрешена только Lava.top, продовая проверка остаётся отдельной задачей.`
               : reasonList(payments?.blocked_reason_texts || payments?.blocked_reasons),
             tone: payments?.ok ? "warning" : "warning",
           },
           {
             label: "Telegram Stars",
             value: "выключено по политике",
-            hint: "BOT_STARS_PAYMENTS_ENABLED=false; в этой beta единственный публичный платежный канал — Lava.top. Подарочные коды можно только активировать.",
+            hint: "Оплата Telegram Stars выключена по политике этой беты. Публичная оплата идёт через Lava.top. Подарочные коды можно только активировать.",
             tone: "success",
           },
           {
@@ -738,7 +738,7 @@ export default function AdminReleasePage() {
           <AdminPanelHeader
             eyebrow="локальные проверки"
             title="Что можно проверить из админки"
-            description="Эти пункты берутся из боевых API-ответов текущего окружения. Зеленые локальные проверки не заменяют аудит Android-сборки, подтверждения Lava.top и проверку публикации GitHub."
+            description="Эти пункты берутся из боевых API-ответов текущего окружения. Зеленые локальные проверки не заменяют аудит Android-файла, подтверждения Lava.top и проверку публикации GitHub."
           />
           <div className="grid gap-3 md:grid-cols-2">
             {runtimeGates.map((gate) => (

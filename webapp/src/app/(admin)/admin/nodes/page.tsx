@@ -293,7 +293,7 @@ export default function AdminNodesPage() {
         setNodeActionNote(`Нода ${node.code.toUpperCase()} выключена из выдачи.`);
       } else {
         const result = await adminNodeResync(node.code, { limit: 200 });
-        setNodeActionNote(`Пересборка ${node.code.toUpperCase()}: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}.`);
+        setNodeActionNote(`Обновление ${node.code.toUpperCase()}: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}.`);
       }
       await load();
       if (drift) await loadDrift();

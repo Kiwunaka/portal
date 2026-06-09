@@ -7,7 +7,7 @@ import { CANONICAL_PLATFORM_BRAND, getCopyText } from "../../lib/pokrov";
 import CheckoutClient, { CheckoutLoadingFallback } from "./checkout-client";
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.checkout.meta.title", "Оплата бета-доступа | POKROV"),
+  getCopyText("marketing.checkout.meta.title", "Оплата доступа | POKROV"),
   getCopyText(
     "marketing.checkout.meta.description",
     "Страница оплаты показывает доступные планы, сумму до оплаты, получение ключа доступа и помощь при спорных платежах.",
@@ -15,7 +15,7 @@ export const metadata = buildMarketingMetadata(
   {
     path: "/checkout/",
     noIndex: false,
-    keywords: ["оплата pokrov", "продление pokrov", "тарифы pokrov", "checkout pokrov"],
+    keywords: ["оплата pokrov", "продление pokrov", "тарифы pokrov"],
   },
 );
 

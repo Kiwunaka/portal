@@ -93,7 +93,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
       pathname.startsWith("/downloads/") ||
       pathname === "/dashboard/downloads" ||
       pathname.startsWith("/dashboard/downloads/"),
-    meta: { title: "Доступ", subtitle: "Приложения и восстановление доступа." },
+    meta: { title: "Доступ", subtitle: "Приложение и восстановление." },
   },
   {
     match: (pathname) => pathname === "/dashboard" || (pathname.startsWith("/dashboard/") && !pathname.startsWith("/dashboard/downloads")),
@@ -101,7 +101,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/subscription") || pathname.startsWith("/redeem"),
-    meta: { title: "Доступ", subtitle: "Продление, коды и установка." },
+    meta: { title: "Доступ", subtitle: "Оплата и установка." },
   },
   {
     match: (pathname) => pathname.startsWith("/devices"),
@@ -113,7 +113,7 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   },
   {
     match: (pathname) => pathname.startsWith("/support"),
-    meta: { title: "Помощь", subtitle: "Обращения и Telegram." },
+    meta: { title: "Помощь", subtitle: "Обращения и ответы." },
   },
   {
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
@@ -170,7 +170,7 @@ function profileLabel({
   if (handle) return `@${handle}`;
   const mail = cleanProfileText(email);
   if (mail) return mail;
-  if (isSyntheticEmailAccount(tgId)) return "Email-аккаунт";
+  if (isSyntheticEmailAccount(tgId)) return "Вход по email";
   if (tgId) return `ID ${tgId}`;
   return "Аккаунт POKROV";
 }
@@ -272,7 +272,7 @@ function InitialCabinetSkeleton() {
               Открываем кабинет
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Готовим оболочку и последние данные аккаунта.
+              Обновляем доступ, устройства и последние действия.
             </p>
           </header>
 

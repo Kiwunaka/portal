@@ -262,7 +262,7 @@ export function CheckoutLoadingFallback() {
           <span>POKROV</span>
         </div>
         <div className="checkout-kicker">Тарифы и код активации</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Собираем публичный каталог</div>
+        <div className="checkout-status-chip checkout-status-chip--fallback">Загружаем тарифы</div>
         <h1 className="checkout-title">Выберите срок и проверьте сумму</h1>
         <p className="checkout-sub">Подгружаем тарифы, условия доступа и действия для покупки или активации кода.</p>
       </section>
@@ -271,7 +271,7 @@ export function CheckoutLoadingFallback() {
           <div className="checkout-helper">Готовим тарифы и сумму…</div>
         </article>
         <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Проверяем публичные условия и резервные шаги…</div>
+          <div className="checkout-helper">Проверяем доступные способы оплаты…</div>
         </article>
       </section>
     </main>
@@ -569,7 +569,7 @@ export default function CheckoutClient() {
           {!checkoutReady ? (
             <p className="checkout-helper checkout-helper--warning">
               {checkoutBlockedReasons.length
-                ? "Провайдер оплаты еще не включен. Пока продолжайте через поддержку или кабинет."
+                ? "Оплата временно недоступна. Откройте кабинет или напишите в поддержку — подскажем следующий шаг."
                 : "Проверяем доступность оплаты. Если кнопка не появится, продолжайте через поддержку или кабинет."}
             </p>
           ) : null}

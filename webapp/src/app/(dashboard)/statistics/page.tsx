@@ -73,7 +73,7 @@ export default function StatisticsPage() {
       <CabinetGroup title="Действия">
         <CabinetRow icon={icon("support_agent")} label="Открыть поддержку" hint="Если цифры выглядят странно" href="/support/" />
         <CabinetRow icon={icon("payments")} label="Продлить доступ" hint="Срок и тарифы" href="/subscription/" />
-        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android APK и Windows beta" href="/downloads/" />
+        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
       </CabinetGroup>
     </main>
   );

@@ -29,7 +29,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
       ]}
       steps={[
         { title: "Нажмите повтор", description: "Это быстро пересоберёт страницу без полного выхода из кабинета.", tone: "info" },
-        { title: "Вернитесь на дашборд", description: "Если текущий экран сломан, стартовая точка безопаснее всего.", tone: "warning" },
+        { title: "Вернитесь на главную кабинета", description: "Если текущий экран сломан, стартовая точка безопаснее всего.", tone: "warning" },
         { title: "Откройте поддержку", description: "Пришлите скрин и опишите, на каком экране остановилось открытие.", tone: "success" },
       ]}
       icon="report_problem"
