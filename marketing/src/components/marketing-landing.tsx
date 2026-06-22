@@ -427,7 +427,7 @@ export default function MarketingLanding({
             <h2>{scenarioTitle || "Один сценарий под эту задачу."}</h2>
             <p>
               {scenarioBody ||
-                "Сайт объясняет, приложение дает первый опыт, кабинет помогает продолжить. Без серверных списков и ручных профилей на первом шаге."}
+                "Сайт объясняет, приложение дает первый опыт, кабинет помогает продолжить. Без ручной настройки и выбора серверов на первом шаге."}
             </p>
           </div>
           <div className="lp-trust-grid">
@@ -541,6 +541,9 @@ export default function MarketingLanding({
               </Link>
               <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
                 Открыть кабинет
+              </a>
+              <a href={config.newsChannelUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
+                @pokrov_vpn
               </a>
             </div>
           </div>

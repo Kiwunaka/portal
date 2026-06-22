@@ -2,14 +2,11 @@
 
 import { useMemo } from "react";
 
-import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button } from "@/components/cabinet/ui";
 import { getAccessState, getDeviceLimit, getTrafficLimitGb, isFreeMonthlyState, isPaidUnlimitedState, isTrialPremiumState } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
 
 function formatDate(value?: string | null): string {
   if (!value) return "еще не появлялось";
@@ -58,16 +55,16 @@ export default function DevicesPage() {
         : "Если срок закончился, сначала верните доступ.";
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Устройства"
         meta={`${formatCount(knownAppDevices)} из ${formatCount(deviceLimit)} в профиле`}
         body="Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения."
         tone={devices.length ? "success" : "neutral"}
         action={
-          <AppRouteLink href="/downloads/" className="btn-primary w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+          <Button href="/downloads/" className="w-full sm:w-auto">
             Скачать
-          </AppRouteLink>
+          </Button>
         }
       />
 

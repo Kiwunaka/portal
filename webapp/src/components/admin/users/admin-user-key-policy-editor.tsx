@@ -34,8 +34,8 @@ export function AdminUserKeyPolicyEditor({
     <div className={`${adminInsetPanelClass} mt-3 text-sm`}>
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-900">Ключи и лимиты по нодам</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">Здесь можно включить или выключить ключ, сбросить трафик, синхронизировать подписку и задать лимиты.</p>
+          <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Ключи и лимиты по нодам</p>
+          <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-muted)]">Здесь можно включить или выключить ключ, сбросить трафик, синхронизировать подписку и задать лимиты.</p>
         </div>
         <button className={adminButtonClass("secondary", "xs")} type="button" onClick={onReload} disabled={busy || !!keyBusy || !!policyBusy}>
           Обновить
@@ -48,17 +48,17 @@ export function AdminUserKeyPolicyEditor({
           if (!draft) return null;
 
           return (
-            <div key={key.node_code} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3">
+            <div key={key.node_code} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-[color:var(--atlas-text)]">
                     {key.node_name || key.node_code}
-                    <span className="ml-2 text-xs text-slate-500">{key.node_code}</span>
+                    <span className="ml-2 text-xs text-[color:var(--atlas-text-soft)]">{key.node_code}</span>
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[color:var(--atlas-text-muted)]">
                     {key.exists ? "Ключ присутствует" : "Ключ отсутствует"} | {key.enabled ? "включён" : "выключен"} | {key.online ? "в сети" : "не в сети"}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[color:var(--atlas-text-muted)]">
                     Трафик: {fmtTraffic(key.total_bytes)} | подключений сейчас: {key.current_connections}
                   </p>
                 </div>
@@ -134,7 +134,7 @@ export function AdminUserKeyPolicyEditor({
                 </button>
               </div>
 
-              <div className="mt-2 text-xs text-slate-400">
+              <div className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">
                 Текущие значения: пик {parseNullableNumber(draft.burst_mbps) ?? "—"}, мягкий лимит {parseNullableNumber(draft.soft_cap_gb) ?? "—"}, жёсткий лимит {parseNullableNumber(draft.hard_cap_gb) ?? "—"}.
               </div>
             </div>
@@ -142,7 +142,7 @@ export function AdminUserKeyPolicyEditor({
         })}
       </div>
 
-      {!keys.length ? <p className="mt-3 text-xs text-slate-400">Для Telegram ID {selectedTgId} ключи ещё не выданы.</p> : null}
+      {!keys.length ? <p className="mt-3 text-xs text-[color:var(--atlas-text-muted)]">Для Telegram ID {selectedTgId} ключи ещё не выданы.</p> : null}
     </div>
   );
 }

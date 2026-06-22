@@ -1,16 +1,13 @@
 "use client";
 
-import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button, Input, Note } from "@/components/cabinet/ui";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
 
 function normalizeKey(value: string): string {
   return String(value || "").trim().toUpperCase();
@@ -122,61 +119,42 @@ export default function RedeemPage() {
   }, [searchParams]);
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Активировать код"
         meta={resolvePlanLabel(dash, user)}
         body="Введите код оплаты, подарка или промокод. Личная ссылка подключения сюда не подходит."
         tone={status?.exists && !status.redeemed ? "success" : status?.redeemed ? "warning" : "neutral"}
         action={
-          <AppRouteLink href="/subscription/checkout/" className="outline-btn w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+          <Button variant="secondary" href="/subscription/checkout/" className="w-full sm:w-auto">
             Купить доступ
-          </AppRouteLink>
+          </Button>
         }
       />
 
       <CabinetGroup title="Код">
         <div className="space-y-3 p-4">
-          <input
+          <Input
             value={keyInput}
             onChange={(event) => setKeyInput(normalizeKey(event.target.value))}
             placeholder="Код активации"
-            className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
           />
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              type="button"
-              disabled={lookupBusy}
-              onClick={() => void lookup()}
-              className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-            >
+            <Button variant="secondary" disabled={lookupBusy} onClick={() => void lookup()}>
               {lookupBusy ? "Проверяем..." : "Проверить"}
-            </button>
-            <button
-              type="button"
-              disabled={redeemBusy}
-              onClick={() => void onRedeem()}
-              className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-            >
+            </Button>
+            <Button disabled={redeemBusy} onClick={() => void onRedeem()}>
               {redeemBusy ? "Активируем..." : "Активировать"}
-            </button>
+            </Button>
           </div>
-          <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+          <p className="text-xs leading-5 text-[color:var(--atlas-text-muted)]">
             Если у вас длинная ссылка `connect.pokrov.space`, откройте ручную настройку в разделе доступа.
           </p>
         </div>
       </CabinetGroup>
 
-      {message ? (
-        <p className="rounded-2xl border border-emerald-300/40 bg-emerald-50/80 px-4 py-3 text-sm leading-6 text-emerald-900 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">
-          {message}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="rounded-2xl border border-rose-300/40 bg-rose-50/80 px-4 py-3 text-sm leading-6 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
-          {error}
-        </p>
-      ) : null}
+      {message ? <Note tone="success">{message}</Note> : null}
+      {error ? <Note tone="danger">{error}</Note> : null}
 
       <CabinetGroup title="Статус">
         {status ? (

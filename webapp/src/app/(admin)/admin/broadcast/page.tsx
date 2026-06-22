@@ -231,22 +231,22 @@ export default function AdminBroadcastPage() {
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-xl font-bold">Рассылки</h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[color:var(--atlas-text-soft)]">
               Отсюда отправляются массовые сообщения и управляются новости на главной. Перед запуском проверьте сегмент, лимит и текст.
             </p>
           </div>
         </div>
-        <div className="rounded-xl bg-white/60 p-3 text-xs leading-relaxed text-slate-500 dark:bg-white/5 dark:text-slate-400">
+        <div className="rounded-xl bg-[color:var(--atlas-surface)] p-3 text-xs leading-relaxed text-[color:var(--atlas-text-soft)] dark:bg-white/5 dark:text-slate-400">
           Для Telegram ID можно указать список через пробел, запятую или точку с запятой. Если список пустой, рассылка пойдёт по выбранному сегменту.
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Сегмент</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Сегмент</label>
             <select
               value={segment}
               onChange={(event) => setSegment(event.target.value)}
-              className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
               {SEGMENT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -256,20 +256,20 @@ export default function AdminBroadcastPage() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Лимит</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Лимит</label>
             <input
               type="number"
               value={limit}
               onChange={(event) => setLimit(Number(event.target.value || 0))}
-              className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             />
           </div>
           <div className="xl:col-span-2">
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Telegram ID</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Telegram ID</label>
             <input
               value={tgIdsRaw}
               onChange={(event) => setTgIdsRaw(event.target.value)}
-              className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
               placeholder="Например: 123456789, 987654321"
             />
           </div>
@@ -277,21 +277,21 @@ export default function AdminBroadcastPage() {
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr),minmax(260px,0.4fr)]">
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Текст рассылки</label>
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Текст рассылки</label>
             <textarea
               value={text}
               onChange={(event) => setText(event.target.value)}
               rows={6}
               placeholder="Введите текст сообщения для отправки."
-              className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              className="w-full resize-none rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             />
           </div>
           <div>
-            <label className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-slate-500">
+            <label className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
               <Eye size={10} /> Превью
             </label>
-            <div className="min-h-[120px] rounded-xl bg-white/50 p-3 text-sm whitespace-pre-line text-slate-600 dark:bg-white/5 dark:text-slate-300">
-              {text.trim() || <span className="text-slate-400 italic">Здесь появится текст сообщения</span>}
+            <div className="min-h-[120px] rounded-xl bg-[color:var(--atlas-surface)] p-3 text-sm whitespace-pre-line text-[color:var(--atlas-text-soft)] dark:bg-white/5 dark:text-slate-300">
+              {text.trim() || <span className="text-[color:var(--atlas-text-muted)] italic">Здесь появится текст сообщения</span>}
             </div>
           </div>
         </div>
@@ -315,7 +315,7 @@ export default function AdminBroadcastPage() {
             </div>
             <div className="min-w-0">
               <h3 className="font-display text-xl font-bold">Retention-шаблоны</h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">
                 Здесь редактируются цепочки приветствия, удержания и реактивации. Шаблоны используются в автоматических сообщениях.
               </p>
             </div>
@@ -330,13 +330,13 @@ export default function AdminBroadcastPage() {
               <article key={item.key} className="node-card">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{item.flow}</p>
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">{item.flow}</p>
                     <h4 className="mt-1 text-sm font-bold">{item.label}</h4>
                   </div>
                   <span className={`badge ${existing ? "badge-success" : "badge-warning"}`}>{existing ? "Есть" : "Нет"}</span>
                 </div>
-                <p className="mt-2 text-xs text-slate-500">{item.hint}</p>
-                <div className="mt-3 rounded-xl bg-white/50 p-3 text-xs leading-relaxed text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)]">{item.hint}</p>
+                <div className="mt-3 rounded-xl bg-[color:var(--atlas-surface)] p-3 text-xs leading-relaxed text-[color:var(--atlas-text-soft)] dark:bg-white/5 dark:text-slate-300">
                   {(existing?.text || "Шаблон пока не задан.").slice(0, 240)}
                 </div>
                 <div className="mt-3 flex justify-end">
@@ -364,7 +364,7 @@ export default function AdminBroadcastPage() {
             </div>
             <div className="min-w-0">
               <h3 className="font-display text-xl font-bold">Новости и анонсы</h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">
                 Управляйте короткими карточками на главной и связанными ссылками.
               </p>
             </div>
@@ -383,7 +383,7 @@ export default function AdminBroadcastPage() {
                     <span className={`status-dot ${row.is_active ? "status-dot-online" : "status-dot-stale"}`} />
                     <p className="text-sm font-bold">{row.title}</p>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-xs text-slate-500">{row.summary || "Без описания"}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-[color:var(--atlas-text-soft)]">{row.summary || "Без описания"}</p>
                 </div>
                 <span className={`badge ${row.is_active ? "badge-success" : "badge-danger"}`}>{row.is_active ? "Активна" : "Скрыта"}</span>
               </div>
@@ -399,7 +399,7 @@ export default function AdminBroadcastPage() {
                   <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold" type="button" onClick={() => editLiveUpdate(row)} disabled={busy}>
                     <PencilLine size={10} /> Править
                   </button>
-                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => removeLiveUpdate(row.id)} disabled={busy}>
+                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-semibold text-[color:var(--atlas-status-danger-text)]" type="button" onClick={() => removeLiveUpdate(row.id)} disabled={busy}>
                     <Trash2 size={10} /> Удалить
                   </button>
                 </div>
@@ -420,7 +420,7 @@ export default function AdminBroadcastPage() {
           <div className="stat-icon stat-icon-emerald">
             <Check size={18} />
           </div>
-          <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300">{result}</p>
+          <p className="text-sm font-medium text-[color:var(--atlas-status-success-text)] dark:text-emerald-300">{result}</p>
         </div>
       ) : null}
       {error ? (
@@ -428,7 +428,7 @@ export default function AdminBroadcastPage() {
           <div className="stat-icon stat-icon-rose">
             <X size={18} />
           </div>
-          <p className="text-sm font-medium text-rose-500">{error}</p>
+          <p className="text-sm font-medium text-[color:var(--atlas-status-danger-text)]">{error}</p>
         </div>
       ) : null}
 
@@ -448,7 +448,7 @@ export default function AdminBroadcastPage() {
                         prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, title: event.target.value } : prev,
                       )
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                     placeholder="Заголовок"
                   />
                   <textarea
@@ -459,7 +459,7 @@ export default function AdminBroadcastPage() {
                       )
                     }
                     rows={4}
-                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                     placeholder="Короткое описание"
                   />
                   <input
@@ -469,7 +469,7 @@ export default function AdminBroadcastPage() {
                         prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, link: event.target.value } : prev,
                       )
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                     placeholder="Ссылка"
                   />
                   {liveDialog.kind === "create" ? (
@@ -480,11 +480,11 @@ export default function AdminBroadcastPage() {
                       }
                       type="number"
                       min={0}
-                      className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                      className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                       placeholder="Порядок сортировки"
                     />
                   ) : (
-                    <label className="inline-flex items-center gap-2 text-sm text-slate-500">
+                    <label className="inline-flex items-center gap-2 text-sm text-[color:var(--atlas-text-soft)]">
                       <input
                         type="checkbox"
                         checked={liveDialog.isActive}
@@ -510,7 +510,7 @@ export default function AdminBroadcastPage() {
             {liveDialog.kind === "delete" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Удалить новость #{liveDialog.id}?</h3>
-                <p className="mt-2 text-sm text-slate-500">Карточка исчезнет из ленты и перестанет показываться пользователям.</p>
+                <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)]">Карточка исчезнет из ленты и перестанет показываться пользователям.</p>
                 <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLiveDialog(null)}>
                     Отмена
@@ -529,13 +529,13 @@ export default function AdminBroadcastPage() {
         <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4">
           <div className="glass-card w-full max-w-2xl p-5">
             <h3 className="font-display text-xl font-semibold">{templateDialog.title}</h3>
-            <p className="mt-2 text-sm text-slate-500">{templateDialog.hint}</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.1em] text-slate-500">{templateDialog.key}</p>
+            <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)]">{templateDialog.hint}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">{templateDialog.key}</p>
             <textarea
               value={templateDialog.text}
               onChange={(event) => setTemplateDialog((prev) => (prev ? { ...prev, text: event.target.value } : prev))}
               rows={12}
-              className="mt-4 w-full rounded-2xl border border-violet-200/50 bg-white/80 px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              className="mt-4 w-full rounded-2xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
               placeholder="Текст шаблона. Доступны переменные {expiry_date}, {channel}, {discount_pct}."
             />
             <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

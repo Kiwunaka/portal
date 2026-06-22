@@ -83,7 +83,7 @@ function renderLine(line: string, index: number): ReactNode {
   if (numbered) {
     return (
       <div key={key} className="grid grid-cols-[1.45rem,1fr] gap-2">
-        <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/12 text-[0.68rem] font-semibold text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200">
+        <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/12 text-[0.68rem] font-semibold text-[color:var(--atlas-status-success-text)] dark:bg-emerald-400/15 dark:text-emerald-200">
           {numbered[1]}
         </span>
         <p>{renderInline(numbered[2].trim())}</p>

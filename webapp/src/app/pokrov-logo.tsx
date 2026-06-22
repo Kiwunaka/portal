@@ -46,7 +46,7 @@ export default function PokrovLogo({
       <span className={cn("min-w-0", textClassName)}>
         <svg
           aria-hidden="true"
-          className="block h-auto w-[10.25rem] max-w-full text-slate-950 dark:text-slate-50"
+          className="block h-auto w-[10.25rem] max-w-full text-[color:var(--atlas-text)] dark:text-slate-50"
           fill="none"
           viewBox="3 148 193 29"
           xmlns="http://www.w3.org/2000/svg"
@@ -56,7 +56,7 @@ export default function PokrovLogo({
           ))}
         </svg>
         {caption ? (
-          <span className="mt-1 block text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <span className="mt-1 block text-[11px] uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)] dark:text-slate-400">
             {caption}
           </span>
         ) : null}

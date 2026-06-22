@@ -59,7 +59,7 @@ export const ADMIN_NAV_CATEGORIES: AdminNavCategory[] = [
     id: "network",
     label: "Сеть",
     icon: "lan",
-    description: "Ноды, точки доступа и текущее состояние сети.",
+    description: "Серверы, точки доступа и текущее состояние сети.",
     primaryHint: "Все изменения по сети лучше делать из веб-админки, а не через обходные пути.",
   },
   {
@@ -145,9 +145,9 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     href: "/admin/nodes",
-    label: "Ноды",
+    label: "Серверы",
     icon: "hub",
-    summary: "Состояние нод, тревоги и действия по инфраструктуре.",
+    summary: "Состояние серверов, тревоги и действия по сети.",
     categoryId: "network",
     match: (path) => path.startsWith("/admin/nodes"),
   },

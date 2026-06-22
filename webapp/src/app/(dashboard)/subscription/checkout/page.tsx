@@ -1,7 +1,8 @@
 "use client";
 
-import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button, Input } from "@/components/cabinet/ui";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
 import { getPricingPreviewDiscountPercent, getTariffPlans, normalizePlanCode } from "@/lib/portal";
@@ -39,10 +40,6 @@ const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
     deviceLimit: Number(plan.device_limit || 1),
     note: plan.cabinet_note || plan.marketing_note || plan.label,
   }));
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
 
 function normalizePromo(raw: string): string {
   return String(raw || "").trim().toUpperCase();
@@ -172,21 +169,20 @@ export default function CheckoutPage() {
     : "";
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Продлить доступ"
         meta={resolvePlanLabel(dash, user)}
         body="Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле."
         tone={checkoutReady ? "success" : "warning"}
         action={
-          <button
-            type="button"
+          <Button
             onClick={startCheckout}
             disabled={!checkoutReady || checkoutBusy}
-            className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60 sm:w-auto"
+            className="w-full sm:w-auto"
           >
             {checkoutBusy ? "Открываем..." : "Перейти к оплате"}
-          </button>
+          </Button>
         }
       />
 
@@ -204,7 +200,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedCode(plan.code)}
-                  className="text-sm font-semibold text-emerald-800 dark:text-emerald-300"
+                  className="cab-link"
                 >
                   {selected ? "Выбрано" : "Выбрать"}
                 </button>
@@ -213,40 +209,34 @@ export default function CheckoutPage() {
           );
         })}
       </CabinetGroup>
-      {catalogError ? <p className="px-1 text-sm text-amber-700 dark:text-amber-200">Каталог не обновился: {catalogError}</p> : null}
+      {catalogError ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Каталог не обновился: {catalogError}</p> : null}
 
       <CabinetGroup title="Итог">
         <div className="space-y-3 p-4">
-          <input
+          <Input
             value={promoInput}
             onChange={(event) => setPromoInput(event.target.value)}
             placeholder="Промокод"
-            className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
           />
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
+          <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-text-soft)]">
             <div className="flex justify-between gap-3">
               <span>Базовая цена</span>
-              <strong>{activePlan?.amountRub} ₽</strong>
+              <strong className="text-[color:var(--atlas-text)]">{activePlan?.amountRub} ₽</strong>
             </div>
             <div className="flex justify-between gap-3">
               <span>Скидка</span>
-              <strong>{discountAmount > 0 ? `${discountAmount} ₽` : "нет"}</strong>
+              <strong className="text-[color:var(--atlas-text)]">{discountAmount > 0 ? `${discountAmount} ₽` : "нет"}</strong>
             </div>
-            <div className="mt-2 flex justify-between gap-3 text-base text-slate-950 dark:text-white">
+            <div className="mt-2 flex justify-between gap-3 text-base text-[color:var(--atlas-text)]">
               <span className="font-semibold">К оплате</span>
               <strong>{totalAmount} ₽</strong>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={startCheckout}
-            disabled={!checkoutReady || checkoutBusy}
-            className="btn-primary w-full rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-          >
+          <Button onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} block>
             {checkoutBusy ? "Открываем..." : "Перейти к оплате"}
-          </button>
-          {providerWarning ? <p className="text-sm text-amber-700 dark:text-amber-200">{providerWarning}</p> : null}
-          {checkoutError ? <p className="text-sm text-rose-700 dark:text-rose-200">{checkoutError}</p> : null}
+          </Button>
+          {providerWarning ? <p className="text-sm text-[color:var(--atlas-status-warning-text)]">{providerWarning}</p> : null}
+          {checkoutError ? <p className="text-sm text-[color:var(--atlas-status-danger-text)]">{checkoutError}</p> : null}
         </div>
       </CabinetGroup>
 

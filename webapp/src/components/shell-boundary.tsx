@@ -1,6 +1,7 @@
 "use client";
 
 import AppRouteLink from "./app-route-link";
+import { CabinetIcon } from "./cabinet/icon";
 import {
   DialogShell,
   EmptyState,
@@ -71,7 +72,7 @@ export function ShellBoundary({
       <DialogShell eyebrow={eyebrow} actions={<StatusBadge tone={badgeTone}>{badgeLabel}</StatusBadge>} className="relative">
         <div className="grid gap-6 xl:grid-cols-[1.03fr_0.97fr]">
           <EmptyState
-            icon={<span className="material-symbols-rounded text-3xl">{icon}</span>}
+            icon={<CabinetIcon name={icon} className="h-8 w-8" />}
             title={title}
             description={description}
             actions={
@@ -90,7 +91,7 @@ export function ShellBoundary({
               ))}
             </div>
 
-            <div className="rounded-[1.5rem] border border-white/70 bg-white/62 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+            <div className="rounded-[1.5rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-5 dark:border-white/10 dark:bg-white/[0.04]">
               <SectionHeader
                 eyebrow="recovery"
                 title="Что делать дальше"

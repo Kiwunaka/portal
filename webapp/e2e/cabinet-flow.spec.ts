@@ -606,7 +606,7 @@ test.describe("Cabinet flow", () => {
     await page.goto("/downloads/");
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
-    await expect(page.locator("main")).toContainText("Android-приложение");
+    await expect(page.locator("main")).toContainText("Приложение для Android");
   });
 
   test("shows branded root and cabinet not-found recovery screens", async ({ page }) => {
@@ -757,7 +757,7 @@ test.describe("Cabinet flow", () => {
   test("settings exposes clear Telegram bonus actions without raw account details", async ({ page }) => {
     await page.goto("/settings/");
 
-    await expect(page.getByRole("heading", { name: "Аккаунт" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Аккаунт", exact: true })).toBeVisible();
     await expect(page.locator("main")).toContainText("Профиль");
     await expect(page.locator("main")).toContainText("Вход и восстановление");
     await expect(page.locator("main")).toContainText("Telegram-бонус");

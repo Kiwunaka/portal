@@ -100,8 +100,9 @@ Rollout note:
 - `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns a manifest with `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, and `warp_policy`
 - managed-profile `warp_policy` is the only app endpoint allowed to carry
-  backend-provisioned WireGuard config/account material, and only when
-  `runtime_ready=true`; public `client_policy` copies stay sanitized
+  optional backend-provisioned WireGuard config/account material, and only when
+  that optional material lane is `runtime_ready=true`; public `client_policy`
+  copies stay sanitized
 - backend-owned WARP material is stored per user/install in `warp_materials`
   using encrypted-at-rest WireGuard/account payloads; rollout-level WARP
   material remains a compatibility fallback and must not become the default
@@ -116,14 +117,16 @@ Rollout note:
 - active WARP material older than `WARP_MATERIAL_MAX_AGE_HOURS` is treated as
   `material_stale`; stale material must not be returned in managed profiles
   until re-provisioned
-- the app must treat managed-profile WARP material as capability data, not
-  automatic consent; Hiddify `warp.enable=true` is allowed only after explicit
-  local user consent and a runtime-ready policy
+- the app must treat managed-profile WARP material as optional capability data,
+  not automatic consent. The default runtime path is client-local Hiddify WARP:
+  Hiddify `warp.enable=true` is allowed after explicit local user consent even
+  when the backend has no server-managed WireGuard material.
 - app-facing WARP lifecycle state is backend-owned through
   `GET /api/client/warp/status`, `POST /api/client/warp/consent`,
   `POST /api/client/warp/revoke`, `POST /api/client/warp/rotate`, and
-  `POST /api/client/warp/events`; the client may cache the result for UI
-  responsiveness but must not treat an in-memory toggle as consent truth
+  `POST /api/client/warp/events`; the backend is the consent/event ledger, but
+  it must not reject client-local consent solely because server-managed
+  WireGuard material is absent.
 - WARP lifecycle routes write `WarpEvent` ledger rows for consent, revoke,
   rotation request, and runtime fallback/error events; request/ledger metadata
   must be sanitized so WireGuard keys, account tokens, subscription URLs, and

@@ -160,10 +160,10 @@ export default function AdminBonusesPage() {
           </div>
           <div className="min-w-0">
             <h2 className="font-display text-xl font-bold">Бонусы и лояльность</h2>
-            <p className="text-xs text-slate-500">Колесо бонусов, ручная выдача уровней и настройка цепочек удержания.</p>
+            <p className="text-xs text-[color:var(--atlas-text-soft)]">Колесо бонусов, ручная выдача уровней и настройка цепочек удержания.</p>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+        <p className="mt-3 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
           Используйте этот раздел, чтобы управлять вероятностями, паузой между попытками и правилами начисления лояльности.
         </p>
       </article>
@@ -171,12 +171,12 @@ export default function AdminBonusesPage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr),minmax(280px,0.6fr)]">
         <article className={`${adminPanelClass("neutral")} space-y-4`}>
           {!config ? (
-            <p className="text-sm text-slate-500">Загружаем настройки...</p>
+            <p className="text-sm text-[color:var(--atlas-text-soft)]">Загружаем настройки...</p>
           ) : (
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Пресет</label>
+                  <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Пресет</label>
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_OPTIONS.map((preset) => (
                       <button
@@ -191,7 +191,7 @@ export default function AdminBonusesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1.5 flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-slate-500">
+                  <label className="mb-1.5 flex items-center gap-1 text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
                     <Timer size={10} /> Охлаждение (часы)
                   </label>
                   <input
@@ -202,20 +202,20 @@ export default function AdminBonusesPage() {
                         prev ? { ...prev, cooldown_hours: Math.max(1, Math.min(2160, Number(event.target.value || 1))) } : prev,
                       )
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                   />
-                  <p className="mt-1 text-[10px] text-slate-400">{Math.round((config.cooldown_hours || 168) / 24)} дней до следующего запуска</p>
+                  <p className="mt-1 text-[10px] text-[color:var(--atlas-text-muted)]">{Math.round((config.cooldown_hours || 168) / 24)} дней до следующего запуска</p>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Весы колеса (days:weight, по одной строке)</label>
-                <p className="mb-2 text-xs text-slate-500">Чем выше weight, тем чаще выпадает бонус с указанной длительностью. Формат строки: <code className="rounded bg-white/70 px-1 py-0.5 dark:bg-white/10">дни:вес</code>.</p>
+                <label className="mb-1.5 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Весы колеса (days:weight, по одной строке)</label>
+                <p className="mb-2 text-xs text-[color:var(--atlas-text-soft)]">Чем выше weight, тем чаще выпадает бонус с указанной длительностью. Формат строки: <code className="rounded bg-[color:var(--atlas-surface)] px-1 py-0.5 dark:bg-white/10">дни:вес</code>.</p>
                 <textarea
                   rows={7}
                   value={weightsText}
                   onChange={(event) => setWeightsText(event.target.value)}
-                  className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                  className="w-full resize-none rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                   placeholder={"1:45\n3:35\n7:15\n30:5"}
                 />
               </div>
@@ -235,20 +235,20 @@ export default function AdminBonusesPage() {
           {result ? (
             <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 p-3">
               <span className="status-dot status-dot-online" />
-              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-300">{result}</p>
+              <p className="text-sm font-medium text-[color:var(--atlas-status-success-text)] dark:text-emerald-300">{result}</p>
             </div>
           ) : null}
           {error ? (
             <div className="flex items-center gap-2 rounded-xl bg-rose-500/10 p-3">
               <span className="status-dot status-dot-offline" />
-              <p className="text-sm font-medium text-rose-500">{error}</p>
+              <p className="text-sm font-medium text-[color:var(--atlas-status-danger-text)]">{error}</p>
             </div>
           ) : null}
         </article>
 
       <article className={adminPanelClass("neutral")}>
           <h3 className="mb-3 font-display text-lg font-bold">Распределение веса</h3>
-          <p className="mb-3 text-xs text-slate-500">Сводка показывает, насколько часто выпадает каждый вариант в текущем наборе весов.</p>
+          <p className="mb-3 text-xs text-[color:var(--atlas-text-soft)]">Сводка показывает, насколько часто выпадает каждый вариант в текущем наборе весов.</p>
           {weightBars.length === 0 ? (
             <div className="empty-state py-6">
               <Dices size={24} />
@@ -264,7 +264,7 @@ export default function AdminBonusesPage() {
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="flex items-center gap-1.5">
                         <span className="badge badge-violet">{bar.days}d</span>
-                        <span className="text-slate-500">weight: {bar.weight}</span>
+                        <span className="text-[color:var(--atlas-text-soft)]">weight: {bar.weight}</span>
                       </span>
                       <strong className="gradient-text">{bar.pct}%</strong>
                     </div>
@@ -292,12 +292,12 @@ export default function AdminBonusesPage() {
               Включено
             </label>
           </div>
-          <p className="text-xs text-slate-500">Формат строки: <code className="rounded bg-white/70 px-1 py-0.5 dark:bg-white/10">days:bonus_days:perk</code>. Один уровень на строку.</p>
+          <p className="text-xs text-[color:var(--atlas-text-soft)]">Формат строки: <code className="rounded bg-[color:var(--atlas-surface)] px-1 py-0.5 dark:bg-white/10">days:bonus_days:perk</code>. Один уровень на строку.</p>
           <textarea
             rows={6}
             value={loyaltyText}
             onChange={(event) => setLoyaltyText(event.target.value)}
-            className="w-full resize-none rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+            className="w-full resize-none rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 font-mono text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             placeholder={"30:1:priority_support\n90:3:fast_resync\n180:7:vip_queue"}
           />
             <button className={adminButtonClass("secondary")} type="button" onClick={() => void saveLoyalty()} disabled={busy}>
@@ -307,18 +307,18 @@ export default function AdminBonusesPage() {
 
         <article className="glass-card space-y-3 p-5">
           <h3 className="font-display text-lg font-bold">Выдать уровень вручную</h3>
-          <p className="text-xs text-slate-500">Быстрая ручная выдача бонуса по Telegram ID.</p>
+          <p className="text-xs text-[color:var(--atlas-text-soft)]">Быстрая ручная выдача бонуса по Telegram ID.</p>
           <input
             value={loyaltyGrantUser}
             onChange={(event) => setLoyaltyGrantUser(event.target.value)}
             placeholder="Telegram ID пользователя"
-            className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+            className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
           <input
             value={loyaltyGrantTier}
             onChange={(event) => setLoyaltyGrantTier(event.target.value)}
             placeholder="Дни уровня, например 30 / 90 / 180"
-            className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+            className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
           />
             <button className={adminButtonClass("secondary")} type="button" onClick={() => void grantLoyalty()} disabled={busy}>
             Выдать бонус

@@ -1,13 +1,10 @@
 "use client";
 
-import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button } from "@/components/cabinet/ui";
 import { getDeviceLimit, getNextResetAt, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
 
 function formatDate(value?: string | null): string {
   if (!value) return "не задан";
@@ -42,16 +39,16 @@ export default function StatisticsPage() {
   const nextResetAt = getNextResetAt(dash, user);
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Статистика"
         meta={resolvePlanLabel(dash, user)}
         body="Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров."
         tone={dash?.is_active ? "success" : "warning"}
         action={
-          <AppRouteLink href="/support/" className="btn-primary w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+          <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             Поддержка
-          </AppRouteLink>
+          </Button>
         }
       />
 

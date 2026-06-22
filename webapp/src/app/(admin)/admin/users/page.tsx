@@ -608,7 +608,7 @@ export default function AdminUsersPage() {
             {dialog.kind === "message" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Сообщение пользователю</h3>
-                <p className="mt-1 text-xs text-slate-500">Это отправит прямое сообщение оператором в Telegram.</p>
+                <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Это отправит прямое сообщение оператором в Telegram.</p>
                 <textarea
                   value={dialog.text}
                   onChange={(event) => setDialog({ kind: "message", text: event.target.value })}
@@ -630,7 +630,7 @@ export default function AdminUsersPage() {
             {dialog.kind === "extend" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Продлить доступ</h3>
-                <p className="mt-1 text-xs text-slate-500">Добавьте оплаченные дни к текущей подписке пользователя.</p>
+                <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Добавьте оплаченные дни к текущей подписке пользователя.</p>
                 <input
                   value={dialog.days}
                   onChange={(event) => setDialog({ kind: "extend", days: event.target.value })}
@@ -653,7 +653,7 @@ export default function AdminUsersPage() {
             {dialog.kind === "create" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Создать тестового пользователя</h3>
-                <p className="mt-1 text-xs text-slate-500">Используйте такие аккаунты только для проверки админки, поддержки и сценариев доступа.</p>
+                <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Используйте такие аккаунты только для проверки админки, поддержки и сценариев доступа.</p>
                 <input
                   value={dialog.displayName}
                   onChange={(event) => setDialog({ kind: "create", displayName: event.target.value, days: dialog.days })}
@@ -682,7 +682,7 @@ export default function AdminUsersPage() {
             {dialog.kind === "deleteConfirm" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Удалить тестового пользователя</h3>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)]">
                   Вы собираетесь удалить <strong>{dialog.displayName}</strong> ({dialog.tgId}). Это действие необратимо и доступно только для явных тестовых аккаунтов.
                 </p>
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -699,10 +699,10 @@ export default function AdminUsersPage() {
             {dialog.kind === "bulkConfirm" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Подтвердить массовое действие</h3>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)]">
                   Вы собираетесь запустить <strong>{bulkActionLabel(bulkAction.action)}</strong> для группы <strong>{bulkSegmentLabel(bulkAction.segment)}</strong>.
                 </p>
-                <p className="mt-2 text-xs text-slate-500">
+                <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)]">
                   Поиск: {bulkAction.q.trim() || "нет"} | Лимит: {bulkAction.limit} | Ноды: {bulkAction.nodeCodes.trim() || "все"}
                 </p>
                 <div className="mt-4 flex justify-end gap-2">
@@ -719,7 +719,7 @@ export default function AdminUsersPage() {
             {dialog.kind === "token" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Новая подписочная ссылка</h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                   Синхронизация панели: {dialog.syncOk ? "успешна" : "в ожидании или с ошибкой"}.
                 </p>
                 <input

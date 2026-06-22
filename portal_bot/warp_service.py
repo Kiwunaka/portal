@@ -43,6 +43,7 @@ _MATERIAL_SECRET_ENV_KEYS = (
 )
 _DEFAULT_MATERIAL_MAX_AGE_HOURS = 24 * 30
 _SUMMARY_WINDOW_HOURS = 24
+_CLIENT_LOCAL_SOURCE = "client_local"
 
 
 def _utcnow() -> datetime:
@@ -505,11 +506,14 @@ def latest_warp_events(session, *, user: User, install_id: str | None) -> list[W
 
 
 def build_warp_status(session, *, user: User, policy: dict[str, Any], install_id: str | None = None) -> dict[str, Any]:
-    runtime_ready = bool((policy or {}).get("runtime_ready"))
-    enabled = bool((policy or {}).get("enabled"))
+    policy_runtime_ready = bool((policy or {}).get("runtime_ready"))
+    runtime_ready = True
+    enabled = True
     wireguard_available = bool((policy or {}).get("wireguard_config_available"))
     mode = str((policy or {}).get("mode") or "proxy_over_warp").strip() or "proxy_over_warp"
     source = str((policy or {}).get("source") or "backend_managed").strip() or "backend_managed"
+    if not policy_runtime_ready:
+        source = _CLIENT_LOCAL_SOURCE
     policy_state = str((policy or {}).get("state") or "").strip()
 
     rows = latest_warp_events(session, user=user, install_id=install_id)
@@ -591,7 +595,7 @@ def record_warp_event(
         event_name=_clean_event(event_name),
         state=_clean_token(state, fallback="not_ready"),
         reason_code=_clean_event(reason_code, fallback="") or None,
-        runtime_ready=bool((policy or {}).get("runtime_ready")),
+        runtime_ready=True,
         consented=bool(consented),
         meta_json=json.dumps(safe_meta, ensure_ascii=False, sort_keys=True)[:8000] if safe_meta else None,
         created_at=_utcnow(),

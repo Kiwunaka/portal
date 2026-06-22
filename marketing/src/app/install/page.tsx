@@ -219,7 +219,7 @@ export default function InstallPage() {
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен доступ</span>
                 <h3>Кабинет показывает срок, устройства и продление</h3>
-                <p>Там видно состояние доступа, связанные устройства и доступные действия без ручных профилей.</p>
+                <p>Там видно состояние доступа, связанные устройства и доступные действия — без ручной настройки.</p>
               </article>
               <article className="lp-info-card">
                 <span className="lp-info-card__eyebrow">Если нужен человек</span>

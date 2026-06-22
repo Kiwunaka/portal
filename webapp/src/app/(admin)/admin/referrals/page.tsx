@@ -173,7 +173,7 @@ export default function AdminReferralsPage() {
     <section className="space-y-5">
       <article className="glass-card p-4">
         <h2 className="font-display text-xl font-bold">Стартовые ссылки и welcome-цепочки</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
           Здесь создаются start-ссылки для welcome и campaign-входов, а также обрабатывается реферальная очередь.
         </p>
       </article>
@@ -186,7 +186,7 @@ export default function AdminReferralsPage() {
             </div>
             <div className="min-w-0">
               <h2 className="font-display text-xl font-bold">Стартовые ссылки</h2>
-              <p className="text-xs text-slate-500">Используются для welcome, промо и других входов.</p>
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">Используются для welcome, промо и других входов.</p>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -198,7 +198,7 @@ export default function AdminReferralsPage() {
             </button>
           </div>
         </div>
-        {error ? <p className="mb-3 text-sm text-rose-500">{error}</p> : null}
+        {error ? <p className="mb-3 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
 
         <div className="space-y-2">
           {links.length === 0 ? (
@@ -214,9 +214,9 @@ export default function AdminReferralsPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="badge badge-violet font-mono">{link.code}</span>
-                    <span className="text-xs text-slate-500">{link.description || "Без описания"}</span>
+                    <span className="text-xs text-[color:var(--atlas-text-soft)]">{link.description || "Без описания"}</span>
                   </div>
-                  <p className="mt-0.5 text-[10px] text-slate-400">Обновлено: {fmtRuDate(link.updated_at)}</p>
+                  <p className="mt-0.5 text-[10px] text-[color:var(--atlas-text-muted)]">Обновлено: {fmtRuDate(link.updated_at)}</p>
                 </div>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -227,7 +227,7 @@ export default function AdminReferralsPage() {
                   <PencilLine size={10} /> Править
                 </button>
                 {link.is_active ? (
-                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-rose-500" type="button" onClick={() => deactivateLink(link.id)} disabled={busy}>
+                  <button className="outline-btn inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-[color:var(--atlas-status-danger-text)]" type="button" onClick={() => deactivateLink(link.id)} disabled={busy}>
                     <X size={10} /> Выключить
                   </button>
                 ) : (
@@ -247,22 +247,22 @@ export default function AdminReferralsPage() {
             </div>
             <div className="min-w-0">
               <h2 className="font-display text-xl font-bold">Сборщик ссылок для кампаний</h2>
-              <p className="text-xs text-slate-500">Генерирует bot, checkout и webapp ссылки по promo, campaign или plan параметрам.</p>
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">Генерирует bot, checkout и webapp ссылки по promo, campaign или plan параметрам.</p>
             </div>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Промокод</label>
-            <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="WELCOME14" className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Промокод</label>
+            <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="WELCOME14" className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
           </div>
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Ключ кампании</label>
-            <input value={campaignKey} onChange={(event) => setCampaignKey(event.target.value)} placeholder="launch14" className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Ключ кампании</label>
+            <input value={campaignKey} onChange={(event) => setCampaignKey(event.target.value)} placeholder="launch14" className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
           </div>
           <div>
-            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-slate-500">Код тарифа</label>
-            <input value={planCode} onChange={(event) => setPlanCode(event.target.value)} placeholder="1_month" className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
+            <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Код тарифа</label>
+            <input value={planCode} onChange={(event) => setPlanCode(event.target.value)} placeholder="1_month" className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
           </div>
         </div>
         <button className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] w-full sm:w-auto" type="button" onClick={() => void buildLinks()} disabled={busy}>
@@ -272,7 +272,7 @@ export default function AdminReferralsPage() {
         {built ? (
           <div className="grid gap-2 text-sm">
             {built.checkout_mode === "bot_fallback" ? (
-              <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              <div className="rounded-xl border border-[color:var(--atlas-status-warning-line)] bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
                 Платёжный checkout недоступен, поэтому система собрала ссылку через бот. Проверьте связку перед запуском кампании.
               </div>
             ) : null}
@@ -283,7 +283,7 @@ export default function AdminReferralsPage() {
             ].map((item) => (
               <div key={item.label} className="node-card flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">{item.label}</p>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">{item.label}</p>
                   <p className="truncate font-mono text-xs">{item.value}</p>
                 </div>
                 <button className="outline-btn inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold" type="button" onClick={() => void copyText(item.value)}>
@@ -303,14 +303,14 @@ export default function AdminReferralsPage() {
             </div>
             <div className="min-w-0">
               <h2 className="font-display text-xl font-bold">Очередь реферальной проверки</h2>
-              <p className="text-xs text-slate-500">Показывает заявки, которые ждут ручной или автоматической обработки.</p>
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">Показывает заявки, которые ждут ручной или автоматической обработки.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={queueStatus}
               onChange={(event) => setQueueStatus(event.target.value)}
-              className="rounded-xl border border-violet-200/50 bg-white/90 px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              className="rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
             >
               <option value="">Все статусы</option>
               <option value="pending">В ожидании</option>
@@ -326,12 +326,12 @@ export default function AdminReferralsPage() {
             </button>
           </div>
         </div>
-        {error ? <p className="mb-2 text-sm text-rose-500">{error}</p> : null}
-        {result ? <p className="mb-2 text-sm text-emerald-500">{result}</p> : null}
+        {error ? <p className="mb-2 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
+        {result ? <p className="mb-2 text-sm text-[color:var(--atlas-status-success-text)]">{result}</p> : null}
         <div className="max-h-[40vh] overflow-auto">
           <table className="min-w-full text-xs">
             <thead>
-              <tr className="text-left text-slate-500">
+              <tr className="text-left text-[color:var(--atlas-text-soft)]">
                 <th className="px-2 py-2">Заказ</th>
                 <th className="px-2 py-2">Реферер</th>
                 <th className="px-2 py-2">Приглашённый</th>
@@ -353,7 +353,7 @@ export default function AdminReferralsPage() {
               ))}
             </tbody>
           </table>
-          {queueRows.length === 0 ? <p className="py-3 text-xs text-slate-500">Очередь пуста.</p> : null}
+          {queueRows.length === 0 ? <p className="py-3 text-xs text-[color:var(--atlas-text-soft)]">Очередь пуста.</p> : null}
         </div>
       </article>
 
@@ -369,7 +369,7 @@ export default function AdminReferralsPage() {
                     onChange={(event) =>
                       setLinkDialog((prev) => (prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, code: event.target.value } : prev))
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                     placeholder="Код ссылки"
                   />
                   <input
@@ -377,7 +377,7 @@ export default function AdminReferralsPage() {
                     onChange={(event) =>
                       setLinkDialog((prev) => (prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, description: event.target.value } : prev))
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                     placeholder="Описание"
                   />
                   <input
@@ -385,11 +385,11 @@ export default function AdminReferralsPage() {
                     onChange={(event) =>
                       setLinkDialog((prev) => (prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, targetAction: event.target.value } : prev))
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-white/80 px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
                     placeholder="Целевое действие"
                   />
                   {linkDialog.kind === "edit" ? (
-                    <label className="inline-flex items-center gap-2 text-sm text-slate-500">
+                    <label className="inline-flex items-center gap-2 text-sm text-[color:var(--atlas-text-soft)]">
                       <input
                         type="checkbox"
                         checked={linkDialog.isActive}
@@ -413,7 +413,7 @@ export default function AdminReferralsPage() {
             {linkDialog.kind === "delete" ? (
               <>
                 <h3 className="font-display text-xl font-semibold">Удалить start-ссылку #{linkDialog.id}?</h3>
-                <p className="mt-2 text-sm text-slate-500">Сценарии welcome и campaign больше не смогут использовать эту ссылку.</p>
+                <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)]">Сценарии welcome и campaign больше не смогут использовать эту ссылку.</p>
                 <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button className="outline-btn rounded-xl px-4 py-2 text-sm font-semibold" type="button" onClick={() => setLinkDialog(null)}>
                     Отмена

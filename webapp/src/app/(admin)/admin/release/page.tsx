@@ -450,12 +450,12 @@ function GateCard({ gate }: { gate: GateItem }) {
     <article className={adminPanelClass(gate.tone)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{gate.label}</p>
-          <h3 className="mt-2 text-base font-semibold text-slate-900">{gate.value}</h3>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">{gate.label}</p>
+          <h3 className="mt-2 text-base font-semibold text-[color:var(--atlas-text)]">{gate.value}</h3>
         </div>
         <AdminBadge tone={gate.tone}>{gate.tone === "success" ? "готово" : gate.tone === "warning" ? "проверить" : "блок"}</AdminBadge>
       </div>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{gate.detail}</p>
+      <p className="mt-3 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{gate.detail}</p>
     </article>
   );
 }
@@ -480,8 +480,8 @@ function OperatorActionCard({ action }: { action: OperatorAction }) {
     <article className={adminPanelClass(action.tone)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{action.title}</p>
-          <h3 className="mt-2 text-base font-semibold text-slate-900">{action.status}</h3>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">{action.title}</p>
+          <h3 className="mt-2 text-base font-semibold text-[color:var(--atlas-text)]">{action.status}</h3>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <AdminBadge tone={action.tone}>{action.tone === "success" ? "готово" : "нужно"}</AdminBadge>
@@ -495,11 +495,11 @@ function OperatorActionCard({ action }: { action: OperatorAction }) {
           </button>
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{action.detail}</p>
-      <pre className="mt-3 overflow-x-auto rounded-[0.9rem] border border-slate-200/70 bg-slate-950 p-3 text-xs leading-5 text-slate-100">
+      <p className="mt-3 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{action.detail}</p>
+      <pre className="mt-3 overflow-x-auto rounded-[0.9rem] border border-[color:var(--atlas-border)] bg-slate-950 p-3 text-xs leading-5 text-slate-100">
         <code>{action.command}</code>
       </pre>
-      {copyError ? <p className="mt-2 text-xs text-rose-700">{copyError}</p> : null}
+      {copyError ? <p className="mt-2 text-xs text-[color:var(--atlas-status-danger-text)]">{copyError}</p> : null}
     </article>
   );
 }
@@ -637,10 +637,10 @@ export default function AdminReleasePage() {
   if (loading) {
     return (
       <section className="space-y-4" aria-busy="true" aria-live="polite">
-        <div className="h-40 animate-pulse rounded-[1rem] border border-slate-200 bg-white/70" />
+        <div className="h-40 animate-pulse rounded-[1rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]" />
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-28 animate-pulse rounded-[1rem] border border-slate-200 bg-white/70" />
+            <div key={index} className="h-28 animate-pulse rounded-[1rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]" />
           ))}
         </div>
       </section>

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button } from "@/components/cabinet/ui";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
 import {
   getAccessState,
@@ -45,10 +47,6 @@ function formatDate(value?: string | null): string {
     day: "numeric",
     month: "long",
   }).format(parsed);
-}
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
 }
 
 function planHint(plan: PlanCatalogRow): string {
@@ -148,16 +146,16 @@ export default function SubscriptionPage() {
       : "Выберите срок или активируйте код.";
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Продлить доступ"
         meta={`${resolvePlanLabel(dash, user)} · ${accessHint}`}
         body={statusBody}
         tone={statusTone}
         action={
-          <AppRouteLink href="/subscription/checkout/" className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
+          <Button href="/subscription/checkout/" className="w-full sm:w-auto">
             Оплатить
-          </AppRouteLink>
+          </Button>
         }
       />
 
@@ -175,11 +173,11 @@ export default function SubscriptionPage() {
               value={`${amountRub} ₽`}
               action={
                 isCurrent ? (
-                  <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Действует</span>
+                  <span className="text-sm font-semibold text-[color:var(--atlas-primary)]">Действует</span>
                 ) : (
                   <AppRouteLink
                     href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
-                    className="text-sm font-semibold text-emerald-800 dark:text-emerald-300"
+                    className="cab-link"
                   >
                     Выбрать
                   </AppRouteLink>
@@ -189,7 +187,7 @@ export default function SubscriptionPage() {
           );
         })}
       </CabinetGroup>
-      {error ? <p className="px-1 text-sm text-amber-700 dark:text-amber-200">Часть тарифов не обновилась: {error}</p> : null}
+      {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Часть тарифов не обновилась: {error}</p> : null}
 
       <CabinetGroup title="Действия">
         <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
@@ -199,17 +197,17 @@ export default function SubscriptionPage() {
 
       <section id="manual-setup" className="scroll-mt-24 space-y-2">
         <div className="flex items-center justify-between gap-3 px-1">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Ручная настройка</h2>
-          <button
-            type="button"
+          <h2 className="cab-eyebrow">Ручная настройка</h2>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setManualAccessOpen((value) => !value)}
             disabled={!manualAccessReady}
-            className="outline-btn rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-60"
           >
             {manualAccessOpen ? "Скрыть" : "Показать"}
-          </button>
+          </Button>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/86 dark:border-white/10 dark:bg-white/[0.04]">
+        <div className="cab-panel">
           <CabinetRow
             icon={icon("qr_code_2")}
             label="Личная ссылка и QR"
@@ -217,39 +215,34 @@ export default function SubscriptionPage() {
             value={manualAccessOpen ? "открыто" : "скрыто"}
           />
           {manualAccessOpen ? (
-            <div className="space-y-5 border-t border-slate-200/70 p-4 dark:border-white/10">
+            <div className="space-y-5 border-t border-[color:var(--atlas-table-divider)] p-4">
               <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
                 <div className="min-w-0">
-                  <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  <p className="text-sm leading-6 text-[color:var(--atlas-text-soft)]">
                     Скопируйте ссылку только на устройстве, которому доверяете. Она открывает профиль подключения.
                   </p>
-                  <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-3 dark:border-white/10 dark:bg-white/[0.04]">
-                    <p className="break-all font-mono text-xs leading-6 text-slate-800 dark:text-slate-200">{subscriptionUrl}</p>
+                  <div className="mt-4 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-3">
+                    <p className="break-all font-mono text-xs leading-6 text-[color:var(--atlas-text)]">{subscriptionUrl}</p>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => void copySubscriptionUrl()}
-                      disabled={!manualAccessReady}
-                      className="btn-primary rounded-full px-5 py-3 text-sm font-semibold disabled:opacity-60"
-                    >
+                    <Button onClick={() => void copySubscriptionUrl()} disabled={!manualAccessReady}>
                       Скопировать ссылку
-                    </button>
-                    <a href={subscriptionUrl} target="_blank" rel="noreferrer" className="outline-btn rounded-full px-5 py-3 text-sm font-semibold">
+                    </Button>
+                    <Button variant="secondary" href={subscriptionUrl} target="_blank" hardNavigate={false}>
                       Открыть ссылку
-                    </a>
+                    </Button>
                   </div>
-                  {copyStatus ? <p className="mt-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{copyStatus}</p> : null}
+                  {copyStatus ? <p className="mt-3 text-sm font-semibold text-[color:var(--atlas-primary)]">{copyStatus}</p> : null}
                 </div>
               </div>
 
               <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Совместимые клиенты</p>
-                <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/72 dark:border-white/10 dark:bg-white/[0.03]">
-                  <CabinetRow label="Hiddify" value="Android и Windows" action={<a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Скачать</a>} />
-                  <CabinetRow label="v2rayN" value="Windows" action={<a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Скачать</a>} />
-                  <CabinetRow label="NekoBox" value="Android" action={<a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Скачать</a>} />
+                <p className="cab-eyebrow mb-2">Совместимые клиенты</p>
+                <div className="cab-panel">
+                  <CabinetRow label="Hiddify" value="Android и Windows" action={<a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="cab-link">Скачать</a>} />
+                  <CabinetRow label="v2rayN" value="Windows" action={<a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="cab-link">Скачать</a>} />
+                  <CabinetRow label="NekoBox" value="Android" action={<a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="cab-link">Скачать</a>} />
                 </div>
               </div>
             </div>

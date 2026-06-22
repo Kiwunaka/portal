@@ -1199,7 +1199,7 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("button", { name: "Создать тестового пользователя" })).toBeVisible();
 
     await openRoute(page, "admin/nodes/");
-    await expect(page.getByRole("heading", { name: "Ноды и состояние инфраструктуры" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Серверы и состояние инфраструктуры" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Проверить расхождения" })).toBeVisible();
 
     await openRoute(page, "admin/tickets/");
@@ -1389,7 +1389,7 @@ test.describe("Admin gate", () => {
 
     await page.locator("select").nth(0).selectOption("manual_test");
     await page.locator("select").nth(1).selectOption("manual_test");
-    await page.locator("tbody tr").first().click();
+    await page.getByRole("button", { name: /Router Lab/ }).click();
     await page.getByRole("button", { name: "Удалить тестового пользователя" }).first().click();
     await expect(page.getByRole("button", { name: "Отмена" })).toBeVisible();
     await page.getByRole("button", { name: "Отмена" }).click();
@@ -1678,9 +1678,9 @@ test.describe("Admin gate", () => {
     await expect(page.getByRole("navigation", { name: "Admin sections" }).getByRole("link", { name: /Платёжный журнал/ })).toContainText("2");
     await page.getByLabel("Статус платежа").selectOption("pending");
     await expect(page).toHaveURL(/status=pending/);
-    await page.getByLabel("Провайдер").selectOption("freekassa");
+    await page.getByLabel("Платёжная система").selectOption("freekassa");
     await expect(page).toHaveURL(/provider=freekassa/);
-    await page.getByPlaceholder("заказ, провайдер, план, кампания, Telegram ID").fill("order-review-2403");
+    await page.getByPlaceholder("заказ, способ оплаты, план, кампания, Telegram ID").fill("order-review-2403");
     await expect(page).toHaveURL(/q=order-review-2403/);
 
     const reviewOrderRow = page.getByRole("row").filter({ hasText: "order-review-2403" });
@@ -1693,7 +1693,9 @@ test.describe("Admin gate", () => {
     await page.getByRole("button", { name: "Сохранить сверку" }).click();
     await expect(page.getByText("Для ручной сверки нужна заметка аудита.")).toBeVisible();
 
-    await page.getByPlaceholder(/кабинете провайдера/i).fill("Кабинет провайдера подтверждает оплату; автоматическую выдачу доступа не меняем.");
+    await page
+      .getByPlaceholder(/что видно на стороне оплаты/i)
+      .fill("Кабинет провайдера подтверждает оплату; автоматическую выдачу доступа не меняем.");
     await page.getByRole("button", { name: "Сохранить сверку" }).click();
     await expect(page.getByText("Сверка сохранена. Доступ пользователя автоматически не менялся.")).toBeVisible();
   });

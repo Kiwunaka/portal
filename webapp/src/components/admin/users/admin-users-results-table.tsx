@@ -40,28 +40,28 @@ function AdminUsersRowsSkeleton() {
   return (
     <>
       {Array.from({ length: 7 }).map((_, index) => (
-        <tr key={`skeleton-${index}`} className="border-t border-[#22303c]">
+        <tr key={`skeleton-${index}`} className="border-t border-[color:var(--atlas-border)]">
           <td className="px-3 py-3">
-            <div className="h-3 w-16 animate-pulse rounded-full bg-slate-700" />
+            <div className="h-3 w-16 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
           </td>
           <td className="px-3 py-3">
-            <div className="h-6 w-24 animate-pulse rounded-full bg-slate-800" />
+            <div className="h-6 w-24 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
           </td>
           <td className="px-3 py-3">
-            <div className="h-3 w-36 animate-pulse rounded-full bg-slate-700" />
-            <div className="mt-2 h-3 w-48 animate-pulse rounded-full bg-slate-800" />
+            <div className="h-3 w-36 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
+            <div className="mt-2 h-3 w-48 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
           </td>
           <td className="px-3 py-3">
-            <div className="h-6 w-20 animate-pulse rounded-full bg-slate-800" />
+            <div className="h-6 w-20 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
           </td>
           <td className="px-3 py-3">
-            <div className="h-6 w-16 animate-pulse rounded-full bg-slate-800" />
+            <div className="h-6 w-16 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
           </td>
           <td className="px-3 py-3">
-            <div className="h-3 w-20 animate-pulse rounded-full bg-slate-700" />
+            <div className="h-3 w-20 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
           </td>
           <td className="px-3 py-3">
-            <div className="h-3 w-24 animate-pulse rounded-full bg-slate-700" />
+            <div className="h-3 w-24 animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)]" />
           </td>
         </tr>
       ))}
@@ -73,19 +73,19 @@ function AdminUsersCardsSkeleton() {
   return (
     <div className="space-y-3 lg:hidden">
       {Array.from({ length: 4 }).map((_, index) => (
-        <article key={`mobile-skeleton-${index}`} className="rounded-[var(--pokrov-radius-card)] border border-slate-200/60 bg-white/70 p-4">
+        <article key={`mobile-skeleton-${index}`} className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
-              <div className="mt-3 h-5 w-40 animate-pulse rounded-full bg-slate-100" />
+              <div className="h-3 w-24 animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
+              <div className="mt-3 h-5 w-40 animate-pulse rounded-full bg-[color:var(--atlas-canvas-alt)]" />
             </div>
-            <div className="h-7 w-20 animate-pulse rounded-full bg-slate-100" />
+            <div className="h-7 w-20 animate-pulse rounded-full bg-[color:var(--atlas-canvas-alt)]" />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2">
             {Array.from({ length: 4 }).map((_, itemIndex) => (
-              <div key={itemIndex} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-                <div className="h-2.5 w-14 animate-pulse rounded-full bg-slate-200" />
-                <div className="mt-2 h-3 w-20 animate-pulse rounded-full bg-slate-100" />
+              <div key={itemIndex} className="rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-3">
+                <div className="h-2.5 w-14 animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
+                <div className="mt-2 h-3 w-20 animate-pulse rounded-full bg-[color:var(--atlas-canvas-alt)]" />
               </div>
             ))}
           </div>
@@ -111,8 +111,8 @@ export function AdminUsersResultsTable({
     <article className={adminPanelClass("neutral")}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Результаты</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900" aria-live="polite">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Результаты</p>
+          <p className="mt-1 text-sm font-semibold text-[color:var(--atlas-text)]" aria-live="polite">
             {loading
               ? "Обновляем список пользователей."
               : rows.length
@@ -126,8 +126,8 @@ export function AdminUsersResultsTable({
         </div>
       </div>
 
-      {loading ? <p className="mb-3 text-sm text-slate-400">Загружаем список пользователей…</p> : null}
-      {error ? <p className="mb-3 text-sm text-rose-500">{error}</p> : null}
+      {loading ? <p className="mb-3 text-sm text-[color:var(--atlas-text-muted)]">Загружаем список пользователей…</p> : null}
+      {error ? <p className="mb-3 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
 
       {loading ? <AdminUsersCardsSkeleton /> : null}
       {!loading && rows.length ? (
@@ -138,18 +138,18 @@ export function AdminUsersResultsTable({
               type="button"
               className={`w-full rounded-[var(--pokrov-radius-card)] border p-4 text-left transition ${
                 row.tg_id === selectedTgId
-                  ? "border-emerald-300 bg-emerald-50/90 text-emerald-950"
+                  ? "border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] text-[color:var(--atlas-status-success-text)]"
                   : isManualTestUserLike(row)
-                    ? "border-sky-200 bg-sky-50/80"
-                    : "border-slate-200/70 bg-white/80 hover:border-emerald-200 hover:bg-emerald-50/35"
+                    ? "border-[color:var(--atlas-status-info-line)] bg-[color:var(--atlas-status-info-bg)]"
+                    : "border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] hover:border-[color:var(--atlas-status-success-line)] hover:bg-[color:var(--atlas-status-success-bg)]"
               }`}
               onClick={() => onSelect(row.tg_id)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-xs text-slate-500">ID {row.tg_id}</p>
+                  <p className="font-mono text-xs text-[color:var(--atlas-text-soft)]">ID {row.tg_id}</p>
                   <p className="mt-1 truncate text-base font-semibold">{row.display_name || row.username || "Без имени"}</p>
-                  <p className="mt-1 truncate text-xs text-slate-500">
+                  <p className="mt-1 truncate text-xs text-[color:var(--atlas-text-soft)]">
                     {row.username ? `@${row.username}` : "без username"}
                     {row.linked_telegram_username ? ` · tg @${row.linked_telegram_username}` : ""}
                   </p>
@@ -157,23 +157,23 @@ export function AdminUsersResultsTable({
                 <AdminBadge tone={statusTone(row)}>{userStatusLabel(row.status)}</AdminBadge>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
-                  <p className="text-slate-500">Проверка</p>
+                <div className="rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                  <p className="text-[color:var(--atlas-text-soft)]">Проверка</p>
                   <div className="mt-2">
                     <AdminBadge tone={observerTone(row)}>{observerStateLabel(row.observer_state)}</AdminBadge>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
-                  <p className="text-slate-500">Источник</p>
-                  <p className="mt-2 font-semibold text-slate-800">{originLabel(row.origin)}</p>
+                <div className="rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                  <p className="text-[color:var(--atlas-text-soft)]">Источник</p>
+                  <p className="mt-2 font-semibold text-[color:var(--atlas-text)]">{originLabel(row.origin)}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
-                  <p className="text-slate-500">Тариф</p>
-                  <p className="mt-2 font-semibold text-slate-800">{row.sub_type || "-"}</p>
+                <div className="rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                  <p className="text-[color:var(--atlas-text-soft)]">Тариф</p>
+                  <p className="mt-2 font-semibold text-[color:var(--atlas-text)]">{row.sub_type || "-"}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-3">
-                  <p className="text-slate-500">Срок</p>
-                  <p className="mt-2 font-semibold text-slate-800">{fmtRuDate(row.expiry_at)}</p>
+                <div className="rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                  <p className="text-[color:var(--atlas-text-soft)]">Срок</p>
+                  <p className="mt-2 font-semibold text-[color:var(--atlas-text)]">{fmtRuDate(row.expiry_at)}</p>
                 </div>
               </div>
             </button>
@@ -192,7 +192,7 @@ export function AdminUsersResultsTable({
         <div className="max-h-[62vh] overflow-x-auto overflow-y-auto">
           <table className="min-w-[900px] text-sm">
             <thead className="sticky top-0 z-[1]">
-              <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              <tr className="border-b border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--atlas-text-soft)]">
                 <th className="px-3 py-3">ID</th>
                 <th className="px-3 py-3">Проверка</th>
                 <th className="px-3 py-3">Пользователь</th>
@@ -209,11 +209,11 @@ export function AdminUsersResultsTable({
                 rows.map((row) => (
                   <tr
                     key={`summary-${row.tg_id}`}
-                    className={`cursor-pointer border-t border-slate-200 align-top transition hover:bg-emerald-50/45 ${
+                    className={`cursor-pointer border-t border-[color:var(--atlas-border)] align-top transition hover:bg-[color:var(--atlas-status-success-bg)] ${
                       row.tg_id === selectedTgId
-                        ? "bg-emerald-50/80 text-emerald-950"
+                        ? "bg-[color:var(--atlas-status-success-bg)] text-[color:var(--atlas-status-success-text)]"
                         : isManualTestUserLike(row)
-                          ? "bg-sky-50/80"
+                          ? "bg-[color:var(--atlas-status-info-bg)]"
                           : ""
                     }`}
                     onClick={() => onSelect(row.tg_id)}
@@ -224,7 +224,7 @@ export function AdminUsersResultsTable({
                     </td>
                     <td className="px-3 py-3">
                       <div className="font-medium">{row.display_name || row.username || "Без имени"}</div>
-                      <div className={`mt-1 text-xs ${row.tg_id === selectedTgId ? "text-emerald-800" : "text-slate-500"}`}>
+                      <div className={`mt-1 text-xs ${row.tg_id === selectedTgId ? "text-[color:var(--atlas-status-success-text)]" : "text-[color:var(--atlas-text-soft)]"}`}>
                         {row.username ? `@${row.username}` : "без username"}
                         {row.linked_telegram_username ? ` · Telegram @${row.linked_telegram_username}` : ""}
                         {row.app_install_id ? ` · приложение ${row.app_install_id}` : ""}
@@ -237,7 +237,7 @@ export function AdminUsersResultsTable({
                       <AdminBadge>{originLabel(row.origin)}</AdminBadge>
                     </td>
                     <td className="px-3 py-3">{row.sub_type || "-"}</td>
-                    <td className={`px-3 py-3 text-xs ${row.tg_id === selectedTgId ? "text-emerald-800" : "text-slate-500"}`}>
+                    <td className={`px-3 py-3 text-xs ${row.tg_id === selectedTgId ? "text-[color:var(--atlas-status-success-text)]" : "text-[color:var(--atlas-text-soft)]"}`}>
                       {fmtRuDate(row.expiry_at)}
                     </td>
                   </tr>
@@ -256,7 +256,7 @@ export function AdminUsersResultsTable({
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-slate-500">Страница {page} из {totalPages}</p>
+      <p className="mt-3 text-xs text-[color:var(--atlas-text-soft)]">Страница {page} из {totalPages}</p>
     </article>
   );
 }

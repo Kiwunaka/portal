@@ -130,8 +130,8 @@ export default function AdminNetworkPage() {
             <Route size={22} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold text-slate-900">Сеть и правила подключения</h2>
-            <p className="mt-1 text-xs leading-5 text-slate-400">
+            <h2 className="text-xl font-semibold text-[color:var(--atlas-text)]">Сеть и правила подключения</h2>
+            <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-muted)]">
               Здесь задаются базовый профиль подключения, исключения для отдельных групп и список служебных тестов.
             </p>
           </div>
@@ -160,12 +160,12 @@ export default function AdminNetworkPage() {
 
           {loading ? (
             <div className="mb-3 grid gap-2" aria-busy="true" aria-live="polite">
-              <div className="h-3 w-44 animate-pulse rounded-full bg-slate-200" />
-              <div className="h-3 w-64 animate-pulse rounded-full bg-slate-200" />
+              <div className="h-3 w-44 animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
+              <div className="h-3 w-64 animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
             </div>
           ) : null}
-          {error ? <p className="mb-3 text-sm font-medium text-rose-700">{error}</p> : null}
-          {notice ? <p className="mb-3 text-sm font-medium text-emerald-700">{notice}</p> : null}
+          {error ? <p className="mb-3 text-sm font-medium text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
+          {notice ? <p className="mb-3 text-sm font-medium text-[color:var(--atlas-status-success-text)]">{notice}</p> : null}
 
           <textarea
             className={`${adminTextAreaClass} min-h-[520px] font-mono text-[12px] leading-5`}
@@ -177,43 +177,43 @@ export default function AdminNetworkPage() {
 
         <aside className="space-y-4">
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-900">Сводка</h3>
+            <h3 className="text-lg font-semibold text-[color:var(--atlas-text)]">Сводка</h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Версия</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">{summary?.version ?? "—"}</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Версия</p>
+                <p className="mt-1 text-lg font-semibold text-[color:var(--atlas-text)]">{summary?.version ?? "—"}</p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Базовый профиль</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{summary?.defaults?.transport_profile ?? "—"}</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Базовый профиль</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--atlas-text)]">{summary?.defaults?.transport_profile ?? "—"}</p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Маршруты / DNS</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
+                <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Маршруты / DNS</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--atlas-text)]">
                   {summary?.defaults ? `${summary.defaults.routing_mode_default} / ${summary.defaults.dns_policy}` : "—"}
                 </p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Исключения</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
+                <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Исключения</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--atlas-text)]">
                   {summary ? `${summary.carrierOverrides.length} по операторам · ${summary.cohortOverrides.length} по группам` : "—"}
                 </p>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Служебные тесты</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Служебные тесты</p>
                 <AdminBadge tone={summary?.operatorLabEnabled ? "warning" : "neutral"} className="mt-2">
                   {summary?.operatorLabEnabled ? "включены" : "выключены"}
                 </AdminBadge>
               </div>
               <div className={adminCompactCardClass}>
-                <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">Действует до</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{summary?.operatorLabExpiry ?? "—"}</p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Действует до</p>
+                <p className="mt-1 text-sm font-semibold text-[color:var(--atlas-text)]">{summary?.operatorLabExpiry ?? "—"}</p>
               </div>
             </div>
           </article>
 
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-900">Списки и источники</h3>
+            <h3 className="text-lg font-semibold text-[color:var(--atlas-text)]">Списки и источники</h3>
             <div className="space-y-2 text-sm">
               <p className={adminCompactCardClass}>
                 установки приложения: <strong>{summary?.operatorLabInstallIds ?? "—"}</strong>
@@ -237,28 +237,28 @@ export default function AdminNetworkPage() {
           </article>
 
           <article className={adminPanelClass("neutral")}>
-            <h3 className="text-lg font-semibold text-slate-900">Правила для групп</h3>
+            <h3 className="text-lg font-semibold text-[color:var(--atlas-text)]">Правила для групп</h3>
             <div className="space-y-3 text-sm">
               {selectorEntries.length ? (
                 selectorEntries.map(([key, value]) => (
                   <div key={key} className={adminCompactCardClass}>
-                    <p className="font-semibold text-slate-800">{key}</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="font-semibold text-[color:var(--atlas-text)]">{key}</p>
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                       профиль: <strong>{value.transport_profile || "—"}</strong> · dns: <strong>{value.dns_policy || "—"}</strong>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                       маршрут: <strong>{value.routing_mode_default || "—"}</strong> · ip: <strong>{value.ip_version_preference || "—"}</strong>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                       установки приложения: <strong className="break-all">{listText(value.install_ids)}</strong>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                       Telegram ID: <strong className="break-all">{numberListText(value.tg_ids)}</strong>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                       привязанные Telegram ID: <strong className="break-all">{numberListText(value.linked_tg_ids)}</strong>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                       платформы: <strong className="break-all">{listText(value.platforms)}</strong>
                     </p>
                   </div>

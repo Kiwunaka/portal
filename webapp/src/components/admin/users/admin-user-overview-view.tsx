@@ -18,8 +18,8 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
   return (
     <div className="mt-3 space-y-3">
       <div className={adminInsetPanelClass}>
-        <p className="text-sm font-semibold text-slate-900">Сводка по подключению</p>
-        <p className="mt-1 text-xs leading-5 text-slate-400">
+        <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Сводка по подключению</p>
+        <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-muted)]">
           Здесь видно, на каких нодах есть пользователь, работает ли подключение и совпадает ли состояние панелей.
         </p>
         {summary ? (
@@ -34,7 +34,7 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
               <p>Всего трафика: <strong>{fmtTraffic(summary.traffic_total_bytes)}</strong></p>
               <p>Состояние панелей: <strong>{panelStateLabel(String(summary.panel_state || ""))}</strong></p>
             </div>
-            <div className="mt-3 rounded-xl border border-emerald-900/60 bg-emerald-950/35 p-3 text-xs text-emerald-100">
+            <div className="mt-3 rounded-xl border border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] p-3 text-xs text-emerald-100">
               <p className="font-semibold">
                 {ACTIVE_USERS_LABEL}: {summary.active_users_estimate}
               </p>
@@ -42,29 +42,29 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
             </div>
           </>
         ) : (
-          <p className="mt-3 text-xs text-slate-400">Сводка по этому пользователю пока недоступна.</p>
+          <p className="mt-3 text-xs text-[color:var(--atlas-text-muted)]">Сводка по этому пользователю пока недоступна.</p>
         )}
         {summary?.online_node_codes_now?.length ? (
-          <p className="mt-3 text-xs text-slate-400">
+          <p className="mt-3 text-xs text-[color:var(--atlas-text-muted)]">
             Сейчас в сети на нодах: <strong>{summary.online_node_codes_now.map((code) => String(code || "").toUpperCase()).join(", ")}</strong>
           </p>
         ) : (
-          <p className="mt-3 text-xs text-slate-400">Сейчас пользователь не виден онлайн на нодах.</p>
+          <p className="mt-3 text-xs text-[color:var(--atlas-text-muted)]">Сейчас пользователь не виден онлайн на нодах.</p>
         )}
       </div>
 
       <div className={adminInsetPanelClass}>
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <p className="text-sm font-semibold text-slate-900">Проверка по IP и нодам</p>
+          <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Проверка по IP и нодам</p>
           <span className={`badge ${observerStateBadgeClass(observer?.state || selected.user.observer_state)}`}>
             {observerStateLabel(observer?.state || selected.user.observer_state)}
           </span>
         </div>
         {!observerHasData(observer) ? (
-          <p className="text-xs text-slate-400">Данных наблюдения пока нет.</p>
+          <p className="text-xs text-[color:var(--atlas-text-muted)]">Данных наблюдения пока нет.</p>
         ) : (
           <div className="grid gap-3 lg:grid-cols-[minmax(0,0.9fr),minmax(0,1.1fr)]">
-            <div className="space-y-1 text-xs text-slate-400">
+            <div className="space-y-1 text-xs text-[color:var(--atlas-text-muted)]">
               <p>IP: <strong>{observer?.observed_ip_count_24h ?? 0}</strong> / 24 ч, <strong>{observer?.observed_ip_count_7d ?? 0}</strong> / 7 дн., <strong>{observer?.observed_ip_count_30d ?? 0}</strong> / 30 дн.</p>
               <p>Ноды: <strong>{observer?.observed_node_count_24h ?? 0}</strong> / 24 ч, <strong>{observer?.observed_node_count_7d ?? 0}</strong> / 7 дн., <strong>{observer?.observed_node_count_30d ?? 0}</strong> / 30 дн.</p>
               <p>Совпадения за 24 ч: <strong>{observer?.overlap_count_24h ?? 0}</strong></p>
@@ -73,37 +73,37 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
             </div>
             <div className="grid gap-3 lg:grid-cols-2">
               <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Последние IP</p>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Последние IP</p>
                 <div className="space-y-2">
                   {(observer?.recent_ips || []).map((row) => (
-                    <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+                    <div key={`${row.node_code}:${row.source_ip_raw}:${row.last_seen_at}`} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{row.source_ip_raw}</span>
-                        <span className="text-slate-500">{row.node_code || "-"}</span>
+                        <span className="text-[color:var(--atlas-text-soft)]">{row.node_code || "-"}</span>
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">
+                      <div className="mt-1 text-[11px] text-[color:var(--atlas-text-soft)]">
                         {row.node_name || "нода"} · {row.last_seen_at ? new Date(row.last_seen_at).toLocaleString("ru-RU") : "-"} · {row.counts_for_suspicion ? "учитывается" : "не учитывается"}
                       </div>
                     </div>
                   ))}
-                  {!observer?.recent_ips?.length ? <p className="text-xs text-slate-400">Последних IP нет.</p> : null}
+                  {!observer?.recent_ips?.length ? <p className="text-xs text-[color:var(--atlas-text-muted)]">Последних IP нет.</p> : null}
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Последние ноды</p>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Последние ноды</p>
                 <div className="space-y-2">
                   {(observer?.recent_nodes || []).map((row) => (
-                    <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+                    <div key={`${row.node_id}:${row.last_seen_at}`} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{row.node_code || `нода #${row.node_id}`}</span>
-                        <span className="text-slate-500">IP: {row.score_ip_count}</span>
+                        <span className="text-[color:var(--atlas-text-soft)]">IP: {row.score_ip_count}</span>
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">
+                      <div className="mt-1 text-[11px] text-[color:var(--atlas-text-soft)]">
                         {row.node_name || "нода"} · {row.last_seen_at ? new Date(row.last_seen_at).toLocaleString("ru-RU") : "-"}
                       </div>
                     </div>
                   ))}
-                  {!observer?.recent_nodes?.length ? <p className="text-xs text-slate-400">Последних нод нет.</p> : null}
+                  {!observer?.recent_nodes?.length ? <p className="text-xs text-[color:var(--atlas-text-muted)]">Последних нод нет.</p> : null}
                 </div>
               </div>
             </div>
@@ -112,30 +112,30 @@ export function AdminUserOverviewView({ selected, busy, onGrantLoyalty }: AdminU
       </div>
 
       <div className={adminInsetPanelClass}>
-        <p className="text-sm font-semibold text-slate-900">Последние обращения</p>
+        <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Последние обращения</p>
         {selected.tickets?.length ? (
           <div className="mt-3 space-y-2">
             {selected.tickets.map((ticket) => (
-              <div key={ticket.id} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+              <div key={ticket.id} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold">{ticket.subject || `Обращение #${ticket.id}`}</p>
                   <span className="badge badge-violet">{ticketStatusLabel(ticket.status)}</span>
                 </div>
-                <p className="mt-1 text-slate-400">{ticket.last_message_preview || ticket.messages?.at(-1)?.body || "Без сообщения"}</p>
+                <p className="mt-1 text-[color:var(--atlas-text-muted)]">{ticket.last_message_preview || ticket.messages?.at(-1)?.body || "Без сообщения"}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-xs text-slate-400">Обращений пока нет.</p>
+          <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">Обращений пока нет.</p>
         )}
       </div>
 
       {loyalty?.tiers?.length ? (
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-900">Бонусы за лояльность</p>
+          <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Бонусы за лояльность</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {loyalty.tiers.map((tier) => (
-              <div key={tier.reward_key} className="rounded-xl border border-[#22303c] bg-[#0b1218] p-3 text-xs">
+              <div key={tier.reward_key} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-3 text-xs">
                 <p className="font-semibold">{tier.days} дн.</p>
                 <p>Бонус: {tier.bonus_days} дн.</p>
                 <p>Перк: {tier.perk}</p>

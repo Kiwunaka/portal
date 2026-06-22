@@ -5,7 +5,7 @@ import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
   "TikTok через приложение | POKROV",
-  "POKROV для Android и Windows: 5 дней бесплатно без карты, быстрый старт и проверка TikTok без ручных профилей.",
+  "POKROV для Android и Windows: 5 дней бесплатно без карты, быстрый старт и проверка TikTok без сложной настройки.",
   {
     path: MARKETING_CANONICAL_PATHS.tiktok,
     keywords: ["проверка tiktok", "короткие видео", "pokrov tiktok", "мобильный старт"],

@@ -312,7 +312,7 @@ export default function AdminDashboardPage() {
 
   return (
     <section className="space-y-4">
-      <article className={`${adminPanelClass("neutral")} border-slate-200 bg-white/90`}>
+      <article className={`${adminPanelClass("neutral")} border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]`}>
         <AdminSurfaceHeader
           title="Сводка смены"
           description="Первый экран для оператора: что требует реакции, какие очереди открыты и свежие ли данные, на которых можно принимать решения."
@@ -369,7 +369,7 @@ export default function AdminDashboardPage() {
             </AppRouteLink>
           }
         >
-          <div className="divide-y divide-slate-200/60">
+          <div className="divide-y divide-[color:var(--atlas-border)]">
             {alertItems.map((item) => (
               <SignalRow key={item.title} title={item.title} body={item.body} tone={item.tone} />
             ))}
@@ -392,23 +392,23 @@ export default function AdminDashboardPage() {
           <CompactTableShell>
             <div className="overflow-x-auto">
               <div className="min-w-[620px]">
-                <div className={`${adminUserQueueGridClass} border-b border-slate-200/70 bg-slate-50/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500`}>
+                <div className={`${adminUserQueueGridClass} border-b border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]`}>
                   <span>Пользователь</span>
                   <span>Статус</span>
                   <span>Вход</span>
                   <span>Срок</span>
                 </div>
-                <div className="divide-y divide-slate-200/70">
+                <div className="divide-y divide-[color:var(--atlas-border)]">
                   {users.length ? (
                     users.map((row) => (
                       <div key={row.tg_id} className={`${adminUserQueueGridClass} px-3 py-3`}>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{row.display_name || row.username || `ID ${row.tg_id}`}</p>
-                          <p className="mt-1 truncate text-xs text-slate-500">{row.username ? `@${row.username}` : `ID ${row.tg_id}`}</p>
+                          <p className="truncate text-sm font-semibold text-[color:var(--atlas-text)]">{row.display_name || row.username || `ID ${row.tg_id}`}</p>
+                          <p className="mt-1 truncate text-xs text-[color:var(--atlas-text-soft)]">{row.username ? `@${row.username}` : `ID ${row.tg_id}`}</p>
                         </div>
                         <div><AdminBadge tone={userStatusTone(row)}>{userStatusLabel(row.status)}</AdminBadge></div>
                         <div><AdminBadge>{row.origin}</AdminBadge></div>
-                        <div className="font-mono text-sm font-medium text-slate-600">{formatRuDateTime(row.expiry_at)}</div>
+                        <div className="font-mono text-sm font-medium text-[color:var(--atlas-text-soft)]">{formatRuDateTime(row.expiry_at)}</div>
                       </div>
                     ))
                   ) : (
@@ -424,13 +424,13 @@ export default function AdminDashboardPage() {
           <div className="space-y-3">
             {tickets.length ? (
               tickets.map((ticket) => (
-                <div key={ticket.id} className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
+                <div key={ticket.id} className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-900">{ticket.subject || `Тикет #${ticket.id}`}</p>
+                    <p className="text-sm font-semibold text-[color:var(--atlas-text)]">{ticket.subject || `Тикет #${ticket.id}`}</p>
                     <AdminBadge>{ticket.status_title}</AdminBadge>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">{ticket.last_message_preview || "Нет превью последнего сообщения."}</p>
-                  <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-slate-400">Обновлён: {formatRuDateTime(ticket.updated_at)}</p>
+                  <p className="mt-2 text-xs leading-5 text-[color:var(--atlas-text-soft)]">{ticket.last_message_preview || "Нет превью последнего сообщения."}</p>
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-[color:var(--atlas-text-muted)]">Обновлён: {formatRuDateTime(ticket.updated_at)}</p>
                 </div>
               ))
             ) : (
@@ -443,25 +443,25 @@ export default function AdminDashboardPage() {
       <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
         <DashboardCell title="Контекст недели" subtitle="Короткая динамика без попытки выдать её за live-аналитику.">
           <div className="grid gap-3 md:grid-cols-[1fr_1.1fr]">
-            <div className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">События</p>
-              <p className="mt-2 font-mono text-2xl font-semibold leading-none text-slate-950">{totals.registrations + totals.churn}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-500">Регистрации {totals.registrations} · отток {totals.churn}</p>
+            <div className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">События</p>
+              <p className="mt-2 font-mono text-2xl font-semibold leading-none text-[color:var(--atlas-text)]">{totals.registrations + totals.churn}</p>
+              <p className="mt-2 text-xs leading-5 text-[color:var(--atlas-text-soft)]">Регистрации {totals.registrations} · отток {totals.churn}</p>
               <div className="mt-4">
                 <MiniBars values={activitySeries} tone="emerald" label="Сумма регистраций и оттока за семь дней" />
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-1">
-              <div className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Выручка за 7 дней</p>
-                <p className="mt-2 font-mono text-xl font-semibold text-slate-950">{formatRub(totals.revenueRub)}</p>
+              <div className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Выручка за 7 дней</p>
+                <p className="mt-2 font-mono text-xl font-semibold text-[color:var(--atlas-text)]">{formatRub(totals.revenueRub)}</p>
               </div>
-              <div className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Сегодня</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">+{latestPoint?.registrations ?? 0} · -{latestPoint?.churn ?? 0} · {formatRub(latestPoint?.revenue_rub ?? 0)}</p>
+              <div className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Сегодня</p>
+                <p className="mt-2 text-sm font-semibold text-[color:var(--atlas-text)]">+{latestPoint?.registrations ?? 0} · -{latestPoint?.churn ?? 0} · {formatRub(latestPoint?.revenue_rub ?? 0)}</p>
               </div>
-              <div className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Фоллбэк подписок</p>
+              <div className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Фоллбэк подписок</p>
                 <div className="mt-2"><AdminBadge tone={fallbackTone}>{Number(errorsSummary.subscription_numeric_fallbacks_24h || 0)} за 24 ч</AdminBadge></div>
               </div>
             </div>
@@ -471,30 +471,30 @@ export default function AdminDashboardPage() {
         <DashboardCell title="Сеть и устойчивость" subtitle="На первом экране только агрегаты и топ-узлы. Глубокий разбор остаётся в разделе нод." actions={<AppRouteLink href="/admin/nodes" className={adminButtonClass("secondary", "xs")}>Все ноды<ArrowRight aria-hidden className="h-3.5 w-3.5" /></AppRouteLink>}>
           <div className="space-y-3">
             {topNodes.slice(0, 4).map((node) => (
-              <div key={node.code} className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
+              <div key={node.code} className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-mono text-sm font-semibold text-slate-900">{node.code}</p>
-                    <p className="mt-1 text-xs text-slate-500">Клиенты: {node.active_clients} · задержка: {node.panel_latency_ms ?? "—"} мс</p>
+                    <p className="font-mono text-sm font-semibold text-[color:var(--atlas-text)]">{node.code}</p>
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Клиенты: {node.active_clients} · задержка: {node.panel_latency_ms ?? "—"} мс</p>
                   </div>
                   <AdminBadge tone={nodeScoreTone(node.health_score)}>{nodeScoreLabel(node.health_score)} · {node.health_score}</AdminBadge>
                 </div>
-                <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-slate-400">Проверка: {formatRuDateTime(node.last_health_at)}</p>
+                <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-[color:var(--atlas-text-muted)]">Проверка: {formatRuDateTime(node.last_health_at)}</p>
               </div>
             ))}
 
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Устойчивость</p>
+              <div className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Устойчивость</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <AdminBadge tone={resilienceSummary.free_node_enabled ? "success" : "warning"}>NL-free {resilienceSummary.free_node_enabled ? "включён" : "выключен"}</AdminBadge>
                   <AdminBadge tone={resilienceSummary.single_point_risk ? "danger" : "success"}>{resilienceSummary.single_point_risk ? "нет резерва" : "резерв есть"}</AdminBadge>
                 </div>
               </div>
-              <div className="rounded-[0.95rem] border border-slate-200/70 bg-white/65 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Активные alert</p>
-                <p className="mt-2 font-mono text-xl font-semibold text-slate-950">{metrics?.active_alerts?.length ?? 0}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Показаны в деталях раздела «Ноды».</p>
+              <div className="rounded-[0.95rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Активные alert</p>
+                <p className="mt-2 font-mono text-xl font-semibold text-[color:var(--atlas-text)]">{metrics?.active_alerts?.length ?? 0}</p>
+                <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-soft)]">Показаны в деталях раздела «Ноды».</p>
               </div>
             </div>
           </div>

@@ -51,19 +51,19 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
   }, [active, value]);
 
   if (!value) {
-    return <p className="mt-3 text-sm text-slate-500">Ссылка пока недоступна.</p>;
+    return <p className="mt-3 text-sm text-[color:var(--atlas-text-soft)]">Ссылка пока недоступна.</p>;
   }
 
   if (!active) {
-    return <p className="mt-3 text-sm text-slate-500">QR-код появится, когда ссылка подключения станет доступна.</p>;
+    return <p className="mt-3 text-sm text-[color:var(--atlas-text-soft)]">QR-код появится, когда ссылка подключения станет доступна.</p>;
   }
 
   if (error) {
-    return <p className="mt-3 text-sm text-rose-500">{error}</p>;
+    return <p className="mt-3 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p>;
   }
 
   if (!src) {
-    return <div className="skeleton mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-white/45 dark:border-white/10" />;
+    return <div className="skeleton mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-[color:var(--atlas-border)] dark:border-white/10" />;
   }
 
   return (
@@ -73,7 +73,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
       width={220}
       height={220}
       unoptimized
-      className="mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-white/45 bg-white p-2"
+      className="mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-2"
     />
   );
 }

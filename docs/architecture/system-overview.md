@@ -53,10 +53,11 @@ Reference-lane note:
 - `portal_bot/channel_bonus_service.py`
   Bounded Telegram bonus helper used by the API for read-only subscriber checks and explicit claim flow.
 - `portal_bot/warp_service.py`
-  Bounded app-facing WARP lifecycle helper used by the API for readiness
-  status, consent/revoke/rotation events, runtime fallback telemetry, and
-  secret redaction before ledger persistence. It also owns encrypted-at-rest
-  per-user/per-install WARP material shaping for managed profile delivery.
+  Bounded app-facing WARP lifecycle helper used by the API for client-local
+  readiness status, consent/revoke/rotation events, runtime fallback
+  telemetry, and secret redaction before ledger persistence. It also owns
+  optional encrypted-at-rest per-user/per-install WARP material shaping for
+  managed profile delivery when an operator explicitly provisions material.
 - `portal_bot/bot.py`
   Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
@@ -89,11 +90,18 @@ Reference-lane note:
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
 - `smart_connect` contains a rollout-compatible shortlist, internal probe targets, rejection counters, scoring hints, and stickiness metadata so the client can combine real RTT with backend health/load signals without guessing
-- `client_policy.warp_policy` remains sanitized; WireGuard config/account material may appear only in the authenticated managed-profile `warp_policy` when runtime proof marks it ready, and the client must still require explicit backend-backed user consent before setting Hiddify `warp.enable=true`
+- `client_policy.warp_policy` remains sanitized; the default WARP path is
+  client-local through Hiddify core, so the backend must not require
+  server-managed WireGuard material before the client can set
+  `warp.enable=true` after explicit local user consent. WireGuard
+  config/account material may appear only in the authenticated managed-profile
+  `warp_policy` when an operator-provisioned optional material lane marks it
+  ready.
 - scoped WARP material lives in `warp_materials` encrypted at rest; operators
-  provision it through `PUT /api/admin/client/warp/material`, while public
+  may provision it through `PUT /api/admin/client/warp/material`, while public
   status and dashboard policy continue to expose only sanitized readiness
-  fields
+  fields. This material lane is optional and not the normal client-local WARP
+  prerequisite.
 - scoped WARP provisioning and rotation are protected by per-hour backend
   limits; stale material is rejected from managed profiles after
   `WARP_MATERIAL_MAX_AGE_HOURS`, and operators can inspect redacted material

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { Manrope } from "next/font/google";
 
 import JsonLd from "../components/json-ld";
 import FunnelTracker from "../components/funnel-tracker";
@@ -13,6 +14,12 @@ import {
 } from "../lib/marketing-site";
 import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND, getDesignTokenCssVariables } from "../lib/pokrov";
 import "./globals.css";
+
+const fontBody = Manrope({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-manrope",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
@@ -71,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const designTokenVars = getDesignTokenCssVariables("public") as CSSProperties;
 
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="ru" className={fontBody.variable} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

@@ -109,14 +109,15 @@ OpenCode CLI rules:
 
 Preferred model routing for design and copy work:
 
-- Owner-approved update on `2026-06-01`: for copy/UX consilium work on webapp, bot, support text, and user instructions, use the `opencode-go` subscription lane first. The consilium model set is `opencode-go/minimax-m3`, `opencode-go/qwen3.7-max`, `opencode-go/mimo-v2.5-pro`, `opencode-go/glm-5.1`, and `opencode-go/deepseek-v4-pro`.
-- When an `opencode-go` model exposes a reasoning or variant control, use the maximum available reasoning setting for consilium critique, contradiction hunting, and final copy review. Hide or discard reasoning traces from handoffs unless the user explicitly asks for them.
+- Owner-approved update on `2026-06-15`: OpenRouter is the primary consilium lane in OpenCode. Use the currently selected OpenRouter consilium set: `openrouter/deepseek/deepseek-v4-pro`, `openrouter/z-ai/glm-5.1`, `openrouter/openai/gpt-5.5-pro`, `openrouter/moonshotai/kimi-k2.6`, `openrouter/moonshotai/kimi-k2.7-code`, `openrouter/xiaomi/mimo-v2.5-pro`, `openrouter/minimax/minimax-m2.7`, and `openrouter/nvidia/nemotron-3-ultra-550b-a55b`.
+- Use `openrouter/openai/gpt-5.5-pro` as the slow, strongest, expensive senior reviewer for narrow high-stakes questions only. It can think for up to about 10 minutes and is priced at approximately `$30 / $180 per 1M` input/output tokens, so give it a compact, curated context packet and a precise task; do not ask it to discover the whole repository, browse broadly, or run open-ended exploration.
 - Use `openrouter/deepseek/deepseek-v4-pro` for hard design/copy critique, contradiction hunting, information architecture, dense screen review, policy/canon consistency checks, and high-stakes "what is wrong with this?" passes.
 - When using DeepSeek V4 Pro through OpenRouter for maximum reasoning, pass `reasoning: { "effort": "xhigh" }`. Treat reasoning tokens as paid output and hide or discard `reasoning` / `reasoning_details` from handoffs unless the user explicitly asks for them.
-- Use `fireworks-ai/accounts/fireworks/models/kimi-k2p6` for taste passes, visual hierarchy alternatives, calmer premium UI directions, copy-tone variants, human rewrites, roleplay/persona passes, Russian phrasing, support/dialogue text, and "find a more elegant version" prompts. Kimi is especially useful when the text needs to sound natural, warm, and human rather than procedural.
-- Fireworks Kimi may place visible thinking before the final answer. Ask it for a final line with a unique prefix, then extract only that final answer.
-- Use Fireworks as the primary Kimi lane when OpenRouter has no available Kimi provider. Use CODY only as a small direct-API fallback until `opencode run` through CODY is proven stable.
-- Keep CODY spend low. It has useful `cody/moonshotai/kimi-k2.6` and `cody/deepseek/deepseek-v4-pro` access, but `opencode run` through CODY has shown `ECONNRESET` on agent-style requests.
+- Use `openrouter/z-ai/glm-5.1`, `openrouter/minimax/minimax-m2.7`, `openrouter/xiaomi/mimo-v2.5-pro`, and `openrouter/nvidia/nemotron-3-ultra-550b-a55b` as parallel critique and alternative-angle reviewers when a consilium needs breadth.
+- Use `openrouter/moonshotai/kimi-k2.6` for taste passes, visual hierarchy alternatives, calmer premium UI directions, copy-tone variants, human rewrites, roleplay/persona passes, Russian phrasing, support/dialogue text, and "find a more elegant version" prompts. Kimi is especially useful when the text needs to sound natural, warm, and human rather than procedural.
+- Use `openrouter/moonshotai/kimi-k2.7-code` when the Kimi lane should focus on code, implementation critique, or engineering tradeoffs instead of pure copy/taste.
+- Kimi may place visible thinking before the final answer. Ask it for a final line with a unique prefix, then extract only that final answer.
+- Treat `opencode-go`, Fireworks, and CODY as fallback lanes only when the OpenRouter model is unavailable or the owner explicitly asks for that provider. Keep CODY spend low; `opencode run` through CODY has shown `ECONNRESET` on agent-style requests.
 
 Skill context packets:
 

@@ -122,9 +122,11 @@ Smart-connect visibility rule:
 
 ## WARP Material Visibility
 
-WARP is a backend-backed lifecycle feature, but production WARP readiness still
-requires Android and Windows release-build proof. Operator monitoring must keep
-that distinction explicit.
+WARP is a client-local Hiddify-core lifecycle feature with backend
+consent/event telemetry. Backend-managed WARP material is an optional operator
+lane, not a prerequisite for the normal client-local toggle. Production WARP
+readiness still requires Android and Windows release-build proof. Operator
+monitoring must keep that distinction explicit.
 
 Current WARP operator summary:
 
@@ -135,8 +137,9 @@ Current WARP operator summary:
 
 Required fields:
 
-- total, active, stale-active, revoked, and rotation-requested WARP materials
-- active backend-backed consents
+- total, active, stale-active, revoked, and rotation-requested optional WARP
+  materials
+- active client-local WARP consents
 - recent material provisions, provisioning failures, rotation requests,
   runtime errors/fallbacks, and rate-limit hits
 - redacted runtime summary: last runtime state, last reason code, per-state

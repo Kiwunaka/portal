@@ -5,7 +5,7 @@ import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
 
 export const metadata = buildMarketingMetadata(
   "YouTube через приложение | POKROV",
-  "POKROV для Android и Windows: 5 дней бесплатно без карты, быстрый старт и проверка YouTube без ручных профилей.",
+  "POKROV для Android и Windows: 5 дней бесплатно без карты, быстрый старт и проверка YouTube без сложной настройки.",
   {
     path: MARKETING_CANONICAL_PATHS.youtube,
     keywords: ["проверка youtube", "длинные видео", "pokrov youtube", "видео через pokrov"],
@@ -40,7 +40,7 @@ export default function YoutubePage() {
               eyebrow: "Приложение сначала",
               glyph: "window",
               title: "Одна кнопка вместо настроек",
-              desc: "Не нужно выбирать серверы и копировать конфиги. POKROV сам применяет нужные параметры.",
+              desc: "Не нужно выбирать сервер и настраивать что-то вручную. POKROV всё сделает сам.",
             },
             {
               eyebrow: "Продление потом",

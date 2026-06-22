@@ -138,12 +138,12 @@ export default function TelegramLoginWidget({
         {webLoginBusy ? busyLabel : buttonLabel}
       </button>
       {showHint ? (
-        <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+        <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)] dark:text-slate-400">
           Telegram подтвердит вход и вернет вас обратно в кабинет без лишних экранов.
         </p>
       ) : null}
       <div ref={hostRef} className={legacyWidget ? "min-h-[56px]" : "hidden"} id="tg-login-widget" />
-      {legacyWidget && widgetHint ? <p className="text-xs leading-5 text-amber-600 dark:text-amber-300">{widgetHint}</p> : null}
+      {legacyWidget && widgetHint ? <p className="text-xs leading-5 text-[color:var(--atlas-status-warning-text)] dark:text-amber-300">{widgetHint}</p> : null}
     </div>
   );
 }

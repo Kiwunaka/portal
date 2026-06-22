@@ -3,8 +3,9 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button } from "@/components/cabinet/ui";
 import { fetchClientApps, type ClientAppsPayload } from "@/lib/api";
 import { getPortalPublicConfig } from "@/lib/portal";
 
@@ -20,10 +21,6 @@ type DownloadRow = {
   action?: ReactNode;
 };
 
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
-
 function formatDate(value?: string | null): string {
   if (!value) return "обновим позже";
   const parsed = new Date(value);
@@ -36,7 +33,7 @@ function formatDate(value?: string | null): string {
 
 function externalAction(href: string, label: string): ReactNode {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+    <a href={href} target="_blank" rel="noreferrer" className="cab-link">
       {label}
     </a>
   );
@@ -151,7 +148,7 @@ export function CabinetDownloadsSurface() {
   const firstDownload = rows.find((item) => item.key === "android-apk") || rows.find((item) => item.key === "windows-exe") || rows[0] || null;
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Загрузки"
         meta={rows.length ? "Публичная бета" : "Файлы подгружаются"}
@@ -159,13 +156,13 @@ export function CabinetDownloadsSurface() {
         tone={rows.length ? "success" : "neutral"}
         action={
           firstDownload?.href ? (
-            <a href={firstDownload.href} target="_blank" rel="noreferrer" className="btn-primary w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+            <a href={firstDownload.href} target="_blank" rel="noreferrer" className="cab-btn cab-btn--primary w-full sm:w-auto">
               Скачать
             </a>
           ) : (
-            <AppRouteLink href="/support/" className="btn-primary w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+            <Button href="/support/" className="w-full sm:w-auto">
               Поддержка
-            </AppRouteLink>
+            </Button>
           )
         }
       />
@@ -187,7 +184,7 @@ export function CabinetDownloadsSurface() {
         )}
       </CabinetGroup>
 
-      {error ? <p className="px-1 text-sm text-amber-700 dark:text-amber-200">Часть ссылок не удалось обновить: {error}</p> : null}
+      {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Часть ссылок не удалось обновить: {error}</p> : null}
 
       <CabinetGroup title="После скачивания">
         <CabinetRow icon={icon("login")} label="Войти в тот же аккаунт" hint="Профиль подтянется сам" value={hasAndroid || hasWindows ? "важно" : undefined} />

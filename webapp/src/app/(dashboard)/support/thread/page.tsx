@@ -1,15 +1,12 @@
 "use client";
 
-import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button, Chip, Note, Textarea } from "@/components/cabinet/ui";
 import { SupportMessageBody } from "@/components/support-message-body";
 import { addTicketMessage, getTicket, resolveApiUrl, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
 
 function statusTitle(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
@@ -166,7 +163,7 @@ export default function SupportTicketThreadPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <main className="cab-page">
         <CabinetStatus title="Загружаем обращение" meta="Поддержка" body="Подтягиваем историю и вложения." tone="neutral" />
         <CabinetGroup title="История">
           <CabinetRow icon={icon("hourglass_empty")} label="Пожалуйста, подождите" hint="Обычно это занимает несколько секунд" />
@@ -177,16 +174,16 @@ export default function SupportTicketThreadPage() {
 
   if (error || !ticket) {
     return (
-      <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <main className="cab-page">
         <CabinetStatus
           title="Не удалось открыть обращение"
           meta="Поддержка"
           body={error || "Обращение не найдено."}
           tone="warning"
           action={
-            <AppRouteLink href="/support/" className="outline-btn w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+            <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
               Назад
-            </AppRouteLink>
+            </Button>
           }
         />
         <CabinetGroup title="Что дальше">
@@ -197,16 +194,16 @@ export default function SupportTicketThreadPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title={`Обращение #${ticket.id}`}
         meta={statusTitle(ticket.status)}
         body={ticket.subject || "Обращение без темы"}
         tone={canReply ? "info" : "neutral"}
         action={
-          <AppRouteLink href="/support/" className="outline-btn w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+          <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             К списку
-          </AppRouteLink>
+          </Button>
         }
       />
 
@@ -220,7 +217,7 @@ export default function SupportTicketThreadPage() {
       <CabinetGroup title="История">
         <div className="max-h-[52vh] space-y-4 overflow-y-auto p-4">
           {ticket.messages.length === 0 ? (
-            <p className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 text-sm text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+            <p className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-3 text-sm text-[color:var(--atlas-text-muted)]">
               История сообщений пока пустая.
             </p>
           ) : (
@@ -231,35 +228,35 @@ export default function SupportTicketThreadPage() {
               const attachment = ticketAttachment(msg);
               return (
                 <div key={msg.id} className={`flex ${isAdmin || isAssistant ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[88%] rounded-2xl border px-4 py-3 text-sm leading-6 ${
+                  <div className={`max-w-[88%] rounded-[var(--pokrov-radius-card)] border px-4 py-3 text-sm leading-6 ${
                     isAdmin
-                      ? "border-slate-200/80 bg-white/86 dark:border-white/10 dark:bg-white/[0.04]"
+                      ? "border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] text-[color:var(--atlas-text)]"
                       : isAssistant
-                        ? "border-sky-200/80 bg-sky-50/85 dark:border-sky-500/25 dark:bg-sky-500/10"
-                        : "border-emerald-200/80 bg-emerald-50/85 dark:border-emerald-500/25 dark:bg-emerald-500/10"
+                        ? "border-[color:var(--atlas-status-info-line)] bg-[color:var(--atlas-status-info-bg)] text-[color:var(--atlas-status-info-text)]"
+                        : "border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] text-[color:var(--atlas-status-success-text)]"
                   }`}>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{senderLabel}</p>
+                    <p className="text-xs font-semibold opacity-70">{senderLabel}</p>
                     <SupportMessageBody body={msg.body} className="mt-1" />
                     {attachment?.kind === "image" ? (
-                      <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-2xl border border-slate-200/80 dark:border-white/10">
+                      <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-[var(--pokrov-radius-tile)] border border-[color:var(--atlas-border)]">
                         <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
                       </a>
                     ) : null}
                     {attachment?.kind === "video" ? (
-                      <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-2xl border border-slate-200/80 bg-slate-950/60 dark:border-white/10" />
+                      <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-[var(--pokrov-radius-tile)] border border-[color:var(--atlas-border)] bg-black/60" />
                     ) : null}
                     {attachment && attachment.kind !== "image" && attachment.kind !== "video" ? (
                       <a
                         href={attachment.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/[0.04]"
+                        className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs"
                       >
                         <span className="truncate">{attachment.name || "Вложение"}</span>
-                        <span className="shrink-0 text-slate-500 dark:text-slate-400">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
+                        <span className="shrink-0 opacity-70">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
                       </a>
                     ) : null}
-                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{fmtDate(msg.created_at)}</p>
+                    <p className="mt-2 text-xs opacity-60">{fmtDate(msg.created_at)}</p>
                   </div>
                 </div>
               );
@@ -274,66 +271,54 @@ export default function SupportTicketThreadPage() {
           <CabinetRow icon={icon("lock")} label="Обращение закрыто" hint="Для нового вопроса создайте новое обращение" href="/support/" />
         ) : (
           <div className="space-y-3 p-4">
-            <textarea
+            <Textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               rows={4}
               placeholder="Напишите ответ..."
-              className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
             />
             <div className="flex flex-wrap gap-2">
               {QUICK_REPLY_ACTIONS.map((action) => (
-                <button
-                  key={action.label}
-                  type="button"
-                  onClick={() => applyQuickReply(action.body)}
-                  className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-400/60 hover:bg-emerald-500/10 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"
-                >
+                <Chip key={action.label} onClick={() => applyQuickReply(action.body)}>
                   {action.label}
-                </button>
+                </Chip>
               ))}
             </div>
-            <label className="block rounded-2xl border border-dashed border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">
-              <span className="block font-medium">Добавить вложение</span>
-              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
+            <label className="block rounded-[var(--pokrov-radius-control)] border border-dashed border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-4 text-sm">
+              <span className="block font-medium text-[color:var(--atlas-text)]">Добавить вложение</span>
+              <span className="mt-1 block text-xs text-[color:var(--atlas-text-muted)]">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
               <input
                 type="file"
                 accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500/15 file:px-4 file:py-2 file:font-medium file:text-emerald-700 dark:text-slate-300 dark:file:bg-emerald-500/20 dark:file:text-emerald-200"
+                className="mt-3 block w-full cursor-pointer text-sm text-[color:var(--atlas-text-soft)] file:mr-3 file:rounded-[var(--pokrov-radius-control)] file:border-0 file:bg-[color:var(--atlas-nav-active)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--atlas-primary)]"
                 onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
               />
               {attachmentFile ? (
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs">
                   <span className="truncate">{attachmentFile.name}</span>
-                  <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
+                  <button type="button" onClick={() => setAttachmentFile(null)} className="text-[color:var(--atlas-status-danger-text)]">
                     Убрать
                   </button>
                 </div>
               ) : null}
-              {attachmentFile ? <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatFileSize(attachmentFile.size)}</p> : null}
+              {attachmentFile ? <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">{formatFileSize(attachmentFile.size)}</p> : null}
             </label>
             <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => void onSendReply()}
-                disabled={busy || !message.trim()}
-                className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-              >
+              <Button onClick={() => void onSendReply()} disabled={busy || !message.trim()}>
                 {busy ? "Отправляем..." : "Отправить"}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setMessage("");
                   setAttachmentFile(null);
                   setReplyError("");
                 }}
-                className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Очистить
-              </button>
+              </Button>
             </div>
-            {replyError ? <p className="text-sm text-rose-600 dark:text-rose-300">{replyError}</p> : null}
+            {replyError ? <Note tone="danger">{replyError}</Note> : null}
           </div>
         )}
       </CabinetGroup>

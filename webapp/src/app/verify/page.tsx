@@ -22,7 +22,7 @@ export default function VerifyPage() {
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] items-center px-4 py-8 text-slate-800 dark:text-slate-100">
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-[720px] items-center px-4 py-8 text-[color:var(--atlas-text)] dark:text-slate-100">
       <p className="text-sm leading-6">Открываем подтверждение email...</p>
     </main>
   );

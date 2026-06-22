@@ -88,7 +88,7 @@ export default function AdminFunnelPage() {
             </div>
             <div>
               <h2 className="font-display text-xl font-bold">Воронка входа</h2>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-[color:var(--atlas-text-soft)]">
                 Сайт, кабинет, бот и оплата за период {data?.period.from || period.from} — {data?.period.to || period.to}.
               </p>
             </div>
@@ -97,7 +97,7 @@ export default function AdminFunnelPage() {
             {(["7", "14", "30"] as RangePreset[]).map((item) => (
               <button
                 key={item}
-                className={`outline-btn rounded-xl px-3 py-2 text-xs font-semibold ${range === item ? "border-emerald-300 bg-emerald-50 text-emerald-700" : ""}`}
+                className={`outline-btn rounded-xl px-3 py-2 text-xs font-semibold ${range === item ? "border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] text-[color:var(--atlas-status-success-text)]" : ""}`}
                 type="button"
                 onClick={() => setRange(item)}
               >
@@ -110,7 +110,7 @@ export default function AdminFunnelPage() {
             </button>
           </div>
         </div>
-        {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
@@ -127,7 +127,7 @@ export default function AdminFunnelPage() {
               <div className={`stat-icon ${item.tone}`}>
                 <Icon size={18} />
               </div>
-              <p className="mt-3 text-xs text-slate-500">{item.label}</p>
+              <p className="mt-3 text-xs text-[color:var(--atlas-text-soft)]">{item.label}</p>
               <p className="mt-1 text-2xl font-bold">{formatNumber(item.value)}</p>
             </div>
           );
@@ -139,13 +139,13 @@ export default function AdminFunnelPage() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="font-display text-xl font-bold">Где люди останавливаются</h3>
-              <p className="text-xs text-slate-500">Каждый этап показывает, сколько дошло до следующего шага.</p>
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">Каждый этап показывает, сколько дошло до следующего шага.</p>
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-[0.1em] text-slate-500">
+                <tr className="text-left text-xs uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
                   <th className="px-3 py-2.5">Этап</th>
                   <th className="px-3 py-2.5">Вошли</th>
                   <th className="px-3 py-2.5">Дошли дальше</th>
@@ -155,12 +155,12 @@ export default function AdminFunnelPage() {
               </thead>
               <tbody>
                 {(data?.stages || []).map((row, index) => (
-                  <tr key={row.key} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={row.key} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
                     <td className="px-3 py-3 font-semibold">{row.label}</td>
                     <td className="px-3 py-3">{formatNumber(row.entered)}</td>
                     <td className="px-3 py-3">{formatNumber(row.reached_next)}</td>
                     <td className="px-3 py-3">
-                      <span className={row.dropped > 0 ? "text-amber-600" : "text-emerald-600"}>{formatNumber(row.dropped)}</span>
+                      <span className={row.dropped > 0 ? "text-[color:var(--atlas-status-warning-text)]" : "text-[color:var(--atlas-status-success-text)]"}>{formatNumber(row.dropped)}</span>
                     </td>
                     <td className="px-3 py-3">
                       <span className={`badge ${row.conversion_pct >= 70 ? "badge-success" : row.conversion_pct >= 30 ? "badge-warning" : "badge-danger"}`}>
@@ -181,12 +181,12 @@ export default function AdminFunnelPage() {
             </div>
             <div>
               <h3 className="font-display text-xl font-bold">Отвалы</h3>
-              <p className="text-xs text-slate-500">Куда смотреть оператору в первую очередь.</p>
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">Куда смотреть оператору в первую очередь.</p>
             </div>
           </div>
           <div className="space-y-3">
             {(data?.drop_reasons || []).map((row) => (
-              <div key={row.reason} className="rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div key={row.reason} className="rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold">{row.reason}</p>
                   <span className={`badge ${row.count > 0 ? "badge-warning" : "badge-success"}`}>{formatNumber(row.count)}</span>
@@ -200,11 +200,11 @@ export default function AdminFunnelPage() {
       <div className="grid gap-5 xl:grid-cols-2">
         <div className="glass-card p-5">
           <h3 className="font-display text-xl font-bold">Источники</h3>
-          <p className="mt-1 text-xs text-slate-500">Сайт считается по session id, кабинет и бот — по известным событиям пользователей.</p>
+          <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Сайт считается по session id, кабинет и бот — по известным событиям пользователей.</p>
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-[0.1em] text-slate-500">
+                <tr className="text-left text-xs uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
                   <th className="px-3 py-2.5">Источник</th>
                   <th className="px-3 py-2.5">Входы</th>
                   <th className="px-3 py-2.5">Кабинет/бот</th>
@@ -214,7 +214,7 @@ export default function AdminFunnelPage() {
               </thead>
               <tbody>
                 {(data?.by_source || []).map((row, index) => (
-                  <tr key={row.source} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={row.source} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
                     <td className="px-3 py-2.5 font-semibold">{sourceLabel(row.source)}</td>
                     <td className="px-3 py-2.5">{formatNumber(row.visitors)}</td>
                     <td className="px-3 py-2.5">{formatNumber(row.app_opens)}</td>
@@ -229,27 +229,27 @@ export default function AdminFunnelPage() {
 
         <div className="glass-card p-5">
           <h3 className="font-display text-xl font-bold">Последние входы и действия</h3>
-          <p className="mt-1 text-xs text-slate-500">Известные пользователи показываются по Telegram ID, сайт — по короткому session id.</p>
+          <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Известные пользователи показываются по Telegram ID, сайт — по короткому session id.</p>
           <div className="mt-4 space-y-2">
             {(data?.recent || []).map((row, index) => (
-              <div key={`${row.kind}:${row.created_at}:${row.event_name}:${index}`} className="rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div key={`${row.kind}:${row.created_at}:${row.event_name}:${index}`} className="rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`badge ${row.kind === "site" ? "badge-info" : "badge-success"}`}>{row.kind === "site" ? "сайт" : "пользователь"}</span>
                       <strong className="text-sm">{stageLabel(row.stage)}</strong>
-                      <span className="text-xs text-slate-500">{row.event_name}</span>
+                      <span className="text-xs text-[color:var(--atlas-text-soft)]">{row.event_name}</span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">
                       {row.tg_id ? `tg_id ${row.tg_id}` : `session ${String(row.session_id || "").slice(0, 12) || "нет"}`} · {sourceLabel(row.source)}
                       {row.path ? ` · ${row.path}` : ""}
                     </p>
                   </div>
-                  <span className="text-xs text-slate-500">{formatDateTime(row.created_at)}</span>
+                  <span className="text-xs text-[color:var(--atlas-text-soft)]">{formatDateTime(row.created_at)}</span>
                 </div>
               </div>
             ))}
-            {!busy && (data?.recent || []).length === 0 ? <p className="text-sm text-slate-500">За период событий не найдено.</p> : null}
+            {!busy && (data?.recent || []).length === 0 ? <p className="text-sm text-[color:var(--atlas-text-soft)]">За период событий не найдено.</p> : null}
           </div>
         </div>
       </div>

@@ -329,11 +329,11 @@ export default function AdminNodesPage() {
               <Server size={20} />
             </div>
             <div>
-              <h2 className="font-display text-xl font-bold">Ноды и состояние инфраструктуры</h2>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <h2 className="font-display text-xl font-bold">Серверы и состояние инфраструктуры</h2>
+              <p className="mt-0.5 text-xs text-[color:var(--atlas-text-soft)]">
                 <strong>{formatFreshness(status?.status)}</strong>. Последний срез: {formatIso(status?.last_sample_at)}.
               </p>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-[color:var(--atlas-text-soft)]">
                 Отклик и dataplane-check здесь идут с control plane `brain`; внешний RU probe живёт отдельно.
               </p>
             </div>
@@ -370,8 +370,8 @@ export default function AdminNodesPage() {
             </button>
           </div>
         </div>
-        {error ? <p className="mt-3 text-sm text-rose-500">{error}</p> : null}
-        {nodeActionNote ? <p className="mt-2 text-sm text-emerald-500">{nodeActionNote}</p> : null}
+        {error ? <p className="mt-3 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
+        {nodeActionNote ? <p className="mt-2 text-sm text-[color:var(--atlas-status-success-text)]">{nodeActionNote}</p> : null}
         {status?.active_alerts?.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {status.active_alerts.map((alert) => (
@@ -387,14 +387,14 @@ export default function AdminNodesPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-display text-xl font-bold">Живой снимок панелей</h3>
-            <p className="text-xs text-slate-500">3x-ui показывает рабочее состояние: доступ к панели, отклик, онлайн и входящее правило. Тарифы и права доступа остаются в POKROV.</p>
+            <p className="text-xs text-[color:var(--atlas-text-soft)]">3x-ui показывает рабочее состояние: доступ к панели, отклик, онлайн и входящее правило. Тарифы и права доступа остаются в POKROV.</p>
           </div>
           <span className="badge badge-info">{runtime.length ? `нод: ${runtime.length}` : "ожидаем данные"}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-[0.1em] text-slate-500">
+              <tr className="text-left text-xs uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
                 <th className="px-3 py-2.5">Нода</th>
                 <th className="px-3 py-2.5">Панель</th>
                 <th className="px-3 py-2.5">Отклик</th>
@@ -409,16 +409,16 @@ export default function AdminNodesPage() {
                 const inbound = row.inbound;
                 const system = row.system || {};
                 return (
-                  <tr key={row.node_code} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={row.node_code} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
                     <td className="px-3 py-3 font-semibold">{String(row.node_code || "").toUpperCase()}</td>
                     <td className="px-3 py-3">
                       <span className={`badge ${row.panel_auth_ok ? "badge-success" : "badge-danger"}`}>{row.panel_auth_ok ? "доступ есть" : "нет доступа"}</span>
-                      <div className="mt-1 text-xs text-slate-500">{row.api_token_mode ? "токен API" : row.csrf_mode ? "CSRF" : "cookie"}</div>
+                      <div className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{row.api_token_mode ? "токен API" : row.csrf_mode ? "CSRF" : "cookie"}</div>
                     </td>
                     <td className="px-3 py-3">{row.panel_latency_ms != null ? `${row.panel_latency_ms} ms` : "нет данных"}</td>
                     <td className="px-3 py-3">
                       <div>{Number(row.online?.online_keys_now || 0)} ключей</div>
-                      <div className="text-xs text-slate-500">{Number(row.online?.online_connections_now || 0)} подключений</div>
+                      <div className="text-xs text-[color:var(--atlas-text-soft)]">{Number(row.online?.online_connections_now || 0)} подключений</div>
                     </td>
                     <td className="px-3 py-3">
                       {inbound ? (
@@ -426,28 +426,28 @@ export default function AdminNodesPage() {
                           <div className="font-medium">
                             #{inbound.inbound_id ?? row.expected_inbound_id ?? "?"} · {inbound.protocol || "протокол?"} · {inbound.port || "порт?"}
                           </div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-[color:var(--atlas-text-soft)]">
                             {inbound.network || "сеть?"} / {inbound.security || "защита?"}
                             {inbound.server_names?.length ? ` · SNI ${inbound.server_names.slice(0, 2).join(", ")}` : ""}
                           </div>
                         </div>
                       ) : (
-                        <span className="text-slate-500">не найден</span>
+                        <span className="text-[color:var(--atlas-text-soft)]">не найден</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
                       <div>CPU {formatPercent(system.cpu_percent, 0)}</div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-[color:var(--atlas-text-soft)]">
                         ↓ {formatBytesPerSec(system.network_rx_bytes_per_sec)} · ↑ {formatBytesPerSec(system.network_tx_bytes_per_sec)}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs text-rose-500">{row.error || "—"}</td>
+                    <td className="px-3 py-3 text-xs text-[color:var(--atlas-status-danger-text)]">{row.error || "—"}</td>
                   </tr>
                 );
               })}
               {runtime.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-4 text-sm text-slate-500" colSpan={7}>
+                  <td className="px-3 py-4 text-sm text-[color:var(--atlas-text-soft)]" colSpan={7}>
                     Живые данные ещё не загрузились или панели недоступны.
                   </td>
                 </tr>
@@ -462,7 +462,7 @@ export default function AdminNodesPage() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="font-display text-xl font-bold">Сверка POKROV и панели</h3>
-              <p className="text-xs text-slate-500">Показывает, совпадают ли ожидания контрольной плоскости с фактической конфигурацией узлов.</p>
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">Показывает, совпадают ли ожидания контрольной плоскости с фактической конфигурацией узлов.</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="badge badge-success">совпали: {drift.summary.ok}</span>
@@ -471,7 +471,7 @@ export default function AdminNodesPage() {
           </div>
           <div className="space-y-3">
             {drift.results.map((row) => (
-              <div key={row.node_code} className="rounded-2xl border border-white/15 bg-white/30 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+              <div key={row.node_code} className="rounded-2xl border border-white/15 bg-[color:var(--atlas-surface)] p-4 dark:border-white/10 dark:bg-white/[0.03]">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
@@ -480,19 +480,19 @@ export default function AdminNodesPage() {
                         {row.status === "ok" ? "Совпало" : "Расхождение"}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{row.node_host || "нет данных о хосте"}</p>
+                    <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{row.node_host || "нет данных о хосте"}</p>
                   </div>
-                  <div className="text-right text-xs text-slate-500">
+                  <div className="text-right text-xs text-[color:var(--atlas-text-soft)]">
                     <div>Порт: <strong>{row.runtime?.port ?? "—"}</strong></div>
                     <div>Защита: <strong>{row.runtime?.security || "—"}</strong></div>
                   </div>
                 </div>
                 {row.mismatches.length > 0 ? (
-                  <p className="mt-3 text-sm text-amber-500">Не совпадает: {row.mismatches.join(", ")}</p>
+                  <p className="mt-3 text-sm text-[color:var(--atlas-status-warning-text)]">Не совпадает: {row.mismatches.join(", ")}</p>
                 ) : (
-                  <p className="mt-3 text-sm text-emerald-500">Конфигурация ноды совпадает с тем, что ожидает POKROV.</p>
+                  <p className="mt-3 text-sm text-[color:var(--atlas-status-success-text)]">Конфигурация ноды совпадает с тем, что ожидает POKROV.</p>
                 )}
-                {row.error ? <p className="mt-2 text-xs text-rose-500">Ошибка проверки: {row.error}</p> : null}
+                {row.error ? <p className="mt-2 text-xs text-[color:var(--atlas-status-danger-text)]">Ошибка проверки: {row.error}</p> : null}
               </div>
             ))}
           </div>
@@ -547,84 +547,84 @@ export default function AdminNodesPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold gradient-text">{score.toFixed(1)}</p>
-                  <p className="text-[10px] uppercase tracking-[0.1em] text-slate-500">оценка</p>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">оценка</p>
                 </div>
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Отклик с сервера</p>
-                  <p className="text-sm font-bold">{node.panel_latency_ms ?? "нет данных"}{node.panel_latency_ms != null ? <span className="text-[10px] text-slate-400"> ms</span> : null}</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Отклик с сервера</p>
+                  <p className="text-sm font-bold">{node.panel_latency_ms ?? "нет данных"}{node.panel_latency_ms != null ? <span className="text-[10px] text-[color:var(--atlas-text-muted)]"> ms</span> : null}</p>
                 </div>
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Ошибки</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Ошибки</p>
                   <p className="text-sm font-bold">{formatPercent(node.panel_error_rate * 100, 1)}</p>
                 </div>
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Клиенты в панели</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Клиенты в панели</p>
                   <p className="text-sm font-bold">{node.active_clients}</p>
                 </div>
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-4">
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Назначено в POKROV</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Назначено в POKROV</p>
                   <p className="text-sm font-bold">{node.mapped_users}</p>
                 </div>
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Ключей в сети</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Ключей в сети</p>
                   <p className="text-sm font-bold">{node.online_keys_now}</p>
                 </div>
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">Подключений сейчас</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Подключений сейчас</p>
                   <p className="text-sm font-bold">{node.online_connections_now}</p>
                 </div>
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">CPU</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">CPU</p>
                   <p className="text-sm font-bold">{formatPercent(node.cpu_percent, 0)}</p>
                 </div>
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-1">
-                <div className="rounded-lg bg-white/50 p-2 dark:bg-white/5">
-                  <p className="text-xs text-slate-500">RAM</p>
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">RAM</p>
                   <p className="text-sm font-bold">{formatMbPair(node.memory_used_mb, node.memory_total_mb)}</p>
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Диск</span>
                   <span>{diskPercent == null ? "нет данных" : formatPercent(diskPercent, 0)}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-500">
+                <div className="flex items-center justify-between text-xs text-[color:var(--atlas-text-soft)]">
                   <span>Занято / всего</span>
                   <span>{formatGbPair(node.disk_used_gb, node.disk_total_gb)}</span>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-1 flex items-center justify-between text-xs text-[color:var(--atlas-text-soft)]">
                   <span>Свободно</span>
                   <span>{formatDiskFree(node.disk_free_gb)}</span>
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Ethernet</span>
                   <span>{networkPercent == null ? "нет данных" : formatPercent(networkPercent, 0)}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-500">
+                <div className="flex items-center justify-between text-xs text-[color:var(--atlas-text-soft)]">
                   <span>Сейчас RX / TX</span>
                   <span>{formatMbps(node.network_rx_mbps)} / {formatMbps(node.network_tx_mbps)}</span>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-1 flex items-center justify-between text-xs text-[color:var(--atlas-text-soft)]">
                   <span>Суммарно сейчас</span>
                   <span>{formatMbps(node.network_total_mbps)}</span>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-1 flex items-center justify-between text-xs text-[color:var(--atlas-text-soft)]">
                   <span>Пик за 24 часа</span>
                   <span>{formatMbps(node.network_peak_mbps_24h)}{networkPeakPercent == null ? "" : ` (${formatPercent(networkPeakPercent, 0)})`}</span>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-1 flex items-center justify-between text-xs text-[color:var(--atlas-text-soft)]">
                   <span>Лимит порта</span>
                   <span>{formatMbps(node.network_port_capacity_mbps, 0)}</span>
                 </div>
@@ -646,7 +646,7 @@ export default function AdminNodesPage() {
               </div>
 
               {(node.hoster_family || node.hoster_asn || node.subnet) ? (
-                <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="mb-2 text-sm font-semibold">Хостинг</div>
                   <div className="grid gap-2 text-xs sm:grid-cols-3">
                     <p>Провайдер: <strong>{node.hoster_family || "нет данных"}</strong></p>
@@ -656,16 +656,16 @@ export default function AdminNodesPage() {
                 </div>
               ) : null}
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Подключение</span>
                   <span className={`badge ${transportHealth.label === "ok" || transportHealth.label === "healthy" ? "badge-success" : "badge-info"}`}>
                     {transportHealth.label}
                   </span>
                 </div>
-                {transportHealth.detail ? <p className="text-xs text-slate-500">{transportHealth.detail}</p> : null}
-                {rootCauseSummary ? <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">{rootCauseSummary}</p> : null}
-                {rootCauseDetail ? <p className="mt-1 text-xs text-slate-500">{rootCauseDetail}</p> : null}
+                {transportHealth.detail ? <p className="text-xs text-[color:var(--atlas-text-soft)]">{transportHealth.detail}</p> : null}
+                {rootCauseSummary ? <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)] dark:text-slate-300">{rootCauseSummary}</p> : null}
+                {rootCauseDetail ? <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{rootCauseDetail}</p> : null}
                 <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                   <p>Панель: <strong>{panelState}</strong></p>
                   <p>Проверка подключения: <strong>{dataplaneState}</strong></p>
@@ -684,7 +684,7 @@ export default function AdminNodesPage() {
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-slate-500">Список профилей подключения не пришёл, показываем базовый вид.</span>
+                    <span className="text-xs text-[color:var(--atlas-text-soft)]">Список профилей подключения не пришёл, показываем базовый вид.</span>
                   )}
                 </div>
               </div>
@@ -708,14 +708,14 @@ export default function AdminNodesPage() {
               </div>
 
               {probeFailure ? (
-                <div className="mt-3 rounded-xl border border-rose-200/50 bg-rose-50/70 p-3 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10">
+                <div className="mt-3 rounded-xl border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] p-3 text-xs text-[color:var(--atlas-status-danger-text)] dark:border-rose-500/20 dark:bg-rose-500/10">
                   <div className="font-semibold">{probeFailure.title}</div>
-                  {probeFailure.detail ? <div className="mt-1 text-slate-600 dark:text-slate-300">{probeFailure.detail}</div> : null}
-                  {probeFailure.raw ? <div className="mt-1 text-slate-500">код ошибки: {probeFailure.raw}</div> : null}
+                  {probeFailure.detail ? <div className="mt-1 text-[color:var(--atlas-text-soft)] dark:text-slate-300">{probeFailure.detail}</div> : null}
+                  {probeFailure.raw ? <div className="mt-1 text-[color:var(--atlas-text-soft)]">код ошибки: {probeFailure.raw}</div> : null}
                 </div>
               ) : null}
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-white/35 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Сбор данных по пользователям</span>
                   <span className={`badge ${node.observer_is_stale || nodeFreshness?.observerIsStale ? "badge-warning" : "badge-success"}`}>
@@ -730,7 +730,7 @@ export default function AdminNodesPage() {
                 </div>
               </div>
 
-              <p className="mt-3 text-[11px] text-slate-500">
+              <p className="mt-3 text-[11px] text-[color:var(--atlas-text-soft)]">
                 Последняя проверка: {formatIso(node.last_health_at)}.
                 {nodeFreshness?.lastSampleAt ? ` Срез метрик: ${formatIso(nodeFreshness.lastSampleAt)}.` : ""}
                 {memoryPercent != null ? ` RAM: ${formatPercent(memoryPercent, 0)}.` : " RAM: нет данных."}
@@ -753,13 +753,13 @@ export default function AdminNodesPage() {
           </div>
           <div>
             <h3 className="font-display text-xl font-bold">Трафик по дням</h3>
-            <p className="text-xs text-slate-500">Сколько устройств и трафика пришло на каждую ноду за последние 7 дней.</p>
+            <p className="text-xs text-[color:var(--atlas-text-soft)]">Сколько устройств и трафика пришло на каждую ноду за последние 7 дней.</p>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-[0.1em] text-slate-500">
+              <tr className="text-left text-xs uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
                 <th className="px-3 py-2.5">Дата</th>
                 <th className="px-3 py-2.5">Нода</th>
                 <th className="px-3 py-2.5">Устройств</th>
@@ -770,7 +770,7 @@ export default function AdminNodesPage() {
               {traffic.map((row, index) => {
                 const flag = COUNTRY_FLAGS[nodeCodeKey(row.node_code)] || "🌐";
                 return (
-                  <tr key={`${row.date}:${row.node_code}`} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-white/30 dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={`${row.date}:${row.node_code}`} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
                     <td className="px-3 py-2.5 font-medium">{row.date}</td>
                     <td className="px-3 py-2.5">
                       <span className="mr-2">{flag}</span>

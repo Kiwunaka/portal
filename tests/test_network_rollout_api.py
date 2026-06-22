@@ -365,7 +365,9 @@ def test_admin_warp_material_store_encrypts_at_rest_and_scopes_managed_profile(m
 
     initial_status = client.get("/api/client/warp/status", headers=auth_headers)
     assert initial_status.status_code == 200, initial_status.text
-    assert initial_status.json()["runtime_ready"] is False
+    assert initial_status.json()["runtime_ready"] is True
+    assert initial_status.json()["source"] == "client_local"
+    assert initial_status.json()["wireguard_config_available"] is False
 
     provision = client.put(
         "/api/admin/client/warp/material",
@@ -579,7 +581,10 @@ def test_warp_material_hardening_limits_stale_material_and_reports_summary(monke
 
     status = client.get("/api/client/warp/status", headers=auth_headers)
     assert status.status_code == 200, status.text
-    assert status.json()["state"] == "not_ready"
+    assert status.json()["state"] == "error"
+    assert status.json()["runtime_ready"] is True
+    assert status.json()["source"] == "client_local"
+    assert status.json()["wireguard_config_available"] is False
     assert status.json()["policy_state"] == "material_stale"
 
     summary = client.get("/api/admin/client/warp/summary", headers=admin_headers)
@@ -723,7 +728,7 @@ def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(mo
         db.close()
 
 
-def test_client_warp_consent_rejects_not_ready_policy(monkeypatch, tmp_path) -> None:
+def test_client_warp_consent_accepts_client_local_policy_without_server_material(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
 
@@ -740,13 +745,25 @@ def test_client_warp_consent_rejects_not_ready_policy(monkeypatch, tmp_path) -> 
 
     status = client.get("/api/client/warp/status", headers=auth_headers)
     assert status.status_code == 200, status.text
-    assert status.json()["state"] == "not_ready"
-    assert status.json()["runtime_ready"] is False
-    assert status.json()["can_enable"] is False
+    assert status.json()["state"] == "ready_to_consent"
+    assert status.json()["runtime_ready"] is True
+    assert status.json()["wireguard_config_available"] is False
+    assert status.json()["source"] == "client_local"
+    assert status.json()["can_enable"] is True
 
     consent = client.post("/api/client/warp/consent", headers=auth_headers, json={"consent": True})
-    assert consent.status_code == 409, consent.text
-    assert consent.json()["detail"]["code"] == "warp_not_runtime_ready"
+    assert consent.status_code == 200, consent.text
+    assert consent.json()["state"] == "consented"
+    assert consent.json()["consented"] is True
+
+    db = api.SessionLocal()
+    try:
+        rows = db.query(api.WarpEvent).order_by(api.WarpEvent.id.asc()).all()
+        assert [row.event_name for row in rows] == ["consent"]
+        assert rows[0].runtime_ready is True
+        assert rows[0].consented is True
+    finally:
+        db.close()
 
 
 def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch, tmp_path) -> None:

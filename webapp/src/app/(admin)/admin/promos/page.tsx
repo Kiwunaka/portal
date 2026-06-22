@@ -128,7 +128,7 @@ function StatusBanner({ tone, text }: { tone: "success" | "error"; text: string 
       <div className={`stat-icon ${success ? "stat-icon-emerald" : "stat-icon-rose"}`}>
         {success ? <Check size={18} /> : <ShieldCheck size={18} />}
       </div>
-      <p className={`text-sm font-medium ${success ? "text-emerald-600 dark:text-emerald-300" : "text-rose-500"}`}>
+      <p className={`text-sm font-medium ${success ? "text-[color:var(--atlas-status-success-text)] dark:text-emerald-300" : "text-[color:var(--atlas-status-danger-text)]"}`}>
         {text}
       </p>
     </div>
@@ -283,7 +283,7 @@ export default function AdminPromosPage() {
     <section className="space-y-5">
       <article className={adminPanelClass("neutral")}>
         <h2 className="font-display text-xl font-bold">Ключи доступа и подсказки</h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+        <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
           Здесь оператор выпускает ключи доступа, проверяет уже выданные ключи, сверяет тарифы и управляет
           подсказками, которые видит пользователь в кабинете.
         </p>
@@ -294,29 +294,29 @@ export default function AdminPromosPage() {
 
       <div className="grid gap-5 md:grid-cols-3">
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Платформы</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Платформы</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">Android + Windows</h3>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          <p className="mt-3 text-sm leading-6 text-[color:var(--atlas-text-soft)] dark:text-slate-300">
             В этой волне пользователям показываем Android и Windows. Остальные платформы не обещаем,
             пока для них нет готового пользовательского пути.
           </p>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Бесплатный режим</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Бесплатный режим</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">
             {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} ГБ
           </h3>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          <p className="mt-3 text-sm leading-6 text-[color:var(--atlas-text-soft)] dark:text-slate-300">
             Сброс раз в месяц, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Мбит/с на IP, до{" "}
             {ACCESS_MATRIX.free_tier.device_limit} устройства. После тестового периода пользователь остаётся здесь.
           </p>
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Порядок подключения</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Порядок подключения</p>
           <h3 className="mt-2 font-display text-2xl font-semibold">VLESS → VMess → Trojan → XHTTP</h3>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          <p className="mt-3 text-sm leading-6 text-[color:var(--atlas-text-soft)] dark:text-slate-300">
             Оператор видит технический порядок, а пользователь видит одну понятную локацию. XHTTP включаем
             только когда подготовлена вся внешняя часть.
           </p>
@@ -331,7 +331,7 @@ export default function AdminPromosPage() {
             </div>
             <h2 className="font-display text-xl font-bold">Выпустить ключи</h2>
           </div>
-          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mb-4 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
             Выберите тариф и количество. Новые ключи можно передать пользователю для активации доступа.
           </p>
 
@@ -339,7 +339,7 @@ export default function AdminPromosPage() {
             <select
               value={selectedPlan}
               onChange={(event) => setSelectedPlan(event.target.value)}
-              className="rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+              className="rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
             >
               {SHARED_PLANS.map((plan) => (
                 <option key={plan.code} value={plan.code}>
@@ -353,7 +353,7 @@ export default function AdminPromosPage() {
               type="number"
               min={1}
               max={50}
-              className="rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+              className="rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
             />
             <button
               type="button"
@@ -371,7 +371,7 @@ export default function AdminPromosPage() {
                 <div key={item.key} className="node-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="badge badge-violet font-mono">{item.key}</p>
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)]">
                       {item.planLabel} • {fmtRuDate(item.issuedAt)}
                     </p>
                   </div>
@@ -401,7 +401,7 @@ export default function AdminPromosPage() {
             </div>
             <h2 className="font-display text-xl font-bold">Проверить ключ</h2>
           </div>
-          <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mb-4 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
             Введите ключ, чтобы понять, существует ли он, к какому тарифу относится и был ли уже активирован.
           </p>
 
@@ -410,7 +410,7 @@ export default function AdminPromosPage() {
               value={lookupKey}
               onChange={(event) => setLookupKey(normalizeKey(event.target.value))}
               placeholder="POKROV-XXXX-XXXX"
-              className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+              className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
             />
             <button
               type="button"
@@ -423,7 +423,7 @@ export default function AdminPromosPage() {
           </div>
 
           {lookupResult ? (
-            <div className="mt-5 space-y-2 rounded-2xl border border-white/40 bg-white/55 p-4 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
+            <div className="mt-5 space-y-2 rounded-2xl border border-white/40 bg-[color:var(--atlas-surface)] p-4 text-sm text-[color:var(--atlas-text-soft)] dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
               <p>Ключ: <strong>{lookupResult.key}</strong></p>
               <p>Найден: <strong>{lookupResult.exists ? "да" : "нет"}</strong></p>
               <p>Погашен: <strong>{lookupResult.redeemed ? "да" : "нет"}</strong></p>
@@ -451,9 +451,9 @@ export default function AdminPromosPage() {
                 <span className="badge badge-success">{plan.badge || "активен"}</span>
               </div>
               <p className="text-lg font-bold">{plan.label}</p>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{plan.amountRub} ₽</p>
-              <p className="mt-1 text-xs text-slate-500">{formatPlanMeta(plan.days, plan.deviceLimit)}</p>
-              <p className="mt-3 text-xs leading-6 text-slate-500">{plan.note}</p>
+              <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">{plan.amountRub} ₽</p>
+              <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{formatPlanMeta(plan.days, plan.deviceLimit)}</p>
+              <p className="mt-3 text-xs leading-6 text-[color:var(--atlas-text-soft)]">{plan.note}</p>
             </div>
           ))}
         </div>
@@ -466,7 +466,7 @@ export default function AdminPromosPage() {
           </div>
           <div>
             <h2 className="font-display text-xl font-bold">Подсказки в кабинете</h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[color:var(--atlas-text-soft)]">
               Версия {remoteVersion} • настройки {remoteAvailable ? "загружены" : "из резерва"}
             </p>
           </div>
@@ -492,7 +492,7 @@ export default function AdminPromosPage() {
           </div>
         </div>
 
-        <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">
+        <p className="mb-4 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
           Здесь выбирается, какие подсказки показывать в разных местах кабинета. Если внешние настройки
           недоступны, кабинет использует резервный режим: <strong>{formatFallbackBehavior(fallbackBehavior)}</strong>.
         </p>
@@ -507,16 +507,16 @@ export default function AdminPromosPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="badge badge-violet font-mono">{assignment.slot_id}</span>
                   <span className="badge badge-info">{formatSurfaceLabel(slot?.surface)}</span>
-                  <span className="text-xs text-slate-500">{formatContexts(slot?.contexts || assignment.contexts || [])}</span>
+                  <span className="text-xs text-[color:var(--atlas-text-soft)]">{formatContexts(slot?.contexts || assignment.contexts || [])}</span>
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-[1fr,1fr,120px]">
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Подсказка</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Подсказка</span>
                     <select
                       value={assignment.content_id}
                       onChange={(event) => updateAssignment(assignment.slot_id, { content_id: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                      className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
                     >
                       {allowedContentIds.map((contentId) => {
                         const content = contentById.get(contentId);
@@ -530,7 +530,7 @@ export default function AdminPromosPage() {
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Где показывать</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Где показывать</span>
                     <input
                       value={(assignment.contexts || []).join(", ")}
                       onChange={(event) =>
@@ -541,61 +541,61 @@ export default function AdminPromosPage() {
                             .filter(Boolean),
                         })
                       }
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                      className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
                     />
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Порядок</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Порядок</span>
                     <input
                       value={assignment.sort_order}
                       onChange={(event) => updateAssignment(assignment.slot_id, { sort_order: Math.max(0, Number(event.target.value || 0)) })}
                       type="number"
                       min={0}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                      className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
                     />
                   </label>
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-2">
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Заголовок</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Заголовок</span>
                     <input
                       value={assignment.title || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { title: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                      className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
                     />
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Текст</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Текст</span>
                     <input
                       value={assignment.body || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { body: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                      className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
                     />
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Текст кнопки</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Текст кнопки</span>
                     <input
                       value={assignment.cta_label || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { cta_label: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                      className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
                     />
                   </label>
 
                   <label className="text-sm">
-                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">Ссылка кнопки</span>
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Ссылка кнопки</span>
                     <input
                       value={assignment.cta_href || ""}
                       onChange={(event) => updateAssignment(assignment.slot_id, { cta_href: event.target.value })}
-                      className="w-full rounded-xl border border-white/45 bg-white/65 px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+                      className="w-full rounded-xl border border-white/45 bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
                     />
                   </label>
                 </div>
 
-                <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                <label className="inline-flex items-center gap-2 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
                   <input
                     type="checkbox"
                     checked={assignment.enabled}

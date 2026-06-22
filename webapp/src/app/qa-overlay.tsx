@@ -47,7 +47,7 @@ function collectMetrics(): Metrics {
     if (!isVisible(button)) return false;
     if (button.getAttribute("aria-label")) return false;
     if (button.getAttribute("title")) return false;
-    const hasMaterialIcon = Boolean(button.querySelector(".material-symbols-rounded, .material-symbols-outlined"));
+    const hasMaterialIcon = Boolean(button.querySelector("svg, .material-symbols-rounded, .material-symbols-outlined"));
     const text = (button.textContent || "").replace(/\s+/g, " ").trim();
     return hasMaterialIcon && (text.length === 0 || /^[a-z_]+$/i.test(text));
   });
@@ -174,7 +174,7 @@ export default function QaOverlay() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="haptic-tap rounded-lg bg-white/10 px-2 py-1 text-xs"
+                className="haptic-tap rounded-lg bg-[color:var(--atlas-surface)] px-2 py-1 text-xs"
                 aria-label="Закрыть QA overlay"
               >
                 close
@@ -182,26 +182,26 @@ export default function QaOverlay() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <div className="rounded-lg bg-white/8 p-2">UI: {metrics.interactive}</div>
-              <div className="rounded-lg bg-white/8 p-2">Links: {metrics.links}</div>
-              <div className="rounded-lg bg-white/8 p-2">Btns: {metrics.buttons}</div>
-              <div className="rounded-lg bg-white/8 p-2">Inputs: {metrics.inputs}</div>
-              <div className="rounded-lg bg-white/8 p-2">Disabled: {metrics.disabled}</div>
-              <div className="rounded-lg bg-white/8 p-2">Icon-only: {metrics.iconOnlyButtons}</div>
+              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">UI: {metrics.interactive}</div>
+              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Links: {metrics.links}</div>
+              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Btns: {metrics.buttons}</div>
+              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Inputs: {metrics.inputs}</div>
+              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Disabled: {metrics.disabled}</div>
+              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Icon-only: {metrics.iconOnlyButtons}</div>
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setMetrics(collectMetrics())}
-                className="haptic-tap rounded-lg bg-white/10 px-2.5 py-1.5 text-[11px]"
+                className="haptic-tap rounded-lg bg-[color:var(--atlas-surface)] px-2.5 py-1.5 text-[11px]"
               >
                 Обновить
               </button>
               <button
                 type="button"
                 onClick={() => setHitbox((prev) => !prev)}
-                className={`haptic-tap rounded-lg px-2.5 py-1.5 text-[11px] ${hitbox ? "bg-cyan-500/85 text-white" : "bg-white/10"}`}
+                className={`haptic-tap rounded-lg px-2.5 py-1.5 text-[11px] ${hitbox ? "bg-cyan-500/85 text-white" : "bg-[color:var(--atlas-surface)]"}`}
               >
                 Hitbox {hitbox ? "ON" : "OFF"}
               </button>
@@ -209,14 +209,14 @@ export default function QaOverlay() {
                 type="button"
                 onClick={runLinkScan}
                 disabled={scanning}
-                className="haptic-tap rounded-lg bg-white/10 px-2.5 py-1.5 text-[11px] disabled:opacity-50"
+                className="haptic-tap rounded-lg bg-[color:var(--atlas-surface)] px-2.5 py-1.5 text-[11px] disabled:opacity-50"
               >
                 {scanning ? "Сканируем..." : "Проверить ссылки"}
               </button>
             </div>
 
             {links.length > 0 ? (
-              <div className="mt-3 rounded-xl bg-white/5 p-2.5">
+              <div className="mt-3 rounded-xl bg-[color:var(--atlas-surface)] p-2.5">
                 <p className="text-[11px] text-cyan-100/85">Broken: {brokenCount}</p>
                 <div className="mt-2 max-h-24 space-y-1 overflow-y-auto pr-1 text-[10px]">
                   {links.map((item) => (

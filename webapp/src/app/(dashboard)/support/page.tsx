@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
+import { CabinetIcon, icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button, Chip, Input, Note, Textarea } from "@/components/cabinet/ui";
 import {
   createTicket,
   fetchTickets,
@@ -42,10 +44,6 @@ const CATEGORY_PRESETS: Record<TicketCategory, { subject: string; body: string; 
     hint: "Любой вопрос по кабинету, доступу или устройствам.",
   },
 };
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
 
 function statusLabel(status: string): string {
   const normalized = String(status || "").trim().toLowerCase();
@@ -159,7 +157,7 @@ export default function SupportPage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-[840px] space-y-5">
+      <main className="cab-page">
         <CabinetStatus
           title="Помощь"
           meta={latestTicket ? `${statusLabel(latestTicket.status)} · #${latestTicket.id}` : "Кабинет и Telegram"}
@@ -170,9 +168,9 @@ export default function SupportPage() {
           }
           tone={openCount ? "info" : "neutral"}
           action={
-            <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
+            <Button onClick={() => openComposer(CATEGORIES[0])} className="w-full sm:w-auto">
               Новый вопрос
-            </button>
+            </Button>
           }
         />
 
@@ -180,7 +178,7 @@ export default function SupportPage() {
           title="Последнее обращение"
           action={
             latestTicket ? (
-              <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="cab-link">
                 Открыть
               </AppRouteLink>
             ) : null
@@ -207,7 +205,7 @@ export default function SupportPage() {
             label="Новый вопрос"
             hint="Короткая форма с вложением"
             action={
-              <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="cab-link">
                 Написать
               </button>
             }
@@ -217,7 +215,7 @@ export default function SupportPage() {
             label="Telegram"
             hint="Удобно для быстрого живого ответа"
             action={
-              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="cab-link">
                 Открыть
               </AppRouteLink>
             }
@@ -233,110 +231,97 @@ export default function SupportPage() {
           <CabinetRow icon={icon("description")} label="Документы" hint="Оплата и условия" href="/support/legal/" />
         </CabinetGroup>
 
-        {notice ? <p className="px-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{notice}</p> : null}
-        {error ? <p className="px-1 text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
+        {notice ? <p className="px-1 text-sm font-semibold text-[color:var(--atlas-primary)]">{notice}</p> : null}
+        {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
       </main>
 
       {composeOpen ? (
-        <div className="fixed inset-0 z-[230] grid place-items-end bg-slate-950/48 p-0 sm:place-items-center sm:p-4" onClick={() => setComposeOpen(false)}>
+        <div className="fixed inset-0 z-[230] grid place-items-end bg-slate-950/45 p-0 backdrop-blur-sm sm:place-items-center sm:p-4" onClick={() => setComposeOpen(false)}>
           <div
-            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-slate-200/80 bg-white/96 p-5 shadow-[0_32px_80px_-50px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-[#101713]/96 sm:rounded-3xl sm:p-6"
+            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[1.6rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-5 shadow-[var(--atlas-shadow-medium)] sm:rounded-[1.6rem] sm:p-6"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Новое обращение</p>
-                <h2 className="mt-2 text-2xl font-semibold leading-tight text-slate-950 dark:text-slate-50">Новый вопрос</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{preset.hint}</p>
+                <p className="cab-eyebrow">Новое обращение</p>
+                <h2 className="mt-2 text-2xl font-semibold leading-tight text-[color:var(--atlas-text)]">Новый вопрос</h2>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{preset.hint}</p>
               </div>
-              <button type="button" onClick={() => setComposeOpen(false)} className="outline-btn rounded-xl p-2" aria-label="Закрыть">
-                <span className="material-symbols-rounded">close</span>
-              </button>
+              <Button variant="ghost" size="sm" onClick={() => setComposeOpen(false)} aria-label="Закрыть" className="!px-2">
+                <CabinetIcon name="close" />
+              </Button>
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
               {CATEGORIES.map((item) => (
-                <button
+                <Chip
                   key={item}
-                  type="button"
+                  active={item === category}
                   onClick={() => {
                     const nextPreset = CATEGORY_PRESETS[item];
                     setCategory(item);
                     setSubject(nextPreset.subject);
                     setBody(nextPreset.body);
                   }}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-[0.98] ${
-                    item === category
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-100"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"
-                  }`}
                 >
                   {item}
-                </button>
+                </Chip>
               ))}
             </div>
 
             <div className="mt-5 space-y-4">
-              <input
+              <Input
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
                 placeholder="Коротко: что случилось"
               />
-              <textarea
+              <Textarea
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
                 rows={7}
-                className="w-full rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
                 placeholder="Опишите, что делали, где сломалось и что видите сейчас."
               />
 
-              <label className="block rounded-2xl border border-dashed border-slate-200/80 bg-slate-50/90 px-4 py-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">
-                <span className="block font-medium text-slate-900 dark:text-slate-50">Вложение</span>
-                <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+              <label className="block rounded-[var(--pokrov-radius-control)] border border-dashed border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-4 text-sm">
+                <span className="block font-medium text-[color:var(--atlas-text)]">Вложение</span>
+                <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-muted)]">
                   Скриншот, видео, PDF или текстовый файл до 20 МБ.
                 </span>
                 <input
                   type="file"
                   accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                  className="mt-3 block w-full cursor-pointer text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-500/15 file:px-4 file:py-2 file:font-medium file:text-emerald-700 dark:text-slate-300 dark:file:bg-emerald-500/20 dark:file:text-emerald-200"
+                  className="mt-3 block w-full cursor-pointer text-sm text-[color:var(--atlas-text-soft)] file:mr-3 file:rounded-[var(--pokrov-radius-control)] file:border-0 file:bg-[color:var(--atlas-nav-active)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--atlas-primary)]"
                   onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
                 />
                 {attachmentFile ? (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/75 px-3 py-2 text-xs dark:bg-white/10">
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs">
                     <span className="truncate">{attachmentFile.name}</span>
-                    <button type="button" onClick={() => setAttachmentFile(null)} className="text-rose-500">
+                    <button type="button" onClick={() => setAttachmentFile(null)} className="text-[color:var(--atlas-status-danger-text)]">
                       Убрать
                     </button>
                   </div>
                 ) : null}
-                {attachmentFile ? <p className="mt-2 text-xs text-slate-500">{formatFileSize(attachmentFile.size)}</p> : null}
+                {attachmentFile ? <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">{formatFileSize(attachmentFile.size)}</p> : null}
               </label>
 
               <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  disabled={busy || !body.trim()}
-                  onClick={() => void onCreateTicket()}
-                  className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-                >
+                <Button disabled={busy || !body.trim()} onClick={() => void onCreateTicket()}>
                   {busy ? "Отправляем..." : "Отправить вопрос"}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     setSubject("");
                     setBody("");
                     setAttachmentFile(null);
                     setNotice("");
                   }}
-                  className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold"
                 >
                   Очистить
-                </button>
+                </Button>
               </div>
-              {notice ? <p className="text-sm text-emerald-700 dark:text-emerald-300">{notice}</p> : null}
-              {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
+              {notice ? <Note tone="success">{notice}</Note> : null}
+              {error ? <Note tone="danger">{error}</Note> : null}
             </div>
           </div>
         </div>

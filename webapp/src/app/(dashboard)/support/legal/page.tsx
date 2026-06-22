@@ -1,7 +1,8 @@
 "use client";
 
-import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button } from "@/components/cabinet/ui";
 import { CANONICAL_MARKETING_SITE_URL } from "@/lib/portal";
 
 function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
@@ -20,25 +21,21 @@ function marketingDocumentUrl(pathname: "/offer/" | "/privacy/"): string {
   return `${CANONICAL_MARKETING_SITE_URL}${pathname}`;
 }
 
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
-
 export default function SupportLegalPage() {
   const offerUrl = marketingDocumentUrl("/offer/");
   const privacyUrl = marketingDocumentUrl("/privacy/");
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Документы"
         meta="pokrov.space"
         body="Оферта и политика открываются на публичном сайте. В кабинете оставляем только быстрые входы и поддержку."
         tone="neutral"
         action={
-          <AppRouteLink href="/support/" className="outline-btn w-full rounded-full px-5 py-3 text-center text-sm font-semibold sm:w-auto">
+          <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             В поддержку
-          </AppRouteLink>
+          </Button>
         }
       />
 
@@ -49,7 +46,7 @@ export default function SupportLegalPage() {
           hint="Условия доступа, оплаты и продления"
           value="pokrov.space"
           action={
-            <a href={offerUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+            <a href={offerUrl} target="_blank" rel="noreferrer" className="cab-link">
               Открыть
             </a>
           }
@@ -60,7 +57,7 @@ export default function SupportLegalPage() {
           hint="Данные аккаунта, оплаты и поддержки"
           value="pokrov.space"
           action={
-            <a href={privacyUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+            <a href={privacyUrl} target="_blank" rel="noreferrer" className="cab-link">
               Открыть
             </a>
           }

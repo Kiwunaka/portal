@@ -3,7 +3,9 @@
 import { useState, type FormEvent } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button, Input, Note } from "@/components/cabinet/ui";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import {
   checkChannelSubscriberStatus,
@@ -16,10 +18,6 @@ import {
 } from "@/lib/api";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
-
-function icon(name: string) {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
 
 function formatDate(value?: string | null): string {
   if (!value) return "уточняется";
@@ -196,16 +194,16 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title="Аккаунт"
         meta={profileName}
         body={dash?.is_active ? "Вход, устройства и бонусы этого профиля." : "Продлите доступ или откройте поддержку, если что-то не сходится."}
         tone={dash?.is_active ? "success" : "warning"}
         action={
-          <AppRouteLink href="/subscription/" className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
+          <Button href="/subscription/" className="w-full sm:w-auto">
             Продлить
-          </AppRouteLink>
+          </Button>
         }
       />
 
@@ -223,7 +221,7 @@ export default function SettingsPage() {
           value={telegramName}
           action={
             hasLinkedTelegram ? (
-              <AppRouteLink href={supportLink} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              <AppRouteLink href={supportLink} className="cab-link">
                 Поддержка
               </AppRouteLink>
             ) : (
@@ -231,7 +229,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => void onTelegramLink()}
                 disabled={telegramLinkBusy}
-                className="text-sm font-semibold text-emerald-800 disabled:opacity-60 dark:text-emerald-300"
+                className="cab-link"
               >
                 {telegramLinkBusy ? "Открываем..." : "Подключить Telegram"}
               </button>
@@ -245,7 +243,7 @@ export default function SettingsPage() {
           value={linkedEmail || "доступен"}
           action={
             canLinkEmail ? (
-              <a href="#email-link" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              <a href="#email-link" className="cab-link">
                 Добавить
               </a>
             ) : null
@@ -253,40 +251,30 @@ export default function SettingsPage() {
         />
       </CabinetGroup>
 
-      {telegramLinkPayload || telegramLinkError ? (
-        <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/85 px-5 py-4 text-sm leading-6 text-emerald-900 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-100">
-          {telegramLinkError ? (
-            <p className="font-semibold text-rose-700 dark:text-rose-200">{telegramLinkError}</p>
-          ) : telegramLinkPayload?.linked ? (
-            <p className="font-semibold">Telegram уже подключен к этому профилю.</p>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-semibold">Откройте бота и завершите привязку Telegram.</p>
-              <AppRouteLink
-                href={telegramLinkPayload?.bot_url || supportLink}
-                target="_blank"
-                hardNavigate={false}
-                className="outline-btn rounded-full px-4 py-2 text-sm font-semibold"
-              >
-                Открыть бота
-              </AppRouteLink>
-            </div>
-          )}
-        </div>
+      {telegramLinkError ? (
+        <div className="cab-note" data-tone="danger">{telegramLinkError}</div>
+      ) : telegramLinkPayload ? (
+        telegramLinkPayload.linked ? (
+          <div className="cab-note" data-tone="success">Telegram уже подключен к этому профилю.</div>
+        ) : (
+          <div className="cab-note flex flex-wrap items-center justify-between gap-3" data-tone="info">
+            <span className="font-semibold">Откройте бота и завершите привязку Telegram.</span>
+            <Button variant="secondary" size="sm" href={telegramLinkPayload.bot_url || supportLink} target="_blank" hardNavigate={false}>
+              Открыть бота
+            </Button>
+          </div>
+        )
       ) : null}
 
       {canLinkEmail ? (
         <section id="email-link" className="scroll-mt-24 space-y-2">
           <div className="px-1">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-              Подключить email к текущему аккаунту
-            </h2>
+            <h2 className="cab-eyebrow">Подключить email к текущему аккаунту</h2>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white/86 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="cab-panel p-4">
             <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
               <form className="space-y-3" onSubmit={onEmailLinkRequest}>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                <Input
                   value={emailLinkEmail}
                   onChange={(event) => setEmailLinkEmail(event.target.value)}
                   type="email"
@@ -294,15 +282,13 @@ export default function SettingsPage() {
                   autoComplete="email"
                   required
                 />
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                <Input
                   value={emailLinkName}
                   onChange={(event) => setEmailLinkName(event.target.value)}
                   placeholder="Как обращаться"
                   autoComplete="name"
                 />
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                <Input
                   value={emailLinkPassword}
                   onChange={(event) => setEmailLinkPassword(event.target.value)}
                   type="password"
@@ -311,39 +297,30 @@ export default function SettingsPage() {
                   minLength={10}
                   required
                 />
-                <button
-                  type="submit"
-                  disabled={emailLinkBusy !== ""}
-                  className="btn-primary rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-                >
+                <Button type="submit" disabled={emailLinkBusy !== ""}>
                   {emailLinkBusy === "request" ? "Отправляем..." : "Отправить письмо"}
-                </button>
+                </Button>
               </form>
 
               <form className="space-y-3" onSubmit={onEmailLinkVerify}>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-400 dark:border-white/10 dark:bg-white/[0.04]"
+                <Input
                   value={emailLinkToken}
                   onChange={(event) => setEmailLinkToken(event.target.value)}
                   placeholder="Код подтверждения"
                   autoComplete="one-time-code"
                   required
                 />
-                <button
-                  type="submit"
-                  disabled={emailLinkBusy !== ""}
-                  className="outline-btn rounded-2xl px-5 py-3 text-sm font-semibold disabled:opacity-60"
-                >
+                <Button type="submit" variant="secondary" disabled={emailLinkBusy !== ""}>
                   {emailLinkBusy === "verify" ? "Проверяем..." : "Подтвердить email"}
-                </button>
-                {emailLinkMessage ? <p className="text-sm leading-6 text-emerald-700 dark:text-emerald-200">{emailLinkMessage}</p> : null}
-                {emailLinkError ? <p className="text-sm leading-6 text-rose-700 dark:text-rose-200">{emailLinkError}</p> : null}
+                </Button>
+                {emailLinkMessage ? <Note tone="success">{emailLinkMessage}</Note> : null}
+                {emailLinkError ? <Note tone="danger">{emailLinkError}</Note> : null}
               </form>
             </div>
           </div>
         </section>
       ) : emailLinkMessage ? (
-        <p className="px-1 text-sm font-semibold text-emerald-800 dark:text-emerald-300">{emailLinkMessage}</p>
+        <p className="px-1 text-sm font-semibold text-[color:var(--atlas-primary)]">{emailLinkMessage}</p>
       ) : null}
 
       <CabinetGroup title="Telegram-бонус">
@@ -354,7 +331,7 @@ export default function SettingsPage() {
           value="@pokrov_vpn"
           action={
             channelLink ? (
-              <AppRouteLink href={channelLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              <AppRouteLink href={channelLink} target="_blank" hardNavigate={false} className="cab-link">
                 Открыть
               </AppRouteLink>
             ) : null
@@ -369,7 +346,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => void onCheckBonus()}
               disabled={bonusBusy !== ""}
-              className="text-sm font-semibold text-emerald-800 disabled:opacity-60 dark:text-emerald-300"
+              className="cab-link"
             >
               {bonusBusy === "check" ? "Проверяем..." : "Проверить подписку"}
             </button>
@@ -384,7 +361,7 @@ export default function SettingsPage() {
               type="button"
               onClick={() => void onClaimBonus()}
               disabled={bonusBusy !== "" || Boolean(channelBonusClaimedAt) || (!canClaimBonus && !bonusCheck?.subscriber)}
-              className="text-sm font-semibold text-emerald-800 disabled:opacity-50 dark:text-emerald-300"
+              className="cab-link"
             >
               {bonusBusy === "claim" ? "Добавляем..." : `Забрать +${channelBonusDays} дней`}
             </button>

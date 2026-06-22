@@ -117,11 +117,11 @@ export function AdminUserSidePanel({
       <div className={adminInsetPanelClass}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Выбранный пользователь</p>
-            <h2 className="mt-1 font-display text-2xl font-semibold text-slate-900">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Выбранный пользователь</p>
+            <h2 className="mt-1 font-display text-2xl font-semibold text-[color:var(--atlas-text)]">
               {user.display_name || user.username || `Пользователь #${user.tg_id}`}
             </h2>
-            <div className="mt-2 space-y-1 text-xs text-slate-400">
+            <div className="mt-2 space-y-1 text-xs text-[color:var(--atlas-text-muted)]">
               <p>tg_id: {user.tg_id}</p>
               <p>Создан: {fmtRuDate(user.created_at)}</p>
               <p>Истекает: {fmtRuDate(user.expiry_at)}</p>
@@ -132,14 +132,14 @@ export function AdminUserSidePanel({
             <div className="flex flex-wrap items-center justify-end gap-2">
               <span className={`rounded-full px-2 py-1 text-xs ${userStatusBadgeClass(user.status)}`}>{userStatusLabel(user.status)}</span>
               <span className={`badge ${observerStateBadgeClass(user.observer_state)}`}>Проверка: {observerStateLabel(user.observer_state)}</span>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600">
+              <span className="rounded-full border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-2 py-1 text-xs font-semibold text-[color:var(--atlas-text-soft)]">
                 {originLabel(user.origin)}
               </span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[color:var(--atlas-text-muted)]">
               Telegram: {user.linked_telegram_username ? `@${user.linked_telegram_username}` : user.linked_telegram_id || "нет"}
             </p>
-            <p className="text-xs text-slate-400">Установка приложения: {user.app_install_id || "нет"}</p>
+            <p className="text-xs text-[color:var(--atlas-text-muted)]">Установка приложения: {user.app_install_id || "нет"}</p>
           </div>
         </div>
       </div>
@@ -160,11 +160,11 @@ export function AdminUserSidePanel({
       </div>
 
       {selectedCanDelete ? (
-        <div className={`${adminInsetPanelClass} mt-3 border-rose-200/80 bg-rose-50/88 dark:border-rose-500/20 dark:bg-rose-500/10`}>
+        <div className={`${adminInsetPanelClass} mt-3 border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] dark:border-rose-500/20 dark:bg-rose-500/10`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-rose-700 dark:text-rose-200">Удаление только для тестовых аккаунтов</p>
-              <p className="mt-1 text-xs leading-5 text-slate-400">
+              <p className="text-sm font-semibold text-[color:var(--atlas-status-danger-text)] dark:text-rose-200">Удаление только для тестовых аккаунтов</p>
+              <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-muted)]">
                 Удаляйте только служебные аккаунты, созданные для проверки админки или сценариев поддержки.
               </p>
             </div>
@@ -177,7 +177,7 @@ export function AdminUserSidePanel({
 
       <div className="mt-3 grid gap-3 xl:grid-cols-3">
         <div className={adminInsetPanelClass}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Доступ</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Доступ</p>
           <div className="mt-2 space-y-1 text-sm">
             <p>Тариф: <strong>{user.sub_type || "-"}</strong></p>
             <p>Оплачено stars: <strong>{user.stars_paid}</strong></p>
@@ -188,9 +188,9 @@ export function AdminUserSidePanel({
         <div className={adminInsetPanelClass}>
           <div className="mb-2 flex items-center gap-2">
             <span className={`badge ${riskClass}`}>Риск {Math.round(risk?.score || 0)}</span>
-            <span className="text-xs text-slate-400">{riskLevelLabel(String(risk?.level || ""))}</span>
+            <span className="text-xs text-[color:var(--atlas-text-muted)]">{riskLevelLabel(String(risk?.level || ""))}</span>
           </div>
-          <div className="space-y-1 text-xs text-slate-400">
+          <div className="space-y-1 text-xs text-[color:var(--atlas-text-muted)]">
             <p>Ротации: <strong>{risk?.signals?.regen_count ?? 0}</strong></p>
             <p>Админ-операции с ключами: <strong>{risk?.signals?.admin_key_ops ?? 0}</strong></p>
             <p>Уникальные IP: <strong>{risk?.signals?.unique_ips ?? 0}</strong></p>
@@ -203,10 +203,10 @@ export function AdminUserSidePanel({
               Проверка: {observerStateLabel(observer?.state || user.observer_state)}
             </span>
           </div>
-          <p className="text-xs leading-5 text-slate-400">
+          <p className="text-xs leading-5 text-[color:var(--atlas-text-muted)]">
             {observer?.reasons?.length ? observer.reasons.join(", ") : "Данных для проверки пока нет."}
           </p>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">
             Состояние панелей: <strong>{panelStateLabel(String(selected.summary?.panel_state || ""))}</strong>
           </p>
         </div>
@@ -214,8 +214,8 @@ export function AdminUserSidePanel({
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-900">Приложение и Telegram</p>
-          <div className="mt-3 space-y-1 text-xs text-slate-400">
+          <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Приложение и Telegram</p>
+          <div className="mt-3 space-y-1 text-xs text-[color:var(--atlas-text-muted)]">
             <p>Установка: <strong>{user.app_install_id || "не привязана"}</strong></p>
             <p>Платформа: <strong>{user.app_platform || "неизвестно"}</strong></p>
             <p>Последняя активность: <strong>{fmtRuDate(user.app_last_seen_at)}</strong></p>
@@ -223,37 +223,37 @@ export function AdminUserSidePanel({
           </div>
         </div>
         <div className={adminInsetPanelClass}>
-          <p className="text-sm font-semibold text-slate-900">Последние оплаты</p>
+          <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Последние оплаты</p>
           {payment_orders.length ? (
             <div className="mt-3 space-y-2">
               {payment_orders.slice(0, 4).map((order) => (
-                <div key={`${order.provider}:${order.order_id}`} className="rounded-xl border border-[#22303c] bg-[#0b1218] px-3 py-2 text-xs">
+                <div key={`${order.provider}:${order.order_id}`} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-mono text-slate-800">{order.order_id}</p>
+                    <p className="font-mono text-[color:var(--atlas-text)]">{order.order_id}</p>
                     <span className={`badge ${paymentStatusTone(order.status)}`}>{paymentStatusLabel(order.status)}</span>
                   </div>
-                  <p className="mt-1 text-slate-400">
+                  <p className="mt-1 text-[color:var(--atlas-text-muted)]">
                     {order.provider} · {order.plan_code || "-"} · {formatPaymentAmount(order)}
                   </p>
                   {order.last_event ? (
-                    <p className="mt-1 text-slate-500">
+                    <p className="mt-1 text-[color:var(--atlas-text-soft)]">
                       Событие {order.last_event.event_type}: {order.last_event.processed_ok ? "обработано" : "нужно проверить"}
                     </p>
                   ) : (
-                    <p className="mt-1 text-slate-500">Подтверждения оплаты ещё нет.</p>
+                    <p className="mt-1 text-[color:var(--atlas-text-soft)]">Подтверждения оплаты ещё нет.</p>
                   )}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-slate-400">Оплат по этому аккаунту пока нет.</p>
+            <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">Оплат по этому аккаунту пока нет.</p>
           )}
         </div>
       </div>
 
       <div className={`${adminInsetPanelClass} mt-3`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-slate-900">Токены и ссылки</p>
+          <p className="text-sm font-semibold text-[color:var(--atlas-text)]">Токены и ссылки</p>
           <button className={adminButtonClass("ghost", "xs")} type="button" onClick={onReload} disabled={busy}>
             Обновить
           </button>

@@ -21,6 +21,14 @@ import { ADMIN_NAV_GROUPS, findAdminNavCategory, findAdminNavItem } from "./nav"
 const MARKETING_SITE_URL = pokrovBranding.marketingUrl;
 const ADMIN_DESIGN_TOKEN_VARS = getDesignTokenCssVariables("admin") as CSSProperties;
 
+const EYEBROW = "text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-muted)]";
+const NAV_ACTIVE =
+  "block rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] px-3 py-2.5 font-semibold text-[color:var(--atlas-status-success-text)]";
+const NAV_IDLE =
+  "block rounded-[var(--pokrov-radius-card)] border border-transparent bg-transparent px-3 py-2.5 text-[color:var(--atlas-text-soft)] transition hover:border-[color:var(--atlas-border)] hover:bg-[color:var(--atlas-canvas-alt)] hover:text-[color:var(--atlas-text)]";
+const QUICK_LINK =
+  "block rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2.5 transition hover:border-[color:var(--atlas-status-success-line)] hover:bg-[color:var(--atlas-status-success-bg)]";
+
 function formatOperatorName(user: { display_name?: string | null; username?: string | null; tg_id?: number | null } | null): string {
   if (!user) return "Оператор";
   return user.display_name || (user.username ? `@${user.username}` : user.tg_id ? `ID ${user.tg_id}` : "Оператор");
@@ -60,11 +68,11 @@ function AdminStateCard({
   primaryLabel?: string;
 }) {
   return (
-    <main className="grid min-h-[72vh] place-items-center">
-      <section className="w-full max-w-[760px] rounded-[1.35rem] border border-slate-200/60 bg-white/90 p-8 text-slate-800 shadow-[0_34px_90px_-56px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p>
-        <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold leading-tight tracking-[-0.05em] text-slate-900">{title}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
+    <main className="grid min-h-[72vh] place-items-center px-4" style={ADMIN_DESIGN_TOKEN_VARS}>
+      <section className="w-full max-w-[760px] rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-8 text-[color:var(--atlas-text)] shadow-[var(--atlas-shadow-medium)]">
+        <p className={EYEBROW}>{eyebrow}</p>
+        <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold leading-tight tracking-[-0.03em] text-[color:var(--atlas-text)]">{title}</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--atlas-text-soft)]">{description}</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <AppRouteLink href={primaryHref} className={adminButtonClass("primary")}>
             {primaryLabel}
@@ -129,13 +137,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <main className="grid min-h-[72vh] place-items-center">
-        <section className="w-full rounded-[1.35rem] border border-slate-200/60 bg-white/90 p-8 text-slate-800 shadow-[0_34px_90px_-56px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">admin / pokrov</p>
-          <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold tracking-[-0.05em] text-slate-900">Открываем POKROV Admin...</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Проверяем права доступа, текущую сессию и рабочую область оператора.</p>
-          <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200">
-            <div className="h-full w-1/3 animate-pulse rounded-full bg-emerald-500" />
+      <main className="grid min-h-[72vh] place-items-center px-4" style={ADMIN_DESIGN_TOKEN_VARS}>
+        <section className="w-full max-w-[760px] rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-8 text-[color:var(--atlas-text)] shadow-[var(--atlas-shadow-medium)]">
+          <p className={EYEBROW}>Админка</p>
+          <h1 className="mt-3 text-[clamp(1.8rem,4vw,2.5rem)] font-semibold tracking-[-0.03em] text-[color:var(--atlas-text)]">Открываем админку…</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[color:var(--atlas-text-soft)]">Проверяем доступ и загружаем рабочее пространство оператора.</p>
+          <div className="mt-6 h-2 overflow-hidden rounded-full bg-[color:var(--atlas-progress-track)]">
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-[color:var(--atlas-primary)]" />
           </div>
         </section>
       </main>
@@ -145,7 +153,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (webLoginRequired) {
     return (
       <AdminStateCard
-        eyebrow="сессия завершена"
+        eyebrow="Сессия завершена"
         title="Войдите снова, чтобы открыть админку"
         description="Сессия в браузере закончилась. Повторите обычный вход, и рабочее пространство оператора вернётся."
         primaryHref="/"
@@ -157,7 +165,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (error && !user) {
     return (
       <AdminStateCard
-        eyebrow="не удалось проверить доступ"
+        eyebrow="Не удалось проверить доступ"
         title="Не получилось подтвердить права администратора"
         description={error}
       />
@@ -167,7 +175,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!user?.is_admin) {
     return (
       <AdminStateCard
-        eyebrow="доступ ограничен"
+        eyebrow="Доступ ограничен"
         title="Этот раздел открыт только для администраторов"
         description="У текущего аккаунта нет операторских прав. Назначьте роль в системе и повторите вход."
       />
@@ -175,53 +183,47 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-slate-50 px-3 py-3 text-slate-800 sm:px-4" style={ADMIN_DESIGN_TOKEN_VARS}>
+    <main className="min-h-[100dvh] bg-[color:var(--atlas-canvas)] px-3 py-3 text-[color:var(--atlas-text)] sm:px-4" style={ADMIN_DESIGN_TOKEN_VARS}>
       <div className="grid min-h-[calc(100dvh-1.5rem)] gap-4 xl:grid-cols-[232px_minmax(0,1fr)] 2xl:grid-cols-[232px_minmax(0,1fr)_280px]">
         <aside className={`${adminSidebarClass} p-4 xl:sticky xl:top-3 xl:self-start`}>
-          <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">админка</p>
-              <h1 className="mt-2 text-lg font-semibold tracking-[-0.04em] text-slate-900">POKROV для оператора</h1>
-              <p className="mt-2 text-xs leading-5 text-slate-500">Операторский интерфейс: разделы, очереди, доступ, сеть и рабочие сообщения.</p>
-            </div>
-            <AdminBadge tone="accent">v2</AdminBadge>
+          <div className="border-b border-[color:var(--atlas-border)] pb-4">
+            <p className={EYEBROW}>Админка</p>
+            <h1 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-[color:var(--atlas-text)]">POKROV для оператора</h1>
+            <p className="mt-2 text-xs leading-5 text-[color:var(--atlas-text-soft)]">Разделы, очереди обращений, доступ, серверы и сообщения — в одном месте.</p>
           </div>
 
           <nav aria-label="Admin sections" className="mt-4 space-y-4">
             {ADMIN_NAV_GROUPS.map((group) => (
               <section key={group.id} className="space-y-2">
                 <div className="px-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{group.label}</p>
+                  <p className={EYEBROW}>{group.label}</p>
                 </div>
                 <div className="space-y-1.5">
                   {group.items.map((item) => {
                     const selected = item.href === activeItem.href;
+                    const attention = adminAttentionCount(summary, item.href);
                     return (
                       <AppRouteLink
                         key={item.href}
                         href={item.href}
                         aria-current={selected ? "page" : undefined}
-                        className={
-                          selected
-                            ? "block rounded-[0.95rem] border border-emerald-300 bg-emerald-50/60 px-3 py-2.5 text-emerald-900 font-semibold"
-                            : "block rounded-[0.95rem] border border-transparent bg-transparent px-3 py-2.5 text-slate-600 transition hover:border-slate-200 hover:bg-slate-50/60 hover:text-slate-900"
-                        }
+                        className={selected ? NAV_ACTIVE : NAV_IDLE}
                       >
                         <span className="flex items-center justify-between gap-2 text-sm font-semibold">
                           <span>{item.label}</span>
-                          {adminAttentionCount(summary, item.href) > 0 ? (
+                          {attention > 0 ? (
                             <span
                               className={
                                 selected
-                                  ? "inline-flex min-w-6 justify-center rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] text-white"
-                                  : "inline-flex min-w-6 justify-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-800"
+                                  ? "inline-flex min-w-6 justify-center rounded-full bg-[color:var(--atlas-primary)] px-2 py-0.5 text-[10px] text-[color:var(--atlas-primary-text)]"
+                                  : "inline-flex min-w-6 justify-center rounded-full bg-[color:var(--atlas-status-warning-bg)] px-2 py-0.5 text-[10px] text-[color:var(--atlas-status-warning-text)]"
                               }
                             >
-                              {adminAttentionCount(summary, item.href)}
+                              {attention}
                             </span>
                           ) : null}
                         </span>
-                        <span className={selected ? "mt-1 block text-xs leading-5 text-emerald-700" : "mt-1 block text-xs leading-5 text-slate-500"}>
+                        <span className={selected ? "mt-1 block text-xs leading-5 text-[color:var(--atlas-status-success-text)] opacity-80" : "mt-1 block text-xs leading-5 text-[color:var(--atlas-text-muted)]"}>
                           {item.summary}
                         </span>
                       </AppRouteLink>
@@ -242,8 +244,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <AdminBadge>{activeItem.label}</AdminBadge>
                   <AdminBadge>Веб-админка — основной путь</AdminBadge>
                 </div>
-                <h1 className="mt-3 text-[1.55rem] font-semibold tracking-[-0.04em] text-slate-900">{activeItem.label}</h1>
-                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500">{activeCategory.primaryHint}</p>
+                <h1 className="mt-3 text-[1.5rem] font-semibold tracking-[-0.02em] text-[color:var(--atlas-text)]">{activeItem.label}</h1>
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-[color:var(--atlas-text-soft)]">{activeCategory.primaryHint}</p>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -262,54 +264,49 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         <aside className="space-y-4 xl:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-3 2xl:self-start">
           <section className={adminRailCardClass}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Смена</p>
-            <h2 className="mt-2 text-lg font-semibold text-slate-900">{operatorName}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Сейчас открыт раздел: {activeItem.label}.</p>
+            <p className={EYEBROW}>Смена оператора</p>
+            <h2 className="mt-2 text-lg font-semibold text-[color:var(--atlas-text)]">{operatorName}</h2>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--atlas-text-soft)]">Сейчас открыт раздел: {activeItem.label}.</p>
             <div className="mt-3 grid gap-2 text-xs">
-              <div className="flex items-center justify-between rounded-[0.85rem] border border-slate-200/70 bg-white/70 px-3 py-2">
-                <span className="text-slate-500">Открытые тикеты</span>
-                <span className="font-mono font-semibold text-slate-900">{summary ? openTickets : "-"}</span>
+              <div className="flex items-center justify-between rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2">
+                <span className="text-[color:var(--atlas-text-soft)]">Открытые обращения</span>
+                <span className="font-mono font-semibold text-[color:var(--atlas-text)]">{summary ? openTickets : "—"}</span>
               </div>
-              <div className="flex items-center justify-between rounded-[0.85rem] border border-slate-200/70 bg-white/70 px-3 py-2">
-                <span className="text-slate-500">Ноды с риском</span>
-                <span className="font-mono font-semibold text-slate-900">{summary ? unhealthyNodes : "-"}</span>
+              <div className="flex items-center justify-between rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2">
+                <span className="text-[color:var(--atlas-text-soft)]">Серверы с проблемами</span>
+                <span className="font-mono font-semibold text-[color:var(--atlas-text)]">{summary ? unhealthyNodes : "—"}</span>
               </div>
-              <div className="flex items-center justify-between rounded-[0.85rem] border border-slate-200/70 bg-white/70 px-3 py-2">
-                <span className="text-slate-500">Callback 24 ч</span>
-                <span className="font-mono font-semibold text-slate-900">{summary ? paymentsToCheck : "-"}</span>
+              <div className="flex items-center justify-between rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-2">
+                <span className="text-[color:var(--atlas-text-soft)]">Сбои оплат за 24 ч</span>
+                <span className="font-mono font-semibold text-[color:var(--atlas-text)]">{summary ? paymentsToCheck : "—"}</span>
               </div>
             </div>
-            {summaryError ? <p className="mt-3 text-xs leading-5 text-rose-600">{summaryError}</p> : null}
+            {summaryError ? <p className="mt-3 text-xs leading-5 text-[color:var(--atlas-status-danger-text)]">{summaryError}</p> : null}
           </section>
 
           <section className={adminRailCardClass}>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Быстрые переходы</p>
+            <p className={EYEBROW}>Быстрые переходы</p>
             <div className="mt-3 space-y-2">
-              <AppRouteLink href="/admin/dashboard" className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40">
-                <span className="block text-sm font-semibold text-slate-800">Сводка смены</span>
-                <span className="mt-1 block text-xs leading-5 text-slate-500">Начать с тревог, очередей и свежести данных.</span>
+              <AppRouteLink href="/admin/dashboard" className={QUICK_LINK}>
+                <span className="block text-sm font-semibold text-[color:var(--atlas-text)]">Сводка смены</span>
+                <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-soft)]">Начните с главного: проблемы, очереди и свежесть данных.</span>
               </AppRouteLink>
-              <AppRouteLink href="/admin/payments?status=manual_review" className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40">
-                <span className="block text-sm font-semibold text-slate-800">Платежи на сверку</span>
-                <span className="mt-1 block text-xs leading-5 text-slate-500">Открыть журнал сразу с ручной проверкой.</span>
+              <AppRouteLink href="/admin/payments?status=manual_review" className={QUICK_LINK}>
+                <span className="block text-sm font-semibold text-[color:var(--atlas-text)]">Платежи на проверку</span>
+                <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-soft)]">Открыть оплаты, которые нужно проверить вручную.</span>
               </AppRouteLink>
-              <AppRouteLink href="/admin/tickets" className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40">
-                <span className="block text-sm font-semibold text-slate-800">Очередь поддержки</span>
-                <span className="mt-1 block text-xs leading-5 text-slate-500">Ответы, статусы и шаблоны оператора.</span>
+              <AppRouteLink href="/admin/tickets" className={QUICK_LINK}>
+                <span className="block text-sm font-semibold text-[color:var(--atlas-text)]">Очередь поддержки</span>
+                <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-soft)]">Ответы, статусы и шаблоны для операторов.</span>
               </AppRouteLink>
               {siblingItems.slice(0, 2).map((item) => (
-                <AppRouteLink
-                  key={item.href}
-                  href={item.href}
-                  className="block rounded-[0.95rem] border border-slate-200/60 bg-white/60 px-3 py-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/40"
-                >
-                  <span className="block text-sm font-semibold text-slate-800">{item.label}</span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">{item.summary}</span>
+                <AppRouteLink key={item.href} href={item.href} className={QUICK_LINK}>
+                  <span className="block text-sm font-semibold text-[color:var(--atlas-text)]">{item.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-soft)]">{item.summary}</span>
                 </AppRouteLink>
               ))}
             </div>
           </section>
-
         </aside>
       </div>
     </main>

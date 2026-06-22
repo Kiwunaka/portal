@@ -62,7 +62,7 @@ function AdminUsersSearchField({ initialQuery, loading, onQueryChange }: AdminUs
 
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--atlas-text-muted)]">
         {loading ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : <Search aria-hidden className="h-4 w-4" />}
       </span>
       <input
@@ -78,7 +78,7 @@ function AdminUsersSearchField({ initialQuery, loading, onQueryChange }: AdminUs
       {queryDraft ? (
         <button
           type="button"
-          className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+          className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[color:var(--atlas-text-soft)] transition hover:bg-[color:var(--atlas-canvas-alt)] hover:text-[color:var(--atlas-text)]"
           onClick={() => {
             setQueryDraft("");
             onQueryChange("");
@@ -120,9 +120,9 @@ export function AdminUsersQueryPanel({
     <article className={adminPanelClass("neutral")}>
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Раздел пользователей</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-900">Поиск аккаунтов и операторские действия</h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Раздел пользователей</p>
+          <h2 className="mt-1 text-lg font-semibold text-[color:var(--atlas-text)]">Поиск аккаунтов и операторские действия</h2>
+          <p className="mt-1 text-sm leading-6 text-[color:var(--atlas-text-soft)]">
             Фильтры сверху, список слева, карточка пользователя справа. Удаление доступно только для служебных тестовых аккаунтов.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -173,7 +173,7 @@ export function AdminUsersQueryPanel({
         </select>
       </div>
 
-      <div className={`${adminInsetPanelClass} mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600`}>
+      <div className={`${adminInsetPanelClass} mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-[color:var(--atlas-text-soft)]`}>
         <div>Показаны {pageStart}-{pageEnd || 0} из {totalRows} пользователей. Статус один для кабинета и бота.</div>
         <div className="flex items-center gap-2">
           <button className={adminButtonClass("ghost", "xs")} type="button" disabled={page <= 1 || loading} onClick={onPrevPage}>
@@ -189,8 +189,8 @@ export function AdminUsersQueryPanel({
       <div className={`${adminInsetPanelClass} mt-3`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Массовое действие</p>
-            <p className="mt-1 text-xs leading-5 text-slate-600">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Массовое действие</p>
+            <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-soft)]">
               Сначала проверьте, сколько пользователей попадёт под действие. Применяйте изменения только после проверки.
             </p>
           </div>
@@ -235,7 +235,7 @@ export function AdminUsersQueryPanel({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-[color:var(--atlas-text-soft)]">
             Лимит:
             <input
               type="number"
@@ -246,7 +246,7 @@ export function AdminUsersQueryPanel({
               className={`${adminFieldClass} ml-2 h-8 min-h-8 w-20 rounded-lg px-2 py-1 text-xs`}
             />
           </label>
-          <label className="inline-flex items-center gap-2 text-xs text-slate-600">
+          <label className="inline-flex items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
             <input
               type="checkbox"
               checked={bulkAction.dryRun}
@@ -254,7 +254,7 @@ export function AdminUsersQueryPanel({
             />
             Только проверить
           </label>
-          <label className="inline-flex items-center gap-2 text-xs text-slate-600">
+          <label className="inline-flex items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
             <input
               type="checkbox"
               checked={bulkAction.force}
@@ -267,10 +267,10 @@ export function AdminUsersQueryPanel({
           </button>
         </div>
 
-        {bulkResult ? <p className="mt-3 text-xs font-medium text-emerald-700">{bulkResult}</p> : null}
+        {bulkResult ? <p className="mt-3 text-xs font-medium text-[color:var(--atlas-status-success-text)]">{bulkResult}</p> : null}
       </div>
 
-      {okMessage ? <p className="mt-3 text-sm font-medium text-emerald-700">{okMessage}</p> : null}
+      {okMessage ? <p className="mt-3 text-sm font-medium text-[color:var(--atlas-status-success-text)]">{okMessage}</p> : null}
     </article>
   );
 }

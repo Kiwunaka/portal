@@ -885,6 +885,24 @@ class ClientWarpRuntimeEventIn(BaseModel):
     meta: dict[str, Any] | None = None
 
 
+class ClientNotificationsReadIn(BaseModel):
+    ids: list[str] = Field(default_factory=list, max_length=100)
+
+
+class ClientPushRegisterIn(BaseModel):
+    platform: str = Field(min_length=2, max_length=32)
+    provider: str = Field(min_length=2, max_length=32)
+    token: str = Field(min_length=4, max_length=4096)
+
+
+class ClientSupportAssistantIn(BaseModel):
+    ticket_id: int | None = Field(default=None, ge=1)
+    ticketId: int | None = Field(default=None, ge=1)
+    message: str = Field(min_length=1, max_length=2000)
+    scope: str = Field(default="support", min_length=2, max_length=32)
+    safeDiagnostics: dict[str, Any] = Field(default_factory=dict)
+
+
 class AdminWarpMaterialPutIn(BaseModel):
     tg_id: int = Field(gt=0)
     install_id: str | None = Field(default=None, max_length=128)
@@ -4418,6 +4436,28 @@ def _ticket_message_row(msg) -> dict[str, Any]:
     }
 
 
+def _ticket_operator_presence(ticket) -> str:
+    status = str(getattr(ticket, "status", "") or "").strip().lower()
+    if status == STATUS_CLOSED:
+        return "offline"
+    if getattr(ticket, "assigned_admin_tg_id", None):
+        return "online"
+    return "away"
+
+
+def _ticket_unread_for_user(messages: list | None) -> int:
+    rows = list(messages or [])
+    last_user_index = -1
+    for index, msg in enumerate(rows):
+        if str(getattr(msg, "sender_role", "") or "").strip().lower() == "user":
+            last_user_index = index
+    unread = 0
+    for msg in rows[last_user_index + 1 :]:
+        if str(getattr(msg, "sender_role", "") or "").strip().lower() in {"admin", "assistant"}:
+            unread += 1
+    return unread
+
+
 def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
     rows = messages if messages is not None else []
     last_message = rows[-1] if rows else None
@@ -4433,6 +4473,10 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "closed_at": _safe_iso(ticket.closed_at),
         "messages": [_ticket_message_row(m) for m in rows],
         "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
+        "operatorPresence": _ticket_operator_presence(ticket),
+        "operatorTyping": False,
+        "unreadForUser": _ticket_unread_for_user(rows),
+        "slaHint": None if str(ticket.status or "").strip().lower() == STATUS_CLOSED else "support_queue",
     }
 
 
@@ -6093,6 +6137,537 @@ def _smart_connect_shortlist(
         },
         "rejected_counts": rejected_counts,
     }
+
+
+def _client_user_session(request: Request, x_telegram_init_data: str) -> tuple[Any, User, dict[str, Any]]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        _maybe_downgrade_expired_to_free(s, user)
+        _ensure_free_cycle_state_persisted(s, user)
+        return s, user, auth_user
+    except Exception:
+        s.close()
+        raise
+
+
+def _client_event_meta(value: dict[str, Any] | None) -> str:
+    return json.dumps(dict(value or {}), ensure_ascii=False, separators=(",", ":"))[:4000]
+
+
+def _record_client_event(
+    s,
+    *,
+    user: User,
+    event_name: str,
+    source: str = "app",
+    session_id: str | None = None,
+    meta: dict[str, Any] | None = None,
+) -> None:
+    s.add(
+        Event(
+            tg_id=int(user.tg_id),
+            event_name=str(event_name or "").strip()[:64],
+            source=str(source or "app").strip()[:32] or "app",
+            session_id=(str(session_id or getattr(user, "app_install_id", "") or "").strip()[:64] or None),
+            meta_json=_client_event_meta(meta),
+            created_at=_utcnow(),
+        )
+    )
+
+
+def _node_country_code(code: str) -> str:
+    base = _node_code_base(code)
+    if base == "brain":
+        return "de"
+    return base or "xx"
+
+
+def _node_city_name(code: str, fallback_name: str = "") -> str:
+    raw = str(code or "").strip().lower()
+    parts = [part for part in re.split(r"[-_.]+", raw) if part]
+    city_key = parts[1] if len(parts) > 1 and parts[1] != "free" else parts[0] if parts else ""
+    cities = {
+        "ams": "Amsterdam",
+        "nl": "Amsterdam",
+        "fra": "Frankfurt",
+        "de": "Frankfurt",
+        "hel": "Helsinki",
+        "fi": "Helsinki",
+        "waw": "Warsaw",
+        "pl": "Warsaw",
+        "lon": "London",
+        "gb": "London",
+        "uk": "London",
+        "nyc": "New York",
+        "us": "New York",
+        "mil": "Milan",
+        "it": "Milan",
+        "par": "Paris",
+        "fr": "Paris",
+    }
+    if "free" in raw:
+        return cities.get(_node_country_code(raw), "Free node")
+    if city_key in cities:
+        return cities[city_key]
+    cleaned = str(fallback_name or raw or "Node").strip()
+    return cleaned[:1].upper() + cleaned[1:] if cleaned else "Node"
+
+
+def _node_health_ratio(node: Any) -> float:
+    try:
+        raw = float(getattr(node, "health_score", 0.0) or 0.0)
+    except Exception:
+        raw = 0.0
+    if raw > 1:
+        raw = raw / 100.0
+    return round(max(0.0, min(raw, 1.0)), 3)
+
+
+def _node_load_ratio(node: Any) -> float:
+    try:
+        raw = float(getattr(node, "cpu_percent", 0.0) or 0.0) / 100.0
+    except Exception:
+        raw = 0.0
+    return round(max(0.0, min(raw, 1.0)), 3)
+
+
+def _node_matches_query(*, node: Any, country: str, city: str, query: str) -> bool:
+    q = str(query or "").strip().lower()
+    if not q:
+        return True
+    haystack = " ".join(
+        [
+            str(getattr(node, "code", "") or ""),
+            str(getattr(node, "name", "") or ""),
+            country,
+            city,
+        ]
+    ).lower()
+    return q in haystack
+
+
+def _client_subscription_lane(access_state: str) -> str:
+    mapping = {
+        "trial_premium": "trialPremium",
+        "bonus_premium": "bonusPremium",
+        "paid_unlimited": "paidUnlimited",
+        "free_monthly": "freeMonthly",
+        "free_soft_mode": "freeSoftMode",
+    }
+    return mapping.get(str(access_state or "").strip().lower(), "expiredOrBlocked")
+
+
+def _client_days_left(expiry: datetime | None, *, now: datetime | None = None) -> int:
+    if not expiry:
+        return 0
+    current = now or _utcnow()
+    seconds = (expiry - current).total_seconds()
+    if seconds <= 0:
+        return 0
+    return int((seconds + 86399) // 86400)
+
+
+def _client_subscription_plans(s) -> list[dict[str, Any]]:
+    plans: list[dict[str, Any]] = []
+    for plan in _plan_catalog_payload(s=s, only_active=True):
+        code = str(plan.get("code") or "").strip().lower()
+        if not code or code == "trial":
+            continue
+        amount_rub = int(plan.get("amount_rub") or 0)
+        days = max(1, int(plan.get("days") or 30))
+        title = str(plan.get("label") or "").strip() or (f"{days} days" if days != 30 else "1 month")
+        price = f"{amount_rub} ₽" if amount_rub > 0 else ""
+        plans.append(
+            {
+                "id": code,
+                "title": title,
+                "price": price,
+                "days": days,
+                "deviceLimit": max(1, int(plan.get("device_limit") or 1)),
+                "badge": str(plan.get("badge") or "").strip() or None,
+            }
+        )
+    return plans
+
+
+def _client_notification_read_ids(s, *, user: User) -> set[str]:
+    rows = (
+        s.query(Event)
+        .filter(Event.tg_id == int(user.tg_id))
+        .filter(Event.event_name == "client_notification_read")
+        .order_by(Event.created_at.desc(), Event.id.desc())
+        .limit(200)
+        .all()
+    )
+    out: set[str] = set()
+    for row in rows:
+        try:
+            payload = json.loads(str(row.meta_json or "{}"))
+        except Exception:
+            payload = {}
+        for item in list((payload or {}).get("ids") or []):
+            value = str(item or "").strip()
+            if value:
+                out.add(value)
+    return out
+
+
+def _client_notification_items(*, user: User, access_policy: dict[str, Any], read_ids: set[str]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    access_state = str(access_policy.get("access_state") or "").strip().lower()
+    if access_state in {"trial_premium", "bonus_premium", "paid_unlimited"}:
+        days_left = _client_days_left(getattr(user, "expiry_at", None))
+        notification_id = "access.trial" if access_state == "trial_premium" else f"access.{access_state}"
+        items.append(
+            {
+                "id": notification_id,
+                "kind": "access",
+                "title": "Access is active",
+                "body": f"{days_left} days left." if days_left else "Access is active now.",
+                "createdAt": _safe_iso(getattr(user, "app_last_seen_at", None) or getattr(user, "created_at", None) or _utcnow()),
+                "ctaLabel": "Open account",
+                "ctaHref": _public_webapp_url(),
+                "read": notification_id in read_ids,
+            }
+        )
+    return items
+
+
+def _support_assistant_fallback_reply(message: str) -> str:
+    text = str(message or "").strip().lower()
+    if "err_connection_closed" in text or "не откры" in text or "не работает" in text:
+        return (
+            "Похоже, подключение поднялось, но трафик не проходит. "
+            "Отключите POKROV, включите снова и приложите диагностику из чата поддержки, если ошибка повторится."
+        )
+    if "оплат" in text or "ключ" in text or "подпис" in text:
+        return (
+            "Проверим доступ по аккаунту. Если есть код активации или письмо с ключом, вставьте код в приложении, "
+            "а данные карты отправлять не нужно."
+        )
+    return "Я рядом. Опишите, что нажали и что увидели на экране, а POKROV приложит безопасную диагностику к обращению."
+
+
+def _support_assistant_actions(message: str) -> list[dict[str, str]]:
+    text = str(message or "").strip().lower()
+    actions = [{"key": "send_diagnostics", "label": "Attach diagnostics"}]
+    if "err_connection_closed" in text or "не откры" in text or "не работает" in text:
+        actions.insert(0, {"key": "retry_connect", "label": "Reconnect"})
+    if "оплат" in text or "ключ" in text or "подпис" in text:
+        actions.append({"key": "open_subscription", "label": "Check access"})
+    actions.append({"key": "create_ticket", "label": "Write to support"})
+    return actions
+
+
+@app.get("/api/client/locations")
+async def client_locations_catalog(
+    request: Request,
+    platform: str = Query(default="", max_length=32),
+    q: str = Query(default="", max_length=80),
+    x_telegram_init_data: str = Header(default=""),
+    x_portal_carrier: str = Header(default=""),
+) -> dict[str, Any]:
+    del platform
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        rollout_config = load_network_rollout_config(session=s)
+        install_id = str(getattr(user, "app_install_id", "") or "").strip() or None
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=install_id,
+            carrier=_request_carrier_header(x_portal_carrier),
+            rollout_config=rollout_config,
+        )
+        transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
+        all_nodes = enabled_nodes(s)
+        free_pool_code = canonical_free_node_code(all_nodes)
+        nodes_for_user = _nodes_for_user(user, all_nodes, session=s)
+        smart_connect = _smart_connect_shortlist(
+            session=s,
+            user=user,
+            nodes=nodes_for_user,
+            transport_profile=transport_profile,
+            rollout_config=rollout_config,
+            profile_revision=str(client_policy.get("profile_revision") or ""),
+        )
+
+        grouped: dict[str, dict[str, Any]] = {}
+        now = _utcnow()
+        query = str(q or "").strip().lower()
+        for node in nodes_for_user:
+            reason = _smart_connect_rejection_reason(
+                node,
+                transport_profile=transport_profile,
+                rollout_config=rollout_config,
+                now=now,
+            )
+            if reason:
+                continue
+            code = str(getattr(node, "code", "") or "").strip().lower()
+            if not code:
+                continue
+            country_code = _node_country_code(code)
+            country = _node_country_name(code)
+            city = _node_city_name(code, str(getattr(node, "name", "") or ""))
+            if not _node_matches_query(node=node, country=country, city=city, query=query):
+                continue
+            city_row = {
+                "code": code,
+                "city": city,
+                "country": country,
+                "countryCode": country_code,
+                "healthScore": _node_health_ratio(node),
+                "latencyMs": _safe_ping(node),
+                "premium": not node_is_free(node),
+                "load": _node_load_ratio(node),
+            }
+            bucket = grouped.setdefault(
+                country_code,
+                {"code": country_code, "country": country, "cities": []},
+            )
+            bucket["cities"].append(city_row)
+
+        countries = list(grouped.values())
+        for country in countries:
+            country["cities"].sort(key=lambda item: (item.get("premium") is False, item.get("latencyMs") or 999999, item.get("city") or ""))
+        countries.sort(key=lambda item: str(item.get("country") or ""))
+        all_codes = [city["code"] for country in countries for city in country["cities"]]
+        preferred_code = str((smart_connect.get("stickiness") or {}).get("preferred_node_code") or "").strip().lower()
+        current_code = preferred_code if preferred_code in all_codes else (all_codes[0] if all_codes else None)
+        return {
+            "auto": {
+                "enabled": bool(smart_connect.get("eligible")),
+                "currentCode": current_code,
+            },
+            "countries": countries,
+            "freePoolCode": str(free_pool_code or "").strip().lower() or None,
+            "query": query,
+            "search": {
+                "matched": len(all_codes),
+                "source": "nodes",
+                "interactive": True,
+            },
+            "profileRevision": str(client_policy.get("profile_revision") or ""),
+            "transportProfile": transport_profile,
+        }
+    finally:
+        s.close()
+
+
+@app.get("/api/client/subscription")
+async def client_subscription(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
+        access_policy = _build_access_policy(
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+        )
+        access_state = str(access_policy.get("access_state") or "")
+        expiry = getattr(user, "expiry_at", None)
+        return {
+            "lane": _client_subscription_lane(access_state),
+            "accessState": access_state,
+            "expiresAt": _safe_iso(expiry),
+            "daysLeft": _client_days_left(expiry),
+            "autoRenew": False,
+            "renewUrl": _checkout_url_for_user(tg_id=int(user.tg_id), source="app"),
+            "plans": _client_subscription_plans(s),
+            "trafficPolicy": dict(access_policy.get("traffic_policy") or {}),
+            "currentPlanCode": str(getattr(user, "current_plan_code", "") or "").strip() or None,
+        }
+    finally:
+        s.close()
+
+
+@app.get("/api/client/devices")
+async def client_devices(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        rows = []
+        for item in _build_app_device_rows(user):
+            rows.append(
+                {
+                    "id": str(item.get("id") or ""),
+                    "label": str(item.get("name") or "Current device"),
+                    "platform": str(item.get("platform") or "device"),
+                    "osVersion": item.get("os_version"),
+                    "appVersion": item.get("app_version"),
+                    "lastSeen": item.get("last_seen_at"),
+                    "current": bool(item.get("is_current")),
+                    "active": bool(item.get("is_active")),
+                }
+            )
+        return {"items": rows, "limit": _plan_device_limit(user)}
+    finally:
+        s.close()
+
+
+@app.delete("/api/client/devices/{device_id}")
+async def client_device_revoke(device_id: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        current = str(getattr(user, "app_install_id", "") or "").strip()
+        target = str(device_id or "").strip()
+        if not target:
+            raise HTTPException(status_code=404, detail="Device not found")
+        if target == current:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "cannot_revoke_current_device", "message": "Current device cannot revoke itself."},
+            )
+        raise HTTPException(status_code=404, detail="Device not found")
+    finally:
+        s.close()
+
+
+@app.get("/api/client/notifications")
+async def client_notifications(
+    request: Request,
+    after: str = Query(default="", max_length=128),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    del after
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
+        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        read_ids = _client_notification_read_ids(s, user=user)
+        items = _client_notification_items(user=user, access_policy=access_policy, read_ids=read_ids)
+        return {
+            "items": items,
+            "nextCursor": None,
+            "unreadCount": sum(1 for item in items if not bool(item.get("read"))),
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/client/notifications/read")
+async def client_notifications_read(
+    payload: ClientNotificationsReadIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        ids = []
+        for item in list(payload.ids or [])[:100]:
+            value = str(item or "").strip()
+            if value and value not in ids:
+                ids.append(value[:128])
+        _record_client_event(
+            s,
+            user=user,
+            event_name="client_notification_read",
+            meta={"ids": ids},
+        )
+        s.commit()
+        return {"ok": True, "accepted": len(ids), "ignored": []}
+    finally:
+        s.close()
+
+
+@app.post("/api/client/push/register")
+async def client_push_register(
+    payload: ClientPushRegisterIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        platform = re.sub(r"[^a-z0-9_.:-]+", "_", str(payload.platform or "").strip().lower())[:32]
+        provider = re.sub(r"[^a-z0-9_.:-]+", "_", str(payload.provider or "").strip().lower())[:32]
+        token = str(payload.token or "").strip()
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        _record_client_event(
+            s,
+            user=user,
+            event_name="client_push_register",
+            session_id=str(getattr(user, "app_install_id", "") or ""),
+            meta={
+                "platform": platform,
+                "provider": provider,
+                "token_hash": token_hash,
+                "token_last4": token[-4:],
+            },
+        )
+        s.commit()
+        return {"ok": True, "platform": platform, "provider": provider, "tokenHash": token_hash}
+    finally:
+        s.close()
+
+
+@app.post("/api/client/support/assistant")
+async def client_support_assistant(
+    payload: ClientSupportAssistantIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        ticket_id = int(payload.ticket_id or payload.ticketId or 0)
+        if ticket_id:
+            ticket = get_ticket_by_id(s, ticket_id)
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket not found")
+            if int(ticket.user_tg_id) != int(user.tg_id):
+                raise HTTPException(status_code=403, detail="Access denied")
+        diagnostics = dict(payload.safeDiagnostics or {})
+        message = str(payload.message or "").strip()
+        reply = await generate_support_reply(
+            message,
+            ticket_id=ticket_id or 0,
+            user_tg_id=int(user.tg_id),
+            config=SUPPORT_AI_CONFIG,
+        )
+        assistant_source = "support_ai" if reply else "local_fallback"
+        if not reply:
+            reply = _support_assistant_fallback_reply(message)
+
+        if ticket_id and reply:
+            add_ticket_message(
+                s,
+                ticket_id=ticket_id,
+                sender_tg_id=0,
+                sender_role="assistant",
+                body=reply[:2000],
+            )
+
+        text_lower = message.lower()
+        should_escalate = any(marker in text_lower for marker in ("err_", "не работает", "не откры", "оплат", "ключ"))
+        _record_client_event(
+            s,
+            user=user,
+            event_name="client_support_assistant",
+            source="app",
+            meta={
+                "scope": str(payload.scope or "support").strip().lower(),
+                "source": assistant_source,
+                "ticket_id": ticket_id or None,
+                "should_escalate": bool(should_escalate),
+                "diagnostics_keys": sorted(str(key)[:64] for key in diagnostics.keys())[:20],
+            },
+        )
+        s.commit()
+        return {
+            "reply": reply,
+            "suggestedActions": _support_assistant_actions(message),
+            "shouldEscalate": bool(should_escalate),
+            "source": assistant_source,
+        }
+    finally:
+        s.close()
 
 
 @app.get("/api/client/profile/managed")

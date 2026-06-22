@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
+import { Manrope, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 
 import { CANONICAL_WEBAPP_URL, getDesignTokenCssVariables } from "@/lib/portal";
@@ -8,6 +9,18 @@ import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBrand
 import QaOverlayHost from "./qa-overlay-host";
 import TelegramWebAppInit from "./telegram-webapp-init";
 import "./globals.css";
+
+const fontBody = Manrope({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-manrope",
+  display: "swap",
+});
+
+const fontMono = JetBrains_Mono({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-jetbrains",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_WEBAPP_URL),
@@ -35,21 +48,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const designTokenVars = getDesignTokenCssVariables("cabinet") as CSSProperties;
 
   return (
-    <html lang="ru" className="scroll-smooth" suppressHydrationWarning>
+    <html lang="ru" className={`scroll-smooth ${fontBody.variable} ${fontMono.variable}`} suppressHydrationWarning>
       <body
-        className="relative min-h-screen overflow-x-hidden bg-[var(--bg)] font-body text-[var(--text)] antialiased selection:bg-emerald-700/12 selection:text-slate-950 dark:bg-[#111715] dark:text-[var(--text-dark)] dark:selection:bg-emerald-300/18 dark:selection:text-slate-50"
+        className="relative min-h-screen overflow-x-hidden bg-[var(--bg)] font-body text-[var(--text)] antialiased selection:bg-emerald-700/12 selection:text-[color:var(--atlas-text)] dark:bg-[#111715] dark:text-[var(--text-dark)] dark:selection:bg-emerald-300/18 dark:selection:text-slate-50"
         style={designTokenVars}
         suppressHydrationWarning
       >
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <Script id="pokrov-theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-        <Script
-          id="material-symbols-fonts"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(){var hrefs=["https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap","https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=swap"];for(var i=0;i<hrefs.length;i++){if(!document.querySelector('link[href="'+hrefs[i]+'"]')){var l=document.createElement('link');l.rel='stylesheet';l.href=hrefs[i];document.head.appendChild(l);}}})();`,
-          }}
-        />
         <TelegramWebAppInit />
         <QaOverlayHost enabled={QA_OVERLAY_ENABLED} />
         <div

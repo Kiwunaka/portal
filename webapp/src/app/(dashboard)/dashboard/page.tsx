@@ -1,9 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
-
 import AppRouteLink from "@/components/app-route-link";
+import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button } from "@/components/cabinet/ui";
 import {
   getAccessState,
   getDeviceLimit,
@@ -50,10 +50,6 @@ function getDaysRemaining(expiryAt?: string | null): number | null {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-function icon(name: string): ReactNode {
-  return <span className="material-symbols-rounded text-[20px]">{name}</span>;
-}
-
 function deviceTitle(name?: string | null, platform?: string | null): string {
   const cleanName = String(name || "").trim();
   const cleanPlatform = String(platform || "").trim();
@@ -91,16 +87,16 @@ export default function DashboardPage() {
   const deviceRows = (user?.devices || []).slice(0, 2);
 
   return (
-    <main className="mx-auto w-full max-w-[840px] space-y-5">
+    <main className="cab-page">
       <CabinetStatus
         title={statusTitle}
         meta={statusMeta}
         body={statusBody}
         tone={statusTone}
         action={
-          <AppRouteLink href={primaryHref} className="btn-primary w-full rounded-full px-5 py-3 text-sm font-semibold sm:w-auto">
+          <Button href={primaryHref} className="w-full sm:w-auto">
             {primaryLabel}
-          </AppRouteLink>
+          </Button>
         }
       />
 
@@ -117,7 +113,7 @@ export default function DashboardPage() {
       </CabinetGroup>
 
       {deviceRows.length ? (
-        <CabinetGroup title="Последние устройства" action={<AppRouteLink href="/devices/" className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Все</AppRouteLink>}>
+        <CabinetGroup title="Последние устройства" action={<AppRouteLink href="/devices/" className="cab-link">Все</AppRouteLink>}>
           {deviceRows.map((device) => (
             <CabinetRow
               key={device.id}

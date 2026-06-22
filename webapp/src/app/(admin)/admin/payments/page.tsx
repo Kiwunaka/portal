@@ -210,7 +210,7 @@ export default function AdminPaymentsPage() {
             ))}
           </select>
           <label className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--atlas-text-soft)]" size={16} />
             <input
               value={query}
               onChange={(event) => {
@@ -240,15 +240,15 @@ export default function AdminPaymentsPage() {
         {loading ? (
           <div className="grid gap-3 md:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-24 animate-pulse rounded-[1rem] bg-slate-100" />
+              <div key={index} className="h-24 animate-pulse rounded-[1rem] bg-[color:var(--atlas-canvas-alt)]" />
             ))}
           </div>
         ) : orders.length ? (
           <div className={adminTableShellClass}>
-            <div className="overflow-auto">
+            <div className="max-h-[62vh] overflow-auto">
               <table className="min-w-[980px] text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <thead className="sticky top-0 z-[1]">
+                  <tr className="border-b border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--atlas-text-soft)]">
                     <th className="px-3 py-3">Заказ</th>
                     <th className="px-3 py-3">Пользователь</th>
                     <th className="px-3 py-3">План</th>
@@ -261,42 +261,42 @@ export default function AdminPaymentsPage() {
                 </thead>
                 <tbody>
                   {orders.map((order) => (
-                    <tr key={`${order.provider}:${order.order_id}`} className="border-t border-slate-200 align-top text-slate-700">
+                    <tr key={`${order.provider}:${order.order_id}`} className="border-t border-[color:var(--atlas-border)] align-top text-[color:var(--atlas-text-soft)]">
                       <td className="px-3 py-3">
-                        <p className="font-mono font-semibold text-slate-900">{order.order_id}</p>
-                        <p className="mt-1 text-slate-500">{order.provider}</p>
-                        {order.source ? <p className="mt-1 text-slate-500">источник: {order.source}</p> : null}
+                        <p className="font-mono font-semibold text-[color:var(--atlas-text)]">{order.order_id}</p>
+                        <p className="mt-1 text-[color:var(--atlas-text-soft)]">{order.provider}</p>
+                        {order.source ? <p className="mt-1 text-[color:var(--atlas-text-soft)]">источник: {order.source}</p> : null}
                       </td>
                       <td className="px-3 py-3">
                         <p>{order.user?.display_name || order.user?.username || (order.tg_id ? `#${order.tg_id}` : "-")}</p>
-                        {order.tg_id ? <p className="mt-1 text-slate-500">tg: {order.tg_id}</p> : null}
+                        {order.tg_id ? <p className="mt-1 text-[color:var(--atlas-text-soft)]">tg: {order.tg_id}</p> : null}
                       </td>
                       <td className="px-3 py-3">
                         <p>{order.plan_code || "-"}</p>
-                        {order.promo_code ? <p className="mt-1 text-slate-500">promo: {order.promo_code}</p> : null}
-                        {order.campaign ? <p className="mt-1 text-slate-500">кампания: {order.campaign}</p> : null}
+                        {order.promo_code ? <p className="mt-1 text-[color:var(--atlas-text-soft)]">promo: {order.promo_code}</p> : null}
+                        {order.campaign ? <p className="mt-1 text-[color:var(--atlas-text-soft)]">кампания: {order.campaign}</p> : null}
                       </td>
                       <td className="px-3 py-3">{money(order)}</td>
                       <td className="px-3 py-3">
                         <AdminBadge tone={statusTone(order.status)}>{statusLabel(order.status)}</AdminBadge>
-                        <p className="mt-1 font-mono text-[11px] text-slate-400">{order.status || "-"}</p>
-                        {order.paid_at ? <p className="mt-2 text-slate-500">оплачен: {fmtRuDate(order.paid_at)}</p> : null}
+                        <p className="mt-1 font-mono text-[11px] text-[color:var(--atlas-text-muted)]">{order.status || "-"}</p>
+                        {order.paid_at ? <p className="mt-2 text-[color:var(--atlas-text-soft)]">оплачен: {fmtRuDate(order.paid_at)}</p> : null}
                       </td>
                       <td className="px-3 py-3">
                         {order.last_event ? (
                           <div className="space-y-1">
                             <p>{order.last_event.event_type}</p>
-                            <p className="font-mono text-slate-400">{order.last_event.external_id}</p>
-                            <p className={order.last_event.signature_ok ? "text-emerald-700" : "text-rose-700"}>
+                            <p className="font-mono text-[color:var(--atlas-text-muted)]">{order.last_event.external_id}</p>
+                            <p className={order.last_event.signature_ok ? "text-[color:var(--atlas-status-success-text)]" : "text-[color:var(--atlas-status-danger-text)]"}>
                               подпись {order.last_event.signature_ok ? "в порядке" : "ошибка"}
                             </p>
-                            <p className={order.last_event.processed_ok ? "text-emerald-700" : "text-amber-700"}>
+                            <p className={order.last_event.processed_ok ? "text-[color:var(--atlas-status-success-text)]" : "text-[color:var(--atlas-status-warning-text)]"}>
                               обработка {order.last_event.processed_ok ? "готово" : "нужна проверка"}
                             </p>
-                            <p className="text-slate-500">событий: {order.event_count}</p>
+                            <p className="text-[color:var(--atlas-text-soft)]">событий: {order.event_count}</p>
                           </div>
                         ) : (
-                          <span className="text-slate-500">подтверждения не было</span>
+                          <span className="text-[color:var(--atlas-text-soft)]">подтверждения не было</span>
                         )}
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">{fmtRuDate(order.created_at)}</td>
@@ -328,7 +328,7 @@ export default function AdminPaymentsPage() {
               description="Запишите, что именно проверил оператор. Действие обновляет журнал, но само по себе не выдаёт доступ."
             />
             <label className="block text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">статус</span>
+              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">статус</span>
               <select value={dialog.status} onChange={(event) => setDialog({ ...dialog, status: event.target.value })} className={adminFieldClass}>
                 {RECONCILE_STATUSES.map((item) => (
                   <option key={item} value={item}>
@@ -338,7 +338,7 @@ export default function AdminPaymentsPage() {
               </select>
             </label>
             <label className="mt-3 block text-sm">
-              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-slate-500">заметка аудита</span>
+              <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">заметка аудита</span>
               <textarea
                 value={dialog.note}
                 onChange={(event) => setDialog({ ...dialog, note: event.target.value })}
