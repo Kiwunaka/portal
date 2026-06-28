@@ -21,6 +21,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
+load_dotenv()
+
 import aiohttp
 import qrcode
 from sqlalchemy.exc import IntegrityError
