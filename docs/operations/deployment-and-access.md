@@ -396,6 +396,7 @@ Before any paid beta deploy, capture:
 - deployed version or commit before change, new version or commit after change, static artifact identifiers, and release-handoff file or env source if used
 - emergency switch evidence for checkout disable, trial disable, download disable, Telegram bonus pause, payment webhook fulfillment pause, and manual access extension/revoke
 - current deployed runtime state for `portal-api`, `portal-bot`, `portal-helpbot`, `portal-feedbackbot`, `caddy`, `x-ui`, metrics timers, and observer timers when they are in scope
+- current `portal-daily-healthcheck.timer` state and the latest `/root/portal_bot/health_reports/panel_node_health_*.json` result when panel/node drift is in scope
 
 Rollback is acceptable only when the handoff states:
 
@@ -447,6 +448,7 @@ At minimum, verify:
 - API-only lifecycle smoke for bonuses, checkout order creation, callback success, and post-payment dashboard state
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
+- `portal-daily-healthcheck.timer` status and latest daily panel/node health report when checking control-plane/node drift
 - `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required listeners on `443` or `8444` are missing, or if the built-in HTTP and subscription probes fail
 - public HTTPS checks for `pokrov.space`, `app.pokrov.space`, and `api.pokrov.space` should confirm that responses no longer advertise `Alt-Svc: h3=":8444"`; expected incident-recovery state is `Alt-Svc: clear` plus `200`/healthy status over standard HTTPS
 - marketing and checkout probes should use route/function markers such as `Android + Windows`, `app.pokrov.space`, `checkout-shell`, `ключ доступа`, and canonical URLs, not old hero copy that can change without a deploy failure

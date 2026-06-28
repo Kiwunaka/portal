@@ -294,6 +294,9 @@ Operator-facing rendering rule:
 Operational rule:
 
 - `portal-node-metrics.timer` must stay healthy on every relevant host
+- `portal-daily-healthcheck.timer` runs on `brain` once per day at `06:30 UTC` / `09:30 MSK` and writes a JSON summary under `/root/portal_bot/health_reports/`
+- the daily summary checks API health, `portal-api-healthcheck.timer`, `portal-node-metrics.timer`, per-node metrics freshness, DB `user_nodes` expected counts, and real 3x-ui managed-client counts
+- daily panel counts must compare only managed identities (`tgId` or `User_<tg_id>`); legacy/manual 3x-ui rows without a POKROV managed identity are tracked as `unknown_rows` and require a separate cleanup decision before deletion
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
@@ -314,6 +317,9 @@ Primary repository touchpoints:
 - `scripts/node_dataplane_probe.py`
 - `scripts/collect_xray_observer.py`
 - `scripts/remote_install_node_observer.py`
+- `portal_bot/daily_panel_node_healthcheck.py`
+- `infra/portal-daily-healthcheck.service`
+- `infra/portal-daily-healthcheck.timer`
 - `infra/portal-node-metrics.service`
 - `infra/portal-node-metrics.timer`
 - `infra/portal-node-observer.service`

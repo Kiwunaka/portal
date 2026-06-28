@@ -90,8 +90,8 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
 
         client = PanelClient(self._node("pl"))
 
-        async def fake_find_client_by_tgid(_tg_id: int):
-            return None
+        async def fake_find_clients_by_identity(**_kwargs):
+            return []
 
         cleanup_calls = 0
 
@@ -107,7 +107,7 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
             add_calls += 1
             return add_calls == 2
 
-        client.find_client_by_tgid = fake_find_client_by_tgid
+        client.find_clients_by_identity = fake_find_clients_by_identity
         client._cleanup_cross_inbound_conflicts = fake_cleanup_cross_inbound_conflicts
         client.add_client = fake_add_client
 
@@ -128,8 +128,8 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
         client = PanelClient(self._node("pl"))
         existing = {"id": "uuid-42", "email": "User_42", "tgId": "42", "subId": "legacy", "enable": True}
 
-        async def fake_find_client_by_tgid(_tg_id: int):
-            return existing
+        async def fake_find_clients_by_identity(**_kwargs):
+            return [(1, existing)]
 
         captured: dict[str, object] = {}
 
@@ -139,7 +139,7 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
             captured["sub_id"] = sub_id
             return True
 
-        client.find_client_by_tgid = fake_find_client_by_tgid
+        client.find_clients_by_identity = fake_find_clients_by_identity
         client.update_client_enable = fake_update_client_enable
 
         ok = await client.ensure_client(
@@ -151,6 +151,57 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertTrue(ok)
         self.assertEqual(captured.get("sub_id"), "secure-42")
+
+    async def test_ensure_client_repairs_panel_row_with_missing_tgid(self) -> None:
+        from panel_client import PanelClient
+
+        client = PanelClient(self._node("pl"))
+        stale = {
+            "id": "uuid-42",
+            "email": "User_42",
+            "tgId": "",
+            "subId": "old-sub",
+            "enable": True,
+            "_panel_inbound_id": 1,
+        }
+
+        async def fake_find_clients_by_identity(**_kwargs):
+            return [(1, stale)]
+
+        captured: dict[str, object] = {}
+
+        async def fake_update_client_enable(
+            client_payload: dict,
+            enable: bool,
+            sub_id: str | None = None,
+            inbound_id: int | None = None,
+            flow: str | None = None,
+        ) -> bool:
+            captured["client"] = client_payload
+            captured["enable"] = enable
+            captured["sub_id"] = sub_id
+            captured["inbound_id"] = inbound_id
+            return True
+
+        client.find_clients_by_identity = fake_find_clients_by_identity
+        client.update_client_enable = fake_update_client_enable
+
+        ok = await client.ensure_client(
+            tg_id=42,
+            client_uuid="uuid-42",
+            email="User_42",
+            sub_id="secure-42",
+            enable=True,
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(captured.get("sub_id"), "secure-42")
+        self.assertEqual(captured.get("inbound_id"), 1)
+        repaired = captured.get("client")
+        self.assertIsInstance(repaired, dict)
+        self.assertEqual(repaired.get("tgId"), "42")
+        self.assertEqual(repaired.get("email"), "User_42")
+        self.assertEqual(repaired.get("id"), "uuid-42")
 
     async def test_add_client_falls_back_to_modern_clients_api(self) -> None:
         from panel_client import PanelClient

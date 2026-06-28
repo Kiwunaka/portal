@@ -626,6 +626,52 @@ class PanelClient:
             return None
         return matches[0][1]
 
+    async def find_clients_by_identity(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str = "",
+        email: str = "",
+        include_disabled: bool = False,
+    ) -> list[tuple[int, dict]]:
+        """
+        Find existing panel rows for the same backend account.
+
+        Older imported clients can miss tgId while still carrying the canonical
+        email or UUID. Treat those rows as the same account so resync can repair
+        tgId/subId instead of failing on duplicate email during addClient.
+        """
+        target_tg = str(tg_id).strip()
+        target_uuid = str(client_uuid or "").strip()
+        target_email = str(email or "").strip()
+        matches: list[tuple[int, dict]] = []
+        seen: set[tuple[int, str, str]] = set()
+        for inb in self._selected_inbounds(await self._get_inbounds(), include_disabled=include_disabled):
+            inbound_id = int(inb.get("id") or 0)
+            settings = self._decode_settings(inb.get("settings", "{}"))
+            for client in settings.get("clients", []) or []:
+                item = dict(client or {})
+                panel_tg = str(item.get("tgId", "") or "").strip()
+                panel_uuid = str(item.get("id", "") or "").strip()
+                panel_email = str(item.get("email", "") or "").strip()
+                if not (
+                    (target_tg and panel_tg == target_tg)
+                    or (target_uuid and panel_uuid == target_uuid)
+                    or (target_email and panel_email == target_email)
+                ):
+                    continue
+                item["_panel_inbound_id"] = inbound_id
+                profile = self._transport_profile_for_inbound(inbound_id, include_disabled=True)
+                if profile:
+                    item["_transport_profile"] = str(profile.get("name") or "")
+                identity_key = (inbound_id, panel_uuid, panel_email)
+                if identity_key in seen:
+                    continue
+                seen.add(identity_key)
+                matches.append((inbound_id, item))
+        matches.sort(key=lambda row: row[0])
+        return matches
+
     async def get_client_runtime_by_tgid(self, tg_id: int) -> dict | None:
         """
         Return best-effort runtime snapshot for a client on this node:
@@ -1247,18 +1293,14 @@ class PanelClient:
         if not target_inbound_ids:
             return False
 
-        existing_by_inbound: dict[int, dict] = {}
-        existing_primary = await self.find_client_by_tgid(tg_id)
-        if existing_primary:
-            primary_inbound_id = int(existing_primary.get("_panel_inbound_id") or target_inbound_ids[0])
-            if primary_inbound_id > 0:
-                existing_by_inbound[primary_inbound_id] = existing_primary
-
-        using_default_find = getattr(getattr(self, "find_client_by_tgid", None), "__func__", None) is PanelClient.find_client_by_tgid
-        if using_default_find and len(target_inbound_ids) > 1:
-            existing_by_inbound = {
-                inbound_id: client for inbound_id, client in await self.find_clients_by_tgid(tg_id)
-            } or existing_by_inbound
+        existing_by_inbound: dict[int, dict] = {
+            inbound_id: client
+            for inbound_id, client in await self.find_clients_by_identity(
+                tg_id=tg_id,
+                client_uuid=client_uuid,
+                email=email,
+            )
+        }
         ok_all = True
         attempted_add = False
 
@@ -1266,6 +1308,12 @@ class PanelClient:
             existing = existing_by_inbound.get(inbound_id)
             flow = self._managed_flow_for_inbound(inbound_id)
             if existing:
+                existing = dict(existing)
+                if email:
+                    existing["email"] = email
+                if client_uuid:
+                    existing["id"] = client_uuid
+                existing["tgId"] = str(tg_id)
                 try:
                     ok = await self.update_client_enable(
                         existing,

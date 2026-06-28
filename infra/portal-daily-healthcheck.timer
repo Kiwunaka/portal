@@ -1,0 +1,11 @@
+[Unit]
+Description=Run POKROV daily panel/node health summary
+
+[Timer]
+OnCalendar=*-*-* 06:30:00
+RandomizedDelaySec=5m
+Persistent=true
+Unit=portal-daily-healthcheck.service
+
+[Install]
+WantedBy=timers.target

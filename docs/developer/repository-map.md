@@ -137,6 +137,7 @@ Marketing-specific release checks now live in:
 - `collect_node_metrics.py`
 - `collect_xray_observer.py`
 - `control_plane_drift_report.py`
+- `portal_bot/daily_panel_node_healthcheck.py`
 - `inspect_*`
 - `remote_*inspect*`
 - `remote_install_node_observer.py`
