@@ -366,18 +366,35 @@ class PanelClient:
             ok = await self.login()
             if not ok:
                 return []
-        await self.ensure_session()
-        async with self.session.get(
-            f"{self._base()}/panel/api/inbounds/list",
-            cookies=self.cookies,
-            timeout=aiohttp.ClientTimeout(total=20),
-        ) as resp:
-            if resp.status != 200:
-                return []
-            data = await resp.json()
-            if not data.get("success"):
-                return []
-            return data.get("obj", []) or []
+
+        async def _fetch() -> list[dict] | None:
+            await self.ensure_session()
+            try:
+                async with self.session.get(
+                    f"{self._base()}/panel/api/inbounds/list",
+                    cookies=self.cookies,
+                    timeout=aiohttp.ClientTimeout(total=20),
+                ) as resp:
+                    if resp.status != 200:
+                        return None
+                    data = await resp.json(content_type=None)
+                    if not isinstance(data, dict) or not data.get("success"):
+                        return None
+                    return data.get("obj", []) or []
+            except Exception:
+                return None
+
+        inbounds = await _fetch()
+        if inbounds is not None:
+            return inbounds
+
+        self.cookies = None
+        self.csrf_token = None
+        ok = await self.login()
+        if not ok:
+            return []
+        inbounds = await _fetch()
+        return inbounds if inbounds is not None else []
 
     async def get_server_status(self) -> dict | None:
         if not self.cookies:

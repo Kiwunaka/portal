@@ -2597,11 +2597,14 @@ async def sync_user_panel_sub_token(tg_id: int) -> bool:
         session.close()
     if not user_uuid:
         return False
+    sync_panel = ControlPanel()
     try:
-        return bool(await panel.enable_client(user_uuid, enable=is_active))
+        return bool(await sync_panel.enable_client(user_uuid, enable=is_active))
     except Exception as exc:
         logger.warning("sub_token panel sync failed for tg_id=%s: %s", int(tg_id), exc)
         return False
+    finally:
+        await sync_panel.close()
 
 
 def list_manual_users(limit: int = 30) -> list[User]:
