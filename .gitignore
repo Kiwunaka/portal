@@ -61,7 +61,12 @@ tmp-sentry-android-ndk.zip
 Thumbs.db
 .idea/
 .vscode/
+.opencode/
+.playwright-mcp/
 .superpowers/
+
+# Local tool output snapshots
+outputs/
 
 # x-ui DB backups (may include private keys)
 x-ui*.db
