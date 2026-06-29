@@ -558,10 +558,31 @@ def _ensure_capacity_domain_sqlite(conn) -> None:
     conn.execute(
         text(
             """
-            INSERT OR IGNORE INTO node_capacity_policy (node_code, created_at, updated_at, allow_free_pool, allow_premium_pool)
-            SELECT code, :now_value, :now_value,
+            INSERT OR IGNORE INTO node_capacity_policy (
+                node_code,
+                soft_tx_ratio,
+                drain_tx_ratio,
+                hard_tx_ratio,
+                soft_cpu_percent,
+                hard_cpu_percent,
+                stale_after_seconds,
+                max_packet_loss_percent,
+                max_tcp_retrans_percent,
+                rank_weight,
+                allow_free_pool,
+                allow_premium_pool,
+                is_enabled,
+                created_at,
+                updated_at
+            )
+            SELECT code,
+                   0.70, 0.82, 0.92,
+                   75, 90, 180,
+                   2, 5, 100,
                    CASE WHEN lower(code) LIKE '%free%' THEN 1 ELSE 0 END,
-                   CASE WHEN lower(code) LIKE '%free%' THEN 0 ELSE 1 END
+                   CASE WHEN lower(code) LIKE '%free%' THEN 0 ELSE 1 END,
+                   1,
+                   :now_value, :now_value
             FROM nodes
             WHERE code IS NOT NULL AND trim(code) <> '';
             """
@@ -713,10 +734,31 @@ def _ensure_capacity_domain_postgres(conn) -> None:
     conn.execute(
         text(
             """
-            INSERT INTO node_capacity_policy (node_code, created_at, updated_at, allow_free_pool, allow_premium_pool)
-            SELECT code, :now_value, :now_value,
+            INSERT INTO node_capacity_policy (
+                node_code,
+                soft_tx_ratio,
+                drain_tx_ratio,
+                hard_tx_ratio,
+                soft_cpu_percent,
+                hard_cpu_percent,
+                stale_after_seconds,
+                max_packet_loss_percent,
+                max_tcp_retrans_percent,
+                rank_weight,
+                allow_free_pool,
+                allow_premium_pool,
+                is_enabled,
+                created_at,
+                updated_at
+            )
+            SELECT code,
+                   0.70, 0.82, 0.92,
+                   75, 90, 180,
+                   2, 5, 100,
                    CASE WHEN lower(code) LIKE '%free%' THEN TRUE ELSE FALSE END,
-                   CASE WHEN lower(code) LIKE '%free%' THEN FALSE ELSE TRUE END
+                   CASE WHEN lower(code) LIKE '%free%' THEN FALSE ELSE TRUE END,
+                   TRUE,
+                   :now_value, :now_value
             FROM nodes
             WHERE code IS NOT NULL AND btrim(code) <> ''
             ON CONFLICT DO NOTHING;

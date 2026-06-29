@@ -70,6 +70,32 @@ class PostgresMigrationHelperTests(unittest.TestCase):
 
         self.assertEqual(limit, 16)
 
+    def test_capacity_policy_backfill_sets_not_null_defaults(self) -> None:
+        conn = _FakeConn()
+
+        self.migrations._ensure_capacity_domain_postgres(conn)
+
+        backfill_sql = next(
+            sql
+            for sql, _params in conn.executed
+            if "INSERT INTO node_capacity_policy" in sql
+        )
+        for column in (
+            "soft_tx_ratio",
+            "drain_tx_ratio",
+            "hard_tx_ratio",
+            "soft_cpu_percent",
+            "hard_cpu_percent",
+            "stale_after_seconds",
+            "max_packet_loss_percent",
+            "max_tcp_retrans_percent",
+            "rank_weight",
+            "is_enabled",
+        ):
+            self.assertIn(column, backfill_sql)
+        for value in ("0.70", "0.82", "0.92", "75", "90", "180", "2", "5", "100"):
+            self.assertIn(value, backfill_sql)
+
 
 if __name__ == "__main__":
     unittest.main()
