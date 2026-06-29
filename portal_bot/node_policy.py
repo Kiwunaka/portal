@@ -43,7 +43,7 @@ USERNODE_MAPPING_AS_CANDIDATE_LIMIT = _env_bool("USERNODE_MAPPING_AS_CANDIDATE_L
 SMART_CONNECT_SHORTLIST_LIMIT = _env_int("SMART_CONNECT_SHORTLIST_LIMIT", 8, minimum=1, maximum=32)
 SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT = _env_int("SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT", 20, minimum=0, maximum=100)
 SMART_CONNECT_STALE_AFTER_SECONDS = _env_int("SMART_CONNECT_STALE_AFTER_SECONDS", 180, minimum=60, maximum=86_400)
-SMART_CONNECT_CPU_REJECT_PERCENT = _env_float("SMART_CONNECT_CPU_REJECT_PERCENT", 90.0, minimum=1.0, maximum=100.0)
+SMART_CONNECT_CPU_REJECT_PERCENT = _env_float("SMART_CONNECT_CPU_REJECT_PERCENT", 85.0, minimum=1.0, maximum=100.0)
 SMART_CONNECT_CPU_SOFT_PERCENT = _env_float("SMART_CONNECT_CPU_SOFT_PERCENT", 75.0, minimum=1.0, maximum=100.0)
 SMART_CONNECT_TX_SOFT_RATIO = _env_float("SMART_CONNECT_TX_SOFT_RATIO", 0.70, minimum=0.01, maximum=10.0)
 SMART_CONNECT_TX_DRAIN_RATIO = _env_float("SMART_CONNECT_TX_DRAIN_RATIO", 0.82, minimum=0.01, maximum=10.0)
@@ -267,6 +267,24 @@ def node_capacity_status(
     }
 
 
+def node_capacity_state(
+    node: Any,
+    *,
+    policy: Any | None = None,
+    now: datetime | None = None,
+    stale_after_seconds: int | None = None,
+) -> str:
+    return str(
+        node_capacity_status(
+            node,
+            policy=policy,
+            now=now,
+            stale_after_seconds=stale_after_seconds,
+        ).get("state")
+        or "unknown"
+    )
+
+
 def node_hard_reject_reason(
     node: Any,
     *,
@@ -382,6 +400,54 @@ def rank_nodes_for_subscription(
             now=now,
         )
     ]
+
+
+def rank_nodes_for_manual_country(
+    nodes: list[Any],
+    *,
+    policy_by_code: dict[str, Any] | None = None,
+    now: datetime | None = None,
+) -> list[Any]:
+    return rank_nodes_for_subscription(nodes, policy_by_code=policy_by_code, now=now)
+
+
+def _node_pool_codes(node: Any) -> set[str]:
+    raw_values = [
+        getattr(node, "pool_code", None),
+        getattr(node, "pool_codes", None),
+        getattr(node, "pools", None),
+    ]
+    out: set[str] = set()
+    for raw in raw_values:
+        if raw is None:
+            continue
+        if isinstance(raw, (list, tuple, set)):
+            candidates = raw
+        else:
+            candidates = str(raw).replace(";", ",").split(",")
+        for candidate in candidates:
+            value = str(candidate or "").strip().lower()
+            if value:
+                out.add(value)
+    return out
+
+
+def rank_nodes_for_key_pressure(
+    nodes: list[Any],
+    *,
+    policy_by_code: dict[str, Any] | None = None,
+    now: datetime | None = None,
+) -> list[Any]:
+    ranked = rank_nodes_for_subscription(nodes, policy_by_code=policy_by_code, now=now)
+    ranked_position = {id(node): index for index, node in enumerate(ranked)}
+    return sorted(
+        ranked,
+        key=lambda node: (
+            0 if "fair_use_pool" in _node_pool_codes(node) else 1,
+            1 if str(getattr(node, "capacity_state", "") or "").strip().lower() in {"warm", "drain"} else 0,
+            ranked_position.get(id(node), 0),
+        ),
+    )
 
 
 def user_uses_free_pool(user: Any) -> bool:

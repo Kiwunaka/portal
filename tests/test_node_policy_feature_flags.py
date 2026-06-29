@@ -72,3 +72,37 @@ def test_subscription_flags_can_return_legacy_order_without_hard_exclusion(monke
     ranked = node_policy.rank_nodes_for_subscription([healthy, stale])
 
     assert [node.code for node in ranked] == ["stale-high-health", "healthy-lower-health"]
+
+
+def test_capacity_state_contract_uses_plan_default_cpu_reject(monkeypatch):
+    node_policy = _reload_node_policy(monkeypatch)
+
+    hot = _node("hot", cpu_percent=85.0)
+
+    assert node_policy.SMART_CONNECT_CPU_REJECT_PERCENT == 85.0
+    assert node_policy.node_capacity_state(hot) == "hard_reject"
+    assert node_policy.node_hard_reject_reason(hot) == "cpu_hot"
+
+
+def test_manual_country_ranking_keeps_soft_drain_but_excludes_hard_reject(monkeypatch):
+    node_policy = _reload_node_policy(monkeypatch)
+
+    healthy = _node("healthy", network_tx_mbps_1m=100.0)
+    soft_drain = _node("soft-drain", network_tx_mbps_1m=830.0)
+    hard_reject = _node("hard", network_tx_mbps_1m=950.0)
+
+    ranked = node_policy.rank_nodes_for_manual_country([hard_reject, soft_drain, healthy])
+
+    assert [node.code for node in ranked] == ["healthy", "soft-drain"]
+    assert node_policy.node_capacity_state(soft_drain) == "drain"
+
+
+def test_key_pressure_ranking_prefers_fair_use_pool(monkeypatch):
+    node_policy = _reload_node_policy(monkeypatch)
+
+    premium = _node("premium", health_score=99.0, pool_code="premium_pool")
+    fair_use = _node("fair-use", health_score=80.0, pool_code="fair_use_pool")
+
+    ranked = node_policy.rank_nodes_for_key_pressure([premium, fair_use])
+
+    assert [node.code for node in ranked] == ["fair-use", "premium"]
