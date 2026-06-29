@@ -96,6 +96,19 @@ class PostgresMigrationHelperTests(unittest.TestCase):
         for value in ("0.70", "0.82", "0.92", "75", "90", "180", "2", "5", "100"):
             self.assertIn(value, backfill_sql)
 
+    def test_node_pool_membership_backfill_sets_enabled_default(self) -> None:
+        conn = _FakeConn()
+
+        self.migrations._ensure_capacity_domain_postgres(conn)
+
+        backfill_sql = next(
+            sql
+            for sql, _params in conn.executed
+            if "INSERT INTO node_pool_membership" in sql
+        )
+        self.assertIn("is_enabled", backfill_sql)
+        self.assertIn("TRUE", backfill_sql)
+
 
 if __name__ == "__main__":
     unittest.main()

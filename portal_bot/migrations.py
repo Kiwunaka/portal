@@ -592,9 +592,10 @@ def _ensure_capacity_domain_sqlite(conn) -> None:
     conn.execute(
         text(
             """
-            INSERT OR IGNORE INTO node_pool_membership (node_code, pool_code, source, created_at, updated_at)
+            INSERT OR IGNORE INTO node_pool_membership (node_code, pool_code, is_enabled, source, created_at, updated_at)
             SELECT code,
                    CASE WHEN lower(code) LIKE '%free%' THEN 'free_pool' ELSE 'premium_pool' END,
+                   1,
                    'migration', :now_value, :now_value
             FROM nodes
             WHERE code IS NOT NULL AND trim(code) <> '';
@@ -769,9 +770,10 @@ def _ensure_capacity_domain_postgres(conn) -> None:
     conn.execute(
         text(
             """
-            INSERT INTO node_pool_membership (node_code, pool_code, source, created_at, updated_at)
+            INSERT INTO node_pool_membership (node_code, pool_code, is_enabled, source, created_at, updated_at)
             SELECT code,
                    CASE WHEN lower(code) LIKE '%free%' THEN 'free_pool' ELSE 'premium_pool' END,
+                   TRUE,
                    'migration', :now_value, :now_value
             FROM nodes
             WHERE code IS NOT NULL AND btrim(code) <> ''
