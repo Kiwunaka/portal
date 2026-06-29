@@ -15842,18 +15842,11 @@ def _provisioned_node_codes_for_user(session, user: User, nodes: list) -> set[st
 
 
 def _subscription_nodes_for_user(user: User, nodes: list, session) -> list:
-    pool_nodes = _fallback_nodes_for_user(user, nodes)
-    provisioned_codes = _provisioned_node_codes_for_user(session, user, nodes)
-    if not provisioned_codes:
-        return pool_nodes
-    filtered = [
-        node
-        for node in pool_nodes
-        if str(getattr(node, "code", "") or "").strip().lower() in provisioned_codes
-    ]
-    # Keep legacy subscriptions alive if provision evidence is present but stale
-    # or not yet migrated to the current node inventory.
-    return filtered or pool_nodes
+    # UserNode/AccessKey rows are provisioning evidence, not a subscription
+    # allowlist. Panel reconciliation can succeed before local evidence is fully
+    # backfilled, so filtering here would silently collapse paid subscriptions
+    # to a stale subset of nodes.
+    return _fallback_nodes_for_user(user, nodes)
 
 
 def _serialize_admin_node(

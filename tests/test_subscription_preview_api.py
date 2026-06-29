@@ -52,7 +52,7 @@ def test_client_subscription_preview_returns_order_without_raw_config(monkeypatc
     assert "sub_token" not in body
 
 
-def test_client_subscription_preview_uses_provisioned_nodes_when_evidence_exists(monkeypatch, tmp_path) -> None:
+def test_client_subscription_preview_ignores_partial_provisioning_evidence(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
 
@@ -64,8 +64,10 @@ def test_client_subscription_preview_uses_provisioned_nodes_when_evidence_exists
         db.close()
 
     now = _utcnow()
-    pl_id = _add_node(api, code="pl", health_score=98.0, weight=110, last_health_at=now)
+    _add_node(api, code="pl", health_score=98.0, weight=110, last_health_at=now)
     _add_node(api, code="de", health_score=96.0, weight=105, last_health_at=now)
+    it_id = _add_node(api, code="it", health_score=94.0, weight=100, last_health_at=now)
+    _add_node(api, code="nl-free", health_score=99.0, weight=999, last_health_at=now)
 
     start_body = _start_trial(client, install_id="install-sub-preview-provisioned")
     from models import User, UserNode
@@ -73,7 +75,7 @@ def test_client_subscription_preview_uses_provisioned_nodes_when_evidence_exists
     db = api.SessionLocal()
     try:
         user = db.query(User).filter(User.sub_token.isnot(None)).one()
-        db.add(UserNode(tg_id=int(user.tg_id), node_id=int(pl_id), client_uuid=str(user.uuid), panel_email=str(user.email)))
+        db.add(UserNode(tg_id=int(user.tg_id), node_id=int(it_id), client_uuid=str(user.uuid), panel_email=str(user.email)))
         db.commit()
     finally:
         db.close()
@@ -81,7 +83,7 @@ def test_client_subscription_preview_uses_provisioned_nodes_when_evidence_exists
     response = client.get("/api/client/subscription/preview?format=vless", headers=_auth_headers(start_body))
 
     assert response.status_code == 200, response.text
-    assert response.json()["node_order"] == ["pl"]
+    assert response.json()["node_order"] == ["pl", "de", "it"]
 
 
 def test_admin_subscription_preview_debugs_order_without_raw_subscription_secret(monkeypatch, tmp_path) -> None:
