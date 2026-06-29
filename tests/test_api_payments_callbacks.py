@@ -1105,6 +1105,78 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_lavatop_public_order_forwards_selected_payment_method(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4448,
+                    username="method_choice",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4448",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4448,
+            plan_code="start_99",
+            promo_code="",
+            campaign_key="",
+            source="bot",
+        )
+        captured: dict[str, object] = {}
+
+        async def _fake_create_rub_payment(**kwargs):
+            captured.update(kwargs)
+            return {
+                "payment_url": "https://app.lava.top/pay/sbp-test",
+                "remote": {"payment_url": "https://app.lava.top/pay/sbp-test"},
+            }
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _fake_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "start_99",
+                    "checkout_ticket": ticket,
+                    "currency": "RUB",
+                    "payment_method": "sbp",
+                },
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(captured["provider"], "lavatop")
+        self.assertEqual(captured["custom"]["payment_method"], "sbp")
+        self.assertEqual(captured["custom"]["lavatop_payment_provider"], "PAY2ME")
+        self.assertEqual(captured["custom"]["lavatop_payment_method"], "SBP")
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4448, ExternalOrder.provider == "lavatop").first()
+            self.assertIsNotNone(row)
+            meta = json.loads(row.meta_json or "{}")
+            self.assertEqual(meta.get("payment_method", {}).get("choice"), "sbp")
+            self.assertEqual(meta.get("payment_method", {}).get("lavatop_payment_provider"), "PAY2ME")
+            self.assertEqual(meta.get("payment_method", {}).get("lavatop_payment_method"), "SBP")
+        finally:
+            s.close()
+
     def test_start99_public_order_blocks_after_first_purchase_flag(self) -> None:
         client = TestClient(self.api.app)
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetIcon, icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
 import { Button, Chip, Input, Note, Textarea } from "@/components/cabinet/ui";
 import {
   createTicket,
@@ -167,6 +167,7 @@ export default function SupportPage() {
               : "Опишите проблему коротко. Личные ссылки, коды оплаты и банковские данные присылать не нужно."
           }
           tone={openCount ? "info" : "neutral"}
+          emblem={icon("support_agent", "h-7 w-7")}
           action={
             <Button onClick={() => openComposer(CATEGORIES[0])} className="w-full sm:w-auto">
               Новый вопрос
@@ -222,14 +223,17 @@ export default function SupportPage() {
           />
           <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
           <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
-        </CabinetGroup>
-
-        <CabinetGroup title="Диагностика">
-          <CabinetRow icon={icon("verified_user")} label="Доступ" hint="Без личных ссылок и ключей" value={resolvePlanLabel(dash, user)} />
-          <CabinetRow icon={icon("devices")} label="Устройства" hint="Сколько связано с профилем" value={`${deviceCount} из ${deviceLimit}`} />
-          <CabinetRow icon={icon("wifi_tethering")} label="Подключения" hint="Только безопасная сводка" value={String(activeConnections)} />
           <CabinetRow icon={icon("description")} label="Документы" hint="Оплата и условия" href="/support/legal/" />
         </CabinetGroup>
+
+        <section className="flex flex-col gap-2.5">
+          <h2 className="cab-eyebrow px-1">Диагностика</h2>
+          <CabinetTiles>
+            <CabinetTile icon={icon("verified_user")} label="Доступ" value={resolvePlanLabel(dash, user)} hint="Без личных ключей" tone="success" />
+            <CabinetTile icon={icon("devices")} label="Устройства" value={`${deviceCount} из ${deviceLimit}`} hint="Связано с профилем" tone="neutral" href="/devices/" />
+            <CabinetTile icon={icon("wifi_tethering")} label="Подключения" value={String(activeConnections)} hint="Безопасная сводка" tone="info" />
+          </CabinetTiles>
+        </section>
 
         {notice ? <p className="px-1 text-sm font-semibold text-[color:var(--atlas-primary)]">{notice}</p> : null}
         {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}

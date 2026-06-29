@@ -187,7 +187,7 @@ type HandoffMockMode = "ok" | "expired" | "used" | "invalid" | "rate_limited";
 
 async function registerCabinetMocks(
   page: Page,
-  options: { seedWebSession?: boolean; handoff?: HandoffMockMode; handoffTargetPath?: string } = {},
+  options: { seedWebSession?: boolean; handoff?: HandoffMockMode; handoffTargetPath?: string; subscriptionUrl?: string; isActive?: boolean } = {},
 ): Promise<void> {
   const seedWebSession = options.seedWebSession ?? true;
   const handoffMode = options.handoff ?? "ok";
@@ -206,6 +206,14 @@ async function registerCabinetMocks(
 
   const sessionUser = mockSessionUser();
   const dashboard = mockDashboard();
+  if (options.subscriptionUrl !== undefined) {
+    sessionUser.subscription_url = options.subscriptionUrl;
+    dashboard.subscription_url = options.subscriptionUrl;
+  }
+  if (options.isActive !== undefined) {
+    sessionUser.is_active = options.isActive;
+    dashboard.is_active = options.isActive;
+  }
   let tickets = [...mockTickets()];
 
   await page.route("**/api/**", async (route) => {
@@ -221,6 +229,18 @@ async function registerCabinetMocks(
 
     if (path === "/api/auth/session") {
       return json({ ok: true, user: { id: 1001, username: "qa_user" } });
+    }
+    if (path === "/api/auth/email/status") {
+      return json({
+        ok: true,
+        enabled: true,
+        public_enabled: true,
+        delivery_configured: true,
+        delivery_secret_configured: true,
+        debug_echo: false,
+        mode: "public",
+        blocked_reasons: [],
+      });
     }
     if (path === "/api/auth/cabinet-handoff/exchange" && request.method() === "POST") {
       const payload = JSON.parse(request.postData() || "{}");
@@ -640,6 +660,20 @@ test.describe("Cabinet flow", () => {
     await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
     await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
+  });
+
+  test("keeps manual setup closed from a direct hash when no active link exists", async ({ page }) => {
+    await registerCabinetMocks(page, { subscriptionUrl: "" });
+
+    await page.goto("/subscription/#manual-setup");
+
+    const manualConnection = page.locator("#manual-setup");
+    await expect(manualConnection).toContainText("Появится после активации");
+    await expect(manualConnection).toContainText("скрыто");
+    await expect(manualConnection).not.toContainText("Совместимые клиенты");
+    await expect(manualConnection).not.toContainText("connect.pokrov.space");
+    await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toHaveCount(0);
+    await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toHaveCount(0);
   });
 
   test("keeps paid plan cards selectable for a free monthly account", async ({ page }) => {

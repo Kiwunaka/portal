@@ -66,6 +66,8 @@ printf "%s" "$DECODED" | awk -F'@' 'NF>1{{print $2}}' | cut -d':' -f1 | cut -d'?
 """.strip()
 
         code, out, err = _run(ssh, cmd, timeout=60)
+        if code != 0:
+            raise SystemExit(err.strip() or out.strip() or "remote subscription host inspection failed")
         text = (out.strip() or err.strip()).strip()
         print(text)
         return 0

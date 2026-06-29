@@ -235,8 +235,8 @@ async def _lavatop_create(
             "utm_content": str(order_id or "").strip()[:255],
         },
     }
-    payment_provider = (os.getenv("LAVATOP_PAYMENT_PROVIDER") or "").strip().upper()
-    payment_method = (os.getenv("LAVATOP_PAYMENT_METHOD") or "").strip().upper()
+    payment_provider = str((custom or {}).get("lavatop_payment_provider") or os.getenv("LAVATOP_PAYMENT_PROVIDER") or "").strip().upper()
+    payment_method = str((custom or {}).get("lavatop_payment_method") or os.getenv("LAVATOP_PAYMENT_METHOD") or "").strip().upper()
     periodicity = (os.getenv("LAVATOP_PERIODICITY") or "").strip().upper()
     if payment_provider:
         payload["paymentProvider"] = payment_provider

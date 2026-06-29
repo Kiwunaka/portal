@@ -6,12 +6,15 @@ import {
   adminNodeDrain,
   adminNodeEnable,
   adminNodeResync,
+  adminNodeUndrain,
   adminNodesDrift,
+  adminNodesCapacity,
   adminNodesHealth,
   adminNodesRuntime,
   adminNodesSync,
   adminNodesTraffic,
   type AdminMetricsStatus,
+  type AdminNodeCapacityRow,
   type AdminNodeDriftReport,
   type AdminNodeHealthRow,
   type AdminNodeRuntimeRow,
@@ -97,6 +100,19 @@ function scoreTone(score: number): { dotClass: string; badgeClass: string } {
   if (score >= 8) return { dotClass: "status-dot-online", badgeClass: "badge-success" };
   if (score >= 5) return { dotClass: "status-dot-warning", badgeClass: "badge-warning" };
   return { dotClass: "status-dot-offline", badgeClass: "badge-danger" };
+}
+
+function capacityBadgeClass(state?: string | null): string {
+  const value = String(state || "").toLowerCase();
+  if (value === "healthy") return "badge-success";
+  if (value === "warm" || value === "drain") return "badge-warning";
+  if (value === "hard_reject") return "badge-danger";
+  return "badge-info";
+}
+
+function formatRatioPercent(value?: number | null): string {
+  if (value == null || Number.isNaN(Number(value))) return "нет данных";
+  return `${(Number(value) * 100).toFixed(0)}%`;
 }
 
 function alertKindLabel(kind: string): string {
@@ -212,6 +228,7 @@ function probeFailureCopy(kind?: string | null, stage?: string | null, message?:
 
 export default function AdminNodesPage() {
   const [nodes, setNodes] = useState<AdminNodeHealthRow[]>([]);
+  const [capacity, setCapacity] = useState<AdminNodeCapacityRow[]>([]);
   const [runtime, setRuntime] = useState<AdminNodeRuntimeRow[]>([]);
   const [traffic, setTraffic] = useState<AdminNodeTrafficRow[]>([]);
   const [status, setStatus] = useState<AdminMetricsStatus | null>(null);
@@ -239,17 +256,20 @@ export default function AdminNodesPage() {
       ),
     [status?.nodes],
   );
+  const capacityByNode = useMemo(() => new Map(capacity.map((row) => [nodeCodeKey(row.code), row])), [capacity]);
 
   const load = async (): Promise<void> => {
     setError("");
     try {
       const range = range7d();
-      const [healthRows, metricsStatus, trafficRows] = await Promise.all([
+      const [healthRows, capacityRows, metricsStatus, trafficRows] = await Promise.all([
         adminNodesHealth(),
+        adminNodesCapacity(),
         adminMetricsStatus(),
         adminNodesTraffic(range),
       ]);
       setNodes(healthRows);
+      setCapacity(capacityRows);
       setStatus(metricsStatus);
       setTraffic(trafficRows);
       adminNodesRuntime()
@@ -277,7 +297,7 @@ export default function AdminNodesPage() {
     }
   };
 
-  const runNodeAction = async (node: AdminNodeHealthRow, action: "drain" | "enable" | "disable" | "resync"): Promise<void> => {
+  const runNodeAction = async (node: AdminNodeHealthRow, action: "drain" | "undrain" | "enable" | "disable" | "resync"): Promise<void> => {
     setNodeActionBusy(`${action}:${node.code}`);
     setNodeActionNote("");
     setError("");
@@ -288,6 +308,9 @@ export default function AdminNodesPage() {
       } else if (action === "enable") {
         await adminNodeEnable(node.code);
         setNodeActionNote(`Нода ${node.code.toUpperCase()} снова участвует в выдаче.`);
+      } else if (action === "undrain") {
+        await adminNodeUndrain(node.code);
+        setNodeActionNote(`Нода ${node.code.toUpperCase()} снова принимает новые назначения.`);
       } else if (action === "disable") {
         await adminNodeDisable(node.code, {});
         setNodeActionNote(`Нода ${node.code.toUpperCase()} выключена из выдачи.`);
@@ -381,6 +404,65 @@ export default function AdminNodesPage() {
             ))}
           </div>
         ) : null}
+      </div>
+
+      <div className="glass-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-display text-xl font-bold">Capacity steering</h3>
+            <p className="text-xs text-[color:var(--atlas-text-soft)]">
+              Smart-connect использует эти сигналы для порядка маршрутов. Число клиентов в панели показано как provisioned, не как онлайн.
+            </p>
+          </div>
+          <span className="badge badge-info">{capacity.length ? `nodes: ${capacity.length}` : "нет данных"}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
+                <th className="px-3 py-2.5">Нода</th>
+                <th className="px-3 py-2.5">State</th>
+                <th className="px-3 py-2.5">TX</th>
+                <th className="px-3 py-2.5">CPU</th>
+                <th className="px-3 py-2.5">Dataplane</th>
+                <th className="px-3 py-2.5">Keys</th>
+                <th className="px-3 py-2.5">Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {capacity.map((row, index) => (
+                <tr key={row.code} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                  <td className="px-3 py-3 font-semibold">{row.code.toUpperCase()}</td>
+                  <td className="px-3 py-3">
+                    <span className={`badge ${capacityBadgeClass(row.capacity_state)}`}>{row.capacity_state}</span>
+                    <div className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">score {row.capacity_score.toFixed(1)}</div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div>{formatMbps(row.tx_mbps)}</div>
+                    <div className="text-xs text-[color:var(--atlas-text-soft)]">{formatRatioPercent(row.tx_ratio)} of {formatMbps(row.capacity_mbps, 0)}</div>
+                  </td>
+                  <td className="px-3 py-3">{formatPercent(row.cpu_percent, 0)}</td>
+                  <td className="px-3 py-3">
+                    <span className={`badge ${row.dataplane_ok === false ? "badge-danger" : "badge-success"}`}>{row.dataplane_ok === false ? "down" : "ok"}</span>
+                    <div className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{row.dataplane_rtt_ms != null ? `${row.dataplane_rtt_ms} ms` : "rtt n/a"}</div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div>provisioned {row.provisioned_clients_count}</div>
+                    <div className="text-xs text-[color:var(--atlas-text-soft)]">online hint {row.online_connections_hint} · pressure {row.pressure_keys}</div>
+                  </td>
+                  <td className="px-3 py-3 text-xs text-[color:var(--atlas-text-soft)]">{row.reject_reason || "—"}</td>
+                </tr>
+              ))}
+              {capacity.length === 0 ? (
+                <tr>
+                  <td className="px-3 py-4 text-sm text-[color:var(--atlas-text-soft)]" colSpan={7}>
+                    Capacity данные еще не поступили.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="glass-card p-5">
@@ -511,6 +593,7 @@ export default function AdminNodesPage() {
             ? (node.disk_used_gb / node.disk_total_gb) * 100
             : null;
           const nodeFreshness = freshnessByNode.get(nodeCodeKey(node.code));
+          const nodeCapacity = capacityByNode.get(nodeCodeKey(node.code));
           const probeFailure = probeFailureCopy(node.last_probe_error_kind, node.last_probe_stage, node.last_probe_error_message);
           const networkPercent = node.network_utilization_percent;
           const networkPeakPercent = node.network_peak_utilization_percent_24h;
@@ -561,9 +644,27 @@ export default function AdminNodesPage() {
                   <p className="text-sm font-bold">{formatPercent(node.panel_error_rate * 100, 1)}</p>
                 </div>
                 <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
-                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Клиенты в панели</p>
-                  <p className="text-sm font-bold">{node.active_clients}</p>
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Provisioned</p>
+                  <p className="text-sm font-bold">{node.provisioned_clients_count ?? node.active_clients}</p>
                 </div>
+              </div>
+
+              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+                  <span>Capacity</span>
+                  <span className={`badge ${capacityBadgeClass(nodeCapacity?.capacity_state || node.capacity_state)}`}>
+                    {nodeCapacity?.capacity_state || node.capacity_state || "unknown"}
+                  </span>
+                </div>
+                <div className="grid gap-2 text-xs sm:grid-cols-2">
+                  <p>TX: <strong>{formatMbps(nodeCapacity?.tx_mbps ?? node.capacity_tx_mbps)}</strong></p>
+                  <p>Utilization: <strong>{formatRatioPercent(nodeCapacity?.tx_ratio ?? node.capacity_tx_ratio)}</strong></p>
+                  <p>Online hint: <strong>{nodeCapacity?.online_connections_hint ?? node.online_connections_hint ?? 0}</strong></p>
+                  <p>Pressure keys: <strong>{nodeCapacity?.pressure_keys ?? 0}</strong></p>
+                </div>
+                {(nodeCapacity?.reject_reason || node.capacity_reject_reason) ? (
+                  <p className="mt-2 text-xs text-[color:var(--atlas-status-warning-text)]">{nodeCapacity?.reject_reason || node.capacity_reject_reason}</p>
+                ) : null}
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-4">
@@ -693,6 +794,10 @@ export default function AdminNodesPage() {
                 {node.enabled && !node.is_draining ? (
                   <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "drain")}>
                     {nodeActionBusy === `drain:${node.code}` ? "..." : "Остановить новые"}
+                  </button>
+                ) : node.is_draining ? (
+                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "undrain")}>
+                    {nodeActionBusy === `undrain:${node.code}` ? "..." : "Снова принимать новые"}
                   </button>
                 ) : (
                   <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "enable")}>

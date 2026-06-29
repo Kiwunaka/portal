@@ -4,7 +4,8 @@ import { Eye, EyeOff } from "lucide-react";
 
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
-import { finishEmailRecovery, loginByEmail, registerByEmail, setWebSessionToken, startEmailRecovery, verifyEmailToken } from "@/lib/api";
+import { finishEmailRecovery, getEmailAuthStatus, loginByEmail, registerByEmail, setWebSessionToken, startEmailRecovery, verifyEmailToken, type EmailAuthStatusResult } from "@/lib/api";
+import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -42,6 +43,27 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const [recoveryToken, setRecoveryToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [emailAuthStatus, setEmailAuthStatus] = useState<EmailAuthStatusResult | null>(null);
+  const [emailAuthChecked, setEmailAuthChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getEmailAuthStatus()
+      .then((payload) => {
+        if (!cancelled) setEmailAuthStatus(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setEmailAuthStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEmailAuthChecked(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -178,9 +200,10 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   };
 
   const inputClass =
-    "w-full rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-4 py-3 text-sm outline-none transition focus:border-[color:var(--atlas-status-danger-line)] dark:border-white/10 dark:bg-white/[0.04]";
+    "w-full rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-4 py-3 text-sm outline-none transition focus:border-[color:var(--atlas-focus)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--atlas-focus)_20%,transparent)] dark:border-white/10 dark:bg-white/[0.04]";
   const passwordInputClass = `${inputClass} pr-12`;
   const legalLinkClass = "text-[color:var(--atlas-text-soft)] underline-offset-4 transition hover:text-[color:var(--atlas-text)] hover:underline dark:text-slate-400 dark:hover:text-slate-100";
+  const emailAuthReady = isEmailAuthPublicReady(emailAuthStatus);
 
   const passwordField = (
     <div>
@@ -209,25 +232,26 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
   return (
     <div className="space-y-5">
-      <div>
-        <div className="grid grid-cols-2 rounded-[1.5rem] bg-[color:var(--atlas-canvas-alt)] p-1 shadow-inner dark:bg-white/[0.05]">
-          {(["login", "register"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setMode(mode)}
-              className={`min-h-12 rounded-[1.25rem] px-4 text-sm font-semibold transition ${
-                emailMode === mode
-                  ? "bg-[color:var(--atlas-surface)] text-[color:var(--atlas-status-danger-text)] shadow-sm dark:bg-white/[0.10] dark:text-rose-200"
-                  : "text-[color:var(--atlas-text-soft)] hover:text-[color:var(--atlas-text)] dark:text-slate-400 dark:hover:text-slate-100"
-              }`}
-            >
-              {EMAIL_MODE_LABELS[mode]}
-            </button>
-          ))}
-        </div>
+      {emailAuthReady ? (
+        <div>
+          <div className="grid grid-cols-2 rounded-[1.5rem] bg-[color:var(--atlas-canvas-alt)] p-1 shadow-inner dark:bg-white/[0.05]">
+            {(["login", "register"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setMode(mode)}
+                className={`min-h-12 rounded-[1.25rem] px-4 text-sm font-semibold transition ${
+                  emailMode === mode
+                    ? "bg-[color:var(--atlas-surface)] text-[color:var(--atlas-primary)] shadow-sm dark:bg-white/[0.10]"
+                    : "text-[color:var(--atlas-text-soft)] hover:text-[color:var(--atlas-text)] dark:text-slate-400 dark:hover:text-slate-100"
+                }`}
+              >
+                {EMAIL_MODE_LABELS[mode]}
+              </button>
+            ))}
+          </div>
 
-        <div className="mt-6">
+          <div className="mt-6">
             {emailMode === "login" ? (
               <form className="space-y-4" onSubmit={submitLogin}>
                 <div>
@@ -282,6 +306,9 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                 </div>
                 {passwordField}
                 <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)] dark:text-slate-400">{PASSWORD_HINT}</p>
+                <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)] dark:text-slate-400">
+                  Уже начали в приложении? Откройте кабинет из приложения и добавьте email там, чтобы доступ остался в одном профиле.
+                </p>
                 <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
                   {emailBusy ? "Создаем..." : "Зарегистрироваться"}
                 </button>
@@ -364,8 +391,15 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                 </button>
               </form>
             ) : null}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-2xl border border-[color:var(--atlas-status-info-line)] bg-[color:var(--atlas-status-info-bg)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-status-info-text)] dark:border-sky-300/20 dark:bg-sky-300/10 dark:text-sky-100">
+          {emailAuthChecked
+            ? "Email-вход временно недоступен. Войдите через Telegram, а если нужна помощь с доступом, напишите в поддержку."
+            : "Проверяем доступность входа по email..."}
+        </div>
+      )}
 
       {emailMessage ? (
         <div className="rounded-2xl border border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-status-success-text)] dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">

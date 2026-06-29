@@ -56,6 +56,44 @@ class CheckScriptManifestTests(unittest.TestCase):
         self.assertIn("docs/product/current.md", docs)
         self.assertNotIn("docs/developer/work-orders/old.md", docs)
 
+    def test_collect_script_cli_mains_finds_top_level_main_functions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            (scripts / "active.py").write_text(
+                "def main() -> int:\n    return 0\n",
+                encoding="utf-8",
+            )
+            (scripts / "helper.py").write_text(
+                "def run() -> int:\n    return 0\n",
+                encoding="utf-8",
+            )
+
+            mains = self.module._collect_script_cli_mains(root)
+
+        self.assertEqual(mains, ["scripts/active.py"])
+
+    def test_all_manifest_statuses_includes_non_active_buckets(self) -> None:
+        manifest = {
+            "active": ["scripts/current.py"],
+            "deprecated": ["scripts/old.py"],
+            "archive_only": ["scripts/archive.py"],
+            "denylist": ["scripts/blocked.py"],
+        }
+
+        statuses = self.module._all_manifest_statuses(manifest)
+
+        self.assertEqual(
+            statuses,
+            {
+                "scripts/current.py",
+                "scripts/old.py",
+                "scripts/archive.py",
+                "scripts/blocked.py",
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

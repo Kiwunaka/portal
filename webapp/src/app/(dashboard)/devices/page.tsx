@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
 import { getAccessState, getDeviceLimit, getTrafficLimitGb, isFreeMonthlyState, isPaidUnlimitedState, isTrialPremiumState } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
@@ -61,6 +61,7 @@ export default function DevicesPage() {
         meta={`${formatCount(knownAppDevices)} из ${formatCount(deviceLimit)} в профиле`}
         body="Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения."
         tone={devices.length ? "success" : "neutral"}
+        emblem={icon("devices", "h-7 w-7")}
         action={
           <Button href="/downloads/" className="w-full sm:w-auto">
             Скачать
@@ -68,12 +69,15 @@ export default function DevicesPage() {
         }
       />
 
-      <CabinetGroup title="Сводка">
-        <CabinetRow icon={icon("wifi_tethering")} label="Подключений сейчас" hint="Живые подключения по профилю" value={`${formatCount(activeConnections)} из ${formatCount(deviceLimit)}`} />
-        <CabinetRow icon={icon("devices")} label="Известных устройств" hint="Уже связались с аккаунтом" value={formatCount(knownAppDevices)} />
-        <CabinetRow icon={icon("hub")} label="Точек доступа" hint="Счетчик готовности, без адресов" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} />
-        <CabinetRow icon={icon("group")} label="Людей онлайн" hint="Ориентир по активности сети" value={formatCount(activeUsersEstimate)} />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Сводка</h2>
+        <CabinetTiles>
+          <CabinetTile icon={icon("wifi_tethering")} label="Подключений сейчас" value={`${formatCount(activeConnections)} из ${formatCount(deviceLimit)}`} hint="Живые подключения" tone="success" />
+          <CabinetTile icon={icon("devices")} label="Известных устройств" value={formatCount(knownAppDevices)} hint="Связаны с аккаунтом" tone="neutral" />
+          <CabinetTile icon={icon("hub")} label="Точек доступа" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} hint="Счетчик готовности" tone="info" />
+          <CabinetTile icon={icon("group")} label="Людей онлайн" value={formatCount(activeUsersEstimate)} hint="Ориентир по сети" tone="neutral" />
+        </CabinetTiles>
+      </section>
 
       <CabinetGroup title="Список">
         {devices.length ? (

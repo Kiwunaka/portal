@@ -115,9 +115,10 @@ Required operator meaning:
 
 Smart-connect visibility rule:
 
-- the managed manifest exposes shortlist-level `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `shortlist_revision`, and stickiness metadata
-- accepted client RTT uploads are stored through the `smart_connect_latency_sample` event with `install_id`, `carrier`, `platform`, selected node, previous node, and accepted RTT samples
+- the managed manifest and `/api/client/nodes/candidates` expose shortlist-level `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `shortlist_revision`, and stickiness metadata
+- accepted client RTT and node-selection uploads are stored through the `smart_connect_latency_sample` event with `install_id`, `carrier`, `platform`, selected node, previous node, accepted RTT samples, selection mode, and whether stickiness was applied
 - operators should be able to reason about recent RTT quality by node, carrier, and platform without exposing raw samples in public consumer UI
+- subscription renders should record `subscription_fetch_events` and `rendered_subscription_snapshots` with token fingerprints, resolved format, node order, excluded-node reasons, status, and content hashes, never raw tokens or rendered subscription bodies
 - shortlist evidence must respect the paid-pool vs `NL-free` pool boundary; a “better ping” does not authorize crossing the access-tier rule
 
 ## WARP Material Visibility
@@ -247,11 +248,14 @@ Required node-level visibility:
 - `hoster_asn`
 - `subnet`
 - sustained CPU / RAM / disk pressure alerts
-- live `online_keys_now` count per node from panel runtime
-- live `online_connections_now` count per node from panel runtime `ip_count` with a per-key fallback when the panel omits it
+- provisioned key/client count per node as `provisioned_clients_count`; this replaces treating panel `active_clients` as live online load
+- live `online_connections_hint` per node when a runtime source can provide it; render it as a hint, not a billing or people counter
 - current Ethernet RX/TX throughput in `Mbps`
+- 1m and 5m TX/RX throughput in `Mbps`
 - 24h peak Ethernet throughput in `Mbps`
 - port-capacity utilization against the default `1 Gbit/s` node uplink
+- capacity state, capacity score, hard-reject reason, dataplane probe status/RTT, packet loss, and TCP retransmit percentage
+- top pressure-key count by node from `key_pressure_state`
 - sustained latency / error-rate alerts
 - high client-density alerts
 - observer collector freshness per node
@@ -279,7 +283,7 @@ Operator-facing rendering rule:
 - distinguish real `0` from missing telemetry; `RAM`, disk totals, and free space must show that metrics did not arrive when totals are absent
 - current node-card latency and dataplane probe in admin are collected from the control-plane host `brain`
 - do not confuse the `brain -> node` control-plane probe with the separate external RU probe result
-- node cards should show both `online_keys_now` and `online_connections_now`; these are live runtime numbers, not observer-lite history
+- node cards should show `provisioned_clients_count` separately from any `online_connections_hint`; provisioned count is configured key inventory, not online load
 - current Ethernet throughput in admin comes from the live panel/server metrics collected by `brain`
 - if network counters are missing, the admin surface must show missing telemetry rather than `0 Mbps`
 - use the current and 24h peak Ethernet view for capacity planning, server purchase decisions, and early warning before saturating the `1 Gbit/s` uplink
@@ -300,7 +304,10 @@ Operational rule:
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
-- newly enabled delivery nodes must be verified with both subscription output and panel `active_clients`; database `user_nodes` mappings alone do not prove the clients exist on the 3x-ui inbound
+- newly enabled delivery nodes must be verified with subscription output plus provisioned-key evidence from panel/runtime; database `user_nodes` mappings alone do not prove the clients exist on the 3x-ui inbound, and panel `active_clients` must be labeled as configured/provisioned clients rather than online users
+- `/api/admin/nodes/capacity` is the operator capacity dashboard source for node state, TX ratio, dataplane, key pressure counts, drain/undrain state, and reject reasons
+- `/api/admin/keys/pressure` is the operator key-pressure dashboard source; use it for review/rotation decisions, not automatic family-hostile enforcement
+- `/api/internal/nodes/{node_code}/metrics` and `/api/internal/nodes/{node_code}/xray-stats` are HMAC-authenticated ingest paths for node-agent metrics and key traffic rollups
 
 Runtime telemetry wave `2026-06-02`:
 

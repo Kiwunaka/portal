@@ -19,7 +19,7 @@ export default function PokrovMark({ className, label = "POKROV logo", accent = 
       aria-label={label}
       className={cn("h-full w-full", className)}
       role="img"
-      viewBox="0 0 200 200"
+      viewBox="18 -15 164 164"
       xmlns="http://www.w3.org/2000/svg"
     >
       <path d={POKROV_MARK_PATH} fill={accent === "brand" ? `url(#${gradientId})` : "#7C8B84"} />

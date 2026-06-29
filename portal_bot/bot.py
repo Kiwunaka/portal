@@ -4489,6 +4489,9 @@ async def menu_bonuses(callback: CallbackQuery):
 @router.callback_query(F.data == "menu_more")
 async def menu_more(callback: CallbackQuery):
     """More menu: gift cards, promo, share"""
+    tg_id = int(callback.from_user.id)
+    pending_redeem_codes.discard(tg_id)
+    pending_promo_codes.discard(tg_id)
     feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
     rows = []
     if TELEGRAM_STARS_CHECKOUT_ENABLED:
@@ -4529,8 +4532,8 @@ async def promo_help(callback: CallbackQuery):
     ])
     await callback.message.edit_text(
         "🎟️ *Активация промокода*\n\n"
-        "Следующий шаг: отправьте команду `/promo КОД`\n\n"
-        "Пример: `/promo NEWYEAR`",
+        "Нажмите «Ввести промокод», затем отправьте код следующим сообщением.\n\n"
+        "Пример: `NEWYEAR`",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -4659,7 +4662,7 @@ async def show_wheel(callback: CallbackQuery):
         status_text = "✅ *Можно крутить!*"
         buttons = [
             [InlineKeyboardButton(text="🎰 КРУТИТЬ!", callback_data="wheel_spin")],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]
         ]
     else:
         # Calculate time left
@@ -4676,7 +4679,7 @@ async def show_wheel(callback: CallbackQuery):
         
         status_text = f"⏳ Следующий спин через: *{time_str}*"
         buttons = [
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]
         ]
     
     kb = InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -4731,7 +4734,7 @@ async def do_wheel_spin(callback: CallbackQuery):
         await callback.message.edit_text(
             "❌ Не удалось прокрутить. Попробуй позже!",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]
             ])
         )
         return
@@ -4776,7 +4779,7 @@ async def do_wheel_spin(callback: CallbackQuery):
     )
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
+        [InlineKeyboardButton(text="◀️ В бонусы", callback_data="menu_bonuses")]
     ])
     
     await callback.message.edit_text(
@@ -6684,7 +6687,7 @@ async def admin_broadcast_menu(callback: CallbackQuery):
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🧩 Конструктор рассылки", callback_data="admin_bcast_compose")],
-        [InlineKeyboardButton(text="🔄 Обновить ссылки", callback_data="admin_broadcast_links")],
+        [InlineKeyboardButton(text="🔄 Уведомить об обновлении", callback_data="admin_broadcast_links")],
         *template_btns,
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]
     ])
@@ -6935,6 +6938,24 @@ def _broadcast_segment_label(seg: str) -> str:
     }.get(seg, seg)
 
 
+def _bulk_subscription_update_text() -> str:
+    return (
+        "🔄 *Обновление подключения*\n\n"
+        "Мы обновили профиль подключения. Чтобы всё продолжило работать, откройте POKROV или кабинет и обновите профиль в приложении.\n\n"
+        "Если приложение пока не под рукой, ручной вариант доступен отдельной кнопкой ниже. Открывайте его только для личного восстановления."
+    )
+
+
+def _bulk_subscription_update_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [InlineKeyboardButton(text="🔗 Ручная ссылка / QR", callback_data="show_key")],
+            [InlineKeyboardButton(text="💬 Поддержка", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+        ]
+    )
+
+
 def _render_broadcast_draft(draft: dict) -> str:
     seg = _broadcast_segment_label(draft.get("segment", "active"))
     btn = draft.get("button")
@@ -7135,11 +7156,11 @@ async def admin_custom_msg_prompt(callback: CallbackQuery):
 
 @router.callback_query(F.data == "admin_broadcast_links")
 async def admin_broadcast_links(callback: CallbackQuery, bot: Bot):
-    """Trigger link broadcast from button"""
+    """Trigger app-first subscription update notice from button."""
     if callback.from_user.id != ADMIN_ID:
         return
-    
-    await callback.answer("🔄 Рассылка ссылок запущена...")
+
+    await callback.answer("🔄 Рассылка уведомления запущена...")
     
     # Call existing broadcast logic
     session = Session()
@@ -7151,12 +7172,11 @@ async def admin_broadcast_links(callback: CallbackQuery, bot: Bot):
         if user.tg_id in PROTECTED_USERS or user.tg_id == ADMIN_ID:
             continue
         try:
-            sub_link = build_subscription_link(user.tg_id)
             await bot.send_message(
                 user.tg_id,
-                f"🔗 *Обновлённая ссылка подписки:*\n`{sub_link}`\n\n"
-                f"_Пожалуйста, обновите в приложении._",
-                parse_mode=ParseMode.MARKDOWN
+                _bulk_subscription_update_text(),
+                reply_markup=_bulk_subscription_update_keyboard(),
+                parse_mode=ParseMode.MARKDOWN,
             )
             sent += 1
         except:
@@ -10349,7 +10369,7 @@ BROADCAST_EXCLUDE = PROTECTED_USERS
 
 @router.message(Command("broadcast"))
 async def admin_broadcast(message: Message, bot: Bot):
-    """Send new subscription links to all active users"""
+    """Send an app-first subscription update notice to all active users."""
     if message.from_user.id != ADMIN_ID:
         return
     
@@ -10373,18 +10393,13 @@ async def admin_broadcast(message: Message, bot: Bot):
         if user.tg_id in BROADCAST_EXCLUDE or user.tg_id == ADMIN_ID:
             skipped += 1
             continue
-        
+
         try:
-            sub_link = build_subscription_link(user.tg_id)
             await bot.send_message(
                 user.tg_id,
-                f"🔄 *Обновление подписки*\n\n"
-                f"Мы обновили подключение. Чтобы всё продолжило работать, обновите профиль в приложении.\n\n"
-                f"🔗 *Ваша новая ссылка подписки:*\n"
-                f"`{sub_link}`\n\n"
-                f"📋 _Пожалуйста, обновите ссылку в вашем приложении._\n\n"
-                f"Если у вас вопросы — /start",
-                parse_mode=ParseMode.MARKDOWN
+                _bulk_subscription_update_text(),
+                reply_markup=_bulk_subscription_update_keyboard(),
+                parse_mode=ParseMode.MARKDOWN,
             )
             sent += 1
             await asyncio.sleep(0.1)  # Rate limit

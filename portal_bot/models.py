@@ -237,6 +237,8 @@ class Node(Base):
     panel_latency_ms = Column(Integer, nullable=True)
     panel_error_rate = Column(Float, default=0.0)
     active_clients = Column(Integer, default=0)
+    provisioned_clients_count = Column(Integer, default=0)
+    online_connections_hint = Column(Integer, default=0)
     cpu_percent = Column(Float, default=0.0)
     memory_used_mb = Column(Integer, nullable=True)
     memory_total_mb = Column(Integer, nullable=True)
@@ -248,6 +250,17 @@ class Node(Base):
     network_rx_mbps = Column(Float, nullable=True)
     network_tx_mbps = Column(Float, nullable=True)
     network_total_mbps = Column(Float, nullable=True)
+    network_rx_mbps_1m = Column(Float, nullable=True)
+    network_tx_mbps_1m = Column(Float, nullable=True)
+    network_rx_mbps_5m = Column(Float, nullable=True)
+    network_tx_mbps_5m = Column(Float, nullable=True)
+    tcp_retrans_percent = Column(Float, nullable=True)
+    packet_loss_percent = Column(Float, nullable=True)
+    dataplane_ok = Column(Boolean, nullable=True)
+    dataplane_rtt_ms = Column(Integer, nullable=True)
+    capacity_score = Column(Float, nullable=True)
+    capacity_state = Column(String(32), default="unknown")
+    capacity_reject_reason = Column(String(64), nullable=True)
     last_ok_at = Column(DateTime, nullable=True)
     last_probe_at = Column(DateTime, nullable=True)
     last_probe_stage = Column(String(64), nullable=True)
@@ -279,6 +292,205 @@ class UserNode(Base):
     created_at = Column(DateTime, default=_utcnow)
 
     __table_args__ = (UniqueConstraint("tg_id", "node_id", name="uq_user_nodes_tg_node"),)
+
+
+class AccessKey(Base):
+    __tablename__ = "access_keys"
+    __table_args__ = (
+        UniqueConstraint("tg_id", "key_uuid", name="uq_access_keys_tg_uuid"),
+        UniqueConstraint("node_code", "panel_email", name="uq_access_keys_node_email"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    key_uuid = Column(String(36), index=True, nullable=False)
+    panel_email = Column(String(100), nullable=False)
+    node_code = Column(String(32), index=True, nullable=True)
+    pool_code = Column(String(32), index=True, nullable=False, default="premium_pool")
+    state = Column(String(32), index=True, nullable=False, default="active")
+    source = Column(String(32), nullable=False, default="legacy_user")
+    is_primary = Column(Boolean, default=True, nullable=False)
+    provisioned_at = Column(DateTime, nullable=True)
+    last_seen_at = Column(DateTime, nullable=True)
+    rotated_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    meta_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class NodeCapacityPolicy(Base):
+    __tablename__ = "node_capacity_policy"
+    __table_args__ = (UniqueConstraint("node_code", name="uq_node_capacity_policy_code"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    node_code = Column(String(32), index=True, nullable=False)
+    max_tx_mbps = Column(Float, nullable=True)
+    soft_tx_ratio = Column(Float, default=0.70, nullable=False)
+    drain_tx_ratio = Column(Float, default=0.82, nullable=False)
+    hard_tx_ratio = Column(Float, default=0.92, nullable=False)
+    soft_cpu_percent = Column(Float, default=75.0, nullable=False)
+    hard_cpu_percent = Column(Float, default=90.0, nullable=False)
+    stale_after_seconds = Column(Integer, default=180, nullable=False)
+    max_packet_loss_percent = Column(Float, default=2.0, nullable=False)
+    max_tcp_retrans_percent = Column(Float, default=5.0, nullable=False)
+    rank_weight = Column(Integer, default=100, nullable=False)
+    allow_free_pool = Column(Boolean, default=False, nullable=False)
+    allow_premium_pool = Column(Boolean, default=True, nullable=False)
+    is_enabled = Column(Boolean, default=True, nullable=False)
+    updated_by = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class NodeRuntimeMetric(Base):
+    __tablename__ = "node_runtime_metrics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    node_code = Column(String(32), index=True, nullable=False)
+    sampled_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+    source = Column(String(64), default="collector", nullable=False)
+    batch_id = Column(String(128), nullable=True)
+    provisioned_clients_count = Column(Integer, default=0, nullable=False)
+    online_connections_hint = Column(Integer, default=0, nullable=False)
+    network_rx_mbps_1m = Column(Float, nullable=True)
+    network_tx_mbps_1m = Column(Float, nullable=True)
+    network_rx_mbps_5m = Column(Float, nullable=True)
+    network_tx_mbps_5m = Column(Float, nullable=True)
+    network_total_mbps = Column(Float, nullable=True)
+    cpu_percent = Column(Float, nullable=True)
+    memory_used_mb = Column(Integer, nullable=True)
+    memory_total_mb = Column(Integer, nullable=True)
+    tcp_retrans_percent = Column(Float, nullable=True)
+    packet_loss_percent = Column(Float, nullable=True)
+    dataplane_ok = Column(Boolean, nullable=True)
+    dataplane_rtt_ms = Column(Integer, nullable=True)
+    capacity_score = Column(Float, nullable=True)
+    capacity_state = Column(String(32), default="unknown", nullable=False)
+    reject_reason = Column(String(64), nullable=True)
+    meta_json = Column(Text, nullable=True)
+
+
+class KeyUsageRollup(Base):
+    __tablename__ = "key_usage_rollups"
+    __table_args__ = (
+        UniqueConstraint("key_id", "node_code", "window_bucket_at", "window_seconds", name="uq_key_usage_rollup_window"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key_id = Column(Integer, index=True, nullable=True)
+    tg_id = Column(BigInteger, index=True, nullable=True)
+    node_code = Column(String(32), index=True, nullable=False)
+    panel_email = Column(String(100), index=True, nullable=True)
+    window_bucket_at = Column(DateTime, index=True, nullable=False)
+    window_seconds = Column(Integer, default=300, nullable=False)
+    upload_bytes = Column(BigInteger, default=0, nullable=False)
+    download_bytes = Column(BigInteger, default=0, nullable=False)
+    total_bytes = Column(BigInteger, default=0, nullable=False)
+    peak_tx_mbps = Column(Float, nullable=True)
+    observations = Column(Integer, default=0, nullable=False)
+    source = Column(String(64), default="observer", nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class KeySourceObservation(Base):
+    __tablename__ = "key_source_observations"
+    __table_args__ = (
+        UniqueConstraint("key_id", "node_code", "source_ip_hash", "window_bucket_at", name="uq_key_source_window"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key_id = Column(Integer, index=True, nullable=True)
+    tg_id = Column(BigInteger, index=True, nullable=True)
+    node_code = Column(String(32), index=True, nullable=False)
+    panel_email = Column(String(100), index=True, nullable=True)
+    source_ip_hash = Column(String(64), index=True, nullable=False)
+    source_asn = Column(String(32), nullable=True)
+    source_country = Column(String(8), nullable=True)
+    window_bucket_at = Column(DateTime, index=True, nullable=False)
+    first_seen_at = Column(DateTime, nullable=False)
+    last_seen_at = Column(DateTime, nullable=False)
+    hit_count = Column(Integer, default=0, nullable=False)
+    meta_json = Column(Text, nullable=True)
+
+
+class KeyPressureState(Base):
+    __tablename__ = "key_pressure_state"
+
+    key_id = Column(Integer, primary_key=True)
+    tg_id = Column(BigInteger, index=True, nullable=True)
+    node_code = Column(String(32), index=True, nullable=True)
+    panel_email = Column(String(100), index=True, nullable=True)
+    state = Column(String(32), index=True, default="ok", nullable=False)
+    pressure_score = Column(Float, default=0.0, nullable=False)
+    reasons_json = Column(Text, nullable=True)
+    distinct_source_ips_1h = Column(Integer, default=0, nullable=False)
+    distinct_source_ips_24h = Column(Integer, default=0, nullable=False)
+    node_count_24h = Column(Integer, default=0, nullable=False)
+    traffic_gb_24h = Column(Float, default=0.0, nullable=False)
+    manual_review_required = Column(Boolean, default=False, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+
+
+class SubscriptionFetchEvent(Base):
+    __tablename__ = "subscription_fetch_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    token_fp = Column(String(32), index=True, nullable=False)
+    lookup_mode = Column(String(32), nullable=False)
+    client_format = Column(String(32), index=True, nullable=False)
+    user_agent_hash = Column(String(64), nullable=True)
+    request_host = Column(String(255), nullable=True)
+    selected_nodes_json = Column(Text, nullable=True)
+    excluded_nodes_json = Column(Text, nullable=True)
+    response_status = Column(Integer, default=200, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+
+
+class RenderedSubscriptionSnapshot(Base):
+    __tablename__ = "rendered_subscription_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fetch_event_id = Column(Integer, index=True, nullable=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    profile_revision = Column(String(128), nullable=True)
+    client_format = Column(String(32), index=True, nullable=False)
+    node_order_json = Column(Text, nullable=False)
+    excluded_nodes_json = Column(Text, nullable=True)
+    content_sha256 = Column(String(64), index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+
+
+class NodePoolMembership(Base):
+    __tablename__ = "node_pool_membership"
+    __table_args__ = (UniqueConstraint("node_code", "pool_code", name="uq_node_pool_membership_code_pool"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    node_code = Column(String(32), index=True, nullable=False)
+    pool_code = Column(String(32), index=True, nullable=False)
+    is_enabled = Column(Boolean, default=True, nullable=False)
+    source = Column(String(32), default="migration", nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class NodeProvisioningJob(Base):
+    __tablename__ = "node_provisioning_jobs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=True)
+    key_id = Column(Integer, index=True, nullable=True)
+    node_code = Column(String(32), index=True, nullable=True)
+    job_type = Column(String(32), index=True, nullable=False)
+    status = Column(String(32), index=True, default="queued", nullable=False)
+    desired_state_json = Column(Text, nullable=True)
+    result_json = Column(Text, nullable=True)
+    attempts = Column(Integer, default=0, nullable=False)
+    next_run_at = Column(DateTime, nullable=True)
+    locked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class AdminAudit(Base):

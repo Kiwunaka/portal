@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import posixpath
+import re
 import secrets
 import string
 from pathlib import Path
@@ -13,6 +14,7 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+SQL_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _parse_password(path: Path) -> str:
@@ -75,6 +77,17 @@ def _mask_url(url: str) -> str:
     return f"{head}://***@{rest}"
 
 
+def _sql_identifier(value: str, label: str) -> str:
+    cleaned = str(value).strip()
+    if not SQL_IDENTIFIER_RE.fullmatch(cleaned):
+        raise SystemExit(f"Invalid {label}; expected a simple PostgreSQL identifier.")
+    return cleaned
+
+
+def _sql_literal(value: object) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
+
+
 def _upsert_env(raw: str, updates: dict[str, str]) -> str:
     lines = raw.splitlines()
     idx: dict[str, int] = {}
@@ -109,8 +122,8 @@ def main() -> int:
         raise SystemExit("Missing brain password.")
 
     db_password = (args.db_password or "").strip() or _random_password()
-    db_user = str(args.db_user).strip()
-    db_name = str(args.db_name).strip()
+    db_user = _sql_identifier(str(args.db_user), "--db-user")
+    db_name = _sql_identifier(str(args.db_name), "--db-name")
     sqlite_url = f"sqlite:///{args.sqlite_path}"
     pg_url = f"postgresql+psycopg2://{quote_plus(db_user)}:{quote_plus(db_password)}@127.0.0.1:5432/{quote_plus(db_name)}"
 
@@ -146,9 +159,9 @@ def main() -> int:
             raise SystemExit(f"Failed to query postgres roles:\n{err.strip() or out.strip()}")
         role_exists = "1" in (out or "").strip().splitlines()
         role_sql = (
-            f"ALTER ROLE {db_user} WITH LOGIN PASSWORD '{db_password}'"
+            f"ALTER ROLE {db_user} WITH LOGIN PASSWORD {_sql_literal(db_password)}"
             if role_exists
-            else f"CREATE ROLE {db_user} LOGIN PASSWORD '{db_password}'"
+            else f"CREATE ROLE {db_user} LOGIN PASSWORD {_sql_literal(db_password)}"
         )
         code, out, err = _run(ssh, f"sudo -u postgres psql -v ON_ERROR_STOP=1 -c \"{role_sql}\"", timeout=120)
         if code != 0:

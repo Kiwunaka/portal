@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -50,6 +51,31 @@ def _iter_refs(path: Path) -> list[str]:
     return refs
 
 
+def _collect_script_cli_mains(repo_root: Path) -> list[str]:
+    script_root = repo_root / "scripts"
+    if not script_root.exists():
+        return []
+    paths: list[str] = []
+    for path in sorted(script_root.rglob("*.py")):
+        if any(part in {"__pycache__", ".venv"} for part in path.parts):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        has_main = any(isinstance(node, ast.FunctionDef) and node.name == "main" for node in tree.body)
+        if has_main:
+            paths.append(path.relative_to(repo_root).as_posix())
+    return paths
+
+
+def _all_manifest_statuses(manifest: dict) -> set[str]:
+    statuses: set[str] = set()
+    for key in ("active", "deprecated", "archive_only", "denylist"):
+        statuses.update(str(item) for item in manifest.get(key, []))
+    return statuses
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Validate docs reference only active scripts from scripts/manifest.yaml")
     ap.add_argument("--manifest", default="scripts/manifest.yaml")
@@ -65,8 +91,13 @@ def main() -> int:
     deprecated = set(manifest.get("deprecated", []))
     archive_only = set(manifest.get("archive_only", []))
     denylist = set(manifest.get("denylist", []))
+    manifest_statuses = _all_manifest_statuses(manifest)
 
     problems: list[str] = []
+    for script_path in _collect_script_cli_mains(repo_root):
+        if script_path not in manifest_statuses:
+            problems.append(f"{script_path}: CLI main missing from manifest status")
+
     for doc in _collect_doc_files(repo_root):
         for ref in _iter_refs(doc):
             if ref in denylist or ref in deprecated or ref in archive_only:

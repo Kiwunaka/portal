@@ -1,0 +1,106 @@
+{
+  "ok": false,
+  "classification": "BLOCKED_BY_ACCESS",
+  "mode": "public_beta_post_deploy_probe",
+  "live": false,
+  "email_public_runtime_config_passed": true,
+  "email_live_delivery_probe_passed": false,
+  "lavatop_live_invoice_probe_passed": false,
+  "post_deploy_probe_modes": {
+    "email_public_runtime": "PASS",
+    "email_live_delivery": "BLOCKED_BY_ACCESS",
+    "lavatop_invoice": "BLOCKED_BY_ACCESS"
+  },
+  "safe_to_keep_email_public": true,
+  "safe_to_enable_paid_checkout": false,
+  "inputs": {
+    "api_base_url": "https://api.pokrov.space",
+    "plan_code": "start_99",
+    "readiness_json": "docs\\audit-artifacts\\payment-email-readiness-brain-2026-05-08.json",
+    "evidence_json": "",
+    "brain_live_probe_json": "",
+    "env": {
+      "EMAIL_PROBE_TO": "missing",
+      "EMAIL_DELIVERY_WEBHOOK_URL": "missing",
+      "EMAIL_AUTH_WEBHOOK_URL": "missing",
+      "EMAIL_DELIVERY_WEBHOOK_SECRET": "missing",
+      "LAVATOP_PROBE_EMAIL": "missing",
+      "LAVATOP_API_KEY": "missing",
+      "LAVATOP_OFFER_ID": "missing",
+      "LAVATOP_OFFER_ID_START_99": "missing"
+    }
+  },
+  "checks": [
+    {
+      "name": "email_public_runtime_config",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live deployed API email status; does not send email.",
+      "source": "https://api.pokrov.space/api/auth/email/status"
+    },
+    {
+      "name": "payment_provider_catalog",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live deployed provider catalog exposes enabled Lava.top checkout.",
+      "source": "https://api.pokrov.space/api/payments/providers"
+    },
+    {
+      "name": "email_delivery_verify",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "--live",
+        "EMAIL_PROBE_TO",
+        "EMAIL_DELIVERY_WEBHOOK_URL or EMAIL_AUTH_WEBHOOK_URL",
+        "EMAIL_DELIVERY_WEBHOOK_SECRET"
+      ],
+      "note": "Live delivery proof is required after deploy; dry-run never sends email.",
+      "source": "scripts/email_delivery_probe.py"
+    },
+    {
+      "name": "email_delivery_reset",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "--live",
+        "EMAIL_PROBE_TO",
+        "EMAIL_DELIVERY_WEBHOOK_URL or EMAIL_AUTH_WEBHOOK_URL",
+        "EMAIL_DELIVERY_WEBHOOK_SECRET"
+      ],
+      "note": "Live delivery proof is required after deploy; dry-run never sends email.",
+      "source": "scripts/email_delivery_probe.py"
+    },
+    {
+      "name": "email_delivery_payment_access_key",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "--live",
+        "EMAIL_PROBE_TO",
+        "EMAIL_DELIVERY_WEBHOOK_URL or EMAIL_AUTH_WEBHOOK_URL",
+        "EMAIL_DELIVERY_WEBHOOK_SECRET"
+      ],
+      "note": "Live delivery proof is required after deploy; dry-run never sends email.",
+      "source": "scripts/email_delivery_probe.py"
+    },
+    {
+      "name": "lavatop_live_invoice_creation",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "--live",
+        "LAVATOP_PROBE_EMAIL",
+        "LAVATOP_API_KEY",
+        "LAVATOP_OFFER_ID_START_99 or LAVATOP_OFFER_ID"
+      ],
+      "note": "Live invoice proof is required after deploy; dry-run never calls Lava.top.",
+      "source": "scripts/lavatop_invoice_probe.py"
+    },
+    {
+      "name": "paid_checkout_launch_evidence",
+      "status": "BLOCKED_BY_ACCESS",
+      "missing": [
+        "--evidence-json"
+      ],
+      "note": "Attach the redacted live/sandbox Lava.top evidence JSON before enabling checkout.",
+      "source": "scripts/paid_checkout_launch_evidence_check.py"
+    }
+  ]
+}

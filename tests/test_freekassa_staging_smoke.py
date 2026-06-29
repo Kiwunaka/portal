@@ -1,4 +1,8 @@
 import importlib.util
+import base64
+import hashlib
+import hmac
+import json
 import os
 import sys
 import unittest
@@ -28,6 +32,32 @@ class FreekassaStagingSmokeTests(unittest.TestCase):
 
         self.assertEqual(code, 2)
         http_json.assert_not_called()
+
+    def test_create_checkout_ticket_normalizes_payload_and_signs_it(self) -> None:
+        with mock.patch.object(self.module.time, "time", return_value=1000):
+            ticket = self.module.create_checkout_ticket(
+                tg_id=1001,
+                plan_code=" 1_MONTH ",
+                promo_code=" pokrov10 ",
+                campaign_key="campaign-" + "x" * 80,
+                source="SITE",
+                secret="ticket-secret",
+                ttl_seconds=900,
+            )
+
+        token, signature = ticket.split(".", 1)
+        raw = base64.urlsafe_b64decode(token + "=" * ((4 - len(token) % 4) % 4))
+        payload = json.loads(raw.decode("utf-8"))
+        expected_signature = hmac.new(b"ticket-secret", raw, hashlib.sha256).hexdigest()
+
+        self.assertEqual(signature, expected_signature)
+        self.assertEqual(payload["tg_id"], 1001)
+        self.assertEqual(payload["plan_code"], "1_month")
+        self.assertEqual(payload["promo_code"], "POKROV10")
+        self.assertEqual(payload["campaign_key"], ("campaign-" + "x" * 80)[:64])
+        self.assertEqual(payload["source"], "site")
+        self.assertEqual(payload["iat"], 1000)
+        self.assertEqual(payload["exp"], 1900)
 
     def test_main_with_ack_requires_free_kassa_public_create_to_be_blocked(self) -> None:
         env = {

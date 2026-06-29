@@ -200,6 +200,7 @@ export default function SupportTicketThreadPage() {
         meta={statusTitle(ticket.status)}
         body={ticket.subject || "Обращение без темы"}
         tone={canReply ? "info" : "neutral"}
+        emblem={icon("forum", "h-7 w-7")}
         action={
           <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             К списку

@@ -76,10 +76,13 @@ def test_homepage_free_trial_ctas_start_with_install_not_checkout() -> None:
 
     assert "href={links.installHref}" in hero
     assert "href={links.checkoutHref}" not in hero
-    assert 'href="#pricing"' in hero
+    assert 'href="#how-it-works"' in hero
     assert "href={links.installHref}" in free_plan
     assert "href={links.checkoutHref}" not in free_plan
-    assert 'href={links.installHref} className={`${styles.btnPrimary} ${styles.btnPill}`}' in final_cta
+    assert "href={links.installHref}" in final_cta
+    assert "href={links.checkoutHref}" in final_cta
+    assert final_cta.index("href={links.installHref}") < final_cta.index("href={links.checkoutHref}")
+    assert "styles.btnLight" in final_cta
 
 
 def test_cabinet_dashboard_download_ctas_point_to_install_route() -> None:

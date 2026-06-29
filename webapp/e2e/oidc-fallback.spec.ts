@@ -25,6 +25,6 @@ test("falls back to the canonical API when app origin returns HTML for OIDC star
   });
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /продолжить через telegram/i }).click();
+  await page.getByRole("button", { name: /telegram/i }).click();
   await page.waitForURL("https://example.com/auth?from=oidc-fallback");
 });

@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import re
 
 
@@ -96,9 +97,9 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
     assert "This repo now carries new client product-direction work and is the only active client development and release-metadata canon." in repo_readme
     assert "`app-next/` inside the platform repo is now transition/reference material rather than the canonical git lane" in repo_readme
     assert "`app-next/docs/` in the platform repo now remains transition/reference material instead of the canonical client-doc lane" in app_readme
-    assert "public cutover approval: `not allowed`" in app_cutover
-    assert "public Android release approval: `staged outside-store beta only`" in app_cutover
-    assert "public Windows release approval: `staged outside-store unsigned beta only`" in app_cutover
+    assert "public cutover approval: `outside-store beta only`" in app_cutover
+    assert "public Android release approval: `outside-store beta with operator attestation`" in app_cutover
+    assert "public Windows release approval: `outside-store unsigned beta only`" in app_cutover
     assert "long-term repo truth: `yes`" in app_cutover
     assert "bootstrap source removed from active policy and active docs on `2026-04-23`" in app_next_summary
     assert "active client canon moved to `C:/Users/kiwun/Documents/ai/POKROV-app`" in bridge_summary
@@ -110,6 +111,7 @@ def test_root_release_orchestration_uses_wrappers_and_bridge_archive_mirror() ->
     client_gate_text = _read_root("scripts/run_client_release_gate.py")
     deployment_text = _read_root("docs/operations/deployment-and-access.md")
     handoff_seed_text = _read_pokrov_app("config/release-handoff.seed.json")
+    handoff_seed = json.loads(handoff_seed_text)
 
     assert '[sys.executable, "scripts/run_client_release_gate.py", "test", "--suite", suite],' in release_gate_text
     assert '[sys.executable, "scripts/run_client_release_gate.py", "build", "--target", target],' in release_gate_text
@@ -121,8 +123,8 @@ def test_root_release_orchestration_uses_wrappers_and_bridge_archive_mirror() ->
     assert "status.windows_shell_root" in client_gate_text
     assert "versioned bridge bundle mirrors and checksums under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`" in deployment_text
     assert "write the active client-lane bundle into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`" in deployment_text
-    assert '"retained_bridge_archive_root": "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/0.9.0-beta+20508"' in handoff_seed_text
-    assert '"active_release_metadata_root": "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases"' in handoff_seed_text
+    assert handoff_seed["release_truth"]["retained_bridge_archive_root"] == "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/0.9.0-beta+20508"
+    assert handoff_seed["release_truth"]["active_release_metadata_root"] == "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases"
 
 
 def test_runtime_bot_defaults_use_new_pokrov_identities() -> None:

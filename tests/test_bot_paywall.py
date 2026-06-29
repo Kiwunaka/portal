@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import inspect
 import os
 import sys
 import tempfile
@@ -824,6 +825,18 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("🔗 Есть личная ссылка", labels)
         self.assertIn("⚠️ Подключение не работает", labels)
 
+    def test_bulk_subscription_update_broadcasts_do_not_send_raw_links(self) -> None:
+        bulk_handlers = (
+            self.bot_module.admin_broadcast_links,
+            self.bot_module.admin_broadcast,
+        )
+        for handler in bulk_handlers:
+            with self.subTest(handler=handler.__name__):
+                source = inspect.getsource(handler)
+                self.assertNotIn("build_subscription_link", source)
+                self.assertNotIn("connect.pokrov.space", source)
+                self.assertNotIn("ссылка подписки", source.lower())
+
     def test_configure_public_bot_menu_matches_live_checker_payload(self) -> None:
         class _MenuBot:
             def __init__(self) -> None:
@@ -1066,6 +1079,47 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(int(tracked[0]["meta"]["prize_days"]), 30)
         self.assertEqual(int(tracked[0]["meta"]["cooldown_days"]), 5)
         self.assertTrue(bool(tracked[0]["meta"]["sync_ok"]))
+
+    def test_more_menu_back_clears_pending_code_prompts(self) -> None:
+        callback = _FakeCallback(1001)
+
+        asyncio.run(self.bot_module.gift_redeem_prompt(callback))
+        self.assertIn(1001, self.bot_module.pending_redeem_codes)
+        asyncio.run(self.bot_module.menu_more(callback))
+        self.assertNotIn(1001, self.bot_module.pending_redeem_codes)
+
+        asyncio.run(self.bot_module.promo_activate_prompt(callback))
+        self.assertIn(1001, self.bot_module.pending_promo_codes)
+        asyncio.run(self.bot_module.menu_more(callback))
+        self.assertNotIn(1001, self.bot_module.pending_promo_codes)
+
+    def test_wheel_back_returns_to_bonuses_menu(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            user.sub_type = "PAID"
+            user.is_active = True
+            user.first_purchase_done = True
+            user.expiry_at = self.bot_module._utcnow() + timedelta(days=30)
+            session.commit()
+        finally:
+            session.close()
+
+        callback = _FakeCallback(1001)
+        asyncio.run(self.bot_module.show_wheel(callback))
+
+        markup = callback.message.edit_kwargs[-1]["reply_markup"]
+        callbacks = [
+            button.callback_data
+            for row in markup.inline_keyboard
+            for button in row
+            if getattr(button, "callback_data", None)
+        ]
+        self.assertIn("menu_bonuses", callbacks)
+        self.assertNotIn("back", callbacks)
 
 
 if __name__ == "__main__":

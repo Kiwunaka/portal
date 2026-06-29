@@ -296,6 +296,450 @@ def _seed_plan_catalog(conn, *, dialect: str) -> None:
             },
         )
 
+
+def _ensure_capacity_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS access_keys (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              tg_id BIGINT NOT NULL,
+              key_uuid VARCHAR(36) NOT NULL,
+              panel_email VARCHAR(100) NOT NULL,
+              node_code VARCHAR(32),
+              pool_code VARCHAR(32) DEFAULT 'premium_pool' NOT NULL,
+              state VARCHAR(32) DEFAULT 'active' NOT NULL,
+              source VARCHAR(32) DEFAULT 'legacy_user' NOT NULL,
+              is_primary BOOLEAN DEFAULT 1 NOT NULL,
+              provisioned_at DATETIME,
+              last_seen_at DATETIME,
+              rotated_at DATETIME,
+              revoked_at DATETIME,
+              meta_json TEXT,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS node_capacity_policy (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              node_code VARCHAR(32) NOT NULL,
+              max_tx_mbps FLOAT,
+              soft_tx_ratio FLOAT DEFAULT 0.70 NOT NULL,
+              drain_tx_ratio FLOAT DEFAULT 0.82 NOT NULL,
+              hard_tx_ratio FLOAT DEFAULT 0.92 NOT NULL,
+              soft_cpu_percent FLOAT DEFAULT 75 NOT NULL,
+              hard_cpu_percent FLOAT DEFAULT 90 NOT NULL,
+              stale_after_seconds INTEGER DEFAULT 180 NOT NULL,
+              max_packet_loss_percent FLOAT DEFAULT 2 NOT NULL,
+              max_tcp_retrans_percent FLOAT DEFAULT 5 NOT NULL,
+              rank_weight INTEGER DEFAULT 100 NOT NULL,
+              allow_free_pool BOOLEAN DEFAULT 0 NOT NULL,
+              allow_premium_pool BOOLEAN DEFAULT 1 NOT NULL,
+              is_enabled BOOLEAN DEFAULT 1 NOT NULL,
+              updated_by BIGINT,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS node_runtime_metrics (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              node_code VARCHAR(32) NOT NULL,
+              sampled_at DATETIME NOT NULL,
+              source VARCHAR(64) DEFAULT 'collector' NOT NULL,
+              batch_id VARCHAR(128),
+              provisioned_clients_count INTEGER DEFAULT 0 NOT NULL,
+              online_connections_hint INTEGER DEFAULT 0 NOT NULL,
+              network_rx_mbps_1m FLOAT,
+              network_tx_mbps_1m FLOAT,
+              network_rx_mbps_5m FLOAT,
+              network_tx_mbps_5m FLOAT,
+              network_total_mbps FLOAT,
+              cpu_percent FLOAT,
+              memory_used_mb INTEGER,
+              memory_total_mb INTEGER,
+              tcp_retrans_percent FLOAT,
+              packet_loss_percent FLOAT,
+              dataplane_ok BOOLEAN,
+              dataplane_rtt_ms INTEGER,
+              capacity_score FLOAT,
+              capacity_state VARCHAR(32) DEFAULT 'unknown' NOT NULL,
+              reject_reason VARCHAR(64),
+              meta_json TEXT
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS key_usage_rollups (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              key_id INTEGER,
+              tg_id BIGINT,
+              node_code VARCHAR(32) NOT NULL,
+              panel_email VARCHAR(100),
+              window_bucket_at DATETIME NOT NULL,
+              window_seconds INTEGER DEFAULT 300 NOT NULL,
+              upload_bytes BIGINT DEFAULT 0 NOT NULL,
+              download_bytes BIGINT DEFAULT 0 NOT NULL,
+              total_bytes BIGINT DEFAULT 0 NOT NULL,
+              peak_tx_mbps FLOAT,
+              observations INTEGER DEFAULT 0 NOT NULL,
+              source VARCHAR(64) DEFAULT 'observer' NOT NULL,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS key_source_observations (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              key_id INTEGER,
+              tg_id BIGINT,
+              node_code VARCHAR(32) NOT NULL,
+              panel_email VARCHAR(100),
+              source_ip_hash VARCHAR(64) NOT NULL,
+              source_asn VARCHAR(32),
+              source_country VARCHAR(8),
+              window_bucket_at DATETIME NOT NULL,
+              first_seen_at DATETIME NOT NULL,
+              last_seen_at DATETIME NOT NULL,
+              hit_count INTEGER DEFAULT 0 NOT NULL,
+              meta_json TEXT
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS key_pressure_state (
+              key_id INTEGER PRIMARY KEY,
+              tg_id BIGINT,
+              node_code VARCHAR(32),
+              panel_email VARCHAR(100),
+              state VARCHAR(32) DEFAULT 'ok' NOT NULL,
+              pressure_score FLOAT DEFAULT 0 NOT NULL,
+              reasons_json TEXT,
+              distinct_source_ips_1h INTEGER DEFAULT 0 NOT NULL,
+              distinct_source_ips_24h INTEGER DEFAULT 0 NOT NULL,
+              node_count_24h INTEGER DEFAULT 0 NOT NULL,
+              traffic_gb_24h FLOAT DEFAULT 0 NOT NULL,
+              manual_review_required BOOLEAN DEFAULT 0 NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS subscription_fetch_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              tg_id BIGINT NOT NULL,
+              token_fp VARCHAR(32) NOT NULL,
+              lookup_mode VARCHAR(32) NOT NULL,
+              client_format VARCHAR(32) NOT NULL,
+              user_agent_hash VARCHAR(64),
+              request_host VARCHAR(255),
+              selected_nodes_json TEXT,
+              excluded_nodes_json TEXT,
+              response_status INTEGER DEFAULT 200 NOT NULL,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS rendered_subscription_snapshots (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              fetch_event_id INTEGER,
+              tg_id BIGINT NOT NULL,
+              profile_revision VARCHAR(128),
+              client_format VARCHAR(32) NOT NULL,
+              node_order_json TEXT NOT NULL,
+              excluded_nodes_json TEXT,
+              content_sha256 VARCHAR(64) NOT NULL,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS node_pool_membership (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              node_code VARCHAR(32) NOT NULL,
+              pool_code VARCHAR(32) NOT NULL,
+              is_enabled BOOLEAN DEFAULT 1 NOT NULL,
+              source VARCHAR(32) DEFAULT 'migration' NOT NULL,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS node_provisioning_jobs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              tg_id BIGINT,
+              key_id INTEGER,
+              node_code VARCHAR(32),
+              job_type VARCHAR(32) NOT NULL,
+              status VARCHAR(32) DEFAULT 'queued' NOT NULL,
+              desired_state_json TEXT,
+              result_json TEXT,
+              attempts INTEGER DEFAULT 0 NOT NULL,
+              next_run_at DATETIME,
+              locked_at DATETIME,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_access_keys_tg_uuid ON access_keys(tg_id, key_uuid);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_access_keys_node_email ON access_keys(node_code, panel_email);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_tg_id ON access_keys(tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_key_uuid ON access_keys(key_uuid);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_pool_code ON access_keys(pool_code);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_state ON access_keys(state);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_node_capacity_policy_code ON node_capacity_policy(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_node_code ON node_runtime_metrics(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_sampled_at ON node_runtime_metrics(sampled_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_usage_rollup_window ON key_usage_rollups(key_id, node_code, window_bucket_at, window_seconds);",
+        "CREATE INDEX IF NOT EXISTS ix_key_usage_rollups_tg_id ON key_usage_rollups(tg_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_source_window ON key_source_observations(key_id, node_code, source_ip_hash, window_bucket_at);",
+        "CREATE INDEX IF NOT EXISTS ix_key_pressure_state_state ON key_pressure_state(state);",
+        "CREATE INDEX IF NOT EXISTS ix_subscription_fetch_events_tg_id ON subscription_fetch_events(tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_subscription_fetch_events_created_at ON subscription_fetch_events(created_at);",
+        "CREATE INDEX IF NOT EXISTS ix_rendered_subscription_snapshots_tg_id ON rendered_subscription_snapshots(tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_rendered_subscription_snapshots_created_at ON rendered_subscription_snapshots(created_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_node_pool_membership_code_pool ON node_pool_membership(node_code, pool_code);",
+        "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_status ON node_provisioning_jobs(status);",
+    ]:
+        conn.execute(text(sql))
+
+    now_param = datetime.now(timezone.utc).replace(tzinfo=None).isoformat(sep=" ", timespec="seconds")
+    conn.execute(
+        text(
+            """
+            INSERT OR IGNORE INTO access_keys (
+              tg_id, key_uuid, panel_email, pool_code, state, source, is_primary, created_at, updated_at
+            )
+            SELECT tg_id, uuid, coalesce(nullif(trim(email), ''), 'user-' || tg_id),
+                   CASE WHEN upper(coalesce(sub_type, '')) = 'FREE' THEN 'free_pool' ELSE 'premium_pool' END,
+                   CASE WHEN coalesce(is_active, 1) THEN 'active' ELSE 'inactive' END,
+                   'legacy_user', 1, :now_value, :now_value
+            FROM users
+            WHERE uuid IS NOT NULL AND trim(uuid) <> '';
+            """
+        ),
+        {"now_value": now_param},
+    )
+    conn.execute(
+        text(
+            """
+            INSERT OR IGNORE INTO node_capacity_policy (node_code, created_at, updated_at, allow_free_pool, allow_premium_pool)
+            SELECT code, :now_value, :now_value,
+                   CASE WHEN lower(code) LIKE '%free%' THEN 1 ELSE 0 END,
+                   CASE WHEN lower(code) LIKE '%free%' THEN 0 ELSE 1 END
+            FROM nodes
+            WHERE code IS NOT NULL AND trim(code) <> '';
+            """
+        ),
+        {"now_value": now_param},
+    )
+    conn.execute(
+        text(
+            """
+            INSERT OR IGNORE INTO node_pool_membership (node_code, pool_code, source, created_at, updated_at)
+            SELECT code,
+                   CASE WHEN lower(code) LIKE '%free%' THEN 'free_pool' ELSE 'premium_pool' END,
+                   'migration', :now_value, :now_value
+            FROM nodes
+            WHERE code IS NOT NULL AND trim(code) <> '';
+            """
+        ),
+        {"now_value": now_param},
+    )
+
+
+def _ensure_capacity_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS access_keys (
+              id SERIAL PRIMARY KEY,
+              tg_id BIGINT NOT NULL,
+              key_uuid VARCHAR(36) NOT NULL,
+              panel_email VARCHAR(100) NOT NULL,
+              node_code VARCHAR(32),
+              pool_code VARCHAR(32) NOT NULL DEFAULT 'premium_pool',
+              state VARCHAR(32) NOT NULL DEFAULT 'active',
+              source VARCHAR(32) NOT NULL DEFAULT 'legacy_user',
+              is_primary BOOLEAN NOT NULL DEFAULT TRUE,
+              provisioned_at TIMESTAMP,
+              last_seen_at TIMESTAMP,
+              rotated_at TIMESTAMP,
+              revoked_at TIMESTAMP,
+              meta_json TEXT,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS node_capacity_policy (
+              id SERIAL PRIMARY KEY,
+              node_code VARCHAR(32) NOT NULL,
+              max_tx_mbps DOUBLE PRECISION,
+              soft_tx_ratio DOUBLE PRECISION NOT NULL DEFAULT 0.70,
+              drain_tx_ratio DOUBLE PRECISION NOT NULL DEFAULT 0.82,
+              hard_tx_ratio DOUBLE PRECISION NOT NULL DEFAULT 0.92,
+              soft_cpu_percent DOUBLE PRECISION NOT NULL DEFAULT 75,
+              hard_cpu_percent DOUBLE PRECISION NOT NULL DEFAULT 90,
+              stale_after_seconds INTEGER NOT NULL DEFAULT 180,
+              max_packet_loss_percent DOUBLE PRECISION NOT NULL DEFAULT 2,
+              max_tcp_retrans_percent DOUBLE PRECISION NOT NULL DEFAULT 5,
+              rank_weight INTEGER NOT NULL DEFAULT 100,
+              allow_free_pool BOOLEAN NOT NULL DEFAULT FALSE,
+              allow_premium_pool BOOLEAN NOT NULL DEFAULT TRUE,
+              is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+              updated_by BIGINT,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS node_runtime_metrics (
+              id SERIAL PRIMARY KEY,
+              node_code VARCHAR(32) NOT NULL,
+              sampled_at TIMESTAMP NOT NULL,
+              source VARCHAR(64) NOT NULL DEFAULT 'collector',
+              batch_id VARCHAR(128),
+              provisioned_clients_count INTEGER NOT NULL DEFAULT 0,
+              online_connections_hint INTEGER NOT NULL DEFAULT 0,
+              network_rx_mbps_1m DOUBLE PRECISION,
+              network_tx_mbps_1m DOUBLE PRECISION,
+              network_rx_mbps_5m DOUBLE PRECISION,
+              network_tx_mbps_5m DOUBLE PRECISION,
+              network_total_mbps DOUBLE PRECISION,
+              cpu_percent DOUBLE PRECISION,
+              memory_used_mb INTEGER,
+              memory_total_mb INTEGER,
+              tcp_retrans_percent DOUBLE PRECISION,
+              packet_loss_percent DOUBLE PRECISION,
+              dataplane_ok BOOLEAN,
+              dataplane_rtt_ms INTEGER,
+              capacity_score DOUBLE PRECISION,
+              capacity_state VARCHAR(32) NOT NULL DEFAULT 'unknown',
+              reject_reason VARCHAR(64),
+              meta_json TEXT
+            );
+            """
+        )
+    )
+    conn.execute(text("CREATE TABLE IF NOT EXISTS key_usage_rollups (id SERIAL PRIMARY KEY, key_id INTEGER, tg_id BIGINT, node_code VARCHAR(32) NOT NULL, panel_email VARCHAR(100), window_bucket_at TIMESTAMP NOT NULL, window_seconds INTEGER NOT NULL DEFAULT 300, upload_bytes BIGINT NOT NULL DEFAULT 0, download_bytes BIGINT NOT NULL DEFAULT 0, total_bytes BIGINT NOT NULL DEFAULT 0, peak_tx_mbps DOUBLE PRECISION, observations INTEGER NOT NULL DEFAULT 0, source VARCHAR(64) NOT NULL DEFAULT 'observer', created_at TIMESTAMP NOT NULL);"))
+    conn.execute(text("CREATE TABLE IF NOT EXISTS key_source_observations (id SERIAL PRIMARY KEY, key_id INTEGER, tg_id BIGINT, node_code VARCHAR(32) NOT NULL, panel_email VARCHAR(100), source_ip_hash VARCHAR(64) NOT NULL, source_asn VARCHAR(32), source_country VARCHAR(8), window_bucket_at TIMESTAMP NOT NULL, first_seen_at TIMESTAMP NOT NULL, last_seen_at TIMESTAMP NOT NULL, hit_count INTEGER NOT NULL DEFAULT 0, meta_json TEXT);"))
+    conn.execute(text("CREATE TABLE IF NOT EXISTS key_pressure_state (key_id INTEGER PRIMARY KEY, tg_id BIGINT, node_code VARCHAR(32), panel_email VARCHAR(100), state VARCHAR(32) NOT NULL DEFAULT 'ok', pressure_score DOUBLE PRECISION NOT NULL DEFAULT 0, reasons_json TEXT, distinct_source_ips_1h INTEGER NOT NULL DEFAULT 0, distinct_source_ips_24h INTEGER NOT NULL DEFAULT 0, node_count_24h INTEGER NOT NULL DEFAULT 0, traffic_gb_24h DOUBLE PRECISION NOT NULL DEFAULT 0, manual_review_required BOOLEAN NOT NULL DEFAULT FALSE, updated_at TIMESTAMP NOT NULL);"))
+    conn.execute(text("CREATE TABLE IF NOT EXISTS subscription_fetch_events (id SERIAL PRIMARY KEY, tg_id BIGINT NOT NULL, token_fp VARCHAR(32) NOT NULL, lookup_mode VARCHAR(32) NOT NULL, client_format VARCHAR(32) NOT NULL, user_agent_hash VARCHAR(64), request_host VARCHAR(255), selected_nodes_json TEXT, excluded_nodes_json TEXT, response_status INTEGER NOT NULL DEFAULT 200, created_at TIMESTAMP NOT NULL);"))
+    conn.execute(text("CREATE TABLE IF NOT EXISTS rendered_subscription_snapshots (id SERIAL PRIMARY KEY, fetch_event_id INTEGER, tg_id BIGINT NOT NULL, profile_revision VARCHAR(128), client_format VARCHAR(32) NOT NULL, node_order_json TEXT NOT NULL, excluded_nodes_json TEXT, content_sha256 VARCHAR(64) NOT NULL, created_at TIMESTAMP NOT NULL);"))
+    conn.execute(text("CREATE TABLE IF NOT EXISTS node_pool_membership (id SERIAL PRIMARY KEY, node_code VARCHAR(32) NOT NULL, pool_code VARCHAR(32) NOT NULL, is_enabled BOOLEAN NOT NULL DEFAULT TRUE, source VARCHAR(32) NOT NULL DEFAULT 'migration', created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);"))
+    conn.execute(text("CREATE TABLE IF NOT EXISTS node_provisioning_jobs (id SERIAL PRIMARY KEY, tg_id BIGINT, key_id INTEGER, node_code VARCHAR(32), job_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL DEFAULT 'queued', desired_state_json TEXT, result_json TEXT, attempts INTEGER NOT NULL DEFAULT 0, next_run_at TIMESTAMP, locked_at TIMESTAMP, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);"))
+    for sql in [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_access_keys_tg_uuid ON access_keys(tg_id, key_uuid);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_access_keys_node_email ON access_keys(node_code, panel_email);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_tg_id ON access_keys(tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_key_uuid ON access_keys(key_uuid);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_pool_code ON access_keys(pool_code);",
+        "CREATE INDEX IF NOT EXISTS ix_access_keys_state ON access_keys(state);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_node_capacity_policy_code ON node_capacity_policy(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_node_code ON node_runtime_metrics(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_sampled_at ON node_runtime_metrics(sampled_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_usage_rollup_window ON key_usage_rollups(key_id, node_code, window_bucket_at, window_seconds);",
+        "CREATE INDEX IF NOT EXISTS ix_key_usage_rollups_tg_id ON key_usage_rollups(tg_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_source_window ON key_source_observations(key_id, node_code, source_ip_hash, window_bucket_at);",
+        "CREATE INDEX IF NOT EXISTS ix_key_pressure_state_state ON key_pressure_state(state);",
+        "CREATE INDEX IF NOT EXISTS ix_subscription_fetch_events_tg_id ON subscription_fetch_events(tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_subscription_fetch_events_created_at ON subscription_fetch_events(created_at);",
+        "CREATE INDEX IF NOT EXISTS ix_rendered_subscription_snapshots_tg_id ON rendered_subscription_snapshots(tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_rendered_subscription_snapshots_created_at ON rendered_subscription_snapshots(created_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_node_pool_membership_code_pool ON node_pool_membership(node_code, pool_code);",
+        "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_status ON node_provisioning_jobs(status);",
+    ]:
+        conn.execute(text(sql))
+    now_param = datetime.now(timezone.utc).replace(tzinfo=None)
+    conn.execute(
+        text(
+            """
+            INSERT INTO access_keys (tg_id, key_uuid, panel_email, pool_code, state, source, is_primary, created_at, updated_at)
+            SELECT tg_id, uuid, coalesce(nullif(btrim(email), ''), 'user-' || tg_id),
+                   CASE WHEN upper(coalesce(sub_type, '')) = 'FREE' THEN 'free_pool' ELSE 'premium_pool' END,
+                   CASE WHEN coalesce(is_active, TRUE) THEN 'active' ELSE 'inactive' END,
+                   'legacy_user', TRUE, :now_value, :now_value
+            FROM users
+            WHERE uuid IS NOT NULL AND btrim(uuid) <> ''
+            ON CONFLICT DO NOTHING;
+            """
+        ),
+        {"now_value": now_param},
+    )
+    conn.execute(
+        text(
+            """
+            INSERT INTO node_capacity_policy (node_code, created_at, updated_at, allow_free_pool, allow_premium_pool)
+            SELECT code, :now_value, :now_value,
+                   CASE WHEN lower(code) LIKE '%free%' THEN TRUE ELSE FALSE END,
+                   CASE WHEN lower(code) LIKE '%free%' THEN FALSE ELSE TRUE END
+            FROM nodes
+            WHERE code IS NOT NULL AND btrim(code) <> ''
+            ON CONFLICT DO NOTHING;
+            """
+        ),
+        {"now_value": now_param},
+    )
+    conn.execute(
+        text(
+            """
+            INSERT INTO node_pool_membership (node_code, pool_code, source, created_at, updated_at)
+            SELECT code,
+                   CASE WHEN lower(code) LIKE '%free%' THEN 'free_pool' ELSE 'premium_pool' END,
+                   'migration', :now_value, :now_value
+            FROM nodes
+            WHERE code IS NOT NULL AND btrim(code) <> ''
+            ON CONFLICT DO NOTHING;
+            """
+        ),
+        {"now_value": now_param},
+    )
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -590,6 +1034,8 @@ def run_migrations(engine: Engine) -> None:
                 ("panel_latency_ms", "INTEGER"),
                 ("panel_error_rate", "FLOAT DEFAULT 0"),
                 ("active_clients", "INTEGER DEFAULT 0"),
+                ("provisioned_clients_count", "INTEGER DEFAULT 0"),
+                ("online_connections_hint", "INTEGER DEFAULT 0"),
                 ("cpu_percent", "FLOAT DEFAULT 0"),
                 ("memory_used_mb", "INTEGER DEFAULT 0"),
                 ("memory_total_mb", "INTEGER DEFAULT 0"),
@@ -601,6 +1047,17 @@ def run_migrations(engine: Engine) -> None:
                 ("network_rx_mbps", "FLOAT"),
                 ("network_tx_mbps", "FLOAT"),
                 ("network_total_mbps", "FLOAT"),
+                ("network_rx_mbps_1m", "FLOAT"),
+                ("network_tx_mbps_1m", "FLOAT"),
+                ("network_rx_mbps_5m", "FLOAT"),
+                ("network_tx_mbps_5m", "FLOAT"),
+                ("tcp_retrans_percent", "FLOAT"),
+                ("packet_loss_percent", "FLOAT"),
+                ("dataplane_ok", "BOOLEAN"),
+                ("dataplane_rtt_ms", "INTEGER"),
+                ("capacity_score", "FLOAT"),
+                ("capacity_state", "VARCHAR(32) DEFAULT 'unknown'"),
+                ("capacity_reject_reason", "VARCHAR(64)"),
                 ("last_ok_at", "DATETIME"),
                 ("last_probe_at", "DATETIME"),
                 ("last_probe_stage", "VARCHAR(64)"),
@@ -727,6 +1184,8 @@ def run_migrations(engine: Engine) -> None:
                     conn.execute(text(f"ALTER TABLE node_health_samples ADD COLUMN {col} {ddl};"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_code ON node_health_samples(node_code);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_sampled_at ON node_health_samples(sampled_at);"))
+
+        _ensure_capacity_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -1459,6 +1918,9 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
         _postgres_add_column_if_missing(conn, "nodes", "accepting_new_clients", "BOOLEAN DEFAULT TRUE")
         _postgres_add_column_if_missing(conn, "nodes", "is_draining", "BOOLEAN DEFAULT FALSE")
+        _postgres_add_column_if_missing(conn, "nodes", "active_clients", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "provisioned_clients_count", "INTEGER DEFAULT 0")
+        _postgres_add_column_if_missing(conn, "nodes", "online_connections_hint", "INTEGER DEFAULT 0")
         _postgres_add_column_if_missing(conn, "nodes", "cpu_percent", "DOUBLE PRECISION DEFAULT 0")
         _postgres_add_column_if_missing(conn, "nodes", "memory_used_mb", "INTEGER DEFAULT 0")
         _postgres_add_column_if_missing(conn, "nodes", "memory_total_mb", "INTEGER DEFAULT 0")
@@ -1470,6 +1932,17 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "nodes", "network_rx_mbps", "DOUBLE PRECISION")
         _postgres_add_column_if_missing(conn, "nodes", "network_tx_mbps", "DOUBLE PRECISION")
         _postgres_add_column_if_missing(conn, "nodes", "network_total_mbps", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "network_rx_mbps_1m", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "network_tx_mbps_1m", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "network_rx_mbps_5m", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "network_tx_mbps_5m", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "tcp_retrans_percent", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "packet_loss_percent", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "dataplane_ok", "BOOLEAN")
+        _postgres_add_column_if_missing(conn, "nodes", "dataplane_rtt_ms", "INTEGER")
+        _postgres_add_column_if_missing(conn, "nodes", "capacity_score", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "capacity_state", "VARCHAR(32) DEFAULT 'unknown'")
+        _postgres_add_column_if_missing(conn, "nodes", "capacity_reject_reason", "VARCHAR(64)")
         _postgres_add_column_if_missing(conn, "nodes", "last_probe_at", "TIMESTAMP")
         _postgres_add_column_if_missing(conn, "nodes", "last_probe_stage", "VARCHAR(64)")
         _postgres_add_column_if_missing(conn, "nodes", "last_probe_error_kind", "VARCHAR(64)")
@@ -1538,6 +2011,8 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "node_health_samples", "ipv4_health", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "node_health_samples", "ipv6_health", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "node_health_samples", "transport_health_json", "TEXT")
+
+        _ensure_capacity_domain_postgres(conn)
 
         conn.execute(
             text(

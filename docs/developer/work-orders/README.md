@@ -16,6 +16,10 @@ Templates live under:
 
 - [docs/developer/orchestration/templates/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates)
 
+## Active Waves
+
+- [2026-06-27--repo-feature-story-audit](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/INDEX.md) - active repo-wide feature/function inventory, user-story tracker, evidence audit, defect/fix/retest ledger, owner-gated scenario matrix, and completion audit.
+
 ## Naming
 
 Wave folders should use this format:

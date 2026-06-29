@@ -115,6 +115,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out` and `webapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
+- `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out` plus `webapp/out` without opening SSH; local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
 - before bundling, static deploy appends the release id as `?v=<release>` to `/_next/static/*` references inside exported HTML so browsers do not keep stale cabinet chunks after a deploy; `app.pokrov.space` should also serve `Cache-Control: no-cache, must-revalidate` from Caddy
 - public Caddy on `brain` should keep HTTP/3 disabled with `servers { protocols h1 h2 }` and should serve `Alt-Svc: clear` on public HTTPS responses while browsers may still have the previous `h3=":8444"` alternative cached; this avoids user networks that fail QUIC or non-standard UDP paths while preserving standard HTTPS on `443`
 
@@ -244,6 +245,9 @@ Transport policy rule:
 - `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
+- capacity-aware app routing uses `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
+- subscription rendering dynamically orders and hard-excludes nodes only while `SUBSCRIPTION_DYNAMIC_ORDERING=true` and `SUBSCRIPTION_EXCLUDE_HARD_REJECT=true`; rollback can disable enforcement without deleting metrics or keys
+- core rollout/rollback flags are `CAPACITY_AWARE_NODE_SELECTION`, `SUBSCRIPTION_DYNAMIC_ORDERING`, `SUBSCRIPTION_EXCLUDE_HARD_REJECT`, `KEY_PRESSURE_SCORING`, `KEY_PRESSURE_FAIR_USE_ROUTING`, `APP_NODES_SELECT_ENDPOINT`, `XRAY_METRICS_COLLECTOR`, `NODE_AGENT_METRICS`, and `USERNODE_MAPPING_AS_CANDIDATE_LIMIT`
 - as of `2026-06-02`, premium delivery nodes `pl`, `it`, `us`, `de`, and `nl` run 3x-ui `3.2.5` with Xray `26.6.x`; `free` remains the dedicated free-pool fallback lane unless a separate free-node rollout is explicitly requested
 - 3x-ui `3.x` requires CSRF for session-authenticated unsafe panel API requests; `PanelClient` must fetch `/csrf-token`, send `X-CSRF-Token` on panel POSTs, and keep an unsafe cookie jar for IP-based panel hosts such as `de`
 - when backfilling many existing users into one 3x-ui inbound, create clients sequentially and verify the panel client count against `user_nodes`; concurrent `addClient` calls mutate the same inbound settings document and can leave database mappings ahead of actual panel clients
@@ -441,6 +445,9 @@ At minimum, verify:
 - support ticket creation
 - canonical `connect.pokrov.space` subscription endpoint availability
 - legacy `api.pokrov.space` subscription compatibility
+- app node-candidate and node-select endpoints for an authenticated app session
+- authenticated subscription preview endpoint for resolved format, node order, and excluded-node reasons without raw config leakage
+- admin node capacity and key pressure endpoints for operator visibility
 - `GET /api/client/apps`
 - `GET /api/payments/providers`
 - checkout continuation from session or ticket

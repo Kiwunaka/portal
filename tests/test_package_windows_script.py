@@ -78,7 +78,7 @@ def test_package_windows_script_is_documented_as_active_client_release_step() ->
 
     assert "python scripts/run_client_release_gate.py build --target windows" in deployment_text
     assert "apps/windows_shell/build/release_bundle/" in developer_text
-    assert "Windows release state: `gated unsigned beta artifact only`" in cutover_text
-    assert "public cutover approval: `not allowed`" in cutover_text
-    assert "public Windows release approval: `blocked`" in cutover_text
+    assert "Windows release state: `unsigned outside-store beta setup EXE refreshed for 1.0.0-beta; live install/app-session smoke remains manual`" in cutover_text
+    assert "public cutover approval: `outside-store beta only`" in cutover_text
+    assert "public Windows release approval: `outside-store unsigned beta only`" in cutover_text
     assert "repo-backed alpha or beta archive: `allowed`" in cutover_text

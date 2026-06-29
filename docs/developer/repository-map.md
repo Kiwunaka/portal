@@ -21,6 +21,7 @@ Legacy filename note:
 | `shared/` | shared host config, locked product facts, design tokens, token schema, and governed public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/design-tokens.schema.json`, `shared/copy.ts` |
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |
 | `scripts/` | deploy, smoke, node, release, audit, migration scripts | this file and `docs/operations/deployment-and-access.md` |
+| `docs/developer/pokrov-canonical-feature-tracker.*` | canonical feature and user-story status table for bot, backend, webapp/admin, marketing, scripts, and client app behavior | `docs/developer/pokrov-canonical-feature-tracker.md`, `docs/developer/pokrov-canonical-feature-tracker.csv`, and the sidecar audit files listed in this map |
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
 | `docs/developer/orchestration/` | canonical orchestration standard, WO authoring rules, flow-state rules, context/cost harness rules, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md`, `docs/developer/orchestration/wo-authoring-guide.md`, `docs/developer/orchestration/flow-state.md`, `docs/developer/orchestration/context-cost-harnesses.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
@@ -71,7 +72,8 @@ Legacy filename note:
 - automatic username sync is the primary path; manual username sync remains compatibility/recovery only
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` target all enabled non-free delivery nodes
 - free-tier access states `free_monthly` and `free_soft_mode` target only the dedicated `NL-free` node
-- smart-connect shortlist logic, RTT upload, and stickiness are part of that same app-first contract and must not be documented separately from the pool rule
+- smart-connect candidates/select logic, RTT telemetry, capacity-aware ranking, and stickiness are part of that same app-first contract and must not be documented separately from the pool rule
+- `UserNode` is provisioning/history state for this contract; premium-grade candidate selection comes from the paid pool and capacity policy rather than old per-user pinning
 - split-tunnel persistence is part of that same contract through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields
 - additive browser email auth lives under `/api/auth/email/*`, but current canon keeps it marked `soon` until transactional sender identity plus delivery-confirmation/webhook readiness and the public launch path are live
 - support tickets live under `/api/tickets`, `/api/tickets/uploads`, and `/api/tickets/{ticket_id}/messages`; cabinet and admin continue real ticket threads instead of fake live-chat state. The optional support AI helper is server-side for `portal-api` and `@pokrov_supportbot`, uses `portal_bot/support_ai_service.py` plus `shared/support-ai-knowledge.json`, and stores model hints as `assistant` messages instead of pretending they are operator replies.
@@ -129,12 +131,14 @@ Marketing-specific release checks now live in:
 - `remote_brain_nodes_sanity.py`
 - `remote_manage_xui.py`
 - `remote_sync_users_to_nodes.py`
+  Desired-state reconciler for active key placement: premium/trial/paid keys on enabled paid nodes, free keys on the free pool.
 
 ### Audit and diagnostics
 
 - `audit_node_dns.py`
 - `audit_node_dns_matrix.py`
 - `collect_node_metrics.py`
+  Collects provisioned-client counts, online-connection hints, network throughput, dataplane/capacity fields, and writes node runtime metrics without treating `active_clients` as online users.
 - `collect_xray_observer.py`
 - `control_plane_drift_report.py`
 - `portal_bot/daily_panel_node_healthcheck.py`
@@ -153,6 +157,39 @@ Shared-facts and handoff note:
 
 - `sync_shared_surface_facts.py` now targets `POKROV-app/config/*.seed.json` by default and keeps the bridge Dart output as an explicit compatibility-only lane
 - release handoff metadata now lives under `POKROV-app/artifacts/releases/...`; the preferred operator input is the client-owned JSON manifest, with `release-links.env` retained only as compatibility evidence when needed
+
+## Canonical Feature Story Audit
+
+These files are the current repo-wide feature/function audit and user-story
+status ledger. Keep them together when adding, testing, or retesting a behavior.
+
+- [pokrov-canonical-feature-tracker.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.md)
+- [pokrov-canonical-feature-tracker.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.csv)
+- [pokrov-entrypoint-inventory.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-entrypoint-inventory.csv)
+- [pokrov-entrypoint-story-coverage.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-entrypoint-story-coverage.csv)
+- [pokrov-entrypoint-story-coverage.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-entrypoint-story-coverage.md)
+- [pokrov-code-function-inventory.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-code-function-inventory.csv)
+- [pokrov-code-function-inventory.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-code-function-inventory.md)
+- [pokrov-symbol-coverage-audit.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-symbol-coverage-audit.csv)
+- [pokrov-symbol-coverage-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-symbol-coverage-audit.md)
+- [pokrov-private-helper-coverage.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-private-helper-coverage.csv)
+- [pokrov-private-helper-coverage.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-private-helper-coverage.md)
+- [pokrov-coverage-policy-decision-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-coverage-policy-decision-guide.md)
+- [pokrov-story-test-evidence-audit.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-story-test-evidence-audit.csv)
+- [pokrov-story-test-evidence-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-story-test-evidence-audit.md)
+- [pokrov-defect-fix-retest-ledger.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-defect-fix-retest-ledger.csv)
+- [pokrov-defect-fix-retest-ledger.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-defect-fix-retest-ledger.md)
+- [pokrov-backend-route-coverage.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-backend-route-coverage.csv)
+- [pokrov-script-workflow-coverage.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-script-workflow-coverage.csv)
+- [pokrov-owner-gated-scenarios.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-scenarios.md)
+- [pokrov-owner-gated-execution-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-execution-guide.md)
+- [pokrov-owner-gated-scenarios.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-scenarios.csv)
+- [pokrov-owner-gated-results.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-results.csv)
+- [pokrov-owner-answer-sheet.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-answer-sheet.md)
+- [pokrov-open-questions.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-open-questions.md)
+- [pokrov-open-questions.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-open-questions.csv)
+- [COMPLETION-AUDIT.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md)
+- [COMPLETION-AUDIT.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv)
 
 ## Test Matrix
 

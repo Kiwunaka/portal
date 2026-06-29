@@ -253,6 +253,7 @@ async def _show_queue(message: Message) -> None:
 
 @router.message(CommandStart())
 async def start(message: Message) -> None:
+    pending_feedback.discard(message.from_user.id)
     is_admin = message.from_user.id == ADMIN_ID
     await message.answer(
         _welcome_text(is_admin),
@@ -277,6 +278,7 @@ async def fb_new(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "fb_back_home")
 async def fb_back_home(callback: CallbackQuery) -> None:
+    pending_feedback.discard(callback.from_user.id)
     is_admin = callback.from_user.id == ADMIN_ID
     await callback.message.edit_text(
         _welcome_text(is_admin),

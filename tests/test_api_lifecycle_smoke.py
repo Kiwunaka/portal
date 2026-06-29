@@ -162,13 +162,41 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             async def get_user_key_snapshots(self, **_kwargs):
                 return []
 
+            async def update_client_traffic(self, *_args, **_kwargs):
+                return True
+
             async def close(self):
                 return None
 
-        self.api.ControlPanel = _FakePanel
         control_panel = importlib.import_module("control_panel")
         gift_cards_service = importlib.import_module("gift_cards_service")
         free_cycle_service = importlib.import_module("free_cycle_service")
+        missing = object()
+        original_api_panel = self.api.ControlPanel
+        original_control_panel = control_panel.ControlPanel
+        original_gift_panel = getattr(gift_cards_service, "ControlPanel", missing)
+        original_free_cycle_panel = getattr(free_cycle_service, "ControlPanel", missing)
+
+        def _restore_panel_classes() -> None:
+            self.api.ControlPanel = original_api_panel
+            control_panel.ControlPanel = original_control_panel
+            if original_gift_panel is missing:
+                try:
+                    delattr(gift_cards_service, "ControlPanel")
+                except AttributeError:
+                    pass
+            else:
+                gift_cards_service.ControlPanel = original_gift_panel
+            if original_free_cycle_panel is missing:
+                try:
+                    delattr(free_cycle_service, "ControlPanel")
+                except AttributeError:
+                    pass
+            else:
+                free_cycle_service.ControlPanel = original_free_cycle_panel
+
+        self.addCleanup(_restore_panel_classes)
+        self.api.ControlPanel = _FakePanel
         control_panel.ControlPanel = _FakePanel
         gift_cards_service.ControlPanel = _FakePanel
         free_cycle_service.ControlPanel = _FakePanel

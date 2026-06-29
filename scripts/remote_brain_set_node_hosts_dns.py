@@ -77,7 +77,9 @@ def main() -> int:
         _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y sqlite3 >/dev/null 2>&1 || true", timeout=600)
 
         ts = time.strftime("%Y%m%d-%H%M%S")
-        _run(ssh, f"cp {args.db} {args.db}.bak-hosts-{ts}", timeout=60)
+        code, out, err = _run(ssh, f"cp {args.db} {args.db}.bak-hosts-{ts}", timeout=60)
+        if code != 0:
+            raise SystemExit(err.strip() or out.strip() or "DB backup failed")
 
         sql: list[str] = []
         if args.mode == "dns":

@@ -1,10 +1,12 @@
 # Lava.top Payment Operations
 
-Last updated: 2026-05-15
+Last updated: 2026-06-23
 
 ## Provider State
 
 Lava.top is the active enabled payment provider for the RUB beta checkout path. Backend support exists for order creation through the official `POST /api/v3/invoice` API and authenticated result webhooks. Redacted live evidence from `2026-05-15` confirms invoice creation, authenticated success callback handling, invalid-auth rejection, account extension, order-level idempotency for the authenticated cabinet path, and paid access-key email delivery probe readiness. Refund/chargeback reconciliation remains an operator runbook requirement, not a blocker for the outside-store public beta claim.
+
+As of `2026-06-23`, the operational Lava.top setup uses one hidden API-only dynamic-price product as the primary checkout offer for all POKROV plans and discounts. The universal product is `0af83e25-a2aa-4c6f-8c5b-96dd7534a31b`; its offer id is `5264bc13-4cb0-4b88-8753-7af13f3e657b`. The legacy `POKROV START` offer `d4b0d959-da82-4277-8149-1662eccdb488` is retained as historical/reference material only and should not be used by live checkout configuration.
 
 Retained evidence:
 
@@ -21,6 +23,7 @@ Minimum production configuration:
 - `RUB_PAYMENT_PROVIDER_ENABLED=lavatop` only while the Lava.top beta evidence remains current and webhook auth is configured
 - `LAVATOP_API_KEY`
 - `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, for example `LAVATOP_OFFER_ID_START_99`
+- Current production rule: point both `LAVATOP_OFFER_ID` and any retained per-plan overrides such as `LAVATOP_OFFER_ID_START_99` at the universal dynamic-price offer, and keep `LAVATOP_DYNAMIC_AMOUNT_ENABLED=true` so POKROV remains the source of truth for the final amount.
 - `LAVATOP_WEBHOOK_API_KEY` or the pair `LAVATOP_WEBHOOK_BASIC_USERNAME` and `LAVATOP_WEBHOOK_BASIC_PASSWORD`
 - `EMAIL_DELIVERY_WEBHOOK_URL` and `EMAIL_DELIVERY_WEBHOOK_SECRET`; anonymous paid public checkout stays blocked without live email delivery because paid public orders issue access keys by email
 

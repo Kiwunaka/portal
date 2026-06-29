@@ -111,6 +111,7 @@ function resolveBackFallback(pathname: string): string | null {
     pathname === "/subscription" ||
     pathname === "/devices" ||
     pathname === "/statistics" ||
+    pathname === "/settings" ||
     pathname === "/profile" ||
     pathname === "/support"
   ) {

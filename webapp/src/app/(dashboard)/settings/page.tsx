@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
 import { Button, Input, Note } from "@/components/cabinet/ui";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import {
   checkChannelSubscriberStatus,
   claimChannelBonus,
+  getEmailAuthStatus,
   registerByEmail,
   setWebSessionToken,
   startTelegramLink,
+  type EmailAuthStatusResult,
   type TelegramLinkStartResult,
   verifyEmailToken,
 } from "@/lib/api";
+import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 
@@ -63,6 +66,27 @@ export default function SettingsPage() {
   const [telegramLinkBusy, setTelegramLinkBusy] = useState(false);
   const [telegramLinkPayload, setTelegramLinkPayload] = useState<TelegramLinkStartResult | null>(null);
   const [telegramLinkError, setTelegramLinkError] = useState("");
+  const [emailAuthStatus, setEmailAuthStatus] = useState<EmailAuthStatusResult | null>(null);
+  const [emailAuthChecked, setEmailAuthChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getEmailAuthStatus()
+      .then((payload) => {
+        if (!cancelled) setEmailAuthStatus(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setEmailAuthStatus(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEmailAuthChecked(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const linked = user?.linked_identities || dash?.linked_identities || null;
   const linkedEmail = user?.email || linked?.email?.email || "";
@@ -83,11 +107,13 @@ export default function SettingsPage() {
   const deviceLimit = getDeviceLimit(dash, user);
   const channelLink = user?.channel?.link || "";
   const supportLink = user?.support?.link || "/support/";
+  const emailAuthReady = isEmailAuthPublicReady(emailAuthStatus);
   const channelBonusDays = bonusCheck?.bonusDays || user?.bonuses?.channel_bonus?.premium_days || 10;
   const channelBonusClaimedAt = user?.bonuses?.channel_bonus?.claimed_at || null;
   const channelBonusReady = Boolean(user?.bonuses?.channel_bonus?.can_claim);
   const canClaimBonus = !channelBonusClaimedAt && (channelBonusReady || Boolean(bonusCheck?.subscriber && !bonusCheck.alreadyClaimed));
-  const canLinkEmail = !linkedEmail;
+  const canLinkEmail = !linkedEmail && emailAuthReady;
+  const emailLinkUnavailable = !linkedEmail && emailAuthChecked && !emailAuthReady;
   const bonusStatusText =
     bonusMessage ||
     (channelBonusClaimedAt
@@ -200,6 +226,7 @@ export default function SettingsPage() {
         meta={profileName}
         body={dash?.is_active ? "Вход, устройства и бонусы этого профиля." : "Продлите доступ или откройте поддержку, если что-то не сходится."}
         tone={dash?.is_active ? "success" : "warning"}
+        emblem={icon("account_circle", "h-7 w-7")}
         action={
           <Button href="/subscription/" className="w-full sm:w-auto">
             Продлить
@@ -207,11 +234,14 @@ export default function SettingsPage() {
         }
       />
 
-      <CabinetGroup title="Профиль">
-        <CabinetRow icon={icon("verified_user")} label="Доступ" hint={resolveTrafficStatusText(dash, user)} value={resolvePlanLabel(dash, user)} href="/subscription/" />
-        <CabinetRow icon={icon("calendar_month")} label="Срок" hint="По текущему профилю" value={formatDate(dash?.expiry_at || user?.expiry_at)} />
-        <CabinetRow icon={icon("devices")} label="Устройства" hint="Лимит профиля" value={`до ${deviceLimit}`} href="/devices/" />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Профиль</h2>
+        <CabinetTiles>
+          <CabinetTile icon={icon("verified_user")} label="Доступ" value={resolvePlanLabel(dash, user)} hint={resolveTrafficStatusText(dash, user)} tone="success" href="/subscription/" />
+          <CabinetTile icon={icon("calendar_month")} label="Срок" value={formatDate(dash?.expiry_at || user?.expiry_at)} hint="По профилю" tone="neutral" />
+          <CabinetTile icon={icon("devices")} label="Устройства" value={`до ${deviceLimit}`} hint="Лимит профиля" tone="neutral" href="/devices/" />
+        </CabinetTiles>
+      </section>
 
       <CabinetGroup title="Вход и восстановление">
         <CabinetRow
@@ -239,8 +269,8 @@ export default function SettingsPage() {
         <CabinetRow
           icon={icon("alternate_email")}
           label="Email"
-          hint={linkedEmail ? "Дополнительный вход подключен" : "Можно добавить к этому профилю"}
-          value={linkedEmail || "доступен"}
+          hint={linkedEmail ? "Дополнительный вход подключен" : emailAuthReady ? "Можно добавить к этому профилю" : "Пока входите через Telegram или поддержку"}
+          value={linkedEmail || (emailAuthReady ? "доступен" : emailAuthChecked ? "недоступен" : "проверяем")}
           action={
             canLinkEmail ? (
               <a href="#email-link" className="cab-link">
@@ -250,6 +280,10 @@ export default function SettingsPage() {
           }
         />
       </CabinetGroup>
+
+      {emailLinkUnavailable ? (
+        <Note tone="info">Email-вход временно недоступен. Используйте Telegram, а если нужно восстановить доступ, напишите в поддержку.</Note>
+      ) : null}
 
       {telegramLinkError ? (
         <div className="cab-note" data-tone="danger">{telegramLinkError}</div>
@@ -369,11 +403,14 @@ export default function SettingsPage() {
         />
       </CabinetGroup>
 
-      <CabinetGroup title="Действия">
-        <CabinetRow icon={icon("devices")} label="Устройства" hint="Связанные телефоны и компьютеры" href="/devices/" />
-        <CabinetRow icon={icon("download")} label="Загрузки" hint="Android и Windows" href="/downloads/" />
-        <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Обращения, вложения и Telegram" href="/support/" />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Действия</h2>
+        <CabinetActionGrid>
+          <CabinetActionCard icon={icon("devices")} title="Устройства" hint="Связанные телефоны и компьютеры" href="/devices/" />
+          <CabinetActionCard icon={icon("download")} title="Загрузки" hint="Android и Windows" href="/downloads/" />
+          <CabinetActionCard icon={icon("support_agent")} title="Поддержка" hint="Обращения, вложения и Telegram" href="/support/" />
+        </CabinetActionGrid>
+      </section>
     </main>
   );
 }

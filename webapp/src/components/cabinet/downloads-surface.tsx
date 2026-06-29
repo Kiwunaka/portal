@@ -145,6 +145,8 @@ export function CabinetDownloadsSurface() {
   const rows = useMemo(() => buildRows(payload), [payload]);
   const hasAndroid = rows.some((item) => item.key.startsWith("android"));
   const hasWindows = rows.some((item) => item.key.startsWith("windows"));
+  const primaryRows = rows.filter((item) => (item.key.startsWith("android-") && item.key !== "android-mirror") || item.key === "windows-exe");
+  const secondaryRows = rows.filter((item) => !primaryRows.includes(item));
   const firstDownload = rows.find((item) => item.key === "android-apk") || rows.find((item) => item.key === "windows-exe") || rows[0] || null;
 
   return (
@@ -154,6 +156,7 @@ export function CabinetDownloadsSurface() {
         meta={rows.length ? "Публичная бета" : "Файлы подгружаются"}
         body="Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт."
         tone={rows.length ? "success" : "neutral"}
+        emblem={icon("download", "h-7 w-7")}
         action={
           firstDownload?.href ? (
             <a href={firstDownload.href} target="_blank" rel="noreferrer" className="cab-btn cab-btn--primary w-full sm:w-auto">
@@ -167,22 +170,41 @@ export function CabinetDownloadsSurface() {
         }
       />
 
-      <CabinetGroup title="Файлы">
-        {rows.length ? (
-          rows.map((item) => (
-            <CabinetRow
-              key={item.key}
-              icon={icon(item.icon)}
-              label={item.label}
-              hint={item.hint}
-              value={item.value}
-              action={item.action}
-            />
-          ))
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Файлы</h2>
+        {primaryRows.length ? (
+          <div className="cab-dlgrid">
+            {primaryRows.map((item) => (
+              <article key={item.key} className="cab-dlcard">
+                <div className="cab-dltop">
+                  <span className="cab-dlicon" data-platform={item.icon === "desktop_windows" ? "windows" : "android"}>
+                    {icon(item.icon, "h-6 w-6")}
+                  </span>
+                  <span className="cab-dlbadge">{item.value}</span>
+                </div>
+                <h3 className="cab-dltitle">{item.label}</h3>
+                <p className="cab-dlhint">{item.hint}</p>
+                {item.href ? (
+                  <a href={item.href} target="_blank" rel="noreferrer" className="cab-btn cab-btn--primary cab-btn--block">
+                    Скачать
+                  </a>
+                ) : null}
+              </article>
+            ))}
+          </div>
         ) : (
-          <CabinetRow icon={icon("hourglass_empty")} label="Файлы подгружаются" hint="Если срочно, откройте поддержку" href="/support/" />
+          <div className="cab-panel">
+            <CabinetRow icon={icon("hourglass_empty")} label="Файлы подгружаются" hint="Если срочно, откройте поддержку" href="/support/" />
+          </div>
         )}
-      </CabinetGroup>
+        {secondaryRows.length ? (
+          <div className="cab-panel">
+            {secondaryRows.map((item) => (
+              <CabinetRow key={item.key} icon={icon(item.icon)} label={item.label} hint={item.hint} value={item.value} action={item.action} />
+            ))}
+          </div>
+        ) : null}
+      </section>
 
       {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Часть ссылок не удалось обновить: {error}</p> : null}
 

@@ -148,14 +148,16 @@ Rollout note:
 Smart-connect contract:
 
 - `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`
-- premium users probe up to `5` eligible non-free nodes; free-tier users still probe only `NL-free`
-- the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= 90`, transport-incompatible, and rollout-blocked nodes before the client starts RTT checks
-- shortlist items expose `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, and an internal `probe.host` / `probe.port` target for app-side RTT checks
-- the client compares candidates with `effective_score = rtt_ms + cpu_penalty + backend_penalty`
-- stickiness stays active with a `15%` threshold so the app does not flap between nodes on tiny wins
-- explicit `UserNode` mappings still take precedence; the shortlist is built from the user-assigned node set first instead of bypassing that pinning
-- the client performs best-effort TCP RTT probes only for shortlist items with a probe target, applies the stickiness threshold locally, and uploads accepted samples through `POST /api/client/nodes/latency-samples`
-- the follow-up upload path stores `install_id`, `carrier`, `platform`, accepted RTT samples, selected node, previous node, and whether stickiness was applied
+- premium users can receive up to `SMART_CONNECT_SHORTLIST_LIMIT` eligible non-free nodes, default `8`; free-tier users still receive only `NL-free`
+- the shortlist rejects disabled, draining, unhealthy, stale, dataplane-down, saturated, high-loss/retransmit, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT`, transport-incompatible, and rollout-blocked nodes while `CAPACITY_AWARE_NODE_SELECTION=true`
+- shortlist items expose `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `provisioned_clients_count`, `online_connections_hint`, and an internal `probe.host` / `probe.port` target for app-side RTT checks
+- the client asks `GET /api/client/nodes/candidates`, performs best-effort RTT probes, posts the result to `POST /api/client/nodes/select`, and may refetch `GET /api/client/profile/managed?selected_node_code=...` before materializing the runtime config
+- the selection score is capacity-aware: `effective_score = rtt_ms + dataplane_rtt + cpu_penalty + backend_penalty + network_pressure`, with lower scores preferred
+- stickiness stays active with a default `20%` threshold so the app does not flap between nodes on tiny wins
+- explicit `UserNode` mappings are provisioning/history state; they must not trap premium-grade users on one or two old nodes or reduce the candidate pool
+- `POST /api/client/nodes/latency-samples` remains compatibility telemetry and must not be the only node-selection API
+- `GET /api/client/subscription/preview` is an authenticated, raw-config-free support/debug view of resolved subscription format, node order, and excluded-node reasons
+- the follow-up upload paths store `install_id`, `carrier`, `platform`, accepted RTT samples, selected node, previous node, and whether stickiness was applied without exposing raw telemetry in consumer UI
 
 ## App Session Model
 
@@ -439,6 +441,7 @@ Rules:
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` must use the paid pool: all enabled non-free delivery nodes
 - free-tier access states `free_monthly` and `free_soft_mode` must use the free pool: the dedicated `NL-free` node only
 - backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and `nl_only` for free-tier access
+- desired-state provisioning should place active premium/trial/paid keys on all enabled paid nodes at current scale, while free keys remain on the free pool; renderer output should follow the same pool boundary and capacity state
 
 ## Runtime Notes
 

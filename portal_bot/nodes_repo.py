@@ -5,6 +5,14 @@ from datetime import datetime
 
 from config import Settings
 from models import Node
+from node_policy import (
+    canonical_free_node_code,
+    node_hard_reject_reason,
+    node_is_free,
+    paid_pool_nodes,
+    rank_nodes_for_subscription,
+    user_uses_free_pool,
+)
 
 
 @dataclass(frozen=True)
@@ -34,9 +42,25 @@ class NodeRuntime:
     panel_latency_ms: int | None
     panel_error_rate: float
     active_clients: int
-    cpu_percent: float
-    last_ok_at: datetime | None
-    last_probe_at: datetime | None
+    provisioned_clients_count: int = 0
+    online_connections_hint: int = 0
+    cpu_percent: float = 0.0
+    network_rx_mbps: float | None = None
+    network_tx_mbps: float | None = None
+    network_total_mbps: float | None = None
+    network_rx_mbps_1m: float | None = None
+    network_tx_mbps_1m: float | None = None
+    network_rx_mbps_5m: float | None = None
+    network_tx_mbps_5m: float | None = None
+    tcp_retrans_percent: float | None = None
+    packet_loss_percent: float | None = None
+    dataplane_ok: bool | None = None
+    dataplane_rtt_ms: int | None = None
+    capacity_score: float | None = None
+    capacity_state: str | None = None
+    capacity_reject_reason: str | None = None
+    last_ok_at: datetime | None = None
+    last_probe_at: datetime | None = None
     transport_profiles_json: str | None = None
 
 
@@ -85,7 +109,23 @@ def legacy_node() -> NodeRuntime:
         panel_latency_ms=None,
         panel_error_rate=0.0,
         active_clients=0,
+        provisioned_clients_count=0,
+        online_connections_hint=0,
         cpu_percent=0.0,
+        network_rx_mbps=None,
+        network_tx_mbps=None,
+        network_total_mbps=None,
+        network_rx_mbps_1m=None,
+        network_tx_mbps_1m=None,
+        network_rx_mbps_5m=None,
+        network_tx_mbps_5m=None,
+        tcp_retrans_percent=None,
+        packet_loss_percent=None,
+        dataplane_ok=None,
+        dataplane_rtt_ms=None,
+        capacity_score=None,
+        capacity_state="unknown",
+        capacity_reject_reason=None,
         last_ok_at=None,
         last_probe_at=None,
         transport_profiles_json=None,
@@ -126,10 +166,57 @@ def enabled_nodes(session) -> list[NodeRuntime]:
                 panel_latency_ms=getattr(n, "panel_latency_ms", None),
                 panel_error_rate=float(getattr(n, "panel_error_rate", 0.0) or 0.0),
                 active_clients=int(getattr(n, "active_clients", 0) or 0),
+                provisioned_clients_count=int(
+                    getattr(n, "provisioned_clients_count", getattr(n, "active_clients", 0)) or 0
+                ),
+                online_connections_hint=int(getattr(n, "online_connections_hint", 0) or 0),
                 cpu_percent=float(getattr(n, "cpu_percent", 0.0) or 0.0),
+                network_rx_mbps=getattr(n, "network_rx_mbps", None),
+                network_tx_mbps=getattr(n, "network_tx_mbps", None),
+                network_total_mbps=getattr(n, "network_total_mbps", None),
+                network_rx_mbps_1m=getattr(n, "network_rx_mbps_1m", None),
+                network_tx_mbps_1m=getattr(n, "network_tx_mbps_1m", None),
+                network_rx_mbps_5m=getattr(n, "network_rx_mbps_5m", None),
+                network_tx_mbps_5m=getattr(n, "network_tx_mbps_5m", None),
+                tcp_retrans_percent=getattr(n, "tcp_retrans_percent", None),
+                packet_loss_percent=getattr(n, "packet_loss_percent", None),
+                dataplane_ok=getattr(n, "dataplane_ok", None),
+                dataplane_rtt_ms=getattr(n, "dataplane_rtt_ms", None),
+                capacity_score=getattr(n, "capacity_score", None),
+                capacity_state=getattr(n, "capacity_state", None),
+                capacity_reject_reason=getattr(n, "capacity_reject_reason", None),
                 last_ok_at=getattr(n, "last_ok_at", None),
                 last_probe_at=getattr(n, "last_probe_at", None),
                 transport_profiles_json=getattr(n, "transport_profiles_json", None),
             )
         )
     return out
+
+
+def eligible_nodes(session, user, key=None, purpose: str = "subscription") -> list[NodeRuntime]:
+    nodes = enabled_nodes(session)
+    if not nodes:
+        return nodes
+
+    if user_uses_free_pool(user):
+        free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+        pool = [node for node in nodes if str(node.code or "").strip().lower() == free_code]
+    else:
+        pool = paid_pool_nodes(nodes)
+        if key is not None:
+            pool_code = str(getattr(key, "pool_code", "") or "").strip().lower()
+            if pool_code == "free_pool":
+                free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+                pool = [node for node in nodes if str(node.code or "").strip().lower() == free_code]
+            elif pool_code == "premium_pool":
+                pool = [node for node in nodes if not node_is_free(node)]
+
+    if str(purpose or "").strip().lower() in {"subscription", "profile", "smart_connect"}:
+        ranked = rank_nodes_for_subscription(pool)
+        if ranked:
+            return ranked
+    return [
+        node
+        for node in rank_nodes_for_subscription(pool)
+        if not node_hard_reject_reason(node)
+    ] or list(pool)

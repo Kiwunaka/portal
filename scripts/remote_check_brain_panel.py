@@ -6,12 +6,20 @@ Check brain node 3x-ui panel process and local port/path availability.
 
 import json
 import os
+import argparse
 from pathlib import Path
 
 import paramiko
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _default_facts_path() -> Path:
+    candidates = sorted(REPO_ROOT.glob("node_facts-*.json"))
+    if candidates:
+        return candidates[-1]
+    return REPO_ROOT / "node_facts-20260207-004104.json"
 
 
 def _parse_brain_pw() -> str:
@@ -37,9 +45,17 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 60) -> str:
 
 
 def main() -> int:
-    facts_path = REPO_ROOT / "node_facts-20260207-004104.json"
+    ap = argparse.ArgumentParser(description="Check brain node 3x-ui panel process and local panel availability.")
+    ap.add_argument("--facts", default=str(_default_facts_path()), help="node_facts JSON file with a brain entry")
+    args = ap.parse_args()
+
+    facts_path = Path(args.facts)
+    if not facts_path.exists():
+        raise SystemExit(f"node_facts file not found: {facts_path}")
     d = json.loads(facts_path.read_text(encoding="utf-8", errors="replace"))
-    r = next(x for x in d.get("results", []) if x.get("code") == "brain")
+    r = next((x for x in d.get("results", []) if x.get("code") == "brain"), None)
+    if r is None:
+        raise SystemExit(f"node_facts file has no brain entry: {facts_path}")
     panel_port = int(r["panel_port"])
     panel_path = str(r["panel_path"])
 
@@ -62,4 +78,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

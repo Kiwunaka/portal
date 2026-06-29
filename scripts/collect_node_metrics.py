@@ -14,10 +14,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "portal_bot"))
 
 from db import SessionLocal, init_db  # noqa: E402
-from models import Node, NodeHealthSample  # noqa: E402
+from models import Node, NodeCapacityPolicy, NodeHealthSample, NodeRuntimeMetric  # noqa: E402
 from nodes_repo import NodeRuntime  # noqa: E402
 from panel_client import PanelClient  # noqa: E402
 from node_dataplane_probe import probe_node_endpoint  # noqa: E402
+from node_policy import node_capacity_status  # noqa: E402
 
 
 def _to_runtime(node: Node) -> NodeRuntime:
@@ -46,7 +47,23 @@ def _to_runtime(node: Node) -> NodeRuntime:
         panel_latency_ms=node.panel_latency_ms,
         panel_error_rate=float(node.panel_error_rate or 0.0),
         active_clients=int(node.active_clients or 0),
+        provisioned_clients_count=int(getattr(node, "provisioned_clients_count", node.active_clients or 0) or 0),
+        online_connections_hint=int(getattr(node, "online_connections_hint", 0) or 0),
         cpu_percent=float(getattr(node, "cpu_percent", 0.0) or 0.0),
+        network_rx_mbps=getattr(node, "network_rx_mbps", None),
+        network_tx_mbps=getattr(node, "network_tx_mbps", None),
+        network_total_mbps=getattr(node, "network_total_mbps", None),
+        network_rx_mbps_1m=getattr(node, "network_rx_mbps_1m", None),
+        network_tx_mbps_1m=getattr(node, "network_tx_mbps_1m", None),
+        network_rx_mbps_5m=getattr(node, "network_rx_mbps_5m", None),
+        network_tx_mbps_5m=getattr(node, "network_tx_mbps_5m", None),
+        tcp_retrans_percent=getattr(node, "tcp_retrans_percent", None),
+        packet_loss_percent=getattr(node, "packet_loss_percent", None),
+        dataplane_ok=getattr(node, "dataplane_ok", None),
+        dataplane_rtt_ms=getattr(node, "dataplane_rtt_ms", None),
+        capacity_score=getattr(node, "capacity_score", None),
+        capacity_state=getattr(node, "capacity_state", None),
+        capacity_reject_reason=getattr(node, "capacity_reject_reason", None),
         last_ok_at=node.last_ok_at,
         last_probe_at=getattr(node, "last_probe_at", None),
     )
@@ -68,13 +85,12 @@ def _calc_score(
         return 0.0
     latency_penalty = min(max(latency_ms or 0, 0), 3000) / 30.0
     error_penalty = max(0.0, min(error_rate, 1.0)) * 40.0
-    load_penalty = min(max(active_clients, 0), 2000) / 20.0
     memory_percent = (float(memory_used_mb or 0) / float(memory_total_mb or 0) * 100.0) if int(memory_total_mb or 0) > 0 else 0.0
     disk_percent = (float(disk_used_gb or 0.0) / float(disk_total_gb or 0.0) * 100.0) if float(disk_total_gb or 0.0) > 0 else 0.0
     cpu_penalty = min(max(float(cpu_percent or 0.0), 0.0), 100.0) / 4.0
     memory_penalty = min(max(memory_percent, 0.0), 100.0) / 5.0
     disk_penalty = min(max(disk_percent, 0.0), 100.0) / 6.0
-    score = 100.0 - latency_penalty - error_penalty - load_penalty - cpu_penalty - memory_penalty - disk_penalty
+    score = 100.0 - latency_penalty - error_penalty - cpu_penalty - memory_penalty - disk_penalty
     return max(0.0, round(score, 3))
 
 
@@ -302,6 +318,26 @@ def _resolve_network_rates(
     return rx_mbps, tx_mbps, total_mbps
 
 
+def _average_with_history(s, *, node_code: str, attr: str, current_value: float | None, limit: int = 4) -> float | None:
+    values: list[float] = []
+    if current_value is not None:
+        values.append(float(current_value))
+    rows = (
+        s.query(NodeHealthSample)
+        .filter(NodeHealthSample.node_code == node_code)
+        .order_by(NodeHealthSample.sampled_at.desc(), NodeHealthSample.id.desc())
+        .limit(max(1, int(limit)))
+        .all()
+    )
+    for row in rows:
+        value = _nullable_float(getattr(row, attr, None))
+        if value is not None:
+            values.append(float(value))
+    if not values:
+        return None
+    return round(sum(values) / len(values), 3)
+
+
 async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     runtime = _to_runtime(node)
     client = PanelClient(runtime)
@@ -310,6 +346,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     panel_healthy = False
     latency_ms: int | None = None
     active_clients = 0
+    online_connections_hint = 0
     total_up_bytes = 0
     total_down_bytes = 0
     cpu_percent: float | None = None
@@ -349,6 +386,11 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             network_tx_bytes_total = _nullable_int(system_metrics.get("network_tx_bytes_total"))
             network_rx_bytes_per_sec = _nullable_int(system_metrics.get("network_rx_bytes_per_sec"))
             network_tx_bytes_per_sec = _nullable_int(system_metrics.get("network_tx_bytes_per_sec"))
+            try:
+                online_summary = await client.get_node_online_summary()
+                online_connections_hint = int((online_summary or {}).get("online_connections_now") or 0)
+            except Exception:
+                online_connections_hint = 0
             panel_stage = "panel_inbound_lookup"
             inbounds = await client._get_inbounds()
             for inb in inbounds:
@@ -451,6 +493,22 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             rx_bytes_per_sec=network_rx_bytes_per_sec,
             tx_bytes_per_sec=network_tx_bytes_per_sec,
         )
+        network_rx_mbps_1m = network_rx_mbps
+        network_tx_mbps_1m = network_tx_mbps
+        network_rx_mbps_5m = _average_with_history(
+            s,
+            node_code=runtime.code,
+            attr="network_rx_mbps",
+            current_value=network_rx_mbps,
+            limit=4,
+        )
+        network_tx_mbps_5m = _average_with_history(
+            s,
+            node_code=runtime.code,
+            attr="network_tx_mbps",
+            current_value=network_tx_mbps,
+            limit=4,
+        )
         error_rate = _rolling_error_rate(s, runtime.code, error_window)
         if not healthy:
             error_rate = min(1.0, max(error_rate, 0.5))
@@ -507,6 +565,8 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.panel_latency_ms = latency_ms
             row.panel_error_rate = error_rate
             row.active_clients = active_clients
+            row.provisioned_clients_count = active_clients
+            row.online_connections_hint = online_connections_hint
             row.cpu_percent = float(cpu_percent or 0.0)
             row.memory_used_mb = _nullable_int(memory_used_mb)
             row.memory_total_mb = _nullable_int(memory_total_mb)
@@ -518,6 +578,12 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.network_rx_mbps = _nullable_float(network_rx_mbps)
             row.network_tx_mbps = _nullable_float(network_tx_mbps)
             row.network_total_mbps = _nullable_float(network_total_mbps)
+            row.network_rx_mbps_1m = _nullable_float(network_rx_mbps_1m)
+            row.network_tx_mbps_1m = _nullable_float(network_tx_mbps_1m)
+            row.network_rx_mbps_5m = _nullable_float(network_rx_mbps_5m)
+            row.network_tx_mbps_5m = _nullable_float(network_tx_mbps_5m)
+            row.dataplane_ok = dataplane_state == "healthy"
+            row.dataplane_rtt_ms = latency_ms if dataplane_state == "healthy" else None
             row.last_probe_at = probe_at
             row.last_probe_stage = probe_stage or None
             row.last_probe_error_kind = probe_error_kind or None
@@ -529,6 +595,43 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.ipv6_health = ipv6_health
             row.last_probe_classification = probe_classification
             row.transport_health_json = transport_health_json
+            policy = s.query(NodeCapacityPolicy).filter(NodeCapacityPolicy.node_code == runtime.code).first()
+            capacity = node_capacity_status(row, policy=policy, now=now)
+            row.capacity_score = float(capacity.get("score") or 0.0)
+            row.capacity_state = str(capacity.get("state") or "unknown")
+            row.capacity_reject_reason = str(capacity.get("reject_reason") or "") or None
+            s.add(
+                NodeRuntimeMetric(
+                    node_code=runtime.code,
+                    sampled_at=now,
+                    source=source,
+                    provisioned_clients_count=int(active_clients),
+                    online_connections_hint=int(online_connections_hint),
+                    network_rx_mbps_1m=_nullable_float(network_rx_mbps_1m),
+                    network_tx_mbps_1m=_nullable_float(network_tx_mbps_1m),
+                    network_rx_mbps_5m=_nullable_float(network_rx_mbps_5m),
+                    network_tx_mbps_5m=_nullable_float(network_tx_mbps_5m),
+                    network_total_mbps=_nullable_float(network_total_mbps),
+                    cpu_percent=_nullable_float(cpu_percent),
+                    memory_used_mb=_nullable_int(memory_used_mb),
+                    memory_total_mb=_nullable_int(memory_total_mb),
+                    dataplane_ok=dataplane_state == "healthy",
+                    dataplane_rtt_ms=latency_ms if dataplane_state == "healthy" else None,
+                    capacity_score=float(capacity.get("score") or 0.0),
+                    capacity_state=str(capacity.get("state") or "unknown"),
+                    reject_reason=str(capacity.get("reject_reason") or "") or None,
+                    meta_json=json.dumps(
+                        {
+                            "panel_state": panel_state,
+                            "dataplane_state": dataplane_state,
+                            "probe_stage": probe_stage,
+                            "probe_error_kind": probe_error_kind,
+                        },
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                )
+            )
             if healthy:
                 row.last_ok_at = now
         s.commit()
@@ -538,6 +641,8 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "score": score,
             "latency_ms": latency_ms,
             "active_clients": active_clients,
+            "provisioned_clients_count": active_clients,
+            "online_connections_hint": online_connections_hint,
             "total_up_bytes": max(0, int(total_up_bytes)),
             "total_down_bytes": max(0, int(total_down_bytes)),
             "error_rate": round(error_rate, 4),
@@ -577,7 +682,8 @@ async def run(*, error_window: int, source: str) -> int:
     for row in results:
         print(
             f"{row['code']}: healthy={row['healthy']} score={row['score']} "
-            f"latency_ms={row['latency_ms']} active_clients={row['active_clients']} "
+            f"latency_ms={row['latency_ms']} provisioned_clients={row['provisioned_clients_count']} "
+            f"online_connections_hint={row['online_connections_hint']} "
             f"up_bytes={row['total_up_bytes']} down_bytes={row['total_down_bytes']} "
             f"error_rate={row['error_rate']} cpu={row['cpu_percent']} "
             f"ram={row['memory_used_mb']}/{row['memory_total_mb']}MB disk_free={row['disk_free_gb']}GB"

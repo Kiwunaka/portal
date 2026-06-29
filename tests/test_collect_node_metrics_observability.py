@@ -510,6 +510,31 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         self.assertAlmostEqual(float(node_row.network_total_mbps or 0.0), 10.0, places=2)
         self.assertAlmostEqual(float(sample.network_total_mbps or 0.0), 10.0, places=2)
 
+    def test_score_does_not_use_configured_client_count_as_load(self) -> None:
+        low = self.collector._calc_score(
+            latency_ms=100,
+            error_rate=0.0,
+            active_clients=0,
+            healthy=True,
+            cpu_percent=10.0,
+            memory_used_mb=256,
+            memory_total_mb=1024,
+            disk_used_gb=10.0,
+            disk_total_gb=40.0,
+        )
+        high = self.collector._calc_score(
+            latency_ms=100,
+            error_rate=0.0,
+            active_clients=2000,
+            healthy=True,
+            cpu_percent=10.0,
+            memory_used_mb=256,
+            memory_total_mb=1024,
+            disk_used_gb=10.0,
+            disk_total_gb=40.0,
+        )
+        self.assertEqual(low, high)
+
 
 if __name__ == "__main__":
     unittest.main()

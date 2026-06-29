@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-Deploy minimal control-plane code + DB to the brain node and sync all users to all enabled nodes.
+Deploy minimal control-plane code + DB to the brain node and reconcile users to desired node pools.
 
 This does NOT start the Telegram bot and does NOT touch the old production server.
 
@@ -28,33 +28,59 @@ SYNC_SCRIPT = """from __future__ import annotations
 
 import asyncio
 import os
-import time
 
 from db import SessionLocal, init_db
 from models import User
+from node_policy import canonical_free_node_code, paid_pool_nodes, user_uses_free_pool
 from nodes_repo import enabled_nodes
 from panel_client import PanelClient
+
+
+def _node_code(node) -> str:
+    return str(getattr(node, "code", "") or "").strip().lower()
+
+
+def _desired_codes_for_user(user: User, nodes: list) -> set[str]:
+    if not bool(getattr(user, "is_active", True)):
+        return set()
+    if user_uses_free_pool(user):
+        code = str(canonical_free_node_code(nodes) or "").strip().lower()
+        return {code} if code else set()
+    return {_node_code(node) for node in paid_pool_nodes(nodes) if _node_code(node)}
+
+
+async def _disable_existing(panel: PanelClient, user: User) -> bool:
+    found = await panel.find_clients_by_identity(
+        tg_id=int(user.tg_id),
+        client_uuid=str(user.uuid or ""),
+        email=str(user.email or ""),
+        include_disabled=True,
+    )
+    if not found:
+        return True
+    ok_all = True
+    sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+    for inbound_id, client in found:
+        flow = panel._managed_flow_for_inbound(int(inbound_id))
+        try:
+            ok = await panel.update_client_enable(
+                dict(client),
+                False,
+                sub_id=sub_id,
+                inbound_id=int(inbound_id),
+                flow=flow,
+            )
+        except TypeError:
+            ok = await panel.update_client_enable(dict(client), False, sub_id=sub_id)
+        ok_all = ok_all and bool(ok)
+    return ok_all
 
 
 async def main() -> int:
     init_db()
     s = SessionLocal()
     try:
-        nodes = enabled_nodes(s)
-        skip_bases = {"brain", "de"}
-        filtered = []
-        for n in nodes:
-            code = str(getattr(n, "code", "") or "").strip().lower()
-            if not code:
-                continue
-            base = code
-            for sep in ("_", "-", "."):
-                if sep in base:
-                    base = base.split(sep, 1)[0]
-            if "free" not in code and base in skip_bases:
-                continue
-            filtered.append(n)
-        nodes = filtered
+        nodes = [node for node in enabled_nodes(s) if _node_code(node)]
         users = s.query(User).order_by(User.created_at.asc()).all()
     finally:
         s.close()
@@ -63,6 +89,7 @@ async def main() -> int:
         print("No nodes in DB (nodes table empty).")
         return 2
 
+    desired_by_tg = {int(user.tg_id): _desired_codes_for_user(user, nodes) for user in users}
     panels = [PanelClient(n) for n in nodes]
     try:
         for p in panels:
@@ -70,28 +97,32 @@ async def main() -> int:
             if not ok:
                 print(f"WARNING: login failed node={p.node.code}")
 
-        sem = asyncio.Semaphore(int(os.getenv("SYNC_CONCURRENCY", "4")))
+        sem = asyncio.Semaphore(max(1, min(int(os.getenv("SYNC_CONCURRENCY", "2")), 8)))
         max_passes = int(os.getenv("SYNC_PASSES", "3"))
 
-        async def sync_one(p: PanelClient, u: User) -> bool:
+        async def reconcile_one(p: PanelClient, u: User) -> bool:
             async with sem:
-                sub_id = u.sub_token or str(u.tg_id)
+                code = _node_code(p.node)
+                desired_codes = desired_by_tg.get(int(u.tg_id), set())
+                if code not in desired_codes:
+                    return await _disable_existing(p, u)
+                sub_id = str(getattr(u, "sub_token", "") or u.tg_id)
                 return await p.ensure_client(
-                    tg_id=u.tg_id,
-                    client_uuid=u.uuid,
-                    email=u.email,
+                    tg_id=int(u.tg_id),
+                    client_uuid=str(u.uuid or ""),
+                    email=str(u.email or ""),
                     sub_id=sub_id,
-                    enable=bool(u.is_active),
+                    enable=True,
                 )
 
         any_fail = 0
         for p in panels:
-            pending = list(users)
+            pending = [u for u in users if str(getattr(u, "uuid", "") or "").strip()]
             ok = 0
             for attempt in range(1, max_passes + 1):
                 if not pending:
                     break
-                results = await asyncio.gather(*(sync_one(p, u) for u in pending))
+                results = await asyncio.gather(*(reconcile_one(p, u) for u in pending))
                 next_pending = []
                 for u, r in zip(pending, results):
                     if r:
@@ -100,12 +131,11 @@ async def main() -> int:
                         next_pending.append(u)
                 pending = next_pending
                 if pending and attempt < max_passes:
-                    # Panels sometimes drop requests under concurrency; retry after a short pause.
                     await asyncio.sleep(1.0)
             fail = len(pending)
             any_fail += fail
-            print(f"node={p.node.code}: ok={ok} fail={fail}")
-        # If any node had failures, treat as error.
+            desired_count = sum(1 for u in users if _node_code(p.node) in desired_by_tg.get(int(u.tg_id), set()))
+            print(f"node={p.node.code}: desired={desired_count} reconciled={ok} fail={fail}")
         return 0 if any_fail == 0 else 1
     finally:
         for p in panels:

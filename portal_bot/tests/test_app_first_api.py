@@ -14,6 +14,14 @@ if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
 
+class _FakePanel:
+    async def add_client(self, **_kwargs):
+        return True
+
+    async def close(self):
+        return None
+
+
 def _load_api(monkeypatch, tmp_path: Path):
     db_path = tmp_path / "portal-test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
@@ -44,18 +52,13 @@ def _load_api(monkeypatch, tmp_path: Path):
     ]:
         sys.modules.pop(name, None)
 
-    return importlib.import_module("api")
+    api = importlib.import_module("api")
+    monkeypatch.setattr(api, "ControlPanel", _FakePanel)
+    return api
 
 
 def _install_fake_panel(monkeypatch, api):
-    class FakePanel:
-        async def add_client(self, **_kwargs):
-            return True
-
-        async def close(self):
-            return None
-
-    monkeypatch.setattr(api, "ControlPanel", FakePanel)
+    monkeypatch.setattr(api, "ControlPanel", _FakePanel)
 
 
 def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_path):

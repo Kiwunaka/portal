@@ -193,8 +193,11 @@ The expanded runtime KB expects `SUPPORT_AI_MAX_CONTEXT_CHARS=32000` or higher s
 - automatic username sync is the primary identity-sync path across app-first, web-login, and Telegram-link flows; manual username sync is compatibility/recovery tooling only
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` use the paid pool, which means all enabled non-free delivery nodes
 - free-tier access states `free_monthly` and `free_soft_mode` use the free pool, which means the dedicated `NL-free` node only
-- smart-connect shortlist selection stays inside those pool boundaries; premium profiles can expose up to `5` eligible non-free nodes, while free stays `NL-free` only
-- the client-side RTT upload contract is `POST /api/client/nodes/latency-samples`; it stores install-scoped diagnostic evidence and does not bypass `UserNode` pinning
+- smart-connect shortlist selection stays inside those pool boundaries; premium profiles can expose up to `SMART_CONNECT_SHORTLIST_LIMIT` eligible non-free nodes, default `8`, while free stays `NL-free` only
+- `UserNode` mapping is provisioning/history state for capacity-aware selection; it must not limit premium-grade candidate nodes
+- the app-side node-selection contract is `GET /api/client/nodes/candidates` -> best-effort RTT probes -> `POST /api/client/nodes/select` -> optional `GET /api/client/profile/managed?selected_node_code=...`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
+- capacity rollout flags default to `CAPACITY_AWARE_NODE_SELECTION=true`, `SUBSCRIPTION_DYNAMIC_ORDERING=true`, `SUBSCRIPTION_EXCLUDE_HARD_REJECT=true`, `KEY_PRESSURE_SCORING=true`, `KEY_PRESSURE_FAIR_USE_ROUTING=false`, and `USERNODE_MAPPING_AS_CANDIDATE_LIMIT=false`
+- rollback may disable capacity-aware ranking or dynamic subscription ordering while retaining metrics collection, additive tables, and raw subscription compatibility
 - the persisted split-tunnel contract is backend-owned through `route_mode`, `selected_apps`, `requires_elevated_privileges`, and mirrored `route_policy.*` fields; do not document it as client-only local state
 - additive browser email auth lives under `/api/auth/email/*`, but public docs and entry copy must keep it marked `soon` until transactional sender identity, delivery confirmation, and the public launch path are live
 - `/api/auth/email/status` is the frontend gate; it enables email forms only when `EMAIL_AUTH_PUBLIC_ENABLED=true`, delivery is configured, and `EMAIL_AUTH_DEBUG_ECHO=false`
@@ -220,6 +223,7 @@ python -m pytest portal_bot/tests/test_app_first_api.py -q
 python -m pytest tests/test_portal_api.py -q
 python -m pytest tests/test_worker_retention.py -q
 python -m pytest tests/test_smart_connect_api.py tests/test_network_rollout_api.py -q
+python -m pytest tests/test_smart_connect_api.py tests/test_collect_node_metrics_observability.py tests/test_nodes_repo_load_aware.py -q
 python -m pytest tests/test_api_auth_and_tickets.py -q
 python -m pytest tests/test_remote_apply_transport_front.py -q
 python -m pytest tests/test_observer_service.py tests/test_observer_api.py tests/test_collect_xray_observer.py tests/test_predeploy_node_readiness.py -q
@@ -363,6 +367,37 @@ Windows packaging guardrails:
 - public and packaged `MSIX` identity fields such as display name, identity name, publisher display name, description, executable naming, and protocol activation must resolve to `POKROV` / `pokrov`
 - do not ship legacy `POKROV VPN`, `Pokrov.Vpn`, or `hiddify` residue in packaged Windows public or hidden identity fields
 - release-facing raster branding should regenerate from [external/logogo.png](C:/Users/kiwun/Documents/ai/VPN/external/logogo.png), while vector branding should regenerate from [logo/logoclear.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logoclear.svg) and [logo/logowithtext.svg](C:/Users/kiwun/Documents/ai/VPN/logo/logowithtext.svg)
+
+## Feature Story Audit Artifacts
+
+For repo-wide feature/function inventory, user stories, expected behavior,
+status, direct test evidence, remaining owner-gated scenarios, and unresolved
+owner questions, start from:
+
+- [docs/developer/pokrov-canonical-feature-tracker.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.md)
+- [docs/developer/pokrov-canonical-feature-tracker.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.csv)
+- [docs/developer/pokrov-story-test-evidence-audit.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-story-test-evidence-audit.csv)
+- [docs/developer/pokrov-defect-fix-retest-ledger.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-defect-fix-retest-ledger.csv)
+- [docs/developer/pokrov-defect-fix-retest-ledger.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-defect-fix-retest-ledger.md)
+- [docs/developer/pokrov-entrypoint-story-coverage.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-entrypoint-story-coverage.csv)
+- [docs/developer/pokrov-code-function-inventory.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-code-function-inventory.csv)
+- [docs/developer/pokrov-symbol-coverage-audit.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-symbol-coverage-audit.csv)
+- [docs/developer/pokrov-private-helper-coverage.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-private-helper-coverage.csv)
+- [docs/developer/pokrov-private-helper-coverage.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-private-helper-coverage.md)
+- [docs/developer/pokrov-coverage-policy-decision-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-coverage-policy-decision-guide.md)
+- [docs/developer/pokrov-owner-gated-scenarios.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-scenarios.md)
+- [docs/developer/pokrov-owner-gated-execution-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-execution-guide.md)
+- [docs/developer/pokrov-owner-gated-scenarios.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-scenarios.csv)
+- [docs/developer/pokrov-owner-gated-results.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-results.csv)
+- [docs/developer/pokrov-owner-answer-sheet.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-answer-sheet.md)
+- [docs/developer/pokrov-open-questions.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-open-questions.md)
+- [docs/developer/pokrov-open-questions.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-open-questions.csv)
+- [docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md)
+- [docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv)
+
+Do not mark the full audit goal complete while blocking rows remain open in
+`pokrov-open-questions.csv` or required gates remain unresolved in
+`pokrov-owner-gated-results.csv`.
 
 ## Documentation Rules
 

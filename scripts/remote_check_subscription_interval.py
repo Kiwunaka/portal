@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 
 import paramiko
@@ -9,6 +10,7 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+DOMAIN_RE = re.compile(r"^[A-Za-z0-9.-]+$")
 
 
 def _parse_password(path: Path) -> str:
@@ -40,6 +42,9 @@ def main() -> int:
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     args = ap.parse_args()
+    domain = str(args.domain).strip()
+    if not DOMAIN_RE.fullmatch(domain):
+        raise SystemExit("Invalid --domain value.")
 
     pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_password(Path(args.passwords))
     if not pw:
@@ -62,7 +67,7 @@ def main() -> int:
             "\"select sub_token from users where is_active=true and sub_token is not null order by created_at asc limit 1\" "
             "2>/dev/null | tr -d '[:space:]'); "
             "if [ -z \"$TOK\" ]; then echo no_token; exit 2; fi; "
-            f"curl -k -sI --resolve {args.domain}:443:127.0.0.1 https://{args.domain}/s8Kx2mP7qR4wT/$TOK | grep -i '^Profile-Update-Interval:' || true"
+            f"curl -k -sI --resolve {domain}:443:127.0.0.1 https://{domain}/s8Kx2mP7qR4wT/$TOK | grep -i '^Profile-Update-Interval:' || true"
         )
         _, out, err = _run(ssh, cmd, timeout=120)
         print((out.strip() or err.strip()).strip())

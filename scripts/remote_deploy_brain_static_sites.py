@@ -17,6 +17,15 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+REQUIRED_LOCAL_STATIC_FILES = (
+    ("webapp", "index.html"),
+    ("marketing", "index.html"),
+    ("marketing", "checkout", "index.html"),
+)
+FORBIDDEN_LEGACY_MARKETING_STATIC_FILES = (
+    "fk-verify.html",
+    "fk-payment-theme.css",
+)
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
@@ -103,6 +112,81 @@ def _cache_bust_next_static_refs(local_dir: Path, *, release_id: str, label: str
     _safe_print(f"[cache-bust] {label}: {touched} html files")
 
 
+def _local_static_output_validation_failures(*, local_webapp: Path, local_marketing: Path) -> list[str]:
+    roots = {
+        "webapp": local_webapp,
+        "marketing": local_marketing,
+    }
+    failures: list[str] = []
+    for parts in REQUIRED_LOCAL_STATIC_FILES:
+        root_key, *relative_parts = parts
+        expected = roots[root_key].joinpath(*relative_parts)
+        if not expected.is_file():
+            failures.append(f"missing local static file: {expected}")
+    for file_name in FORBIDDEN_LEGACY_MARKETING_STATIC_FILES:
+        forbidden = local_marketing / file_name
+        if forbidden.exists():
+            failures.append(f"forbidden legacy payment static file is present: {forbidden}")
+    return failures
+
+
+def _release_payload_validation_checks(*, remote_webapp: str, remote_marketing: str) -> list[str]:
+    checks = [
+        f"test -f {remote_webapp}/index.html",
+        f"test -f {remote_marketing}/index.html",
+        f"test -f {remote_marketing}/checkout/index.html",
+    ]
+    checks.extend(
+        f"test ! -e {remote_marketing}/{file_name}"
+        for file_name in FORBIDDEN_LEGACY_MARKETING_STATIC_FILES
+    )
+    return checks
+
+
+def _post_deploy_smoke_commands(*, web_domain: str, api_domain: str) -> list[str]:
+    def resolved_curl(domain: str, path: str, extra: str = "head -c 120 || true") -> str:
+        return f"curl -fsS --insecure --resolve {domain}:443:127.0.0.1 https://{domain}{path} | {extra}"
+
+    legacy_checks = []
+    for file_name in FORBIDDEN_LEGACY_MARKETING_STATIC_FILES:
+        path = f"/{file_name}"
+        temp_path = f"/tmp/pokrov-{file_name}.smoke"
+        legacy_checks.append(
+            "status=$("
+            f"curl -ksS -o {shlex.quote(temp_path)} -w '%{{http_code}}' "
+            f"--resolve {shlex.quote(web_domain)}:443:127.0.0.1 "
+            f"https://{shlex.quote(web_domain)}{path}"
+            "); "
+            "case \"$status\" in "
+            "404|410) echo absent_or_fallback;"
+            "*) "
+            f"if grep -Eq '^[0-9a-fA-F]{{32,128}}$|payment-page-global' {shlex.quote(temp_path)}; "
+            "then echo legacy_static_present; else echo absent_or_fallback; fi"
+            " ;; "
+            "esac; "
+            f"rm -f {shlex.quote(temp_path)}"
+        )
+
+    return [
+        resolved_curl(api_domain, "/api/health", "head -c 200 || true"),
+        resolved_curl(web_domain, "/", "head -c 80 || true"),
+        resolved_curl("app.pokrov.space", "/", "head -c 80 || true"),
+        *legacy_checks,
+        resolved_curl("pay.pokrov.space", "/checkout/", "head -c 120 || true"),
+    ]
+
+
+def _build_local_static_bundles(*, local_webapp: Path, local_marketing: Path, release_id: str) -> None:
+    with tempfile.TemporaryDirectory(prefix="pokrov-static-") as temp_root:
+        temp_dir = Path(temp_root)
+        webapp_bundle = temp_dir / f"webapp-{release_id}.tar.gz"
+        marketing_bundle = temp_dir / f"marketing-{release_id}.tar.gz"
+        _cache_bust_next_static_refs(local_webapp, release_id=release_id, label="webapp")
+        _cache_bust_next_static_refs(local_marketing, release_id=release_id, label="marketing")
+        _build_static_bundle(local_webapp, webapp_bundle, label="webapp")
+        _build_static_bundle(local_marketing, marketing_bundle, label="marketing")
+
+
 def _deploy_static_bundle(
     ssh: paramiko.SSHClient,
     sftp: paramiko.SFTPClient,
@@ -180,20 +264,33 @@ def main() -> int:
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
+    ap.add_argument("--plan-only", action="store_true", help="Validate and bundle local static outputs without SSH.")
     args = ap.parse_args()
 
     local_webapp = REPO_ROOT / "webapp" / "out"
     local_mkt = REPO_ROOT / "marketing" / "out"
-    if not local_webapp.exists():
-        raise SystemExit(f"Missing webapp out: {local_webapp}")
-    if not local_mkt.exists():
-        raise SystemExit(f"Missing marketing out: {local_mkt}")
+    local_failures = _local_static_output_validation_failures(
+        local_webapp=local_webapp,
+        local_marketing=local_mkt,
+    )
+    if local_failures:
+        raise SystemExit("\n".join(local_failures))
     web_domain = (args.domain or "").strip() or (args.web_domain or "").strip()
     api_domain = (args.api_domain or "").strip()
     if not web_domain:
         raise SystemExit("Missing --web-domain")
     if not api_domain:
         raise SystemExit("Missing --api-domain")
+
+    release_id = _release_id()
+    if args.plan_only:
+        _build_local_static_bundles(
+            local_webapp=local_webapp,
+            local_marketing=local_mkt,
+            release_id=release_id,
+        )
+        _safe_print("[plan-only] local static bundles validated and built; SSH deploy skipped")
+        return 0
 
     ssh, auth_method = connect_node(
         code="brain",
@@ -204,7 +301,6 @@ def main() -> int:
     )
     try:
         _safe_print(f"brain auth: {auth_method}")
-        release_id = _release_id()
         remote_root = "/var/www/portal"
         releases_root = f"{remote_root}/releases"
         remote_release = f"{releases_root}/{release_id}"
@@ -231,13 +327,10 @@ def main() -> int:
                 sftp.close()
 
         # Validate release payload before switching public paths.
-        checks = [
-            f"test -f {remote_webapp}/index.html",
-            f"test -f {remote_marketing}/index.html",
-            f"test -f {remote_marketing}/checkout/index.html",
-            f"test -f {remote_marketing}/fk-verify.html",
-        ]
-        for check in checks:
+        for check in _release_payload_validation_checks(
+            remote_webapp=remote_webapp,
+            remote_marketing=remote_marketing,
+        ):
             code, _out, _err = _run(ssh, check, timeout=30)
             if code != 0:
                 raise SystemExit(f"Release payload validation failed: {check}")
@@ -269,15 +362,7 @@ find {releases_root} -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs
         _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)
 
         # Quick smoke checks (through localhost resolve on standard HTTPS port).
-        chk = [
-            f"curl -fsS --insecure --resolve {api_domain}:443:127.0.0.1 https://{api_domain}/api/health | head -c 200 || true",
-            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/ | head -c 80 || true",
-            f"curl -fsS --insecure --resolve app.pokrov.space:443:127.0.0.1 https://app.pokrov.space/ | head -c 80 || true",
-            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-verify.html | head -c 80 || true",
-            f"curl -fsS --insecure --resolve {web_domain}:443:127.0.0.1 https://{web_domain}/fk-payment-theme.css | head -c 120 || true",
-            "curl -fsS --insecure --resolve pay.pokrov.space:443:127.0.0.1 https://pay.pokrov.space/checkout/ | head -c 120 || true",
-        ]
-        for c in chk:
+        for c in _post_deploy_smoke_commands(web_domain=web_domain, api_domain=api_domain):
             _, out, err = _run(ssh, c, timeout=30)
             _safe_print(out.strip() or err.strip())
         return 0

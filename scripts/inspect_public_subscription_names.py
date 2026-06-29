@@ -26,13 +26,21 @@ def main() -> int:
     ap.add_argument("--public-api-base", default="https://api.pokrov.space")
     args = ap.parse_args()
 
-    con = sqlite3.connect(str(Path(args.db)))
+    db = Path(args.db)
+    if not db.exists():
+        raise SystemExit(f"DB not found: {db}")
+
+    con = sqlite3.connect(str(db))
     try:
-        tok = con.execute(
+        row = con.execute(
             "select sub_token from users where is_active=1 and sub_token is not null order by created_at asc limit 1"
-        ).fetchone()[0]
+        ).fetchone()
     finally:
         con.close()
+    if not row or not row[0]:
+        raise SystemExit("No active user with sub_token found in DB.")
+
+    tok = row[0]
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False

@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import shlex
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -11,6 +13,11 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+PLAN_CODE_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _sql_literal(value: object) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
 
 
 def _parse_password(path: Path) -> str:
@@ -53,6 +60,8 @@ def main() -> int:
     tg_id = int(args.tg_id)
     amount = int(args.amount_stars)
     plan = str(args.plan_code).strip()
+    if not PLAN_CODE_RE.fullmatch(plan):
+        raise SystemExit("Invalid --plan-code value.")
     paid_at = datetime.now(timezone.utc).replace(tzinfo=None).isoformat(sep=" ", timespec="seconds")
     meta = json.dumps(
         {
@@ -62,7 +71,8 @@ def main() -> int:
             "amount_stars": amount,
         },
         ensure_ascii=False,
-    ).replace("'", "''")
+    )
+    db_arg = shlex.quote(str(args.db_name))
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -105,14 +115,14 @@ WITH target AS (
   FROM pay_attempts
   WHERE tg_id = {tg_id}
     AND amount_stars = {amount}
-    AND plan_code = '{plan}'
+    AND plan_code = {_sql_literal(plan)}
   ORDER BY id DESC
   LIMIT 1
 ), upd AS (
   UPDATE pay_attempts
   SET status='paid',
-      paid_at='{paid_at}',
-      updated_at='{paid_at}'
+      paid_at={_sql_literal(paid_at)},
+      updated_at={_sql_literal(paid_at)}
   WHERE id IN (SELECT id FROM target)
     AND status <> 'paid'
   RETURNING amount_stars
@@ -126,14 +136,14 @@ SET stars_paid = COALESCE(stars_paid, 0) + COALESCE((SELECT SUM(amount_stars) FR
 WHERE tg_id = {tg_id};
 
 INSERT INTO events (tg_id, event_name, source, session_id, meta_json, created_at)
-SELECT {tg_id}, 'paid', 'reconcile', NULL, '{meta}', '{paid_at}'
+SELECT {tg_id}, 'paid', 'reconcile', NULL, {_sql_literal(meta)}, {_sql_literal(paid_at)}
 WHERE EXISTS (SELECT 1 FROM _reconciled_attempts);
 
 COMMIT;
 """
         code, out, err = _run(
             ssh,
-            f"runuser -u postgres -- psql -d {args.db_name} -v ON_ERROR_STOP=1 -c \"{sql}\"",
+            f"runuser -u postgres -- psql -d {db_arg} -v ON_ERROR_STOP=1 -c \"{sql}\"",
             timeout=120,
         )
         if code != 0:
@@ -152,7 +162,7 @@ limit 5;
 """
         _, vout, verr = _run(
             ssh,
-            f"runuser -u postgres -- psql -d {args.db_name} -P pager=off -c \"{verify_sql}\"",
+            f"runuser -u postgres -- psql -d {db_arg} -P pager=off -c \"{verify_sql}\"",
             timeout=120,
         )
         print((vout.strip() or verr.strip()).strip())

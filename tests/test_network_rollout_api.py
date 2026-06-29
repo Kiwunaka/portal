@@ -20,6 +20,23 @@ if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
 
+class _FakePanel:
+    async def login(self):
+        return True
+
+    async def close(self):
+        return None
+
+    async def add_client(self, **_kwargs):
+        return True
+
+    async def get_node_online_summaries(self, *, node_codes=None):
+        return {
+            str(code): {"online_keys_now": 0, "online_connections_now": 0}
+            for code in (node_codes or [])
+        }
+
+
 def _sign_telegram_init_data(*, bot_token: str, params: dict[str, str]) -> str:
     items = sorted((k, v) for k, v in params.items())
     data_check_string = "\n".join([f"{k}={v}" for k, v in items])
@@ -66,7 +83,9 @@ def _load_api(monkeypatch, tmp_path: Path):
     ]:
         sys.modules.pop(name, None)
 
-    return importlib.import_module("api")
+    api = importlib.import_module("api")
+    monkeypatch.setattr(api, "ControlPanel", _FakePanel)
+    return api
 
 
 def _admin_headers() -> dict[str, str]:

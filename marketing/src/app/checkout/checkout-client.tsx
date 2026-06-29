@@ -383,7 +383,7 @@ export default function CheckoutClient() {
     if (!checkoutReady || !activeProviderCode) return;
     const email = buyerEmail.trim().toLowerCase();
     if (!email) {
-      setStatusText("Укажите email для доставки ключа после оплаты.");
+      setStatusText("Укажите email для доставки ключа доступа после оплаты.");
       return;
     }
     setCheckoutBusy(true);
@@ -435,7 +435,7 @@ export default function CheckoutClient() {
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Потом продлить</span>
             <h3>Сумма видна до оплаты</h3>
-            <p>Вы выбираете срок и видите итоговую сумму, лимит устройств и платформы до перехода к оплате.</p>
+            <p>Вы выбираете срок и видите итоговую сумму, лимит устройств и платформы до перехода к оплате. Код активируйте в том профиле, который хотите продлить.</p>
           </article>
           <article className="lp-info-card">
             <span className="lp-info-card__eyebrow">Если нужна помощь</span>
@@ -475,6 +475,7 @@ export default function CheckoutClient() {
                 После бесплатного периода остается базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на {catalog?.free_tier?.cycle_days || 30} дней.
               </li>
               <li>Перед оплатой видны срок, устройства, цена и платформы.</li>
+              <li>Код после оплаты продлевает тот профиль, где вы его активируете: в приложении или кабинете.</li>
               <li>Telegram нужен только для бонуса +10 дней, восстановления и связи с поддержкой.</li>
             </ul>
           </div>
@@ -520,7 +521,7 @@ export default function CheckoutClient() {
         <article className="glass-card checkout-sticky">
           <h2>Итог</h2>
           <p className="checkout-note">
-            Продление добавляет срок к тому же аккаунту POKROV. Если оплата временно недоступна или статус не обновился, поддержку можно открыть прямо отсюда.
+            После оплаты придет код активации. Он продлит тот профиль POKROV, где вы его введете: в приложении или кабинете.
           </p>
 
           <div className="checkout-summary">
@@ -591,7 +592,7 @@ export default function CheckoutClient() {
           </Link>
 
           <p className="checkout-helper">
-            Email нужен для чека, кода активации и дополнительного способа входа. Бесплатный период начинается из приложения на первом валидном устройстве.
+            Email нужен для чека и кода активации. Уже начали в приложении? Введите код именно там или откройте кабинет из приложения, чтобы продлить тот же профиль.
           </p>
 
           {statusText ? <p className="checkout-status">{statusText}</p> : null}

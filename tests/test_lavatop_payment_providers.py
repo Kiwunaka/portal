@@ -146,6 +146,71 @@ class LavaTopPaymentProviderTests(unittest.TestCase):
         self.assertEqual(payload["clientUtm"]["utm_campaign"], "beta")
         self.assertEqual(payload["clientUtm"]["utm_term"], "start_99")
 
+    def test_create_lavatop_invoice_allows_per_order_payment_method_override(self) -> None:
+        os.environ["LAVATOP_API_BASE_URL"] = "https://lava.example.test"
+        os.environ["LAVATOP_API_KEY"] = "lava_api_test"
+        os.environ["LAVATOP_OFFER_ID"] = "5264bc13-4cb0-4b88-8753-7af13f3e657b"
+        os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lava_webhook_test"
+        os.environ["LAVATOP_PAYMENT_PROVIDER"] = "SMART_GLOCAL"
+        os.environ["LAVATOP_PAYMENT_METHOD"] = "CARD"
+        os.environ["LAVATOP_DYNAMIC_AMOUNT_ENABLED"] = "true"
+        capture: dict[str, object] = {}
+
+        class FakeResponse:
+            status = 201
+
+            async def text(self) -> str:
+                return json.dumps({"id": "invoice-1", "paymentUrl": "https://checkout.lava.top/pay/contract-1"})
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb) -> None:
+                return None
+
+        class FakeSession:
+            def __init__(self, *args, **kwargs) -> None:
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb) -> None:
+                return None
+
+            def post(self, url: str, *, headers: dict | None = None, json: dict | None = None):
+                capture["json"] = dict(json or {})
+                return FakeResponse()
+
+        self.providers.aiohttp.ClientSession = FakeSession
+
+        asyncio.run(
+            self.providers.create_rub_payment(
+                provider="lavatop",
+                order_id="lavatop_site_method_abcd",
+                amount_rub=99,
+                currency="RUB",
+                description="POKROV Start",
+                success_url="https://pay.pokrov.space/success",
+                fail_url="https://pay.pokrov.space/fail",
+                result_url="https://api.pokrov.space/api/payments/result/lavatop",
+                refund_url="https://api.pokrov.space/api/payments/refund/lavatop",
+                chargeback_url="https://api.pokrov.space/api/payments/chargeback/lavatop",
+                logo_url="",
+                custom={
+                    "plan_code": "start_99",
+                    "source": "site",
+                    "lavatop_payment_provider": "PAY2ME",
+                    "lavatop_payment_method": "SBP",
+                },
+            )
+        )
+
+        payload = capture["json"]
+        self.assertEqual(payload["paymentProvider"], "PAY2ME")
+        self.assertEqual(payload["paymentMethod"], "SBP")
+        self.assertEqual(payload["amount"], 99.0)
+
     def test_lavatop_callback_helpers_extract_contract_and_status(self) -> None:
         payload = {
             "eventType": "payment.success",

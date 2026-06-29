@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import os
 import sys
@@ -148,6 +149,43 @@ class FeedbackBotModerationTests(unittest.TestCase):
             pass
         for module_name in ("feedbackbot", "telegram_buttons", "aiogram", "aiogram.filters", "aiogram.types"):
             sys.modules.pop(module_name, None)
+
+    def test_feedback_back_and_start_clear_pending_feedback_prompt(self) -> None:
+        class _FakeUser:
+            id = 1004
+
+        class _FakeMessage:
+            from_user = _FakeUser()
+
+            def __init__(self) -> None:
+                self.edits: list[tuple[str, dict]] = []
+                self.answers: list[tuple[str, dict]] = []
+
+            async def edit_text(self, text, **kwargs):
+                self.edits.append((str(text), dict(kwargs)))
+
+            async def answer(self, text, **kwargs):
+                self.answers.append((str(text), dict(kwargs)))
+
+        class _FakeCallback:
+            from_user = _FakeUser()
+
+            def __init__(self) -> None:
+                self.message = _FakeMessage()
+                self.answers: list[tuple[str, bool]] = []
+
+            async def answer(self, text="", show_alert=False):
+                self.answers.append((str(text), bool(show_alert)))
+
+        self.feedbackbot.pending_feedback.add(1004)
+        callback = _FakeCallback()
+        asyncio.run(self.feedbackbot.fb_back_home(callback))
+        self.assertNotIn(1004, self.feedbackbot.pending_feedback)
+
+        self.feedbackbot.pending_feedback.add(1004)
+        message = _FakeMessage()
+        asyncio.run(self.feedbackbot.start(message))
+        self.assertNotIn(1004, self.feedbackbot.pending_feedback)
 
     def test_upsert_feedback_entry_reuses_pending_row(self) -> None:
         from db import SessionLocal

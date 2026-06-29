@@ -32,6 +32,7 @@ export default function SupportLegalPage() {
         meta="pokrov.space"
         body="Оферта и политика открываются на публичном сайте. В кабинете оставляем только быстрые входы и поддержку."
         tone="neutral"
+        emblem={icon("description", "h-7 w-7")}
         action={
           <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             В поддержку

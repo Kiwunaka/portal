@@ -72,6 +72,18 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
     app_shell = _read_text(
         client_path / "packages" / "app_shell" / "lib" / "app_shell.dart"
     )
+    seed_shell = _read_text(
+        client_path
+        / "packages"
+        / "app_shell"
+        / "lib"
+        / "src"
+        / "shell"
+        / "seed_shell.dart"
+    )
+    app_shell_contract = "\n".join(
+        part for part in (app_shell, seed_shell) if part is not None
+    )
 
     checks: list[dict[str, Any]] = []
 
@@ -212,12 +224,12 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
     )
     safe_redeem_missing = _missing_needles(
         api, safe_redeem_needles_api
-    ) + _missing_needles(app_shell, safe_redeem_needles_app)
+    ) + _missing_needles(app_shell_contract, safe_redeem_needles_app)
     checks.append(
         _check(
             check_id="safe_redeem_guard",
             title="Raw connection links are rejected before account restore/redeem",
-            evidence="portal_bot/api.py + POKROV-app app_shell.dart",
+            evidence="portal_bot/api.py + POKROV-app app_shell.dart/seed_shell.dart",
             missing=safe_redeem_missing,
         )
     )

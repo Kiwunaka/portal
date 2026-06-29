@@ -1,0 +1,121 @@
+{
+  "ok": true,
+  "classification": "PASS",
+  "mode": "brain_runtime_app_download_smoke",
+  "signed_init_data_origin": "brain_runtime_bot_token",
+  "source_unit": "portal-bot",
+  "api_base_url": "https://api.pokrov.space",
+  "synthetic_tg_id": "redacted",
+  "runtime_app_download_smoke_passed": true,
+  "note": "This proves backend auth and runtime link policy using synthetic signed initData generated on brain; it is not proof that a real user opened Telegram WebApp.",
+  "client_apps": {
+    "android": {
+      "play_url": "",
+      "apk_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.0-beta/pokrov-android-arm64-v8a.apk",
+      "mirror_url": "",
+      "apk_variants": [
+        {
+          "abi": "arm64-v8a",
+          "label": "Android ARM64",
+          "url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.0-beta/pokrov-android-arm64-v8a.apk",
+          "sha256": "CF0B9BCD790163EA5D19048BF4B9F6FCAE569FF36F976C4E5D2E1C144EBE2503",
+          "size": 64868257
+        },
+        {
+          "abi": "armeabi-v7a",
+          "label": "Android ARMv7",
+          "url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.0-beta/pokrov-android-armeabi-v7a.apk",
+          "sha256": "870E0AAB8E2EEFB8F9B17778BE48282CDE029A174764FE0B7AFBCAB9D4AE3FD5",
+          "size": 58858451
+        }
+      ],
+      "version": "1.0.0-beta",
+      "sha256": "CF0B9BCD790163EA5D19048BF4B9F6FCAE569FF36F976C4E5D2E1C144EBE2503",
+      "size": 64868257,
+      "release_notes": "",
+      "release_notes_url": "",
+      "published_at": "",
+      "update": {
+        "platform": "android",
+        "channel": "beta",
+        "latest_version": "1.0.0-beta",
+        "min_supported_version": "",
+        "update_policy": "none",
+        "url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.0-beta/pokrov-android-arm64-v8a.apk",
+        "sha256": "CF0B9BCD790163EA5D19048BF4B9F6FCAE569FF36F976C4E5D2E1C144EBE2503",
+        "size": 64868257,
+        "release_notes": "",
+        "release_notes_url": "",
+        "published_at": "",
+        "rollout_percent": 100,
+        "force_after": null
+      }
+    },
+    "windows": {
+      "exe_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.0-beta/pokrov-windows-setup-x64.exe",
+      "mirror_url": "",
+      "version": "1.0.0-beta",
+      "sha256": "2FEF5F1FD19CEA27E23BA716D6FDB316730477CBBC2403DF883A6B12A50F68DA",
+      "size": 28315648,
+      "release_notes": "",
+      "release_notes_url": "",
+      "published_at": "",
+      "update": {
+        "platform": "windows",
+        "channel": "beta",
+        "latest_version": "1.0.0-beta",
+        "min_supported_version": "",
+        "update_policy": "none",
+        "url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.0-beta/pokrov-windows-setup-x64.exe",
+        "sha256": "2FEF5F1FD19CEA27E23BA716D6FDB316730477CBBC2403DF883A6B12A50F68DA",
+        "size": 28315648,
+        "release_notes": "",
+        "release_notes_url": "",
+        "published_at": "",
+        "rollout_percent": 100,
+        "force_after": null
+      }
+    },
+    "docs_url": "https://pokrov.space/install/",
+    "updated_at": "2026-06-28T09:31:27Z",
+    "update_check": {
+      "requested_platform": null,
+      "current_version": null,
+      "channel": "beta",
+      "mode": "prompt",
+      "silent_update": false
+    }
+  },
+  "checks": [
+    {
+      "name": "brain_bot_runtime_token",
+      "status": "PASS",
+      "missing": [],
+      "note": "Token presence is read on brain and never returned.",
+      "source": "brain:portal-bot"
+    },
+    {
+      "http_status": 200,
+      "name": "api_health",
+      "status": "PASS",
+      "missing": [],
+      "note": "Brain-origin API health request.",
+      "source": "https://api.pokrov.space/api/health"
+    },
+    {
+      "http_status": 200,
+      "name": "api_client_apps_signed_init_data",
+      "status": "PASS",
+      "missing": [],
+      "note": "Uses synthetic signed initData generated on brain from the runtime BOT_TOKEN; neither token nor initData is returned.",
+      "source": "https://api.pokrov.space/api/client/apps"
+    },
+    {
+      "name": "runtime_client_apps_release_handoff",
+      "status": "PASS",
+      "missing": [],
+      "note": "Live /api/client/apps must expose GitHub Releases APK/EXE and install docs before runtime link launch.",
+      "source": "/api/client/apps"
+    }
+  ]
+}

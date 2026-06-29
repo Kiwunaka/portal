@@ -93,18 +93,6 @@ export default function SubscriptionPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const openManualSetupFromHash = () => {
-      if (window.location.hash === "#manual-setup") {
-        setManualAccessOpen(true);
-      }
-    };
-    openManualSetupFromHash();
-    window.addEventListener("hashchange", openManualSetupFromHash);
-    return () => window.removeEventListener("hashchange", openManualSetupFromHash);
-  }, []);
-
   const accessState = getAccessState(dash, user);
   const paidMode = isPaidUnlimitedState(accessState);
   const trialMode = isTrialPremiumState(accessState);
@@ -116,6 +104,19 @@ export default function SubscriptionPage() {
   const currentPaidPlanCode = paidMode ? currentPlanCode : "";
   const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
+  const manualAccessVisible = manualAccessOpen && manualAccessReady;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const openManualSetupFromHash = () => {
+      if (window.location.hash === "#manual-setup") {
+        setManualAccessOpen(manualAccessReady);
+      }
+    };
+    openManualSetupFromHash();
+    window.addEventListener("hashchange", openManualSetupFromHash);
+    return () => window.removeEventListener("hashchange", openManualSetupFromHash);
+  }, [manualAccessReady]);
   const premiumMode = paidMode || trialMode;
   const accessHint = paidMode
     ? `Полный доступ до ${formatDate(dash?.expiry_at || user?.expiry_at)}.`
@@ -145,6 +146,11 @@ export default function SubscriptionPage() {
       ? "Можно перейти на полный доступ без месячного лимита."
       : "Выберите срок или активируйте код.";
 
+  const visiblePlans = plans.slice(0, 4);
+  const featuredCode = visiblePlans.length
+    ? visiblePlans.reduce((best, plan) => (Number(plan.days || 0) > Number(best.days || 0) ? plan : best), visiblePlans[0]).code
+    : "";
+
   return (
     <main className="cab-page">
       <CabinetStatus
@@ -152,6 +158,7 @@ export default function SubscriptionPage() {
         meta={`${resolvePlanLabel(dash, user)} · ${accessHint}`}
         body={statusBody}
         tone={statusTone}
+        emblem={icon(dash?.is_active ? "verified_user" : "warning", "h-7 w-7")}
         action={
           <Button href="/subscription/checkout/" className="w-full sm:w-auto">
             Оплатить
@@ -159,34 +166,45 @@ export default function SubscriptionPage() {
         }
       />
 
-      <CabinetGroup title="Срок">
-        {plans.slice(0, 4).map((plan) => {
-          const normalizedCode = normalizePlanCode(plan.code);
-          const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
-          const amountRub = Number(plan.amount_rub || 0);
-          return (
-            <CabinetRow
-              key={plan.code}
-              icon={icon(isCurrent ? "check_circle" : "calendar_month")}
-              label={plan.label}
-              hint={planHint(plan)}
-              value={`${amountRub} ₽`}
-              action={
-                isCurrent ? (
-                  <span className="text-sm font-semibold text-[color:var(--atlas-primary)]">Действует</span>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Срок</h2>
+        <div className="cab-plans">
+          {visiblePlans.map((plan) => {
+            const normalizedCode = normalizePlanCode(plan.code);
+            const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
+            const isFeatured = !isCurrent && plan.code === featuredCode;
+            const amountRub = Number(plan.amount_rub || 0);
+            const days = Number(plan.days || 0);
+            return (
+              <article key={plan.code} className={`cab-plan${isFeatured ? " cab-plan--featured" : ""}${isCurrent ? " cab-plan--current" : ""}`}>
+                {plan.badge || isFeatured ? (
+                  <span className="cab-plan-badge" data-tone={isFeatured ? "success" : "neutral"}>{plan.badge || "выгодно"}</span>
+                ) : (
+                  <span className="cab-plan-badge" data-tone="neutral">срок</span>
+                )}
+                <h3 className="cab-plan-title">{plan.label}</h3>
+                <div className="cab-plan-price">
+                  {amountRub} ₽{days > 0 ? <span> / {days} дн.</span> : null}
+                </div>
+                <p className="cab-plan-meta">{planHint(plan)}</p>
+                {isCurrent ? (
+                  <span className="cab-plan-current-tag">
+                    {icon("check_circle", "h-[18px] w-[18px]")}
+                    Действует сейчас
+                  </span>
                 ) : (
                   <AppRouteLink
                     href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
-                    className="cab-link"
+                    className={`cab-btn ${isFeatured ? "cab-btn--primary" : "cab-btn--secondary"} cab-btn--block`}
                   >
                     Выбрать
                   </AppRouteLink>
-                )
-              }
-            />
-          );
-        })}
-      </CabinetGroup>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
       {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Часть тарифов не обновилась: {error}</p> : null}
 
       <CabinetGroup title="Действия">
@@ -204,7 +222,7 @@ export default function SubscriptionPage() {
             onClick={() => setManualAccessOpen((value) => !value)}
             disabled={!manualAccessReady}
           >
-            {manualAccessOpen ? "Скрыть" : "Показать"}
+            {manualAccessVisible ? "Скрыть" : "Показать"}
           </Button>
         </div>
         <div className="cab-panel">
@@ -212,9 +230,9 @@ export default function SubscriptionPage() {
             icon={icon("qr_code_2")}
             label="Личная ссылка и QR"
             hint={manualAccessReady ? "Только для восстановления или совместимого клиента" : "Появится после активации"}
-            value={manualAccessOpen ? "открыто" : "скрыто"}
+            value={manualAccessVisible ? "открыто" : "скрыто"}
           />
-          {manualAccessOpen ? (
+          {manualAccessVisible ? (
             <div className="space-y-5 border-t border-[color:var(--atlas-table-divider)] p-4">
               <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />

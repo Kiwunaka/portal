@@ -34,12 +34,13 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("config.webappUrl", hero_check.must_contain)
         self.assertIn("config.newsChannelUrl", hero_check.must_contain)
         self.assertIn("/checkout/?plan=", hero_check.must_contain)
-        self.assertIn("Один спокойный путь", hero_check.must_contain)
+        self.assertIn("POKROV открывает YouTube, TikTok и другие сервисы", hero_check.must_contain)
+        self.assertIn("Один сценарий под эту задачу.", hero_check.must_contain)
         self.assertIn("lp-hero-stage", hero_check.must_contain)
         self.assertIn("lp-trust-grid", hero_check.must_contain)
         self.assertIn("lp-pricing-shell", hero_check.must_contain)
         self.assertIn("lp-footer-cta", hero_check.must_contain)
-        self.assertIn('<details className="lp-faq-item">', hero_check.must_contain)
+        self.assertIn('className="lp-faq-item"', hero_check.must_contain)
         self.assertIn("href={config.connectUrl}", hero_check.must_not_contain)
         self.assertIn("managed premium", hero_check.must_not_contain)
 
@@ -65,7 +66,7 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         webapp_entry = checks["webapp-entry"]
         self.assertIn("POKROV cabinet", webapp_entry.must_contain)
-        self.assertIn("pokrovBranding.entryEyebrow", webapp_entry.must_contain)
+        self.assertIn("pokrovBranding.cabinetName", webapp_entry.must_contain)
 
 
 if __name__ == "__main__":

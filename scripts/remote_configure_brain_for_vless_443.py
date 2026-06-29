@@ -201,7 +201,7 @@ print(json.dumps({'ok':False,'error':'created_but_not_found'})); sys.exit(6)
         #
         # Instead: do the inbound creation from LOCAL machine using scripts/create_reality_inbounds.py.
         print("OK: caddy now serves :8444 and :2096. Next run locally: python scripts/create_reality_inbounds.py --include-brain --only brain")
-        print(f"Brain panel (localhost): port={panel_port} path=<{panel_path}> (not printed fully here)")
+        print(f"Brain panel (localhost): port={panel_port} path_len={len(panel_path)}")
         return 0
     finally:
         ssh.close()

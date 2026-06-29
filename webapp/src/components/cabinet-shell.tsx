@@ -375,10 +375,17 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     : "Срок закончился. Продление вернет доступ в том же аккаунте.";
 
   const navItemClass = (active: boolean) =>
-    `flex items-center gap-3 rounded-[var(--pokrov-radius-control)] px-3 py-2.5 text-sm font-semibold transition-colors ${
+    `group flex items-center gap-3 rounded-[var(--pokrov-radius-control)] px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
       active
-        ? "bg-[color:var(--atlas-primary)] text-[color:var(--atlas-primary-text)]"
-        : "text-[color:var(--atlas-text-soft)] hover:bg-[color:var(--atlas-nav-hover)] hover:text-[color:var(--atlas-text)]"
+        ? "bg-[color:var(--atlas-primary)] text-[color:var(--atlas-primary-text)] shadow-[var(--atlas-shadow-soft)]"
+        : "text-[color:var(--atlas-text-soft)] hover:bg-[color:var(--atlas-nav-hover)] hover:text-[color:var(--atlas-text)] hover:translate-x-0.5"
+    }`;
+
+  const navIconClass = (active: boolean) =>
+    `grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors duration-200 ${
+      active
+        ? "bg-white/20 text-current"
+        : "bg-[color:var(--atlas-canvas-alt)] text-[color:var(--atlas-primary)] group-hover:bg-[color:var(--atlas-surface)]"
     }`;
 
   const adminTag = (active: boolean) => (
@@ -420,7 +427,9 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
             const isAdminItem = item.href.startsWith("/admin");
             return (
               <AppRouteLink key={item.href} href={item.href} className={navItemClass(active)} aria-current={active ? "page" : undefined}>
-                <CabinetIcon name={item.icon} className="h-5 w-5 shrink-0" />
+                <span className={navIconClass(active)}>
+                  <CabinetIcon name={item.icon} className="h-[18px] w-[18px]" />
+                </span>
                 <span className="min-w-0 truncate">{item.label}</span>
                 {isAdminItem ? adminTag(active) : null}
               </AppRouteLink>

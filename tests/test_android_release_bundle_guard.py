@@ -29,12 +29,12 @@ def test_android_release_bundle_is_root_orchestrated_from_pokrov_app() -> None:
     assert '"android-apk": "Client Android APK build",' in release_gate_text
     assert '"android-aab": "Client Android AAB build",' in release_gate_text
     assert '[sys.executable, "scripts/run_client_release_gate.py", "build", "--target", target],' in release_gate_text
-    assert 'DEFAULT_CLIENT_ROOT = Path("C:/Users/kiwun/Documents/ai/POKROV-app")' in client_gate_text
+    assert 'DEFAULT_CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"' in client_gate_text
     assert 'CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))' in client_gate_text
     assert 'status.android_shell_root / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk"' in client_gate_text
     assert 'status.android_shell_root / "build" / "app" / "outputs" / "bundle" / "release" / "app-release.aab"' in client_gate_text
     assert "cwd=status.android_shell_root" in client_gate_text
     assert "raw Android wrapper artifacts are produced under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/build/app/outputs/...`" in deployment_text
     assert "store the active client-lane bundle under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`" in deployment_text
-    assert "public cutover approval: `not allowed`" in cutover_text
-    assert "public Android release approval: `blocked`" in cutover_text
+    assert "public cutover approval: `outside-store beta only`" in cutover_text
+    assert "public Android release approval: `outside-store beta with operator attestation`" in cutover_text

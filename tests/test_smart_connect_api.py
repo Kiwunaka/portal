@@ -223,7 +223,7 @@ def _auth_headers(start_body: dict[str, object], *, carrier: str = "") -> dict[s
     return headers
 
 
-def test_managed_profile_exposes_top_five_eligible_premium_shortlist(monkeypatch, tmp_path) -> None:
+def test_managed_profile_exposes_capacity_ranked_eligible_premium_shortlist(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
 
@@ -255,8 +255,8 @@ def test_managed_profile_exposes_top_five_eligible_premium_shortlist(monkeypatch
     smart_connect = managed.json()["smart_connect"]
     assert smart_connect["eligible"] is True
     assert smart_connect["fallback_required"] is False
-    assert [item["code"] for item in smart_connect["shortlist"]] == ["pl", "de", "us", "it", "nl"]
-    assert len(smart_connect["shortlist"]) == 5
+    assert [item["code"] for item in smart_connect["shortlist"]] == ["pl", "de", "us", "it", "nl", "es"]
+    assert len(smart_connect["shortlist"]) == 6
     penalties = {item["code"]: item for item in smart_connect["shortlist"]}
     assert penalties["nl"]["rank_hint"]["backend_penalty"] == 0
     assert penalties["nl"]["rank_hint"]["cpu_penalty"] == 0
@@ -293,7 +293,7 @@ def test_managed_profile_uses_nl_free_only_for_free_pool(monkeypatch, tmp_path) 
     assert [item["code"] for item in smart_connect["shortlist"]] == ["nl-free"]
 
 
-def test_managed_profile_shortlist_respects_usernode_mapping_precedence(monkeypatch, tmp_path) -> None:
+def test_managed_profile_premium_shortlist_ignores_usernode_mapping_limits(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
 
@@ -315,7 +315,7 @@ def test_managed_profile_shortlist_respects_usernode_mapping_precedence(monkeypa
 
     managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
     assert managed.status_code == 200, managed.text
-    assert [item["code"] for item in managed.json()["smart_connect"]["shortlist"]] == ["it", "pl"]
+    assert [item["code"] for item in managed.json()["smart_connect"]["shortlist"]] == ["pl", "de", "it"]
 
 
 def test_managed_profile_flags_fallback_when_no_eligible_nodes_remain(monkeypatch, tmp_path) -> None:
@@ -372,7 +372,7 @@ def test_latency_samples_are_ingested_and_exposed_as_sticky_hint(monkeypatch, tm
     managed_payload = managed.json()
     sticky = managed_payload["smart_connect"]["stickiness"]
     assert sticky["preferred_node_code"] == "it"
-    assert sticky["threshold_percent"] == 15
+    assert sticky["threshold_percent"] == 20
     selector = next(
         item
         for item in managed_payload["config_payload"]["outbounds"]
@@ -392,6 +392,72 @@ def test_latency_samples_are_ingested_and_exposed_as_sticky_hint(monkeypatch, tm
         meta = json.loads(str(row.meta_json or "{}"))
         assert meta["selected_node_code"] == "it"
         assert meta["install_id"] == "install-sticky"
+    finally:
+        db.close()
+
+
+def test_client_candidates_and_select_support_capacity_ranking_and_manual_choice(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    now = _utcnow()
+    _add_node(api, code="pl", health_score=98.0, last_health_at=now)
+    _add_node(api, code="it", health_score=96.0, last_health_at=now)
+    _add_node(api, code="de", health_score=95.0, cpu_percent=90.0, last_health_at=now)
+
+    start_body = _start_trial(client, install_id="install-candidates")
+    headers = _auth_headers(start_body)
+
+    candidates = client.get("/api/client/nodes/candidates", headers=headers)
+    assert candidates.status_code == 200, candidates.text
+    candidate_payload = candidates.json()
+    assert candidate_payload["strategy"] == "capacity_rtt_sticky"
+    assert [item["code"] for item in candidate_payload["shortlist"]] == ["pl", "it"]
+    assert candidate_payload["rejected_counts"]["cpu_hot"] == 1
+
+    auto_select = client.post(
+        "/api/client/nodes/select",
+        headers=headers,
+        json={
+            "mode": "auto",
+            "profile_revision": candidate_payload["profile_revision"],
+            "transport_profile": candidate_payload["transport_profile"],
+            "samples": [
+                {"node_code": "pl", "rtt_ms": 150},
+                {"node_code": "it", "rtt_ms": 50},
+            ],
+        },
+    )
+    assert auto_select.status_code == 200, auto_select.text
+    assert auto_select.json()["selected_node_code"] == "it"
+    assert auto_select.json()["accepted_samples"] == 2
+
+    manual_select = client.post(
+        "/api/client/nodes/select",
+        headers=headers,
+        json={
+            "mode": "manual",
+            "selected_node_code": "pl",
+            "previous_node_code": "it",
+            "samples": [],
+        },
+    )
+    assert manual_select.status_code == 200, manual_select.text
+    assert manual_select.json()["selected_node_code"] == "pl"
+    assert manual_select.json()["accepted_samples"] == 0
+
+    db = api.SessionLocal()
+    try:
+        rows = (
+            db.query(api.Event)
+            .filter(api.Event.event_name == "smart_connect_node_select")
+            .order_by(api.Event.id.asc())
+            .all()
+        )
+        assert len(rows) == 2
+        manual_meta = json.loads(str(rows[-1].meta_json or "{}"))
+        assert manual_meta["mode"] == "manual"
+        assert manual_meta["samples"] == []
     finally:
         db.close()
 

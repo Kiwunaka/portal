@@ -70,6 +70,24 @@ class FreekassaApiProbeTests(unittest.TestCase):
         self.assertEqual(connect.call_args.kwargs["code"], "brain")
         self.assertEqual(connect.call_args.kwargs["passwords_path"], passwords)
 
+    def test_remote_python_builds_bounded_ascii_json_api_probe(self) -> None:
+        cmd = self.module._remote_python(
+            "site",
+            "orders/create",
+            {
+                "paymentId": "order_1",
+                "amount": 99.0,
+                "description": "\u0442\u0435\u0441\u0442",
+            },
+        )
+
+        self.assertIn("cd /root/portal_bot", cmd)
+        self.assertIn("api._freekassa_api_request", cmd)
+        self.assertIn("source='site'", cmd)
+        self.assertIn("method='orders/create'", cmd)
+        self.assertIn("\\\\u0442\\\\u0435\\\\u0441\\\\u0442", cmd)
+        self.assertNotIn("\u0442\u0435\u0441\u0442", cmd)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,6 +47,7 @@ def _load_api(
         "db",
         "email_auth_service",
         "email_delivery_service",
+        "app_first_service",
         "migrations",
         "models",
         "web_auth_service",
@@ -75,6 +76,17 @@ def _capture_auth_delivery(monkeypatch, api):
 
     monkeypatch.setattr(api, "deliver_auth_message", fake_deliver_auth_message)
     return captured
+
+
+def _install_fake_panel(monkeypatch, api):
+    class FakePanel:
+        async def add_client(self, **_kwargs):
+            return True
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(api, "ControlPanel", FakePanel)
 
 
 def test_owned_backend_files_do_not_use_datetime_utcnow():
@@ -320,6 +332,83 @@ def test_email_register_can_link_to_existing_user(monkeypatch, tmp_path):
     session_body = session.json()
     assert session_body["user"]["id"] == 1001
     assert session_body["user"]["linked_identities"]["email"]["email"] == "alice@pokrov.test"
+
+
+def test_email_register_from_app_session_links_to_app_account(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    _install_fake_panel(monkeypatch, api)
+    captured = _capture_auth_delivery(monkeypatch, api)
+    client = TestClient(api.app)
+
+    start = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-email-link-app",
+            "device_name": "Pixel 9",
+            "platform": "android",
+            "os_version": "15",
+            "app_version": "1.0.0",
+            "locale": "ru",
+            "time_zone": "Europe/Moscow",
+            "trial_days": 5,
+        },
+    )
+
+    assert start.status_code == 200, start.text
+    app_account_id = int(start.json()["account_id"])
+    app_session_token = str(start.json()["session_token"])
+
+    register = client.post(
+        "/api/auth/email/register",
+        headers={"Authorization": f"Bearer {app_session_token}"},
+        json={
+            "email": "app-linked@pokrov.test",
+            "password": "StrongPass123!",
+            "display_name": "App Linked",
+        },
+    )
+
+    assert register.status_code == 200, register.text
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, verify.text
+    verify_body = verify.json()
+    assert int(verify_body["user"]["id"]) == app_account_id
+    assert verify_body["user"]["email"] == "app-linked@pokrov.test"
+
+    login = client.post(
+        "/api/auth/email/login",
+        json={"email": "app-linked@pokrov.test", "password": "StrongPass123!"},
+    )
+
+    assert login.status_code == 200, login.text
+    login_body = login.json()
+    assert int(login_body["user"]["id"]) == app_account_id
+
+    session = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {login_body['token']}"},
+    )
+
+    assert session.status_code == 200, session.text
+    session_body = session.json()
+    assert int(session_body["user"]["id"]) == app_account_id
+    assert session_body["user"]["auth_type"] == "email"
+    assert session_body["user"]["auth_origin"] == "email"
+    assert session_body["user"]["email"] == "app-linked@pokrov.test"
+    assert session_body["user"]["device_name"] == "Pixel 9"
+
+    db = api.SessionLocal()
+    try:
+        users = db.query(api.User).all()
+        assert [int(user.tg_id) for user in users] == [app_account_id]
+        user = users[0]
+        assert bool(user.is_app_user) is True
+        assert user.app_install_id == "install-email-link-app"
+        identity = db.query(api.WebEmailIdentity).filter_by(email_norm="app-linked@pokrov.test").first()
+        assert identity is not None
+        assert int(identity.linked_tg_id) == app_account_id
+    finally:
+        db.close()
 
 
 def test_email_account_linked_to_admin_telegram_keeps_admin_access(monkeypatch, tmp_path):

@@ -151,6 +151,7 @@ export default function QaOverlay() {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
+        data-testid="qa-overlay-toggle"
         className="haptic-tap fixed bottom-[calc(5.5rem+var(--tg-safe-area-bottom,0px))] left-3 z-[260] rounded-full border border-cyan-300/60 bg-cyan-500/90 px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-white shadow-xl"
         aria-label="Открыть QA overlay"
       >
@@ -160,6 +161,7 @@ export default function QaOverlay() {
       <AnimatePresence>
         {open ? (
           <motion.aside
+            data-testid="qa-overlay-panel"
             initial={{ opacity: 0, y: 14, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.96 }}
@@ -174,7 +176,7 @@ export default function QaOverlay() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="haptic-tap rounded-lg bg-[color:var(--atlas-surface)] px-2 py-1 text-xs"
+                className="haptic-tap rounded-lg border border-cyan-200/15 bg-cyan-50/10 px-2 py-1 text-xs text-cyan-50"
                 aria-label="Закрыть QA overlay"
               >
                 close
@@ -182,26 +184,40 @@ export default function QaOverlay() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">UI: {metrics.interactive}</div>
-              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Links: {metrics.links}</div>
-              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Btns: {metrics.buttons}</div>
-              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Inputs: {metrics.inputs}</div>
-              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Disabled: {metrics.disabled}</div>
-              <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">Icon-only: {metrics.iconOnlyButtons}</div>
+              <div data-testid="qa-metric-interactive" className="rounded-lg border border-cyan-200/10 bg-cyan-50/10 p-2 text-cyan-50">
+                UI: {metrics.interactive}
+              </div>
+              <div data-testid="qa-metric-links" className="rounded-lg border border-cyan-200/10 bg-cyan-50/10 p-2 text-cyan-50">
+                Links: {metrics.links}
+              </div>
+              <div data-testid="qa-metric-buttons" className="rounded-lg border border-cyan-200/10 bg-cyan-50/10 p-2 text-cyan-50">
+                Btns: {metrics.buttons}
+              </div>
+              <div data-testid="qa-metric-inputs" className="rounded-lg border border-cyan-200/10 bg-cyan-50/10 p-2 text-cyan-50">
+                Inputs: {metrics.inputs}
+              </div>
+              <div data-testid="qa-metric-disabled" className="rounded-lg border border-cyan-200/10 bg-cyan-50/10 p-2 text-cyan-50">
+                Disabled: {metrics.disabled}
+              </div>
+              <div data-testid="qa-metric-icon-only" className="rounded-lg border border-cyan-200/10 bg-cyan-50/10 p-2 text-cyan-50">
+                Icon-only: {metrics.iconOnlyButtons}
+              </div>
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setMetrics(collectMetrics())}
-                className="haptic-tap rounded-lg bg-[color:var(--atlas-surface)] px-2.5 py-1.5 text-[11px]"
+                data-testid="qa-overlay-refresh"
+                className="haptic-tap rounded-lg border border-cyan-200/15 bg-cyan-50/10 px-2.5 py-1.5 text-[11px] text-cyan-50"
               >
                 Обновить
               </button>
               <button
                 type="button"
                 onClick={() => setHitbox((prev) => !prev)}
-                className={`haptic-tap rounded-lg px-2.5 py-1.5 text-[11px] ${hitbox ? "bg-cyan-500/85 text-white" : "bg-[color:var(--atlas-surface)]"}`}
+                data-testid="qa-overlay-hitbox"
+                className={`haptic-tap rounded-lg border px-2.5 py-1.5 text-[11px] ${hitbox ? "border-cyan-300/35 bg-cyan-500/85 text-white" : "border-cyan-200/15 bg-cyan-50/10 text-cyan-50"}`}
               >
                 Hitbox {hitbox ? "ON" : "OFF"}
               </button>
@@ -209,15 +225,18 @@ export default function QaOverlay() {
                 type="button"
                 onClick={runLinkScan}
                 disabled={scanning}
-                className="haptic-tap rounded-lg bg-[color:var(--atlas-surface)] px-2.5 py-1.5 text-[11px] disabled:opacity-50"
+                data-testid="qa-overlay-link-scan"
+                className="haptic-tap rounded-lg border border-cyan-200/15 bg-cyan-50/10 px-2.5 py-1.5 text-[11px] text-cyan-50 disabled:opacity-50"
               >
                 {scanning ? "Сканируем..." : "Проверить ссылки"}
               </button>
             </div>
 
             {links.length > 0 ? (
-              <div className="mt-3 rounded-xl bg-[color:var(--atlas-surface)] p-2.5">
-                <p className="text-[11px] text-cyan-100/85">Broken: {brokenCount}</p>
+              <div data-testid="qa-overlay-link-results" className="mt-3 rounded-xl border border-cyan-200/10 bg-cyan-50/10 p-2.5">
+                <p data-testid="qa-overlay-broken-count" className="text-[11px] text-cyan-100/85">
+                  Broken: {brokenCount}
+                </p>
                 <div className="mt-2 max-h-24 space-y-1 overflow-y-auto pr-1 text-[10px]">
                   {links.map((item) => (
                     <div key={item.href} className="flex items-center justify-between gap-2">

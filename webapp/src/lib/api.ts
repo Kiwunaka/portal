@@ -956,6 +956,8 @@ export type AdminNodeHealthRow = {
   panel_latency_ms?: number | null;
   panel_error_rate: number;
   active_clients: number;
+  provisioned_clients_count?: number | null;
+  online_connections_hint?: number | null;
   cpu_percent?: number | null;
   memory_used_mb?: number | null;
   memory_total_mb?: number | null;
@@ -967,6 +969,19 @@ export type AdminNodeHealthRow = {
   network_rx_mbps?: number | null;
   network_tx_mbps?: number | null;
   network_total_mbps?: number | null;
+  network_rx_mbps_1m?: number | null;
+  network_tx_mbps_1m?: number | null;
+  network_rx_mbps_5m?: number | null;
+  network_tx_mbps_5m?: number | null;
+  tcp_retrans_percent?: number | null;
+  packet_loss_percent?: number | null;
+  dataplane_ok?: boolean | null;
+  dataplane_rtt_ms?: number | null;
+  capacity_state?: string | null;
+  capacity_score?: number | null;
+  capacity_reject_reason?: string | null;
+  capacity_tx_ratio?: number | null;
+  capacity_tx_mbps?: number | null;
   network_peak_mbps_24h?: number | null;
   network_port_capacity_mbps?: number | null;
   network_utilization_percent?: number | null;
@@ -989,6 +1004,51 @@ export type AdminNodeHealthRow = {
   transport_health?: unknown | null;
   transport_profiles?: Record<string, AdminTransportProfile> | null;
   weight: number;
+};
+
+export type AdminNodeCapacityRow = {
+  code: string;
+  name: string;
+  enabled: boolean;
+  accepting_new_clients: boolean;
+  is_draining: boolean;
+  capacity_state: string;
+  capacity_score: number;
+  reject_reason?: string | null;
+  tx_mbps?: number | null;
+  tx_ratio?: number | null;
+  capacity_mbps?: number | null;
+  cpu_percent?: number | null;
+  dataplane_ok?: boolean | null;
+  dataplane_rtt_ms?: number | null;
+  packet_loss_percent?: number | null;
+  tcp_retrans_percent?: number | null;
+  provisioned_clients_count: number;
+  online_connections_hint: number;
+  pressure_keys: number;
+  last_health_at?: string | null;
+  policy?: {
+    soft_tx_ratio?: number | null;
+    drain_tx_ratio?: number | null;
+    hard_tx_ratio?: number | null;
+    stale_after_seconds?: number | null;
+  };
+};
+
+export type AdminKeyPressureRow = {
+  key_id: number;
+  tg_id?: number | null;
+  node_code?: string | null;
+  panel_email?: string | null;
+  state: string;
+  pressure_score: number;
+  reasons: string[];
+  distinct_source_ips_1h: number;
+  distinct_source_ips_24h: number;
+  node_count_24h: number;
+  traffic_gb_24h: number;
+  manual_review_required: boolean;
+  updated_at?: string | null;
 };
 
 export type AdminTransportProfile = {
@@ -2288,6 +2348,7 @@ export function createRubCheckoutOrder(payload: {
   campaign?: string;
   promo_code?: string;
   currency?: string;
+  payment_method?: "sbp" | "card";
 }): Promise<RubCheckoutStartResult> {
   return apiFetch("/api/payments/orders/create", {
     method: "POST",
@@ -2305,6 +2366,7 @@ export function createPublicRubCheckoutOrder(payload: {
   campaign?: string;
   promo_code?: string;
   currency?: string;
+  payment_method?: "sbp" | "card";
 }): Promise<RubCheckoutStartResult> {
   return apiFetch("/api/payments/orders/create-public", {
     method: "POST",
@@ -2567,6 +2629,8 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
     panel_latency_ms: data.panel_latency_ms ?? null,
     panel_error_rate: Number(data.panel_error_rate || 0),
     active_clients: Number(data.active_clients || 0),
+    provisioned_clients_count: data.provisioned_clients_count == null ? null : Number(data.provisioned_clients_count),
+    online_connections_hint: data.online_connections_hint == null ? null : Number(data.online_connections_hint),
     cpu_percent: data.cpu_percent == null ? null : Number(data.cpu_percent),
     memory_used_mb: data.memory_used_mb == null ? null : Number(data.memory_used_mb),
     memory_total_mb: data.memory_total_mb == null ? null : Number(data.memory_total_mb),
@@ -2578,6 +2642,19 @@ function normalizeAdminNodeHealthRow(payload: Partial<AdminNodeHealthRow> | null
     network_rx_mbps: data.network_rx_mbps == null ? null : Number(data.network_rx_mbps),
     network_tx_mbps: data.network_tx_mbps == null ? null : Number(data.network_tx_mbps),
     network_total_mbps: data.network_total_mbps == null ? null : Number(data.network_total_mbps),
+    network_rx_mbps_1m: data.network_rx_mbps_1m == null ? null : Number(data.network_rx_mbps_1m),
+    network_tx_mbps_1m: data.network_tx_mbps_1m == null ? null : Number(data.network_tx_mbps_1m),
+    network_rx_mbps_5m: data.network_rx_mbps_5m == null ? null : Number(data.network_rx_mbps_5m),
+    network_tx_mbps_5m: data.network_tx_mbps_5m == null ? null : Number(data.network_tx_mbps_5m),
+    tcp_retrans_percent: data.tcp_retrans_percent == null ? null : Number(data.tcp_retrans_percent),
+    packet_loss_percent: data.packet_loss_percent == null ? null : Number(data.packet_loss_percent),
+    dataplane_ok: data.dataplane_ok == null ? null : Boolean(data.dataplane_ok),
+    dataplane_rtt_ms: data.dataplane_rtt_ms == null ? null : Number(data.dataplane_rtt_ms),
+    capacity_state: data.capacity_state == null ? null : String(data.capacity_state),
+    capacity_score: data.capacity_score == null ? null : Number(data.capacity_score),
+    capacity_reject_reason: data.capacity_reject_reason == null ? null : String(data.capacity_reject_reason),
+    capacity_tx_ratio: data.capacity_tx_ratio == null ? null : Number(data.capacity_tx_ratio),
+    capacity_tx_mbps: data.capacity_tx_mbps == null ? null : Number(data.capacity_tx_mbps),
     network_peak_mbps_24h: data.network_peak_mbps_24h == null ? null : Number(data.network_peak_mbps_24h),
     network_port_capacity_mbps: data.network_port_capacity_mbps == null ? null : Number(data.network_port_capacity_mbps),
     network_utilization_percent: data.network_utilization_percent == null ? null : Number(data.network_utilization_percent),
@@ -3213,6 +3290,44 @@ export async function adminNodesHealth(): Promise<AdminNodeHealthRow[]> {
   return Array.isArray(data.nodes) ? data.nodes.map((row) => normalizeAdminNodeHealthRow(row)) : [];
 }
 
+export async function adminNodesCapacity(): Promise<AdminNodeCapacityRow[]> {
+  const data = await apiFetch<{ nodes: Array<Partial<AdminNodeCapacityRow>> }>("/api/admin/nodes/capacity");
+  return Array.isArray(data.nodes)
+    ? data.nodes.map((row) => ({
+        code: String(row.code || ""),
+        name: String(row.name || ""),
+        enabled: Boolean(row.enabled),
+        accepting_new_clients: Boolean(row.accepting_new_clients),
+        is_draining: Boolean(row.is_draining),
+        capacity_state: String(row.capacity_state || "unknown"),
+        capacity_score: Number(row.capacity_score || 0),
+        reject_reason: row.reject_reason == null ? null : String(row.reject_reason),
+        tx_mbps: row.tx_mbps == null ? null : Number(row.tx_mbps),
+        tx_ratio: row.tx_ratio == null ? null : Number(row.tx_ratio),
+        capacity_mbps: row.capacity_mbps == null ? null : Number(row.capacity_mbps),
+        cpu_percent: row.cpu_percent == null ? null : Number(row.cpu_percent),
+        dataplane_ok: row.dataplane_ok == null ? null : Boolean(row.dataplane_ok),
+        dataplane_rtt_ms: row.dataplane_rtt_ms == null ? null : Number(row.dataplane_rtt_ms),
+        packet_loss_percent: row.packet_loss_percent == null ? null : Number(row.packet_loss_percent),
+        tcp_retrans_percent: row.tcp_retrans_percent == null ? null : Number(row.tcp_retrans_percent),
+        provisioned_clients_count: Number(row.provisioned_clients_count || 0),
+        online_connections_hint: Number(row.online_connections_hint || 0),
+        pressure_keys: Number(row.pressure_keys || 0),
+        last_health_at: row.last_health_at ?? null,
+        policy: row.policy,
+      }))
+    : [];
+}
+
+export async function adminKeysPressure(params?: { state?: string; limit?: number }): Promise<AdminKeyPressureRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.state) qs.set("state", params.state);
+  if (params?.limit != null) qs.set("limit", String(params.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const data = await apiFetch<{ keys: AdminKeyPressureRow[] }>(`/api/admin/keys/pressure${suffix}`);
+  return Array.isArray(data.keys) ? data.keys : [];
+}
+
 export async function adminMetricsStatus(): Promise<AdminMetricsStatus> {
   const data = await apiFetch<Partial<AdminMetricsStatus>>("/api/admin/metrics/status");
   return normalizeAdminMetricsStatus(data);
@@ -3243,6 +3358,14 @@ export function adminNodeDrain(code: string): Promise<{ ok: boolean; node: Admin
 
 export function adminNodeEnable(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
   return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/enable`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+}
+
+export function adminNodeUndrain(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
+  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/undrain`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
@@ -3345,6 +3468,14 @@ export function adminGiftCodeCreate(card_type: "mini" | "standard" | "premium"):
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ card_type }),
+  });
+}
+
+export function adminKeyRotate(keyId: number, payload?: { reason?: string; dry_run?: boolean }): Promise<{ ok: boolean; key_id: number; job_id?: number; status?: string }> {
+  return apiFetch(`/api/admin/keys/${encodeURIComponent(String(keyId))}/rotate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
   });
 }
 

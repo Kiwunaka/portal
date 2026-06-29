@@ -1,0 +1,49 @@
+{
+  "mode": "current_origin_public_host_reachability",
+  "timestamp_local": "2026-06-27",
+  "origin": "operator_workstation_current_origin",
+  "classification": "PARTIAL_PUBLIC_REACHABILITY_PASS",
+  "claim_scope": "Public current-origin host reachability only. This does not prove authenticated app-session behavior, deploy approval, brain-origin reachability, RU-origin reachability, device install/connect behavior, or payment-provider maturity.",
+  "command": "PowerShell Invoke-WebRequest with MaximumRedirection=5 and TimeoutSec=20",
+  "targets": [
+    {
+      "name": "marketing",
+      "url": "https://pokrov.space/",
+      "status": 200,
+      "final_url": "https://pokrov.space/",
+      "content_type": "text/html; charset=utf-8",
+      "result": "PASS"
+    },
+    {
+      "name": "cabinet",
+      "url": "https://app.pokrov.space/",
+      "status": 200,
+      "final_url": "https://app.pokrov.space/",
+      "content_type": "text/html; charset=utf-8",
+      "result": "PASS"
+    },
+    {
+      "name": "api_health",
+      "url": "https://api.pokrov.space/api/health",
+      "status": 200,
+      "final_url": "https://api.pokrov.space/api/health",
+      "content_type": "application/json",
+      "result": "PASS"
+    },
+    {
+      "name": "checkout",
+      "url": "https://pay.pokrov.space/checkout/",
+      "status": 200,
+      "final_url": "https://pay.pokrov.space/checkout/",
+      "content_type": "text/html; charset=utf-8",
+      "result": "PASS"
+    }
+  ],
+  "not_probed": [
+    {
+      "name": "connect",
+      "url": "https://connect.pokrov.space/",
+      "reason": "Config delivery host needs a user subscription token/path for meaningful behavior evidence; do not treat the root host as a public acquisition page."
+    }
+  ]
+}

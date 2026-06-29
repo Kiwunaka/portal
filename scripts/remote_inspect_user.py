@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 from pathlib import Path
 
 import paramiko
@@ -59,6 +60,7 @@ def main() -> int:
     )
     try:
         tid = int(args.tg_id)
+        db_arg = shlex.quote(str(args.db_name))
         queries = [
             (
                 "user",
@@ -87,7 +89,7 @@ def main() -> int:
         for label, sql in queries:
             print(f"\n=== {label} ===")
             cmd = (
-                f"runuser -u postgres -- psql -d {args.db_name} -P pager=off "
+                f"runuser -u postgres -- psql -d {db_arg} -P pager=off "
                 f"-c \"{sql}\" 2>/dev/null || true"
             )
             _, out, err = _run(ssh, cmd, timeout=120)

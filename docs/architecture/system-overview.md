@@ -78,6 +78,7 @@ Reference-lane note:
 - node inventory and routing logic
 - 3x-ui panels as node-local execution layer
 - observer-lite uses `xray access.log -> node collector -> brain ingest -> Postgres state -> web admin`
+- capacity-aware routing state lives in additive tables such as `access_keys`, `node_capacity_policy`, `node_runtime_metrics`, `key_usage_rollups`, `key_source_observations`, `key_pressure_state`, `subscription_fetch_events`, `rendered_subscription_snapshots`, `node_pool_membership`, and `node_provisioning_jobs`
 - transport rollout uses a per-node catalog so a node can carry `legacy_reality_fallback`, `grpc_443_primary`, hidden reserve `reserve_xhttp_cdn`, emergency `ru_bridge_relay`, and operator-only `operator_lab` entries side by side
 - `nodes.transport_profiles_json` is the canonical per-node transport catalog; legacy inbound fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and are synthesized into `legacy_reality_fallback` when the catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout policy for transport, DNS, routing, and operator lab allowlists, and it is exposed through admin GET/PUT endpoints
@@ -89,7 +90,7 @@ Reference-lane note:
 - `operator_lab` stays allowlist-only and carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
-- `smart_connect` contains a rollout-compatible shortlist, internal probe targets, rejection counters, scoring hints, and stickiness metadata so the client can combine real RTT with backend health/load signals without guessing
+- `smart_connect` contains a rollout-compatible shortlist, internal probe targets, capacity/scoring hints, rejection counters, and stickiness metadata so the client can combine real RTT with backend health, dataplane, and network-pressure signals without guessing
 - `client_policy.warp_policy` remains sanitized; the default WARP path is
   client-local through Hiddify core, so the backend must not require
   server-managed WireGuard material before the client can set
@@ -112,7 +113,8 @@ Reference-lane note:
   `POST /api/client/warp/events` own the app-facing WARP lifecycle; these
   routes write `WarpEvent` rows and redact runtime secrets from public status
   and ledger metadata
-- `POST /api/client/nodes/latency-samples` stores install-scoped RTT samples plus carrier/platform context for admin visibility and later shortlist stickiness
+- `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed` form the primary app node-selection contract; `POST /api/client/nodes/latency-samples` remains compatibility telemetry for install-scoped RTT samples and carrier/platform context
+- `POST /api/client/runtime/stats` is best-effort app telemetry and must not be required from external subscription clients
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path
 - `reserve_xhttp_cdn` is prepared as a hidden reserve profile; when explicitly selected it resolves to `transport_kind=xhttp` with `engine_hint=xray`, while the normal consumer baseline stays `sing-box`
@@ -408,7 +410,7 @@ Current release validation also has to correlate:
 Dashboard and user-cabinet traffic visibility must come from server-side node runtime snapshots rather than app-only telemetry.
 
 - current traffic usage should prefer live panel/runtime counters aggregated across the user nodes
-- current connection count should prefer runtime connection evidence such as active IP counts or active nodes
+- current connection count should prefer runtime connection evidence such as active IP counts or active nodes, but `active_clients` / panel configured-client count is only provisioned-key evidence and must not be treated as online people or devices
 - the cabinet/admin subscription-sharing proxy metric should be described as an estimate, not a people counter: it is derived from live IP activity and capped by recent unique IP evidence so operators can distinguish likely people-sharing from raw connection fan-out
 - app device records remain useful, but they are a separate app-first visibility layer and must not be shown as the only source of "connected devices"
 

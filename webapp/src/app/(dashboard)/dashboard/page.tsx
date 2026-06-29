@@ -2,7 +2,15 @@
 
 import AppRouteLink from "@/components/app-route-link";
 import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import {
+  CabinetActionCard,
+  CabinetActionGrid,
+  CabinetGroup,
+  CabinetRow,
+  CabinetStatus,
+  CabinetTile,
+  CabinetTiles,
+} from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
 import {
   getAccessState,
@@ -83,16 +91,18 @@ export default function DashboardPage() {
         : "Откройте приложение и нажмите Подключить.";
   const primaryHref = isActive ? "/downloads/" : "/subscription/checkout/";
   const primaryLabel = isActive ? "Скачать приложение" : "Продлить";
+  const emblemName = !isActive ? "lock" : softMode ? "warning" : "verified_user";
 
   const deviceRows = (user?.devices || []).slice(0, 2);
 
   return (
-    <main className="cab-page">
+    <main className="cab-page cab-page--wide">
       <CabinetStatus
         title={statusTitle}
         meta={statusMeta}
         body={statusBody}
         tone={statusTone}
+        emblem={icon(emblemName, "h-7 w-7")}
         action={
           <Button href={primaryHref} className="w-full sm:w-auto">
             {primaryLabel}
@@ -100,17 +110,35 @@ export default function DashboardPage() {
         }
       />
 
-      <CabinetGroup title="Сводка">
-        <CabinetRow icon={icon("speed")} label="Трафик" value={trafficText} />
-        <CabinetRow icon={icon("devices")} label="Устройства" value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`} href="/devices/" />
-        <CabinetRow icon={icon("wifi_tethering")} label="Подключения" value={activeConnections > 0 ? `${formatCount(activeConnections)} активно` : "нет активных"} />
-        <CabinetRow icon={icon("event_available")} label="Доступ до" value={formatDate(dash?.expiry_at)} href="/subscription/" />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Сводка</h2>
+        <CabinetTiles>
+          <CabinetTile icon={icon("speed")} label="Трафик" value={dash?.traffic_policy?.kind === "unlimited" ? "Безлимит" : trafficText} tone="info" />
+          <CabinetTile
+            icon={icon("devices")}
+            label="Устройства"
+            value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`}
+            hint="Подключенные"
+            tone="neutral"
+            href="/devices/"
+          />
+          <CabinetTile
+            icon={icon("wifi_tethering")}
+            label="Подключения"
+            value={activeConnections > 0 ? `${formatCount(activeConnections)} активно` : "нет активных"}
+            tone="success"
+          />
+          <CabinetTile icon={icon("event_available")} label="Доступ до" value={formatDate(dash?.expiry_at)} tone="neutral" href="/subscription/" />
+        </CabinetTiles>
+      </section>
 
-      <CabinetGroup title="Быстрый доступ">
-        <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
-        <CabinetRow icon={icon("support_agent")} label="Помощь" hint="Обращения и Telegram" href="/support/" />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Быстрый доступ</h2>
+        <CabinetActionGrid>
+          <CabinetActionCard icon={icon("key")} title="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
+          <CabinetActionCard icon={icon("support_agent")} title="Помощь" hint="Обращения и Telegram" href="/support/" />
+        </CabinetActionGrid>
+      </section>
 
       {deviceRows.length ? (
         <CabinetGroup title="Последние устройства" action={<AppRouteLink href="/devices/" className="cab-link">Все</AppRouteLink>}>

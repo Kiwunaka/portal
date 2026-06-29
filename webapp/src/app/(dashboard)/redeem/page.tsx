@@ -1,7 +1,7 @@
 "use client";
 
 import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { Button, Input, Note } from "@/components/cabinet/ui";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
@@ -125,6 +125,7 @@ export default function RedeemPage() {
         meta={resolvePlanLabel(dash, user)}
         body="Введите код оплаты, подарка или промокод. Личная ссылка подключения сюда не подходит."
         tone={status?.exists && !status.redeemed ? "success" : status?.redeemed ? "warning" : "neutral"}
+        emblem={icon("key", "h-7 w-7")}
         action={
           <Button variant="secondary" href="/subscription/checkout/" className="w-full sm:w-auto">
             Купить доступ
@@ -168,11 +169,14 @@ export default function RedeemPage() {
         )}
       </CabinetGroup>
 
-      <CabinetGroup title="Что дальше">
-        <CabinetRow icon={icon("payments")} label="Купить доступ" hint="Если кода еще нет" href="/subscription/checkout/" />
-        <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Если код уже использован или не найден" href="/support/" />
-        <CabinetRow icon={icon("qr_code_2")} label="Ссылка для совместимого клиента" hint="Только если приложение не подключилось само" href="/subscription/#manual-setup" />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Что дальше</h2>
+        <CabinetActionGrid>
+          <CabinetActionCard icon={icon("payments")} title="Купить доступ" hint="Если кода еще нет" href="/subscription/checkout/" />
+          <CabinetActionCard icon={icon("support_agent")} title="Поддержка" hint="Если код уже использован или не найден" href="/support/" />
+          <CabinetActionCard icon={icon("qr_code_2")} title="Ссылка для совместимого клиента" hint="Только если приложение не подключилось само" href="/subscription/#manual-setup" />
+        </CabinetActionGrid>
+      </section>
     </main>
   );
 }

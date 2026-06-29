@@ -1,8 +1,8 @@
 "use client";
 
 import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
-import { Button, Input } from "@/components/cabinet/ui";
+import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { Button, Chip, Input } from "@/components/cabinet/ui";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
 import { getPricingPreviewDiscountPercent, getTariffPlans, normalizePlanCode } from "@/lib/portal";
@@ -20,7 +20,18 @@ type DisplayPlan = {
   note: string;
 };
 
+type PaymentMethodChoice = "sbp" | "card";
+
 const CHECKOUT_READY_PLAN_CODES = new Set(["start_99"]);
+
+const PAYMENT_METHOD_OPTIONS: Array<{
+  code: PaymentMethodChoice;
+  label: string;
+  hint: string;
+}> = [
+  { code: "sbp", label: "СБП", hint: "Быстро через приложение банка" },
+  { code: "card", label: "Карта", hint: "Visa, Mastercard или МИР" },
+];
 
 const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
   .slice()
@@ -45,6 +56,10 @@ function normalizePromo(raw: string): string {
   return String(raw || "").trim().toUpperCase();
 }
 
+function normalizePaymentMethod(raw: string | null): PaymentMethodChoice {
+  return raw === "card" ? "card" : "sbp";
+}
+
 function formatDuration(days: number): string {
   if (days >= 365) return `${Math.round(days / 30)} мес.`;
   if (days > 90) return `${Math.round(days / 30)} мес.`;
@@ -58,6 +73,7 @@ export default function CheckoutPage() {
   const [promoInput, setPromoInput] = useState(() => normalizePromo(searchParams.get("promo") || ""));
   const [catalogError, setCatalogError] = useState("");
   const [selectedCode, setSelectedCode] = useState(() => normalizePlanCode(searchParams.get("plan"), "start_99"));
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>(() => normalizePaymentMethod(searchParams.get("payment_method")));
   const [providerCode, setProviderCode] = useState("");
   const [providerState, setProviderState] = useState<RubPaymentProvidersResult | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -66,6 +82,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     setSelectedCode(normalizePlanCode(searchParams.get("plan"), "start_99"));
     setPromoInput(normalizePromo(searchParams.get("promo") || ""));
+    setPaymentMethod(normalizePaymentMethod(searchParams.get("payment_method")));
   }, [searchParams]);
 
   useEffect(() => {
@@ -151,6 +168,7 @@ export default function CheckoutPage() {
         source: "site",
         promo_code: discountPercent > 0 ? promoCode : undefined,
         currency: "RUB",
+        payment_method: paymentMethod,
       });
       const paymentUrl = String(order.payment_url || "").trim();
       if (!paymentUrl) {
@@ -175,6 +193,7 @@ export default function CheckoutPage() {
         meta={resolvePlanLabel(dash, user)}
         body="Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле."
         tone={checkoutReady ? "success" : "warning"}
+        emblem={icon(checkoutReady ? "payments" : "warning", "h-7 w-7")}
         action={
           <Button
             onClick={startCheckout}
@@ -211,6 +230,28 @@ export default function CheckoutPage() {
       </CabinetGroup>
       {catalogError ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Каталог не обновился: {catalogError}</p> : null}
 
+      <CabinetGroup title="Способ оплаты">
+        <div className="grid gap-2 p-4 sm:grid-cols-2">
+          {PAYMENT_METHOD_OPTIONS.map((option) => {
+            const selected = option.code === paymentMethod;
+            return (
+              <Chip
+                key={option.code}
+                active={selected}
+                onClick={() => setPaymentMethod(option.code)}
+                className="min-h-[72px] justify-start px-4 py-3 text-left"
+                aria-pressed={selected}
+              >
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className="text-sm font-semibold text-[color:var(--atlas-text)]">{option.label}</span>
+                  <span className="text-xs leading-5 text-[color:var(--atlas-text-soft)]">{option.hint}</span>
+                </span>
+              </Chip>
+            );
+          })}
+        </div>
+      </CabinetGroup>
+
       <CabinetGroup title="Итог">
         <div className="space-y-3 p-4">
           <Input
@@ -240,11 +281,14 @@ export default function CheckoutPage() {
         </div>
       </CabinetGroup>
 
-      <CabinetGroup title="Что дальше">
-        <CabinetRow icon={icon("key")} label="У меня уже есть код" hint="Активировать оплату, подарок или промокод" href="/redeem/" />
-        <CabinetRow icon={icon("support_agent")} label="Оплата не обновилась" hint="Откройте одно обращение в поддержке" href="/support/" />
-        <CabinetRow icon={icon("arrow_back")} label="Назад к доступу" hint="Сроки, ссылка подключения и загрузки" href="/subscription/" />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Что дальше</h2>
+        <CabinetActionGrid>
+          <CabinetActionCard icon={icon("key")} title="У меня уже есть код" hint="Активировать оплату, подарок или промокод" href="/redeem/" />
+          <CabinetActionCard icon={icon("support_agent")} title="Оплата не обновилась" hint="Откройте одно обращение в поддержке" href="/support/" />
+          <CabinetActionCard icon={icon("arrow_back")} title="Назад к доступу" hint="Сроки, ссылка подключения и загрузки" href="/subscription/" />
+        </CabinetActionGrid>
+      </section>
     </main>
   );
 }

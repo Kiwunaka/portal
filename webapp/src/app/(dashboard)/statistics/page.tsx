@@ -1,7 +1,7 @@
 "use client";
 
 import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
 import { getDeviceLimit, getNextResetAt, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
@@ -45,6 +45,7 @@ export default function StatisticsPage() {
         meta={resolvePlanLabel(dash, user)}
         body="Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров."
         tone={dash?.is_active ? "success" : "warning"}
+        emblem={icon(dash?.is_active ? "verified_user" : "warning", "h-7 w-7")}
         action={
           <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             Поддержка
@@ -52,20 +53,18 @@ export default function StatisticsPage() {
         }
       />
 
-      <CabinetGroup title="Безопасная сводка">
-        <CabinetRow icon={icon("verified_user")} label="Режим" hint={dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дата уточняется"} value={resolvePlanLabel(dash, user)} href="/subscription/" />
-        <CabinetRow icon={icon("speed")} label="Трафик" hint={resolveTrafficStatusText(dash, user)} value={formatGb(trafficUsed)} />
-        <CabinetRow icon={icon("devices")} label="Устройства" hint="Связанные с профилем экраны" value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`} href="/devices/" />
-        <CabinetRow icon={icon("wifi_tethering")} label="Подключения сейчас" hint="Живая активность по профилю" value={formatCount(activeConnections)} />
-        <CabinetRow icon={icon("group")} label="Людей онлайн" hint="Ориентир, не список людей" value={formatCount(activeUsersEstimate)} />
-        <CabinetRow icon={icon("hub")} label="Точки доступа" hint="Только счетчик готовности" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} />
-        <CabinetRow
-          icon={icon("event_repeat")}
-          label="Обновление лимита"
-          hint="Для текущего режима"
-          value={nextResetAt ? formatDate(nextResetAt) : "не нужно"}
-        />
-      </CabinetGroup>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Безопасная сводка</h2>
+        <CabinetTiles>
+          <CabinetTile icon={icon("verified_user")} label="Режим" value={resolvePlanLabel(dash, user)} hint={dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дата уточняется"} tone="success" href="/subscription/" />
+          <CabinetTile icon={icon("speed")} label="Трафик" value={formatGb(trafficUsed)} hint={resolveTrafficStatusText(dash, user)} tone="info" />
+          <CabinetTile icon={icon("devices")} label="Устройства" value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`} hint="Связанные экраны" tone="neutral" href="/devices/" />
+          <CabinetTile icon={icon("wifi_tethering")} label="Подключения сейчас" value={formatCount(activeConnections)} hint="Живая активность" tone="success" />
+          <CabinetTile icon={icon("group")} label="Людей онлайн" value={formatCount(activeUsersEstimate)} hint="Ориентир, не список" tone="neutral" />
+          <CabinetTile icon={icon("hub")} label="Точки доступа" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} hint="Счетчик готовности" tone="info" />
+          <CabinetTile icon={icon("event_repeat")} label="Обновление лимита" value={nextResetAt ? formatDate(nextResetAt) : "не нужно"} hint="Для текущего режима" tone="neutral" />
+        </CabinetTiles>
+      </section>
 
       <CabinetGroup title="Действия">
         <CabinetRow icon={icon("support_agent")} label="Открыть поддержку" hint="Если цифры выглядят странно" href="/support/" />
