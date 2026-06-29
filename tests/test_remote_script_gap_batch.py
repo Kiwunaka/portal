@@ -6,7 +6,7 @@ import io
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -1134,8 +1134,9 @@ def test_remote_sync_users_to_nodes_uploads_portal_code_db_and_runs_sync(
     assert "/root/portal_bot/requirements.txt" in fake.files
     assert "/root/portal_bot/sync_users_to_nodes.py" in fake.files
     uploaded = fake.files["/root/portal_bot/sync_users_to_nodes.py"].decode("utf-8")
-    assert "skip_bases = {\"brain\", \"de\"}" in uploaded
-    assert "Panels sometimes drop requests under concurrency" in uploaded
+    assert "if user_uses_free_pool(user):" in uploaded
+    assert "return {_node_code(node) for node in paid_pool_nodes(nodes)" in uploaded
+    assert "skip_bases" not in uploaded
     joined = "\n".join(fake.commands)
     assert "apt-get install -y python3 python3-venv python3-pip ca-certificates" in joined
     assert "pip install -r requirements.txt" in joined
@@ -1145,6 +1146,58 @@ def test_remote_sync_users_to_nodes_uploads_portal_code_db_and_runs_sync(
     assert "brain-secret" not in capsys.readouterr().out
     assert fake.sftp_closed is True
     assert fake.closed is True
+
+
+def test_remote_sync_users_to_nodes_desired_codes_cover_all_paid_nodes(monkeypatch) -> None:
+    module = _load_script("remote_sync_users_to_nodes.py")
+
+    db_stub = ModuleType("db")
+    db_stub.SessionLocal = object
+    db_stub.init_db = lambda: None
+    models_stub = ModuleType("models")
+    models_stub.User = SimpleNamespace
+    node_policy_stub = ModuleType("node_policy")
+    node_policy_stub.canonical_free_node_code = lambda nodes: next(
+        (node.code for node in nodes if "free" in str(node.code).lower()),
+        "",
+    )
+    node_policy_stub.paid_pool_nodes = lambda nodes: [
+        node for node in nodes if "free" not in str(node.code).lower()
+    ]
+    node_policy_stub.user_uses_free_pool = lambda user: (
+        str(getattr(user, "sub_type", "") or "").upper() == "FREE"
+        or str(getattr(user, "current_plan_code", "") or "").lower() == "free"
+    )
+    nodes_repo_stub = ModuleType("nodes_repo")
+    nodes_repo_stub.enabled_nodes = lambda _session: []
+    panel_client_stub = ModuleType("panel_client")
+    panel_client_stub.PanelClient = object
+
+    monkeypatch.setitem(sys.modules, "db", db_stub)
+    monkeypatch.setitem(sys.modules, "models", models_stub)
+    monkeypatch.setitem(sys.modules, "node_policy", node_policy_stub)
+    monkeypatch.setitem(sys.modules, "nodes_repo", nodes_repo_stub)
+    monkeypatch.setitem(sys.modules, "panel_client", panel_client_stub)
+
+    namespace: dict[str, object] = {}
+    exec(module.SYNC_SCRIPT, namespace)
+    desired_codes = namespace["_desired_codes_for_user"]
+    nodes = [
+        SimpleNamespace(code="brain"),
+        SimpleNamespace(code="de"),
+        SimpleNamespace(code="pl"),
+        SimpleNamespace(code="free"),
+    ]
+
+    paid = SimpleNamespace(is_active=True, sub_type="PAID", current_plan_code="1_month")
+    trial = SimpleNamespace(is_active=True, sub_type="TRIAL", current_plan_code="trial")
+    free = SimpleNamespace(is_active=True, sub_type="FREE", current_plan_code="free")
+    inactive = SimpleNamespace(is_active=False, sub_type="PAID", current_plan_code="1_month")
+
+    assert desired_codes(paid, nodes) == {"brain", "de", "pl"}
+    assert desired_codes(trial, nodes) == {"brain", "de", "pl"}
+    assert desired_codes(free, nodes) == {"free"}
+    assert desired_codes(inactive, nodes) == set()
 
 
 def test_migrate_to_nodes_syncs_only_active_users_for_selected_node(
