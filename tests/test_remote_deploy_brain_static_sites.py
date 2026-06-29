@@ -54,6 +54,8 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
         self.assertIn("absent_or_fallback", joined)
         self.assertIn("payment-page-global", joined)
         self.assertIn("^[0-9a-fA-F]{32,128}$", joined)
+        self.assertNotIn(";*)", joined)
+        self.assertIn("; *)", joined)
 
     def test_local_static_output_validation_requires_release_ready_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:

@@ -158,7 +158,7 @@ def _post_deploy_smoke_commands(*, web_domain: str, api_domain: str) -> list[str
             f"https://{shlex.quote(web_domain)}{path}"
             "); "
             "case \"$status\" in "
-            "404|410) echo absent_or_fallback;"
+            "404|410) echo absent_or_fallback; "
             "*) "
             f"if grep -Eq '^[0-9a-fA-F]{{32,128}}$|payment-page-global' {shlex.quote(temp_path)}; "
             "then echo legacy_static_present; else echo absent_or_fallback; fi"
