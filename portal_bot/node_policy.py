@@ -36,7 +36,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 CAPACITY_AWARE_NODE_SELECTION = _env_bool("CAPACITY_AWARE_NODE_SELECTION", True)
 SUBSCRIPTION_DYNAMIC_ORDERING = _env_bool("SUBSCRIPTION_DYNAMIC_ORDERING", True)
-SUBSCRIPTION_EXCLUDE_HARD_REJECT = _env_bool("SUBSCRIPTION_EXCLUDE_HARD_REJECT", True)
+SUBSCRIPTION_EXCLUDE_HARD_REJECT = _env_bool("SUBSCRIPTION_EXCLUDE_HARD_REJECT", False)
 KEY_PRESSURE_SCORING = _env_bool("KEY_PRESSURE_SCORING", True)
 KEY_PRESSURE_FAIR_USE_ROUTING = _env_bool("KEY_PRESSURE_FAIR_USE_ROUTING", False)
 USERNODE_MAPPING_AS_CANDIDATE_LIMIT = _env_bool("USERNODE_MAPPING_AS_CANDIDATE_LIMIT", False)
@@ -408,7 +408,16 @@ def rank_nodes_for_manual_country(
     policy_by_code: dict[str, Any] | None = None,
     now: datetime | None = None,
 ) -> list[Any]:
-    return rank_nodes_for_subscription(nodes, policy_by_code=policy_by_code, now=now)
+    ranked = rank_nodes_for_app(nodes, policy_by_code=policy_by_code, now=now)
+    return [
+        node
+        for node in ranked
+        if not node_hard_reject_reason(
+            node,
+            policy=(policy_by_code or {}).get(node_code(node).lower()) if policy_by_code else None,
+            now=now,
+        )
+    ]
 
 
 def _node_pool_codes(node: Any) -> set[str]:

@@ -74,6 +74,18 @@ def test_subscription_flags_can_return_legacy_order_without_hard_exclusion(monke
     assert [node.code for node in ranked] == ["stale-high-health", "healthy-lower-health"]
 
 
+def test_subscription_default_keeps_low_health_nodes_as_fallback_choices(monkeypatch):
+    node_policy = _reload_node_policy(monkeypatch)
+
+    healthy = _node("healthy", health_score=82.0, weight=100)
+    low_health = _node("low-health", health_score=45.0, weight=100)
+
+    ranked = node_policy.rank_nodes_for_subscription([low_health, healthy])
+
+    assert [node.code for node in ranked] == ["healthy", "low-health"]
+    assert node_policy.node_hard_reject_reason(low_health) == "health_score_low"
+
+
 def test_capacity_state_contract_uses_plan_default_cpu_reject(monkeypatch):
     node_policy = _reload_node_policy(monkeypatch)
 
