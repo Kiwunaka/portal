@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  adminKeyRotate,
+  adminKeysPressure,
   adminMetricsStatus,
   adminNodeDisable,
   adminNodeDrain,
@@ -13,14 +15,17 @@ import {
   adminNodesRuntime,
   adminNodesSync,
   adminNodesTraffic,
+  adminSubscriptionPreview,
+  type AdminKeyPressureRow,
   type AdminMetricsStatus,
   type AdminNodeCapacityRow,
   type AdminNodeDriftReport,
   type AdminNodeHealthRow,
   type AdminNodeRuntimeRow,
   type AdminNodeTrafficRow,
+  type AdminSubscriptionPreviewPayload,
 } from "@/lib/api";
-import { Activity, Loader2, RefreshCw, Server, Wifi } from "lucide-react";
+import { Activity, KeyRound, Loader2, RefreshCw, RotateCcw, Search, Server, ShieldAlert, Wifi } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -108,6 +113,24 @@ function capacityBadgeClass(state?: string | null): string {
   if (value === "warm" || value === "drain") return "badge-warning";
   if (value === "hard_reject") return "badge-danger";
   return "badge-info";
+}
+
+function pressureBadgeClass(state?: string | null): string {
+  const value = String(state || "").toLowerCase();
+  if (value === "ok") return "badge-success";
+  if (value === "warm" || value === "heavy") return "badge-warning";
+  if (value === "suspected_shared" || value === "fair_use") return "badge-danger";
+  return "badge-info";
+}
+
+function formatNumber(value?: number | null, digits = 0): string {
+  if (value == null || Number.isNaN(Number(value))) return "n/a";
+  return Number(value).toFixed(digits);
+}
+
+function compactReasons(reasons?: string[] | null): string {
+  const values = Array.isArray(reasons) ? reasons.filter(Boolean) : [];
+  return values.length ? values.slice(0, 3).join(", ") : "no pressure reasons";
 }
 
 function formatRatioPercent(value?: number | null): string {
@@ -231,6 +254,14 @@ export default function AdminNodesPage() {
   const [capacity, setCapacity] = useState<AdminNodeCapacityRow[]>([]);
   const [runtime, setRuntime] = useState<AdminNodeRuntimeRow[]>([]);
   const [traffic, setTraffic] = useState<AdminNodeTrafficRow[]>([]);
+  const [keyPressure, setKeyPressure] = useState<AdminKeyPressureRow[]>([]);
+  const [keyPressureFilter, setKeyPressureFilter] = useState("");
+  const [keyPressureBusy, setKeyPressureBusy] = useState(false);
+  const [keyActionBusy, setKeyActionBusy] = useState("");
+  const [subscriptionPreviewTgId, setSubscriptionPreviewTgId] = useState("");
+  const [subscriptionPreviewFormat, setSubscriptionPreviewFormat] = useState("auto");
+  const [subscriptionPreview, setSubscriptionPreview] = useState<AdminSubscriptionPreviewPayload | null>(null);
+  const [subscriptionPreviewBusy, setSubscriptionPreviewBusy] = useState(false);
   const [status, setStatus] = useState<AdminMetricsStatus | null>(null);
   const [drift, setDrift] = useState<AdminNodeDriftReport | null>(null);
   const [busy, setBusy] = useState(false);
@@ -238,6 +269,7 @@ export default function AdminNodesPage() {
   const [driftBusy, setDriftBusy] = useState(false);
   const [nodeActionBusy, setNodeActionBusy] = useState("");
   const [nodeActionNote, setNodeActionNote] = useState("");
+  const [operatorToolNote, setOperatorToolNote] = useState("");
   const [error, setError] = useState("");
 
   const freshnessByNode = useMemo(
@@ -275,6 +307,9 @@ export default function AdminNodesPage() {
       adminNodesRuntime()
         .then(setRuntime)
         .catch(() => setRuntime([]));
+      adminKeysPressure({ limit: 50 })
+        .then(setKeyPressure)
+        .catch(() => setKeyPressure([]));
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось загрузить данные по нодам."));
     }
@@ -294,6 +329,57 @@ export default function AdminNodesPage() {
       setError(String((err as { message?: string })?.message || err || "Не удалось проверить расхождения."));
     } finally {
       setDriftBusy(false);
+    }
+  };
+
+  const loadKeyPressure = async (state = keyPressureFilter): Promise<void> => {
+    setKeyPressureBusy(true);
+    setError("");
+    try {
+      const rows = await adminKeysPressure({ state: state || undefined, limit: 50 });
+      setKeyPressure(rows);
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Failed to load key pressure rows."));
+    } finally {
+      setKeyPressureBusy(false);
+    }
+  };
+
+  const runKeyRotate = async (row: AdminKeyPressureRow): Promise<void> => {
+    setKeyActionBusy(`rotate:${row.key_id}`);
+    setOperatorToolNote("");
+    setError("");
+    try {
+      const result = await adminKeyRotate(row.key_id, { reason: "key_pressure_dashboard" });
+      setOperatorToolNote(`Rotate job queued for key ${row.key_id}${result.job_id ? `, job ${result.job_id}` : ""}.`);
+      await loadKeyPressure();
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Failed to queue key rotate."));
+    } finally {
+      setKeyActionBusy("");
+    }
+  };
+
+  const runSubscriptionPreview = async (): Promise<void> => {
+    const tgId = Number(subscriptionPreviewTgId.trim());
+    if (!Number.isFinite(tgId) || tgId <= 0) {
+      setError("Enter a positive Telegram user id for subscription preview.");
+      return;
+    }
+    setSubscriptionPreviewBusy(true);
+    setSubscriptionPreview(null);
+    setError("");
+    try {
+      const payload = await adminSubscriptionPreview({
+        tgId,
+        format: subscriptionPreviewFormat === "auto" ? undefined : subscriptionPreviewFormat,
+      });
+      setSubscriptionPreview(payload);
+      setOperatorToolNote(`Subscription preview built for tg_id ${tgId}.`);
+    } catch (err) {
+      setError(String((err as { message?: string })?.message || err || "Failed to build subscription preview."));
+    } finally {
+      setSubscriptionPreviewBusy(false);
     }
   };
 
@@ -395,6 +481,7 @@ export default function AdminNodesPage() {
         </div>
         {error ? <p className="mt-3 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
         {nodeActionNote ? <p className="mt-2 text-sm text-[color:var(--atlas-status-success-text)]">{nodeActionNote}</p> : null}
+        {operatorToolNote ? <p className="mt-2 text-sm text-[color:var(--atlas-status-success-text)]">{operatorToolNote}</p> : null}
         {status?.active_alerts?.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {status.active_alerts.map((alert) => (
@@ -462,6 +549,177 @@ export default function AdminNodesPage() {
               ) : null}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
+        <div className="glass-card p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="stat-icon stat-icon-amber">
+                <ShieldAlert size={20} />
+              </div>
+              <div>
+                <h3 className="font-display text-xl font-bold">Key pressure</h3>
+                <p className="text-xs text-[color:var(--atlas-text-soft)]">
+                  Traffic pressure is advisory: families are not blocked by IP churn alone.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs text-[color:var(--atlas-text)]"
+                value={keyPressureFilter}
+                onChange={(event) => setKeyPressureFilter(event.target.value)}
+              >
+                <option value="">all states</option>
+                <option value="warm">warm</option>
+                <option value="heavy">heavy</option>
+                <option value="suspected_shared">suspected_shared</option>
+                <option value="fair_use">fair_use</option>
+              </select>
+              <button
+                type="button"
+                className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold"
+                disabled={keyPressureBusy}
+                onClick={() => void loadKeyPressure()}
+              >
+                {keyPressureBusy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                Refresh
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">
+                  <th className="px-3 py-2.5">Key</th>
+                  <th className="px-3 py-2.5">Pressure</th>
+                  <th className="px-3 py-2.5">Usage</th>
+                  <th className="px-3 py-2.5">Signals</th>
+                  <th className="px-3 py-2.5">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {keyPressure.map((row, index) => (
+                  <tr key={row.key_id} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                    <td className="px-3 py-3">
+                      <div className="font-semibold">#{row.key_id}</div>
+                      <div className="text-xs text-[color:var(--atlas-text-soft)]">tg {row.tg_id ?? "n/a"} · {row.panel_email || "email n/a"}</div>
+                      <div className="text-xs text-[color:var(--atlas-text-soft)]">node {row.node_code || "n/a"}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className={`badge ${pressureBadgeClass(row.state)}`}>{row.state}</span>
+                      <div className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">score {formatNumber(row.pressure_score, 1)}</div>
+                      {row.manual_review_required ? <div className="mt-1"><span className="badge badge-warning">manual review</span></div> : null}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div>{formatNumber(row.traffic_gb_24h, 1)} GB / 24h</div>
+                      <div className="text-xs text-[color:var(--atlas-text-soft)]">{row.node_count_24h} nodes / 24h</div>
+                    </td>
+                    <td className="px-3 py-3 text-xs text-[color:var(--atlas-text-soft)]">
+                      <div>IPs: {row.distinct_source_ips_1h} / 1h, {row.distinct_source_ips_24h} / 24h</div>
+                      <div className="mt-1 max-w-[280px] truncate" title={compactReasons(row.reasons)}>{compactReasons(row.reasons)}</div>
+                      <div className="mt-1">updated {formatIso(row.updated_at)}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <button
+                        type="button"
+                        className="outline-btn inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold"
+                        disabled={!!keyActionBusy}
+                        onClick={() => void runKeyRotate(row)}
+                      >
+                        {keyActionBusy === `rotate:${row.key_id}` ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                        Rotate
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {keyPressure.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-4 text-sm text-[color:var(--atlas-text-soft)]" colSpan={5}>
+                      No key pressure rows for this filter.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="glass-card p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="stat-icon stat-icon-blue">
+              <KeyRound size={20} />
+            </div>
+            <div>
+              <h3 className="font-display text-xl font-bold">Subscription debug</h3>
+              <p className="text-xs text-[color:var(--atlas-text-soft)]">Preview node order and exclusion reasons without exposing raw tokens.</p>
+            </div>
+          </div>
+          <div className="grid gap-3">
+            <label className="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">
+              Telegram ID
+              <input
+                className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm font-normal tracking-normal text-[color:var(--atlas-text)]"
+                inputMode="numeric"
+                value={subscriptionPreviewTgId}
+                onChange={(event) => setSubscriptionPreviewTgId(event.target.value)}
+                placeholder="1001"
+              />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">
+              Format
+              <select
+                className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm font-normal tracking-normal text-[color:var(--atlas-text)]"
+                value={subscriptionPreviewFormat}
+                onChange={(event) => setSubscriptionPreviewFormat(event.target.value)}
+              >
+                <option value="auto">auto</option>
+                <option value="vless">vless</option>
+                <option value="singbox">singbox</option>
+                <option value="clash">clash</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="btn-primary inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold"
+              disabled={subscriptionPreviewBusy}
+              onClick={() => void runSubscriptionPreview()}
+            >
+              {subscriptionPreviewBusy ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+              Preview subscription
+            </button>
+          </div>
+          {subscriptionPreview ? (
+            <div className="mt-4 space-y-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="flex flex-wrap gap-2">
+                <span className="badge badge-info">tg {subscriptionPreview.tg_id}</span>
+                <span className="badge badge-info">{subscriptionPreview.client_format}</span>
+                <span className={`badge ${subscriptionPreview.dynamic_ordering ? "badge-success" : "badge-warning"}`}>dynamic {subscriptionPreview.dynamic_ordering ? "on" : "off"}</span>
+                <span className={`badge ${subscriptionPreview.hard_exclusion ? "badge-success" : "badge-warning"}`}>hard exclusion {subscriptionPreview.hard_exclusion ? "on" : "off"}</span>
+              </div>
+              <div>
+                <div className="mb-1 text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Node order</div>
+                <div className="flex flex-wrap gap-2">
+                  {subscriptionPreview.node_order.length ? subscriptionPreview.node_order.map((code) => <span key={code} className="badge badge-success">{code.toUpperCase()}</span>) : <span className="text-xs text-[color:var(--atlas-text-soft)]">No eligible nodes.</span>}
+                </div>
+              </div>
+              <div>
+                <div className="mb-1 text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Excluded</div>
+                <div className="max-h-40 overflow-auto rounded-lg bg-black/[0.03] p-2 text-xs text-[color:var(--atlas-text-soft)] dark:bg-white/[0.04]">
+                  {subscriptionPreview.excluded_nodes.length ? (
+                    subscriptionPreview.excluded_nodes.map((item, index) => <div key={index}>{JSON.stringify(item)}</div>)
+                  ) : (
+                    <div>No exclusions.</div>
+                  )}
+                </div>
+              </div>
+              <div className="text-xs text-[color:var(--atlas-text-soft)]">
+                token fp: {subscriptionPreview.token_fp || "n/a"} · subscription URL: {subscriptionPreview.subscription_url_available ? "available" : "missing"}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

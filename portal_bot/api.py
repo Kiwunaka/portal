@@ -16259,6 +16259,66 @@ async def client_subscription_preview(
         s.close()
 
 
+@app.get("/api/admin/subscription/preview")
+async def admin_subscription_preview(
+    request: Request,
+    tg_id: int = Query(gt=0),
+    format: str = Query(default="", alias="format"),
+    transport_profile: str = Query(default="", max_length=64),
+    x_telegram_init_data: str = Header(default=""),
+    x_portal_carrier: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        _maybe_downgrade_expired_to_free(s, user)
+        rollout_config = load_network_rollout_config(session=s)
+        client_policy = app_first_service.build_client_policy(
+            session=s,
+            user=user,
+            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            carrier=_request_carrier_header(x_portal_carrier),
+            rollout_config=rollout_config,
+        )
+        resolved_profile = str(transport_profile or client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip()
+        resolved_profile = resolved_profile or LEGACY_REALITY_FALLBACK
+        nodes = enabled_nodes(s)
+        nodes_for_user = _subscription_nodes_for_user(user, nodes, session=s)
+        ranked, excluded = _rank_subscription_nodes(
+            session=s,
+            nodes=nodes_for_user,
+            rollout_config=rollout_config,
+            transport_profile=resolved_profile,
+        )
+        request_host = str(request.url.hostname or request.headers.get("host") or "").split(":", 1)[0].strip().lower()
+        client_format = _resolve_subscription_client_format(
+            format_hint=str(format or "").strip().lower(),
+            user_agent=request.headers.get("user-agent", ""),
+            is_connect_request=bool(request_host and request_host == public_connect_host()),
+            sub_type=str(user.sub_type or ""),
+        )
+        token_text = str(getattr(user, "sub_token", "") or "").strip()
+        return {
+            "ok": True,
+            "tg_id": int(user.tg_id),
+            "sub_type": str(getattr(user, "sub_type", "") or ""),
+            "client_format": client_format,
+            "transport_profile": resolved_profile,
+            "profile_revision": str(client_policy.get("profile_revision") or ""),
+            "node_order": [str(getattr(node, "code", "") or "").strip().lower() for node in ranked],
+            "excluded_nodes": excluded,
+            "dynamic_ordering": bool(SUBSCRIPTION_DYNAMIC_ORDERING),
+            "hard_exclusion": bool(SUBSCRIPTION_EXCLUDE_HARD_REJECT),
+            "subscription_url_available": bool(token_text),
+            "token_fp": _token_fingerprint(token_text) if token_text else None,
+        }
+    finally:
+        s.close()
+
+
 @app.api_route("/s8Kx2mP7qR4wT/{token}", methods=["GET", "HEAD"])
 async def subscription(token: str, request: Request, format: str = Query(default="", alias="format")):
     """

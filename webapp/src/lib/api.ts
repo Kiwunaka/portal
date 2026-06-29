@@ -1051,6 +1051,21 @@ export type AdminKeyPressureRow = {
   updated_at?: string | null;
 };
 
+export type AdminSubscriptionPreviewPayload = {
+  ok: boolean;
+  tg_id: number;
+  sub_type?: string | null;
+  client_format: string;
+  transport_profile: string;
+  profile_revision: string;
+  node_order: string[];
+  excluded_nodes: Array<Record<string, unknown>>;
+  dynamic_ordering: boolean;
+  hard_exclusion: boolean;
+  subscription_url_available: boolean;
+  token_fp?: string | null;
+};
+
 export type AdminTransportProfile = {
   name?: string | null;
   kind?: string | null;
@@ -3326,6 +3341,18 @@ export async function adminKeysPressure(params?: { state?: string; limit?: numbe
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   const data = await apiFetch<{ keys: AdminKeyPressureRow[] }>(`/api/admin/keys/pressure${suffix}`);
   return Array.isArray(data.keys) ? data.keys : [];
+}
+
+export async function adminSubscriptionPreview(params: {
+  tgId: number;
+  format?: string;
+  transportProfile?: string;
+}): Promise<AdminSubscriptionPreviewPayload> {
+  const qs = new URLSearchParams();
+  qs.set("tg_id", String(params.tgId));
+  if (params.format) qs.set("format", params.format);
+  if (params.transportProfile) qs.set("transport_profile", params.transportProfile);
+  return apiFetch<AdminSubscriptionPreviewPayload>(`/api/admin/subscription/preview?${qs.toString()}`);
 }
 
 export async function adminMetricsStatus(): Promise<AdminMetricsStatus> {

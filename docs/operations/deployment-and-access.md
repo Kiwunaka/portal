@@ -447,6 +447,7 @@ At minimum, verify:
 - legacy `api.pokrov.space` subscription compatibility
 - app node-candidate and node-select endpoints for an authenticated app session
 - authenticated subscription preview endpoint for resolved format, node order, and excluded-node reasons without raw config leakage
+- admin subscription preview endpoint for operator render-debug without raw token/config leakage
 - admin node capacity and key pressure endpoints for operator visibility
 - `GET /api/client/apps`
 - `GET /api/payments/providers`

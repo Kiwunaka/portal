@@ -307,6 +307,7 @@ Operational rule:
 - newly enabled delivery nodes must be verified with subscription output plus provisioned-key evidence from panel/runtime; database `user_nodes` mappings alone do not prove the clients exist on the 3x-ui inbound, and panel `active_clients` must be labeled as configured/provisioned clients rather than online users
 - `/api/admin/nodes/capacity` is the operator capacity dashboard source for node state, TX ratio, dataplane, key pressure counts, drain/undrain state, and reject reasons
 - `/api/admin/keys/pressure` is the operator key-pressure dashboard source; use it for review/rotation decisions, not automatic family-hostile enforcement
+- `/api/admin/subscription/preview` is the operator subscription-debug source for resolved client format, node order, excluded-node reasons, and token fingerprint without returning raw subscription URLs or config payloads
 - `/api/internal/nodes/{node_code}/metrics` and `/api/internal/nodes/{node_code}/xray-stats` are HMAC-authenticated ingest paths for node-agent metrics and key traffic rollups
 
 Runtime telemetry wave `2026-06-02`:
