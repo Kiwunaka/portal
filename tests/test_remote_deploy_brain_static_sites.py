@@ -49,13 +49,13 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
         self.assertIn("https://app.pokrov.space/", joined)
         self.assertIn("https://pokrov.space/fk-verify.html", joined)
         self.assertIn("https://pokrov.space/fk-payment-theme.css", joined)
-        self.assertIn("404|410", joined)
+        self.assertIn('[ "$status" = "404" ] || [ "$status" = "410" ]', joined)
         self.assertIn("legacy_static_present", joined)
         self.assertIn("absent_or_fallback", joined)
         self.assertIn("payment-page-global", joined)
         self.assertIn("^[0-9a-fA-F]{32,128}$", joined)
         self.assertNotIn(";*)", joined)
-        self.assertIn("; *)", joined)
+        self.assertNotIn("case \"$status\"", joined)
 
     def test_local_static_output_validation_requires_release_ready_files(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
