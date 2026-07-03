@@ -11,7 +11,7 @@ from text_integrity import scan_mojibake
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WEBAPP_ROOT = REPO_ROOT / "webapp"
-ADMIN_ROOT = WEBAPP_ROOT / "src" / "app" / "(dashboard)" / "admin"
+ADMIN_ROOT = WEBAPP_ROOT / "src" / "app" / "(admin)" / "admin"
 API_CLIENT = WEBAPP_ROOT / "src" / "lib" / "api.ts"
 
 REQUIRED_ADMIN_ROUTES = [

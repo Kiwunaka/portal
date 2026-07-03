@@ -59,7 +59,7 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("fetchPaymentProviderState", checkout_check.must_contain)
         self.assertIn("/api/payments/providers", checkout_check.must_contain)
         self.assertIn("Оплата временно недоступна", checkout_check.must_contain)
-        self.assertIn("ключ доступа", checkout_check.must_contain)
+        self.assertIn("код активации", checkout_check.must_contain)
         self.assertIn("Продолжить в Telegram", checkout_check.must_contain)
         self.assertIn("config.connectUrl", checkout_check.must_not_contain)
         self.assertIn("activation key", checkout_check.must_not_contain)

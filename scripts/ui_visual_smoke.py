@@ -82,7 +82,7 @@ def _default_checks() -> list[Check]:
                 "buildRedeemHref",
                 "/api/payments/providers",
                 "Оплата временно недоступна",
-                "ключ доступа",
+                "код активации",
                 "Продолжить в Telegram",
                 "Открыть кабинет",
             ),
