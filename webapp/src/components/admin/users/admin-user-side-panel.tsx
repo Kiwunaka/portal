@@ -160,10 +160,10 @@ export function AdminUserSidePanel({
       </div>
 
       {selectedCanDelete ? (
-        <div className={`${adminInsetPanelClass} mt-3 border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] dark:border-rose-500/20 dark:bg-rose-500/10`}>
+        <div className={`${adminInsetPanelClass} mt-3 border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)]`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[color:var(--atlas-status-danger-text)] dark:text-rose-200">Удаление только для тестовых аккаунтов</p>
+              <p className="text-sm font-semibold text-[color:var(--atlas-status-danger-text)]">Удаление только для тестовых аккаунтов</p>
               <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-muted)]">
                 Удаляйте только служебные аккаунты, созданные для проверки админки или сценариев поддержки.
               </p>

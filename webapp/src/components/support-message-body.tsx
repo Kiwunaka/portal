@@ -32,7 +32,7 @@ function renderInline(text: string): ReactNode[] {
       );
     } else {
       nodes.push(
-        <code key={`${match.index}-code`} className="rounded-md bg-black/5 px-1 py-0.5 text-[0.92em] text-[var(--atlas-text)] dark:bg-white/10">
+        <code key={`${match.index}-code`} className="rounded-md bg-[color:var(--atlas-canvas-alt)] px-1 py-0.5 text-[0.92em] text-[var(--atlas-text)]">
           {token.slice(1, -1)}
         </code>,
       );
@@ -83,7 +83,7 @@ function renderLine(line: string, index: number): ReactNode {
   if (numbered) {
     return (
       <div key={key} className="grid grid-cols-[1.45rem,1fr] gap-2">
-        <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/12 text-[0.68rem] font-semibold text-[color:var(--atlas-status-success-text)] dark:bg-emerald-400/15 dark:text-emerald-200">
+        <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/12 text-[0.68rem] font-semibold text-[color:var(--atlas-status-success-text)]">
           {numbered[1]}
         </span>
         <p>{renderInline(numbered[2].trim())}</p>

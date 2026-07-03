@@ -106,6 +106,23 @@
 .nav a:hover { background: var(--panel-soft); color: var(--text); }
 .topbarActions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 
+/* ── Theme toggle ── */
+.themeToggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex: none; padding: 0;
+  border-radius: var(--radius-pill); border: 1px solid var(--line);
+  background: var(--panel); color: var(--muted); cursor: pointer;
+  transition: border-color 0.2s var(--ease), color 0.2s var(--ease), transform 0.16s var(--ease);
+}
+.themeToggle:hover { border-color: var(--line-strong); color: var(--text); }
+.themeToggle:active { transform: scale(0.94); }
+.themeIconSun,
+.themeIconMoon { display: block; }
+.themeIconMoon { display: none; }
+:global([data-theme="dark"]) .themeIconSun { display: none; }
+:global([data-theme="dark"]) .themeIconMoon { display: block; }
+.menuTopActions { display: inline-flex; align-items: center; gap: 10px; }
+
 /* ── Mobile menu ── */
 .menuBtn {
   display: none; align-items: center; justify-content: center;

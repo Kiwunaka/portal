@@ -23,6 +23,38 @@ function Arrow() {
   );
 }
 
+function ThemeToggle({ className }: { className?: string }) {
+  return (
+    <button
+      type="button"
+      data-theme-toggle
+      className={`${styles.themeToggle}${className ? ` ${className}` : ""}`}
+      aria-label="Переключить на тёмную тему"
+      title="Переключить на тёмную тему"
+      suppressHydrationWarning
+    >
+      <svg className={styles.themeIconSun} width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        />
+      </svg>
+      <svg className={styles.themeIconMoon} width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M20.2 13.6A8.2 8.2 0 0 1 10.4 3.8a8.2 8.2 0 1 0 9.8 9.8Z"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
 export default function HomepageTopbar({ cabinetHref, installHref }: TopbarProps) {
   const [open, setOpen] = useState(false);
 
@@ -60,6 +92,7 @@ export default function HomepageTopbar({ cabinetHref, installHref }: TopbarProps
         </nav>
 
         <div className={styles.topbarActions}>
+          <ThemeToggle />
           <a href={cabinetHref} className={styles.btnGhost}>
             Кабинет
           </a>
@@ -93,11 +126,14 @@ export default function HomepageTopbar({ cabinetHref, installHref }: TopbarProps
                 <strong>POKROV</strong>
               </span>
             </span>
-            <button type="button" className={styles.menuClose} aria-label="Закрыть меню" onClick={() => setOpen(false)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            </button>
+            <span className={styles.menuTopActions}>
+              <ThemeToggle />
+              <button type="button" className={styles.menuClose} aria-label="Закрыть меню" onClick={() => setOpen(false)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </span>
           </div>
           <nav className={styles.menuNav} aria-label="Меню">
             {NAV.map((item, index) => (

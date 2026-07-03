@@ -12,6 +12,7 @@ import {
   CabinetTiles,
 } from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
+import { useCountUp } from "@/components/cabinet/use-count-up";
 import {
   getAccessState,
   getDeviceLimit,
@@ -21,6 +22,7 @@ import {
   resolvePlanLabel,
   resolveTrafficStatusText,
 } from "@/lib/access-policy";
+import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -78,6 +80,8 @@ export default function DashboardPage() {
   const deviceCount = user?.sync?.device_count ?? user?.devices?.length ?? 0;
   const activeConnections = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0;
   const isActive = Boolean(dash?.is_active);
+  const animatedDeviceCount = useCountUp(Math.max(0, Math.round(Number(deviceCount) || 0)));
+  const animatedConnections = useCountUp(Math.max(0, Math.round(Number(activeConnections) || 0)));
 
   const statusTone = !isActive ? "warning" : softMode ? "warning" : "success";
   const statusTitle = !isActive ? "Доступ закончился" : softMode ? "Скорость ограничена" : "Доступ активен";
@@ -117,7 +121,7 @@ export default function DashboardPage() {
           <CabinetTile
             icon={icon("devices")}
             label="Устройства"
-            value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`}
+            value={`${formatCount(animatedDeviceCount)} из ${formatCount(deviceLimit)}`}
             hint="Подключенные"
             tone="neutral"
             href="/devices/"
@@ -125,7 +129,16 @@ export default function DashboardPage() {
           <CabinetTile
             icon={icon("wifi_tethering")}
             label="Подключения"
-            value={activeConnections > 0 ? `${formatCount(activeConnections)} активно` : "нет активных"}
+            value={
+              activeConnections > 0 ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="status-dot status-dot-online" aria-hidden="true" />
+                  {formatCount(animatedConnections)} активно
+                </span>
+              ) : (
+                "нет активных"
+              )
+            }
             tone="success"
           />
           <CabinetTile icon={icon("event_available")} label="Доступ до" value={formatDate(dash?.expiry_at)} tone="neutral" href="/subscription/" />
@@ -136,7 +149,7 @@ export default function DashboardPage() {
         <h2 className="cab-eyebrow px-1">Быстрый доступ</h2>
         <CabinetActionGrid>
           <CabinetActionCard icon={icon("key")} title="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
-          <CabinetActionCard icon={icon("support_agent")} title="Помощь" hint="Обращения и Telegram" href="/support/" />
+          <CabinetActionCard icon={icon("support_agent")} title={getCopyText("webapp.dashboard.support_cta", "Помощь")} hint="Обращения и Telegram" href="/support/" />
         </CabinetActionGrid>
       </section>
 

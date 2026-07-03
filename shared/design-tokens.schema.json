@@ -3,7 +3,7 @@
   "$id": "https://pokrov.space/schemas/design-tokens.schema.json",
   "title": "POKROV Design Tokens",
   "type": "object",
-  "required": ["theme", "brand", "glass", "density", "component", "iconography", "motion", "accessibility"],
+  "required": ["theme", "spacing", "brand", "glass", "density", "component", "iconography", "motion", "accessibility"],
   "additionalProperties": false,
   "properties": {
     "theme": {
@@ -96,6 +96,11 @@
       "type": "object",
       "required": ["public_name", "approved_assets", "legacy_reference_assets", "asset_policy"],
       "additionalProperties": true
+    },
+    "spacing": {
+      "type": "object",
+      "required": ["2xs", "xs", "sm", "md", "lg", "xl", "2xl", "3xl"],
+      "additionalProperties": { "type": "string", "minLength": 1 }
     },
     "glass": {
       "type": "object",

@@ -1,6 +1,6 @@
 # POKROV Design System
 
-Last updated: 2026-04-26
+Last updated: 2026-07-02
 
 This file is the root design contract for public, cabinet, admin, and release-support surfaces in this repository.
 
@@ -12,6 +12,20 @@ This file is the root design contract for public, cabinet, admin, and release-su
 - Product facts and public URLs remain in `shared/product-facts.json`, `shared/public-urls.json`, and `shared/portal-config.ts`.
 - Active client design docs live in `C:/Users/kiwun/Documents/ai/POKROV-app/DESIGN.md` and `C:/Users/kiwun/Documents/ai/POKROV-app/docs/design/DESIGN.md`.
 
+## Theme Model (2026-07 HIG wave)
+
+Dark mode is token-remap based, not selector-patch based:
+
+- `getDesignTokenThemeCss(density)` from `shared/design-tokens.ts` emits the full theme stylesheet: light values on `:root`, dark values under `:root.dark` (webapp) and `:root[data-theme="dark"]` (marketing), plus `color-scheme`.
+- Both web layouts inject this CSS as a `<style>` tag. Do not inject the full token set as inline `style` attributes: inline custom properties cannot be remapped by the dark selector.
+- Adaptive variables keep one name in both themes (`--pokrov-bg`, `--pokrov-surface`, `--pokrov-text`, `--pokrov-accent`, status/button/nav/card/table/skeleton/progress groups). Consume them directly; never hand-write per-component `.dark` overrides for colors that already have a token pair.
+- Legacy `-dark`-suffixed variables stay emitted and static for backward compatibility during migration; new work must not reference them.
+- Scoped density overrides (for example the admin subtree) must use `getDesignTokenDensityCssVariables(density)` so inline styles never freeze adaptive colors.
+- Webapp Tailwind v4 binds the `dark:` variant to the `.dark` class via `@custom-variant dark` in `webapp/src/app/globals.css`; the manual toggle and utilities can no longer disagree.
+- Theme choice persists under the `pokrov-theme` localStorage key on both web surfaces and falls back to `prefers-color-scheme`.
+
+Type and spacing scales live in tokens: `--pokrov-font-size-*` (display, title, title-2, title-3, body, callout, footnote, caption), `--pokrov-font-weight-*`, and `--pokrov-space-*` (2xs..3xl). Motion adds `--pokrov-easing-spring` for gentle overshoot; transform/opacity-only animation and `prefers-reduced-motion` fallbacks remain mandatory.
+
 ## Brand Direction
 
 POKROV should feel calm, premium, reliable, and practical. The interface should help a user start in the app, understand account state, and recover through the cabinet or support without needing transport-layer knowledge.
@@ -19,15 +33,16 @@ POKROV should feel calm, premium, reliable, and practical. The interface should 
 Use:
 
 - light canvas, white surfaces, mint status accents, and deep green primary actions;
-- restrained motion and clear focus states;
+- an elevation-aware dark theme on off-black greens (never pure black), with the mint accent `#8ac4ab` as the dark-mode primary;
+- grouped boxes with breathing room, thin separators, and restrained motion with clear focus states;
 - dense but readable admin surfaces;
 - app-first language for onboarding, trial, renewal, support, and downloads.
 
 Avoid:
 
-- direct public product copy that describes POKROV with `VPN`;
+- hidden, cloaked, or stuffed `VPN` wording in public copy (visible SEO/search-intent `VPN` wording on dedicated surfaces is owner-approved per `AGENTS.md`);
 - legacy subtitle lockups as visible public branding;
-- decorative visual noise that competes with account, payment, or safety state;
+- decorative visual noise that competes with account, payment, or safety state: stacked gradients, grain/noise overlays, and glass blur on content planes are being retired in the HIG wave;
 - unsupported public safety claims for Android, Windows, paid checkout, or downloads.
 
 ## Surface Rules

@@ -10,7 +10,7 @@ import {
   adminTopbarClass,
 } from "@/components/admin/admin-shell";
 import { adminSummary, type AdminSummaryPayload } from "@/lib/api";
-import { getDesignTokenCssVariables } from "@/lib/portal";
+import { getDesignTokenDensityCssVariables } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -19,7 +19,7 @@ import { pokrovBranding } from "@/app/branding";
 import { ADMIN_NAV_GROUPS, findAdminNavCategory, findAdminNavItem } from "./nav";
 
 const MARKETING_SITE_URL = pokrovBranding.marketingUrl;
-const ADMIN_DESIGN_TOKEN_VARS = getDesignTokenCssVariables("admin") as CSSProperties;
+const ADMIN_DESIGN_TOKEN_VARS = getDesignTokenDensityCssVariables("admin") as CSSProperties;
 
 const EYEBROW = "text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-muted)]";
 const NAV_ACTIVE =

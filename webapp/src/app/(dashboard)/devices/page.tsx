@@ -6,6 +6,7 @@ import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
 import { getAccessState, getDeviceLimit, getTrafficLimitGb, isFreeMonthlyState, isPaidUnlimitedState, isTrialPremiumState } from "@/lib/access-policy";
+import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -57,9 +58,9 @@ export default function DevicesPage() {
   return (
     <main className="cab-page">
       <CabinetStatus
-        title="Устройства"
+        title={getCopyText("webapp.devices.title", "Устройства")}
         meta={`${formatCount(knownAppDevices)} из ${formatCount(deviceLimit)} в профиле`}
-        body="Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения."
+        body={getCopyText("webapp.devices.subtitle", "Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения.")}
         tone={devices.length ? "success" : "neutral"}
         emblem={icon("devices", "h-7 w-7")}
         action={

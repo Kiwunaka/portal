@@ -128,7 +128,7 @@ export default function AdminTicketsPage() {
       <article className={adminPanelClass("neutral")}>
         <div className={adminInsetPanelClass}>
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] text-[color:var(--atlas-text-soft)] dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100">
+            <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] text-[color:var(--atlas-text-soft)]">
               <MessageCircle size={16} />
             </div>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className={`${adminFieldClass} flex-1`}>
@@ -142,7 +142,7 @@ export default function AdminTicketsPage() {
               Обновить
             </button>
           </div>
-          <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)] dark:text-slate-400">
+          <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)]">
             Здесь собраны обращения пользователей. Слева очередь, справа переписка и быстрые смены статуса.
           </p>
         </div>
@@ -161,7 +161,7 @@ export default function AdminTicketsPage() {
                 type="button"
                 onClick={() => setSelectedId(ticket.id)}
                 className={`${adminInsetPanelClass} w-full text-left transition ${
-                  selectedId === ticket.id ? "border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950" : "hover:border-[color:var(--atlas-border-strong)] hover:bg-[color:var(--atlas-surface)] dark:hover:bg-[color:var(--atlas-surface)]/[0.06]"
+                  selectedId === ticket.id ? "border-[color:var(--atlas-text)] bg-[color:var(--atlas-text)] text-[color:var(--atlas-canvas)]" : "hover:border-[color:var(--atlas-border-strong)] hover:bg-[color:var(--atlas-surface)]"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -169,7 +169,7 @@ export default function AdminTicketsPage() {
                   <span className={`badge ${meta.color}`}>{meta.badge}</span>
                 </div>
                 <p className="mt-1.5 text-sm font-medium">{ticket.subject || "Новое обращение"}</p>
-                <p className={`mt-1 text-xs line-clamp-1 ${selectedId === ticket.id ? "text-white/70 dark:text-slate-700" : "text-[color:var(--atlas-text-soft)] dark:text-slate-400"}`}>
+                <p className={`mt-1 text-xs line-clamp-1 ${selectedId === ticket.id ? "text-[color:color-mix(in_srgb,var(--atlas-canvas)_70%,transparent)]" : "text-[color:var(--atlas-text-soft)]"}`}>
                   {ticket.last_message_preview || "Нет сообщений"}
                 </p>
               </button>
@@ -185,9 +185,9 @@ export default function AdminTicketsPage() {
           <>
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)] dark:text-slate-400">Выбранный тред</p>
-                <h2 className="mt-1 font-display text-2xl font-semibold text-[color:var(--atlas-text)] dark:text-slate-50">Обращение #{selected.id}</h2>
-                <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)] dark:text-slate-400">Последнее обновление: {fmtRuDate(selected.updated_at)}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--atlas-text-soft)]">Выбранный тред</p>
+                <h2 className="mt-1 font-display text-2xl font-semibold text-[color:var(--atlas-text)]">Обращение #{selected.id}</h2>
+                <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Последнее обновление: {fmtRuDate(selected.updated_at)}</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(STATUS_META).map(([key, meta]) => {
@@ -213,7 +213,7 @@ export default function AdminTicketsPage() {
               </div>
             </div>
 
-            <div className="flex max-h-[42vh] flex-col gap-2 overflow-auto rounded-[1rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+            <div className="flex max-h-[42vh] flex-col gap-2 overflow-auto rounded-[1rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-3">
               {(selected.messages || []).length === 0 ? (
                 <AdminEmptyState className="min-h-[180px]" title="Нет сообщений" description="В этом обращении пока нет переписки." />
               ) : null}

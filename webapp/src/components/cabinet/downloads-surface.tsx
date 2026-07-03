@@ -4,10 +4,11 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { icon } from "@/components/cabinet/icon";
+import { InstructionSteps } from "@/components/cabinet/instructions";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
 import { fetchClientApps, type ClientAppsPayload } from "@/lib/api";
-import { getPortalPublicConfig } from "@/lib/portal";
+import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -152,9 +153,9 @@ export function CabinetDownloadsSurface() {
   return (
     <main className="cab-page">
       <CabinetStatus
-        title="Загрузки"
+        title={getCopyText("webapp.downloads.title", "Загрузки")}
         meta={rows.length ? "Публичная бета" : "Файлы подгружаются"}
-        body="Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт."
+        body={getCopyText("webapp.downloads.subtitle", "Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт.")}
         tone={rows.length ? "success" : "neutral"}
         emblem={icon("download", "h-7 w-7")}
         action={
@@ -207,6 +208,29 @@ export function CabinetDownloadsSurface() {
       </section>
 
       {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Часть ссылок не удалось обновить: {error}</p> : null}
+
+      <section className="flex flex-col gap-2.5">
+        <h2 className="cab-eyebrow px-1">Как подключиться за 3 шага</h2>
+        <InstructionSteps
+          steps={[
+            {
+              art: "download",
+              title: "Скачайте и установите",
+              description: "Файл для Android или Windows выше на этой странице. Другие источники лучше не использовать.",
+            },
+            {
+              art: "login",
+              title: "Войдите в тот же аккаунт",
+              description: "Почта или Telegram — тем же способом, что и здесь. Доступ подтянется сам.",
+            },
+            {
+              art: "connect",
+              title: "Нажмите «Подключить»",
+              description: "Одна кнопка в приложении. Настраивать ничего не нужно.",
+            },
+          ]}
+        />
+      </section>
 
       <CabinetGroup title="После скачивания">
         <CabinetRow icon={icon("login")} label="Войти в тот же аккаунт" hint="Профиль подтянется сам" value={hasAndroid || hasWindows ? "важно" : undefined} />

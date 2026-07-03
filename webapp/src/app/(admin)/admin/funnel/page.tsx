@@ -155,7 +155,7 @@ export default function AdminFunnelPage() {
               </thead>
               <tbody>
                 {(data?.stages || []).map((row, index) => (
-                  <tr key={row.key} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={row.key} className={`border-t border-[color:var(--atlas-border)] ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)]" : ""}`}>
                     <td className="px-3 py-3 font-semibold">{row.label}</td>
                     <td className="px-3 py-3">{formatNumber(row.entered)}</td>
                     <td className="px-3 py-3">{formatNumber(row.reached_next)}</td>
@@ -186,7 +186,7 @@ export default function AdminFunnelPage() {
           </div>
           <div className="space-y-3">
             {(data?.drop_reasons || []).map((row) => (
-              <div key={row.reason} className="rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div key={row.reason} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold">{row.reason}</p>
                   <span className={`badge ${row.count > 0 ? "badge-warning" : "badge-success"}`}>{formatNumber(row.count)}</span>
@@ -214,7 +214,7 @@ export default function AdminFunnelPage() {
               </thead>
               <tbody>
                 {(data?.by_source || []).map((row, index) => (
-                  <tr key={row.source} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={row.source} className={`border-t border-[color:var(--atlas-border)] ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)]" : ""}`}>
                     <td className="px-3 py-2.5 font-semibold">{sourceLabel(row.source)}</td>
                     <td className="px-3 py-2.5">{formatNumber(row.visitors)}</td>
                     <td className="px-3 py-2.5">{formatNumber(row.app_opens)}</td>
@@ -232,7 +232,7 @@ export default function AdminFunnelPage() {
           <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Известные пользователи показываются по Telegram ID, сайт — по короткому session id.</p>
           <div className="mt-4 space-y-2">
             {(data?.recent || []).map((row, index) => (
-              <div key={`${row.kind}:${row.created_at}:${row.event_name}:${index}`} className="rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div key={`${row.kind}:${row.created_at}:${row.event_name}:${index}`} className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">

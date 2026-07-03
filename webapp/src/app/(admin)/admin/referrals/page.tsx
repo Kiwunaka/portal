@@ -173,7 +173,7 @@ export default function AdminReferralsPage() {
     <section className="space-y-5">
       <article className="glass-card p-4">
         <h2 className="font-display text-xl font-bold">Стартовые ссылки и welcome-цепочки</h2>
-        <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)] dark:text-slate-300">
+        <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)]">
           Здесь создаются start-ссылки для welcome и campaign-входов, а также обрабатывается реферальная очередь.
         </p>
       </article>
@@ -254,15 +254,15 @@ export default function AdminReferralsPage() {
         <div className="grid gap-3 md:grid-cols-3">
           <div>
             <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Промокод</label>
-            <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="WELCOME14" className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
+            <input value={promoCode} onChange={(event) => setPromoCode(event.target.value)} placeholder="WELCOME14" className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none" />
           </div>
           <div>
             <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Ключ кампании</label>
-            <input value={campaignKey} onChange={(event) => setCampaignKey(event.target.value)} placeholder="launch14" className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
+            <input value={campaignKey} onChange={(event) => setCampaignKey(event.target.value)} placeholder="launch14" className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none" />
           </div>
           <div>
             <label className="mb-1 block text-[10px] uppercase tracking-[0.1em] text-[color:var(--atlas-text-soft)]">Код тарифа</label>
-            <input value={planCode} onChange={(event) => setPlanCode(event.target.value)} placeholder="1_month" className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70" />
+            <input value={planCode} onChange={(event) => setPlanCode(event.target.value)} placeholder="1_month" className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none" />
           </div>
         </div>
         <button className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold uppercase tracking-[0.12em] w-full sm:w-auto" type="button" onClick={() => void buildLinks()} disabled={busy}>
@@ -310,7 +310,7 @@ export default function AdminReferralsPage() {
             <select
               value={queueStatus}
               onChange={(event) => setQueueStatus(event.target.value)}
-              className="rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-xs outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+              className="rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs outline-none"
             >
               <option value="">Все статусы</option>
               <option value="pending">В ожидании</option>
@@ -341,7 +341,7 @@ export default function AdminReferralsPage() {
             </thead>
             <tbody>
               {queueRows.map((row) => (
-                <tr key={row.id} className="border-t border-white/30 dark:border-white/10">
+                <tr key={row.id} className="border-t border-[color:var(--atlas-border)]">
                   <td className="px-2 py-2 font-mono">{row.order_id}</td>
                   <td className="px-2 py-2">{row.referrer_tg_id}</td>
                   <td className="px-2 py-2">{row.referred_tg_id}</td>
@@ -369,7 +369,7 @@ export default function AdminReferralsPage() {
                     onChange={(event) =>
                       setLinkDialog((prev) => (prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, code: event.target.value } : prev))
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none"
                     placeholder="Код ссылки"
                   />
                   <input
@@ -377,7 +377,7 @@ export default function AdminReferralsPage() {
                     onChange={(event) =>
                       setLinkDialog((prev) => (prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, description: event.target.value } : prev))
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none"
                     placeholder="Описание"
                   />
                   <input
@@ -385,7 +385,7 @@ export default function AdminReferralsPage() {
                     onChange={(event) =>
                       setLinkDialog((prev) => (prev && (prev.kind === "create" || prev.kind === "edit") ? { ...prev, targetAction: event.target.value } : prev))
                     }
-                    className="w-full rounded-xl border border-violet-200/50 bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none dark:border-violet-500/30 dark:bg-slate-900/70"
+                    className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-sm outline-none"
                     placeholder="Целевое действие"
                   />
                   {linkDialog.kind === "edit" ? (

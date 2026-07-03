@@ -5,7 +5,7 @@ import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, Cabinet
 import { Button, Chip, Input } from "@/components/cabinet/ui";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
-import { getPricingPreviewDiscountPercent, getTariffPlans, normalizePlanCode } from "@/lib/portal";
+import { getCopyText, getPricingPreviewDiscountPercent, getTariffPlans, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -189,18 +189,19 @@ export default function CheckoutPage() {
   return (
     <main className="cab-page">
       <CabinetStatus
-        title="Продлить доступ"
+        title={getCopyText("webapp.checkout.title", "Продлить доступ")}
         meta={resolvePlanLabel(dash, user)}
-        body="Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле."
+        body={getCopyText("webapp.checkout.subtitle", "Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле.")}
         tone={checkoutReady ? "success" : "warning"}
         emblem={icon(checkoutReady ? "payments" : "warning", "h-7 w-7")}
         action={
           <Button
             onClick={startCheckout}
-            disabled={!checkoutReady || checkoutBusy}
+            loading={checkoutBusy}
+            disabled={!checkoutReady}
             className="w-full sm:w-auto"
           >
-            {checkoutBusy ? "Открываем..." : "Перейти к оплате"}
+            Перейти к оплате
           </Button>
         }
       />
@@ -273,8 +274,8 @@ export default function CheckoutPage() {
               <strong>{totalAmount} ₽</strong>
             </div>
           </div>
-          <Button onClick={startCheckout} disabled={!checkoutReady || checkoutBusy} block>
-            {checkoutBusy ? "Открываем..." : "Перейти к оплате"}
+          <Button onClick={startCheckout} loading={checkoutBusy} disabled={!checkoutReady} block>
+            Перейти к оплате
           </Button>
           {providerWarning ? <p className="text-sm text-[color:var(--atlas-status-warning-text)]">{providerWarning}</p> : null}
           {checkoutError ? <p className="text-sm text-[color:var(--atlas-status-danger-text)]">{checkoutError}</p> : null}

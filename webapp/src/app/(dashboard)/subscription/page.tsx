@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { icon } from "@/components/cabinet/icon";
+import CopyButton from "@/components/cabinet/copy-button";
 import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
@@ -18,7 +19,7 @@ import {
   resolvePlanLabel,
 } from "@/lib/access-policy";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
-import { getTariffPlans, normalizePlanCode } from "@/lib/portal";
+import { getCopyText, getTariffPlans, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 
 function fallbackPlans(): PlanCatalogRow[] {
@@ -62,7 +63,6 @@ export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
   const [plans, setPlans] = useState<PlanCatalogRow[]>(() => fallbackPlans());
   const [error, setError] = useState("");
-  const [copyStatus, setCopyStatus] = useState("");
   const [manualAccessOpen, setManualAccessOpen] = useState(false);
 
   useEffect(() => {
@@ -126,19 +126,6 @@ export default function SubscriptionPage() {
         ? `${freeLimitGb || 5} ГБ на 30 дней${nextResetAt ? `, сброс ${formatDate(nextResetAt)}` : ""}.`
         : "Продлите срок, чтобы снова подключаться в приложении.";
 
-  const copySubscriptionUrl = async () => {
-    if (!manualAccessReady) {
-      setCopyStatus("Ссылка появится после активации доступа.");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(subscriptionUrl);
-      setCopyStatus("Ссылка скопирована.");
-    } catch {
-      setCopyStatus("Не удалось скопировать автоматически. Выделите ссылку вручную.");
-    }
-  };
-
   const statusTone = dash?.is_active ? (softMode ? "warning" : "success") : "warning";
   const statusBody = premiumMode
     ? "Можно продлить заранее: устройства и настройки останутся на месте."
@@ -154,7 +141,7 @@ export default function SubscriptionPage() {
   return (
     <main className="cab-page">
       <CabinetStatus
-        title="Продлить доступ"
+        title={getCopyText("webapp.subscription.title", "Продлить доступ")}
         meta={`${resolvePlanLabel(dash, user)} · ${accessHint}`}
         body={statusBody}
         tone={statusTone}
@@ -244,14 +231,17 @@ export default function SubscriptionPage() {
                     <p className="break-all font-mono text-xs leading-6 text-[color:var(--atlas-text)]">{subscriptionUrl}</p>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <Button onClick={() => void copySubscriptionUrl()} disabled={!manualAccessReady}>
-                      Скопировать ссылку
-                    </Button>
+                    <CopyButton
+                      text={subscriptionUrl}
+                      label="Скопировать ссылку"
+                      copiedLabel="Скопировано"
+                      toastMessage="Ссылка скопирована"
+                      disabled={!manualAccessReady}
+                    />
                     <Button variant="secondary" href={subscriptionUrl} target="_blank" hardNavigate={false}>
                       Открыть ссылку
                     </Button>
                   </div>
-                  {copyStatus ? <p className="mt-3 text-sm font-semibold text-[color:var(--atlas-primary)]">{copyStatus}</p> : null}
                 </div>
               </div>
 

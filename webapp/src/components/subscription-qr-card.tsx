@@ -63,7 +63,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
   }
 
   if (!src) {
-    return <div className="skeleton mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-[color:var(--atlas-border)] dark:border-white/10" />;
+    return <div className="skeleton mt-3 h-[220px] w-[220px] max-w-full rounded-xl border border-[color:var(--atlas-border)]" />;
   }
 
   return (

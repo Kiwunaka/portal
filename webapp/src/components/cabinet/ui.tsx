@@ -26,6 +26,7 @@ type ButtonProps = {
   variant?: ButtonVariant;
   size?: ButtonSize;
   block?: boolean;
+  loading?: boolean;
   className?: string;
   children: ReactNode;
   onClick?: MouseEventHandler<HTMLElement>;
@@ -39,10 +40,22 @@ type ButtonProps = {
   title?: string;
 };
 
+function ButtonSpinner() {
+  return (
+    <span className="cab-btn-spinner" aria-hidden="true">
+      <svg className="cab-btn-spin" width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="2" opacity="0.25" />
+        <path d="M14.25 8a6.25 6.25 0 0 0-6.25-6.25" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
 export function Button({
   variant = "primary",
   size = "md",
   block,
+  loading,
   className,
   children,
   onClick,
@@ -59,6 +72,7 @@ export function Button({
     VARIANT_CLASS[variant],
     size === "sm" && "cab-btn--sm",
     block && "cab-btn--block",
+    loading && "cab-btn--loading",
     FOCUS_RING,
     className,
   );
@@ -85,11 +99,13 @@ export function Button({
       type={type}
       className={classes}
       onClick={onClick as MouseEventHandler<HTMLButtonElement>}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       aria-label={aria["aria-label"]}
       title={aria.title}
     >
-      {children}
+      <span className="cab-btn-label">{children}</span>
+      {loading ? <ButtonSpinner /> : null}
     </button>
   );
 }

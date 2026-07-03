@@ -4,6 +4,7 @@ import { icon } from "@/components/cabinet/icon";
 import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
 import { Button } from "@/components/cabinet/ui";
 import { getDeviceLimit, getNextResetAt, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
+import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 
 function formatDate(value?: string | null): string {
@@ -41,9 +42,9 @@ export default function StatisticsPage() {
   return (
     <main className="cab-page">
       <CabinetStatus
-        title="Статистика"
+        title={getCopyText("webapp.statistics.title", "Статистика")}
         meta={resolvePlanLabel(dash, user)}
-        body="Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров."
+        body={getCopyText("webapp.statistics.subtitle", "Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров.")}
         tone={dash?.is_active ? "success" : "warning"}
         emblem={icon(dash?.is_active ? "verified_user" : "warning", "h-7 w-7")}
         action={

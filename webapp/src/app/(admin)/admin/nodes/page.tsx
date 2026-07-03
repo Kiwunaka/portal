@@ -518,7 +518,7 @@ export default function AdminNodesPage() {
             </thead>
             <tbody>
               {capacity.map((row, index) => (
-                <tr key={row.code} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                <tr key={row.code} className={`border-t border-[color:var(--atlas-border)] ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)]" : ""}`}>
                   <td className="px-3 py-3 font-semibold">{row.code.toUpperCase()}</td>
                   <td className="px-3 py-3">
                     <span className={`badge ${capacityBadgeClass(row.capacity_state)}`}>{row.capacity_state}</span>
@@ -602,7 +602,7 @@ export default function AdminNodesPage() {
               </thead>
               <tbody>
                 {keyPressure.map((row, index) => (
-                  <tr key={row.key_id} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={row.key_id} className={`border-t border-[color:var(--atlas-border)] ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)]" : ""}`}>
                     <td className="px-3 py-3">
                       <div className="font-semibold">#{row.key_id}</div>
                       <div className="text-xs text-[color:var(--atlas-text-soft)]">tg {row.tg_id ?? "n/a"} · {row.panel_email || "email n/a"}</div>
@@ -692,7 +692,7 @@ export default function AdminNodesPage() {
             </button>
           </div>
           {subscriptionPreview ? (
-            <div className="mt-4 space-y-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-4 text-sm dark:border-white/10 dark:bg-white/[0.04]">
+            <div className="mt-4 space-y-3 rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-4 text-sm">
               <div className="flex flex-wrap gap-2">
                 <span className="badge badge-info">tg {subscriptionPreview.tg_id}</span>
                 <span className="badge badge-info">{subscriptionPreview.client_format}</span>
@@ -707,7 +707,7 @@ export default function AdminNodesPage() {
               </div>
               <div>
                 <div className="mb-1 text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Excluded</div>
-                <div className="max-h-40 overflow-auto rounded-lg bg-black/[0.03] p-2 text-xs text-[color:var(--atlas-text-soft)] dark:bg-white/[0.04]">
+                <div className="max-h-40 overflow-auto rounded-lg bg-[color:var(--atlas-canvas-alt)] p-2 text-xs text-[color:var(--atlas-text-soft)]">
                   {subscriptionPreview.excluded_nodes.length ? (
                     subscriptionPreview.excluded_nodes.map((item, index) => <div key={index}>{JSON.stringify(item)}</div>)
                   ) : (
@@ -749,7 +749,7 @@ export default function AdminNodesPage() {
                 const inbound = row.inbound;
                 const system = row.system || {};
                 return (
-                  <tr key={row.node_code} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={row.node_code} className={`border-t border-[color:var(--atlas-border)] ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)]" : ""}`}>
                     <td className="px-3 py-3 font-semibold">{String(row.node_code || "").toUpperCase()}</td>
                     <td className="px-3 py-3">
                       <span className={`badge ${row.panel_auth_ok ? "badge-success" : "badge-danger"}`}>{row.panel_auth_ok ? "доступ есть" : "нет доступа"}</span>
@@ -811,7 +811,7 @@ export default function AdminNodesPage() {
           </div>
           <div className="space-y-3">
             {drift.results.map((row) => (
-              <div key={row.node_code} className="rounded-2xl border border-white/15 bg-[color:var(--atlas-surface)] p-4 dark:border-white/10 dark:bg-white/[0.03]">
+              <div key={row.node_code} className="rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
@@ -893,21 +893,21 @@ export default function AdminNodesPage() {
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-2 text-center sm:grid-cols-3">
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">Отклик с сервера</p>
                   <p className="text-sm font-bold">{node.panel_latency_ms ?? "нет данных"}{node.panel_latency_ms != null ? <span className="text-[10px] text-[color:var(--atlas-text-muted)]"> ms</span> : null}</p>
                 </div>
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">Ошибки</p>
                   <p className="text-sm font-bold">{formatPercent(node.panel_error_rate * 100, 1)}</p>
                 </div>
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">Provisioned</p>
                   <p className="text-sm font-bold">{node.provisioned_clients_count ?? node.active_clients}</p>
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Capacity</span>
                   <span className={`badge ${capacityBadgeClass(nodeCapacity?.capacity_state || node.capacity_state)}`}>
@@ -926,32 +926,32 @@ export default function AdminNodesPage() {
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-4">
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">Назначено в POKROV</p>
                   <p className="text-sm font-bold">{node.mapped_users}</p>
                 </div>
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">Ключей в сети</p>
                   <p className="text-sm font-bold">{node.online_keys_now}</p>
                 </div>
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">Подключений сейчас</p>
                   <p className="text-sm font-bold">{node.online_connections_now}</p>
                 </div>
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">CPU</p>
                   <p className="text-sm font-bold">{formatPercent(node.cpu_percent, 0)}</p>
                 </div>
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2 text-center sm:grid-cols-1">
-                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2 dark:bg-white/5">
+                <div className="rounded-lg bg-[color:var(--atlas-surface)] p-2">
                   <p className="text-xs text-[color:var(--atlas-text-soft)]">RAM</p>
                   <p className="text-sm font-bold">{formatMbPair(node.memory_used_mb, node.memory_total_mb)}</p>
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Диск</span>
                   <span>{diskPercent == null ? "нет данных" : formatPercent(diskPercent, 0)}</span>
@@ -966,7 +966,7 @@ export default function AdminNodesPage() {
                 </div>
               </div>
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Ethernet</span>
                   <span>{networkPercent == null ? "нет данных" : formatPercent(networkPercent, 0)}</span>
@@ -1005,7 +1005,7 @@ export default function AdminNodesPage() {
               </div>
 
               {(node.hoster_family || node.hoster_asn || node.subnet) ? (
-                <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="mt-3 rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                   <div className="mb-2 text-sm font-semibold">Хостинг</div>
                   <div className="grid gap-2 text-xs sm:grid-cols-3">
                     <p>Провайдер: <strong>{node.hoster_family || "нет данных"}</strong></p>
@@ -1015,7 +1015,7 @@ export default function AdminNodesPage() {
                 </div>
               ) : null}
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Подключение</span>
                   <span className={`badge ${transportHealth.label === "ok" || transportHealth.label === "healthy" ? "badge-success" : "badge-info"}`}>
@@ -1023,7 +1023,7 @@ export default function AdminNodesPage() {
                   </span>
                 </div>
                 {transportHealth.detail ? <p className="text-xs text-[color:var(--atlas-text-soft)]">{transportHealth.detail}</p> : null}
-                {rootCauseSummary ? <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)] dark:text-slate-300">{rootCauseSummary}</p> : null}
+                {rootCauseSummary ? <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)]">{rootCauseSummary}</p> : null}
                 {rootCauseDetail ? <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{rootCauseDetail}</p> : null}
                 <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                   <p>Панель: <strong>{panelState}</strong></p>
@@ -1071,14 +1071,14 @@ export default function AdminNodesPage() {
               </div>
 
               {probeFailure ? (
-                <div className="mt-3 rounded-xl border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] p-3 text-xs text-[color:var(--atlas-status-danger-text)] dark:border-rose-500/20 dark:bg-rose-500/10">
+                <div className="mt-3 rounded-xl border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] p-3 text-xs text-[color:var(--atlas-status-danger-text)]">
                   <div className="font-semibold">{probeFailure.title}</div>
-                  {probeFailure.detail ? <div className="mt-1 text-[color:var(--atlas-text-soft)] dark:text-slate-300">{probeFailure.detail}</div> : null}
+                  {probeFailure.detail ? <div className="mt-1 text-[color:var(--atlas-text-soft)]">{probeFailure.detail}</div> : null}
                   {probeFailure.raw ? <div className="mt-1 text-[color:var(--atlas-text-soft)]">код ошибки: {probeFailure.raw}</div> : null}
                 </div>
               ) : null}
 
-              <div className="mt-3 rounded-xl border border-white/15 bg-[color:var(--atlas-surface)] p-3 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-3 rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
                 <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
                   <span>Сбор данных по пользователям</span>
                   <span className={`badge ${node.observer_is_stale || nodeFreshness?.observerIsStale ? "badge-warning" : "badge-success"}`}>
@@ -1133,7 +1133,7 @@ export default function AdminNodesPage() {
               {traffic.map((row, index) => {
                 const flag = COUNTRY_FLAGS[nodeCodeKey(row.node_code)] || "🌐";
                 return (
-                  <tr key={`${row.date}:${row.node_code}`} className={`border-t border-white/20 dark:border-white/5 ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)] dark:bg-white/[0.02]" : ""}`}>
+                  <tr key={`${row.date}:${row.node_code}`} className={`border-t border-[color:var(--atlas-border)] ${index % 2 === 0 ? "bg-[color:var(--atlas-surface)]" : ""}`}>
                     <td className="px-3 py-2.5 font-medium">{row.date}</td>
                     <td className="px-3 py-2.5">
                       <span className="mr-2">{flag}</span>

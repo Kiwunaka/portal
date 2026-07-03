@@ -1,10 +1,13 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetIcon, icon } from "@/components/cabinet/icon";
+import { FaqAccordion } from "@/components/cabinet/instructions";
 import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
+import { useToast } from "@/components/cabinet/toast";
 import { Button, Chip, Input, Note, Textarea } from "@/components/cabinet/ui";
 import {
   createTicket,
@@ -14,7 +17,7 @@ import {
   type TicketInfo,
 } from "@/lib/api";
 import { getDeviceLimit, resolvePlanLabel } from "@/lib/access-policy";
-import { getPortalPublicConfig } from "@/lib/portal";
+import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 
 type TicketCategory = "Не могу подключиться" | "Вопрос по оплате" | "Медленно работает" | "Другое";
@@ -53,6 +56,44 @@ function statusLabel(status: string): string {
   return normalized || "Неизвестно";
 }
 
+const FAQ_ENTRIES = [
+  {
+    question: "Как подключить устройство?",
+    answer:
+      "1. Скачайте приложение на странице «Загрузки»\n2. Войдите тем же способом, что и в кабинет, — почта или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение для вашего устройства недоступно, используйте раздел «Ручное подключение» в кабинете: скопируйте личную ссылку и добавьте её в Karing или Happ.",
+  },
+  {
+    question: "Оплатил, но доступ не обновился",
+    answer:
+      "Обычно доступ включается сам за пару минут. Если прошло больше 15 минут — проверьте срок на главной кабинета и создайте обращение, приложив чек или скрин оплаты. По чеку мы найдём платёж и включим доступ вручную, деньги не теряются.",
+  },
+  {
+    question: "Не работает подключение",
+    answer:
+      "Попробуйте по порядку:\n1. Обновите доступ в приложении\n2. Полностью перезапустите приложение\n3. Проверьте обычный интернет без POKROV\n4. Смените локацию, если есть выбор\n5. Перезагрузите устройство\n\nНе помогло — создайте обращение и опишите, на каком шаге останавливается.",
+  },
+  {
+    question: "Медленная скорость",
+    answer:
+      "Сначала проверьте скорость обычного интернета без POKROV — если он медленный, дело в сети. Затем смените локацию и перезапустите приложение. На бесплатном старте после лимита трафика скорость снижается, в платных режимах в обычном режиме снижения нет.",
+  },
+  {
+    question: "Как перенести доступ на новое устройство?",
+    answer:
+      "Скачайте приложение на новое устройство и войдите в тот же аккаунт — доступ подтянется сам. Список связанных устройств виден на странице «Устройства».",
+  },
+  {
+    question: "Промокод или код не сработал",
+    answer:
+      "Проверьте, нет ли опечатки — коды не зависят от регистра. У кода мог закончиться срок или лимит активаций, а часть кодов действует только для новых аккаунтов. Активировать код можно на странице «Активировать код». Если не получилось — напишите нам, разберёмся с конкретным кодом.",
+  },
+  {
+    question: "Что такое ручное подключение и личная ссылка?",
+    answer:
+      "Это запасной способ для устройств, где приложение POKROV недоступно. В кабинете есть раздел «Ручное подключение» — скопируйте оттуда личную ссылку и добавьте её в совместимое приложение (Karing или Happ). Ссылка — как ключ от квартиры: не делитесь ей. Если она попала не в те руки, сбросьте её в кабинете.",
+  },
+];
+
 function formatDate(value?: string | null): string {
   if (!value) return "недавно";
   const parsed = new Date(value);
@@ -74,6 +115,8 @@ function formatFileSize(bytes: number): string {
 
 export default function SupportPage() {
   const { user, dash } = usePortalSession();
+  const { showToast } = useToast();
+  const reduceMotion = useReducedMotion();
   const [tickets, setTickets] = useState<TicketInfo[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -109,6 +152,19 @@ export default function SupportPage() {
   useEffect(() => {
     void loadTickets();
   }, []);
+
+  useEffect(() => {
+    if (!composeOpen) return;
+    document.body.classList.add("modal-open");
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setComposeOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [composeOpen]);
 
   const openComposer = (nextCategory: TicketCategory = category): void => {
     const nextPreset = CATEGORY_PRESETS[nextCategory];
@@ -147,7 +203,7 @@ export default function SupportPage() {
       setBody("");
       setAttachmentFile(null);
       await loadTickets();
-      setNotice(`Обращение #${created.id} создано.`);
+      showToast(`Обращение #${created.id} создано.`, "success");
     } catch (nextError) {
       setError(String((nextError as { message?: string })?.message || nextError || ""));
     } finally {
@@ -159,7 +215,7 @@ export default function SupportPage() {
     <>
       <main className="cab-page">
         <CabinetStatus
-          title="Помощь"
+          title={getCopyText("webapp.support.title", "Помощь")}
           meta={latestTicket ? `${statusLabel(latestTicket.status)} · #${latestTicket.id}` : "Кабинет и Telegram"}
           body={
             latestTicket
@@ -196,7 +252,7 @@ export default function SupportPage() {
               href={`/support/thread/?id=${latestTicket.id}`}
             />
           ) : (
-            <CabinetRow icon={icon("chat_bubble")} label="Обращений пока нет" hint="Создайте первый вопрос, если что-то пошло не так" />
+            <CabinetRow icon={icon("chat_bubble")} label={getCopyText("webapp.support.empty_tickets", "Обращений пока нет")} hint="Создайте первый вопрос, если что-то пошло не так" />
           )}
         </CabinetGroup>
 
@@ -227,6 +283,11 @@ export default function SupportPage() {
         </CabinetGroup>
 
         <section className="flex flex-col gap-2.5">
+          <h2 className="cab-eyebrow px-1">Частые вопросы</h2>
+          <FaqAccordion entries={FAQ_ENTRIES} />
+        </section>
+
+        <section className="flex flex-col gap-2.5">
           <h2 className="cab-eyebrow px-1">Диагностика</h2>
           <CabinetTiles>
             <CabinetTile icon={icon("verified_user")} label="Доступ" value={resolvePlanLabel(dash, user)} hint="Без личных ключей" tone="success" />
@@ -239,97 +300,114 @@ export default function SupportPage() {
         {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
       </main>
 
-      {composeOpen ? (
-        <div className="fixed inset-0 z-[230] grid place-items-end bg-slate-950/45 p-0 backdrop-blur-sm sm:place-items-center sm:p-4" onClick={() => setComposeOpen(false)}>
-          <div
-            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[1.6rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-5 shadow-[var(--atlas-shadow-medium)] sm:rounded-[1.6rem] sm:p-6"
-            onClick={(event) => event.stopPropagation()}
+      <AnimatePresence>
+        {composeOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[230] grid place-items-end bg-slate-950/45 p-0 backdrop-blur-sm sm:place-items-center sm:p-4"
+            onClick={() => setComposeOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="cab-eyebrow">Новое обращение</p>
-                <h2 className="mt-2 text-2xl font-semibold leading-tight text-[color:var(--atlas-text)]">Новый вопрос</h2>
-                <p className="mt-2 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{preset.hint}</p>
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Новое обращение"
+              className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[1.6rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-5 shadow-[var(--atlas-shadow-medium)] sm:rounded-[1.6rem] sm:p-6"
+              onClick={(event) => event.stopPropagation()}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="cab-eyebrow">Новое обращение</p>
+                  <h2 className="mt-2 text-2xl font-semibold leading-tight text-[color:var(--atlas-text)]">Новый вопрос</h2>
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{preset.hint}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setComposeOpen(false)} aria-label="Закрыть" className="!px-2">
+                  <CabinetIcon name="close" />
+                </Button>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setComposeOpen(false)} aria-label="Закрыть" className="!px-2">
-                <CabinetIcon name="close" />
-              </Button>
-            </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
-              {CATEGORIES.map((item) => (
-                <Chip
-                  key={item}
-                  active={item === category}
-                  onClick={() => {
-                    const nextPreset = CATEGORY_PRESETS[item];
-                    setCategory(item);
-                    setSubject(nextPreset.subject);
-                    setBody(nextPreset.body);
-                  }}
-                >
-                  {item}
-                </Chip>
-              ))}
-            </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {CATEGORIES.map((item) => (
+                  <Chip
+                    key={item}
+                    active={item === category}
+                    onClick={() => {
+                      const nextPreset = CATEGORY_PRESETS[item];
+                      setCategory(item);
+                      setSubject(nextPreset.subject);
+                      setBody(nextPreset.body);
+                    }}
+                  >
+                    {item}
+                  </Chip>
+                ))}
+              </div>
 
-            <div className="mt-5 space-y-4">
-              <Input
-                value={subject}
-                onChange={(event) => setSubject(event.target.value)}
-                placeholder="Коротко: что случилось"
-              />
-              <Textarea
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-                rows={7}
-                placeholder="Опишите, что делали, где сломалось и что видите сейчас."
-              />
-
-              <label className="block rounded-[var(--pokrov-radius-control)] border border-dashed border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-4 text-sm">
-                <span className="block font-medium text-[color:var(--atlas-text)]">Вложение</span>
-                <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-muted)]">
-                  Скриншот, видео, PDF или текстовый файл до 20 МБ.
-                </span>
-                <input
-                  type="file"
-                  accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                  className="mt-3 block w-full cursor-pointer text-sm text-[color:var(--atlas-text-soft)] file:mr-3 file:rounded-[var(--pokrov-radius-control)] file:border-0 file:bg-[color:var(--atlas-nav-active)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--atlas-primary)]"
-                  onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+              <div className="mt-5 space-y-4">
+                <Input
+                  value={subject}
+                  onChange={(event) => setSubject(event.target.value)}
+                  placeholder="Коротко: что случилось"
+                  autoFocus
                 />
-                {attachmentFile ? (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs">
-                    <span className="truncate">{attachmentFile.name}</span>
-                    <button type="button" onClick={() => setAttachmentFile(null)} className="text-[color:var(--atlas-status-danger-text)]">
-                      Убрать
-                    </button>
-                  </div>
-                ) : null}
-                {attachmentFile ? <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">{formatFileSize(attachmentFile.size)}</p> : null}
-              </label>
+                <Textarea
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                  rows={7}
+                  placeholder="Опишите, что делали, где сломалось и что видите сейчас."
+                />
 
-              <div className="flex flex-wrap gap-3">
-                <Button disabled={busy || !body.trim()} onClick={() => void onCreateTicket()}>
-                  {busy ? "Отправляем..." : "Отправить вопрос"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setSubject("");
-                    setBody("");
-                    setAttachmentFile(null);
-                    setNotice("");
-                  }}
-                >
-                  Очистить
-                </Button>
+                <label className="block rounded-[var(--pokrov-radius-control)] border border-dashed border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-4 text-sm">
+                  <span className="block font-medium text-[color:var(--atlas-text)]">Вложение</span>
+                  <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-muted)]">
+                    Скриншот, видео, PDF или текстовый файл до 20 МБ.
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                    className="mt-3 block w-full cursor-pointer text-sm text-[color:var(--atlas-text-soft)] file:mr-3 file:rounded-[var(--pokrov-radius-control)] file:border-0 file:bg-[color:var(--atlas-nav-active)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--atlas-primary)]"
+                    onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                  />
+                  {attachmentFile ? (
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs">
+                      <span className="truncate">{attachmentFile.name}</span>
+                      <button type="button" onClick={() => setAttachmentFile(null)} className="text-[color:var(--atlas-status-danger-text)]">
+                        Убрать
+                      </button>
+                    </div>
+                  ) : null}
+                  {attachmentFile ? <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">{formatFileSize(attachmentFile.size)}</p> : null}
+                </label>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button loading={busy} disabled={!body.trim()} onClick={() => void onCreateTicket()}>
+                    Отправить вопрос
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setSubject("");
+                      setBody("");
+                      setAttachmentFile(null);
+                      setNotice("");
+                    }}
+                  >
+                    Очистить
+                  </Button>
+                </div>
+                {notice ? <Note tone="warning">{notice}</Note> : null}
+                {error ? <Note tone="danger">{error}</Note> : null}
               </div>
-              {notice ? <Note tone="success">{notice}</Note> : null}
-              {error ? <Note tone="danger">{error}</Note> : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

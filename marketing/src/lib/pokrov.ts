@@ -6,6 +6,7 @@ export type {
 
 export {
   getDesignTokenCssVariables,
+  getDesignTokenThemeCss,
   getDesignTokens,
 } from "../../../shared/design-tokens";
 

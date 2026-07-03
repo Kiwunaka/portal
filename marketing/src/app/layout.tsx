@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 
@@ -12,7 +11,7 @@ import {
   DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
   DEFAULT_MARKETING_TWITTER_IMAGE_PATH,
 } from "../lib/marketing-site";
-import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND, getDesignTokenCssVariables } from "../lib/pokrov";
+import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND, getDesignTokenThemeCss } from "../lib/pokrov";
 import "./globals.css";
 
 const fontBody = Manrope({
@@ -75,11 +74,12 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const designTokenVars = getDesignTokenCssVariables("public") as CSSProperties;
+  const designTokenThemeCss = getDesignTokenThemeCss("public");
 
   return (
     <html lang="ru" className={fontBody.variable} suppressHydrationWarning>
       <head>
+        <style id="pokrov-design-tokens" dangerouslySetInnerHTML={{ __html: designTokenThemeCss }} />
         <script
           dangerouslySetInnerHTML={{
             __html:
@@ -87,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body style={designTokenVars}>
+      <body>
         <a href="#main-content" className="skip-link">
           Перейти к содержимому
         </a>

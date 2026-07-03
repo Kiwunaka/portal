@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import AppRouteLink from "@/components/app-route-link";
 import { icon } from "@/components/cabinet/icon";
 import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
+import { useToast } from "@/components/cabinet/toast";
 import { Button, Input, Note } from "@/components/cabinet/ui";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import {
@@ -52,6 +53,7 @@ type BonusCheckState = {
 
 export default function SettingsPage() {
   const { user, dash, refresh } = usePortalSession();
+  const { showToast } = useToast();
   const [bonusCheck, setBonusCheck] = useState<BonusCheckState | null>(null);
   const [bonusMessage, setBonusMessage] = useState("");
   const [bonusError, setBonusError] = useState("");
@@ -172,6 +174,7 @@ export default function SettingsPage() {
       const payload = await claimChannelBonus();
       const days = Number(payload.premium_days || channelBonusDays || 10);
       setBonusMessage(payload.already_claimed ? "Бонус уже был добавлен раньше." : `Бонус +${days} дней добавлен.`);
+      if (!payload.already_claimed) showToast(`Бонус +${days} дней добавлен`, "success");
     } catch (error) {
       setBonusError(userFacingErrorMessage(error, "Не удалось добавить бонус. Попробуйте позже или откройте поддержку."));
     } finally {
@@ -191,6 +194,7 @@ export default function SettingsPage() {
         display_name: emailLinkName.trim() || undefined,
       });
       setEmailLinkMessage("Письмо отправлено. Введите код подтверждения из письма.");
+      showToast("Письмо с кодом отправлено", "success");
     } catch (error) {
       setEmailLinkError(userFacingErrorMessage(error, "Не удалось отправить письмо. Проверьте email и попробуйте еще раз."));
     } finally {
@@ -212,6 +216,7 @@ export default function SettingsPage() {
       await refresh();
       setEmailLinkPassword("");
       setEmailLinkMessage("Email подтвержден и привязан к текущему аккаунту.");
+      showToast("Email подтвержден и привязан", "success");
     } catch (error) {
       setEmailLinkError(userFacingErrorMessage(error, "Не удалось подтвердить email. Проверьте код и попробуйте еще раз."));
     } finally {
@@ -331,8 +336,8 @@ export default function SettingsPage() {
                   minLength={10}
                   required
                 />
-                <Button type="submit" disabled={emailLinkBusy !== ""}>
-                  {emailLinkBusy === "request" ? "Отправляем..." : "Отправить письмо"}
+                <Button type="submit" loading={emailLinkBusy === "request"} disabled={emailLinkBusy !== ""}>
+                  Отправить письмо
                 </Button>
               </form>
 
@@ -344,8 +349,8 @@ export default function SettingsPage() {
                   autoComplete="one-time-code"
                   required
                 />
-                <Button type="submit" variant="secondary" disabled={emailLinkBusy !== ""}>
-                  {emailLinkBusy === "verify" ? "Проверяем..." : "Подтвердить email"}
+                <Button type="submit" variant="secondary" loading={emailLinkBusy === "verify"} disabled={emailLinkBusy !== ""}>
+                  Подтвердить email
                 </Button>
                 {emailLinkMessage ? <Note tone="success">{emailLinkMessage}</Note> : null}
                 {emailLinkError ? <Note tone="danger">{emailLinkError}</Note> : null}

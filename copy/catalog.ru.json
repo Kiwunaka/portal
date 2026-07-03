@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026-04-23-governance",
+  "catalog_version": "2026-07-02-instructions",
   "locale": "ru",
   "items": {
     "marketing.meta.title": {
@@ -706,7 +706,7 @@
     },
     "webapp.entry.title": {
       "surface": "webapp.entry",
-      "ru": "Вход в кабинет POKROV",
+      "ru": "Кабинет POKROV",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -715,7 +715,7 @@
     },
     "webapp.entry.subtitle": {
       "surface": "webapp.entry",
-      "ru": "Подтвердите вход через Telegram, и кабинет откроется сразу. Внутри будут доступ, поддержка и шаги по подключению.",
+      "ru": "Войдите, чтобы скачать приложение, проверить доступ, продлить срок или написать в поддержку.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -841,7 +841,7 @@
     },
     "webapp.dashboard.support_cta": {
       "surface": "webapp.dashboard",
-      "ru": "Поддержка",
+      "ru": "Помощь",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -850,7 +850,7 @@
     },
     "webapp.subscription.title": {
       "surface": "webapp.subscription",
-      "ru": "Подписка и подключение",
+      "ru": "Продлить доступ",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -868,7 +868,7 @@
     },
     "webapp.checkout.title": {
       "surface": "webapp.checkout",
-      "ru": "Продление подписки",
+      "ru": "Продлить доступ",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -877,7 +877,7 @@
     },
     "webapp.checkout.subtitle": {
       "surface": "webapp.checkout",
-      "ru": "Выберите тариф и оплатите его из личного кабинета. Сумма и срок видны заранее, а если нужна помощь, можно продолжить через Telegram.",
+      "ru": "Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -886,7 +886,7 @@
     },
     "webapp.support.title": {
       "surface": "webapp.support",
-      "ru": "Поддержка и обращения",
+      "ru": "Помощь",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -904,7 +904,7 @@
     },
     "webapp.support.empty_tickets": {
       "surface": "webapp.support",
-      "ru": "Пока обращений нет. Когда понадобится помощь, создайте новое обращение, и диалог появится здесь.",
+      "ru": "Обращений пока нет",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -913,7 +913,7 @@
     },
     "webapp.devices.title": {
       "surface": "webapp.devices",
-      "ru": "Устройства и подключения",
+      "ru": "Устройства",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -922,7 +922,7 @@
     },
     "webapp.devices.subtitle": {
       "surface": "webapp.devices",
-      "ru": "Управляйте своими устройствами и отслеживайте активные подключения на всех ваших устройствах.",
+      "ru": "Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -931,7 +931,7 @@
     },
     "webapp.statistics.title": {
       "surface": "webapp.statistics",
-      "ru": "Статистика подключения",
+      "ru": "Статистика",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -940,7 +940,7 @@
     },
     "webapp.statistics.subtitle": {
       "surface": "webapp.statistics",
-      "ru": "Здесь собраны данные о подписке, трафике и активных подключениях — всё, что нужно для быстрого контроля.",
+      "ru": "Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров.",
       "variables": [],
       "tone": "premium",
       "allowed_public": true,
@@ -949,7 +949,7 @@
     },
     "webapp.downloads.title": {
       "surface": "webapp.downloads",
-      "ru": "Приложения и загрузки",
+      "ru": "Загрузки",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -958,7 +958,7 @@
     },
     "webapp.downloads.subtitle": {
       "surface": "webapp.downloads",
-      "ru": "Здесь собраны актуальные загрузки для Android и Windows, а также короткие подсказки по установке.",
+      "ru": "Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1487,6 +1487,183 @@
       "tone": "calm",
       "allowed_public": false,
       "compliance_notes": "Shared bot baseline for continuation flows.",
+      "ab_variant": "control"
+    },
+    "bot.menu.home": {
+      "surface": "bot.main",
+      "ru": "🛡 *POKROV*\n\nЯ помогу подключить устройство, продлить доступ и ответить на вопросы.\n\nВыберите, что сделать:",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.menu.returning": {
+      "surface": "bot.main",
+      "ru": "👋 *С возвращением в POKROV!*\n\nВсё на месте. Выберите, что сделать:",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.menu.new_user": {
+      "surface": "bot.main",
+      "ru": "👋 *Добро пожаловать в POKROV*\n\nНастроим доступ за пару минут: установите приложение, войдите и нажмите «Подключить».\n\nС чего начнём?",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.menu.all_actions": {
+      "surface": "bot.main",
+      "ru": "⚙️ *Все действия*\n\nВыберите ближайший шаг:",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.settings.more": {
+      "surface": "bot.main",
+      "ru": "⚙️ *Ещё*\n\nЗапасные инструменты: ручное подключение, бонусы, коды и сброс личной ссылки.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.status.card": {
+      "surface": "bot.main",
+      "ru": "👤 *Ваш доступ*\n\nСтатус: {status_icon} *{status_text}*\nТариф: {plan_label}\nДействует до: {expiry}\n\nПродлить можно в кабинете или прямо здесь.\nНомер для поддержки: `{tg_id}`",
+      "variables": [
+        "status_icon",
+        "status_text",
+        "plan_label",
+        "expiry",
+        "tg_id"
+      ],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.status.none": {
+      "surface": "bot.main",
+      "ru": "⛔️ *Сейчас доступа нет*\n\nНачните с 5 дней бесплатно — карту не просим. Понравится — выберите срок, длинные выходят выгоднее.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.tariffs.long": {
+      "surface": "bot.paywall",
+      "ru": "💎 *Долгие планы*\n\nЧем длиннее срок, тем дешевле выходит месяц. Оплатили один раз — и надолго забыли о продлении.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.payment.success": {
+      "surface": "bot.paywall",
+      "ru": "✅ *Оплата прошла.* Доступ уже обновляется в этом аккаунте. Откройте POKROV и нажмите «Подключить» — на этом всё.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.pick_device": {
+      "surface": "bot.onboarding",
+      "ru": "📱 *С какого устройства начинаем?*\n\nВыберите своё — покажу короткий путь: установить, войти, нажать «Подключить».",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.platform_ios": {
+      "surface": "bot.onboarding",
+      "ru": "🍏 *iPhone / iPad*\n\n1. Откройте страницу приложений\n2. Установите подходящее приложение для iPhone\n3. Если профиль не подтянулся сам, вернитесь сюда за ручной ссылкой",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.platform_android": {
+      "surface": "bot.onboarding",
+      "ru": "🤖 *Android*\n\n1. Скачайте приложение POKROV\n2. Войдите через почту или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение недоступно, есть запасной путь: установите Karing или Happ и добавьте личную ссылку из кабинета POKROV.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.platform_windows": {
+      "surface": "bot.onboarding",
+      "ru": "💻 *Windows*\n\n1. Скачайте POKROV для Windows\n2. Войдите через почту или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение недоступно, есть запасной путь: установите Karing или Happ и добавьте личную ссылку из кабинета POKROV.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.platform_macos": {
+      "surface": "bot.onboarding",
+      "ru": "🍎 *macOS*\n\n1. Откройте страницу приложений\n2. Посмотрите актуальный статус macOS\n3. Для подключения прямо сейчас используйте ручную ссылку в совместимом приложении",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.step_access": {
+      "surface": "bot.onboarding",
+      "ru": "✅ *Приложение есть — включим доступ*\n\nНачните с 5 дней бесплатно, карту не просим. Хотите сразу надолго — выберите срок ниже, после оплаты всё включится само.\n\nОстанется войти и нажать «Подключить».",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.help.triage": {
+      "surface": "bot.support",
+      "ru": "🧭 *Давайте без терминов.*\n\nВыберите, что у вас сейчас, — покажу один следующий шаг и не буду грузить настройками.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.support.hub": {
+      "surface": "bot.support",
+      "ru": "🆘 *Поддержка POKROV*\n\nОпишите, что случилось, одним сообщением — разберёмся и доведём до решения. Частые вопросы уже собраны ниже.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.faq.menu": {
+      "surface": "bot.support",
+      "ru": "❓ *Частые вопросы*\n\nСобрали пошаговые ответы на всё, с чем обычно приходят. Выберите тему — покажу короткую инструкцию.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot FAQ index screen, 2026-07 instructions pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.cabinet.intro": {
+      "surface": "bot.main",
+      "ru": "🌐 *Кабинет POKROV*\n\nЗдесь аккаунт, оплата, загрузки и ссылки подключения. Подключаться удобнее из приложения: войдите в тот же аккаунт, и всё подтянется само.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
     "app.nav.protection": {

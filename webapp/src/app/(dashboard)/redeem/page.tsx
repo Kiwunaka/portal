@@ -2,6 +2,7 @@
 
 import { icon } from "@/components/cabinet/icon";
 import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
+import { useToast } from "@/components/cabinet/toast";
 import { Button, Input, Note } from "@/components/cabinet/ui";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
@@ -39,6 +40,7 @@ function formatDate(value?: string | null): string {
 export default function RedeemPage() {
   const searchParams = useSearchParams();
   const { user, dash, refresh } = usePortalSession();
+  const { showToast } = useToast();
   const [keyInput, setKeyInput] = useState(() => normalizeKey(searchParams.get("key") || ""));
   const [status, setStatus] = useState<AccessKeyStatusPayload | null>(null);
   const [lookupBusy, setLookupBusy] = useState(false);
@@ -102,8 +104,11 @@ export default function RedeemPage() {
       setStatus(payload.status);
       await refresh();
       setMessage(`Код ${payload.key} активирован. Профиль уже обновлен.`);
+      showToast("Код активирован", "success");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось активировать код."));
+      const errorText = String((nextError as { message?: string })?.message || nextError || "Не удалось активировать код.");
+      setError(errorText);
+      showToast("Не удалось активировать код", "danger");
     } finally {
       setRedeemBusy(false);
     }
@@ -141,11 +146,11 @@ export default function RedeemPage() {
             placeholder="Код активации"
           />
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button variant="secondary" disabled={lookupBusy} onClick={() => void lookup()}>
-              {lookupBusy ? "Проверяем..." : "Проверить"}
+            <Button variant="secondary" loading={lookupBusy} onClick={() => void lookup()}>
+              Проверить
             </Button>
-            <Button disabled={redeemBusy} onClick={() => void onRedeem()}>
-              {redeemBusy ? "Активируем..." : "Активировать"}
+            <Button loading={redeemBusy} onClick={() => void onRedeem()}>
+              Активировать
             </Button>
           </div>
           <p className="text-xs leading-5 text-[color:var(--atlas-text-muted)]">

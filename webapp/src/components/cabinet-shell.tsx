@@ -2,11 +2,15 @@
 
 import type { ReactNode } from "react";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+
 import AppRouteLink from "@/components/app-route-link";
 import { CabinetIcon } from "@/components/cabinet/icon";
 import CabinetEntryAuth from "@/components/cabinet-entry-auth";
 import RouteTransition from "@/components/route-transition";
+import { ToastProvider } from "@/components/cabinet/toast";
 import { Button } from "@/components/cabinet/ui";
+import { FOCUS_RING } from "@/components/utils";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { usePortalSession } from "@/lib/session";
 import { usePathname } from "next/navigation";
@@ -278,6 +282,7 @@ function InitialCabinetSkeleton() {
 export default function CabinetShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { loading, refreshing, error, webLoginRequired, user, dash, logoutWebSession, refresh } = usePortalSession();
+  const reduceMotion = useReducedMotion();
   const [dark, setDark] = useState(() => {
     if (typeof window === "undefined") return false;
     const saved = readStoredThemePreference();
@@ -398,8 +403,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     </span>
   );
 
-  const iconButtonClass =
-    "inline-flex h-9 w-9 items-center justify-center rounded-[var(--pokrov-radius-control)] text-[color:var(--atlas-text-muted)] transition-colors hover:bg-[color:var(--atlas-nav-hover)] hover:text-[color:var(--atlas-text)]";
+  const iconButtonClass = `inline-flex h-9 w-9 items-center justify-center rounded-[var(--pokrov-radius-control)] text-[color:var(--atlas-text-muted)] transition-colors hover:bg-[color:var(--atlas-nav-hover)] hover:text-[color:var(--atlas-text)] ${FOCUS_RING}`;
 
   const statusChip = (
     <span className="cab-badge" data-tone={dash.is_active ? "success" : "warning"}>
@@ -471,10 +475,21 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   );
 
   const mobileMenu = (
-    <div className="fixed inset-0 z-50 bg-black/45 p-3 backdrop-blur-sm lg:hidden" onClick={() => setDrawerOpen(false)}>
-      <aside
+    <motion.div
+      className="fixed inset-0 z-50 bg-black/45 p-3 backdrop-blur-sm lg:hidden"
+      onClick={() => setDrawerOpen(false)}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <motion.aside
         className="h-full w-[min(86vw,340px)] rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-4 shadow-[var(--atlas-shadow-medium)]"
         onClick={(event) => event.stopPropagation()}
+        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
+        transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="flex items-start justify-between gap-3">
           <PokrovLogo
@@ -524,73 +539,79 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
             <Button variant="ghost" size="sm" onClick={logoutWebSession}>Выйти</Button>
           </div>
         </div>
-      </aside>
-    </div>
+      </motion.aside>
+    </motion.div>
   );
 
   return (
-    <div
-      data-testid="cabinet-shell"
-      className="relative min-h-screen overflow-x-hidden"
-      style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}
-    >
-      <div className="mx-auto flex min-h-screen max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:px-5">
-        {sidebar}
+    <ToastProvider>
+      <div
+        data-testid="cabinet-shell"
+        className="relative min-h-screen overflow-x-hidden"
+        style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}
+      >
+        <div className="mx-auto flex min-h-screen max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:px-5">
+          {sidebar}
 
-        <div className="min-w-0 flex-1 pb-24 lg:pb-8" style={{ paddingTop: "max(0.25rem, var(--tg-safe-area-top, 0px))" }}>
-          <header className="mb-4 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2.5 shadow-[var(--atlas-shadow-soft)] lg:hidden">
-            <div className="flex min-w-0 items-center gap-2">
-              <button type="button" onClick={() => setDrawerOpen(true)} className={iconButtonClass} aria-label="Открыть меню">
-                <CabinetIcon name="menu" className="h-5 w-5" />
-              </button>
-              <h1 className="truncate font-display text-[1.3rem] font-semibold leading-none tracking-[-0.02em] text-[color:var(--atlas-text)]">
-                {meta.title}
-              </h1>
-            </div>
+          <div className="min-w-0 flex-1 pb-24 lg:pb-8" style={{ paddingTop: "max(0.25rem, var(--tg-safe-area-top, 0px))" }}>
+            <header className="mb-4 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2.5 shadow-[var(--atlas-shadow-soft)] lg:hidden">
+              <div className="flex min-w-0 items-center gap-2">
+                <button type="button" onClick={() => setDrawerOpen(true)} className={iconButtonClass} aria-label="Открыть меню">
+                  <CabinetIcon name="menu" className="h-5 w-5" />
+                </button>
+                <h1 className="truncate font-display text-[1.3rem] font-semibold leading-none tracking-[-0.02em] text-[color:var(--atlas-text)]">
+                  {meta.title}
+                </h1>
+              </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="cab-badge hidden sm:inline-flex" data-tone={dash.is_active ? "success" : "warning"}>
-                <CabinetIcon name={dash.is_active ? "shield_check" : "warning"} className="h-3.5 w-3.5" />
-                {statusLabel}
-              </span>
-              <button type="button" onClick={() => setDark((value) => !value)} className={iconButtonClass} aria-label="Переключить тему">
-                <CabinetIcon name={dark ? "light_mode" : "dark_mode"} className="h-5 w-5" />
-              </button>
-              <AppRouteLink
-                href="/settings/"
-                className="grid h-9 w-9 place-items-center rounded-full bg-[color:var(--atlas-primary)] text-xs font-semibold uppercase text-[color:var(--atlas-primary-text)]"
-                aria-label={accountLabel}
+              <div className="flex items-center gap-1.5">
+                <span className="cab-badge hidden sm:inline-flex" data-tone={dash.is_active ? "success" : "warning"}>
+                  <CabinetIcon name={dash.is_active ? "shield_check" : "warning"} className="h-3.5 w-3.5" />
+                  {statusLabel}
+                </span>
+                <button type="button" onClick={() => setDark((value) => !value)} className={iconButtonClass} aria-label="Переключить тему">
+                  <CabinetIcon name={dark ? "light_mode" : "dark_mode"} className="h-5 w-5" />
+                </button>
+                <AppRouteLink
+                  href="/settings/"
+                  className={`grid h-9 w-9 place-items-center rounded-full bg-[color:var(--atlas-primary)] text-xs font-semibold uppercase text-[color:var(--atlas-primary-text)] ${FOCUS_RING}`}
+                  aria-label={accountLabel}
+                >
+                  {accountMark}
+                </AppRouteLink>
+              </div>
+            </header>
+
+            {showActivity ? (
+              <div
+                className="mb-4 h-1 overflow-hidden rounded-full bg-[color:var(--atlas-progress-track)] lg:h-0.5"
+                role="status"
+                aria-label={refreshing ? "Обновляем данные кабинета" : "Открываем раздел"}
               >
-                {accountMark}
-              </AppRouteLink>
-            </div>
-          </header>
+                <div className="h-full w-1/3 rounded-full bg-[color:var(--atlas-primary)] motion-safe:animate-pulse" />
+              </div>
+            ) : null}
 
-          {showActivity ? (
-            <div className="mb-4 h-1 overflow-hidden rounded-full bg-[color:var(--atlas-progress-track)] lg:hidden" role="status" aria-label={refreshing ? "Обновляем данные кабинета" : "Открываем раздел"}>
-              <div className="h-full w-1/3 rounded-full bg-[color:var(--atlas-primary)] motion-safe:animate-pulse" />
-            </div>
-          ) : null}
-
-          <RouteTransition>{children}</RouteTransition>
+            <RouteTransition>{children}</RouteTransition>
+          </div>
         </div>
+
+        <AnimatePresence>{drawerOpen ? mobileMenu : null}</AnimatePresence>
+
+        {!drawerOpen ? (
+          <nav className="mobile-nav-root lg:hidden" aria-label="Навигация кабинета">
+            {MOBILE_NAV_ITEMS.map((item) => {
+              const active = item.match(pathname);
+              return (
+                <AppRouteLink key={item.href} href={item.href} className={`mobile-nav-item ${active ? "active" : ""}`}>
+                  <CabinetIcon name={item.icon} className="h-[22px] w-[22px]" />
+                  <span className="truncate">{item.label}</span>
+                </AppRouteLink>
+              );
+            })}
+          </nav>
+        ) : null}
       </div>
-
-      {drawerOpen ? mobileMenu : null}
-
-      {!drawerOpen ? (
-        <nav className="mobile-nav-root lg:hidden" aria-label="Навигация кабинета">
-          {MOBILE_NAV_ITEMS.map((item) => {
-            const active = item.match(pathname);
-            return (
-              <AppRouteLink key={item.href} href={item.href} className={`mobile-nav-item ${active ? "active" : ""}`}>
-                <CabinetIcon name={item.icon} className="h-[22px] w-[22px]" />
-                <span className="truncate">{item.label}</span>
-              </AppRouteLink>
-            );
-          })}
-        </nav>
-      ) : null}
-    </div>
+    </ToastProvider>
   );
 }
