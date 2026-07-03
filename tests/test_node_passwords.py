@@ -53,6 +53,26 @@ class NodePasswordsTests(unittest.TestCase):
 
         self.assertEqual(result.get("mini"), ["panel-pass", "ssh-pass"])
 
+    def test_parse_passwords_supports_demax_alias(self) -> None:
+        import node_passwords
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "PASSWORDS.txt"
+            path.write_text(
+                "\n".join(
+                    [
+                        "DEMAX Germany",
+                        "46.247.109.132",
+                        "de-secret-password",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = node_passwords.parse_passwords(path, requested_codes=["de"])
+
+        self.assertEqual(result.get("de"), "de-secret-password")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -111,6 +111,54 @@ class NodeAccessTests(unittest.TestCase):
         self.assertIn("RUSSIA_private.ppk", names)
         self.assertIn("RUSSIA.ppk", names)
 
+    def test_private_key_candidates_support_demax_key_names(self) -> None:
+        import node_access
+
+        with tempfile.TemporaryDirectory() as tmp:
+            key_dir = Path(tmp)
+            candidates = node_access._private_key_candidates("de", key_dir)
+
+        names = [path.name for path in candidates]
+        self.assertIn("DEnodeMAX_private.ppk", names)
+        self.assertIn("DEMAX.ppk", names)
+
+    def test_connect_node_prefers_de_raw_ip_port_22(self) -> None:
+        import node_access
+
+        attempts: list[int] = []
+
+        class FakeTransport:
+            def set_keepalive(self, _seconds: int) -> None:
+                return None
+
+        class FakeClient:
+            def set_missing_host_key_policy(self, _policy) -> None:
+                return None
+
+            def connect(self, host, port, username, timeout, banner_timeout, auth_timeout, allow_agent, look_for_keys, **auth):
+                attempts.append(int(port))
+                if int(port) == 22 and auth.get("password") == "de-pass":
+                    return None
+                raise RuntimeError("not this port")
+
+            def get_transport(self):
+                return FakeTransport()
+
+            def close(self) -> None:
+                return None
+
+        with patch.object(node_access, "load_private_key", return_value=None), patch.object(
+            node_access, "parse_password_candidates", return_value={"de": ["de-pass"]}
+        ), patch.object(node_access.paramiko, "SSHClient", side_effect=lambda: FakeClient()):
+            _ssh, method = node_access.connect_node(
+                code="de",
+                host="46.247.109.132",
+                passwords_path=Path("ignored.txt"),
+            )
+
+        self.assertEqual(method, "password")
+        self.assertEqual(attempts, [22])
+
     def test_load_unencrypted_putty_rsa_v2_key(self) -> None:
         import node_access
 

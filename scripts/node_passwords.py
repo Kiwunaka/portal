@@ -29,6 +29,7 @@ def _find_marker_index(lines: list[str], code: str) -> int | None:
         return None
     marker_aliases = {
         "brain": ["brainnode"],
+        "de": ["denodemax", "demax", "de node", "denode", "germany", "germany node", "германия"],
         "us": ["usnode"],
         "pl": ["plnode"],
         "it": ["itnode"],

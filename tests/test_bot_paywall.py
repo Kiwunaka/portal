@@ -824,6 +824,33 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("🎫 Есть код оплаты или подарок", labels)
         self.assertIn("🔗 Есть личная ссылка", labels)
         self.assertIn("⚠️ Подключение не работает", labels)
+        self.assertIn("❓ Частые вопросы", labels)
+
+    def test_faq_menu_lists_every_answer_topic(self) -> None:
+        callback = _FakeCallback(1001, data="faqmenu")
+
+        asyncio.run(self.bot_module.show_faq_menu(callback))
+
+        final_text = callback.message.edits[-1]
+        self.assertIn("Частые вопросы", final_text)
+        reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
+        callbacks = [
+            str(getattr(button, "callback_data", "") or "")
+            for row in reply_markup.inline_keyboard
+            for button in row
+        ]
+        menu_keys = {key for key, _label in self.bot_module.FAQ_MENU_ITEMS}
+        for key in menu_keys:
+            self.assertIn(f"faq_{key}", callbacks)
+            self.assertIn(key, self.bot_module.FAQ_ANSWERS)
+        self.assertEqual(menu_keys, set(self.bot_module.FAQ_ANSWERS))
+
+    def test_faq_answers_do_not_leak_raw_links_or_stars(self) -> None:
+        for key, answer in self.bot_module.FAQ_ANSWERS.items():
+            with self.subTest(faq=key):
+                self.assertNotIn("connect.pokrov.space", answer)
+                self.assertNotIn("Stars", answer)
+                self.assertNotIn("⭐", answer)
 
     def test_bulk_subscription_update_broadcasts_do_not_send_raw_links(self) -> None:
         bulk_handlers = (

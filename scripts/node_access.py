@@ -20,6 +20,7 @@ DEFAULT_KEY_DIR = REPO_ROOT / "VPN NODE SSH KEYS"
 
 KEY_STEMS: dict[str, list[str]] = {
     "brain": ["BRAINnode"],
+    "de": ["DEnodeMAX", "DEMAX", "DEnode", "GermanyNode"],
     "us": ["USnode"],
     "pl": ["PLnode"],
     "it": ["ITnode"],
@@ -36,6 +37,9 @@ DEFAULT_USERS: dict[str, list[str]] = {
 }
 
 DEFAULT_PORTS: dict[str, list[int]] = {
+    # DEMAX currently exposes SSH on the raw IP through tcp/22, while the DNS
+    # route may still answer on the operator port.
+    "de": [22, 29374],
     "mini": [22, 29374],
 }
 
