@@ -49,6 +49,7 @@ Legacy filename note:
 | Monitoring and visibility | [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md) |
 | Publishing and signing | [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md) |
 | Developer workflow | [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md) |
+| Agent context navigation | [docs/developer/agent-context-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md) |
 | OpenAI operator assistants | [docs/developer/openai-operator-assistants.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/openai-operator-assistants.md) |
 | Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md), [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md), [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md), and [docs/developer/orchestration/context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |

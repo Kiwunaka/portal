@@ -75,6 +75,7 @@ Generated assets for public, client, store, support, or release use must include
 
 Use these first for current client and release work:
 
+- [Agent Context Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
 - [Client Delivery, Update Check, And Dynamic Content Plan](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
 - [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
 - [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)

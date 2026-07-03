@@ -37,11 +37,13 @@ Current-vs-history boundary:
 5. [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 6. [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 7. [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
+8. [Agent Context Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
 
 ## Start Here As Developer
 
 - [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 - [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
+- [Agent Context Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
 - [Orchestration Standard](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
 - [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
 - [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
@@ -139,6 +141,7 @@ notes stay legacy unless the owner explicitly reopens that lane.
 
 - [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
 - [docs/developer/repository-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
+- [docs/developer/agent-context-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
 - [docs/developer/pokrov-canonical-feature-tracker.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.md)
 - [docs/developer/pokrov-canonical-feature-tracker.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.csv)
 - [docs/developer/pokrov-story-test-evidence-audit.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-story-test-evidence-audit.csv)
