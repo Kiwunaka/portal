@@ -1,6 +1,6 @@
 # Design System Sync
 
-Last updated: 2026-06-07
+Last updated: 2026-07-03
 
 `DESIGN.md` is the root design contract for this repository. `shared/design-tokens.json` is the machine-readable token source for marketing, cabinet, admin, and release-support UI.
 
@@ -10,13 +10,13 @@ Last updated: 2026-06-07
 | --- | --- | --- |
 | Palette, radius, shadows, type, density | `shared/design-tokens.json` | `shared/design-tokens.ts`, marketing, webapp |
 | Token shape | `shared/design-tokens.schema.json` | tests, review, token generation |
-| Atlas Glass research and migration notes | `docs/design/atlas-glass/` | marketing, webapp, admin redesign work |
+| Historical Atlas Glass research | `docs/design/atlas-glass/` | reference only when investigating prior web/admin redesign choices |
 | Client design | `C:/Users/kiwun/Documents/ai/POKROV-app/DESIGN.md` | Android and Windows shell work |
 | Generated assets | `docs/design/generated-assets-policy.md` | launch, store, social, app assets |
 
 ## Atlas Glass Notes
 
-- The current web direction is `Atlas Glass`: Apple-like premium utility, medium glass surfaces, full light/dark theme, restrained motion, and app-first onboarding around `trial -> install -> first connection`.
+- The current web direction is the `2026-07 HIG wave` recorded in `DESIGN.md`: token-remapped light/dark themes, calmer HIG-style surfaces, and app-first onboarding around `trial -> install -> first connection`.
 - `shared/design-tokens.json` remains the authority for light/dark palette, glass surfaces, shadows, density, focus, status color, skeleton, progress, and navigation tokens.
 - `shared/design-tokens.schema.json` must require every token field consumed by `shared/design-tokens.ts`; optional schema fields are allowed only when the adapter does not dereference them directly.
 - `product`, `public`, `cabinet`, and `admin` are separate density modes. `product` is no longer an alias for `public`.
@@ -27,10 +27,10 @@ Last updated: 2026-06-07
 
 ## Open Beta v4 Notes
 
-- Marketing, checkout, cabinet, admin, and client docs must stay visually aligned around the `Atlas Glass` direction and the retained `quiet-core-luminous-edge` product truth.
+- Marketing, checkout, cabinet, admin, and client docs must stay visually aligned around the `2026-07 HIG wave` direction and the retained `quiet-core-luminous-edge` product truth.
 - Android and Windows public visuals must not imply public readiness until signing, handoff, and audit gates pass.
 - Admin views should use the `admin` density and favor compact evidence over large promotional layouts.
-- The active web/admin/site density pass is tracked in `docs/design/2026-06-06-web-admin-site-density-plan.md`. Its priority order is public marketing homepage density first, admin operator-prose trim second, and webapp entry-motion cleanup without reopening the implemented cabinet reset.
+- The completed June cabinet and web/admin/site density plans are archived under `docs/archive/design-plans/`. Current work should start from `DESIGN.md`, `shared/design-tokens.json`, and implemented UI, not from those completed plans.
 - Public surfaces may link to `/install/` as gated help, but public download claims require runtime handoff evidence.
 - Admin route layout applies the `admin` density token set to the admin subtree.
   Shared admin helpers should use token-backed radius, padding, and shadow

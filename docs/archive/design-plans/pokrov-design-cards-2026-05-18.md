@@ -14,9 +14,9 @@ These cards are design references, not release authorization and not store/publi
 
 | Surface | Final PNG | Dimensions | Render source |
 | --- | --- | --- | --- |
-| Landing | `docs/design/assets/pokrov-design-card-landing-2026-05-18.png` | 1440x920 | `docs/design/pokrov-design-cards-2026-05-18.html` |
-| Cabinet | `docs/design/assets/pokrov-design-card-cabinet-2026-05-18.png` | 1440x920 | `docs/design/pokrov-design-cards-2026-05-18.html` |
-| App | `docs/design/assets/pokrov-design-card-app-2026-05-18.png` | 1440x920 | `docs/design/pokrov-design-cards-2026-05-18.html` |
+| Landing | `docs/design/assets/pokrov-design-card-landing-2026-05-18.png` | 1440x920 | `docs/archive/design-plans/pokrov-design-cards-2026-05-18.html` |
+| Cabinet | `docs/design/assets/pokrov-design-card-cabinet-2026-05-18.png` | 1440x920 | `docs/archive/design-plans/pokrov-design-cards-2026-05-18.html` |
+| App | `docs/design/assets/pokrov-design-card-app-2026-05-18.png` | 1440x920 | `docs/archive/design-plans/pokrov-design-cards-2026-05-18.html` |
 
 ## Source Master And Logo Handling
 

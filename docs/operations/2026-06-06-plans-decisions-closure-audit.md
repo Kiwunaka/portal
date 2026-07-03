@@ -1,7 +1,7 @@
 # Plans And Decisions Closure Audit
 
 Date: 2026-06-06
-Last updated: 2026-06-07
+Last updated: 2026-07-03
 Status: repo-side closure / manual-gate boundary
 
 ## Scope
@@ -30,10 +30,10 @@ Active client implementation plans:
 - `C:/Users/kiwun/Documents/ai/POKROV-app/docs/superpowers/plans/2026-06-05-premium-client-ai-assistant-architecture.md`
 - `C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-final-beta-closure-except-manual-tests-signing.md`
 
-Active root WebApp plan:
+Root WebApp plans, archived after repo-side closure:
 
-- `C:/Users/kiwun/Documents/ai/VPN/docs/design/2026-06-05-webapp-cabinet-ux-reset-plan.md`
-- `C:/Users/kiwun/Documents/ai/VPN/docs/design/2026-06-06-web-admin-site-density-plan.md`
+- `C:/Users/kiwun/Documents/ai/VPN/docs/archive/design-plans/2026-06-05-webapp-cabinet-ux-reset-plan.md`
+- `C:/Users/kiwun/Documents/ai/VPN/docs/archive/design-plans/2026-06-06-web-admin-site-density-plan.md`
 
 Explicitly ignored archive inputs per owner direction:
 

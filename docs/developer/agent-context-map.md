@@ -126,6 +126,9 @@ Docs/design:
 Use as archive/reference only unless explicitly reopened:
 
 - `docs/archive/client-lanes/**`
+- `docs/archive/plans/**`
+- `docs/archive/design-plans/**`
+- `docs/archive/superpowers-plans/**`
 - retired `app-next` bootstrap summaries
 - retained bridge bundles under `POKROV-app/artifacts/releases/bridge/`
 - Karing reopen / clean-room gate notes

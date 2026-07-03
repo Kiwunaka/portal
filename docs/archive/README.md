@@ -1,6 +1,6 @@
 # Historical Notes And Archive
 
-Last updated: 2026-04-15
+Last updated: 2026-07-03
 
 ## Purpose
 
@@ -16,6 +16,9 @@ The following materials are useful for investigation, migration context, and for
 - old rollout notes
 - older flat docs in `docs/archive/flat-docs/`
 - root guides moved into `docs/archive/root-guides/`
+- completed planning packets in `docs/archive/plans/`
+- completed design plans and boards in `docs/archive/design-plans/`
+- old Superpowers execution plans in `docs/archive/superpowers-plans/`
 
 ## Root Guide Archive
 
@@ -24,6 +27,12 @@ Archived root-level guides currently stored here:
 - [ADMIN_GUIDE_2026-02-20.md](C:/Users/kiwun/Documents/ai/VPN/docs/archive/root-guides/ADMIN_GUIDE_2026-02-20.md)
 - [USER_GUIDE_RU_2026-02-15.md](C:/Users/kiwun/Documents/ai/VPN/docs/archive/root-guides/USER_GUIDE_RU_2026-02-15.md)
 - [cleanup-report-2026-03-04.md](C:/Users/kiwun/Documents/ai/VPN/docs/archive/root-guides/cleanup-report-2026-03-04.md)
+
+## Planning Archives
+
+- [Archived Planning Packets](C:/Users/kiwun/Documents/ai/VPN/docs/archive/plans/README.md)
+- [Archived Design Plans](C:/Users/kiwun/Documents/ai/VPN/docs/archive/design-plans/README.md)
+- [Archived Superpowers Plans](C:/Users/kiwun/Documents/ai/VPN/docs/archive/superpowers-plans/README.md)
 
 ## How To Use Older Docs
 

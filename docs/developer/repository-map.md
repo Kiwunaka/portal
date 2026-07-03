@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-06-06
+Last updated: 2026-07-03
 
 ## Document Status
 
@@ -25,7 +25,8 @@ Legacy filename note:
 | `docs/operations/publishing-and-signing-guide.md` | canonical store, certificate, and release artifact guidance | this file and the operations guide itself |
 | `docs/developer/orchestration/` | canonical orchestration standard, WO authoring rules, flow-state rules, context/cost harness rules, role contracts, and reusable templates | `docs/developer/orchestration/orchestration-standard.md`, `docs/developer/orchestration/wo-authoring-guide.md`, `docs/developer/orchestration/flow-state.md`, `docs/developer/orchestration/context-cost-harnesses.md` |
 | `docs/developer/work-orders/` | living wave and work-order execution artifacts | `docs/developer/work-orders/README.md` |
-| `docs/superpowers/specs/` | retained implementation specs and planning packets | historical/reference only unless copied into a current WO or canonical doc |
+| `docs/superpowers/specs/` | retained implementation specs | historical/reference only unless copied into a current WO or canonical doc |
+| `docs/archive/plans/`, `docs/archive/design-plans/`, `docs/archive/superpowers-plans/` | completed planning packets and design plans | archive/reference only; not current work queues |
 | `reference-atlas/` | retained local design reference atlas | design-reference history only; not a production surface |
 | `docs/` | canonical platform docs plus archive | `docs/README.md` |
 | `docs/archive/client-lanes/` | short historical summaries for retired client lanes | `docs/archive/client-lanes/README.md` |
@@ -53,7 +54,7 @@ Legacy filename note:
 | OpenAI operator assistants | [docs/developer/openai-operator-assistants.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/openai-operator-assistants.md) |
 | Orchestrated work-order process | [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md), [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md), [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md), and [docs/developer/orchestration/context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md) |
 | User journey | [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md) |
-| Design system | [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md), [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md), and [docs/design/atlas-glass/](C:/Users/kiwun/Documents/ai/VPN/docs/design/atlas-glass/) |
+| Design system | [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md), [shared/design-tokens.json](C:/Users/kiwun/Documents/ai/VPN/shared/design-tokens.json), [shared/design-tokens.schema.json](C:/Users/kiwun/Documents/ai/VPN/shared/design-tokens.schema.json), and [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md) |
 | Open Beta v4 release scope | [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md) and [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md) |
 | Payment provider readiness | [docs/product/payment-and-access-key-contract.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/payment-and-access-key-contract.md) and [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md) |
 | Client-specific contracts | [C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md) for the live new client lane, plus [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md) and [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md) for archive evidence only |

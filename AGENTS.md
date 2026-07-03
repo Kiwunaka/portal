@@ -1,6 +1,6 @@
 # Repository Agents
 
-Last updated: 2026-06-07
+Last updated: 2026-07-03
 
 This file is the working contract for any agent or developer operating inside `C:\Users\kiwun\Documents\ai\VPN`.
 
@@ -77,7 +77,6 @@ Use these first for current client and release work:
 
 - [Agent Context Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
 - [Client Delivery, Update Check, And Dynamic Content Plan](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
-- [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
 - [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
 - [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
 - [POKROV App Final Beta Closure Except Manual Tests And Signing](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-final-beta-closure-except-manual-tests-signing.md)
@@ -88,7 +87,9 @@ Use these first for current client and release work:
 Completed implementation maps, consilium notes, old visual explorations, and
 the ignored Karing reopen / clean-room gate notes are retained reference
 material only. Do not use them as the starting point for current `1.0.0-beta`
-work unless the owner explicitly reopens that lane.
+work unless the owner explicitly reopens that lane. Completed root planning
+packets now live under `docs/archive/plans/`, `docs/archive/design-plans/`,
+and `docs/archive/superpowers-plans/`.
 
 ## External Design And Copy Model Consults
 

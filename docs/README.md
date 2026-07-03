@@ -1,6 +1,6 @@
 # POKROV Documentation Index
 
-Last updated: 2026-06-07
+Last updated: 2026-07-03
 
 This directory is split into two classes of material:
 
@@ -26,6 +26,7 @@ Current-vs-history boundary:
 - canonical docs in the sections below define current product, platform, operations, design, and developer truth
 - `docs/developer/work-orders/**` is execution evidence; use wave indexes for context, not as product authority
 - `docs/superpowers/specs/**`, `reference-atlas/`, rendered route maps, and old visual mockups are retained planning/reference history unless a current design doc explicitly links them as active
+- `docs/archive/plans/`, `docs/archive/design-plans/`, and `docs/archive/superpowers-plans/` hold completed planning packets; do not use them as current work queues
 - do not delete retained historical trees during routine cleanup; relabel or index them when their status is unclear
 
 ## Start Here As Agent
@@ -70,7 +71,6 @@ Current-vs-history boundary:
 ## Current Active Plans
 
 - [Client Delivery, Update Check, And Dynamic Content Plan](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
-- [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
 - [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
 - [POKROV App Final Beta Closure Except Manual Tests And Signing](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-final-beta-closure-except-manual-tests-signing.md)
 - [POKROV App Phase 6 Release Beta Handoff](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-phase-6-release-beta-handoff.md)
@@ -80,6 +80,11 @@ Current-vs-history boundary:
 Completed implementation plans and older design maps are retained as reference
 evidence, not quick-start authority. Deprecated Karing reopen / clean-room gate
 notes stay legacy unless the owner explicitly reopens that lane.
+
+## Recent Closure And Archive Reference
+
+- [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
+- [POKROV Full Audit 2026-07-02](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/pokrov-full-audit-2026-07-02.md)
 
 ## Retired Client Summaries
 
@@ -126,7 +131,6 @@ notes stay legacy unless the owner explicitly reopens that lane.
 - [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md)
 - [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md)
 - [docs/design/generated-assets-policy.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/generated-assets-policy.md)
-- [docs/design/pokrov-design-cards-2026-05-18.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/pokrov-design-cards-2026-05-18.md)
 
 ### Launch
 
@@ -187,6 +191,9 @@ notes stay legacy unless the owner explicitly reopens that lane.
 - audit evidence in `docs/audit-artifacts/`
 - archived root guides in `docs/archive/root-guides/`
 - retired client summaries in `docs/archive/client-lanes/`
+- archived planning packets in `docs/archive/plans/`
+- archived design plans and boards in `docs/archive/design-plans/`
+- archived Superpowers plans in `docs/archive/superpowers-plans/`
 - work-order and rendered visual-audit evidence in `docs/developer/work-orders/`
 - older implementation specs in `docs/superpowers/specs/`
 - local design reference atlas in `reference-atlas/`
