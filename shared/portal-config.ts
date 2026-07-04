@@ -61,6 +61,7 @@ export const CANONICAL_BOT_URL = TELEGRAM.bot;
 export const CANONICAL_SUPPORT_BOT_URL = TELEGRAM.support_bot;
 export const CANONICAL_FEEDBACK_BOT_URL = TELEGRAM.feedback_bot;
 export const CANONICAL_NEWS_CHANNEL_URL = TELEGRAM.channel;
+export const CANONICAL_GITHUB_RELEASES_URL = PUBLIC_URLS.releases.github_releases;
 export const CANONICAL_CONTACT_EMAIL = CONTACT.support_email;
 export const CANONICAL_ENTERPRISE_EMAIL = CONTACT.enterprise_email;
 export const CANONICAL_PUBLIC_PLATFORM_SCOPE = PRODUCT_FACTS.platform_scope.public;

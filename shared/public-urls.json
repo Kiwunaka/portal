@@ -10,6 +10,9 @@
     "offer": "https://pokrov.space/offer/",
     "privacy": "https://pokrov.space/privacy/"
   },
+  "releases": {
+    "github_releases": "https://github.com/Kiwunaka/pokrov/releases"
+  },
   "telegram": {
     "bot_username": "@pokrov_vpnbot",
     "bot": "https://t.me/pokrov_vpnbot",

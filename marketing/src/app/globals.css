@@ -34,6 +34,29 @@
   --ease-spring: var(--pokrov-easing-spring);
 }
 
+/* Scroll reveal (see components/motion/reveal.tsx) */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--pokrov-duration-slow, 320ms) var(--ease-apple),
+    transform var(--pokrov-duration-slow, 320ms) var(--ease-apple);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transform: none;
+    transition-property: opacity;
+  }
+}
+
 :root {
   --lp-bg: var(--pokrov-bg, #f7f3eb);
   --lp-bg-2: var(--pokrov-bg-alt, #f0eadf);
