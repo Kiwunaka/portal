@@ -1,4 +1,4 @@
-import type { MetadataRoute } from "next";
+import type { Metadata, MetadataRoute } from "next";
 
 import {
   CANONICAL_BOT_URL,
@@ -133,6 +133,78 @@ export function buildMarketingUrl(path = "/"): string {
     return `${CANONICAL_MARKETING_SITE_URL}/`;
   }
   return `${CANONICAL_MARKETING_SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export type MarketingMetadataOptions = {
+  path?: string;
+  keywords?: string[];
+  noIndex?: boolean;
+};
+
+export function buildMarketingMetadata(
+  title = "POKROV | 5 дней бесплатно без карты",
+  description = "Скачайте приложение для Android или Windows, получите 5 дней бесплатно без карты и продолжайте через кабинет.",
+  options: MarketingMetadataOptions = {},
+): Metadata {
+  const canonical = buildMarketingUrl(options.path || "/");
+  const shareAlt = `${title} | ${CANONICAL_PLATFORM_BRAND}`;
+
+  return {
+    title,
+    description,
+    keywords: options.keywords,
+    category: "technology",
+    creator: CANONICAL_PLATFORM_BRAND,
+    publisher: CANONICAL_PLATFORM_BRAND,
+    alternates: {
+      canonical,
+    },
+    robots: options.noIndex
+      ? {
+          index: false,
+          follow: true,
+        }
+      : {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
+        },
+    openGraph: {
+      type: "website",
+      locale: "ru_RU",
+      siteName: CANONICAL_PLATFORM_BRAND,
+      title,
+      description,
+      url: canonical,
+      images: [
+        {
+          url: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
+          width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
+          height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
+          alt: shareAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [
+        {
+          url: buildMarketingUrl(DEFAULT_MARKETING_TWITTER_IMAGE_PATH),
+          width: DEFAULT_MARKETING_SHARE_IMAGE_WIDTH,
+          height: DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT,
+          alt: shareAlt,
+        },
+      ],
+    },
+  };
 }
 
 export function buildMarketingSitemap(): MetadataRoute.Sitemap {
