@@ -1,6 +1,6 @@
 import { cn } from "../utils";
 
-export type StepMiniVariant = "download" | "connect" | "done";
+export type StepMiniVariant = "download" | "connect" | "done" | "android-permission" | "windows-smartscreen";
 
 function DownloadMini() {
   return (
@@ -55,11 +55,59 @@ function DoneMini() {
   );
 }
 
-/** Mini illustrative screens for the 3-step onboarding section (CSS/SVG, no rasters). */
+function AndroidPermissionMini() {
+  return (
+    <div className="flex w-48 flex-col gap-2.5 rounded-(--radius-control) border border-line bg-surface p-3.5 shadow-soft">
+      <span className="text-[0.6875rem] font-semibold text-ink">Установка приложения</span>
+      <span className="text-[0.5625rem] leading-snug text-ink-soft">
+        Разрешить установку из этого источника?
+      </span>
+      <div className="flex justify-end gap-2">
+        <span className="rounded-full px-2.5 py-1 text-[0.5625rem] font-semibold text-ink-muted">Отмена</span>
+        <span className="rounded-full bg-brand px-2.5 py-1 text-[0.5625rem] font-semibold text-ink-inverse">
+          Разрешить
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function WindowsSmartscreenMini() {
+  return (
+    <div className="flex w-48 flex-col gap-2 rounded-(--radius-control) border border-line bg-surface p-3.5 shadow-soft">
+      <span className="flex items-center gap-1.5 text-[0.6875rem] font-semibold text-ink">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 1.5 12.5 3v4c0 3.2-2.2 5.3-5.5 6-3.3-.7-5.5-2.8-5.5-6V3L7 1.5Z" stroke="var(--pokrov-accent)" strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+        Windows защитил ваш компьютер
+      </span>
+      <span className="text-[0.5625rem] leading-snug text-ink-soft">
+        Подробнее → «Выполнить в любом случае»
+      </span>
+      <div className="flex justify-end gap-2">
+        <span className="rounded-full border border-line px-2.5 py-1 text-[0.5625rem] font-semibold text-ink">
+          Выполнить
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Mini illustrative screens for onboarding / install steps (CSS/SVG, no rasters). */
 export function StepMiniIllustration({ className, variant }: { className?: string; variant: StepMiniVariant }) {
   return (
     <div aria-hidden="true" className={cn("flex items-center justify-center", className)}>
-      {variant === "download" ? <DownloadMini /> : variant === "connect" ? <ConnectMini /> : <DoneMini />}
+      {variant === "download" ? (
+        <DownloadMini />
+      ) : variant === "connect" ? (
+        <ConnectMini />
+      ) : variant === "done" ? (
+        <DoneMini />
+      ) : variant === "android-permission" ? (
+        <AndroidPermissionMini />
+      ) : (
+        <WindowsSmartscreenMini />
+      )}
     </div>
   );
 }

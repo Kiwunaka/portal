@@ -1,20 +1,24 @@
-import Link from "next/link";
-
 import JsonLd from "../../components/json-ld";
-import { MarketingBrandLogo } from "../../components/marketing-brand-logo";
-import { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { CANONICAL_PLATFORM_BRAND, getCopyText, getPokrovPublicConfig } from "../../lib/pokrov";
+import { PlatformTabs, type InstallPlatform } from "../../components/install/platform-tabs";
+import { PageShell } from "../../components/layout/page-shell";
+import { Reveal } from "../../components/motion/reveal";
+import { Accordion, type AccordionItem } from "../../components/ui/accordion";
+import { Button } from "../../components/ui/button";
+import { Chip } from "../../components/ui/chip";
+import { SectionHeading } from "../../components/ui/section-heading";
+import {
+  buildBreadcrumbJsonLd,
+  buildFaqJsonLd,
+  buildMarketingMetadata,
+} from "../../lib/marketing-site";
+import {
+  CANONICAL_PLATFORM_BRAND,
+  getCopyText,
+  getPokrovPublicConfig,
+  getSharedProductFacts,
+} from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
-
-function firstNonEmpty(...values: Array<string | undefined>): string {
-  return values.find((value) => Boolean(String(value || "").trim()))?.trim() || "";
-}
-
-function buildHelpHref(): string {
-  return firstNonEmpty(config.docsUrl, config.supportTelegramUrl, config.webappUrl, "/");
-}
 
 function buildCabinetDownloadsHref(platform: "android" | "windows"): string {
   const url = new URL(config.webappUrl);
@@ -24,238 +28,185 @@ function buildCabinetDownloadsHref(platform: "android" | "windows"): string {
 }
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.install.meta.title", "Установка и помощь | POKROV"),
+  getCopyText("marketing.install.meta.title", "Как установить POKROV на Android и Windows | Инструкция"),
   getCopyText(
     "marketing.install.meta.description",
-    "Как скачать приложение для Android и Windows, что делать если файл недоступен, и куда перейти за помощью.",
+    "Пошаговая установка приложения POKROV: скачать файл, разрешить установку, нажать «Подключить». С картинками и честными ответами про SmartScreen.",
   ),
   {
     path: "/install/",
-    noIndex: true,
-    keywords: ["установка pokrov", "apk pokrov", "windows pokrov", "инструкция pokrov", "install help"],
+    keywords: ["установка pokrov", "apk pokrov", "windows pokrov", "инструкция pokrov", "как установить pokrov"],
   },
 );
 
 export default function InstallPage() {
-  const helpHref = buildHelpHref();
+  const facts = getSharedProductFacts();
   const androidHref = buildCabinetDownloadsHref("android");
   const windowsHref = buildCabinetDownloadsHref("windows");
-  const androidHasArtifact = Boolean(String(config.androidApkUrl || "").trim());
-  const windowsHasArtifact = Boolean(String(config.windowsExeUrl || "").trim());
+
+  const platforms: InstallPlatform[] = [
+    {
+      id: "android",
+      label: getCopyText("marketing.install.tabs.android", "Android"),
+      note: getCopyText(
+        "marketing.install.android.note",
+        "Для большинства телефонов подходит основной файл (arm64). Для старых устройств в кабинете есть отдельная legacy-версия.",
+      ),
+      steps: [
+        {
+          variant: "download",
+          title: getCopyText("marketing.install.android.step1.title", "Скачайте файл"),
+          text: getCopyText(
+            "marketing.install.android.step1.text",
+            "Откройте кабинет — он выдаст актуальный APK для вашего аккаунта.",
+          ),
+        },
+        {
+          variant: "android-permission",
+          title: getCopyText("marketing.install.android.step2.title", "Разрешите установку"),
+          text: getCopyText(
+            "marketing.install.android.step2.text",
+            "Android спросит разрешение на установку из этого источника — нажмите «Разрешить». Так система относится к любым файлам вне магазина.",
+          ),
+        },
+        {
+          variant: "connect",
+          title: getCopyText("marketing.install.android.step3.title", "Нажмите «Подключить»"),
+          text: getCopyText(
+            "marketing.install.android.step3.text",
+            `Откройте приложение и нажмите кнопку. ${facts.trial.days} бесплатных дней стартуют сами, карта не нужна.`,
+          ),
+        },
+      ],
+    },
+    {
+      id: "windows",
+      label: getCopyText("marketing.install.tabs.windows", "Windows"),
+      note: getCopyText(
+        "marketing.install.windows.note",
+        "Приложение пока распространяется вне магазина и без подписи издателя, поэтому предупреждение SmartScreen — ожидаемое поведение системы.",
+      ),
+      steps: [
+        {
+          variant: "download",
+          title: getCopyText("marketing.install.windows.step1.title", "Скачайте установщик"),
+          text: getCopyText(
+            "marketing.install.windows.step1.text",
+            "Откройте кабинет — он выдаст актуальный EXE-файл для вашего аккаунта.",
+          ),
+        },
+        {
+          variant: "windows-smartscreen",
+          title: getCopyText("marketing.install.windows.step2.title", "Пройдите SmartScreen"),
+          text: getCopyText(
+            "marketing.install.windows.step2.text",
+            "Если Windows покажет предупреждение, нажмите «Подробнее» → «Выполнить в любом случае». Это честно: подписи издателя пока нет.",
+          ),
+        },
+        {
+          variant: "connect",
+          title: getCopyText("marketing.install.windows.step3.title", "Нажмите «Подключить»"),
+          text: getCopyText(
+            "marketing.install.windows.step3.text",
+            `Запустите приложение и нажмите кнопку. ${facts.trial.days} бесплатных дней стартуют сами.`,
+          ),
+        },
+      ],
+    },
+  ];
+
+  const faqItems: AccordionItem[] = [
+    {
+      question: getCopyText("marketing.install.faq.file.q", "Почему файл выдаётся через кабинет?"),
+      answer: getCopyText(
+        "marketing.install.faq.file.a",
+        "Кабинет всегда показывает актуальную версию для вашего аккаунта и не даёт скачать подделку с чужого «зеркала». Сами релизы открыто лежат на GitHub Releases.",
+      ),
+    },
+    {
+      question: getCopyText("marketing.install.faq.smartscreen.q", "Windows ругается на файл — это нормально?"),
+      answer: getCopyText(
+        "marketing.install.faq.smartscreen.a",
+        "Да. Пока приложение распространяется вне магазина и без подписи издателя, SmartScreen показывает стандартное предупреждение. Нажмите «Подробнее» → «Выполнить в любом случае».",
+      ),
+    },
+    {
+      question: getCopyText("marketing.install.faq.apk.q", "Какой APK выбрать на Android?"),
+      answer: getCopyText(
+        "marketing.install.faq.apk.a",
+        "Основной файл (arm64) подходит почти всем современным телефонам. Если телефон старый и файл не ставится — возьмите в кабинете legacy-версию (armeabi).",
+      ),
+    },
+    {
+      question: getCopyText("marketing.install.faq.stuck.q", "Не получается — куда идти?"),
+      answer: getCopyText(
+        "marketing.install.faq.stuck.a",
+        "Напишите в Telegram-поддержку: подскажем по шагам — от установки до первого подключения. Живой человек, не бот-заглушка.",
+      ),
+    },
+  ];
 
   return (
-    <>
+    <PageShell>
       <JsonLd
         data={buildBreadcrumbJsonLd([
           { name: CANONICAL_PLATFORM_BRAND, path: "/" },
-          { name: "Установка и помощь", path: "/install/" },
+          { name: "Установка", path: "/install/" },
         ])}
       />
-      <div className="lp-route-shell lp-route-shell--install">
-        <header className="lp-nav">
-          <div className="lp-nav-shell">
-            <Link href="/" className="lp-brand">
-              <MarketingBrandLogo className="lp-brand-logo" priority />
-              <span>{CANONICAL_PLATFORM_BRAND}</span>
-            </Link>
-            <nav className="lp-menu" aria-label="Главная навигация">
-              <div className="lp-nav-links">
-                <Link href="/">Главная</Link>
-                <Link href={MARKETING_CANONICAL_PATHS.devices}>Устройства</Link>
-                <Link href={MARKETING_CANONICAL_PATHS.mobile}>На телефон</Link>
-              </div>
-              <div className="lp-nav-actions">
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
-                  Открыть кабинет
-                </a>
-                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-                  Поддержка
-                </a>
-              </div>
-            </nav>
-          </div>
-        </header>
+      <JsonLd data={buildFaqJsonLd(faqItems.map((item) => ({ question: item.question, answer: String(item.answer) })))} />
 
-        <main id="main-content" className="lp-main lp-route-main lp-route-main--install">
-          <section className="lp-hero">
-            <div className="lp-hero-copy">
-              <div className="lp-kicker">{getCopyText("marketing.install.kicker", "Установка POKROV")}</div>
-              <p className="lp-overline">Android, Windows, кабинет и поддержка на одной странице.</p>
-              <h1>{getCopyText("marketing.install.title", "Скачать POKROV или получить помощь")}</h1>
-              <p className="lp-hero-lead">
-                {getCopyText(
-                  "marketing.install.subtitle",
-                  "Файлы установки открываются через кабинет. Если файл недоступен вашему аккаунту, рядом остаётся инструкция и поддержка.",
-                )}
-              </p>
-              <div className="lp-hero-actions">
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                  {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
-                </a>
-                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                  {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
-                </a>
-              </div>
-            </div>
+      <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-16">
+        <Chip>
+          <span className="size-1.5 rounded-full bg-status-green" />
+          {getCopyText("marketing.install.kicker", "Установка за минуту")}
+        </Chip>
+        <h1 className="font-display text-[2.25rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.75rem]">
+          {getCopyText("marketing.install.title", "Скачайте — остальное уже настроено")}
+        </h1>
+        <p className="max-w-xl text-lg leading-relaxed text-ink-soft">
+          {getCopyText(
+            "marketing.install.subtitle",
+            "Три шага для Android или Windows. Файлы выдаёт кабинет — так вы всегда получаете настоящую и свежую версию.",
+          )}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button href={androidHref} size="lg" target="_blank" rel="noreferrer">
+            {getCopyText("marketing.install.cta.android", "Скачать для Android")}
+          </Button>
+          <Button href={windowsHref} size="lg" variant="secondary" target="_blank" rel="noreferrer">
+            {getCopyText("marketing.install.cta.windows", "Скачать для Windows")}
+          </Button>
+        </div>
+      </section>
 
-            <div className="lp-hero-stage">
-              <article className="lp-stage-card lp-stage-card--primary">
-                <div className="lp-stage-label">Сначала кабинет, потом файл</div>
-                <h2>Откройте кабинет и скачайте нужную версию.</h2>
-                <p>
-                  Если версия уже доступна вашему аккаунту, кабинет покажет актуальный файл. Если нет, рядом будет инструкция и канал помощи.
-                </p>
-                <ol className="lp-stage-steps">
-                  <li>
-                    <span>01</span>
-                    <div>
-                      <strong>Android</strong>
-                      <p>APK открывается в кабинете для аккаунтов, которым доступна Android-версия.</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span>02</span>
-                    <div>
-                      <strong>Windows</strong>
-                      <p>Windows может показать предупреждение перед установкой, пока приложение не подписано.</p>
-                    </div>
-                  </li>
-                  <li>
-                    <span>03</span>
-                    <div>
-                      <strong>Поддержка</strong>
-                      <p>Если что-то не сходится, откройте кабинет или напишите в Telegram.</p>
-                    </div>
-                  </li>
-                </ol>
-              </article>
+      <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-20">
+        <Reveal>
+          <PlatformTabs platforms={platforms} />
+        </Reveal>
+      </section>
 
-              <article className="lp-stage-card">
-                <div className="lp-stage-label">Если доступа к файлу нет</div>
-                <p>
-                  Если файл ещё не выдан вашему аккаунту, откройте инструкцию или напишите в поддержку.
-                </p>
-                <div className="lp-stage-links">
-                  <a href={helpHref}>Открыть инструкцию</a>
-                  <a href={config.webappUrl} target="_blank" rel="noreferrer">
-                    Кабинет
-                  </a>
-                  <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer">
-                    Поддержка
-                  </a>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section className="lp-section">
-            <div className="lp-section-head">
-              <span>Файлы установки</span>
-              <h2>{getCopyText("marketing.install.downloads.title", "Откройте кабинет для файлов установки")}</h2>
-              <p>
-                {getCopyText(
-                  "marketing.install.downloads.subtitle",
-                  "Если версия доступна вашему аккаунту, она откроется в кабинете. Если нет, рядом остаётся помощь.",
-                )}
-              </p>
-            </div>
-
-            <div className="lp-download-grid">
-              <article className="lp-platform-card lp-platform-card--featured">
-                <div className="lp-stage-label">
-                  <span aria-hidden="true">●</span>
-                  {getCopyText("marketing.install.android.status", androidHasArtifact ? "Android доступен в кабинете" : "Проверьте Android в кабинете")}
-                </div>
-                <h3>{getCopyText("marketing.install.android.title", "Приложение для Android")}</h3>
-                <p>
-                  {getCopyText(
-                    "marketing.install.android.desc",
-                    "Android-файл для текущей беты открывается через кабинет. Не используйте случайные зеркала и стор-ссылки.",
-                  )}
-                </p>
-                {androidHasArtifact ? (
-                  <a href={androidHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.android.cta", "Скачать в кабинете")}
-                  </a>
-                ) : (
-                  <a href={helpHref} className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.install.help_cta", "Открыть инструкцию")}
-                  </a>
-                )}
-              </article>
-
-              <article className="lp-platform-card">
-                <div className="lp-stage-label">
-                  <span aria-hidden="true">■</span>
-                  {getCopyText("marketing.install.windows.status", windowsHasArtifact ? "Windows доступен в кабинете" : "Проверьте Windows в кабинете")}
-                </div>
-                <h3>{getCopyText("marketing.install.windows.title", "Приложение для Windows")}</h3>
-                <p>
-                  {getCopyText(
-                    "marketing.install.windows.desc",
-                    "Windows-файл для текущей беты открывается через кабинет. Система может показать предупреждение о неизвестном издателе.",
-                  )}
-                </p>
-                {windowsHasArtifact ? (
-                  <a href={windowsHref} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.download.windows.cta", "Скачать в кабинете")}
-                  </a>
-                ) : (
-                  <a href={helpHref} className="lp-btn lp-btn--primary">
-                    {getCopyText("marketing.install.help_cta", "Открыть инструкцию")}
-                  </a>
-                )}
-              </article>
-            </div>
-          </section>
-
-          <section className="lp-section lp-info-band">
-            <div className="lp-info-band__grid">
-              <article className="lp-info-card">
-                <span className="lp-info-card__eyebrow">Если файла пока нет в кабинете</span>
-                <h3>Откройте инструкцию или поддержку</h3>
-                <p>Если файл ещё не доступен аккаунту, мы покажем рабочий вариант: кабинет, инструкцию или Telegram-поддержку.</p>
-              </article>
-              <article className="lp-info-card">
-                <span className="lp-info-card__eyebrow">Если нужен доступ</span>
-                <h3>Кабинет показывает срок, устройства и продление</h3>
-                <p>Там видно состояние доступа, связанные устройства и доступные действия — без ручной настройки.</p>
-              </article>
-              <article className="lp-info-card">
-                <span className="lp-info-card__eyebrow">Если нужен человек</span>
-                <h3>Поддержка отвечает по делу</h3>
-                <p>Telegram и почта помогают с установкой, доступом, оплатой и восстановлением.</p>
-              </article>
-            </div>
-          </section>
-
-          <section className="lp-section">
-            <div className="lp-footer-cta">
-              <div className="lp-footer-copy">
-                <span>{getCopyText("marketing.install.help_eyebrow", "Если файл не открылся")}</span>
-                <h2>{getCopyText("marketing.install.help_title", "Кабинет, Telegram и помощь остаются рядом")}</h2>
-                <p>
-                  {getCopyText(
-                    "marketing.install.help_body",
-                    "Если файла нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем, что делать дальше.",
-                  )}
-                </p>
-              </div>
-              <div className="lp-footer-actions">
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--primary">
-                  {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
-                </a>
-                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-btn lp-btn--ghost">
-                  {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
-                </a>
-                <Link href="/" className="lp-btn lp-btn--ghost">
-                  {getCopyText("marketing.install.home_cta", "Вернуться на главную")}
-                </Link>
-              </div>
-            </div>
-          </section>
-        </main>
-      </div>
-    </>
+      <section className="border-t border-line bg-canvas-alt">
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
+          <Reveal>
+            <SectionHeading
+              kicker={getCopyText("marketing.install.faq.kicker", "Частые вопросы")}
+              title={getCopyText("marketing.install.faq.title", "Про установку — честно")}
+            />
+          </Reveal>
+          <Reveal>
+            <Accordion items={faqItems} />
+          </Reveal>
+          <Reveal className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Button href={config.supportTelegramUrl} variant="secondary" target="_blank" rel="noreferrer">
+              {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
+            </Button>
+            <Button href={config.webappUrl} variant="ghost" target="_blank" rel="noreferrer">
+              {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
+            </Button>
+          </Reveal>
+        </div>
+      </section>
+    </PageShell>
   );
 }

@@ -68,6 +68,7 @@ export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
   { path: MARKETING_CANONICAL_PATHS.vpn, changeFrequency: "weekly", priority: 0.8 },
   { path: MARKETING_CANONICAL_PATHS.telegram, changeFrequency: "weekly", priority: 0.78 },
   { path: MARKETING_CANONICAL_PATHS.checkout, changeFrequency: "weekly", priority: 0.76 },
+  { path: MARKETING_CANONICAL_PATHS.install, changeFrequency: "weekly", priority: 0.72 },
   { path: MARKETING_MACHINE_READABLE_PATHS.pricing, changeFrequency: "weekly", priority: 0.64 },
   { path: MARKETING_MACHINE_READABLE_PATHS.llms, changeFrequency: "weekly", priority: 0.58 },
   { path: MARKETING_CANONICAL_PATHS.offer, changeFrequency: "monthly", priority: 0.36 },
