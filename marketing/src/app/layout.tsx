@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Golos_Text } from "next/font/google";
 
 import JsonLd from "../components/json-ld";
 import FunnelTracker from "../components/funnel-tracker";
@@ -14,9 +14,9 @@ import {
 import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND, getDesignTokenThemeCss } from "../lib/pokrov";
 import "./globals.css";
 
-const fontBody = Manrope({
+const fontBody = Golos_Text({
   subsets: ["latin", "cyrillic"],
-  variable: "--font-manrope",
+  variable: "--font-golos",
   display: "swap",
 });
 

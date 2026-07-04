@@ -63,6 +63,7 @@ export function getDesignTokenCssVariables(density: DesignDensityInput = "public
     "--pokrov-line-dark-strong": palette.line_dark_strong,
     "--pokrov-focus-ring": palette.focus_ring,
     "--pokrov-focus-ring-dark": palette.focus_ring_dark,
+    "--pokrov-status-green": palette.status_green,
     "--pokrov-accent": palette.emerald,
     "--pokrov-accent-hover": palette.emerald_strong,
     "--pokrov-accent-contrast": component.button.text,
@@ -171,6 +172,13 @@ export function getDesignTokenCssVariables(density: DesignDensityInput = "public
     "--pokrov-app-connect-size-mobile": component.app_connect.size_mobile,
     "--pokrov-app-connect-size-desktop": component.app_connect.size_desktop,
     "--pokrov-app-connect-ring": component.app_connect.ring,
+    "--pokrov-switch-width": component.switch.width,
+    "--pokrov-switch-height": component.switch.height,
+    "--pokrov-switch-thumb": component.switch.thumb,
+    "--pokrov-switch-on-bg": component.switch.on_background,
+    "--pokrov-switch-off-bg": component.switch.off_background,
+    "--pokrov-switch-thumb-color": component.switch.thumb_color,
+    "--pokrov-switch-transition": component.switch.transition,
     "--pokrov-glass-max-blur": glass.max_blur,
     "--pokrov-glass-border-alpha": glass.border_alpha,
     "--pokrov-duration-fast": motion.duration_fast,
@@ -246,6 +254,7 @@ export function getDesignTokenDarkCssVariables(): Record<string, string> {
     "--pokrov-line": palette.line_dark,
     "--pokrov-line-strong": palette.line_dark_strong,
     "--pokrov-focus-ring": palette.focus_ring_dark,
+    "--pokrov-status-green": palette.status_green_dark,
     "--pokrov-accent": component.button.background_dark,
     "--pokrov-accent-hover": component.button.background_dark_hover,
     "--pokrov-accent-contrast": component.button.text_dark,
@@ -286,6 +295,8 @@ export function getDesignTokenDarkCssVariables(): Record<string, string> {
     "--pokrov-skeleton-highlight": component.skeleton.highlight_dark,
     "--pokrov-progress-track": component.progress.track_dark,
     "--pokrov-progress-fill": component.progress.fill_dark,
+    "--pokrov-switch-on-bg": component.switch.on_background_dark,
+    "--pokrov-switch-off-bg": component.switch.off_background_dark,
   };
 }
 

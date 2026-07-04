@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Golos_Text } from "next/font/google";
 import Script from "next/script";
 
 import { CANONICAL_WEBAPP_URL, getDesignTokenThemeCss } from "@/lib/portal";
@@ -21,10 +22,16 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f3eb" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#111715" },
   ],
 };
+
+const fontBody = Golos_Text({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-golos",
+  display: "swap",
+});
 
 const QA_OVERLAY_ENABLED = String(process.env.NEXT_PUBLIC_ENABLE_QA_OVERLAY || "").toLowerCase() === "true";
 const THEME_STORAGE_KEYS = [POKROV_THEME_STORAGE_KEY, ...POKROV_LEGACY_THEME_STORAGE_KEYS];
@@ -34,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const designTokenThemeCss = getDesignTokenThemeCss("cabinet");
 
   return (
-    <html lang="ru" className="scroll-smooth" suppressHydrationWarning>
+    <html lang="ru" className={`scroll-smooth ${fontBody.variable}`} suppressHydrationWarning>
       <body
         className="relative min-h-screen overflow-x-hidden bg-[var(--bg)] font-body text-[var(--text)] antialiased selection:bg-[color:color-mix(in_srgb,var(--atlas-primary)_16%,transparent)] selection:text-[color:var(--atlas-text)]"
         suppressHydrationWarning

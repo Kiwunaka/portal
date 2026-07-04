@@ -120,7 +120,7 @@
     },
     "component": {
       "type": "object",
-      "required": ["button", "nav", "card", "table", "skeleton", "progress", "app_connect"],
+      "required": ["button", "nav", "card", "table", "skeleton", "progress", "app_connect", "switch"],
       "additionalProperties": false,
       "properties": {
         "button": { "$ref": "#/$defs/buttonToken" },
@@ -129,7 +129,8 @@
         "table": { "$ref": "#/$defs/tableToken" },
         "skeleton": { "$ref": "#/$defs/skeletonToken" },
         "progress": { "$ref": "#/$defs/progressToken" },
-        "app_connect": { "$ref": "#/$defs/appConnectToken" }
+        "app_connect": { "$ref": "#/$defs/appConnectToken" },
+        "switch": { "$ref": "#/$defs/switchToken" }
       }
     },
     "iconography": {
@@ -304,6 +305,32 @@
         "size_mobile": { "type": "string", "minLength": 1 },
         "size_desktop": { "type": "string", "minLength": 1 },
         "ring": { "type": "string", "minLength": 1 }
+      }
+    },
+    "switchToken": {
+      "type": "object",
+      "required": [
+        "width",
+        "height",
+        "thumb",
+        "on_background",
+        "on_background_dark",
+        "off_background",
+        "off_background_dark",
+        "thumb_color",
+        "transition"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "string", "minLength": 1 },
+        "height": { "type": "string", "minLength": 1 },
+        "thumb": { "type": "string", "minLength": 1 },
+        "on_background": { "type": "string", "minLength": 1 },
+        "on_background_dark": { "type": "string", "minLength": 1 },
+        "off_background": { "type": "string", "minLength": 1 },
+        "off_background_dark": { "type": "string", "minLength": 1 },
+        "thumb_color": { "type": "string", "minLength": 1 },
+        "transition": { "type": "string", "minLength": 1 }
       }
     },
     "densityToken": {
