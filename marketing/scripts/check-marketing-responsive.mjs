@@ -141,7 +141,9 @@ async function run() {
           const result = await page.evaluate(() => {
             const root = document.documentElement;
             const bodyText = document.body?.innerText || "";
-            const overlay = Boolean(document.querySelector("[data-nextjs-dialog-overlay], nextjs-portal"));
+            // Next 16 dev always mounts an empty <nextjs-portal> for devtools; only
+            // the error dialog overlay is a real failure signal.
+            const overlay = Boolean(document.querySelector("[data-nextjs-dialog-overlay]"));
             return {
               title: document.title,
               bodyLength: bodyText.trim().length,

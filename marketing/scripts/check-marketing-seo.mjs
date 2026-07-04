@@ -33,7 +33,9 @@ const sourceFiles = [
   "src/app/devices/page.tsx",
   "src/app/telegram/page.tsx",
   "src/app/vpn/page.tsx",
-  "src/components/marketing-landing.tsx",
+  "src/components/intent/intent-landing.tsx",
+  "src/components/layout/page-shell.tsx",
+  "src/components/layout/footer.tsx",
   "src/lib/marketing-site.ts",
 ];
 

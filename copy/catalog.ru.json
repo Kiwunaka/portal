@@ -1,977 +1,248 @@
 {
-  "catalog_version": "2026-07-02-instructions",
+  "catalog_version": "2026-07-04-redesign-w01",
   "locale": "ru",
   "items": {
-    "marketing.meta.title": {
-      "surface": "marketing.meta",
-      "ru": "POKROV открывает YouTube, TikTok и другие сервисы | Android и Windows",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded title.",
-      "ab_variant": "control"
-    },
-    "marketing.meta.description": {
-      "surface": "marketing.meta",
-      "ru": "Скачайте POKROV на Android или Windows, попробуйте 5 дней без карты и продлите доступ от 99 ₽ за 30 дней.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded description.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.kicker": {
-      "surface": "marketing.home.hero",
-      "ru": "POKROV • 5 дней без карты",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded kicker.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.title": {
-      "surface": "marketing.home.hero",
-      "ru": "POKROV открывает YouTube, TikTok и другие сервисы",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded title.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.subtitle": {
-      "surface": "marketing.home.hero",
-      "ru": "Установите приложение на Android или Windows, нажмите «Подключить» и проверьте свои сервисы. 5 дней бесплатно, карту не просим.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded subtitle.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.primary_cta": {
-      "surface": "marketing.home.hero",
-      "ru": "Попробовать 5 дней бесплатно",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded CTA.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.secondary_cta": {
-      "surface": "marketing.home.hero",
-      "ru": "Посмотреть тарифы",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.overline": {
-      "surface": "marketing.home.hero",
-      "ru": "POKROV для Android и Windows: 5 дней бесплатно.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded overline.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.proof_1.title": {
-      "surface": "marketing.home.hero",
-      "ru": "5 дней",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Short proof point for the hero.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.proof_1.text": {
-      "surface": "marketing.home.hero",
-      "ru": "без карты и автосписаний",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded proof point.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.proof_2.title": {
-      "surface": "marketing.home.hero",
-      "ru": "Android + Windows",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Short proof point for the hero.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.proof_2.text": {
-      "surface": "marketing.home.hero",
-      "ru": "телефон и компьютер",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded proof point.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.proof_3.title": {
-      "surface": "marketing.home.hero",
-      "ru": "+10 дней",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Short proof point for the hero.",
-      "ab_variant": "control"
-    },
-    "marketing.hero.proof_3.text": {
-      "surface": "marketing.home.hero",
-      "ru": "за Telegram-канал POKROV",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded proof point.",
-      "ab_variant": "control"
-    },
-    "marketing.support.title": {
-      "surface": "marketing.home.support",
-      "ru": "Поможем с установкой, входом и продлением",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded support title.",
-      "ab_variant": "control"
-    },
-    "marketing.support.subtitle": {
-      "surface": "marketing.home.support",
-      "ru": "Если не открылся файл, не вошли в аккаунт или возник вопрос по оплате, поддержка подскажет, что делать.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded support subtitle.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.title": {
-      "surface": "marketing.checkout",
-      "ru": "Выберите срок доступа",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded checkout title.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.subtitle": {
-      "surface": "marketing.checkout",
-      "ru": "Сначала войдите в кабинет, затем выберите план. Сумма и условия видны до оплаты.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded checkout subtitle.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.primary_cta": {
-      "surface": "marketing.checkout",
-      "ru": "Выбрать срок",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.meta.title": {
-      "surface": "marketing.checkout",
-      "ru": "Продление доступа | POKROV",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.meta.description": {
-      "surface": "marketing.checkout",
-      "ru": "Страница оплаты показывает доступные планы, сумму до оплаты, получение ключа доступа и помощь при спорных платежах.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.breadcrumb": {
-      "surface": "marketing.checkout",
-      "ru": "Продление доступа",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.anonymous.status": {
-      "surface": "marketing.checkout",
-      "ru": "Нужен личный вход",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Status label for anonymous checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.anonymous.title": {
-      "surface": "marketing.checkout",
-      "ru": "Сначала откройте кабинет",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Title for anonymous checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.anonymous.subtitle": {
-      "surface": "marketing.checkout",
-      "ru": "Чтобы оплата привязалась к вам, войдите через кабинет или Telegram.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded subtitle.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.session.status": {
-      "surface": "marketing.checkout",
-      "ru": "Кабинет готов",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Status label for web-session checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.session.title": {
-      "surface": "marketing.checkout",
-      "ru": "Продолжите в кабинете",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Title for web-session checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.session.subtitle": {
-      "surface": "marketing.checkout",
-      "ru": "Вы уже вошли в кабинет. Выберите срок и переходите к оплате.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Subtitle for web-session checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.ticket.status": {
-      "surface": "marketing.checkout",
-      "ru": "Персональная ссылка активна",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Status label for ticketed checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.ticket.title": {
-      "surface": "marketing.checkout",
-      "ru": "Продление доступа",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Title for ticketed checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.ticket.subtitle": {
-      "surface": "marketing.checkout",
-      "ru": "Вы открыли персональную ссылку. Выберите срок, проверьте сумму и переходите к оплате.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Subtitle for ticketed checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.helper.anonymous": {
-      "surface": "marketing.checkout",
-      "ru": "Сначала войдите в кабинет или продолжите через Telegram. После входа откроются доступные планы.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Helper copy for anonymous checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.helper.session": {
-      "surface": "marketing.checkout",
-      "ru": "Вы уже в кабинете. Выберите план и продолжите оплату.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Helper copy for web-session checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.checkout.helper.ticket": {
-      "surface": "marketing.checkout",
-      "ru": "Если возник вопрос по оплате, поддержка поможет сверить статус и сумму.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Helper copy for ticketed checkout state.",
-      "ab_variant": "control"
-    },
-    "marketing.promise.title": {
-      "surface": "marketing.home.promise",
-      "ru": "Почему POKROV",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded title.",
-      "ab_variant": "control"
-    },
-    "marketing.promise.subtitle": {
-      "surface": "marketing.home.promise",
-      "ru": "Проверяете на своих устройствах без карты, затем продлеваете срок в том же аккаунте.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded subtitle.",
-      "ab_variant": "control"
-    },
-    "marketing.downloads.title": {
-      "surface": "marketing.home.downloads",
-      "ru": "Установите POKROV и получите 5 дней",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Section title for downloads block.",
-      "ab_variant": "control"
-    },
-    "marketing.downloads.subtitle": {
-      "surface": "marketing.home.downloads",
-      "ru": "Если файл доступен вашему аккаунту, он откроется в кабинете. Если нет — покажем инструкцию или поддержку.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Section subtitle for downloads block.",
-      "ab_variant": "control"
-    },
-    "marketing.steps.title": {
-      "surface": "marketing.home.steps",
-      "ru": "Как начать за три шага",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Section title for onboarding steps.",
-      "ab_variant": "control"
-    },
-    "marketing.steps.subtitle": {
-      "surface": "marketing.home.steps",
-      "ru": "Установите приложение, активируйте 5 дней без карты и продолжайте в том же аккаунте, если нужен платный срок.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded subtitle.",
-      "ab_variant": "control"
-    },
-    "marketing.pricing.title": {
-      "surface": "marketing.home.pricing",
-      "ru": "Тарифы POKROV",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Section title for pricing block.",
-      "ab_variant": "control"
-    },
-    "marketing.pricing.subtitle": {
-      "surface": "marketing.home.pricing",
-      "ru": "5 дней бесплатно. Продление — от 99 ₽; цена, срок и лимит устройств видны до оплаты.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Section subtitle for pricing block.",
-      "ab_variant": "control"
-    },
-    "marketing.plan.start.note": {
-      "surface": "marketing.home.pricing",
-      "ru": "Месяц после теста, если хотите продолжить без долгих обязательств.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Pricing note for the welcome plan.",
-      "ab_variant": "control"
-    },
-    "marketing.plan.month.note": {
-      "surface": "marketing.home.pricing",
-      "ru": "Гибкий вариант на месяц для регулярного использования.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Pricing note for monthly plan.",
-      "ab_variant": "control"
-    },
-    "marketing.plan.quarter.note": {
-      "surface": "marketing.home.pricing",
-      "ru": "Три месяца дешевле помесячного продления.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Pricing note for quarter plan.",
-      "ab_variant": "control"
-    },
-    "marketing.plan.half.note": {
-      "surface": "marketing.home.pricing",
-      "ru": "Редкие продления и выгоднее ежемесячного плана.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded plan note.",
-      "ab_variant": "control"
-    },
-    "marketing.plan.long.note": {
-      "surface": "marketing.home.pricing",
-      "ru": "Максимальная выгода для долгого использования.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Pricing note for annual plan.",
-      "ab_variant": "control"
-    },
-    "marketing.plan.cta": {
-      "surface": "marketing.home.pricing",
-      "ru": "Выбрать срок",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "CTA for pricing cards on the landing page.",
-      "ab_variant": "control"
-    },
-    "marketing.download.android.cta": {
-      "surface": "marketing.home.downloads",
-      "ru": "Открыть кабинет",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.download.windows.cta": {
-      "surface": "marketing.home.downloads",
-      "ru": "Открыть кабинет",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.download.apple.cta": {
-      "surface": "marketing.home.downloads",
-      "ru": "Смотреть статус",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.meta.title": {
-      "surface": "marketing.install",
-      "ru": "Установка приложения | POKROV",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.meta.description": {
-      "surface": "marketing.install",
-      "ru": "Как открыть приложение POKROV для Android или Windows, что делать если файл недоступен, и куда обратиться за помощью.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.kicker": {
-      "surface": "marketing.install",
-      "ru": "Установка POKROV",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.title": {
-      "surface": "marketing.install",
-      "ru": "Скачать POKROV или получить помощь",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.subtitle": {
-      "surface": "marketing.install",
-      "ru": "Файлы установки открываются через кабинет. Если файла нет в вашем аккаунте, покажем инструкцию или поддержку.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.primary_cta": {
-      "surface": "marketing.install",
-      "ru": "Открыть кабинет",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.secondary_cta": {
-      "surface": "marketing.install",
-      "ru": "Написать в поддержку",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.help_cta": {
-      "surface": "marketing.install",
-      "ru": "Открыть инструкцию",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.help_eyebrow": {
-      "surface": "marketing.install",
-      "ru": "Если файл не открылся",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.help_title": {
-      "surface": "marketing.install",
-      "ru": "Кабинет, Telegram и поддержка рядом",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.help_body": {
-      "surface": "marketing.install",
-      "ru": "Если файла нет в кабинете, откройте инструкцию или напишите в поддержку. Мы подскажем, что делать дальше.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.home_cta": {
-      "surface": "marketing.install",
-      "ru": "На главную",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.reviews.title": {
-      "surface": "marketing.home.reviews",
-      "ru": "Что говорят пользователи",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Section title for review block.",
-      "ab_variant": "control"
-    },
-    "marketing.reviews.subtitle": {
-      "surface": "marketing.home.reviews",
-      "ru": "Честные отзывы о том, как интернет меняется к лучшему с POKROV.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded subtitle.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.title": {
-      "surface": "marketing.home.faq",
-      "ru": "Частые вопросы",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Section title for FAQ block.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.1.q": {
-      "surface": "marketing.home.faq",
-      "ru": "Как ускорить интернет с POKROV?",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded FAQ question.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.1.a": {
-      "surface": "marketing.home.faq",
-      "ru": "Установите приложение, запустите 5 дней без карты и проверьте свои сервисы на устройстве.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded FAQ answer.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.2.q": {
-      "surface": "marketing.home.faq",
-      "ru": "Что входит в бесплатные 5 дней?",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "FAQ item for trial details.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.2.a": {
-      "surface": "marketing.home.faq",
-      "ru": "Это 5 дней доступа в приложении без карты: Android и Windows, кабинет, поддержка и возможность продлить срок позже.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "FAQ answer for trial details.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.3.q": {
-      "surface": "marketing.home.faq",
-      "ru": "Как оформить подписку после теста?",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "FAQ item for paid subscription flow.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.3.a": {
-      "surface": "marketing.home.faq",
-      "ru": "Откройте личный кабинет или персональную ссылку из Telegram. Страница оплаты покажет доступные способы, сумму и срок.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "FAQ answer for paid subscription flow.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.4.q": {
-      "surface": "marketing.home.faq",
-      "ru": "Куда обратиться, если нужна помощь?",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "FAQ item for support path.",
-      "ab_variant": "control"
-    },
-    "marketing.faq.4.a": {
-      "surface": "marketing.home.faq",
-      "ru": "Напишите в @pokrov_supportbot или на support@pokrov.space. Поддержка поможет с установкой, входом, оплатой или восстановлением.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "FAQ answer for support path.",
-      "ab_variant": "control"
-    },
-    "marketing.footer.title": {
-      "surface": "marketing.home.footer",
-      "ru": "POKROV: сначала 5 дней в приложении, потом продление",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded footer title.",
-      "ab_variant": "control"
-    },
-    "marketing.footer.body": {
-      "surface": "marketing.home.footer",
-      "ru": "Установите приложение, получите 5 дней бесплатно и продолжайте через кабинет, если нужен платный срок.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Footer body for the landing page.",
-      "ab_variant": "control"
-    },
-    "marketing.legal.offer.intro": {
-      "surface": "marketing.legal.offer",
-      "ru": "Правила использования POKROV: условия доступа, продления, поддержки и ограничений беты.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "marketing.legal.privacy.intro": {
-      "surface": "marketing.legal.privacy",
-      "ru": "Ваша приватность — наш приоритет. POKROV бережно относится к вашим данным и обеспечивает стабильность вашего соединения.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Rebranded legal intro.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.title": {
-      "surface": "webapp.entry",
-      "ru": "Кабинет POKROV",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.subtitle": {
-      "surface": "webapp.entry",
-      "ru": "Войдите, чтобы скачать приложение, проверить доступ, продлить срок или написать в поддержку.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.step_1.title": {
-      "surface": "webapp.entry",
-      "ru": "Подтвердите вход",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Step title for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.step_1.desc": {
-      "surface": "webapp.entry",
-      "ru": "Нажмите кнопку и авторизуйтесь через Telegram — это быстрый способ открыть кабинет в браузере.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Step description for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.step_2.title": {
-      "surface": "webapp.entry",
-      "ru": "Откройте свой профиль",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Step title for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.step_2.desc": {
-      "surface": "webapp.entry",
-      "ru": "После подтверждения вы сразу попадете в личный кабинет без паролей и лишних форм.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Step description for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.step_3.title": {
-      "surface": "webapp.entry",
-      "ru": "Управляйте доступом",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Step title for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.step_3.desc": {
-      "surface": "webapp.entry",
-      "ru": "Здесь удобно смотреть статус подписки, получать ссылку подключения и решать вопросы по сервису.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Step description for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.note.title": {
-      "surface": "webapp.entry",
-      "ru": "Безопасный вход",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Entry note title for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.note.body": {
-      "surface": "webapp.entry",
-      "ru": "Если Telegram не открылся автоматически, нажмите кнопку ниже. Подтверждение проходит в Telegram и обычно занимает пару секунд.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Entry note body for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.card_title": {
-      "surface": "webapp.entry",
-      "ru": "Вход в кабинет",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.card_body": {
-      "surface": "webapp.entry",
-      "ru": "Войдите через email или Telegram. После входа вы увидите доступ, поддержку и шаги по подключению.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.primary_cta": {
-      "surface": "webapp.entry",
-      "ru": "Войти через Telegram",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Primary CTA for webapp entry page.",
-      "ab_variant": "control"
-    },
-    "webapp.entry.secondary_cta": {
-      "surface": "webapp.entry",
-      "ru": "Отменить вход",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.dashboard.primary_cta": {
-      "surface": "webapp.dashboard",
-      "ru": "Продлить подписку",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.dashboard.support_cta": {
-      "surface": "webapp.dashboard",
-      "ru": "Помощь",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.subscription.title": {
-      "surface": "webapp.subscription",
-      "ru": "Продлить доступ",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.subscription.subtitle": {
-      "surface": "webapp.subscription",
-      "ru": "Здесь видны текущий режим доступа, срок, ссылка подключения и все, что нужно для продления.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.checkout.title": {
-      "surface": "webapp.checkout",
-      "ru": "Продлить доступ",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.checkout.subtitle": {
-      "surface": "webapp.checkout",
-      "ru": "Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.support.title": {
-      "surface": "webapp.support",
-      "ru": "Помощь",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.support.subtitle": {
-      "surface": "webapp.support",
-      "ru": "Здесь видны ваши обращения и ответы команды. Если нужна помощь, откройте новое обращение. Если удобнее, можно продолжить через Telegram.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.support.empty_tickets": {
-      "surface": "webapp.support",
-      "ru": "Обращений пока нет",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.devices.title": {
-      "surface": "webapp.devices",
-      "ru": "Устройства",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.devices.subtitle": {
-      "surface": "webapp.devices",
-      "ru": "Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.statistics.title": {
-      "surface": "webapp.statistics",
-      "ru": "Статистика",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.statistics.subtitle": {
-      "surface": "webapp.statistics",
-      "ru": "Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": true,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "webapp.downloads.title": {
-      "surface": "webapp.downloads",
-      "ru": "Загрузки",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "webapp.downloads.subtitle": {
-      "surface": "webapp.downloads",
-      "ru": "Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized cabinet continuation/support copy.",
-      "ab_variant": "control"
-    },
-    "bot.welcome": {
-      "surface": "bot.main",
-      "ru": "Откройте кабинет, проверьте доступ или начните подключение. 5 дней бесплатно доступны на старте; ручная ссылка нужна только как запасной вариант.",
-      "variables": [],
-      "tone": "helpful",
+    "admin.dashboard.subtitle": {
+      "surface": "admin.dashboard",
+      "ru": "Показывайте живое состояние доступа, активности установок и качества данных.",
+      "variables": [],
+      "tone": "operational",
       "allowed_public": false,
-      "compliance_notes": "Centralized bot onboarding/support copy.",
+      "compliance_notes": "Shared admin baseline for operator dashboards.",
+      "ab_variant": "control"
+    },
+    "admin.dashboard.title": {
+      "surface": "admin.dashboard",
+      "ru": "Сводка платформы",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline for operator dashboards.",
+      "ab_variant": "control"
+    },
+    "admin.feedback.title": {
+      "surface": "admin.feedback",
+      "ru": "Отзывы и публикации",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline for operator dashboards.",
+      "ab_variant": "control"
+    },
+    "admin.nav.access": {
+      "surface": "admin.nav",
+      "ru": "Доступ",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin IA label from canonical docs.",
+      "ab_variant": "control"
+    },
+    "admin.nav.diagnostics": {
+      "surface": "admin.nav",
+      "ru": "Диагностика",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin IA label from canonical docs.",
+      "ab_variant": "control"
+    },
+    "admin.nav.feedback": {
+      "surface": "admin.nav",
+      "ru": "Отзывы",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin IA label from canonical docs.",
+      "ab_variant": "control"
+    },
+    "admin.nav.messaging": {
+      "surface": "admin.nav",
+      "ru": "Сообщения",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin IA label from canonical docs.",
+      "ab_variant": "control"
+    },
+    "admin.nav.network": {
+      "surface": "admin.nav",
+      "ru": "Сеть",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin IA label from canonical docs.",
+      "ab_variant": "control"
+    },
+    "admin.nav.payments": {
+      "surface": "admin.nav",
+      "ru": "Платежи",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin IA label from canonical docs.",
+      "ab_variant": "control"
+    },
+    "admin.nav.people": {
+      "surface": "admin.nav",
+      "ru": "Люди",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin IA label from canonical docs.",
+      "ab_variant": "control"
+    },
+    "admin.network.subtitle": {
+      "surface": "admin.network",
+      "ru": "Смотрите состояние панели, трафика и развёртывания без скрытых статусов.",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline for operator dashboards.",
+      "ab_variant": "control"
+    },
+    "admin.network.title": {
+      "surface": "admin.network",
+      "ru": "Сеть и узлы",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline for operator dashboards.",
+      "ab_variant": "control"
+    },
+    "admin.shell.subtitle": {
+      "surface": "admin.shell",
+      "ru": "Следите за людьми, доступом, платежами и сетью из одной панели.",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline; internal operator surface only.",
+      "ab_variant": "control"
+    },
+    "admin.shell.title": {
+      "surface": "admin.shell",
+      "ru": "Операторская POKROV",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline; internal operator surface only.",
+      "ab_variant": "control"
+    },
+    "admin.tickets.title": {
+      "surface": "admin.tickets",
+      "ru": "Поддержка и обращения",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline for operator dashboards.",
+      "ab_variant": "control"
+    },
+    "admin.users.search_placeholder": {
+      "surface": "admin.users",
+      "ru": "Поиск по имени, Telegram, email или ID устройства",
+      "variables": [],
+      "tone": "operational",
+      "allowed_public": false,
+      "compliance_notes": "Shared admin baseline for operator dashboards.",
+      "ab_variant": "control"
+    },
+    "app.connection.auto_select": {
+      "surface": "app.connection",
+      "ru": "Автовыбор",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with canonical quick-connect path.",
+      "ab_variant": "control"
+    },
+    "app.nav.locations": {
+      "surface": "app.nav",
+      "ru": "Локации",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "ab_variant": "control"
+    },
+    "app.nav.profile": {
+      "surface": "app.nav",
+      "ru": "Профиль",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "ab_variant": "control"
+    },
+    "app.nav.protection": {
+      "surface": "app.nav",
+      "ru": "Защита",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "ab_variant": "control"
+    },
+    "app.nav.rules": {
+      "surface": "app.nav",
+      "ru": "Правила",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "ab_variant": "control"
+    },
+    "app.route_mode.all_traffic": {
+      "surface": "app.route_mode",
+      "ru": "Оптимизировать всё на этом устройстве",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with canonical route-mode contract.",
+      "ab_variant": "control"
+    },
+    "app.route_mode.selected_apps": {
+      "surface": "app.route_mode",
+      "ru": "Только выбранные приложения",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with canonical route-mode contract.",
+      "ab_variant": "control"
+    },
+    "app.subscription.manage_cta": {
+      "surface": "app.subscription",
+      "ru": "Управлять доступом",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline for profile and continuation surfaces.",
+      "ab_variant": "control"
+    },
+    "app.trial.subtitle": {
+      "surface": "app.trial",
+      "ru": "Начните с приложения и получите 5 дней доступа без карты.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with app-first onboarding.",
+      "ab_variant": "control"
+    },
+    "app.trial.try_free": {
+      "surface": "app.trial",
+      "ru": "Попробовать бесплатно",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared app baseline aligned with app-first onboarding.",
+      "ab_variant": "control"
+    },
+    "bot.cabinet.intro": {
+      "surface": "bot.main",
+      "ru": "🌐 *Кабинет POKROV*\n\nЗдесь аккаунт, оплата, загрузки и ссылки подключения. Подключаться удобнее из приложения: войдите в тот же аккаунт, и всё подтянется само.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
     "bot.choose_tariff": {
@@ -983,22 +254,13 @@
       "compliance_notes": "Centralized bot onboarding/support copy.",
       "ab_variant": "control"
     },
-    "bot.support.welcome": {
+    "bot.faq.menu": {
       "surface": "bot.support",
-      "ru": "Поддержка POKROV на связи. Здесь можно открыть обращение или продолжить уже начатый диалог.",
+      "ru": "❓ *Частые вопросы*\n\nСобрали пошаговые ответы на всё, с чем обычно приходят. Выберите тему — покажу короткую инструкцию.",
       "variables": [],
-      "tone": "helpful",
+      "tone": "warm",
       "allowed_public": false,
-      "compliance_notes": "Centralized bot onboarding/support copy.",
-      "ab_variant": "control"
-    },
-    "bot.feedback.welcome": {
-      "surface": "bot.feedback",
-      "ru": "Сюда можно отправить отзыв, идею или короткое замечание о POKROV. Мы всё читаем, а после модерации можем показать отзыв на сайте.",
-      "variables": [],
-      "tone": "helpful",
-      "allowed_public": false,
-      "compliance_notes": "Centralized bot onboarding/support copy.",
+      "compliance_notes": "Bot FAQ index screen, 2026-07 instructions pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
     "bot.feedback.prompt": {
@@ -1019,497 +281,72 @@
       "compliance_notes": "Centralized bot onboarding/support copy.",
       "ab_variant": "control"
     },
-    "retention.welcome": {
-      "surface": "bot.retention",
-      "ru": "Профиль готов. Установите приложение, подключитесь и пользуйтесь доступом без ручных настроек.",
+    "bot.feedback.welcome": {
+      "surface": "bot.feedback",
+      "ru": "Сюда можно отправить отзыв, идею или короткое замечание о POKROV. Мы всё читаем, а после модерации можем показать отзыв на сайте.",
       "variables": [],
-      "tone": "premium",
+      "tone": "helpful",
       "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
+      "compliance_notes": "Centralized bot onboarding/support copy.",
       "ab_variant": "control"
     },
-    "retention.t3": {
-      "surface": "bot.retention",
-      "ru": "Напоминаем: доступ завершается через три дня. Продлите его заранее, чтобы сохранить привычное подключение.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": false,
-      "compliance_notes": "Sales-oriented friendly format.",
-      "ab_variant": "control"
-    },
-    "retention.t1": {
-      "surface": "bot.retention",
-      "ru": "Срок вашей подписки подходит к концу. Продлите доступ, чтобы сохранить привычное подключение.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": false,
-      "compliance_notes": "Rebranded retention t1.",
-      "ab_variant": "control"
-    },
-    "retention.t0": {
-      "surface": "bot.retention",
-      "ru": "Доступ завершается сегодня. Продлите его, чтобы сохранить тот же профиль.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": false,
-      "compliance_notes": "Rebranded retention t0.",
-      "ab_variant": "control"
-    },
-    "retention.reactivation": {
-      "surface": "bot.retention",
-      "ru": "Доступ можно восстановить. Откройте продление и продолжайте пользоваться POKROV без нового старта.",
-      "variables": [],
-      "tone": "premium",
-      "allowed_public": false,
-      "compliance_notes": "Rebranded reactivation.",
-      "ab_variant": "control"
-    },
-    "retention.start99_offer": {
-      "surface": "bot.retention",
-      "ru": "Скидка {discount_pct}% сохранена для первого продления POKROV после бесплатного периода.",
-      "variables": [
-        "discount_pct"
-      ],
-      "tone": "premium",
-      "allowed_public": false,
-      "compliance_notes": "Rebranded start99 offer.",
-      "ab_variant": "control"
-    },
-    "marketing.install.downloads.title": {
-      "surface": "marketing.install.downloads",
-      "ru": "Файлы установки в кабинете",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.downloads.subtitle": {
-      "surface": "marketing.install.downloads",
-      "ru": "Доступные файлы установки открываются в вашем кабинете.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.android.status": {
-      "surface": "marketing.install.android",
-      "ru": "Android доступен в кабинете",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.android.title": {
-      "surface": "marketing.install.android",
-      "ru": "Приложение для Android",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.android.desc": {
-      "surface": "marketing.install.android",
-      "ru": "Android-файл для текущей беты открывается через кабинет. Не используйте случайные зеркала и стор-ссылки.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.windows.status": {
-      "surface": "marketing.install.windows",
-      "ru": "Windows доступен в кабинете",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.windows.title": {
-      "surface": "marketing.install.windows",
-      "ru": "Приложение для Windows",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.windows.desc": {
-      "surface": "marketing.install.windows",
-      "ru": "Windows-файл для текущей беты открывается через кабинет. Система может показать предупреждение о неизвестном издателе.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.apple.status": {
-      "surface": "marketing.install.apple",
-      "ru": "Apple",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.apple.title": {
-      "surface": "marketing.install.apple",
-      "ru": "iPhone и Mac",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "marketing.install.apple.desc": {
-      "surface": "marketing.install.apple",
-      "ru": "Версия для Apple не входит в текущую бету. Откройте кабинет, чтобы следить за статусом и получить подсказки.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": true,
-      "compliance_notes": "Centralized marketing/install/checkout copy.",
-      "ab_variant": "control"
-    },
-    "cabinet.entry.title": {
-      "surface": "cabinet.entry",
-      "ru": "Продолжите в кабинете POKROV",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Continuation-first cabinet baseline; keep app-first positioning and avoid public-landing tone.",
-      "ab_variant": "control"
-    },
-    "cabinet.entry.subtitle": {
-      "surface": "cabinet.entry",
-      "ru": "Доступ, устройства, загрузки и поддержка собраны в одном кабинете.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Continuation-first cabinet baseline; keep app-first positioning and avoid public-landing tone.",
-      "ab_variant": "control"
-    },
-    "cabinet.entry.primary_cta": {
-      "surface": "cabinet.entry",
-      "ru": "Открыть кабинет",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Continuation-first cabinet baseline.",
-      "ab_variant": "control"
-    },
-    "cabinet.entry.secondary_cta": {
-      "surface": "cabinet.entry",
-      "ru": "Вернуться в приложение",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Continuation-first cabinet baseline.",
-      "ab_variant": "control"
-    },
-    "cabinet.dashboard.title": {
-      "surface": "cabinet.dashboard",
-      "ru": "Ваш доступ и устройства",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.dashboard.subtitle": {
-      "surface": "cabinet.dashboard",
-      "ru": "Срок доступа, загрузки и последние действия собраны в одном месте.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.devices.title": {
-      "surface": "cabinet.devices",
-      "ru": "Устройства",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.devices.subtitle": {
-      "surface": "cabinet.devices",
-      "ru": "Смотрите, какие устройства уже связаны с аккаунтом, и подключайте новые без ручных профилей.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.subscription.title": {
-      "surface": "cabinet.subscription",
-      "ru": "Доступ и продление",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.subscription.subtitle": {
-      "surface": "cabinet.subscription",
-      "ru": "Продлевайте доступ, активируйте ключ и проверяйте условия до оплаты.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.downloads.title": {
-      "surface": "cabinet.downloads",
-      "ru": "Скачать приложение",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.downloads.subtitle": {
-      "surface": "cabinet.downloads",
-      "ru": "Актуальные файлы для Android и Windows собраны здесь.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.support.title": {
-      "surface": "cabinet.support",
-      "ru": "Поддержка",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "cabinet.support.empty_tickets": {
-      "surface": "cabinet.support",
-      "ru": "Когда появятся обращения, они будут видны здесь.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
-      "ab_variant": "control"
-    },
-    "admin.shell.title": {
-      "surface": "admin.shell",
-      "ru": "Операторская POKROV",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline; internal operator surface only.",
-      "ab_variant": "control"
-    },
-    "admin.shell.subtitle": {
-      "surface": "admin.shell",
-      "ru": "Следите за людьми, доступом, платежами и сетью из одной панели.",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline; internal operator surface only.",
-      "ab_variant": "control"
-    },
-    "admin.nav.people": {
-      "surface": "admin.nav",
-      "ru": "Люди",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin IA label from canonical docs.",
-      "ab_variant": "control"
-    },
-    "admin.nav.access": {
-      "surface": "admin.nav",
-      "ru": "Доступ",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin IA label from canonical docs.",
-      "ab_variant": "control"
-    },
-    "admin.nav.payments": {
-      "surface": "admin.nav",
-      "ru": "Платежи",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin IA label from canonical docs.",
-      "ab_variant": "control"
-    },
-    "admin.nav.network": {
-      "surface": "admin.nav",
-      "ru": "Сеть",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin IA label from canonical docs.",
-      "ab_variant": "control"
-    },
-    "admin.nav.diagnostics": {
-      "surface": "admin.nav",
-      "ru": "Диагностика",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin IA label from canonical docs.",
-      "ab_variant": "control"
-    },
-    "admin.nav.messaging": {
-      "surface": "admin.nav",
-      "ru": "Сообщения",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin IA label from canonical docs.",
-      "ab_variant": "control"
-    },
-    "admin.nav.feedback": {
-      "surface": "admin.nav",
-      "ru": "Отзывы",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin IA label from canonical docs.",
-      "ab_variant": "control"
-    },
-    "admin.dashboard.title": {
-      "surface": "admin.dashboard",
-      "ru": "Сводка платформы",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline for operator dashboards.",
-      "ab_variant": "control"
-    },
-    "admin.dashboard.subtitle": {
-      "surface": "admin.dashboard",
-      "ru": "Показывайте живое состояние доступа, активности установок и качества данных.",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline for operator dashboards.",
-      "ab_variant": "control"
-    },
-    "admin.users.search_placeholder": {
-      "surface": "admin.users",
-      "ru": "Поиск по имени, Telegram, email или ID устройства",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline for operator dashboards.",
-      "ab_variant": "control"
-    },
-    "admin.network.title": {
-      "surface": "admin.network",
-      "ru": "Сеть и узлы",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline for operator dashboards.",
-      "ab_variant": "control"
-    },
-    "admin.network.subtitle": {
-      "surface": "admin.network",
-      "ru": "Смотрите состояние панели, трафика и развёртывания без скрытых статусов.",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline for operator dashboards.",
-      "ab_variant": "control"
-    },
-    "admin.tickets.title": {
-      "surface": "admin.tickets",
-      "ru": "Поддержка и обращения",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline for operator dashboards.",
-      "ab_variant": "control"
-    },
-    "admin.feedback.title": {
-      "surface": "admin.feedback",
-      "ru": "Отзывы и публикации",
-      "variables": [],
-      "tone": "operational",
-      "allowed_public": false,
-      "compliance_notes": "Shared admin baseline for operator dashboards.",
-      "ab_variant": "control"
-    },
-    "bot.shared.continue_in_cabinet": {
-      "surface": "bot.shared",
-      "ru": "Открыть кабинет",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared bot baseline for continuation flows.",
-      "ab_variant": "control"
-    },
-    "bot.shared.support_cta": {
-      "surface": "bot.shared",
-      "ru": "Нужна помощь",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared bot baseline for continuation flows.",
-      "ab_variant": "control"
-    },
-    "bot.shared.redeem_hint": {
-      "surface": "bot.shared",
-      "ru": "Если у вас уже есть ключ, откройте кабинет и активируйте его там.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared bot baseline for continuation flows.",
-      "ab_variant": "control"
-    },
-    "bot.shared.bonus_ready": {
-      "surface": "bot.shared",
-      "ru": "Бонус готов. Заберите его в основном боте и продолжайте пользоваться POKROV.",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared bot baseline for continuation flows.",
-      "ab_variant": "control"
-    },
-    "bot.shared.download_app": {
-      "surface": "bot.shared",
-      "ru": "Скачать приложение",
-      "variables": [],
-      "tone": "calm",
-      "allowed_public": false,
-      "compliance_notes": "Shared bot baseline for continuation flows.",
-      "ab_variant": "control"
-    },
-    "bot.menu.home": {
-      "surface": "bot.main",
-      "ru": "🛡 *POKROV*\n\nЯ помогу подключить устройство, продлить доступ и ответить на вопросы.\n\nВыберите, что сделать:",
+    "bot.help.triage": {
+      "surface": "bot.support",
+      "ru": "🧭 *Давайте без терминов.*\n\nВыберите, что у вас сейчас, — покажу один следующий шаг и не буду грузить настройками.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
-    "bot.menu.returning": {
-      "surface": "bot.main",
-      "ru": "👋 *С возвращением в POKROV!*\n\nВсё на месте. Выберите, что сделать:",
+    "bot.instruction.pick_device": {
+      "surface": "bot.onboarding",
+      "ru": "📱 *С какого устройства начинаем?*\n\nВыберите своё — покажу короткий путь: установить, войти, нажать «Подключить».",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
-    "bot.menu.new_user": {
-      "surface": "bot.main",
-      "ru": "👋 *Добро пожаловать в POKROV*\n\nНастроим доступ за пару минут: установите приложение, войдите и нажмите «Подключить».\n\nС чего начнём?",
+    "bot.instruction.platform_android": {
+      "surface": "bot.onboarding",
+      "ru": "🤖 *Android*\n\n1. Скачайте приложение POKROV\n2. Войдите через почту или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение недоступно, есть запасной путь: установите Karing или Happ и добавьте личную ссылку из кабинета POKROV.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.platform_ios": {
+      "surface": "bot.onboarding",
+      "ru": "🍏 *iPhone / iPad*\n\n1. Откройте страницу приложений\n2. Установите подходящее приложение для iPhone\n3. Если профиль не подтянулся сам, вернитесь сюда за ручной ссылкой",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.platform_macos": {
+      "surface": "bot.onboarding",
+      "ru": "🍎 *macOS*\n\n1. Откройте страницу приложений\n2. Посмотрите актуальный статус macOS\n3. Для подключения прямо сейчас используйте ручную ссылку в совместимом приложении",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.platform_windows": {
+      "surface": "bot.onboarding",
+      "ru": "💻 *Windows*\n\n1. Скачайте POKROV для Windows\n2. Войдите через почту или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение недоступно, есть запасной путь: установите Karing или Happ и добавьте личную ссылку из кабинета POKROV.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.instruction.step_access": {
+      "surface": "bot.onboarding",
+      "ru": "✅ *Приложение есть — включим доступ*\n\nНачните с 5 дней бесплатно, карту не просим. Хотите сразу надолго — выберите срок ниже, после оплаты всё включится само.\n\nОстанется войти и нажать «Подключить».",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -1525,6 +362,42 @@
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
+    "bot.menu.home": {
+      "surface": "bot.main",
+      "ru": "🛡 *POKROV*\n\nЯ помогу подключить устройство, продлить доступ и ответить на вопросы.\n\nВыберите, что сделать:",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.menu.new_user": {
+      "surface": "bot.main",
+      "ru": "👋 *Добро пожаловать в POKROV*\n\nНастроим доступ за пару минут: установите приложение, войдите и нажмите «Подключить».\n\nС чего начнём?",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.menu.returning": {
+      "surface": "bot.main",
+      "ru": "👋 *С возвращением в POKROV!*\n\nВсё на месте. Выберите, что сделать:",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.payment.success": {
+      "surface": "bot.paywall",
+      "ru": "✅ *Оплата прошла.* Доступ уже обновляется в этом аккаунте. Откройте POKROV и нажмите «Подключить» — на этом всё.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
     "bot.settings.more": {
       "surface": "bot.main",
       "ru": "⚙️ *Ещё*\n\nЗапасные инструменты: ручное подключение, бонусы, коды и сброс личной ссылки.",
@@ -1532,6 +405,51 @@
       "tone": "warm",
       "allowed_public": false,
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
+    "bot.shared.bonus_ready": {
+      "surface": "bot.shared",
+      "ru": "Бонус готов. Заберите его в основном боте и продолжайте пользоваться POKROV.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared bot baseline for continuation flows.",
+      "ab_variant": "control"
+    },
+    "bot.shared.continue_in_cabinet": {
+      "surface": "bot.shared",
+      "ru": "Открыть кабинет",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared bot baseline for continuation flows.",
+      "ab_variant": "control"
+    },
+    "bot.shared.download_app": {
+      "surface": "bot.shared",
+      "ru": "Скачать приложение",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared bot baseline for continuation flows.",
+      "ab_variant": "control"
+    },
+    "bot.shared.redeem_hint": {
+      "surface": "bot.shared",
+      "ru": "Если у вас уже есть ключ, откройте кабинет и активируйте его там.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared bot baseline for continuation flows.",
+      "ab_variant": "control"
+    },
+    "bot.shared.support_cta": {
+      "surface": "bot.shared",
+      "ru": "Нужна помощь",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared bot baseline for continuation flows.",
       "ab_variant": "control"
     },
     "bot.status.card": {
@@ -1558,87 +476,6 @@
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
-    "bot.tariffs.long": {
-      "surface": "bot.paywall",
-      "ru": "💎 *Долгие планы*\n\nЧем длиннее срок, тем дешевле выходит месяц. Оплатили один раз — и надолго забыли о продлении.",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.payment.success": {
-      "surface": "bot.paywall",
-      "ru": "✅ *Оплата прошла.* Доступ уже обновляется в этом аккаунте. Откройте POKROV и нажмите «Подключить» — на этом всё.",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.instruction.pick_device": {
-      "surface": "bot.onboarding",
-      "ru": "📱 *С какого устройства начинаем?*\n\nВыберите своё — покажу короткий путь: установить, войти, нажать «Подключить».",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.instruction.platform_ios": {
-      "surface": "bot.onboarding",
-      "ru": "🍏 *iPhone / iPad*\n\n1. Откройте страницу приложений\n2. Установите подходящее приложение для iPhone\n3. Если профиль не подтянулся сам, вернитесь сюда за ручной ссылкой",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.instruction.platform_android": {
-      "surface": "bot.onboarding",
-      "ru": "🤖 *Android*\n\n1. Скачайте приложение POKROV\n2. Войдите через почту или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение недоступно, есть запасной путь: установите Karing или Happ и добавьте личную ссылку из кабинета POKROV.",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.instruction.platform_windows": {
-      "surface": "bot.onboarding",
-      "ru": "💻 *Windows*\n\n1. Скачайте POKROV для Windows\n2. Войдите через почту или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение недоступно, есть запасной путь: установите Karing или Happ и добавьте личную ссылку из кабинета POKROV.",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.instruction.platform_macos": {
-      "surface": "bot.onboarding",
-      "ru": "🍎 *macOS*\n\n1. Откройте страницу приложений\n2. Посмотрите актуальный статус macOS\n3. Для подключения прямо сейчас используйте ручную ссылку в совместимом приложении",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.instruction.step_access": {
-      "surface": "bot.onboarding",
-      "ru": "✅ *Приложение есть — включим доступ*\n\nНачните с 5 дней бесплатно, карту не просим. Хотите сразу надолго — выберите срок ниже, после оплаты всё включится само.\n\nОстанется войти и нажать «Подключить».",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
-    "bot.help.triage": {
-      "surface": "bot.support",
-      "ru": "🧭 *Давайте без терминов.*\n\nВыберите, что у вас сейчас, — покажу один следующий шаг и не буду грузить настройками.",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
-      "ab_variant": "control"
-    },
     "bot.support.hub": {
       "surface": "bot.support",
       "ru": "🆘 *Поддержка POKROV*\n\nОпишите, что случилось, одним сообщением — разберёмся и доведём до решения. Частые вопросы уже собраны ниже.",
@@ -1648,121 +485,121 @@
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
-    "bot.faq.menu": {
+    "bot.support.welcome": {
       "surface": "bot.support",
-      "ru": "❓ *Частые вопросы*\n\nСобрали пошаговые ответы на всё, с чем обычно приходят. Выберите тему — покажу короткую инструкцию.",
+      "ru": "Поддержка POKROV на связи. Здесь можно открыть обращение или продолжить уже начатый диалог.",
       "variables": [],
-      "tone": "warm",
+      "tone": "helpful",
       "allowed_public": false,
-      "compliance_notes": "Bot FAQ index screen, 2026-07 instructions pass. Mirrors portal_bot/bot_texts.py fallback.",
+      "compliance_notes": "Centralized bot onboarding/support copy.",
       "ab_variant": "control"
     },
-    "bot.cabinet.intro": {
-      "surface": "bot.main",
-      "ru": "🌐 *Кабинет POKROV*\n\nЗдесь аккаунт, оплата, загрузки и ссылки подключения. Подключаться удобнее из приложения: войдите в тот же аккаунт, и всё подтянется само.",
+    "bot.tariffs.long": {
+      "surface": "bot.paywall",
+      "ru": "💎 *Долгие планы*\n\nЧем длиннее срок, тем дешевле выходит месяц. Оплатили один раз — и надолго забыли о продлении.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
-    "app.nav.protection": {
-      "surface": "app.nav",
-      "ru": "Защита",
+    "bot.welcome": {
+      "surface": "bot.main",
+      "ru": "Откройте кабинет, проверьте доступ или начните подключение. 5 дней бесплатно доступны на старте; ручная ссылка нужна только как запасной вариант.",
+      "variables": [],
+      "tone": "helpful",
+      "allowed_public": false,
+      "compliance_notes": "Centralized bot onboarding/support copy.",
+      "ab_variant": "control"
+    },
+    "cabinet.dashboard.subtitle": {
+      "surface": "cabinet.dashboard",
+      "ru": "Срок доступа, загрузки и последние действия собраны в одном месте.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
       "ab_variant": "control"
     },
-    "app.nav.locations": {
-      "surface": "app.nav",
-      "ru": "Локации",
+    "cabinet.dashboard.title": {
+      "surface": "cabinet.dashboard",
+      "ru": "Ваш доступ и устройства",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
       "ab_variant": "control"
     },
-    "app.nav.rules": {
-      "surface": "app.nav",
-      "ru": "Правила",
+    "cabinet.devices.subtitle": {
+      "surface": "cabinet.devices",
+      "ru": "Смотрите, какие устройства уже связаны с аккаунтом, и подключайте новые без ручных профилей.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
       "ab_variant": "control"
     },
-    "app.nav.profile": {
-      "surface": "app.nav",
-      "ru": "Профиль",
+    "cabinet.devices.title": {
+      "surface": "cabinet.devices",
+      "ru": "Устройства",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with canonical IA.",
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
       "ab_variant": "control"
     },
-    "app.route_mode.all_traffic": {
-      "surface": "app.route_mode",
-      "ru": "Оптимизировать всё на этом устройстве",
+    "cabinet.downloads.subtitle": {
+      "surface": "cabinet.downloads",
+      "ru": "Актуальные файлы для Android и Windows собраны здесь.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with canonical route-mode contract.",
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
       "ab_variant": "control"
     },
-    "app.route_mode.selected_apps": {
-      "surface": "app.route_mode",
-      "ru": "Только выбранные приложения",
+    "cabinet.downloads.title": {
+      "surface": "cabinet.downloads",
+      "ru": "Скачать приложение",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with canonical route-mode contract.",
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
       "ab_variant": "control"
     },
-    "app.connection.auto_select": {
-      "surface": "app.connection",
-      "ru": "Автовыбор",
+    "cabinet.entry.primary_cta": {
+      "surface": "cabinet.entry",
+      "ru": "Открыть кабинет",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with canonical quick-connect path.",
+      "compliance_notes": "Continuation-first cabinet baseline.",
       "ab_variant": "control"
     },
-    "app.trial.try_free": {
-      "surface": "app.trial",
-      "ru": "Попробовать бесплатно",
+    "cabinet.entry.secondary_cta": {
+      "surface": "cabinet.entry",
+      "ru": "Вернуться в приложение",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with app-first onboarding.",
+      "compliance_notes": "Continuation-first cabinet baseline.",
       "ab_variant": "control"
     },
-    "app.trial.subtitle": {
-      "surface": "app.trial",
-      "ru": "Начните с приложения и получите 5 дней доступа без карты.",
+    "cabinet.entry.subtitle": {
+      "surface": "cabinet.entry",
+      "ru": "Доступ, устройства, загрузки и поддержка собраны в одном кабинете.",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline aligned with app-first onboarding.",
+      "compliance_notes": "Continuation-first cabinet baseline; keep app-first positioning and avoid public-landing tone.",
       "ab_variant": "control"
     },
-    "app.subscription.manage_cta": {
-      "surface": "app.subscription",
-      "ru": "Управлять доступом",
+    "cabinet.entry.title": {
+      "surface": "cabinet.entry",
+      "ru": "Продолжите в кабинете POKROV",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Shared app baseline for profile and continuation surfaces.",
-      "ab_variant": "control"
-    },
-    "cabinet.handoff.expired": {
-      "surface": "cabinet",
-      "ru": "Ссылка устарела. Откройте кабинет из приложения снова.",
-      "variables": [],
-      "tone": "warm",
-      "allowed_public": false,
-      "compliance_notes": "One-time app-to-cabinet handoff expired. No VPN wording.",
+      "compliance_notes": "Continuation-first cabinet baseline; keep app-first positioning and avoid public-landing tone.",
       "ab_variant": "control"
     },
     "cabinet.handoff.already_used": {
@@ -1774,6 +611,15 @@
       "compliance_notes": "One-time app-to-cabinet handoff replay. No VPN wording.",
       "ab_variant": "control"
     },
+    "cabinet.handoff.expired": {
+      "surface": "cabinet",
+      "ru": "Ссылка устарела. Откройте кабинет из приложения снова.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "One-time app-to-cabinet handoff expired. No VPN wording.",
+      "ab_variant": "control"
+    },
     "cabinet.handoff.invalid": {
       "surface": "cabinet",
       "ru": "Ссылка недействительна. Откройте кабинет из приложения.",
@@ -1781,6 +627,15 @@
       "tone": "warm",
       "allowed_public": false,
       "compliance_notes": "Invalid app-to-cabinet handoff. No VPN wording.",
+      "ab_variant": "control"
+    },
+    "cabinet.handoff.network_error": {
+      "surface": "cabinet",
+      "ru": "Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Network or unknown app-to-cabinet handoff exchange failure. No VPN wording.",
       "ab_variant": "control"
     },
     "cabinet.handoff.rate_limited": {
@@ -1792,13 +647,1536 @@
       "compliance_notes": "Rate-limited app-to-cabinet handoff exchange. No VPN wording.",
       "ab_variant": "control"
     },
-    "cabinet.handoff.network_error": {
-      "surface": "cabinet",
-      "ru": "Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.",
+    "cabinet.subscription.subtitle": {
+      "surface": "cabinet.subscription",
+      "ru": "Продлевайте доступ, активируйте ключ и проверяйте условия до оплаты.",
       "variables": [],
-      "tone": "warm",
+      "tone": "calm",
       "allowed_public": false,
-      "compliance_notes": "Network or unknown app-to-cabinet handoff exchange failure. No VPN wording.",
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
+      "ab_variant": "control"
+    },
+    "cabinet.subscription.title": {
+      "surface": "cabinet.subscription",
+      "ru": "Доступ и продление",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
+      "ab_variant": "control"
+    },
+    "cabinet.support.empty_tickets": {
+      "surface": "cabinet.support",
+      "ru": "Когда появятся обращения, они будут видны здесь.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
+      "ab_variant": "control"
+    },
+    "cabinet.support.title": {
+      "surface": "cabinet.support",
+      "ru": "Поддержка",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": false,
+      "compliance_notes": "Shared cabinet baseline for rebuild routes.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.breadcrumb": {
+      "surface": "marketing.checkout",
+      "ru": "Продление доступа",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized marketing/install/checkout copy.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.meta.description": {
+      "surface": "marketing.checkout",
+      "ru": "Страница оплаты показывает доступные планы, сумму до оплаты, получение ключа доступа и помощь при спорных платежах.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized marketing/install/checkout copy.",
+      "ab_variant": "control"
+    },
+    "marketing.checkout.meta.title": {
+      "surface": "marketing.checkout",
+      "ru": "Оплата доступа | POKROV",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.beta_note": {
+      "surface": "marketing.footer",
+      "ru": "Android и Windows, публичная бета",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.column.legal": {
+      "surface": "marketing.footer.column",
+      "ru": "Документы",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.column.product": {
+      "surface": "marketing.footer.column",
+      "ru": "Продукт",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.column.support": {
+      "surface": "marketing.footer.column",
+      "ru": "Помощь",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.bot": {
+      "surface": "marketing.footer.link",
+      "ru": "Бот POKROV",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.cabinet": {
+      "surface": "marketing.footer.link",
+      "ru": "Кабинет",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.channel": {
+      "surface": "marketing.footer.link",
+      "ru": "Канал с новостями",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.features": {
+      "surface": "marketing.footer.link",
+      "ru": "Возможности",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.install": {
+      "surface": "marketing.footer.link",
+      "ru": "Установка",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.offer": {
+      "surface": "marketing.footer.link",
+      "ru": "Публичная оферта",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.pricing": {
+      "surface": "marketing.footer.link",
+      "ru": "Цены",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.privacy": {
+      "surface": "marketing.footer.link",
+      "ru": "Конфиденциальность",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.releases": {
+      "surface": "marketing.footer.link",
+      "ru": "Файлы на GitHub",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.link.support": {
+      "surface": "marketing.footer.link",
+      "ru": "Поддержка в Telegram",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.footer.tagline": {
+      "surface": "marketing.footer",
+      "ru": "Приложение для Android и Windows: одна кнопка — и любимые сервисы снова работают.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.faq.kicker": {
+      "surface": "marketing.home.faq",
+      "ru": "Вопросы",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.faq.title": {
+      "surface": "marketing.home.faq",
+      "ru": "Коротко о главном",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.final.cta": {
+      "surface": "marketing.home.final",
+      "ru": "Скачать бесплатно",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.final.sub": {
+      "surface": "marketing.home.final",
+      "ru": "Установка занимает минуту, карта не нужна. Если что-то не заработает — поддержка рядом.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.final.support": {
+      "surface": "marketing.home.final",
+      "ru": "Задать вопрос поддержке",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.fact_devices.text": {
+      "surface": "marketing.home.hero.fact_devices",
+      "ru": "на основных тарифах",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.fact_devices.title": {
+      "surface": "marketing.home.hero.fact_devices",
+      "ru": "до 5 устройств",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.fact_platforms.text": {
+      "surface": "marketing.home.hero.fact_platforms",
+      "ru": "одно приложение",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.fact_platforms.title": {
+      "surface": "marketing.home.hero.fact_platforms",
+      "ru": "Android + Windows",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.fact_price.text": {
+      "surface": "marketing.home.hero.fact_price",
+      "ru": "за 30 дней после теста",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.fact_trial.text": {
+      "surface": "marketing.home.hero.fact_trial",
+      "ru": "бесплатно, без карты",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.kicker": {
+      "surface": "marketing.home.hero",
+      "ru": "5 дней бесплатно · карта не нужна",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.primary_cta": {
+      "surface": "marketing.home.hero",
+      "ru": "Скачать бесплатно",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.secondary_cta": {
+      "surface": "marketing.home.hero",
+      "ru": "Как это работает",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.subtitle": {
+      "surface": "marketing.home.hero",
+      "ru": "Приложение для Android и Windows: одна кнопка — и любимые сервисы снова быстрые.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.hero.title": {
+      "surface": "marketing.home.hero",
+      "ru": "YouTube снова летает. И всё остальное тоже.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.no_autopay.text": {
+      "surface": "marketing.home.honesty.no_autopay",
+      "ru": "Оплата разовым ключом: ничего не продлевается само",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.no_autopay.title": {
+      "surface": "marketing.home.honesty.no_autopay",
+      "ru": "Без автосписаний",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.releases.text": {
+      "surface": "marketing.home.honesty.releases",
+      "ru": "Релизы приложения лежат на GitHub Releases — у всех на виду",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.releases.title": {
+      "surface": "marketing.home.honesty.releases",
+      "ru": "Файлы на GitHub",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.support.text": {
+      "surface": "marketing.home.honesty.support",
+      "ru": "Отвечаем в Telegram, без ботов-заглушек",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.support.title": {
+      "surface": "marketing.home.honesty.support",
+      "ru": "Живая поддержка",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.trial.text": {
+      "surface": "marketing.home.honesty.trial",
+      "ru": "5 дней бесплатно — карту не спрашиваем вообще",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.honesty.trial.title": {
+      "surface": "marketing.home.honesty.trial",
+      "ru": "Триал без карты",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.cta": {
+      "surface": "marketing.home.pricing",
+      "ru": "Выбрать",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.featured_note": {
+      "surface": "marketing.home.pricing",
+      "ru": "Выгоднее всего",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.kicker": {
+      "surface": "marketing.home.pricing",
+      "ru": "Цены",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.note": {
+      "surface": "marketing.home.pricing",
+      "ru": "Все цены в рублях. Код активации можно применить в приложении или кабинете.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.sub": {
+      "surface": "marketing.home.pricing",
+      "ru": "Оплата разовым ключом: заплатили за срок — пользуетесь. Автосписаний нет, отменять нечего.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.title": {
+      "surface": "marketing.home.pricing",
+      "ru": "Сначала бесплатно. Потом — честно",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.trial.cta": {
+      "surface": "marketing.home.pricing.trial",
+      "ru": "Начать бесплатно",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.trial.text": {
+      "surface": "marketing.home.pricing.trial",
+      "ru": "Скачайте приложение и проверьте всё на своих сервисах. Карта не нужна.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.ai.text": {
+      "surface": "marketing.home.services.ai",
+      "ru": "ChatGPT и другие инструменты открываются напрямую",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.ai.title": {
+      "surface": "marketing.home.services.ai",
+      "ru": "ИИ-сервисы",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.games.text": {
+      "surface": "marketing.home.services.games",
+      "ru": "Голосовые каналы и магазины игр без обрывов",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.games.title": {
+      "surface": "marketing.home.services.games",
+      "ru": "Игры и Discord",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.kicker": {
+      "surface": "marketing.home.services",
+      "ru": "Что снова работает",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.rest.text": {
+      "surface": "marketing.home.services.rest",
+      "ru": "Маршрут «всё, кроме РУ»: российские сайты идут напрямую",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.rest.title": {
+      "surface": "marketing.home.services.rest",
+      "ru": "И всё остальное",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.social.text": {
+      "surface": "marketing.home.services.social",
+      "ru": "Instagram, звонки и медиа в чатах — без танцев с бубном",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.social.title": {
+      "surface": "marketing.home.services.social",
+      "ru": "Соцсети и мессенджеры",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.sub": {
+      "surface": "marketing.home.services",
+      "ru": "Подключение в приложении открывает то, что тормозит или не открывается, — а российские сайты продолжают работать напрямую.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.tiktok.text": {
+      "surface": "marketing.home.services.tiktok",
+      "ru": "Лента, лайки и загрузка роликов работают как раньше",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.tiktok.title": {
+      "surface": "marketing.home.services.tiktok",
+      "ru": "TikTok снова открывается",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.title": {
+      "surface": "marketing.home.services",
+      "ru": "Любимые сервисы — как раньше",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.youtube.text": {
+      "surface": "marketing.home.services.youtube",
+      "ru": "Без замедлений, буферизации и «крутилки» на 480p",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.services.youtube.title": {
+      "surface": "marketing.home.services.youtube",
+      "ru": "YouTube в полном качестве",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.account.text": {
+      "surface": "marketing.home.showcase.account",
+      "ru": "Сколько дней осталось, какие устройства подключены, где продлить — видно сразу.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.account.title": {
+      "surface": "marketing.home.showcase.account",
+      "ru": "Всё по-честному в аккаунте",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.connect.text": {
+      "surface": "marketing.home.showcase.connect",
+      "ru": "Открыли приложение, нажали — подключено. Отключается так же просто.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.connect.title": {
+      "surface": "marketing.home.showcase.connect",
+      "ru": "Одна кнопка",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.kicker": {
+      "surface": "marketing.home.showcase",
+      "ru": "Приложение",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.locations.text": {
+      "surface": "marketing.home.showcase.locations",
+      "ru": "Режим «Авто» держит лучший маршрут. Хотите конкретный — выбирайте вручную.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.locations.title": {
+      "surface": "marketing.home.showcase.locations",
+      "ru": "Маршрут выбирается сам",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.sub": {
+      "surface": "marketing.home.showcase",
+      "ru": "Никаких скрытых экранов и мелкого шрифта — всё приложение перед вами.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.title": {
+      "surface": "marketing.home.showcase",
+      "ru": "Вот как это выглядит",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.windows.text": {
+      "surface": "marketing.home.showcase.windows",
+      "ru": "Windows-приложение выглядит и работает так же просто, как мобильное.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.showcase.windows.title": {
+      "surface": "marketing.home.showcase.windows",
+      "ru": "На компьютере — так же",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.connect.text": {
+      "surface": "marketing.home.steps.connect",
+      "ru": "Всё уже настроено: приложение само выберет лучший маршрут.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.connect.title": {
+      "surface": "marketing.home.steps.connect",
+      "ru": "Нажмите «Подключить»",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.cta": {
+      "surface": "marketing.home.steps",
+      "ru": "Начать бесплатно",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.done.title": {
+      "surface": "marketing.home.steps.done",
+      "ru": "Готово",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.download.text": {
+      "surface": "marketing.home.steps.download",
+      "ru": "Android или Windows — файл весит немного, установка занимает минуту.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.download.title": {
+      "surface": "marketing.home.steps.download",
+      "ru": "Скачайте приложение",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.kicker": {
+      "surface": "marketing.home.steps",
+      "ru": "Как это работает",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.sub": {
+      "surface": "marketing.home.steps",
+      "ru": "Никаких профилей, ключей и настроек. Мы уже всё сделали за вас.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.steps.title": {
+      "surface": "marketing.home.steps",
+      "ru": "Три шага — и всё открывается",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.telegram.cta": {
+      "surface": "marketing.home.telegram",
+      "ru": "Открыть канал",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.telegram.text": {
+      "surface": "marketing.home.telegram",
+      "ru": "Подпишитесь на наш Telegram-канал и заберите бонус в приложении — там же будут новости и статусы работы.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.android.note": {
+      "surface": "marketing.install.android",
+      "ru": "Для большинства телефонов подходит основной файл (arm64). Для старых устройств в кабинете есть отдельная legacy-версия.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.android.step1.text": {
+      "surface": "marketing.install.android.step1",
+      "ru": "Откройте кабинет — он выдаст актуальный APK для вашего аккаунта.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.android.step1.title": {
+      "surface": "marketing.install.android.step1",
+      "ru": "Скачайте файл",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.android.step2.text": {
+      "surface": "marketing.install.android.step2",
+      "ru": "Android спросит разрешение на установку из этого источника — нажмите «Разрешить». Так система относится к любым файлам вне магазина.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.android.step2.title": {
+      "surface": "marketing.install.android.step2",
+      "ru": "Разрешите установку",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.android.step3.title": {
+      "surface": "marketing.install.android.step3",
+      "ru": "Нажмите «Подключить»",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.cta.android": {
+      "surface": "marketing.install.cta",
+      "ru": "Скачать для Android",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.cta.windows": {
+      "surface": "marketing.install.cta",
+      "ru": "Скачать для Windows",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.apk.a": {
+      "surface": "marketing.install.faq.apk",
+      "ru": "Основной файл (arm64) подходит почти всем современным телефонам. Если телефон старый и файл не ставится — возьмите в кабинете legacy-версию (armeabi).",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.apk.q": {
+      "surface": "marketing.install.faq.apk",
+      "ru": "Какой APK выбрать на Android?",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.file.a": {
+      "surface": "marketing.install.faq.file",
+      "ru": "Кабинет всегда показывает актуальную версию для вашего аккаунта и не даёт скачать подделку с чужого «зеркала». Сами релизы открыто лежат на GitHub Releases.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.file.q": {
+      "surface": "marketing.install.faq.file",
+      "ru": "Почему файл выдаётся через кабинет?",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.kicker": {
+      "surface": "marketing.install.faq",
+      "ru": "Частые вопросы",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.smartscreen.a": {
+      "surface": "marketing.install.faq.smartscreen",
+      "ru": "Да. Пока приложение распространяется вне магазина и без подписи издателя, SmartScreen показывает стандартное предупреждение. Нажмите «Подробнее» → «Выполнить в любом случае».",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.smartscreen.q": {
+      "surface": "marketing.install.faq.smartscreen",
+      "ru": "Windows ругается на файл — это нормально?",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.stuck.a": {
+      "surface": "marketing.install.faq.stuck",
+      "ru": "Напишите в Telegram-поддержку: подскажем по шагам — от установки до первого подключения. Живой человек, не бот-заглушка.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.stuck.q": {
+      "surface": "marketing.install.faq.stuck",
+      "ru": "Не получается — куда идти?",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.faq.title": {
+      "surface": "marketing.install.faq",
+      "ru": "Про установку — честно",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.kicker": {
+      "surface": "marketing.install",
+      "ru": "Установка за минуту",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.meta.description": {
+      "surface": "marketing.install",
+      "ru": "Пошаговая установка приложения POKROV: скачать файл, разрешить установку, нажать «Подключить». С картинками и честными ответами про SmartScreen.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.meta.title": {
+      "surface": "marketing.install",
+      "ru": "Как установить POKROV на Android и Windows | Инструкция",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.primary_cta": {
+      "surface": "marketing.install",
+      "ru": "Открыть кабинет",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized marketing/install/checkout copy.",
+      "ab_variant": "control"
+    },
+    "marketing.install.secondary_cta": {
+      "surface": "marketing.install",
+      "ru": "Написать в поддержку",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized marketing/install/checkout copy.",
+      "ab_variant": "control"
+    },
+    "marketing.install.subtitle": {
+      "surface": "marketing.install",
+      "ru": "Три шага для Android или Windows. Файлы выдаёт кабинет — так вы всегда получаете настоящую и свежую версию.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.tabs.android": {
+      "surface": "marketing.install.tabs",
+      "ru": "Android",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.tabs.windows": {
+      "surface": "marketing.install.tabs",
+      "ru": "Windows",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.title": {
+      "surface": "marketing.install",
+      "ru": "Скачайте — остальное уже настроено",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.windows.note": {
+      "surface": "marketing.install.windows",
+      "ru": "Приложение пока распространяется вне магазина и без подписи издателя, поэтому предупреждение SmartScreen — ожидаемое поведение системы.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.windows.step1.text": {
+      "surface": "marketing.install.windows.step1",
+      "ru": "Откройте кабинет — он выдаст актуальный EXE-файл для вашего аккаунта.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.windows.step1.title": {
+      "surface": "marketing.install.windows.step1",
+      "ru": "Скачайте установщик",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.windows.step2.text": {
+      "surface": "marketing.install.windows.step2",
+      "ru": "Если Windows покажет предупреждение, нажмите «Подробнее» → «Выполнить в любом случае». Это честно: подписи издателя пока нет.",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.windows.step2.title": {
+      "surface": "marketing.install.windows.step2",
+      "ru": "Пройдите SmartScreen",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.install.windows.step3.title": {
+      "surface": "marketing.install.windows.step3",
+      "ru": "Нажмите «Подключить»",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.intent.cta.primary": {
+      "surface": "marketing.intent.cta",
+      "ru": "Скачать бесплатно",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.intent.cta.secondary": {
+      "surface": "marketing.intent.cta",
+      "ru": "Как это работает",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.intent.related.title": {
+      "surface": "marketing.intent.related",
+      "ru": "Похожие задачи",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.cabinet": {
+      "surface": "marketing.topbar",
+      "ru": "Кабинет",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.download": {
+      "surface": "marketing.topbar",
+      "ru": "Скачать",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.menu_close": {
+      "surface": "marketing.topbar",
+      "ru": "Закрыть меню",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.menu_open": {
+      "surface": "marketing.topbar",
+      "ru": "Открыть меню",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.nav.faq": {
+      "surface": "marketing.topbar.nav",
+      "ru": "FAQ",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.nav.features": {
+      "surface": "marketing.topbar.nav",
+      "ru": "Возможности",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.nav.how": {
+      "surface": "marketing.topbar.nav",
+      "ru": "Как это работает",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.topbar.nav.pricing": {
+      "surface": "marketing.topbar.nav",
+      "ru": "Цены",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "retention.reactivation": {
+      "surface": "bot.retention",
+      "ru": "Доступ можно восстановить. Откройте продление и продолжайте пользоваться POKROV без нового старта.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": false,
+      "compliance_notes": "Rebranded reactivation.",
+      "ab_variant": "control"
+    },
+    "retention.start99_offer": {
+      "surface": "bot.retention",
+      "ru": "Скидка {discount_pct}% сохранена для первого продления POKROV после бесплатного периода.",
+      "variables": [
+        "discount_pct"
+      ],
+      "tone": "premium",
+      "allowed_public": false,
+      "compliance_notes": "Rebranded start99 offer.",
+      "ab_variant": "control"
+    },
+    "retention.t0": {
+      "surface": "bot.retention",
+      "ru": "Доступ завершается сегодня. Продлите его, чтобы сохранить тот же профиль.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": false,
+      "compliance_notes": "Rebranded retention t0.",
+      "ab_variant": "control"
+    },
+    "retention.t1": {
+      "surface": "bot.retention",
+      "ru": "Срок вашей подписки подходит к концу. Продлите доступ, чтобы сохранить привычное подключение.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": false,
+      "compliance_notes": "Rebranded retention t1.",
+      "ab_variant": "control"
+    },
+    "retention.t3": {
+      "surface": "bot.retention",
+      "ru": "Напоминаем: доступ завершается через три дня. Продлите его заранее, чтобы сохранить привычное подключение.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": false,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "retention.welcome": {
+      "surface": "bot.retention",
+      "ru": "Профиль готов. Установите приложение, подключитесь и пользуйтесь доступом без ручных настроек.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": false,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.checkout.subtitle": {
+      "surface": "webapp.checkout",
+      "ru": "Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.checkout.title": {
+      "surface": "webapp.checkout",
+      "ru": "Продлить доступ",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.dashboard.primary_cta": {
+      "surface": "webapp.dashboard",
+      "ru": "Продлить подписку",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.dashboard.support_cta": {
+      "surface": "webapp.dashboard",
+      "ru": "Помощь",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.devices.subtitle": {
+      "surface": "webapp.devices",
+      "ru": "Проверьте, какие телефоны и компьютеры уже связаны. Новый экран начинается с загрузки приложения.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.devices.title": {
+      "surface": "webapp.devices",
+      "ru": "Устройства",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.downloads.subtitle": {
+      "surface": "webapp.downloads",
+      "ru": "Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.downloads.title": {
+      "surface": "webapp.downloads",
+      "ru": "Загрузки",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.card_body": {
+      "surface": "webapp.entry",
+      "ru": "Войдите через email или Telegram. После входа вы увидите доступ, поддержку и шаги по подключению.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.card_title": {
+      "surface": "webapp.entry",
+      "ru": "Вход в кабинет",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.note.body": {
+      "surface": "webapp.entry",
+      "ru": "Если Telegram не открылся автоматически, нажмите кнопку ниже. Подтверждение проходит в Telegram и обычно занимает пару секунд.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Entry note body for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.note.title": {
+      "surface": "webapp.entry",
+      "ru": "Безопасный вход",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Entry note title for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.primary_cta": {
+      "surface": "webapp.entry",
+      "ru": "Войти через Telegram",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Primary CTA for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.secondary_cta": {
+      "surface": "webapp.entry",
+      "ru": "Отменить вход",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.step_1.desc": {
+      "surface": "webapp.entry",
+      "ru": "Нажмите кнопку и авторизуйтесь через Telegram — это быстрый способ открыть кабинет в браузере.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Step description for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.step_1.title": {
+      "surface": "webapp.entry",
+      "ru": "Подтвердите вход",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Step title for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.step_2.desc": {
+      "surface": "webapp.entry",
+      "ru": "После подтверждения вы сразу попадете в личный кабинет без паролей и лишних форм.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Step description for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.step_2.title": {
+      "surface": "webapp.entry",
+      "ru": "Откройте свой профиль",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Step title for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.step_3.desc": {
+      "surface": "webapp.entry",
+      "ru": "Здесь удобно смотреть статус подписки, получать ссылку подключения и решать вопросы по сервису.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Step description for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.step_3.title": {
+      "surface": "webapp.entry",
+      "ru": "Управляйте доступом",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Step title for webapp entry page.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.subtitle": {
+      "surface": "webapp.entry",
+      "ru": "Войдите, чтобы скачать приложение, проверить доступ, продлить срок или написать в поддержку.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.entry.title": {
+      "surface": "webapp.entry",
+      "ru": "Кабинет POKROV",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.statistics.subtitle": {
+      "surface": "webapp.statistics",
+      "ru": "Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.statistics.title": {
+      "surface": "webapp.statistics",
+      "ru": "Статистика",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.subscription.subtitle": {
+      "surface": "webapp.subscription",
+      "ru": "Здесь видны текущий режим доступа, срок, ссылка подключения и все, что нужно для продления.",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.subscription.title": {
+      "surface": "webapp.subscription",
+      "ru": "Продлить доступ",
+      "variables": [],
+      "tone": "premium",
+      "allowed_public": true,
+      "compliance_notes": "Sales-oriented friendly format.",
+      "ab_variant": "control"
+    },
+    "webapp.support.empty_tickets": {
+      "surface": "webapp.support",
+      "ru": "Обращений пока нет",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.support.subtitle": {
+      "surface": "webapp.support",
+      "ru": "Здесь видны ваши обращения и ответы команды. Если нужна помощь, откройте новое обращение. Если удобнее, можно продолжить через Telegram.",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
+      "ab_variant": "control"
+    },
+    "webapp.support.title": {
+      "surface": "webapp.support",
+      "ru": "Помощь",
+      "variables": [],
+      "tone": "calm",
+      "allowed_public": true,
+      "compliance_notes": "Centralized cabinet continuation/support copy.",
       "ab_variant": "control"
     }
   }
