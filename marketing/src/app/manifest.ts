@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 
 import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND } from "../lib/pokrov";
 
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: CANONICAL_PLATFORM_BRAND,
@@ -9,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Приложение POKROV для Android и Windows с бесплатным стартом, кабинетом и поддержкой.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f6f1e8",
-    theme_color: "#0b4832",
+    background_color: "#ffffff",
+    theme_color: "#12805a",
     lang: "ru-RU",
     categories: ["security", "utilities", "productivity"],
     icons: [

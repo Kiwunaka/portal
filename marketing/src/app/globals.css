@@ -1,4 +1,40 @@
-﻿:root {
+﻿@import "tailwindcss";
+
+/*
+ * Tailwind v4 token bridge: every utility color/radius/shadow resolves from
+ * the shared POKROV design tokens injected by getDesignTokenThemeCss().
+ * Components must not hand-write hex values — extend this bridge instead.
+ */
+@theme inline {
+  --color-canvas: var(--pokrov-bg);
+  --color-canvas-alt: var(--pokrov-bg-alt);
+  --color-surface: var(--pokrov-surface);
+  --color-surface-subtle: var(--pokrov-surface-subtle);
+  --color-surface-muted: var(--pokrov-surface-muted);
+  --color-ink: var(--pokrov-text);
+  --color-ink-soft: var(--pokrov-text-soft);
+  --color-ink-muted: var(--pokrov-text-muted);
+  --color-ink-inverse: var(--pokrov-text-inverse);
+  --color-brand: var(--pokrov-accent);
+  --color-brand-strong: var(--pokrov-accent-hover);
+  --color-brand-soft: var(--pokrov-accent-soft);
+  --color-brand-mint: var(--pokrov-mint);
+  --color-status-green: var(--pokrov-status-green);
+  --color-line: var(--pokrov-line);
+  --color-line-strong: var(--pokrov-line-strong);
+  --font-display: var(--font-golos), "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --font-body: var(--font-golos), "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --radius-card: var(--pokrov-radius-card);
+  --radius-panel: var(--pokrov-radius-panel);
+  --radius-control: var(--pokrov-radius-control);
+  --shadow-soft: var(--pokrov-shadow-soft);
+  --shadow-medium: var(--pokrov-shadow-medium);
+  --shadow-strong: var(--pokrov-shadow-strong);
+  --ease-apple: var(--pokrov-easing);
+  --ease-spring: var(--pokrov-easing-spring);
+}
+
+:root {
   --lp-bg: var(--pokrov-bg, #f7f3eb);
   --lp-bg-2: var(--pokrov-bg-alt, #f0eadf);
   --lp-surface: var(--pokrov-surface-glass, rgba(255, 255, 255, 0.72));

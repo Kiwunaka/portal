@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 
 import { CANONICAL_MARKETING_SITE_URL } from "../lib/pokrov";
 
+export const dynamic = "force-static";
+
 export default function robots(): MetadataRoute.Robots {
   const commonDisallow = ["/api/", "/_next/"];
   const aiAndSearchBots = [
