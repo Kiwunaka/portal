@@ -145,6 +145,50 @@ def _curl_retry(
     return "bash -lc " + shlex.quote(script)
 
 
+def _cache_header_retry(
+    url: str,
+    *,
+    host: str,
+    expected: tuple[str, ...] = ("no-cache", "must-revalidate"),
+    attempts: int = 6,
+    pause_sec: float = 1.0,
+) -> str:
+    target_url = str(url or "").strip()
+    if not target_url.startswith(("http://", "https://")):
+        target_url = f"https://{target_url}"
+    base = " ".join(
+        [
+            "curl",
+            "-fsSI",
+            "--insecure",
+            "--resolve",
+            shlex.quote(f"{host}:443:127.0.0.1"),
+            shlex.quote(target_url),
+        ]
+    )
+    expected_checks = " && ".join(
+        f"printf '%s' \"$value\" | tr '[:upper:]' '[:lower:]' | grep -F -- {shlex.quote(item.lower())} >/dev/null"
+        for item in expected
+    )
+    script = (
+        "headers_file=/tmp/portal_verify_headers.$$; "
+        "cleanup() { rm -f \"$headers_file\"; }; "
+        "trap cleanup EXIT; "
+        f"for i in $(seq 1 {int(attempts)}); do "
+        f"if {base} > \"$headers_file\"; then "
+        "value=$(awk 'BEGIN{IGNORECASE=1} /^cache-control:/ {sub(/^[^:]*:[[:space:]]*/, \"\"); gsub(/\\r/, \"\"); print; exit}' \"$headers_file\"); "
+        f"if [ -n \"$value\" ] && {expected_checks}; then "
+        "printf 'Cache-Control: %s\\n' \"$value\"; "
+        "exit 0; "
+        "fi; "
+        f"fi; sleep {pause_sec}; "
+        "done; "
+        "awk 'BEGIN{IGNORECASE=1} /^cache-control:/ {gsub(/\\r/, \"\"); print; found=1} END{if(!found) print \"Cache-Control: <missing>\"}' \"$headers_file\"; "
+        "exit 22"
+    )
+    return "bash -lc " + shlex.quote(script)
+
+
 def _build_subscription_check_script(*, api_domain: str, connect_domain: str, repeat: int) -> str:
     return f"""#!/usr/bin/env bash
 set -euo pipefail
@@ -299,7 +343,11 @@ def main() -> int:
         curl_checks = [
             ("health443", _curl_retry(f"{api_domain}/api/health", host=api_domain)),
             ("webapp443", _curl_retry("app.pokrov.space/", host="app.pokrov.space")),
+            ("webappCache443", _cache_header_retry("app.pokrov.space/", host="app.pokrov.space")),
+            ("webappDashboardCache443", _cache_header_retry("app.pokrov.space/dashboard", host="app.pokrov.space")),
+            ("webappAdminCache443", _cache_header_retry("app.pokrov.space/admin", host="app.pokrov.space")),
             ("mkt443", _curl_retry(f"{web_domain}/", host=web_domain, contains_any=("Android + Windows", "POKROV"))),
+            ("mktCache443", _cache_header_retry(f"{web_domain}/", host=web_domain)),
             (
                 "mktCabinet443",
                 _curl_retry(f"{web_domain}/", host=web_domain, contains_any=("https://app.pokrov.space", "app.pokrov.space")),
@@ -313,6 +361,7 @@ def main() -> int:
                     contains_any=("checkout-shell", "ключ доступа", "https://pokrov.space/checkout/"),
                 ),
             ),
+            ("checkoutCache443", _cache_header_retry("pay.pokrov.space/checkout/", host="pay.pokrov.space")),
             ("fkverify443", _curl_retry(f"{web_domain}/fk-verify.html", host=web_domain)),
         ]
         if args.check_legacy_2096:

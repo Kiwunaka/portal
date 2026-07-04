@@ -57,6 +57,15 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertIn("||", cmd)
         self.assertIn("head -c 200", cmd)
 
+    def test_cache_header_probe_requires_no_cache_html_policy(self) -> None:
+        cmd = self.module._cache_header_retry("app.pokrov.space/dashboard", host="app.pokrov.space")
+
+        self.assertIn("curl -fsSI", cmd)
+        self.assertIn("--resolve", cmd)
+        self.assertIn("cache-control", cmd.lower())
+        self.assertIn("no-cache", cmd)
+        self.assertIn("must-revalidate", cmd)
+
     def test_main_returns_failure_when_required_service_is_inactive(self) -> None:
         ssh = MagicMock()
         sftp = MagicMock()
@@ -80,6 +89,11 @@ class VerifyBrainReadyTests(unittest.TestCase):
             (0, "Открыть кабинет", ""),
             (0, "Публичная оферта | POKROV", ""),
             (0, "Ваш путь к быстрой сети | POKROV", ""),
+            (0, "ok", ""),
+            (0, "sub_fetch_1 user=selected mode=token fmt=plain lines=1 hosts=1 connect_json=1 outbounds=1", ""),
+            (0, "", ""),
+            (0, "ok", ""),
+            (0, "ok", ""),
             (0, "ok", ""),
             (0, "sub_fetch_1 user=selected mode=token fmt=plain lines=1 hosts=1 connect_json=1 outbounds=1", ""),
             (0, "", ""),
