@@ -1,58 +1,42 @@
-import JsonLd from "../../components/json-ld";
-import MarketingLanding, { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { CANONICAL_PLATFORM_BRAND } from "../../lib/pokrov";
+import { IntentLanding } from "../../components/intent/intent-landing";
+import { buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 
 export const metadata = buildMarketingMetadata(
-  "Мобильный старт | POKROV",
-  "POKROV на Android: 5 дней бесплатно без карты, быстрый старт в приложении и управление в кабинете.",
+  "Быстрый старт на телефоне | POKROV для Android",
+  "POKROV на Android: установка за минуту, 5 дней бесплатно без карты, одна кнопка подключения. Кабинет и поддержка под рукой.",
   {
     path: MARKETING_CANONICAL_PATHS.mobile,
-    keywords: ["проверка связи на телефон", "android", "мобильный старт", "pokrov на телефон"],
+    keywords: ["проверка связи на телефоне", "android", "быстрый старт", "pokrov на телефон"],
   },
 );
 
 export default function MobilePage() {
   return (
-    <>
-      <JsonLd
-        data={buildBreadcrumbJsonLd([
-          { name: CANONICAL_PLATFORM_BRAND, path: MARKETING_CANONICAL_PATHS.home },
-          { name: "Мобильный старт", path: MARKETING_CANONICAL_PATHS.mobile },
-        ])}
-      />
-      <div className="lp-route-shell lp-route-shell--intent lp-route-shell--mobile">
-        <MarketingLanding
-          pagePath={MARKETING_CANONICAL_PATHS.mobile}
-          heroKicker="Мобильный старт"
-          heroTitle="POKROV на Android: 5 дней без карты"
-          heroSubtitle="Установите приложение, активируйте бесплатный период и проверьте привычные сервисы на своем телефоне."
-          scenarioTitle="Почему это удобно на телефоне"
-          scenarioBody="На телефоне важны быстрый запуск, минимум действий и проверка в привычных приложениях."
-          scenarioCards={[
-            {
-              eyebrow: "Мобильный старт",
-              glyph: "arc",
-              title: "Один короткий шаг к подключению",
-              desc: "Android-приложение доводит до первого подключения без ручной настройки и выбора серверов.",
-            },
-            {
-              eyebrow: "Повседневный ритм",
-              glyph: "signal",
-              title: "Проверяйте там, где пользуетесь каждый день",
-              desc: "Открываете привычные приложения и оцениваете связь на собственном устройстве.",
-            },
-            {
-              eyebrow: "Кабинет позже",
-              glyph: "route",
-              title: "Кабинет рядом для срока и поддержки",
-              desc: "Управление доступом, устройствами и обращениями остается в кабинете после первого старта.",
-            },
-          ]}
-          clusterTitle="Когда нужен быстрый старт на телефоне"
-          clusterBody="Эта страница ведёт в приложение, кабинет и оплату без смешивания ролей."
-        />
-      </div>
-    </>
+    <IntentLanding
+      pagePath={MARKETING_CANONICAL_PATHS.mobile}
+      breadcrumbName="На телефон"
+      heroKicker="Быстрый старт на телефоне"
+      heroTitle="Поставьте на телефон — и забудьте"
+      heroSubtitle="Android-приложение ставится за минуту и дальше просто работает: без профилей, ключей и инструкций на полчаса."
+      scenarioTitle="Почему на телефоне это удобно"
+      scenarioBody="Всё, что нужно каждый день, — уже в приложении."
+      scenarioCards={[
+        {
+          eyebrow: "Установка за минуту",
+          title: "Скачали — подключили",
+          desc: "Файл выдаёт кабинет, приложение само выбирает маршрут. Первые 5 дней бесплатно.",
+        },
+        {
+          eyebrow: "Живёт в фоне",
+          title: "Не мешает и не садит батарею",
+          desc: "Подключение держится в фоне, а российские приложения работают напрямую.",
+        },
+        {
+          eyebrow: "Всё под рукой",
+          title: "Срок и продление — в приложении",
+          desc: "Сколько дней осталось и как продлить — видно прямо на экране аккаунта.",
+        },
+      ]}
+    />
   );
 }
