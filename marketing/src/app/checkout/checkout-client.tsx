@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { MarketingBrandLogo } from "../../components/marketing-brand-logo";
+import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
+import { Chip } from "../../components/ui/chip";
+import { cn } from "../../components/utils";
 import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import {
   getPricingPreviewDiscountPercent,
@@ -13,6 +15,9 @@ import {
   getTariffPlans,
   normalizePlanCode,
 } from "../../lib/pokrov";
+
+const INPUT_CLASS =
+  "min-h-11 w-full rounded-(--radius-control) border border-line bg-surface px-4 text-[0.9375rem] text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand";
 
 type PlanOption = {
   code: string;
@@ -255,26 +260,23 @@ function maskAccessKey(key: string): string {
 
 export function CheckoutLoadingFallback() {
   return (
-    <main id="main-content" className="checkout-shell lp-route-shell lp-route-shell--checkout">
-      <section className="checkout-hero">
-        <div className="checkout-brand" aria-label="POKROV">
-          <MarketingBrandLogo />
-          <span>POKROV</span>
-        </div>
-        <div className="checkout-kicker">Тарифы и код активации</div>
-        <div className="checkout-status-chip checkout-status-chip--fallback">Загружаем тарифы</div>
-        <h1 className="checkout-title">Выберите срок и проверьте сумму</h1>
-        <p className="checkout-sub">Подгружаем тарифы, условия доступа и действия для покупки или активации кода.</p>
-      </section>
-      <section className="checkout-grid">
-        <article className="glass-card">
-          <div className="checkout-helper">Готовим тарифы и сумму…</div>
-        </article>
-        <article className="glass-card checkout-sticky">
-          <div className="checkout-helper">Проверяем доступные способы оплаты…</div>
-        </article>
-      </section>
-    </main>
+    <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 px-4 pt-12 pb-16 text-center sm:px-6 sm:pt-16">
+      <Chip tone="neutral">Тарифы и код активации</Chip>
+      <h1 className="font-display text-[2rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.5rem]">
+        Выберите срок и проверьте сумму
+      </h1>
+      <p className="max-w-lg text-base leading-relaxed text-ink-soft">
+        Подгружаем тарифы, условия доступа и действия для покупки или активации кода.
+      </p>
+      <div className="mt-4 grid w-full gap-4 sm:grid-cols-2">
+        <Card>
+          <p className="text-[0.9375rem] text-ink-soft">Готовим тарифы и сумму…</p>
+        </Card>
+        <Card>
+          <p className="text-[0.9375rem] text-ink-soft">Проверяем доступные способы оплаты…</p>
+        </Card>
+      </div>
+    </div>
   );
 }
 
@@ -409,67 +411,77 @@ export default function CheckoutClient() {
   };
 
   return (
-    <main id="main-content" className="checkout-shell lp-route-shell lp-route-shell--checkout">
-      <section className="checkout-hero">
-        <div className="checkout-brand" aria-label="POKROV">
-          <MarketingBrandLogo />
-          <span>POKROV</span>
-        </div>
-        <div className="checkout-kicker">После 5 дней в приложении можно выбрать срок</div>
-        <div className={`checkout-status-chip ${checkoutReady ? "checkout-status-chip--ready" : "checkout-status-chip--fallback"}`}>
+    <div className="pb-16">
+      <section className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-16">
+        <Chip tone="neutral">После 5 дней в приложении можно выбрать срок</Chip>
+        <Chip tone={checkoutReady ? "brand" : "neutral"}>
+          <span className={cn("size-1.5 rounded-full", checkoutReady ? "bg-status-green" : "bg-ink-muted")} />
           {checkoutReady ? "Оплата доступна" : "Оплата временно недоступна"}
-        </div>
-        <h1 className="checkout-title">Выберите срок доступа</h1>
-        <p className="checkout-sub">
-          Сначала проверьте POKROV в приложении. Если всё нравится — выберите срок; цена, устройства и способ оплаты видны заранее.
+        </Chip>
+        <h1 className="font-display text-[2rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.5rem]">
+          Выберите срок доступа
+        </h1>
+        <p className="max-w-lg text-base leading-relaxed text-ink-soft">
+          Сначала проверьте POKROV в приложении. Если всё нравится — выберите срок; цена, устройства и способ оплаты
+          видны заранее.
         </p>
       </section>
 
-      <section className="lp-info-band checkout-info-band">
-        <div className="lp-info-band__grid">
-          <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Сначала попробовать</span>
-            <h3>5 дней без карты до оплаты</h3>
-            <p>Первый шаг остается за приложением: установите POKROV, нажмите «Подключить» и проверьте свои сервисы.</p>
-          </article>
-          <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Потом продлить</span>
-            <h3>Сумма видна до оплаты</h3>
-            <p>Вы выбираете срок и видите итоговую сумму, лимит устройств и платформы до перехода к оплате. Код активируйте в том профиле, который хотите продлить.</p>
-          </article>
-          <article className="lp-info-card">
-            <span className="lp-info-card__eyebrow">Если нужна помощь</span>
-            <h3>Поддержка рядом</h3>
-            <p>Если оплата или активация не обновили статус, откройте поддержку: оператор продолжит один понятный кейс.</p>
-          </article>
-        </div>
+      <section className="mx-auto mb-10 grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-3">
+        <Card className="flex flex-col gap-1.5">
+          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Сначала попробовать</span>
+          <h3 className="text-[1.0625rem] font-semibold text-ink">5 дней без карты до оплаты</h3>
+          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
+            Первый шаг остается за приложением: установите POKROV, нажмите «Подключить» и проверьте свои сервисы.
+          </p>
+        </Card>
+        <Card className="flex flex-col gap-1.5">
+          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Потом продлить</span>
+          <h3 className="text-[1.0625rem] font-semibold text-ink">Сумма видна до оплаты</h3>
+          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
+            Вы выбираете срок и видите итоговую сумму, лимит устройств и платформы до перехода к оплате. Код активируйте
+            в том профиле, который хотите продлить.
+          </p>
+        </Card>
+        <Card className="flex flex-col gap-1.5">
+          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Если нужна помощь</span>
+          <h3 className="text-[1.0625rem] font-semibold text-ink">Поддержка рядом</h3>
+          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
+            Если оплата или активация не обновили статус, откройте поддержку: оператор продолжит один понятный кейс.
+          </p>
+        </Card>
       </section>
 
-      <section className="checkout-grid">
-        <article className="glass-card">
-          <h2>Выберите срок</h2>
-          <div className="checkout-plan-list">
+      <section className="mx-auto grid max-w-6xl items-start gap-6 px-4 sm:px-6 lg:grid-cols-[1.5fr_1fr]">
+        <Card className="flex flex-col gap-7">
+          <h2 className="font-display text-[1.375rem] font-bold text-ink">Выберите срок</h2>
+          <div className="flex flex-col gap-2.5">
             {plans.map((plan) => (
               <button
                 key={plan.code}
                 type="button"
                 onClick={() => setSelectedPlan(plan.code)}
-                className={`checkout-plan ${selectedPlan === plan.code ? "checkout-plan--active" : ""}`}
+                className={cn(
+                  "flex min-h-11 items-center justify-between gap-4 rounded-(--radius-control) border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-(--ease-apple)",
+                  selectedPlan === plan.code
+                    ? "border-brand bg-brand-soft shadow-soft"
+                    : "border-line bg-surface hover:border-line-strong",
+                )}
               >
-                <div>
-                  <strong>{plan.label}</strong>
-                  <p>
+                <span className="flex flex-col gap-0.5">
+                  <strong className="text-[0.9375rem] font-semibold text-ink">{plan.label}</strong>
+                  <span className="text-[0.8125rem] text-ink-soft">
                     {plan.days} дней • до {plan.device_limit} устройств
-                  </p>
-                </div>
-                <span>{formatPrice(plan.amount_rub, discountPercent)}</span>
+                  </span>
+                </span>
+                <span className="text-[1.0625rem] font-bold text-ink">{formatPrice(plan.amount_rub, discountPercent)}</span>
               </button>
             ))}
           </div>
 
-          <div className="checkout-trust">
-            <strong>Как это работает</strong>
-            <ul className="checkout-trust-list">
+          <div className="flex flex-col gap-2.5">
+            <strong className="text-[0.9375rem] font-semibold text-ink">Как это работает</strong>
+            <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[0.875rem] leading-relaxed text-ink-soft">
               <li>Первое валидное устройство получает 5 дней бесплатного доступа без карты.</li>
               <li>
                 После бесплатного периода остается базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на {catalog?.free_tier?.cycle_days || 30} дней.
@@ -480,70 +492,72 @@ export default function CheckoutClient() {
             </ul>
           </div>
 
-          <div className="checkout-trust">
-            <strong>Промокод</strong>
-            <div className="checkout-actions">
-              <input
-                value={promoCode}
-                onChange={(event) => setPromoCode(event.target.value.toUpperCase().trim())}
-                placeholder="Например: POKROV10"
-                className="checkout-secondary"
-              />
-            </div>
-            <p className="checkout-helper">
+          <div className="flex flex-col gap-2.5">
+            <strong className="text-[0.9375rem] font-semibold text-ink">Промокод</strong>
+            <input
+              value={promoCode}
+              onChange={(event) => setPromoCode(event.target.value.toUpperCase().trim())}
+              placeholder="Например: POKROV10"
+              className={INPUT_CLASS}
+            />
+            <p className="text-[0.8125rem] text-ink-muted">
               {discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
                 : "Промокод меняет только итоговую сумму."}
             </p>
           </div>
 
-          <div className="checkout-trust">
-            <strong>Уже есть код?</strong>
-            <div className="checkout-actions">
-              <input
-                value={keyInput}
-                onChange={(event) => setKeyInput(event.target.value.toUpperCase().trim())}
-                placeholder="POKROV-XXXX-XXXX"
-                className="checkout-secondary"
-              />
-            </div>
-            {keyBusy ? <p className="checkout-helper">Проверяем статус кода…</p> : null}
+          <div className="flex flex-col gap-2.5">
+            <strong className="text-[0.9375rem] font-semibold text-ink">Уже есть код?</strong>
+            <input
+              value={keyInput}
+              onChange={(event) => setKeyInput(event.target.value.toUpperCase().trim())}
+              placeholder="POKROV-XXXX-XXXX"
+              className={INPUT_CLASS}
+            />
+            {keyBusy ? <p className="text-[0.8125rem] text-ink-muted">Проверяем статус кода…</p> : null}
             {keyStatus ? (
-              <ul className="checkout-trust-list">
+              <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-[0.875rem] text-ink-soft">
                 <li>Код: {maskAccessKey(keyStatus.key)}</li>
                 <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
                 <li>Статус: {keyStatus.redeemed ? "уже активирован" : "готов к активации"}</li>
               </ul>
             ) : null}
           </div>
-        </article>
+        </Card>
 
-        <article className="glass-card checkout-sticky">
-          <h2>Итог</h2>
-          <p className="checkout-note">
-            После оплаты придет код активации. Он продлит тот профиль POKROV, где вы его введете: в приложении или кабинете.
+        <Card className="flex flex-col gap-5 lg:sticky lg:top-24">
+          <h2 className="font-display text-[1.375rem] font-bold text-ink">Итог</h2>
+          <p className="text-[0.875rem] leading-relaxed text-ink-soft">
+            После оплаты придет код активации. Он продлит тот профиль POKROV, где вы его введете: в приложении или
+            кабинете.
           </p>
 
-          <div className="checkout-summary">
-            <p>
-              Тариф: <strong>{activePlan.label}</strong>
-            </p>
-            <p>
-              Срок: <strong>{activePlan.days} дней</strong>
-            </p>
-            <p>
-              Устройства: <strong>до {activePlan.device_limit}</strong>
-            </p>
-            <p>
-              Платформы: <strong>{formatPlatformScope(catalog?.public_surface_policy?.public_platform_scope)}</strong>
-            </p>
-            <p className="checkout-summary-total">
-              Сумма: <strong>{formatPrice(activePlan.amount_rub, discountPercent)}</strong>
-            </p>
-          </div>
+          <dl className="m-0 flex flex-col gap-2 border-y border-line py-4 text-[0.9375rem]">
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-soft">Тариф</dt>
+              <dd className="m-0 font-semibold text-ink">{activePlan.label}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-soft">Срок</dt>
+              <dd className="m-0 font-semibold text-ink">{activePlan.days} дней</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-soft">Устройства</dt>
+              <dd className="m-0 font-semibold text-ink">до {activePlan.device_limit}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-soft">Платформы</dt>
+              <dd className="m-0 font-semibold text-ink">{formatPlatformScope(catalog?.public_surface_policy?.public_platform_scope)}</dd>
+            </div>
+            <div className="mt-1 flex justify-between gap-3 text-[1.0625rem]">
+              <dt className="font-semibold text-ink">Сумма</dt>
+              <dd className="m-0 font-bold text-brand">{formatPrice(activePlan.amount_rub, discountPercent)}</dd>
+            </div>
+          </dl>
 
           {checkoutReady ? (
-            <label className="checkout-helper" htmlFor="checkout-buyer-email">
+            <label className="flex flex-col gap-2 text-[0.875rem] font-medium text-ink" htmlFor="checkout-buyer-email">
               Email для чека и кода активации
               <input
                 id="checkout-buyer-email"
@@ -551,67 +565,72 @@ export default function CheckoutClient() {
                 value={buyerEmail}
                 onChange={(event) => setBuyerEmail(event.target.value)}
                 placeholder="email@example.com"
-                className="checkout-secondary"
+                className={INPUT_CLASS}
                 required
               />
             </label>
           ) : null}
 
           {checkoutReady ? (
-            <button type="button" onClick={startPublicCheckout} disabled={checkoutBusy} className="checkout-submit">
+            <Button onClick={startPublicCheckout} disabled={checkoutBusy} size="lg" className="w-full">
               Перейти к оплате
-            </button>
+            </Button>
           ) : (
-            <span className="checkout-submit checkout-submit--disabled" aria-disabled="true">
+            <span
+              aria-disabled="true"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-canvas-alt px-6 text-[0.9375rem] font-semibold text-ink-muted"
+            >
               Оплата временно недоступна
             </span>
           )}
 
           {!checkoutReady ? (
-            <p className="checkout-helper checkout-helper--warning">
+            <p className="text-[0.8125rem] leading-relaxed text-ink-muted">
               {checkoutBlockedReasons.length
                 ? "Оплата временно недоступна. Откройте кабинет или напишите в поддержку — подскажем следующий шаг."
                 : "Проверяем доступность оплаты. Если кнопка не появится, продолжайте через поддержку или кабинет."}
             </p>
           ) : null}
 
-          <a href={redeemHref} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Активировать код в кабинете
-          </a>
+          <div className="flex flex-col gap-2">
+            <Button href={redeemHref} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
+              Активировать код в кабинете
+            </Button>
+            <Button href={config.webappUrl} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
+              Открыть кабинет
+            </Button>
+            <Button href={config.botUrl} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
+              Продолжить в Telegram
+            </Button>
+            <Button href={MARKETING_CANONICAL_PATHS.install} variant="ghost" className="w-full">
+              Сначала установить приложение
+            </Button>
+          </div>
 
-          <a href={config.webappUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Открыть кабинет
-          </a>
-
-          <a href={config.botUrl} target="_blank" rel="noreferrer" className="checkout-secondary checkout-secondary-button">
-            Продолжить в Telegram
-          </a>
-
-          <Link href={MARKETING_CANONICAL_PATHS.install} className="checkout-secondary checkout-secondary-button">
-            Сначала установить приложение
-          </Link>
-
-          <p className="checkout-helper">
-            Email нужен для чека и кода активации. Уже начали в приложении? Введите код именно там или откройте кабинет из приложения, чтобы продлить тот же профиль.
+          <p className="text-[0.8125rem] leading-relaxed text-ink-muted">
+            Email нужен для чека и кода активации. Уже начали в приложении? Введите код именно там или откройте кабинет
+            из приложения, чтобы продлить тот же профиль.
           </p>
 
-          {statusText ? <p className="checkout-status">{statusText}</p> : null}
+          {statusText ? (
+            <p className="rounded-(--radius-control) bg-canvas-alt px-4 py-3 text-[0.875rem] text-ink">{statusText}</p>
+          ) : null}
 
-          <div className="checkout-trust">
-            <strong>Подсказки рядом с оплатой</strong>
-            <ul className="checkout-trust-list">
+          <div className="flex flex-col gap-2">
+            <strong className="text-[0.9375rem] font-semibold text-ink">Подсказки рядом с оплатой</strong>
+            <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[0.875rem] leading-relaxed text-ink-soft">
               {marketingPromoIds.map((contentId) => {
                 const content = describePromoContent(contentId);
                 return (
                   <li key={contentId}>
-                    <strong>{content.title}</strong>: {content.body}
+                    <strong className="text-ink">{content.title}</strong>: {content.body}
                   </li>
                 );
               })}
             </ul>
           </div>
-        </article>
+        </Card>
       </section>
-    </main>
+    </div>
   );
 }

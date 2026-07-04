@@ -80,12 +80,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru" className={fontBody.variable} suppressHydrationWarning>
       <head>
         <style id="pokrov-design-tokens" dangerouslySetInnerHTML={{ __html: designTokenThemeCss }} />
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){var key='pokrov-theme';var root=document.documentElement;var media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;function stored(){try{var value=localStorage.getItem(key);return value==='light'||value==='dark'?value:null;}catch(_e){return null;}}function syncButtons(theme){var dark=theme==='dark';var label=dark?'Переключить на светлую тему':'Переключить на тёмную тему';var buttons=document.querySelectorAll('[data-theme-toggle]');for(var i=0;i<buttons.length;i+=1){buttons[i].setAttribute('aria-pressed',dark?'true':'false');buttons[i].setAttribute('aria-label',label);buttons[i].setAttribute('title',label);}}function resolveTheme(){var saved=stored();if(saved){return saved;}return media&&media.matches?'dark':'light';}function apply(theme,persist){root.setAttribute('data-theme',theme);root.style.colorScheme=theme;syncButtons(theme);if(persist){try{localStorage.setItem(key,theme);}catch(_e){}}}function refresh(){apply(resolveTheme(),false);}refresh();document.addEventListener('DOMContentLoaded',refresh);document.addEventListener('click',function(event){var target=event.target;if(!target||!target.closest){return;}var button=target.closest('[data-theme-toggle]');if(!button){return;}var next=root.getAttribute('data-theme')==='dark'?'light':'dark';apply(next,true);});if(media){var handleChange=function(){if(!stored()){refresh();}};if(media.addEventListener){media.addEventListener('change',handleChange);}else if(media.addListener){media.addListener(handleChange);}}})();",
-          }}
-        />
       </head>
       <body>
         <a href="#main-content" className="skip-link">

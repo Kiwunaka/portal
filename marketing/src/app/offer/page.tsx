@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 import JsonLd from "../../components/json-ld";
-import { MarketingBrandLogo } from "../../components/marketing-brand-logo";
-import { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { PageShell } from "../../components/layout/page-shell";
+import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
+import { buildBreadcrumbJsonLd, buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
@@ -17,116 +18,144 @@ export const metadata = buildMarketingMetadata(
   },
 );
 
+const LIST_CLASS = "m-0 flex list-disc flex-col gap-2.5 pl-5 text-[0.9375rem] leading-relaxed text-ink-soft";
+
 export default function OfferPage() {
   return (
-    <>
+    <PageShell>
       <JsonLd
         data={buildBreadcrumbJsonLd([
           { name: CANONICAL_PLATFORM_BRAND, path: "/" },
           { name: "Публичная оферта", path: "/offer/" },
         ])}
       />
-      <div className="lp-route-shell lp-route-shell--legal">
-        <header className="lp-nav">
-          <div className="lp-nav-shell">
-            <Link href="/" className="lp-brand">
-              <MarketingBrandLogo className="lp-brand-logo" priority />
-              <span>{CANONICAL_PLATFORM_BRAND}</span>
-            </Link>
-            <nav className="lp-menu" aria-label="Навигация по юридическим страницам">
-              <div className="lp-nav-links">
-                <Link href="/">Главная</Link>
-                <Link href={MARKETING_CANONICAL_PATHS.install}>Установка</Link>
-                <Link href={MARKETING_CANONICAL_PATHS.privacy}>Политика</Link>
-              </div>
-              <div className="lp-nav-actions">
-                <a href={config.webappUrl} target="_blank" rel="noreferrer" className="lp-chip">
-                  Кабинет
-                </a>
-                <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer" className="lp-chip lp-chip--primary">
-                  Поддержка
-                </a>
-              </div>
-            </nav>
-          </div>
-        </header>
 
-        <main id="main-content" className="legal-page lp-legal-shell">
-          <section className="lp-legal-banner">
-            <span className="lp-legal-banner__eyebrow">Юридическая информация</span>
-            <h1>Публичная оферта</h1>
-            <p>
-              Здесь собраны базовые условия доступа к цифровым услугам POKROV, порядок продления и рабочий способ
-              связаться с командой, если нужен разбор спорной ситуации.
-            </p>
-          </section>
+      <section className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-12 pb-10 sm:px-6 sm:pt-16">
+        <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">
+          Юридическая информация
+        </span>
+        <h1 className="font-display text-[2.25rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink">
+          Публичная оферта
+        </h1>
+        <p className="text-base leading-relaxed text-ink-soft">
+          Здесь собраны базовые условия доступа к цифровым услугам POKROV, порядок продления и рабочий способ связаться
+          с командой, если нужен разбор спорной ситуации.
+        </p>
+      </section>
 
-        <section className="lp-legal-grid">
-          <article className="lp-legal-panel">
-            <h2>Основные условия</h2>
-            <ul className="lp-legal-list">
-              <li>Текущая волна — бета-контур с честными ограничениями, а не обещание широкого стабильного запуска.</li>
-              <li>Сервис предоставляется как цифровой доступ на выбранный срок; автоматическое списание не включается без отдельного явного согласия пользователя.</li>
-              <li>Бесплатный тест длится 5 дней, а отдельные режимы доступа могут иметь ограничения по устройствам, функциям и доступным файлам приложения.</li>
-              <li>Если продление выдает код активации, его нужно применить в приложении или кабинете, чтобы продолжить тот же аккаунт без ручной настройки.</li>
-              <li>Возвраты, отмены, спорные статусы оплаты и ручная сверка рассматриваются через поддержку; итог зависит от фактического статуса платежа и уже выданного доступа.</li>
-            </ul>
-          </article>
-
-          <article className="lp-legal-panel">
-            <h2>Бета-ограничения</h2>
-            <ul className="lp-legal-list">
-              <li>Android-файл может быть доступен как бета-установка до завершения публикации и финальной проверки.</li>
-              <li>Windows может показать предупреждение перед установкой, пока приложение в бете.</li>
-              <li>Поддержка отвечает по мере возможности без обещания круглосуточного ответа или фиксированного SLA.</li>
-              <li>Если оплата, загрузка или активация кода временно остановлены, команда показывает доступное действие вместо имитации успешной загрузки или оплаты.</li>
-            </ul>
-          </article>
-
-          <article className="lp-legal-panel">
-            <h2>Где смотреть актуальную версию</h2>
-            <p>Актуальные версии документов доступны на сайте, в кабинете и по запросу в поддержку.</p>
-            <p className="lp-legal-inline-links">
-              Полезные страницы: <Link href="/">главная POKROV</Link>,{" "}
-              <Link href={MARKETING_CANONICAL_PATHS.mobile}>мобильный старт</Link> и{" "}
-              <Link href={MARKETING_CANONICAL_PATHS.devices}>Android и Windows</Link>.
-            </p>
-          </article>
-        </section>
-
-        <section className="lp-legal-panel">
-          <h2>Контакты</h2>
-          <ul className="lp-legal-list lp-legal-list--contacts">
+      <section className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pb-16 sm:px-6">
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-display text-[1.25rem] font-bold text-ink">Основные условия</h2>
+          <ul className={LIST_CLASS}>
+            <li>Текущая волна — бета-контур с честными ограничениями, а не обещание широкого стабильного запуска.</li>
             <li>
-              Support: <a href={`mailto:${config.contactEmail}`}>{config.contactEmail}</a>
+              Сервис предоставляется как цифровой доступ на выбранный срок; автоматическое списание не включается без
+              отдельного явного согласия пользователя.
             </li>
             <li>
-              Enterprise: <a href={`mailto:${config.enterpriseEmail}`}>{config.enterpriseEmail}</a>
+              Бесплатный тест длится 5 дней, а отдельные режимы доступа могут иметь ограничения по устройствам, функциям
+              и доступным файлам приложения.
+            </li>
+            <li>
+              Если продление выдает код активации, его нужно применить в приложении или кабинете, чтобы продолжить тот
+              же аккаунт без ручной настройки.
+            </li>
+            <li>
+              Возвраты, отмены, спорные статусы оплаты и ручная сверка рассматриваются через поддержку; итог зависит от
+              фактического статуса платежа и уже выданного доступа.
+            </li>
+          </ul>
+        </Card>
+
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-display text-[1.25rem] font-bold text-ink">Бета-ограничения</h2>
+          <ul className={LIST_CLASS}>
+            <li>Android-файл может быть доступен как бета-установка до завершения публикации и финальной проверки.</li>
+            <li>Windows может показать предупреждение перед установкой, пока приложение в бете.</li>
+            <li>Поддержка отвечает по мере возможности без обещания круглосуточного ответа или фиксированного SLA.</li>
+            <li>
+              Если оплата, загрузка или активация кода временно остановлены, команда показывает доступное действие
+              вместо имитации успешной загрузки или оплаты.
+            </li>
+          </ul>
+        </Card>
+
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-display text-[1.25rem] font-bold text-ink">Где смотреть актуальную версию</h2>
+          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
+            Актуальные версии документов доступны на сайте, в кабинете и по запросу в поддержку.
+          </p>
+          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
+            Полезные страницы:{" "}
+            <Link href="/" className="font-semibold text-brand no-underline hover:text-brand-strong">
+              главная POKROV
+            </Link>
+            ,{" "}
+            <Link
+              href={MARKETING_CANONICAL_PATHS.mobile}
+              className="font-semibold text-brand no-underline hover:text-brand-strong"
+            >
+              мобильный старт
+            </Link>{" "}
+            и{" "}
+            <Link
+              href={MARKETING_CANONICAL_PATHS.devices}
+              className="font-semibold text-brand no-underline hover:text-brand-strong"
+            >
+              Android и Windows
+            </Link>
+            .
+          </p>
+        </Card>
+
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-display text-[1.25rem] font-bold text-ink">Контакты</h2>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[0.9375rem] text-ink-soft">
+            <li>
+              Support:{" "}
+              <a href={`mailto:${config.contactEmail}`} className="font-semibold text-brand no-underline hover:text-brand-strong">
+                {config.contactEmail}
+              </a>
+            </li>
+            <li>
+              Enterprise:{" "}
+              <a href={`mailto:${config.enterpriseEmail}`} className="font-semibold text-brand no-underline hover:text-brand-strong">
+                {config.enterpriseEmail}
+              </a>
             </li>
             <li>
               Telegram:{" "}
-              <a href={config.supportTelegramUrl} target="_blank" rel="noreferrer">
+              <a
+                href={config.supportTelegramUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-brand no-underline hover:text-brand-strong"
+              >
                 {config.supportTelegramUrl}
               </a>
             </li>
             <li>
               Канал новостей:{" "}
-              <a href={config.newsChannelUrl} target="_blank" rel="noreferrer">
+              <a
+                href={config.newsChannelUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-brand no-underline hover:text-brand-strong"
+              >
                 {config.newsChannelUrl}
               </a>
             </li>
           </ul>
-          <div className="legal-actions">
-            <Link className="lp-btn lp-btn--ghost" href="/">
+          <div className="mt-2 flex flex-wrap gap-3">
+            <Button href="/" variant="secondary">
               На главную POKROV
-            </Link>
-            <a className="lp-btn lp-btn--primary" href={config.botUrl} target="_blank" rel="noreferrer">
+            </Button>
+            <Button href={config.botUrl} target="_blank" rel="noreferrer">
               Открыть Telegram-бота
-            </a>
+            </Button>
           </div>
-        </section>
-        </main>
-      </div>
-    </>
+        </Card>
+      </section>
+    </PageShell>
   );
 }

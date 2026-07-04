@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
 import JsonLd from "../../components/json-ld";
-import { buildMarketingMetadata } from "../../components/marketing-landing";
-import { buildBreadcrumbJsonLd } from "../../lib/marketing-site";
+import { PageShell } from "../../components/layout/page-shell";
+import { buildBreadcrumbJsonLd, buildMarketingMetadata } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getCopyText } from "../../lib/pokrov";
 import CheckoutClient, { CheckoutLoadingFallback } from "./checkout-client";
 
@@ -21,7 +21,7 @@ export const metadata = buildMarketingMetadata(
 
 export default function CheckoutPage() {
   return (
-    <>
+    <PageShell>
       <JsonLd
         data={buildBreadcrumbJsonLd([
           { name: CANONICAL_PLATFORM_BRAND, path: "/" },
@@ -31,6 +31,6 @@ export default function CheckoutPage() {
       <Suspense fallback={<CheckoutLoadingFallback />}>
         <CheckoutClient />
       </Suspense>
-    </>
+    </PageShell>
   );
 }
