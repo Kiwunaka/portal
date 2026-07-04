@@ -160,10 +160,16 @@ Current public role:
 
 - `https://pokrov.space/` is the public entry homepage for new users and should converge most acquisition traffic into app-first trial, install, and first-connection guidance
 - `https://pokrov.space/checkout/` is the public pricing, paywall, and activation-key purchase continuation surface when the user has plan intent or returns after checking the product
-- `https://pokrov.space/install/` is the dedicated install-help surface used after purchase, after known-user continuation, or when a public download CTA cannot resolve directly to a real artifact
+- `https://pokrov.space/install/` is the public step-by-step install instruction page (Android unknown-sources and Windows SmartScreen honesty included); since the `2026-07` redesign it is indexable, sits in the sitemap, and routes download CTAs through the cabinet downloads flow
 - indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and the same app-first trial/install/first-connection CTA set
 - public legal pages also live on the marketing surface
-- the current canonical public route family is `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO paths
+- the current canonical public route family is `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, `/telegram/`, and `/vpn/`, with permanent redirects from the earlier legacy SEO paths
+
+2026-07 redesign positioning notes:
+
+- the public surface runs on the `pokrov-clear` white/emerald design foundation (root `DESIGN.md`) with Golos Text and light-only theme
+- the landing leads with real drawn app UI (connect/locations/account screens) instead of abstract promises — showing the actual product is the trust wedge none of the surveyed RU competitors use
+- an explicit honesty strip is part of public positioning: trial without card, one-time activation keys with no auto-renewal («отменять нечего»), release files visible on GitHub Releases, human Telegram support; fake counters, fabricated reviews, and self-scored competitor tables stay forbidden
 
 ### WebApp
 
