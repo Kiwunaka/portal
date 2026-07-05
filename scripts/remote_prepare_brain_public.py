@@ -26,6 +26,7 @@ import re
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -63,7 +64,7 @@ def _parse_passwords(path: Path) -> dict[str, str]:
 
 def _ssh_connect(ip: str, *, user: str, port: int, password: str) -> paramiko.SSHClient:
     cli = paramiko.SSHClient()
-    cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(cli)
     cli.connect(ip, port=port, username=user, password=password, timeout=30, banner_timeout=30, auth_timeout=30)
     t = cli.get_transport()
     if t:
@@ -243,11 +244,11 @@ def main() -> int:
                 if code != 0:
                     raise RuntimeError(f"Remote command failed: {c}\n{err.strip()}")
 
-        # Firewall: allow 80/443/8444/2096 (8444 kept for backward-compat if old WebApp used it)
+        # Firewall: keep public surface to 80/443 plus existing SSH. Caddy :8444 and legacy :2096 are internal only.
         _run(brain, "ufw allow 80/tcp >/dev/null 2>&1 || true", timeout=60)
         _run(brain, "ufw allow 443/tcp >/dev/null 2>&1 || true", timeout=60)
-        _run(brain, "ufw allow 8444/tcp >/dev/null 2>&1 || true", timeout=60)
-        _run(brain, "ufw allow 2096/tcp >/dev/null 2>&1 || true", timeout=60)
+        _run(brain, "ufw delete allow 8444/tcp >/dev/null 2>&1 || true", timeout=60)
+        _run(brain, "ufw delete allow 2096/tcp >/dev/null 2>&1 || true", timeout=60)
         _run(brain, "ufw --force enable >/dev/null 2>&1 || true", timeout=60)
 
         # Ensure cert dir readable by caddy user.
@@ -288,7 +289,7 @@ def main() -> int:
             timeout=60,
         )
 
-        # portal-api: bind localhost:8080 (Caddy does TLS + keeps public port 2096)
+        # portal-api: bind localhost:8080; public traffic reaches it only through Caddy/HAProxy on :443.
         portal_api_service = """[Unit]
 Description=Portal API (FastAPI)
 After=network.target
@@ -301,6 +302,12 @@ EnvironmentFile=-/root/portal_bot/.env
 ExecStart=/root/portal_bot/venv/bin/python -m uvicorn api:app --host 127.0.0.1 --port 8080
 Restart=always
 RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
 
 [Install]
 WantedBy=multi-user.target
@@ -341,6 +348,12 @@ EnvironmentFile=-/root/portal_bot/.env
 ExecStart=/root/portal_bot/venv/bin/python bot.py
 Restart=always
 RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
 
 [Install]
 WantedBy=multi-user.target

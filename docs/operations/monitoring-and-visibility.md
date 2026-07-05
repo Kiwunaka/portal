@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-06-07
+Last updated: 2026-07-04
 
 ## Document Status
 
@@ -116,6 +116,7 @@ Required operator meaning:
 Smart-connect visibility rule:
 
 - the managed manifest and `/api/client/nodes/candidates` expose shortlist-level `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `shortlist_revision`, and stickiness metadata
+- `health_score` is an ordering signal, not a standalone functional kill switch; scores below `60` apply a large backend penalty while explicit failures such as stale metrics, disabled/draining state, dataplane down, CPU hot, packet loss, TCP retransmit, or network saturation remain the hard-reject reasons
 - accepted client RTT and node-selection uploads are stored through the `smart_connect_latency_sample` event with `install_id`, `carrier`, `platform`, selected node, previous node, accepted RTT samples, selection mode, and whether stickiness was applied
 - operators should be able to reason about recent RTT quality by node, carrier, and platform without exposing raw samples in public consumer UI
 - subscription renders should record `subscription_fetch_events` and `rendered_subscription_snapshots` with token fingerprints, resolved format, node order, excluded-node reasons, status, and content hashes, never raw tokens or rendered subscription bodies
@@ -159,6 +160,42 @@ Operational rules:
   client runtime
 - a green summary does not prove production WARP; production proof still needs
   Android and Windows release-build connect/disconnect/fallback evidence
+
+## Security Abuse Visibility
+
+`/api/admin/metrics/status` includes a `security` block with 24-hour counters
+from `security_events`.
+
+Track these as operator-facing abuse signals:
+
+- `rate_limit_hit`: brute force, token scanning, callback spam, or broken automation
+- `payment_callback_invalid_signature`: bad provider auth/signature attempts
+- `support_upload_reject`: rejected attachment type, oversized body, or failed private storage
+- `support_attachment_denied`: private attachment access mismatch
+- `admin_access_denied`: non-admin account attempted admin access
+- `subscription_lookup_failed`: unknown subscription token lookup, usually token scanning when repeated
+
+Operational rules:
+
+- these events must not contain bearer tokens, payment secrets, raw callback bodies, subscription URLs, or attachment bytes
+- repeated `subscription_lookup_failed` from one origin is an abuse signal even when delivery nodes are healthy
+- callback failure spikes should be checked against provider dashboard status before treating them as user payment failures
+- volumetric DDoS is still outside the guarantee of app-level counters; correlate with HAProxy, hoster, and firewall evidence
+
+## Telemetry Retention
+
+`portal_bot/worker.py` runs a supervised telemetry retention job. It prunes high-volume backend telemetry while keeping payment order rows as the reconciliation ledger.
+
+Default retention windows:
+
+- `EVENT_RETENTION_DAYS=180` for `events`
+- `FUNNEL_EVENT_RETENTION_DAYS=180` for `funnel_events`
+- `PAY_ATTEMPT_RETENTION_DAYS=365` for Telegram Stars `pay_attempts`
+- `EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS=180` for raw provider callback event logs
+- `SUBSCRIPTION_EVENT_RETENTION_DAYS=90` for subscription fetch/render logs
+- `TELEMETRY_RETENTION_INTERVAL_SECONDS=21600` for cleanup cadence
+
+Do not use this job to delete `external_orders`: those rows remain the payment ledger and are needed for reconciliation, refund/chargeback review, and launch evidence.
 
 ## External RU Probe Policy
 
@@ -300,7 +337,8 @@ Operational rule:
 - `portal-node-metrics.timer` must stay healthy on every relevant host
 - `portal-daily-healthcheck.timer` runs on `brain` once per day at `06:30 UTC` / `09:30 MSK` and writes a JSON summary under `/root/portal_bot/health_reports/`
 - the daily summary checks API health, `portal-api-healthcheck.timer`, `portal-node-metrics.timer`, per-node metrics freshness, DB `user_nodes` expected counts, and real 3x-ui managed-client counts
-- daily panel counts must compare only managed identities (`tgId` or `User_<tg_id>`); legacy/manual 3x-ui rows without a POKROV managed identity are tracked as `unknown_rows` and require a separate cleanup decision before deletion
+- daily panel counts must compare only managed identities (`tgId`, `User_<tg_id>`, or a panel UUID that maps to an expected POKROV user); legacy/manual 3x-ui rows without a POKROV managed identity are tracked as `unknown_rows` and require a separate cleanup decision before deletion
+- node metrics collection must parse both 3x-ui `settings` response shapes, JSON string and object/dict, before deriving `provisioned_clients_count`
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
@@ -394,6 +432,7 @@ Interpretation note:
 - a successful `brain-origin check` only proves control-plane reachability
 - missing `RU-origin check` data means RU-specific conclusions remain unproven, even if another origin succeeds or fails
 - a green `ru_bridge_relay` listener does not prove normal RU-origin readiness; it only proves the bridge contour is available for the selected cohort/profile
+- in Hiddify/sing-box profiles `POKROV мост §hide§` is a hidden technical detour for `Белые списки`, not a standalone user country; standalone bridge delay failures should not be counted as delivery-node outages
 
 When handing this off, use:
 

@@ -19,6 +19,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 def _require(name: str) -> str:
@@ -52,7 +53,7 @@ def main() -> int:
     expiry_str = expiry.replace(tzinfo=None).isoformat(sep=" ", timespec="seconds")
 
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(host, port=port, username=user, password=password, timeout=30, banner_timeout=30, auth_timeout=30)
     try:
         # Ensure sqlite3 exists

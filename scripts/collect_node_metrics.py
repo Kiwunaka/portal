@@ -168,6 +168,12 @@ def _json_dict(value: object) -> dict[str, object]:
     return {str(key): item for key, item in parsed.items() if str(key or "").strip()}
 
 
+def _inbound_clients(inbound: dict) -> list[dict]:
+    settings = _json_dict(inbound.get("settings", "{}"))
+    clients = settings.get("clients", []) or []
+    return clients if isinstance(clients, list) else []
+
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -368,6 +374,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     panel_state = "failed"
     probe_at = now
     probe: dict | None = None
+    dataplane_latency_ms: int | None = None
 
     try:
         ok = await client.login()
@@ -396,14 +403,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             for inb in inbounds:
                 if int(inb.get("id") or 0) != int(runtime.inbound_id):
                     continue
-                try:
-                    import json as _json
-
-                    settings = _json.loads(inb.get("settings", "{}"))
-                    clients = settings.get("clients", []) or []
-                    active_clients = len(clients)
-                except Exception:
-                    active_clients = 0
+                active_clients = len(_inbound_clients(inb))
                 try:
                     for stat in inb.get("clientStats", []) or []:
                         total_up_bytes += int(stat.get("up", 0) or 0)
@@ -435,6 +435,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             sni=str(runtime.reality_sni or runtime.host or "").strip() or None,
         )
         probe_at = probe.get("probed_at") or now
+        dataplane_latency_ms = _nullable_int(probe.get("latency_ms"))
     except Exception as exc:  # pragma: no cover - defensive fallback
         probe = {
             "ok": False,
@@ -513,7 +514,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
         if not healthy:
             error_rate = min(1.0, max(error_rate, 0.5))
         score = _calc_score(
-            latency_ms=latency_ms,
+            latency_ms=dataplane_latency_ms if dataplane_latency_ms is not None else latency_ms,
             error_rate=error_rate,
             active_clients=active_clients,
             healthy=healthy,
@@ -583,7 +584,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.network_rx_mbps_5m = _nullable_float(network_rx_mbps_5m)
             row.network_tx_mbps_5m = _nullable_float(network_tx_mbps_5m)
             row.dataplane_ok = dataplane_state == "healthy"
-            row.dataplane_rtt_ms = latency_ms if dataplane_state == "healthy" else None
+            row.dataplane_rtt_ms = dataplane_latency_ms if dataplane_state == "healthy" else None
             row.last_probe_at = probe_at
             row.last_probe_stage = probe_stage or None
             row.last_probe_error_kind = probe_error_kind or None
@@ -616,7 +617,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
                     memory_used_mb=_nullable_int(memory_used_mb),
                     memory_total_mb=_nullable_int(memory_total_mb),
                     dataplane_ok=dataplane_state == "healthy",
-                    dataplane_rtt_ms=latency_ms if dataplane_state == "healthy" else None,
+                    dataplane_rtt_ms=dataplane_latency_ms if dataplane_state == "healthy" else None,
                     capacity_score=float(capacity.get("score") or 0.0),
                     capacity_state=str(capacity.get("state") or "unknown"),
                     reject_reason=str(capacity.get("reject_reason") or "") or None,
@@ -640,6 +641,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "healthy": healthy,
             "score": score,
             "latency_ms": latency_ms,
+            "dataplane_rtt_ms": dataplane_latency_ms,
             "active_clients": active_clients,
             "provisioned_clients_count": active_clients,
             "online_connections_hint": online_connections_hint,
@@ -682,7 +684,8 @@ async def run(*, error_window: int, source: str) -> int:
     for row in results:
         print(
             f"{row['code']}: healthy={row['healthy']} score={row['score']} "
-            f"latency_ms={row['latency_ms']} provisioned_clients={row['provisioned_clients_count']} "
+            f"latency_ms={row['latency_ms']} dataplane_rtt_ms={row['dataplane_rtt_ms']} "
+            f"provisioned_clients={row['provisioned_clients_count']} "
             f"online_connections_hint={row['online_connections_hint']} "
             f"up_bytes={row['total_up_bytes']} down_bytes={row['total_down_bytes']} "
             f"error_rate={row['error_rate']} cpu={row['cpu_percent']} "

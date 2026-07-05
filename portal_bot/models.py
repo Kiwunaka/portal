@@ -504,6 +504,33 @@ class AdminAudit(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
+class SecurityRateLimitBucket(Base):
+    __tablename__ = "security_rate_limit_buckets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bucket_key = Column(String(160), unique=True, index=True, nullable=False)
+    scope = Column(String(64), index=True, nullable=False)
+    fingerprint = Column(String(64), index=True, nullable=False)
+    window_start = Column(DateTime, index=True, nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    hits = Column(Integer, default=0, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class SecurityEvent(Base):
+    __tablename__ = "security_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_type = Column(String(64), index=True, nullable=False)
+    scope = Column(String(64), index=True, nullable=True)
+    fingerprint = Column(String(64), index=True, nullable=True)
+    client_ip = Column(String(64), index=True, nullable=True)
+    subject = Column(String(160), nullable=True)
+    reason = Column(String(160), nullable=True)
+    meta_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+
+
 class KeyActionHistory(Base):
     __tablename__ = "key_action_history"
 
@@ -598,6 +625,19 @@ class SupportTicket(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
     closed_at = Column(DateTime, nullable=True)
+
+
+class SupportAttachment(Base):
+    __tablename__ = "support_attachments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    stored_name = Column(String(160), unique=True, index=True, nullable=False)
+    owner_tg_id = Column(BigInteger, index=True, nullable=False)
+    original_name = Column(String(160), nullable=False)
+    content_type = Column(String(80), nullable=False)
+    size_bytes = Column(Integer, default=0, nullable=False)
+    media_type = Column(String(32), nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class SupportTicketMessage(Base):

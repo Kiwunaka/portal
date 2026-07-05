@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 import uuid
 from pathlib import Path
@@ -162,7 +163,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
     @staticmethod
     def _sign_telegram_init_data(*, bot_token: str, tg_id: int, username: str) -> str:
         params = {
-            "auth_date": "1700000000",
+            "auth_date": str(int(time.time())),
             "query_id": "AAEAAAE",
             "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
         }
@@ -243,6 +244,55 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             headers={"Content-Type": "application/json", "X-Signature": "invalid"},
         )
         self.assertEqual(r.status_code, 400, r.text)
+
+    def test_callback_body_cap_rejects_oversized_payload_before_parse(self) -> None:
+        client = TestClient(self.api.app)
+        old_limit = self.api.PAYMENT_CALLBACK_MAX_BYTES
+        self.api.PAYMENT_CALLBACK_MAX_BYTES = 16
+        try:
+            r = client.post(
+                "/api/payments/result/freekassa",
+                data=b'{"order_id":"too-large-for-test"}',
+                headers={"Content-Type": "application/json", "X-Signature": "invalid"},
+            )
+        finally:
+            self.api.PAYMENT_CALLBACK_MAX_BYTES = old_limit
+        self.assertEqual(r.status_code, 413, r.text)
+
+    def test_invalid_callback_payload_is_redacted_before_persist(self) -> None:
+        client = TestClient(self.api.app)
+        payload = {
+            "order_id": "order-redact-1",
+            "external_tx_id": "tx-redact-1",
+            "status": "paid",
+            "signature": "do-not-store",
+            "buyer_email": "buyer@example.test",
+        }
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        r = client.post(
+            "/api/payments/result/freekassa",
+            data=raw,
+            headers={"Content-Type": "application/json", "X-Signature": "invalid"},
+        )
+        self.assertEqual(r.status_code, 400, r.text)
+
+        from db import SessionLocal
+        from models import ExternalPaymentEvent
+
+        s = SessionLocal()
+        try:
+            event = (
+                s.query(ExternalPaymentEvent)
+                .filter(ExternalPaymentEvent.external_id == "tx-redact-1")
+                .first()
+            )
+            self.assertIsNotNone(event)
+            stored = event.payload_json
+            self.assertNotIn("do-not-store", stored)
+            self.assertNotIn("buyer@example.test", stored)
+            self.assertIn("[redacted]", stored)
+        finally:
+            s.close()
 
     def test_invalid_signature_does_not_poison_later_valid_callback(self) -> None:
         client = TestClient(self.api.app)

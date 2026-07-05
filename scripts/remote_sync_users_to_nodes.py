@@ -18,6 +18,7 @@ import re
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -225,7 +226,7 @@ def main() -> int:
         raise SystemExit(f"DB file not found: {db_path}")
 
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(args.brain_ip, port=args.ssh_port, username=args.ssh_user, password=pw, timeout=30, banner_timeout=30, auth_timeout=30)
     try:
         # Ensure python/venv on the node

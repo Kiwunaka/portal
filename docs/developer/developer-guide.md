@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-06-04
+Last updated: 2026-07-05
 
 ## Document Status
 
@@ -250,6 +250,8 @@ Notes:
 - `scripts/release_orchestrator.py --gates-only` is the one-command entrypoint when you want the documented gate flow without remote deploy, release handoff sync, or post-deploy verify steps.
 - the full `scripts/release_orchestrator.py` path can chain local gates, optional `APP_*` sync, backend deploy, static deploy, optional rollout helpers, and brain-local verify, but it still does not publish binaries or replace separate external-origin evidence
 - use `scripts/release_orchestrator.py --stage backend|static|deploy|verify` for partial recovery runs after a timed-out or already-completed phase; the wrapper streams child output, prints quiet-step heartbeats, and has per-step timeout knobs.
+- a normal git `push` does not deploy production; it runs guardrails. Production deploy requires explicit manual workflow `full` mode or an operator-run deploy command.
+- backend deploy uses staged upload, remote compile/JSON/requirements preflight, live-file backup, and rollback-on-restart-failure; do not bypass `scripts/remote_deploy_brain_portal_code.py` with ad hoc SFTP edits to `/root/portal_bot`.
 - latest verified local run: `python scripts/release_orchestrator.py --gates-only` exited `0` on `2026-04-13`; see `docs/audit-artifacts/release_gate_report.md` for the current local gate snapshot.
 - Add `--brain-ip 82.21.114.104` when you also want the predeploy node-readiness gate included in the same report.
 - `--release-metadata-file` and `--release-env-file` cannot be combined with `--gates-only`; after client artifacts are published, use the full `release_orchestrator.py` flow to sync runtime download URLs before deploy or verify.
@@ -263,6 +265,7 @@ Notes:
 Deploy backend:
 
 ```powershell
+python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage backend --dry-run
 python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot
 python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-code pl --run-now
 ```

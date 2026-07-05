@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -128,7 +129,7 @@ def _password_for(code: str, *, env_prefix: str, file_map: dict[str, str]) -> st
 
 def _ssh_connect(ip: str, *, user: str, port: int, password: str) -> paramiko.SSHClient:
     cli = paramiko.SSHClient()
-    cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(cli)
     cli.connect(ip, port=port, username=user, password=password, timeout=30, banner_timeout=30, auth_timeout=30)
     t = cli.get_transport()
     if t:
@@ -391,6 +392,27 @@ def bootstrap_node(
         if not dry_run:
             _run(ssh, f"ufw allow {ssh_port}/tcp || true", timeout=30)
             _run(ssh, "ufw allow 443/tcp || true", timeout=30)
+            _run(
+                ssh,
+                (
+                    "cat > /etc/fail2ban/jail.d/pokrov-sshd.conf <<'EOF'\n"
+                    "[sshd]\n"
+                    "enabled = true\n"
+                    f"port = {int(ssh_port)}\n"
+                    "filter = sshd\n"
+                    "logpath = /var/log/auth.log\n"
+                    "maxretry = 3\n"
+                    "findtime = 10m\n"
+                    "bantime = 1h\n"
+                    "bantime.increment = true\n"
+                    "bantime.factor = 2\n"
+                    "bantime.maxtime = 24h\n"
+                    "EOF\n"
+                    "systemctl enable fail2ban >/dev/null 2>&1 || true\n"
+                    "systemctl restart fail2ban >/dev/null 2>&1 || true"
+                ),
+                timeout=60,
+            )
             allow_panel_port = facts.get("panel_port") if isinstance(facts.get("panel_port"), int) else panel_port
             if allow_panel_port and node.code != "brain":
                 _run(

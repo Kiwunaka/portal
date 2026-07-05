@@ -132,7 +132,7 @@ def node_backend_penalty(node: Any) -> int | None:
     except Exception:
         health_score = 0.0
     if health_score < 60.0:
-        return None
+        return 160
     if health_score < 75.0:
         return 80
     if health_score < 90.0:
@@ -242,8 +242,6 @@ def node_capacity_status(
         reason = "packet_loss"
     elif retrans_limit > 0 and _float_attr(node, "tcp_retrans_percent", 0.0) >= retrans_limit:
         reason = "tcp_retrans"
-    elif node_backend_penalty(node) is None:
-        reason = "health_score_low"
 
     if reason:
         state = "hard_reject"

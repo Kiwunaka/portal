@@ -45,12 +45,13 @@ def _parse_passwords(path: Path) -> str:
     return ""
 
 
-def _load_paramiko() -> Any:
+def _load_paramiko() -> tuple[Any, Any]:
     try:
         import paramiko
+        from ssh_host_keys import configure_ssh_host_key_policy
     except ModuleNotFoundError as exc:
         raise SystemExit("Missing optional dependency: paramiko. Install ops requirements before applying remote handoff.") from exc
-    return paramiko
+    return paramiko, configure_ssh_host_key_policy
 
 
 def _run(ssh: Any, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
@@ -246,9 +247,9 @@ def main() -> int:
     if not pw:
         raise SystemExit("Missing brain password.")
 
-    paramiko = _load_paramiko()
+    paramiko, configure_ssh_host_key_policy = _load_paramiko()
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(
         args.brain_ip,
         port=args.ssh_port,

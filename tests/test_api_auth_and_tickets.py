@@ -9,6 +9,7 @@ import uuid
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from urllib.parse import urlencode
 
@@ -140,7 +141,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         return _sign_telegram_init_data(
             bot_token=self.bot_token,
             params={
-                "auth_date": "1700000000",
+                "auth_date": str(int(time.time())),
                 "query_id": "AAEAAAE",
                 "user": f'{{"id":{tg_id},"first_name":"Test","username":"{username}"}}',
             },
@@ -375,7 +376,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(body["summary"]["drift"], 1)
         self.assertEqual(body["results"][1]["node_code"], "nl")
 
-    def test_user_data_prefers_mapped_nodes_for_paid_user(self) -> None:
+    def test_user_data_exposes_paid_pool_when_mapping_exists(self) -> None:
         from db import SessionLocal
         from models import Node, User, UserNode
 
@@ -427,7 +428,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r = self.client.get("/api/user/1001", headers=user_hdrs)
         self.assertEqual(r.status_code, 200, r.text)
         nodes = r.json()["nodes"]
-        self.assertEqual([row["code"] for row in nodes], ["it"])
+        self.assertEqual([row["code"] for row in nodes], ["it", "pl"])
 
     def test_user_data_filters_free_mapping_but_keeps_paid_brain_mapping(self) -> None:
         from db import SessionLocal
@@ -1383,7 +1384,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         messages = admin_reply.json()["ticket"]["messages"]
         self.assertEqual([message["sender_role"] for message in messages], ["user", "user", "assistant", "admin"])
 
-    def test_ticket_upload_returns_attachment_metadata_and_serves_file(self) -> None:
+    def test_ticket_upload_returns_private_attachment_metadata_and_requires_auth(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
         uploaded = self.client.post(
@@ -1404,12 +1405,34 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertGreaterEqual(int(payload["size"] or 0), 8)
 
         file_url = str(payload["url"] or "")
-        self.assertTrue(file_url.startswith("/uploads/support/"))
+        self.assertTrue(file_url.startswith("/api/tickets/attachments/"))
+        self.assertTrue(payload["private"])
 
         fetched = self.client.get(file_url)
+        self.assertEqual(fetched.status_code, 401, fetched.text)
+
+        fetched = self.client.get(file_url, headers=user_hdrs)
         self.assertEqual(fetched.status_code, 200, fetched.text)
         self.assertEqual(fetched.headers.get("content-type"), "image/png")
+        self.assertEqual(fetched.headers.get("x-content-type-options"), "nosniff")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
+
+    def test_ticket_upload_rejects_svg_and_octet_stream(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        svg = self.client.post(
+            "/api/tickets/uploads",
+            headers={**user_hdrs, "Content-Type": "image/svg+xml", "X-Upload-Filename": "x.svg"},
+            content=b"<svg><script>alert(1)</script></svg>",
+        )
+        self.assertEqual(svg.status_code, 400, svg.text)
+
+        opaque = self.client.post(
+            "/api/tickets/uploads",
+            headers={**user_hdrs, "Content-Type": "application/octet-stream", "X-Upload-Filename": "x.bin"},
+            content=b"\x00\x01\x02\x03",
+        )
+        self.assertEqual(opaque.status_code, 400, opaque.text)
 
     def test_cors_credentials_do_not_use_wildcard_origin(self) -> None:
         cors_middleware = next(
@@ -1423,6 +1446,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertNotIn("*", allow_origins)
         self.assertIn("https://app.pokrov.space", allow_origins)
         self.assertTrue(middleware_options.get("allow_credentials"))
+
+    def test_request_client_ip_trusts_forwarded_headers_only_from_proxy(self) -> None:
+        untrusted_request = SimpleNamespace(
+            headers={"x-real-ip": "203.0.113.10", "x-forwarded-for": "203.0.113.11"},
+            client=SimpleNamespace(host="198.51.100.20"),
+        )
+        trusted_request = SimpleNamespace(
+            headers={"x-real-ip": "203.0.113.10", "x-forwarded-for": "203.0.113.11"},
+            client=SimpleNamespace(host="127.0.0.1"),
+        )
+
+        self.assertEqual(self.api._request_client_ip(untrusted_request), "198.51.100.20")
+        self.assertEqual(self.api._request_client_ip(trusted_request), "203.0.113.10")
 
         allowed = self.client.options(
             "/api/me",

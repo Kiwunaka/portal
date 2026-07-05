@@ -9,7 +9,15 @@
 
 pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, connect.pokrov.space:8444, api.pokrov.space:8444, pay.pokrov.space:8444, portal-privacy.online:8444, www.portal-privacy.online:8444, connect.portal-privacy.online:8444, kiwunaka.space:8444, www.kiwunaka.space:8444, pay.kiwunaka.space:8444 {
   encode zstd gzip
-  header Alt-Svc "clear"
+  header {
+    Alt-Svc "clear"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+    X-Frame-Options "DENY"
+    -Server
+  }
 
   @marketing_hosts host pokrov.space www.pokrov.space
   handle @marketing_hosts {

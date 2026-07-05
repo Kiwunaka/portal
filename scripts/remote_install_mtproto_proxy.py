@@ -21,6 +21,7 @@ import urllib.request
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -106,7 +107,7 @@ def _load_ssh_credentials(
 
 def _ssh_connect(*, host: str, port: int, user: str, password: str) -> paramiko.SSHClient:
     cli = paramiko.SSHClient()
-    cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(cli)
     cli.connect(
         host,
         port=port,

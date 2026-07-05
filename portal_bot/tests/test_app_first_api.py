@@ -547,6 +547,11 @@ def test_app_session_can_request_short_lived_cabinet_token(monkeypatch, tmp_path
     assert exchanged["ok"] is True
     assert exchanged["token"]
     assert exchanged["token"] != body["handoff_token"]
+    assert exchanged["cookie_bound"] is True
+    set_cookie = exchange_response.headers.get("set-cookie", "")
+    assert "portal_web_session=" in set_cookie
+    assert "HttpOnly" in set_cookie
+    assert "Secure" in set_cookie
     assert exchanged["target_path"] == "/profile"
 
     session_response = client.get(

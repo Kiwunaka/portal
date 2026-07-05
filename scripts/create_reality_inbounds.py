@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives import serialization
 
@@ -189,7 +190,7 @@ def _load_node_facts(path: Path) -> dict[str, dict]:
 
 def _ssh_connect(ip: str, *, user: str, port: int, password: str) -> paramiko.SSHClient:
     cli = paramiko.SSHClient()
-    cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(cli)
     cli.connect(ip, port=port, username=user, password=password, timeout=30, banner_timeout=30, auth_timeout=30)
     t = cli.get_transport()
     if t:

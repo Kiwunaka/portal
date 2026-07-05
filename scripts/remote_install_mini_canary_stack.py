@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import secrets
 import sys
@@ -332,6 +333,8 @@ def main() -> int:
     ap.add_argument("--client-id", default="")
     ap.add_argument("--hy2-password", default="")
     ap.add_argument("--site-path", default=DEFAULT_NGINX_SITE)
+    ap.add_argument("--print-links", action="store_true", help="Print live client links. Off by default because links are bearer secrets.")
+    ap.add_argument("--print-secrets", action="store_true", help="Print generated client id and Hysteria2 password. Off by default.")
     args = ap.parse_args()
 
     host = args.host.strip() or _read_inventory_ip(args.node_code, Path(args.inventory))
@@ -383,10 +386,20 @@ def main() -> int:
     print(f"host={host}")
     print(f"domain={args.domain}")
     print(f"xhttp_path={xhttp_path}")
-    print(f"client_id={client_id}")
-    print(f"hy2_password={hy2_password}")
-    print("xhttp_link=" + links["xhttp"])
-    print("hysteria2_link=" + links["hysteria2"])
+    print("client_id_sha256=" + hashlib.sha256(client_id.encode("utf-8")).hexdigest())
+    print("hy2_password_sha256=" + hashlib.sha256(hy2_password.encode("utf-8")).hexdigest())
+    if args.print_secrets:
+        print(f"client_id={client_id}")
+        print(f"hy2_password={hy2_password}")
+    else:
+        print("client_id=[redacted]")
+        print("hy2_password=[redacted]")
+    if args.print_links:
+        print("xhttp_link=" + links["xhttp"])
+        print("hysteria2_link=" + links["hysteria2"])
+    else:
+        print("xhttp_link=[redacted]")
+        print("hysteria2_link=[redacted]")
     for name, output in outputs.items():
         print(f"[{name}]")
         print(output)

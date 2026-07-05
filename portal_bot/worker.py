@@ -23,7 +23,22 @@ from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
 from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
-from models import CampaignSend, Event, ExternalOrder, KeyActionHistory, NodeHealthSample, ReferralBonusQueue, Template, User, UserKeyPolicy
+from models import (
+    CampaignSend,
+    Event,
+    ExternalOrder,
+    ExternalPaymentEvent,
+    FunnelEvent,
+    KeyActionHistory,
+    NodeHealthSample,
+    PayAttempt,
+    ReferralBonusQueue,
+    RenderedSubscriptionSnapshot,
+    SubscriptionFetchEvent,
+    Template,
+    User,
+    UserKeyPolicy,
+)
 from node_policy import free_pool_node_codes
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from observer_service import cleanup_observer_retention
@@ -44,6 +59,12 @@ START99_WELCOME_DISCOUNT_PCT = max(1, min(95, int(os.getenv("START99_WELCOME_DIS
 START99_WELCOME_DISCOUNT_CODE = (os.getenv("START99_WELCOME_DISCOUNT_CODE") or "STARTBOOST").strip().upper()[:20]
 REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "15")))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
+EVENT_RETENTION_DAYS = max(1, int(os.getenv("EVENT_RETENTION_DAYS", "180")))
+FUNNEL_EVENT_RETENTION_DAYS = max(1, int(os.getenv("FUNNEL_EVENT_RETENTION_DAYS", "180")))
+PAY_ATTEMPT_RETENTION_DAYS = max(1, int(os.getenv("PAY_ATTEMPT_RETENTION_DAYS", "365")))
+EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS = max(1, int(os.getenv("EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS", "180")))
+SUBSCRIPTION_EVENT_RETENTION_DAYS = max(1, int(os.getenv("SUBSCRIPTION_EVENT_RETENTION_DAYS", "90")))
+TELEMETRY_RETENTION_INTERVAL_SECONDS = max(3600, int(os.getenv("TELEMETRY_RETENTION_INTERVAL_SECONDS", "21600")))
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
 _TEMPLATE_CACHE: dict[str, tuple[datetime, str]] = {}
@@ -706,7 +727,6 @@ async def start99_welcome_offer_job() -> None:
                 .filter(ExternalOrder.paid_at.isnot(None))
                 .filter(ExternalOrder.paid_at >= newer_than)
                 .filter(ExternalOrder.paid_at <= older_than)
-                .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "freekassa")
                 .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
                 .filter(func.lower(func.coalesce(ExternalOrder.plan_code, "")) == "start_99")
                 .order_by(ExternalOrder.paid_at.desc())
@@ -1012,7 +1032,7 @@ async def free_cycle_reset_job() -> None:
         try:
             await process_due_free_cycle_resets(max_users=500)
         except Exception:
-            pass
+            logger.exception("free_cycle_reset_job failed")
         await asyncio.sleep(600)
 
 
@@ -1030,21 +1050,92 @@ async def observer_retention_job() -> None:
         await asyncio.sleep(21600)
 
 
+def _delete_older_than(session, model, column, cutoff: datetime) -> int:
+    return int(
+        session.query(model)
+        .filter(column < cutoff)
+        .delete(synchronize_session=False)
+        or 0
+    )
+
+
+async def telemetry_retention_job() -> None:
+    while True:
+        session = SessionLocal()
+        try:
+            now = _utcnow()
+            deleted = {
+                "events": _delete_older_than(session, Event, Event.created_at, now - timedelta(days=EVENT_RETENTION_DAYS)),
+                "funnel_events": _delete_older_than(
+                    session,
+                    FunnelEvent,
+                    FunnelEvent.created_at,
+                    now - timedelta(days=FUNNEL_EVENT_RETENTION_DAYS),
+                ),
+                "pay_attempts": _delete_older_than(
+                    session,
+                    PayAttempt,
+                    PayAttempt.started_at,
+                    now - timedelta(days=PAY_ATTEMPT_RETENTION_DAYS),
+                ),
+                "external_payment_events": _delete_older_than(
+                    session,
+                    ExternalPaymentEvent,
+                    ExternalPaymentEvent.created_at,
+                    now - timedelta(days=EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS),
+                ),
+                "subscription_fetch_events": _delete_older_than(
+                    session,
+                    SubscriptionFetchEvent,
+                    SubscriptionFetchEvent.created_at,
+                    now - timedelta(days=SUBSCRIPTION_EVENT_RETENTION_DAYS),
+                ),
+                "rendered_subscription_snapshots": _delete_older_than(
+                    session,
+                    RenderedSubscriptionSnapshot,
+                    RenderedSubscriptionSnapshot.created_at,
+                    now - timedelta(days=SUBSCRIPTION_EVENT_RETENTION_DAYS),
+                ),
+            }
+            session.commit()
+            if any(deleted.values()):
+                logger.info("telemetry_retention deleted=%s", deleted)
+        except Exception:
+            session.rollback()
+            logger.exception("telemetry_retention_job failed")
+        finally:
+            session.close()
+        await asyncio.sleep(TELEMETRY_RETENTION_INTERVAL_SECONDS)
+
+
+async def _supervise_job(name: str, job_factory, *, restart_delay_seconds: int = 10) -> None:
+    while True:
+        try:
+            await job_factory()
+            logger.warning("worker job %s exited unexpectedly; restarting", name)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("worker job %s crashed; restarting", name)
+        await asyncio.sleep(max(1, int(restart_delay_seconds)))
+
+
 async def main() -> None:
     init_db()
     tasks = [
-        asyncio.create_task(welcome_chain_job()),
-        asyncio.create_task(abandoned_cart_job()),
-        asyncio.create_task(expiry_chain_job()),
-        asyncio.create_task(start99_welcome_offer_job()),
-        asyncio.create_task(oto_free_job()),
-        asyncio.create_task(reactivation_job()),
-        asyncio.create_task(node_metrics_watchdog_job()),
-        asyncio.create_task(channel_bonus_guard_job()),
-        asyncio.create_task(free_cycle_reset_job()),
-        asyncio.create_task(observer_retention_job()),
-        asyncio.create_task(referral_bonus_queue_job()),
-        asyncio.create_task(key_limits_watchdog_job()),
+        asyncio.create_task(_supervise_job("welcome_chain", welcome_chain_job)),
+        asyncio.create_task(_supervise_job("abandoned_cart", abandoned_cart_job)),
+        asyncio.create_task(_supervise_job("expiry_chain", expiry_chain_job)),
+        asyncio.create_task(_supervise_job("start99_welcome_offer", start99_welcome_offer_job)),
+        asyncio.create_task(_supervise_job("oto_free", oto_free_job)),
+        asyncio.create_task(_supervise_job("reactivation", reactivation_job)),
+        asyncio.create_task(_supervise_job("node_metrics_watchdog", node_metrics_watchdog_job)),
+        asyncio.create_task(_supervise_job("channel_bonus_guard", channel_bonus_guard_job)),
+        asyncio.create_task(_supervise_job("free_cycle_reset", free_cycle_reset_job)),
+        asyncio.create_task(_supervise_job("observer_retention", observer_retention_job)),
+        asyncio.create_task(_supervise_job("telemetry_retention", telemetry_retention_job)),
+        asyncio.create_task(_supervise_job("referral_bonus_queue", referral_bonus_queue_job)),
+        asyncio.create_task(_supervise_job("key_limits_watchdog", key_limits_watchdog_job)),
     ]
     await asyncio.gather(*tasks)
 

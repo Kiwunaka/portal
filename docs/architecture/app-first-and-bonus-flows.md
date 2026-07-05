@@ -152,7 +152,7 @@ Smart-connect contract:
 - the shortlist rejects disabled, draining, unhealthy, stale, dataplane-down, saturated, high-loss/retransmit, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT`, transport-incompatible, and rollout-blocked nodes while `CAPACITY_AWARE_NODE_SELECTION=true`
 - shortlist items expose `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `provisioned_clients_count`, `online_connections_hint`, and an internal `probe.host` / `probe.port` target for app-side RTT checks
 - the client asks `GET /api/client/nodes/candidates`, performs best-effort RTT probes, posts the result to `POST /api/client/nodes/select`, and may refetch `GET /api/client/profile/managed?selected_node_code=...` before materializing the runtime config
-- the selection score is capacity-aware: `effective_score = rtt_ms + dataplane_rtt + cpu_penalty + backend_penalty + network_pressure`, with lower scores preferred
+- the selection score is capacity-aware: `effective_score = rtt_ms + dataplane_rtt + cpu_penalty + backend_penalty + network_pressure`, with lower scores preferred; low `health_score` adds backend penalty but does not by itself hard-reject a node while dataplane and explicit capacity checks remain healthy
 - stickiness stays active with a default `20%` threshold so the app does not flap between nodes on tiny wins
 - explicit `UserNode` mappings are provisioning/history state; they must not trap premium-grade users on one or two old nodes or reduce the candidate pool
 - `POST /api/client/nodes/latency-samples` remains compatibility telemetry and must not be the only node-selection API
@@ -242,6 +242,7 @@ Current live backend contract:
 - `GET /api/tickets`
 - `POST /api/tickets`
 - `POST /api/tickets/uploads`
+- `GET /api/tickets/attachments/{stored_name}`
 - `GET /api/tickets/{ticket_id}`
 - `POST /api/tickets/{ticket_id}/messages`
 
@@ -270,10 +271,10 @@ App/bot/cabinet parity smoke:
 
 Beta rate-limit contract:
 
-- externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, unified redeem, app-cabinet handoff token/exchange, and support ticket create/upload apply backend-owned per-minute throttles
+- externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, unified redeem, app-cabinet handoff token/exchange, support ticket create/upload/download, payment callbacks, subscription fetches, events, and unsafe admin actions apply backend-owned per-minute throttles
 - `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; retries for an existing `install_id` remain idempotent and should continue to return the existing app-first account
 - throttled requests return HTTP `429` with a `Retry-After` header and structured detail containing `code=rate_limited`, `scope`, and `retry_after_seconds`
-- rate-limit counters store hashed in-process fingerprints and can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables; they are beta abuse guardrails, not a durable cross-process quota ledger
+- rate-limit counters store hashed fingerprints in durable `security_rate_limit_buckets` with an in-memory dev/test fallback and can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables
 
 ## Web Login, Email Auth, And Session Continuation
 
@@ -281,7 +282,7 @@ Web surfaces support app-first continuation through:
 
 - app or bot handoff into an existing cabinet session
 - app handoff through `POST /api/client/cabinet-token`, which returns a short-lived signed one-time handoff token for a relative cabinet path on canonical `https://app.pokrov.space/`
-- cabinet entry exchanges that token through `POST /api/auth/cabinet-handoff/exchange`, stores the returned browser session token, removes the handoff token from the URL, and honors the returned safe relative `target_path`
+- cabinet entry exchanges that token through `POST /api/auth/cabinet-handoff/exchange`, receives a `Secure; HttpOnly` cookie for `.pokrov.space`, removes the handoff token from the URL, and honors the returned safe relative `target_path`; returned bearer tokens remain a temporary compatibility path for one release window
 - failed cabinet handoff exchanges must clear URL token params and show localized cabinet copy for expired, already-used, invalid, and rate-limited states instead of dropping the user into an unexplained login wall
 - Telegram widget or Telegram OIDC login in browser
 - additive email signup, verification, login, recovery, and reset as a live browser continuation lane when delivery readiness is green
@@ -350,7 +351,7 @@ Compatibility note:
 2. session-backed support may create a real ticket through `POST /api/tickets`
 3. cabinet/support surfaces may load the thread through `GET /api/tickets/{ticket_id}`
 4. follow-up replies continue through `POST /api/tickets/{ticket_id}/messages`
-5. attachment-capable browser support uses `POST /api/tickets/uploads`
+5. attachment-capable browser support uses `POST /api/tickets/uploads`, then authenticated `GET /api/tickets/attachments/{stored_name}` for private downloads; raw `/uploads/support/*` static access is not part of the current contract
 6. operators continue the same case through `/api/admin/tickets/*`
 
 Contract rule:

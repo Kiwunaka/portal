@@ -35,16 +35,60 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         module = _load_module()
         self.assertIn("portal-feedbackbot", module.DEFAULT_RESTART_UNITS)
 
+    def test_stage_targets_keep_sftp_uploads_out_of_live_paths(self) -> None:
+        module = _load_module()
+        stage_root = "/root/portal_bot.deploy-staging/20260705T010203Z-1"
+
+        self.assertEqual(
+            "/root/portal_bot.deploy-staging/20260705T010203Z-1/portal_bot/api.py",
+            module._stage_target_for("/root/portal_bot/api.py", stage_root),
+        )
+        self.assertEqual(
+            "/root/portal_bot.deploy-staging/20260705T010203Z-1/shared/product-facts.json",
+            module._stage_target_for("/root/shared/product-facts.json", stage_root),
+        )
+
+    def test_restart_units_reject_shell_metacharacters(self) -> None:
+        module = _load_module()
+
+        self.assertEqual(["portal-api", "portal-bot.service"], module._parse_restart_units("portal-api,portal-bot.service"))
+        with self.assertRaises(SystemExit):
+            module._parse_restart_units("portal-api; systemctl stop x-ui")
+
+    def test_command_builders_preflight_before_live_promotion_and_can_restore(self) -> None:
+        module = _load_module()
+        stage_root = "/root/portal_bot.deploy-staging/20260705T010203Z-1"
+        backup_root = "/root/portal_bot.deploy-backups/20260705T010203Z-1"
+        mappings = [(Path("api.py"), "/root/portal_bot/api.py"), (Path("product-facts.json"), "/root/shared/product-facts.json")]
+
+        preflight = module._build_preflight_command(stage_root)
+        promote = module._build_promote_command(mappings, stage_root)
+        restore = module._build_restore_command([target for _source, target in mappings], backup_root)
+
+        self.assertIn("compileall -q", preflight)
+        self.assertIn("portal_shared_json_preflight.log", preflight)
+        self.assertIn("/root/portal_bot.deploy-staging/20260705T010203Z-1/portal_bot/api.py", promote)
+        self.assertIn("install -D -m 0644", promote)
+        self.assertIn("/root/portal_bot.deploy-backups/20260705T010203Z-1/root/portal_bot/api.py", restore)
+        self.assertIn("rm -f /root/shared/product-facts.json", restore)
+
     def test_main_fails_when_requested_unit_is_not_active_after_restart(self) -> None:
         module = _load_module()
         ssh = MagicMock()
         sftp = MagicMock()
         ssh.open_sftp.return_value = sftp
         run_results = [
-            (0, "", ""),
-            (0, "", ""),
+            (0, "", ""),  # prepare dirs
+            (0, "", ""),  # backup live files
+            (0, "", ""),  # staged syntax/json preflight
+            (0, "", ""),  # staged requirements preflight
+            (0, "", ""),  # live requirements install
+            (0, "", ""),  # promote staged files
             (1, "", "restart failed"),
             (3, "", "inactive"),
+            (0, "", ""),  # rollback restore
+            (0, "", ""),  # rollback restart
+            (0, "active\n", ""),  # rollback status
         ]
 
         with patch.object(module.argparse.ArgumentParser, "parse_args") as parse_args:
@@ -56,9 +100,14 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
                 restart="portal-feedbackbot",
             )
             with patch.object(module, "connect_node", return_value=(ssh, "password")):
-                with patch.object(module, "_run", side_effect=run_results):
-                    exit_code = module.main()
+                with patch.object(module, "_release_id", return_value="20260705T010203Z-1"):
+                    with patch.object(module, "_run", side_effect=run_results):
+                        exit_code = module.main()
 
+        uploaded_targets = [call.args[1] for call in sftp.put.call_args_list]
+        self.assertTrue(uploaded_targets)
+        self.assertTrue(all("/root/portal_bot.deploy-staging/20260705T010203Z-1/" in target for target in uploaded_targets))
+        self.assertFalse(any(target.startswith("/root/portal_bot/") for target in uploaded_targets))
         self.assertEqual(exit_code, 1)
         ssh.close.assert_called_once()
 

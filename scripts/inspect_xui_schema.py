@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 from node_passwords import parse_passwords
 
@@ -42,7 +43,7 @@ def main() -> int:
         raise SystemExit("Password not found. Set NODE_PASS_<CODE> env var.")
 
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(args.host, port=args.ssh_port, username=args.ssh_user, password=pw, timeout=30)
     try:
         for q in [

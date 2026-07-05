@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-06-05
+Last updated: 2026-07-05
 
 ## Document Status
 
@@ -65,6 +65,30 @@ RF access rule:
 - use `powershell` when quoting, Windows path handling, SSH invocation, or local tooling behavior is more reliable there
 - pick the shell that reduces operator error for the exact command rather than forcing one shell everywhere
 
+## SSH Host-Key Policy
+
+Repo-owned Paramiko scripts must not silently trust unknown SSH host keys.
+
+Runtime helpers:
+
+- `scripts/ssh_host_keys.py`
+- `portal_bot/ssh_host_keys.py`
+
+Default behavior:
+
+- load system known hosts
+- load `POKROV_SSH_KNOWN_HOSTS` when set
+- otherwise load `VPN NODE SSH KEYS/known_hosts`
+- reject unknown host keys
+
+First-bootstrap exception:
+
+- set `POKROV_SSH_TRUST_ON_FIRST_USE=1` only for a deliberate first contact or host-key rotation
+- after the first successful connection, review and keep the saved key in the local known-hosts file
+- turn `POKROV_SSH_TRUST_ON_FIRST_USE` back off before normal deploy, probe, sync, backup, or handoff commands
+
+Do not paste host-key fingerprints, SSH passwords, private keys, or full known-hosts files into docs or reports. Record only redacted evidence that the target host key was reviewed.
+
 ## Sensitive Material Locations
 
 These locations are intentionally preserved and must not be deleted during cleanup:
@@ -99,6 +123,12 @@ python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --res
 Repo-side deploy rule:
 
 - the default restart set is `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`
+- a normal git `push` runs repository guardrails only; production backend/static deploy still requires the manual release workflow in `full` mode or an explicit operator-run deploy command
+- backend code deploy is staged and fail-closed: files upload to `/root/portal_bot.deploy-staging/<release_id>/`, current live files are backed up under `/root/portal_bot.deploy-backups/<release_id>/`, and the script runs remote Python bytecode compilation plus shared JSON validation before promoting staged files into `/root/portal_bot` or `/root/shared`
+- staged requirements are installed in a temporary staging venv first; the live venv is updated only after staged syntax/JSON/requirements preflight passes
+- if preflight or requirements installation fails, the script exits before live file promotion and before any `systemctl restart`
+- if a requested unit fails restart or does not report `active`, the script restores the previous backed-up backend/shared files and restarts the requested units on that previous file set
+- `--restart` accepts only systemd-safe unit names; do not use shell fragments or chained commands in the unit list
 - the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, and `support-ai-knowledge.json`
 - the deploy step should be treated as failed if any requested unit does not become `active` after restart
 - support AI is a `portal-api` and `portal-helpbot` runtime feature. It stays disabled unless the `brain` environment sets `SUPPORT_AI_ENABLED=true` plus an API key. The default route is OpenRouter `https://openrouter.ai/api/v1` with `deepseek/deepseek-v4-flash`; switch providers only through env overrides. Leave `SUPPORT_AI_OPENROUTER_DATA_COLLECTION` blank unless a specific OpenRouter route requires `deny` or `allow`; an unsupported strict policy can make OpenRouter return no matching endpoints.
@@ -118,6 +148,11 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 - `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out` plus `webapp/out` without opening SSH; local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
 - before bundling, static deploy appends the release id as `?v=<release>` to `/_next/static/*` references inside exported HTML so browsers do not keep stale cabinet chunks after a deploy; `pokrov.space`, `app.pokrov.space`, and `pay.pokrov.space/checkout/` HTML should serve `Cache-Control: no-cache, must-revalidate` from Caddy
 - public Caddy on `brain` should keep HTTP/3 disabled with `servers { protocols h1 h2 }` and should serve `Alt-Svc: clear` on public HTTPS responses while browsers may still have the previous `h3=":8444"` alternative cached; this avoids user networks that fail QUIC or non-standard UDP paths while preserving standard HTTPS on `443`
+- security baseline for `brain`: expose only `80/tcp`, `443/tcp`, and the active SSH port publicly; Caddy `:8444`, API `:8080`, legacy `:2096`, and panel ports must be loopback-only or firewall allowlisted
+- `infra/brain-haproxy-l4.cfg` and `infra/portal-transport-front.cfg` use HAProxy TCP stick-tables as a self-hosted burst guard; this is not a volumetric DDoS guarantee and hoster/network filtering remains a separate incident-control layer
+- `infra/Caddyfile.internal` owns the public HTTP security headers (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors`, `Alt-Svc: clear`) while API path limits remain backend-owned
+- fresh node/bootstrap paths must enable UFW default-deny and fail2ban `sshd` with escalating bans; root password access is retained only as break-glass until the owner approves a key-only cutover
+- repo-managed systemd units should carry `NoNewPrivileges`, `PrivateTmp`, and read-mostly system protections unless a unit has a documented operational need for broader write access
 
 ### Bot token / username switch
 
@@ -133,6 +168,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage deploy`
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage verify`
 - wrapper steps stream child output, print heartbeat lines during quiet long-running steps, and enforce per-step timeouts unless the matching `--*-timeout-sec 0` option is used
+- the GitHub Actions release orchestrator is manual-only; its default mode is `dry-run`, and `full` should be selected only after current gates and operator deploy intent are explicit
 
 ### Release handoff sync
 
@@ -201,6 +237,8 @@ Status:
 - `remote_apply_ru_bridge_relay.py` is the current owner-approved emergency bridge path: it syncs active user UUIDs from `brain`, installs/preserves `mini` Xray Reality on `tcp/443`, restricts bridge egress to POKROV target nodes, excludes `us`, and patches public bridge metadata into `network_rollout_config`
 - rerun `remote_apply_ru_bridge_relay.py --apply --update-brain-rollout` after meaningful user growth or before relying on the bridge for a live incident, because `mini` authorizes the active UUID snapshot that was synced at apply time
 - when bridge targets mix DNS hosts and raw IP hosts, keep Xray routing allow rules split by `domain` and `ip`; one rule containing both fields can fail to match the country-hop connection and make every `Белые списки` detour appear dead
+- generated Hiddify/sing-box profiles must keep the bridge hop as a hidden technical outbound (`POKROV мост §hide§`) and expose only the country choices plus `Белые списки`; a standalone bridge delay failure is not a country-node outage
+- while the bridge is globally enabled, `RU_BRIDGE_SELECTOR_DIRECT_CODES` controls which direct country entries remain visible to Hiddify balancers; the default keeps `de` direct and lets bridge-eligible non-DE countries surface through `Белые списки`
 - rollback is `defaults.transport_profile=legacy_reality_fallback`; enable or keep `ru_bridge_relay` only through an explicit cohort/carrier/default decision after verification
 
 ### Telegram MTProto proxy on free node
@@ -246,7 +284,7 @@ Transport policy rule:
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
 - capacity-aware app routing uses `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
-- subscription rendering dynamically orders nodes while `SUBSCRIPTION_DYNAMIC_ORDERING=true`; `SUBSCRIPTION_EXCLUDE_HARD_REJECT=false` is the default so paid/trial subscriptions keep fallback countries even when a node is low-health, while `true` is an emergency opt-in that can temporarily hide hard-rejected nodes without deleting metrics or keys
+- subscription rendering dynamically orders nodes while `SUBSCRIPTION_DYNAMIC_ORDERING=true`; `SUBSCRIPTION_EXCLUDE_HARD_REJECT=false` is the default so paid/trial subscriptions keep fallback countries even when a node is penalized by low `health_score`; `true` is an emergency opt-in that can temporarily hide explicitly hard-rejected nodes without deleting metrics or keys
 - core rollout/rollback flags are `CAPACITY_AWARE_NODE_SELECTION`, `SUBSCRIPTION_DYNAMIC_ORDERING`, `SUBSCRIPTION_EXCLUDE_HARD_REJECT`, `KEY_PRESSURE_SCORING`, `KEY_PRESSURE_FAIR_USE_ROUTING`, `APP_NODES_SELECT_ENDPOINT`, `XRAY_METRICS_COLLECTOR`, `NODE_AGENT_METRICS`, and `USERNODE_MAPPING_AS_CANDIDATE_LIMIT`
 - as of `2026-06-29`, rolling maintenance updated non-current delivery nodes `free`, `it`, `nl`, `pl`, and `us` to 3x-ui `3.4.1` with bundled Xray `26.6.22`; each node has a root-only backup under `/root/pokrov-xui-backups/*-v3.4.1`, while `de` was intentionally left untouched because it was the operator's active connection node during the rollout
 - 3x-ui `3.x` requires CSRF for session-authenticated unsafe panel API requests; `PanelClient` must fetch `/csrf-token`, send `X-CSRF-Token` on panel POSTs, and keep an unsafe cookie jar for IP-based panel hosts such as `de`
@@ -457,7 +495,7 @@ At minimum, verify:
 - `portal-api`, `portal-bot`, and `portal-helpbot` service status
 - `portal-feedbackbot` service status
 - `portal-daily-healthcheck.timer` status and latest daily panel/node health report when checking control-plane/node drift
-- `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required listeners on `443` or `8444` are missing, or if the built-in HTTP and subscription probes fail
+- `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required brain-local listeners on `443` or internal Caddy `8444` are missing, or if the built-in HTTP and subscription probes fail; this does not authorize public UFW exposure for `8444`
 - public HTTPS checks for `pokrov.space`, `app.pokrov.space`, and `api.pokrov.space` should confirm that responses no longer advertise `Alt-Svc: h3=":8444"`; expected incident-recovery state is `Alt-Svc: clear` plus `200`/healthy status over standard HTTPS
 - marketing and checkout probes should use route/function markers such as `Android + Windows`, `app.pokrov.space`, `checkout-shell`, `ключ доступа`, and canonical URLs, not old hero copy that can change without a deploy failure
 - transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -54,7 +55,7 @@ def main() -> int:
     backup_path = f"/root/backups/portal.db.promo-{ts}.db"
 
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(
         args.brain_ip,
         port=args.ssh_port,

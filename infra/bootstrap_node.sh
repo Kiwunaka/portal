@@ -33,6 +33,8 @@ apt-get install -y openssh-server
 ufw allow "${SSH_PORT}/tcp"
 sed -i "s/^#Port 22/Port ${SSH_PORT}/" /etc/ssh/sshd_config
 sed -i "s/^Port 22/Port ${SSH_PORT}/" /etc/ssh/sshd_config
+grep -q '^PermitEmptyPasswords no' /etc/ssh/sshd_config || printf '\nPermitEmptyPasswords no\n' >> /etc/ssh/sshd_config
+grep -q '^KbdInteractiveAuthentication no' /etc/ssh/sshd_config || printf 'KbdInteractiveAuthentication no\n' >> /etc/ssh/sshd_config
 systemctl restart ssh || systemctl restart sshd
 
 echo "[4/8] Fail2Ban"
@@ -44,8 +46,11 @@ port = ${SSH_PORT}
 filter = sshd
 logpath = /var/log/auth.log
 maxretry = 3
-bantime = 3600
-findtime = 600
+findtime = 10m
+bantime = 1h
+bantime.increment = true
+bantime.factor = 2
+bantime.maxtime = 24h
 EOF
 systemctl enable fail2ban
 systemctl restart fail2ban

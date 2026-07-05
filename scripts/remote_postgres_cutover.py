@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import quote_plus
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -128,7 +129,7 @@ def main() -> int:
     pg_url = f"postgresql+psycopg2://{quote_plus(db_user)}:{quote_plus(db_password)}@127.0.0.1:5432/{quote_plus(db_name)}"
 
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(
         args.brain_ip,
         port=args.ssh_port,

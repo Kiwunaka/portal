@@ -33,8 +33,7 @@ import aiohttp
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func
 from sqlalchemy.exc import IntegrityError
@@ -79,8 +78,12 @@ from models import (
     RenderedSubscriptionSnapshot,
     Review,
     RewardClaim,
+    SecurityEvent,
+    SecurityRateLimitBucket,
     StartLink,
+    SupportAttachment,
     SupportTicket,
+    SupportTicketMessage,
     SubscriptionFetchEvent,
     Template,
     User,
@@ -222,6 +225,15 @@ from warp_service import (
 )
 
 
+HIDDIFY_HIDDEN_TAG_SUFFIX = " §hide§"
+RU_BRIDGE_OUTBOUND_TAG = f"POKROV мост{HIDDIFY_HIDDEN_TAG_SUFFIX}"
+RU_BRIDGE_SELECTOR_DIRECT_CODES = {
+    token.strip().lower()
+    for token in str(os.getenv("RU_BRIDGE_SELECTOR_DIRECT_CODES", "de") or "").split(",")
+    if token.strip()
+}
+
+
 init_db()
 logger = logging.getLogger(__name__)
 _current_request_ctx: contextvars.ContextVar[Request | None] = contextvars.ContextVar(
@@ -355,6 +367,11 @@ SUPPORT_UPLOAD_DIR = Path(
 ).resolve()
 SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uploads/support').strip().strip('/')}"
 SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
+SUPPORT_ATTACHMENT_URL_PREFIX = f"/{(os.getenv('SUPPORT_ATTACHMENT_URL_PREFIX') or 'api/tickets/attachments').strip().strip('/')}"
+WEB_SESSION_COOKIE_NAME = (os.getenv("WEB_SESSION_COOKIE_NAME") or "portal_web_session").strip() or "portal_web_session"
+WEB_SESSION_COOKIE_DOMAIN = (os.getenv("WEB_SESSION_COOKIE_DOMAIN") or ".pokrov.space").strip() or ".pokrov.space"
+WEB_SESSION_COOKIE_SAMESITE = (os.getenv("WEB_SESSION_COOKIE_SAMESITE") or "lax").strip().lower() or "lax"
+PAYMENT_CALLBACK_MAX_BYTES = max(1024, env_int("PAYMENT_CALLBACK_MAX_BYTES", 256 * 1024))
 SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
 support_ai_last_reply_at: dict[int, float] = {}
 API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -763,10 +780,7 @@ def _build_freekassa_payment_url(
 
 
 def _fk_client_ip(request: Request) -> str:
-    forwarded = (request.headers.get("x-forwarded-for") or "").strip()
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return str(getattr(getattr(request, "client", None), "host", "") or "")
+    return _request_client_ip(request)
 
 
 def _is_ip_allowed(ip: str, allowlist: list[str]) -> bool:
@@ -1603,7 +1617,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 SUPPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-app.mount(SUPPORT_UPLOAD_URL_PREFIX, StaticFiles(directory=str(SUPPORT_UPLOAD_DIR)), name="support_uploads")
 
 
 def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
@@ -1616,6 +1629,16 @@ def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
         check_hash = parsed.pop("hash", "")
         bot_token = _current_bot_token()
         if not check_hash or not bot_token:
+            return None
+        try:
+            auth_date = int(parsed.get("auth_date") or 0)
+        except Exception:
+            return None
+        if auth_date <= 0:
+            return None
+        now = int(time.time())
+        max_age = max(60, int(TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS))
+        if auth_date > now + 300 or now - auth_date > max_age:
             return None
 
         data_check_arr = sorted([f"{k}={v}" for k, v in parsed.items()])
@@ -2415,7 +2438,14 @@ def _extract_web_session_token(request: Request | None) -> str:
     auth_header = str(request.headers.get("authorization") or "").strip()
     if auth_header.lower().startswith("bearer "):
         return auth_header[7:].strip()
-    return str(request.headers.get("x-web-auth-token") or "").strip()
+    header_token = str(request.headers.get("x-web-auth-token") or "").strip()
+    if header_token:
+        return header_token
+    cookie_token = str(request.cookies.get(WEB_SESSION_COOKIE_NAME) or "").strip()
+    if cookie_token:
+        return cookie_token
+    # Compatibility cookie used by the static cabinet before HttpOnly handoff.
+    return str(request.cookies.get("portal_web_session_token") or "").strip()
 
 
 def _auth_http_exception(*, detail: str, code: str, status_code: int = 401) -> HTTPException:
@@ -2481,22 +2511,203 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
     return None
 
 
+def _client_peer_host(request: Request | None) -> str:
+    if request is None:
+        request = _current_request_ctx.get()
+    if request is None:
+        return ""
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", "") if client else ""
+    return str(host or "").strip()[:64]
+
+
+def _is_trusted_proxy_host(host: str) -> bool:
+    raw_host = str(host or "").strip()
+    if not raw_host:
+        return False
+    if raw_host == "testclient":
+        return True
+    try:
+        ip_obj = ipaddress.ip_address(raw_host)
+    except Exception:
+        return False
+    if ip_obj.is_loopback:
+        return True
+    raw_allowlist = os.getenv("TRUSTED_PROXY_IPS") or ""
+    for raw in raw_allowlist.split(","):
+        token = raw.strip()
+        if not token:
+            continue
+        try:
+            if "/" in token and ip_obj in ipaddress.ip_network(token, strict=False):
+                return True
+            if "/" not in token and ip_obj == ipaddress.ip_address(token):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _first_valid_ip_from_header(raw: str) -> str:
+    for part in str(raw or "").split(","):
+        candidate = part.strip()
+        if not candidate:
+            continue
+        try:
+            ipaddress.ip_address(candidate)
+            return candidate[:64]
+        except Exception:
+            continue
+    return ""
+
+
 def _request_client_ip(request: Request | None) -> str:
     if request is None:
         request = _current_request_ctx.get()
     if request is None:
         return ""
-    for header in ("cf-connecting-ip", "x-real-ip", "x-forwarded-for"):
-        raw = str(request.headers.get(header) or "").strip()
-        if not raw:
+    peer_host = _client_peer_host(request)
+    if _is_trusted_proxy_host(peer_host):
+        for header in ("cf-connecting-ip", "x-real-ip", "x-forwarded-for"):
+            raw = str(request.headers.get(header) or "").strip()
+            if not raw:
+                continue
+            parsed = _first_valid_ip_from_header(raw)
+            if parsed:
+                return parsed
+    try:
+        ipaddress.ip_address(peer_host)
+        return peer_host[:64]
+    except Exception:
+        return peer_host[:64] or "unknown"
+
+
+def _record_security_event(
+    event_type: str,
+    *,
+    scope: str | None = None,
+    fingerprint: str | None = None,
+    client_ip: str | None = None,
+    subject: str | None = None,
+    reason: str | None = None,
+    meta: dict[str, Any] | None = None,
+) -> None:
+    safe_meta = {}
+    for key, value in dict(meta or {}).items():
+        key_text = str(key or "").strip()[:64]
+        if not key_text:
             continue
-        if header == "x-forwarded-for":
-            raw = raw.split(",", 1)[0].strip()
-        if raw:
-            return raw[:64]
-    client = getattr(request, "client", None)
-    host = getattr(client, "host", "") if client else ""
-    return str(host or "").strip()[:64]
+        if any(token in key_text.lower() for token in ("token", "secret", "password", "authorization", "api_key")):
+            safe_meta[key_text] = "[redacted]"
+        else:
+            safe_meta[key_text] = str(value)[:240] if value is not None else None
+    s = SessionLocal()
+    try:
+        s.add(
+            SecurityEvent(
+                event_type=str(event_type or "").strip()[:64] or "security_event",
+                scope=str(scope or "").strip()[:64] or None,
+                fingerprint=str(fingerprint or "").strip()[:64] or None,
+                client_ip=str(client_ip or "").strip()[:64] or None,
+                subject=str(subject or "").strip()[:160] or None,
+                reason=str(reason or "").strip()[:160] or None,
+                meta_json=json.dumps(safe_meta, ensure_ascii=False, separators=(",", ":"))[:2000] if safe_meta else None,
+                created_at=_utcnow(),
+            )
+        )
+        s.commit()
+    except Exception:
+        s.rollback()
+    finally:
+        s.close()
+
+
+def _rate_limit_exception(scope: str, retry_after: int) -> HTTPException:
+    return HTTPException(
+        status_code=429,
+        detail={
+            "code": "rate_limited",
+            "message": "Too many requests. Please retry later.",
+            "scope": str(scope or "").strip().lower(),
+            "retry_after_seconds": int(retry_after),
+        },
+        headers={"Retry-After": str(int(retry_after))},
+    )
+
+
+def _rate_limit_window_start(now_ts: float, window_seconds: int) -> datetime:
+    start_ts = int(now_ts) - (int(now_ts) % max(1, int(window_seconds)))
+    return datetime.fromtimestamp(start_ts, timezone.utc).replace(tzinfo=None)
+
+
+def _memory_rate_limit(scope: str, fingerprint: str, *, limit: int, window_seconds: int, now_ts: float) -> None:
+    key = (str(scope or "").strip().lower(), str(fingerprint or "").strip())
+    hits = [ts for ts in _beta_rate_limit_state.get(key, []) if now_ts - ts < float(window_seconds)]
+    if len(hits) >= int(limit):
+        retry_after = max(1, int(float(window_seconds) - (now_ts - hits[0])) + 1)
+        _beta_rate_limit_state[key] = hits
+        raise _rate_limit_exception(scope, retry_after)
+    hits.append(now_ts)
+    _beta_rate_limit_state[key] = hits
+
+
+def _enforce_durable_rate_limit(scope: str, fingerprint: str, *, limit: int, window_seconds: int = 60) -> None:
+    now_ts = time.time()
+    now_dt = datetime.fromtimestamp(now_ts, timezone.utc).replace(tzinfo=None)
+    window_start = _rate_limit_window_start(now_ts, window_seconds)
+    expires_at = window_start + timedelta(seconds=max(1, int(window_seconds)))
+    bucket_key = hashlib.sha256(
+        f"{str(scope).lower()}|{str(fingerprint)}|{window_start.isoformat()}".encode("utf-8")
+    ).hexdigest()
+    s = SessionLocal()
+    try:
+        if secrets.randbelow(100) == 0:
+            s.query(SecurityRateLimitBucket).filter(SecurityRateLimitBucket.expires_at < now_dt - timedelta(minutes=5)).delete()
+        bucket = (
+            s.query(SecurityRateLimitBucket)
+            .filter(SecurityRateLimitBucket.bucket_key == bucket_key)
+            .with_for_update()
+            .first()
+        )
+        if bucket is None:
+            bucket = SecurityRateLimitBucket(
+                bucket_key=bucket_key,
+                scope=str(scope or "").strip().lower()[:64],
+                fingerprint=str(fingerprint or "").strip()[:64],
+                window_start=window_start,
+                expires_at=expires_at,
+                hits=0,
+                updated_at=now_dt,
+            )
+            s.add(bucket)
+            try:
+                s.flush()
+            except IntegrityError:
+                s.rollback()
+                bucket = (
+                    s.query(SecurityRateLimitBucket)
+                    .filter(SecurityRateLimitBucket.bucket_key == bucket_key)
+                    .with_for_update()
+                    .first()
+                )
+                if bucket is None:
+                    _memory_rate_limit(scope, fingerprint, limit=limit, window_seconds=window_seconds, now_ts=now_ts)
+                    return
+        current_hits = int(bucket.hits or 0)
+        if current_hits >= int(limit):
+            retry_after = max(1, int((expires_at - now_dt).total_seconds()) + 1)
+            s.rollback()
+            raise _rate_limit_exception(scope, retry_after)
+        bucket.hits = current_hits + 1
+        bucket.updated_at = now_dt
+        s.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        s.rollback()
+        _memory_rate_limit(scope, fingerprint, limit=limit, window_seconds=window_seconds, now_ts=now_ts)
+    finally:
+        s.close()
 
 
 _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
@@ -2510,6 +2721,14 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "email_auth": 20,
     "ticket_create": 20,
     "ticket_upload": 30,
+    "ticket_attachment_download": 120,
+    "payment_callback": 120,
+    "payment_callback_invalid": 20,
+    "public_order_create": 30,
+    "subscription_fetch": 180,
+    "subscription_fetch_ip": 240,
+    "events": 180,
+    "admin_destructive": 30,
 }
 _beta_rate_limit_state: dict[tuple[str, str], list[float]] = {}
 
@@ -2531,27 +2750,19 @@ def _enforce_beta_rate_limit(scope: str, request: Request | None, *, identity: s
     limit = _beta_rate_limit_per_minute(normalized_scope)
     if limit <= 0:
         return
-
-    now = time.monotonic()
-    window_seconds = 60.0
-    key = (normalized_scope, _beta_rate_limit_fingerprint(normalized_scope, request, identity=identity))
-    hits = [ts for ts in _beta_rate_limit_state.get(key, []) if now - ts < window_seconds]
-    if len(hits) >= limit:
-        retry_after = max(1, int(window_seconds - (now - hits[0])) + 1)
-        _beta_rate_limit_state[key] = hits
-        raise HTTPException(
-            status_code=429,
-            detail={
-                "code": "rate_limited",
-                "message": "Too many requests. Please retry later.",
-                "scope": normalized_scope,
-                "retry_after_seconds": retry_after,
-            },
-            headers={"Retry-After": str(retry_after)},
+    fingerprint = _beta_rate_limit_fingerprint(normalized_scope, request, identity=identity)
+    try:
+        _enforce_durable_rate_limit(normalized_scope, fingerprint, limit=limit, window_seconds=60)
+    except HTTPException as exc:
+        _record_security_event(
+            "rate_limit_hit",
+            scope=normalized_scope,
+            fingerprint=fingerprint,
+            client_ip=_request_client_ip(request),
+            subject=str(identity or "")[:160] or None,
+            reason="limit_exceeded",
         )
-
-    hits.append(now)
-    _beta_rate_limit_state[key] = hits
+        raise exc
 
 
 def _normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
@@ -3022,7 +3233,16 @@ def _require_admin(x_telegram_init_data: str, request: Request | None = None) ->
     account_id = int(user_data.get("id", 0))
     actor_id = _auth_actor_tg_id(user_data)
     if not _is_admin_tg(actor_id):
+        _record_security_event(
+            "admin_access_denied",
+            scope="admin",
+            client_ip=_request_client_ip(request),
+            subject=f"tg:{actor_id or account_id}",
+            reason="not_admin",
+        )
         raise HTTPException(status_code=403, detail="Admin access required")
+    if request is not None and str(getattr(request, "method", "GET") or "GET").upper() not in {"GET", "HEAD", "OPTIONS"}:
+        _enforce_beta_rate_limit("admin_destructive", request, identity=f"admin:{actor_id}")
     out = dict(user_data)
     out["account_id"] = account_id
     out["actor_tg_id"] = actor_id
@@ -3406,7 +3626,7 @@ def _verify_observer_push(*, s, node_code: str, timestamp: int, signature: str, 
 
 
 async def _read_callback_payload(request: Request) -> tuple[dict[str, Any], bytes]:
-    raw = await request.body()
+    raw = await _read_limited_request_body(request, max_bytes=PAYMENT_CALLBACK_MAX_BYTES, scope="Payment callback")
     payload: dict[str, Any] = {}
     content_type = (request.headers.get("content-type") or "").lower()
     if "application/json" in content_type:
@@ -3440,6 +3660,29 @@ async def _read_callback_payload(request: Request) -> tuple[dict[str, Any], byte
     for k, v in request.query_params.items():
         payload.setdefault(str(k), str(v))
     return payload, raw
+
+
+_PAYMENT_REDACT_KEY_RE = re.compile(
+    r"(token|secret|password|passwd|signature|sign|hash|api[_-]?key|authorization|auth|card|pan|cvv|cvc|email)",
+    re.IGNORECASE,
+)
+
+
+def _redact_payment_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for key, item in value.items():
+            key_text = str(key)
+            if _PAYMENT_REDACT_KEY_RE.search(key_text):
+                out[key_text] = "[redacted]"
+            else:
+                out[key_text] = _redact_payment_payload(item)
+        return out
+    if isinstance(value, list):
+        return [_redact_payment_payload(item) for item in value[:50]]
+    if isinstance(value, str):
+        return value[:512]
+    return value
 
 
 def _verify_lavatop_callback_auth(request: Request) -> tuple[bool, str]:
@@ -3700,7 +3943,7 @@ def _upsert_external_order(
     )
     row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
     meta = _external_order_meta(row)
-    meta["callback"] = payload
+    meta["callback"] = _redact_payment_payload(payload)
     _set_external_order_meta(row, meta)
     callback_amount = _payload_amount(payload)
     if callback_amount > 0 and float(row.amount or 0) <= 0:
@@ -3722,6 +3965,7 @@ def _record_external_payment_event(
     processed_ok: bool,
     status: str | None = None,
 ) -> tuple[bool, bool]:
+    persist_payload = _redact_payment_payload(payload)
     s = SessionLocal()
     try:
         exists = (
@@ -3739,7 +3983,7 @@ def _record_external_payment_event(
             if not signature_ok:
                 return True, True
             exists.order_id = order_id or None
-            exists.payload_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:16000]
+            exists.payload_json = json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000]
             exists.signature_ok = True
             exists.processed_ok = bool(processed_ok)
             event_status = status or _status_from_event(event_type, payload, signature_ok=True, provider=provider)
@@ -3759,7 +4003,7 @@ def _record_external_payment_event(
             event_type=event_type,
             external_id=external_id,
             order_id=order_id or None,
-            payload_json=json.dumps(payload, ensure_ascii=False, separators=(",", ":"))[:16000],
+            payload_json=json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000],
             signature_ok=bool(signature_ok),
             processed_ok=bool(processed_ok),
             created_at=_utcnow(),
@@ -3857,6 +4101,7 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             ext_order = (
                 s.query(ExternalOrder)
                 .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+                .with_for_update()
                 .first()
             )
         tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
@@ -3971,6 +4216,7 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
         row = (
             s.query(ExternalOrder)
             .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .with_for_update()
             .first()
         )
         if not row:
@@ -4068,6 +4314,65 @@ def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery
         s.close()
 
 
+def _record_payment_reversal_operator_action(
+    *,
+    provider: str,
+    order_id: str,
+    event_type: str,
+    payload: dict[str, Any],
+    reason: str = "provider_reversal",
+) -> None:
+    normalized_provider = _normalize_provider(provider)
+    normalized_event = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal"
+    tg_id: int | None = None
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == normalized_provider, ExternalOrder.order_id == str(order_id))
+            .with_for_update()
+            .first()
+        )
+        if row:
+            tg_id = int(row.tg_id) if row.tg_id is not None else None
+            meta = _external_order_meta(row)
+            fulfillment = dict(meta.get("fulfillment") or {})
+            fulfillment["status"] = "reversal_pending_operator_action"
+            meta["fulfillment"] = fulfillment
+            meta["reversal"] = {
+                "event_type": normalized_event,
+                "provider": normalized_provider,
+                "order_id": str(order_id or ""),
+                "reason": str(reason or "provider_reversal")[:120],
+                "operator_action_required": True,
+                "recorded_at": _safe_iso(_utcnow()),
+                "external_id": str(_callback_ids(normalized_provider, payload, b"")[1] or "")[:160],
+            }
+            _set_external_order_meta(row, meta)
+            s.commit()
+        else:
+            s.rollback()
+    except Exception:
+        s.rollback()
+        logger.exception("failed to mark payment reversal operator action provider=%s order_id=%s", provider, order_id)
+    finally:
+        s.close()
+    _record_security_event(
+        "payment_reversal_pending",
+        scope="payments",
+        subject=f"{normalized_provider}:{str(order_id or '')[:96]}",
+        reason=normalized_event,
+        meta={"operator_action_required": True},
+    )
+    if tg_id:
+        track_event(
+            tg_id=int(tg_id),
+            event_name="payment_reversal_pending",
+            source="payment_callback",
+            meta={"provider": normalized_provider, "order_id": str(order_id or "")[:96], "event_type": normalized_event},
+        )
+
+
 def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
     s = SessionLocal()
     try:
@@ -4095,6 +4400,7 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         raise HTTPException(status_code=404, detail="Unsupported provider")
     if et not in {"result", "refund", "chargeback"}:
         raise HTTPException(status_code=400, detail="Unsupported event type")
+    _enforce_beta_rate_limit("payment_callback", request, identity=f"{p}:{et}")
 
     payload, raw = await _read_callback_payload(request)
     if p == "freekassa":
@@ -4137,6 +4443,15 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
     )
 
     if not signature_ok:
+        _record_security_event(
+            "payment_callback_invalid_signature",
+            scope="payment_callback",
+            client_ip=_request_client_ip(request),
+            subject=f"{p}:{et}",
+            reason=signature_reason,
+            meta={"order_id": order_id, "external_id": external_id},
+        )
+        _enforce_beta_rate_limit("payment_callback_invalid", request, identity=f"{p}:{signature_reason}")
         logger.warning(
             "payment callback signature invalid: provider=%s event=%s reason=%s order_id=%s external_id=%s",
             p,
@@ -4147,6 +4462,15 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         )
         if not PAYMENT_CALLBACK_TOLERANT_MODE:
             raise HTTPException(status_code=400, detail=f"Invalid signature: {signature_reason}")
+
+    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
+        _record_payment_reversal_operator_action(
+            provider=p,
+            order_id=order_id,
+            event_type=et,
+            payload=payload,
+            reason=callback_status,
+        )
 
     activated = False
     activation_reason = ""
@@ -4597,32 +4921,58 @@ def _sanitize_ticket_upload_name(filename: str | None) -> str:
     return cleaned[:120] or "attachment"
 
 
-def _ticket_upload_kind(content_type: str) -> str:
-    normalized = str(content_type or "").split(";", 1)[0].strip().lower()
-    if normalized.startswith("image/"):
-        return "image"
-    if normalized.startswith("video/"):
-        return "video"
-    if normalized in {"application/pdf", "text/plain", "application/octet-stream"}:
-        return "file"
+async def _read_limited_request_body(request: Request, *, max_bytes: int, scope: str) -> bytes:
+    content_length_raw = str(request.headers.get("content-length") or "").strip()
+    if content_length_raw:
+        try:
+            if int(content_length_raw) > int(max_bytes):
+                raise HTTPException(status_code=413, detail=f"{scope} body is too large")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        if not chunk:
+            continue
+        total += len(chunk)
+        if total > int(max_bytes):
+            raise HTTPException(status_code=413, detail=f"{scope} body is too large")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: bytes) -> tuple[str, str, str]:
+    declared = str(content_type or "").split(";", 1)[0].strip().lower()
+    suffix = Path(filename).suffix.lower().strip()
+    data = raw_bytes or b""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png", "image", ".png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg", "image", ".jpg"
+    if len(data) >= 12 and data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+        return "image/webp", "image", ".webp"
+    if data.startswith(b"%PDF-"):
+        return "application/pdf", "file", ".pdf"
+    if declared == "text/plain" or suffix == ".txt":
+        if b"\x00" in data:
+            raise HTTPException(status_code=400, detail="Unsupported attachment type")
+        try:
+            data.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="Unsupported attachment type")
+        return "text/plain", "file", ".txt"
     raise HTTPException(status_code=400, detail="Unsupported attachment type")
 
 
-def _ticket_upload_suffix(filename: str, content_type: str) -> str:
-    suffix = Path(filename).suffix.lower().strip()
-    if suffix and re.fullmatch(r"\.[a-z0-9]{1,10}", suffix):
-        return suffix
-    guessed = mimetypes.guess_extension(content_type or "") or ""
-    if guessed and re.fullmatch(r"\.[a-z0-9]{1,10}", guessed.lower()):
-        return guessed.lower()
-    return ".bin"
-
-
-def _store_support_upload(*, filename: str | None, content_type: str | None, raw_bytes: bytes) -> dict[str, Any]:
+def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_type: str | None, raw_bytes: bytes) -> dict[str, Any]:
     original_name = _sanitize_ticket_upload_name(filename)
-    content_type = str(content_type or "application/octet-stream").split(";", 1)[0].strip().lower()
-    media_type = _ticket_upload_kind(content_type)
-    suffix = _ticket_upload_suffix(original_name, content_type)
+    content_type, media_type, suffix = _detect_support_upload_type(
+        filename=original_name,
+        content_type=str(content_type or ""),
+        raw_bytes=raw_bytes,
+    )
     stored_name = f"{_utcnow().strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
     stored_path = SUPPORT_UPLOAD_DIR / stored_name
 
@@ -4634,16 +4984,44 @@ def _store_support_upload(*, filename: str | None, content_type: str | None, raw
 
     try:
         stored_path.write_bytes(raw_bytes)
+        s = SessionLocal()
+        try:
+            s.add(
+                SupportAttachment(
+                    stored_name=stored_name,
+                    owner_tg_id=int(owner_tg_id),
+                    original_name=original_name,
+                    content_type=content_type,
+                    size_bytes=int(total_size),
+                    media_type=media_type,
+                    created_at=_utcnow(),
+                )
+            )
+            s.commit()
+        except Exception:
+            s.rollback()
+            stored_path.unlink(missing_ok=True)
+            raise
+        finally:
+            s.close()
     except Exception:
         stored_path.unlink(missing_ok=True)
+        _record_security_event(
+            "support_upload_reject",
+            scope="ticket_upload",
+            client_ip=_request_client_ip(None),
+            subject=f"tg:{int(owner_tg_id)}",
+            reason="store_failed",
+        )
         raise
 
-    file_url = f"{SUPPORT_UPLOAD_URL_PREFIX.rstrip('/')}/{stored_name}"
+    file_url = f"{SUPPORT_ATTACHMENT_URL_PREFIX.rstrip('/')}/{stored_name}"
     payload = {
         "url": file_url,
         "name": original_name,
         "content_type": content_type,
         "size": int(total_size),
+        "private": True,
     }
     attachment = {
         "media_type": media_type,
@@ -5450,8 +5828,25 @@ async def public_live_updates(response: Response, limit: int = Query(default=3, 
         s.close()
 
 
+def _set_web_session_cookie(response: Response, token: str) -> None:
+    value = str(token or "").strip()
+    if not value:
+        return
+    response.set_cookie(
+        key=WEB_SESSION_COOKIE_NAME,
+        value=value,
+        max_age=int(SESSION_TTL_SECONDS),
+        expires=int(SESSION_TTL_SECONDS),
+        path="/",
+        domain=WEB_SESSION_COOKIE_DOMAIN or None,
+        secure=True,
+        httponly=True,
+        samesite=WEB_SESSION_COOKIE_SAMESITE if WEB_SESSION_COOKIE_SAMESITE in {"lax", "strict", "none"} else "lax",
+    )
+
+
 @app.post("/api/auth/telegram/web-login")
-async def auth_telegram_web_login(payload: TelegramWebLoginIn, request: Request) -> dict:
+async def auth_telegram_web_login(payload: TelegramWebLoginIn, request: Request, response: Response) -> dict:
     _enforce_beta_rate_limit("telegram_auth", request)
     verified = verify_telegram_login_payload(
         payload=payload.model_dump(),
@@ -5489,9 +5884,11 @@ async def auth_telegram_web_login(payload: TelegramWebLoginIn, request: Request)
     )
     if not token:
         raise HTTPException(status_code=500, detail="Web session is not configured")
+    _set_web_session_cookie(response, token)
     return {
         "ok": True,
         "token": token,
+        "token_transport": "cookie_and_legacy_bearer",
         "user": {"id": tg_id, "username": username},
         "expires_in": int(SESSION_TTL_SECONDS),
     }
@@ -5512,7 +5909,7 @@ async def auth_telegram_oidc_start() -> dict:
 
 
 @app.post("/api/auth/telegram/oidc/finish")
-async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn) -> dict:
+async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn, response: Response) -> dict:
     if not verify_telegram_oidc_state_token(payload.state):
         raise HTTPException(status_code=401, detail="Invalid Telegram OAuth state")
     try:
@@ -5538,9 +5935,11 @@ async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn) -> dict:
     )
     if not token:
         raise HTTPException(status_code=500, detail="Web session is not configured")
+    _set_web_session_cookie(response, token)
     return {
         "ok": True,
         "token": token,
+        "token_transport": "cookie_and_legacy_bearer",
         "user": {"id": tg_id, "username": username},
         "expires_in": int(SESSION_TTL_SECONDS),
     }
@@ -5602,7 +6001,7 @@ async def auth_email_register(
 
 
 @app.post("/api/auth/email/verify")
-async def auth_email_verify(payload: EmailVerifyIn, request: Request) -> dict:
+async def auth_email_verify(payload: EmailVerifyIn, request: Request, response: Response) -> dict:
     _enforce_beta_rate_limit("email_auth", request)
     s = SessionLocal()
     try:
@@ -5623,9 +6022,11 @@ async def auth_email_verify(payload: EmailVerifyIn, request: Request) -> dict:
         if not token:
             raise HTTPException(status_code=500, detail="Web session is not configured")
         s.commit()
+        _set_web_session_cookie(response, token)
         return {
             "ok": True,
             "token": token,
+            "token_transport": "cookie_and_legacy_bearer",
             "expires_in": int(SESSION_TTL_SECONDS),
             "user": {
                 "id": int(user.tg_id),
@@ -5644,7 +6045,7 @@ async def auth_email_verify(payload: EmailVerifyIn, request: Request) -> dict:
 
 
 @app.post("/api/auth/email/login")
-async def auth_email_login(payload: EmailLoginIn, request: Request) -> dict:
+async def auth_email_login(payload: EmailLoginIn, request: Request, response: Response) -> dict:
     _enforce_beta_rate_limit("email_auth", request, identity=str(payload.email or "").strip().lower())
     s = SessionLocal()
     try:
@@ -5669,9 +6070,11 @@ async def auth_email_login(payload: EmailLoginIn, request: Request) -> dict:
         if not token:
             raise HTTPException(status_code=500, detail="Web session is not configured")
         s.commit()
+        _set_web_session_cookie(response, token)
         return {
             "ok": True,
             "token": token,
+            "token_transport": "cookie_and_legacy_bearer",
             "expires_in": int(SESSION_TTL_SECONDS),
             "user": {
                 "id": int(user.tg_id),
@@ -5726,7 +6129,7 @@ async def auth_email_recovery_start(payload: EmailRecoveryStartIn, request: Requ
 
 
 @app.post("/api/auth/email/recovery/finish")
-async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn, request: Request) -> dict:
+async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn, request: Request, response: Response) -> dict:
     _enforce_beta_rate_limit("email_auth", request)
     s = SessionLocal()
     try:
@@ -5753,9 +6156,11 @@ async def auth_email_recovery_finish(payload: EmailRecoveryFinishIn, request: Re
         if not token:
             raise HTTPException(status_code=500, detail="Web session is not configured")
         s.commit()
+        _set_web_session_cookie(response, token)
         return {
             "ok": True,
             "token": token,
+            "token_transport": "cookie_and_legacy_bearer",
             "expires_in": int(SESSION_TTL_SECONDS),
             "user": {
                 "id": int(user.tg_id),
@@ -6126,8 +6531,6 @@ def _smart_connect_rejection_reason(
         return "stale"
     if node_cpu_penalty(node) is None:
         return "cpu_hot"
-    if node_backend_penalty(node) is None:
-        return "health_score_low"
     if not _node_supports_transport_profile(node, transport_profile):
         return "transport_mismatch"
     filtered = _filter_nodes_for_transport_profile(
@@ -6245,7 +6648,7 @@ def _smart_connect_shortlist(
                 {"range": ">=90", "penalty": 0},
                 {"range": "75-89", "penalty": 30},
                 {"range": "60-74", "penalty": 80},
-                {"range": "<60", "penalty": "reject"},
+                {"range": "<60", "penalty": 160},
             ],
             "stickiness_threshold_percent": int(SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT),
         },
@@ -8322,6 +8725,9 @@ async def rub_order_create_public(
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
     ticket_raw = str(payload.checkout_ticket or "").strip()
+    public_subject = ticket_raw or str(payload.buyer_email or payload.source or "").strip()[:96]
+    public_identity = hashlib.sha256(public_subject.encode("utf-8")).hexdigest()[:32] if public_subject else ""
+    _enforce_beta_rate_limit("public_order_create", request, identity=public_identity)
     ticket_payload = _parse_checkout_ticket(ticket_raw) if ticket_raw else None
     request_plan_code = (payload.plan_code or "").strip().lower()
     if ticket_raw and not ticket_payload:
@@ -8728,6 +9134,14 @@ def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_second
         "high_error_rate_nodes": sum(1 for row in rows if "high_error_rate" in row["alerts"]),
         "high_client_density_nodes": sum(1 for row in rows if "high_client_density" in row["alerts"]),
     }
+    since_24h = now - timedelta(hours=24)
+    security_rows = (
+        s.query(SecurityEvent.event_type, func.count(SecurityEvent.id))
+        .filter(SecurityEvent.created_at >= since_24h)
+        .group_by(SecurityEvent.event_type)
+        .all()
+    )
+    security_counts = {str(event_type): int(count or 0) for event_type, count in security_rows}
     return {
         "status": overall_status,
         "last_sample_at": _safe_iso(overall_last_sample),
@@ -8737,6 +9151,16 @@ def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_second
         "active_alerts": active_alerts,
         "node_statuses": rows,
         "alerts": legacy_alert_counts,
+        "security": {
+            "window": "24h",
+            "rate_limit_hits": int(security_counts.get("rate_limit_hit", 0)),
+            "payment_callback_invalid_signatures": int(security_counts.get("payment_callback_invalid_signature", 0)),
+            "support_upload_rejects": int(security_counts.get("support_upload_reject", 0)),
+            "support_attachment_denies": int(security_counts.get("support_attachment_denied", 0)),
+            "admin_access_denies": int(security_counts.get("admin_access_denied", 0)),
+            "subscription_lookup_failures": int(security_counts.get("subscription_lookup_failed", 0)),
+            "events": security_counts,
+        },
     }
 
 
@@ -9108,7 +9532,7 @@ async def admin_metrics_timeseries(
             s.query(func.date(ExternalOrder.paid_at).label("day"), func.sum(ExternalOrder.amount).label("value"))
             .filter(ExternalOrder.paid_at.isnot(None), ExternalOrder.paid_at >= from_dt, ExternalOrder.paid_at <= to_dt)
             .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
-            .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "freekassa")
+            .filter(func.upper(func.coalesce(ExternalOrder.currency, "RUB")) == "RUB")
             .group_by(func.date(ExternalOrder.paid_at))
             .all()
         )
@@ -9219,6 +9643,7 @@ async def public_social_proof(response: Response) -> dict:
 async def api_track_event(payload: EventIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    _enforce_beta_rate_limit("events", request, identity=f"tg:{tg_id}")
     event_name = (payload.event_name or "").strip()
     if event_name not in EVENT_WHITELIST:
         raise HTTPException(status_code=400, detail="Unsupported event name")
@@ -9233,7 +9658,8 @@ async def api_track_event(payload: EventIn, request: Request, x_telegram_init_da
 
 
 @app.post("/api/funnel/events")
-async def api_track_funnel_event(payload: FunnelEventIn) -> dict:
+async def api_track_funnel_event(payload: FunnelEventIn, request: Request) -> dict:
+    _enforce_beta_rate_limit("events", request, identity=str(payload.session_id or "").strip()[:96])
     event_name = _clean_funnel_slug(payload.event_name, default="")
     if event_name not in FUNNEL_EVENT_WHITELIST:
         raise HTTPException(status_code=400, detail="Unsupported funnel event")
@@ -11059,7 +11485,7 @@ async def client_cabinet_token(
 
 
 @app.post("/api/auth/cabinet-handoff/exchange")
-async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, request: Request) -> dict[str, Any]:
+async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, request: Request, response: Response) -> dict[str, Any]:
     handoff_token = str(payload.handoff_token or payload.token or "").strip()
     _enforce_beta_rate_limit("cabinet_handoff_exchange", request)
     if not handoff_token:
@@ -11142,9 +11568,12 @@ async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, reque
             raise HTTPException(status_code=500, detail="Cabinet session is not configured")
         row.used_at = now
         s.commit()
+        _set_web_session_cookie(response, session_token)
         return {
             "ok": True,
             "token": session_token,
+            "token_transport": "cookie_and_legacy_bearer",
+            "cookie_bound": True,
             "expires_in": int(SESSION_TTL_SECONDS),
             "target_path": _normalize_cabinet_target_path(str(row.target_path or "/")),
             "auth_origin": "app_cabinet_handoff",
@@ -11243,12 +11672,24 @@ async def upload_ticket_attachment(
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_upload", request, identity=f"tg:{tg_id}")
-    raw_bytes = await request.body()
-    uploaded = _store_support_upload(
-        filename=x_upload_filename,
-        content_type=request.headers.get("content-type"),
-        raw_bytes=raw_bytes,
-    )
+    raw_bytes = await _read_limited_request_body(request, max_bytes=SUPPORT_UPLOAD_MAX_BYTES, scope="Attachment")
+    try:
+        uploaded = _store_support_upload(
+            owner_tg_id=tg_id,
+            filename=x_upload_filename,
+            content_type=request.headers.get("content-type"),
+            raw_bytes=raw_bytes,
+        )
+    except HTTPException as exc:
+        _record_security_event(
+            "support_upload_reject",
+            scope="ticket_upload",
+            client_ip=_request_client_ip(request),
+            subject=f"tg:{tg_id}",
+            reason=str(exc.detail or "unsupported_attachment")[:160],
+            meta={"content_type": request.headers.get("content-type"), "filename": x_upload_filename},
+        )
+        raise
     logger.info(
         "ticket_attachment_uploaded",
         extra={
@@ -11259,6 +11700,56 @@ async def upload_ticket_attachment(
         },
     )
     return {"ok": True, **uploaded}
+
+
+@app.get("/api/tickets/attachments/{stored_name}")
+async def download_ticket_attachment(
+    stored_name: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> FileResponse:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    actor = int(auth_user.get("id", 0))
+    clean_name = Path(str(stored_name or "")).name
+    if clean_name != stored_name or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", clean_name):
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    _enforce_beta_rate_limit("ticket_attachment_download", request, identity=f"tg:{actor}")
+    s = SessionLocal()
+    try:
+        row = s.query(SupportAttachment).filter(SupportAttachment.stored_name == clean_name).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        if not (_is_admin_tg(actor) or int(row.owner_tg_id) == actor):
+            _record_security_event(
+                "support_attachment_denied",
+                scope="ticket_attachment_download",
+                client_ip=_request_client_ip(request),
+                subject=f"tg:{actor}",
+                reason="owner_mismatch",
+                meta={"stored_name": clean_name},
+            )
+            raise HTTPException(status_code=403, detail="Access denied")
+        upload_root = SUPPORT_UPLOAD_DIR.resolve()
+        file_path = (upload_root / clean_name).resolve()
+        try:
+            file_path.relative_to(upload_root)
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        if not file_path.exists() or not file_path.is_file():
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        headers = {
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": f'attachment; filename="{_sanitize_ticket_upload_name(row.original_name)}"',
+        }
+        return FileResponse(
+            path=str(file_path),
+            media_type=str(row.content_type or "application/octet-stream"),
+            headers=headers,
+            filename=_sanitize_ticket_upload_name(row.original_name),
+        )
+    finally:
+        s.close()
 
 
 @app.post("/api/tickets")
@@ -15063,7 +15554,7 @@ def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
     return order
 
 
-def _ru_bridge_outbound(*, user_uuid: str, rollout_config: dict[str, Any], tag: str = "POKROV мост") -> dict[str, Any]:
+def _ru_bridge_outbound(*, user_uuid: str, rollout_config: dict[str, Any], tag: str = RU_BRIDGE_OUTBOUND_TAG) -> dict[str, Any]:
     bridge = ru_bridge_relay_config(rollout_config)
     tls_server_name = str(bridge.get("tls_server_name") or "www.yandex.ru").strip()
     return {
@@ -15464,7 +15955,7 @@ def _singbox_multi_node_config(
     selector_opts = []
     selector_tag = "🌍 Страны"
     bridge_enabled = bool(rollout_config and ru_bridge_relay_enabled(rollout_config))
-    bridge_tag = "POKROV мост"
+    bridge_tag = RU_BRIDGE_OUTBOUND_TAG
     bridge_excluded_codes = set(transport_node_exclusions(rollout_config or {}, RU_BRIDGE_RELAY)) if bridge_enabled else set()
 
     def bridge_excluded(node: Any) -> bool:
@@ -15474,7 +15965,16 @@ def _singbox_multi_node_config(
 
     for n in nodes:
         tag = _node_label_ru(getattr(n, "code", ""), getattr(n, "name", ""))
-        selector_opts.append(tag)
+        code = str(getattr(n, "code", "") or "").strip().lower()
+        base = _node_code_base(code)
+        has_bridge_choice = bridge_enabled and not bridge_excluded(n)
+        keep_direct_visible = (
+            not has_bridge_choice
+            or code in RU_BRIDGE_SELECTOR_DIRECT_CODES
+            or base in RU_BRIDGE_SELECTOR_DIRECT_CODES
+        )
+        if keep_direct_visible:
+            selector_opts.append(tag)
         direct_outbound = _node_outbound_from_transport_profile(
             user_uuid=user_uuid,
             node=n,
@@ -15483,7 +15983,7 @@ def _singbox_multi_node_config(
         )
         outbounds.append(direct_outbound)
 
-        if bridge_enabled and not bridge_excluded(n):
+        if has_bridge_choice:
             bridge_node_tag = f"{tag} · Белые списки"
             bridged_outbound = dict(direct_outbound)
             bridged_outbound["tag"] = bridge_node_tag
@@ -15544,7 +16044,7 @@ def _singbox_ru_bridge_config(
 ) -> dict:
     bridge = ru_bridge_relay_config(rollout_config)
     selector_tag = "🌍 Страны"
-    bridge_tag = "POKROV мост"
+    bridge_tag = RU_BRIDGE_OUTBOUND_TAG
     excluded = set(transport_node_exclusions(rollout_config, RU_BRIDGE_RELAY))
 
     outbounds = []
@@ -16321,6 +16821,8 @@ async def subscription(token: str, request: Request, format: str = Query(default
     """
     token_text = str(token or "").strip()
     token_fp = _token_fingerprint(token_text)
+    _enforce_beta_rate_limit("subscription_fetch_ip", request)
+    _enforce_beta_rate_limit("subscription_fetch", request, identity=f"token:{token_fp}")
     nodes_for_user: list[Any] = []
     rollout_config = normalized_network_rollout_config({})
     carrier = _request_carrier_header(request.headers.get("X-Portal-Carrier"))
@@ -16342,6 +16844,14 @@ async def subscription(token: str, request: Request, format: str = Query(default
                 )
         if not user:
             logger.warning("subscription lookup failed token_fp=%s token_len=%s", token_fp, len(token_text))
+            _record_security_event(
+                "subscription_lookup_failed",
+                scope="subscription_fetch",
+                fingerprint=token_fp,
+                client_ip=_request_client_ip(request),
+                reason="unknown_token",
+                meta={"token_len": len(token_text)},
+            )
             raise HTTPException(status_code=404, detail="User not found")
 
         _maybe_downgrade_expired_to_free(s, user)

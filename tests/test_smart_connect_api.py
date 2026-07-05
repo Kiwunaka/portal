@@ -508,9 +508,11 @@ def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_on
 
     config = body["config_payload"]
     outbounds = {item["tag"]: item for item in config["outbounds"]}
-    assert "POKROV мост" in outbounds
+    hidden_bridge_tag = f"POKROV мост{api.HIDDIFY_HIDDEN_TAG_SUFFIX}"
+    assert hidden_bridge_tag in outbounds
+    assert "POKROV мост" not in outbounds
     assert not any("via RU" in tag or "RU bridge" in tag for tag in outbounds)
-    bridge = outbounds["POKROV мост"]
+    bridge = outbounds[hidden_bridge_tag]
     assert bridge["server"] == "176.123.166.119"
     assert bridge["server_port"] == 443
     assert bridge["tls"]["server_name"] == "www.yandex.ru"
@@ -535,7 +537,7 @@ def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_on
         assert outbounds[normal_tag]["type"] == "vless"
         assert "detour" not in outbounds[normal_tag]
         assert outbounds[bridge_tag]["type"] == "vless"
-        assert outbounds[bridge_tag]["detour"] == "POKROV мост"
+        assert outbounds[bridge_tag]["detour"] == hidden_bridge_tag
 
     assert outbounds["🇺🇸 США"]["outbounds"] == ["🇺🇸 США · Обычный"]
     assert outbounds["🇺🇸 США · Обычный"]["type"] == "vless"

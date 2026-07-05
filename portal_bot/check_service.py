@@ -1,6 +1,7 @@
 
 import os
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 hostname = os.getenv("SSH_HOST", "")
 port = int(os.getenv("SSH_PORT", "22"))
@@ -11,7 +12,7 @@ if not hostname or not password:
 
 def check_service():
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(client)
     try:
         print(f"Connecting to {hostname}...")
         client.connect(hostname, port=port, username=username, password=password, timeout=10)

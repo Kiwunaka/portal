@@ -7,6 +7,7 @@ import struct
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from puttykeys import ppkraw_to_openssh
@@ -251,7 +252,7 @@ def connect_node(
         for target_port in ports:
             for method, auth in attempts:
                 cli = paramiko.SSHClient()
-                cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                configure_ssh_host_key_policy(cli)
                 try:
                     cli.connect(
                         host,

@@ -12,10 +12,13 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 
 
 def _load_script(script_name: str) -> ModuleType:
-    path = REPO_ROOT / "scripts" / script_name
+    path = SCRIPTS_DIR / script_name
     spec = importlib.util.spec_from_file_location(script_name.replace(".py", ""), path)
     assert spec is not None
     assert spec.loader is not None

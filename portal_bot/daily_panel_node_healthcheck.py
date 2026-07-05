@@ -53,7 +53,15 @@ def _panel_tg_id(row: dict) -> int | None:
     return int(match.group(1)) if match else None
 
 
-async def _panel_rows(expected_by_node: dict[str, set[int]]) -> list[dict]:
+def _panel_managed_identity(row: dict, expected_uuid_to_tg: dict[str, int]) -> int | None:
+    tg_id = _panel_tg_id(row)
+    if tg_id is not None:
+        return tg_id
+    client_uuid = str((row or {}).get("id") or "").strip()
+    return expected_uuid_to_tg.get(client_uuid) if client_uuid else None
+
+
+async def _panel_rows(expected_by_node: dict[str, set[int]], expected_uuid_by_node: dict[str, dict[str, int]]) -> list[dict]:
     panel = ControlPanel()
     rows: list[dict] = []
     try:
@@ -68,7 +76,12 @@ async def _panel_rows(expected_by_node: dict[str, set[int]]) -> list[dict]:
                 for inbound in client._selected_inbounds(await client._get_inbounds(), include_disabled=True):
                     settings = client._decode_settings(inbound.get("settings", "{}"))
                     panel_clients.extend(settings.get("clients", []) or [])
-                actual = {tg for tg in (_panel_tg_id(row) for row in panel_clients) if tg is not None}
+                expected_uuid_to_tg = dict(expected_uuid_by_node.get(code, {}))
+                actual = {
+                    tg
+                    for tg in (_panel_managed_identity(row, expected_uuid_to_tg) for row in panel_clients)
+                    if tg is not None
+                }
                 expected = set(expected_by_node.get(code, set()))
                 rows.append(
                     {
@@ -78,7 +91,9 @@ async def _panel_rows(expected_by_node: dict[str, set[int]]) -> list[dict]:
                         "expected": len(expected),
                         "missing": len(expected - actual),
                         "managed_unexpected": len(actual - expected),
-                        "unknown_rows": len([row for row in panel_clients if _panel_tg_id(row) is None]),
+                        "unknown_rows": len(
+                            [row for row in panel_clients if _panel_managed_identity(row, expected_uuid_to_tg) is None]
+                        ),
                     }
                 )
             except Exception as exc:
@@ -88,7 +103,7 @@ async def _panel_rows(expected_by_node: dict[str, set[int]]) -> list[dict]:
     return rows
 
 
-def _expected_node_sets(now: datetime) -> tuple[dict[str, set[int]], list[dict]]:
+def _expected_node_sets(now: datetime) -> tuple[dict[str, set[int]], dict[str, dict[str, int]], list[dict]]:
     session = SessionLocal()
     try:
         nodes = enabled_nodes(session)
@@ -100,10 +115,14 @@ def _expected_node_sets(now: datetime) -> tuple[dict[str, set[int]], list[dict]]
         free_codes = set(free_pool_node_codes(nodes))
         paid_codes = set(paid_pool_node_codes(nodes))
         expected_by_node = {code: set() for code in sorted(free_codes | paid_codes)}
+        expected_uuid_by_node = {code: {} for code in sorted(free_codes | paid_codes)}
         for user in active_users:
             target_codes = free_codes if user_uses_free_pool(user) else paid_codes
             for code in target_codes:
                 expected_by_node.setdefault(code, set()).add(int(user.tg_id))
+                client_uuid = str(getattr(user, "uuid", "") or "").strip()
+                if client_uuid:
+                    expected_uuid_by_node.setdefault(code, {})[client_uuid] = int(user.tg_id)
 
         mapped_counts = {
             str(code): int(count or 0)
@@ -138,7 +157,7 @@ def _expected_node_sets(now: datetime) -> tuple[dict[str, set[int]], list[dict]]
                     "expected_users": expected_users,
                 }
             )
-        return expected_by_node, node_rows
+        return expected_by_node, expected_uuid_by_node, node_rows
     finally:
         session.close()
 
@@ -169,7 +188,7 @@ async def run() -> int:
     report["checks"]["timers"] = timers
     issues.extend(f"timer_{unit}_{state}" for unit, state in timers.items() if state != "active")
 
-    expected_by_node, node_rows = _expected_node_sets(now)
+    expected_by_node, expected_uuid_by_node, node_rows = _expected_node_sets(now)
     report["checks"]["nodes"] = node_rows
     for row in node_rows:
         if row["stale"]:
@@ -179,7 +198,7 @@ async def run() -> int:
         if row["mapped_users"] != row["expected_users"]:
             issues.append(f"node_{row['code']}_mapping_{row['mapped_users']}_expected_{row['expected_users']}")
 
-    panel_rows = await _panel_rows(expected_by_node)
+    panel_rows = await _panel_rows(expected_by_node, expected_uuid_by_node)
     report["checks"]["panels"] = panel_rows
     for row in panel_rows:
         if row.get("error"):

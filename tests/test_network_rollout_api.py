@@ -7,6 +7,7 @@ import importlib
 import json
 import os
 import sys
+import time
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlencode
@@ -92,7 +93,7 @@ def _admin_headers() -> dict[str, str]:
     init_data = _sign_telegram_init_data(
         bot_token=os.environ["BOT_TOKEN"],
         params={
-            "auth_date": "1700000000",
+            "auth_date": str(int(time.time())),
             "query_id": "AAEAAAE",
             "user": '{"id":9999,"first_name":"Admin","username":"admin"}',
         },

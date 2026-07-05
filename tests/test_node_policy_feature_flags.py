@@ -81,9 +81,25 @@ def test_subscription_default_keeps_low_health_nodes_as_fallback_choices(monkeyp
     low_health = _node("low-health", health_score=45.0, weight=100)
 
     ranked = node_policy.rank_nodes_for_subscription([low_health, healthy])
+    capacity = node_policy.node_capacity_status(low_health)
 
     assert [node.code for node in ranked] == ["healthy", "low-health"]
-    assert node_policy.node_hard_reject_reason(low_health) == "health_score_low"
+    assert node_policy.node_hard_reject_reason(low_health) is None
+    assert capacity["state"] == "healthy"
+    assert capacity["reject_reason"] is None
+    assert node_policy.node_backend_penalty(low_health) > node_policy.node_backend_penalty(healthy)
+
+
+def test_manual_country_ranking_keeps_low_health_as_penalized_fallback(monkeypatch):
+    node_policy = _reload_node_policy(monkeypatch)
+
+    healthy = _node("healthy", health_score=82.0, weight=100)
+    low_health = _node("low-health", health_score=45.0, weight=100)
+
+    ranked = node_policy.rank_nodes_for_manual_country([low_health, healthy])
+
+    assert [node.code for node in ranked] == ["healthy", "low-health"]
+    assert node_policy.node_capacity_state(low_health) == "healthy"
 
 
 def test_capacity_state_contract_uses_plan_default_cpu_reject(monkeypatch):

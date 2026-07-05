@@ -1482,6 +1482,8 @@ export type AuthSessionPayload = {
 export type CabinetHandoffExchangeResult = {
   ok: boolean;
   token: string;
+  token_transport?: string;
+  cookie_bound?: boolean;
   expires_in?: number;
   target_path?: string;
   auth_origin?: string;
@@ -1970,6 +1972,7 @@ async function unauthenticatedJsonPost<T>(path: string, payload: unknown, init?:
         headers,
         body: JSON.stringify(payload),
         cache: "no-store",
+        credentials: "include",
         signal: managedSignal.signal,
       });
       if (!response.ok) {
@@ -2009,7 +2012,7 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
     try {
       const headers = new Headers(requestInit.headers || {});
       applyAuthHeaders(headers);
-      const r = await fetch(`${base}${path}`, { ...requestInit, headers, signal: managedSignal.signal });
+      const r = await fetch(`${base}${path}`, { ...requestInit, headers, credentials: "include", signal: managedSignal.signal });
       if (!r.ok) {
         const info = await readApiErrorInfo(r);
         if (r.status === 401) {
@@ -2175,6 +2178,7 @@ export async function authByTelegramWebLogin(payload: TelegramWebLoginPayload): 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
       if (!r.ok) {
         const text = await readApiError(r);
@@ -2193,7 +2197,7 @@ export async function startTelegramOidcLogin(): Promise<TelegramOidcStartResult>
   let lastErr: any = null;
   for (const base of bases) {
     try {
-      const r = await fetch(`${base}/api/auth/telegram/oidc/start`, { method: "GET" });
+      const r = await fetch(`${base}/api/auth/telegram/oidc/start`, { method: "GET", credentials: "include" });
       if (!r.ok) {
         const text = await readApiError(r);
         throw new Error(text || `API error: ${r.status}`);
@@ -2215,6 +2219,7 @@ export async function finishTelegramOidcLogin(payload: TelegramOidcFinishPayload
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
       if (!r.ok) {
         const text = await readApiError(r);
@@ -2440,7 +2445,11 @@ export async function runNetworkProbe(size_mb = 2): Promise<{ latencyMs: number;
     try {
       const headers = new Headers();
       applyAuthHeaders(headers);
-      const resp = await fetch(`${base}/api/network/probe?size_mb=${Math.max(1, Math.min(3, size_mb))}`, { headers, cache: "no-store" });
+      const resp = await fetch(`${base}/api/network/probe?size_mb=${Math.max(1, Math.min(3, size_mb))}`, {
+        headers,
+        cache: "no-store",
+        credentials: "include",
+      });
       if (!resp.ok) throw new Error(`probe failed: ${resp.status}`);
       await resp.arrayBuffer();
       ok = true;

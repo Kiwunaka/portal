@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -93,7 +94,7 @@ def main() -> int:
     targets = {k: v for k, v in inv.items() if k != "brain"}
 
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(
         brain_ip,
         port=args.ssh_port,

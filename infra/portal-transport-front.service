@@ -11,6 +11,12 @@ ExecReload=/usr/sbin/haproxy -c -f /etc/portal-transport-front.cfg
 Restart=always
 RestartSec=2
 User=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true
 
 [Install]
 WantedBy=multi-user.target

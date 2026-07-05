@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 
 import paramiko
+from ssh_host_keys import configure_ssh_host_key_policy
 
 
 def _require(name: str) -> str:
@@ -60,7 +61,7 @@ def main() -> int:
     out_path = out_path.resolve()
 
     ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    configure_ssh_host_key_policy(ssh)
     ssh.connect(host, port=port, username=user, password=password, timeout=30, banner_timeout=30, auth_timeout=30)
     try:
         # Consistent snapshot. Does not stop services.

@@ -1,5 +1,6 @@
 ﻿import os
 import sys
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -46,7 +47,7 @@ class PortalApiTests(unittest.TestCase):
         init_data = _sign_telegram_init_data(
             bot_token=os.environ["BOT_TOKEN"],
             params={
-                "auth_date": "1700000000",
+                "auth_date": str(int(time.time())),
                 "query_id": "AAEAAAE",
                 "user": '{"id":12345,"first_name":"Test","username":"t"}',
             },
@@ -72,7 +73,7 @@ class PortalApiTests(unittest.TestCase):
             init_data = _sign_telegram_init_data(
                 bot_token=original_token,
                 params={
-                    "auth_date": "1700000000",
+                    "auth_date": str(int(time.time())),
                     "query_id": "AAEAAAE",
                     "user": '{"id":54321,"first_name":"Test","username":"runtime"}',
                 },
@@ -83,6 +84,22 @@ class PortalApiTests(unittest.TestCase):
         finally:
             os.environ["BOT_TOKEN"] = original_token
             importlib.reload(config)
+
+    def test_verify_telegram_data_rejects_expired_auth_date(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        init_data = _sign_telegram_init_data(
+            bot_token=os.environ["BOT_TOKEN"],
+            params={
+                "auth_date": "1700000000",
+                "query_id": "AAEAAAE",
+                "user": '{"id":12345,"first_name":"Test","username":"expired"}',
+            },
+        )
+        self.assertIsNone(api._verify_telegram_data(init_data))
 
     def test_generate_vless_link_contains_reality_params(self) -> None:
         import importlib
@@ -150,6 +167,49 @@ class PortalApiTests(unittest.TestCase):
             )
         )
         self.assertFalse(any(r.get("domain_suffix") and "youtube.com" in r.get("domain_suffix") and r.get("outbound") == "direct" for r in rules))
+
+    def test_singbox_bridge_outbound_is_hidden_from_hiddify_lists(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        nodes = [
+            SimpleNamespace(code="pl", host="pl.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+            SimpleNamespace(code="us", host="us.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+        ]
+        rollout_config = api.normalized_network_rollout_config(
+            {
+                "ru_bridge_relay": {
+                    "enabled": True,
+                    "reality_public_key": "bridge-pbk",
+                    "reality_short_id": "bridge-sid",
+                    "excluded_node_codes": ["us"],
+                }
+            }
+        )
+
+        cfg = api._singbox_multi_node_config(
+            user_uuid="11111111-1111-1111-1111-111111111111",
+            nodes=nodes,
+            title="Portal",
+            rollout_config=rollout_config,
+        )
+        outbounds = {o.get("tag"): o for o in cfg["outbounds"]}
+        selector = next(o for o in cfg["outbounds"] if o.get("type") == "selector")
+        bridge_tag = api.RU_BRIDGE_OUTBOUND_TAG
+
+        self.assertIn(bridge_tag, outbounds)
+        self.assertNotIn("POKROV мост", outbounds)
+        self.assertIn(api.HIDDIFY_HIDDEN_TAG_SUFFIX, bridge_tag)
+        self.assertNotIn(bridge_tag, selector["outbounds"])
+        self.assertNotIn("🇵🇱 Польша", selector["outbounds"])
+        self.assertIn("🇵🇱 Польша · Белые списки", selector["outbounds"])
+        self.assertIn("🇺🇸 США", selector["outbounds"])
+        self.assertEqual(
+            1,
+            sum(1 for outbound in cfg["outbounds"] if outbound.get("type") == "vless" and outbound.get("detour") == bridge_tag),
+        )
 
     def test_singbox_config_keeps_unique_tags_for_poland_canary_nodes(self) -> None:
         import importlib
