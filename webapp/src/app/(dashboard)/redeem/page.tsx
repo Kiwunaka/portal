@@ -1,9 +1,14 @@
 "use client";
 
-import { icon } from "@/components/cabinet/icon";
-import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
-import { useToast } from "@/components/cabinet/toast";
-import { Button, Input, Note } from "@/components/cabinet/ui";
+import { BadgeCheck, CalendarCheck, CircleCheck, CircleHelp, CreditCard, KeyRound, LifeBuoy, QrCode, Search } from "lucide-react";
+
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { GroupedSection, Row } from "@/components/ui/grouped";
+import { Input } from "@/components/ui/input";
+import { Note } from "@/components/ui/note";
+import { ActionCard, ActionGrid } from "@/components/ui/tiles";
+import { useToast } from "@/components/ui/toast";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
@@ -124,13 +129,13 @@ export default function RedeemPage() {
   }, [searchParams]);
 
   return (
-    <main className="cab-page">
-      <CabinetStatus
+    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+      <StatusHero
         title="Активировать код"
         meta={resolvePlanLabel(dash, user)}
         body="Введите код оплаты, подарка или промокод. Личная ссылка подключения сюда не подходит."
         tone={status?.exists && !status.redeemed ? "success" : status?.redeemed ? "warning" : "neutral"}
-        emblem={icon("key", "h-7 w-7")}
+        icon={KeyRound}
         action={
           <Button variant="secondary" href="/subscription/checkout/" className="w-full sm:w-auto">
             Купить доступ
@@ -138,7 +143,7 @@ export default function RedeemPage() {
         }
       />
 
-      <CabinetGroup title="Код">
+      <GroupedSection title="Код">
         <div className="space-y-3 p-4">
           <Input
             value={keyInput}
@@ -153,34 +158,34 @@ export default function RedeemPage() {
               Активировать
             </Button>
           </div>
-          <p className="text-xs leading-5 text-[color:var(--atlas-text-muted)]">
+          <p className="text-xs leading-5 text-ink-muted">
             Если у вас длинная ссылка `connect.pokrov.space`, откройте ручную настройку в разделе доступа.
           </p>
         </div>
-      </CabinetGroup>
+      </GroupedSection>
 
       {message ? <Note tone="success">{message}</Note> : null}
       {error ? <Note tone="danger">{error}</Note> : null}
 
-      <CabinetGroup title="Статус">
+      <GroupedSection title="Статус">
         {status ? (
           <>
-            <CabinetRow icon={icon(status.exists ? "check_circle" : "help")} label="Проверка" hint={status.exists ? "Код найден" : "Код не найден"} value={status.exists ? "найден" : "не найден"} />
-            <CabinetRow icon={icon("workspace_premium")} label="Что дает" hint={status.plan?.label || status.kind || "Уточним после проверки"} value={`до ${status.device_limit || 1} устройств`} />
-            <CabinetRow icon={icon("event_available")} label="Использован" hint="По данным кабинета" value={formatDate(status.redeemed_at)} />
+            <Row icon={status.exists ? CircleCheck : CircleHelp} label="Проверка" hint={status.exists ? "Код найден" : "Код не найден"} value={status.exists ? "найден" : "не найден"} />
+            <Row icon={BadgeCheck} label="Что дает" hint={status.plan?.label || status.kind || "Уточним после проверки"} value={`до ${status.device_limit || 1} устройств`} />
+            <Row icon={CalendarCheck} label="Использован" hint="По данным кабинета" value={formatDate(status.redeemed_at)} />
           </>
         ) : (
-          <CabinetRow icon={icon("search")} label="Ждет проверки" hint="Введите код и нажмите Проверить" value="не запускалась" />
+          <Row icon={Search} label="Ждет проверки" hint="Введите код и нажмите Проверить" value="не запускалась" />
         )}
-      </CabinetGroup>
+      </GroupedSection>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Что дальше</h2>
-        <CabinetActionGrid>
-          <CabinetActionCard icon={icon("payments")} title="Купить доступ" hint="Если кода еще нет" href="/subscription/checkout/" />
-          <CabinetActionCard icon={icon("support_agent")} title="Поддержка" hint="Если код уже использован или не найден" href="/support/" />
-          <CabinetActionCard icon={icon("qr_code_2")} title="Ссылка для совместимого клиента" hint="Только если приложение не подключилось само" href="/subscription/#manual-setup" />
-        </CabinetActionGrid>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Что дальше</h2>
+        <ActionGrid className="sm:grid-cols-3">
+          <ActionCard icon={CreditCard} title="Купить доступ" hint="Если кода еще нет" href="/subscription/checkout/" />
+          <ActionCard icon={LifeBuoy} title="Поддержка" hint="Если код уже использован или не найден" href="/support/" />
+          <ActionCard icon={QrCode} title="Ссылка для совместимого клиента" hint="Только если приложение не подключилось само" href="/subscription/#manual-setup" />
+        </ActionGrid>
       </section>
     </main>
   );

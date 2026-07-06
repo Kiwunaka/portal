@@ -1,8 +1,13 @@
 "use client";
 
-import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
-import { Button, Chip, Note, Textarea } from "@/components/cabinet/ui";
+import { CalendarClock, Hourglass, LifeBuoy, Lock, MessageCircle, MessagesSquare, Tag, Timer } from "lucide-react";
+
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { GroupedSection, Row } from "@/components/ui/grouped";
+import { Note } from "@/components/ui/note";
+import { Textarea } from "@/components/ui/input";
 import { SupportMessageBody } from "@/components/support-message-body";
 import { addTicketMessage, getTicket, resolveApiUrl, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
 import { useSearchParams } from "next/navigation";
@@ -163,19 +168,19 @@ export default function SupportTicketThreadPage() {
 
   if (loading) {
     return (
-      <main className="cab-page">
-        <CabinetStatus title="Загружаем обращение" meta="Поддержка" body="Подтягиваем историю и вложения." tone="neutral" />
-        <CabinetGroup title="История">
-          <CabinetRow icon={icon("hourglass_empty")} label="Пожалуйста, подождите" hint="Обычно это занимает несколько секунд" />
-        </CabinetGroup>
+      <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+        <StatusHero title="Загружаем обращение" meta="Поддержка" body="Подтягиваем историю и вложения." tone="neutral" />
+        <GroupedSection title="История">
+          <Row icon={Hourglass} label="Пожалуйста, подождите" hint="Обычно это занимает несколько секунд" />
+        </GroupedSection>
       </main>
     );
   }
 
   if (error || !ticket) {
     return (
-      <main className="cab-page">
-        <CabinetStatus
+      <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+        <StatusHero
           title="Не удалось открыть обращение"
           meta="Поддержка"
           body={error || "Обращение не найдено."}
@@ -186,21 +191,21 @@ export default function SupportTicketThreadPage() {
             </Button>
           }
         />
-        <CabinetGroup title="Что дальше">
-          <CabinetRow icon={icon("support_agent")} label="Открыть поддержку" hint="Создайте новое обращение или выберите другое" href="/support/" />
-        </CabinetGroup>
+        <GroupedSection title="Что дальше">
+          <Row icon={LifeBuoy} label="Открыть поддержку" hint="Создайте новое обращение или выберите другое" href="/support/" />
+        </GroupedSection>
       </main>
     );
   }
 
   return (
-    <main className="cab-page">
-      <CabinetStatus
+    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+      <StatusHero
         title={`Обращение #${ticket.id}`}
         meta={statusTitle(ticket.status)}
         body={ticket.subject || "Обращение без темы"}
         tone={canReply ? "info" : "neutral"}
-        emblem={icon("forum", "h-7 w-7")}
+        icon={MessagesSquare}
         action={
           <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             К списку
@@ -208,17 +213,17 @@ export default function SupportTicketThreadPage() {
         }
       />
 
-      <CabinetGroup title="Сводка">
-        <CabinetRow icon={icon("label")} label="Тема" hint="В этом обращении" value={ticket.subject || "Без темы"} />
-        <CabinetRow icon={icon("pending_actions")} label="Статус" hint={canReply ? "Можно отправить ответ" : "Обращение закрыто"} value={statusTitle(ticket.status)} />
-        <CabinetRow icon={icon("chat_bubble")} label="Сообщений" hint="Вся история остается здесь" value={String(ticket.messages.length)} />
-        <CabinetRow icon={icon("schedule")} label="Обновлено" hint="Последнее изменение" value={fmtDate(ticket.updated_at)} />
-      </CabinetGroup>
+      <GroupedSection title="Сводка">
+        <Row icon={Tag} label="Тема" hint="В этом обращении" value={ticket.subject || "Без темы"} />
+        <Row icon={Timer} label="Статус" hint={canReply ? "Можно отправить ответ" : "Обращение закрыто"} value={statusTitle(ticket.status)} />
+        <Row icon={MessageCircle} label="Сообщений" hint="Вся история остается здесь" value={String(ticket.messages.length)} />
+        <Row icon={CalendarClock} label="Обновлено" hint="Последнее изменение" value={fmtDate(ticket.updated_at)} />
+      </GroupedSection>
 
-      <CabinetGroup title="История">
+      <GroupedSection title="История">
         <div className="max-h-[52vh] space-y-4 overflow-y-auto p-4">
           {ticket.messages.length === 0 ? (
-            <p className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-3 text-sm text-[color:var(--atlas-text-muted)]">
+            <p className="rounded-control border border-line bg-canvas-alt px-4 py-3 text-sm text-ink-muted">
               История сообщений пока пустая.
             </p>
           ) : (
@@ -229,29 +234,32 @@ export default function SupportTicketThreadPage() {
               const attachment = ticketAttachment(msg);
               return (
                 <div key={msg.id} className={`flex ${isAdmin || isAssistant ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[88%] rounded-[var(--pokrov-radius-card)] border px-4 py-3 text-sm leading-6 ${
-                    isAdmin
-                      ? "border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] text-[color:var(--atlas-text)]"
-                      : isAssistant
-                        ? "border-[color:var(--atlas-status-info-line)] bg-[color:var(--atlas-status-info-bg)] text-[color:var(--atlas-status-info-text)]"
-                        : "border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] text-[color:var(--atlas-status-success-text)]"
-                  }`}>
+                  <div
+                    className={`max-w-[88%] rounded-card border px-4 py-3 text-sm leading-6 ${
+                      isAdmin
+                        ? "border-line bg-surface text-ink"
+                        : isAssistant
+                          ? "border-info-line bg-info-bg text-info-text"
+                          : "border-ok-line bg-ok-bg text-ok-text"
+                    }`}
+                  >
                     <p className="text-xs font-semibold opacity-70">{senderLabel}</p>
                     <SupportMessageBody body={msg.body} className="mt-1" />
                     {attachment?.kind === "image" ? (
-                      <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-[var(--pokrov-radius-tile)] border border-[color:var(--atlas-border)]">
+                      <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-tile border border-line">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
                       </a>
                     ) : null}
                     {attachment?.kind === "video" ? (
-                      <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-[var(--pokrov-radius-tile)] border border-[color:var(--atlas-border)] bg-black/60" />
+                      <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-tile border border-line bg-black/60" />
                     ) : null}
                     {attachment && attachment.kind !== "image" && attachment.kind !== "video" ? (
                       <a
                         href={attachment.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs"
+                        className="mt-3 flex items-center justify-between gap-3 rounded-tile border border-line bg-surface px-3 py-2 text-xs"
                       >
                         <span className="truncate">{attachment.name || "Вложение"}</span>
                         <span className="shrink-0 opacity-70">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
@@ -265,11 +273,11 @@ export default function SupportTicketThreadPage() {
           )}
           <div ref={listEndRef} />
         </div>
-      </CabinetGroup>
+      </GroupedSection>
 
-      <CabinetGroup title="Ответ">
+      <GroupedSection title="Ответ">
         {!canReply ? (
-          <CabinetRow icon={icon("lock")} label="Обращение закрыто" hint="Для нового вопроса создайте новое обращение" href="/support/" />
+          <Row icon={Lock} label="Обращение закрыто" hint="Для нового вопроса создайте новое обращение" href="/support/" />
         ) : (
           <div className="space-y-3 p-4">
             <Textarea
@@ -285,24 +293,24 @@ export default function SupportTicketThreadPage() {
                 </Chip>
               ))}
             </div>
-            <label className="block rounded-[var(--pokrov-radius-control)] border border-dashed border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-4 text-sm">
-              <span className="block font-medium text-[color:var(--atlas-text)]">Добавить вложение</span>
-              <span className="mt-1 block text-xs text-[color:var(--atlas-text-muted)]">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
+            <label className="block rounded-control border border-dashed border-line bg-canvas-alt px-4 py-4 text-sm">
+              <span className="block font-medium text-ink">Добавить вложение</span>
+              <span className="mt-1 block text-xs text-ink-muted">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
               <input
                 type="file"
                 accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                className="mt-3 block w-full cursor-pointer text-sm text-[color:var(--atlas-text-soft)] file:mr-3 file:rounded-[var(--pokrov-radius-control)] file:border-0 file:bg-[color:var(--atlas-nav-active)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--atlas-primary)]"
+                className="mt-3 block w-full cursor-pointer text-sm text-ink-soft file:mr-3 file:rounded-control file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-medium file:text-brand"
                 onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
               />
               {attachmentFile ? (
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs">
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-tile bg-surface px-3 py-2 text-xs">
                   <span className="truncate">{attachmentFile.name}</span>
-                  <button type="button" onClick={() => setAttachmentFile(null)} className="text-[color:var(--atlas-status-danger-text)]">
+                  <button type="button" onClick={() => setAttachmentFile(null)} className="text-danger-text">
                     Убрать
                   </button>
                 </div>
               ) : null}
-              {attachmentFile ? <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">{formatFileSize(attachmentFile.size)}</p> : null}
+              {attachmentFile ? <p className="mt-2 text-xs text-ink-muted">{formatFileSize(attachmentFile.size)}</p> : null}
             </label>
             <div className="flex flex-wrap gap-3">
               <Button onClick={() => void onSendReply()} disabled={busy || !message.trim()}>
@@ -322,7 +330,7 @@ export default function SupportTicketThreadPage() {
             {replyError ? <Note tone="danger">{replyError}</Note> : null}
           </div>
         )}
-      </CabinetGroup>
+      </GroupedSection>
     </main>
   );
 }

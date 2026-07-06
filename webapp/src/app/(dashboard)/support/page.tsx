@@ -2,13 +2,32 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
+import {
+  Download,
+  FileText,
+  Hourglass,
+  KeyRound,
+  LifeBuoy,
+  MessageCircle,
+  MessageSquarePlus,
+  MessagesSquare,
+  MonitorSmartphone,
+  Send,
+  ShieldCheck,
+  Wifi,
+  X,
+} from "lucide-react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { CabinetIcon, icon } from "@/components/cabinet/icon";
 import { FaqAccordion } from "@/components/cabinet/instructions";
-import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
-import { useToast } from "@/components/cabinet/toast";
-import { Button, Chip, Input, Note, Textarea } from "@/components/cabinet/ui";
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { GroupedSection, Row } from "@/components/ui/grouped";
+import { Input, Textarea } from "@/components/ui/input";
+import { Note } from "@/components/ui/note";
+import { Tile, TileGrid } from "@/components/ui/tiles";
+import { useToast } from "@/components/ui/toast";
 import {
   createTicket,
   fetchTickets,
@@ -213,8 +232,8 @@ export default function SupportPage() {
 
   return (
     <>
-      <main className="cab-page">
-        <CabinetStatus
+      <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+        <StatusHero
           title={getCopyText("webapp.support.title", "Помощь")}
           meta={latestTicket ? `${statusLabel(latestTicket.status)} · #${latestTicket.id}` : "Кабинет и Telegram"}
           body={
@@ -223,7 +242,7 @@ export default function SupportPage() {
               : "Опишите проблему коротко. Личные ссылки, коды оплаты и банковские данные присылать не нужно."
           }
           tone={openCount ? "info" : "neutral"}
-          emblem={icon("support_agent", "h-7 w-7")}
+          icon={LifeBuoy}
           action={
             <Button onClick={() => openComposer(CATEGORIES[0])} className="w-full sm:w-auto">
               Новый вопрос
@@ -231,79 +250,79 @@ export default function SupportPage() {
           }
         />
 
-        <CabinetGroup
+        <GroupedSection
           title="Последнее обращение"
           action={
             latestTicket ? (
-              <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="cab-link">
+              <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="text-sm font-semibold text-brand hover:text-brand-strong">
                 Открыть
               </AppRouteLink>
             ) : null
           }
         >
           {loadingTickets ? (
-            <CabinetRow icon={icon("hourglass_empty")} label="Загружаем обращения" hint="Обычно это занимает несколько секунд" />
+            <Row icon={Hourglass} label="Загружаем обращения" hint="Обычно это занимает несколько секунд" />
           ) : latestTicket ? (
-            <CabinetRow
-              icon={icon("forum")}
+            <Row
+              icon={MessagesSquare}
               label={latestTicket.subject || `Обращение #${latestTicket.id}`}
               hint={latestTicket.last_message_preview || "Сообщений пока нет"}
               value={formatDate(latestTicket.updated_at || latestTicket.created_at)}
               href={`/support/thread/?id=${latestTicket.id}`}
             />
           ) : (
-            <CabinetRow icon={icon("chat_bubble")} label={getCopyText("webapp.support.empty_tickets", "Обращений пока нет")} hint="Создайте первый вопрос, если что-то пошло не так" />
+            <Row icon={MessageCircle} label={getCopyText("webapp.support.empty_tickets", "Обращений пока нет")} hint="Создайте первый вопрос, если что-то пошло не так" />
           )}
-        </CabinetGroup>
+        </GroupedSection>
 
-        <CabinetGroup title="Быстрые действия">
-          <CabinetRow
-            icon={icon("add_comment")}
+        <GroupedSection title="Быстрые действия">
+          <Row
+            icon={MessageSquarePlus}
             label="Новый вопрос"
             hint="Короткая форма с вложением"
             action={
-              <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="cab-link">
+              <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="text-sm font-semibold text-brand hover:text-brand-strong">
                 Написать
               </button>
             }
           />
-          <CabinetRow
-            icon={icon("send")}
+          <Row
+            icon={Send}
             label="Telegram"
             hint="Удобно для быстрого живого ответа"
             action={
-              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="cab-link">
+              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-brand hover:text-brand-strong">
                 Открыть
               </AppRouteLink>
             }
           />
-          <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
-          <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
-          <CabinetRow icon={icon("description")} label="Документы" hint="Оплата и условия" href="/support/legal/" />
-        </CabinetGroup>
+          <Row icon={Download} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
+          <Row icon={KeyRound} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
+          <Row icon={FileText} label="Документы" hint="Оплата и условия" href="/support/legal/" />
+        </GroupedSection>
 
         <section className="flex flex-col gap-2.5">
-          <h2 className="cab-eyebrow px-1">Частые вопросы</h2>
+          <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Частые вопросы</h2>
           <FaqAccordion entries={FAQ_ENTRIES} />
         </section>
 
         <section className="flex flex-col gap-2.5">
-          <h2 className="cab-eyebrow px-1">Диагностика</h2>
-          <CabinetTiles>
-            <CabinetTile icon={icon("verified_user")} label="Доступ" value={resolvePlanLabel(dash, user)} hint="Без личных ключей" tone="success" />
-            <CabinetTile icon={icon("devices")} label="Устройства" value={`${deviceCount} из ${deviceLimit}`} hint="Связано с профилем" tone="neutral" href="/devices/" />
-            <CabinetTile icon={icon("wifi_tethering")} label="Подключения" value={String(activeConnections)} hint="Безопасная сводка" tone="info" />
-          </CabinetTiles>
+          <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Диагностика</h2>
+          <TileGrid className="xl:grid-cols-3">
+            <Tile icon={ShieldCheck} label="Доступ" value={resolvePlanLabel(dash, user)} hint="Без личных ключей" tone="success" />
+            <Tile icon={MonitorSmartphone} label="Устройства" value={`${deviceCount} из ${deviceLimit}`} hint="Связано с профилем" tone="neutral" href="/devices/" />
+            <Tile icon={Wifi} label="Подключения" value={String(activeConnections)} hint="Безопасная сводка" tone="info" />
+          </TileGrid>
         </section>
 
-        {notice ? <p className="px-1 text-sm font-semibold text-[color:var(--atlas-primary)]">{notice}</p> : null}
-        {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
+        {notice ? <p className="px-1 text-sm font-semibold text-brand">{notice}</p> : null}
+        {error ? <p className="px-1 text-sm text-danger-text">{error}</p> : null}
       </main>
 
       <AnimatePresence>
         {composeOpen ? (
           <motion.div
-            className="fixed inset-0 z-[230] grid place-items-end bg-slate-950/45 p-0 backdrop-blur-sm sm:place-items-center sm:p-4"
+            className="fixed inset-0 z-[230] grid place-items-end bg-black/45 p-0 backdrop-blur-sm sm:place-items-center sm:p-4"
             onClick={() => setComposeOpen(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -314,7 +333,7 @@ export default function SupportPage() {
               role="dialog"
               aria-modal="true"
               aria-label="Новое обращение"
-              className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[1.6rem] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-5 shadow-[var(--atlas-shadow-medium)] sm:rounded-[1.6rem] sm:p-6"
+              className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-modal border border-line bg-surface p-5 shadow-medium sm:rounded-modal sm:p-6"
               onClick={(event) => event.stopPropagation()}
               initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -323,12 +342,12 @@ export default function SupportPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="cab-eyebrow">Новое обращение</p>
-                  <h2 className="mt-2 text-2xl font-semibold leading-tight text-[color:var(--atlas-text)]">Новый вопрос</h2>
-                  <p className="mt-2 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{preset.hint}</p>
+                  <p className="text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Новое обращение</p>
+                  <h2 className="mt-2 text-2xl leading-tight font-semibold text-ink">Новый вопрос</h2>
+                  <p className="mt-2 text-sm leading-6 text-ink-soft">{preset.hint}</p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setComposeOpen(false)} aria-label="Закрыть" className="!px-2">
-                  <CabinetIcon name="close" />
+                  <X size={18} strokeWidth={2} aria-hidden="true" />
                 </Button>
               </div>
 
@@ -363,26 +382,26 @@ export default function SupportPage() {
                   placeholder="Опишите, что делали, где сломалось и что видите сейчас."
                 />
 
-                <label className="block rounded-[var(--pokrov-radius-control)] border border-dashed border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-4 text-sm">
-                  <span className="block font-medium text-[color:var(--atlas-text)]">Вложение</span>
-                  <span className="mt-1 block text-xs leading-5 text-[color:var(--atlas-text-muted)]">
+                <label className="block rounded-control border border-dashed border-line bg-canvas-alt px-4 py-4 text-sm">
+                  <span className="block font-medium text-ink">Вложение</span>
+                  <span className="mt-1 block text-xs leading-5 text-ink-muted">
                     Скриншот, видео, PDF или текстовый файл до 20 МБ.
                   </span>
                   <input
                     type="file"
                     accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
-                    className="mt-3 block w-full cursor-pointer text-sm text-[color:var(--atlas-text-soft)] file:mr-3 file:rounded-[var(--pokrov-radius-control)] file:border-0 file:bg-[color:var(--atlas-nav-active)] file:px-4 file:py-2 file:font-medium file:text-[color:var(--atlas-primary)]"
+                    className="mt-3 block w-full cursor-pointer text-sm text-ink-soft file:mr-3 file:rounded-control file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-medium file:text-brand"
                     onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
                   />
                   {attachmentFile ? (
-                    <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-tile)] bg-[color:var(--atlas-surface)] px-3 py-2 text-xs">
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-tile bg-surface px-3 py-2 text-xs">
                       <span className="truncate">{attachmentFile.name}</span>
-                      <button type="button" onClick={() => setAttachmentFile(null)} className="text-[color:var(--atlas-status-danger-text)]">
+                      <button type="button" onClick={() => setAttachmentFile(null)} className="text-danger-text">
                         Убрать
                       </button>
                     </div>
                   ) : null}
-                  {attachmentFile ? <p className="mt-2 text-xs text-[color:var(--atlas-text-muted)]">{formatFileSize(attachmentFile.size)}</p> : null}
+                  {attachmentFile ? <p className="mt-2 text-xs text-ink-muted">{formatFileSize(attachmentFile.size)}</p> : null}
                 </label>
 
                 <div className="flex flex-wrap gap-3">
