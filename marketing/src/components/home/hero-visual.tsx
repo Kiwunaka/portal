@@ -75,12 +75,12 @@ export function HeroVisual() {
       </motion.div>
 
       <FloatingChip delay={0.35} className="top-14 -left-1 sm:left-2 lg:-left-10">
-        <Zap size={12} strokeWidth={1.5} fill="currentColor" className="text-status-green" aria-hidden="true" />
+        <Zap size={12} strokeWidth={1.5} fill="currentColor" className="text-brand" aria-hidden="true" />
         1 тап — и работает
       </FloatingChip>
 
-      <FloatingChip delay={0.55} className="right-0 bottom-24 sm:right-4 lg:-right-6">
-        <span className="size-1.5 rounded-full bg-status-green" />
+      <FloatingChip delay={0.55} className="top-36 -right-1 sm:right-0 lg:-right-8">
+        <span className="size-1.5 rounded-full bg-brand" />
         YouTube снова быстрый
       </FloatingChip>
     </div>

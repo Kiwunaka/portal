@@ -11,6 +11,7 @@ import { Tile, TileGrid } from "@/components/ui/tiles";
 import { getAccessState, getDeviceLimit, getTrafficLimitGb, isFreeMonthlyState, isPaidUnlimitedState, isTrialPremiumState } from "@/lib/access-policy";
 import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
+import { formatDevicesLimit } from "@/lib/ru-plural";
 
 function formatDate(value?: string | null): string {
   if (!value) return "еще не появлялось";
@@ -55,7 +56,7 @@ export default function DevicesPage() {
     : trialMode
       ? "Пробный период подходит для проверки основных устройств."
       : freeMode
-        ? `Базовый режим: до ${deviceLimit} устройств и около ${freeLimitGb || 5} ГБ в месяц.`
+        ? `Базовый режим: ${formatDevicesLimit(deviceLimit)} и около ${freeLimitGb || 5} ГБ в месяц.`
         : "Если срок закончился, сначала верните доступ.";
 
   const limitTone = deviceLimit > 0 && knownAppDevices >= deviceLimit ? "warning" : "ok";

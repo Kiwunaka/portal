@@ -15,7 +15,6 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.996 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-      style={reduceMotion ? undefined : { willChange: "opacity, transform" }}
     >
       {children}
     </motion.div>

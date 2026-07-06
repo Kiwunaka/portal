@@ -9,6 +9,7 @@ import { GroupedSection } from "@/components/ui/grouped";
 import { Input } from "@/components/ui/input";
 import { ActionCard, ActionGrid } from "@/components/ui/tiles";
 import { cn } from "@/components/utils";
+import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
 import { getCheckoutTariffPlans, getCopyText, getPricingPreviewDiscountPercent, normalizePlanCode, tariffPlanAllowsDiscount } from "@/lib/portal";
@@ -57,9 +58,8 @@ function normalizePaymentMethod(raw: string | null): PaymentMethodChoice {
 }
 
 function formatDuration(days: number): string {
-  if (days >= 365) return `${Math.round(days / 30)} мес.`;
   if (days > 90) return `${Math.round(days / 30)} мес.`;
-  return `${days} дней`;
+  return formatDays(days);
 }
 
 export default function CheckoutPage() {
@@ -240,7 +240,7 @@ export default function CheckoutPage() {
                   ) : null}
                 </span>
                 <span className="mt-0.5 block truncate text-[13px] leading-5 text-ink-muted">
-                  {formatDuration(plan.days)} · до {plan.deviceLimit} устройств
+                  {formatDuration(plan.days)} · {formatDevicesLimit(plan.deviceLimit)}
                 </span>
               </span>
               <span className="shrink-0 text-sm font-bold text-ink">{plan.amountRub} ₽</span>

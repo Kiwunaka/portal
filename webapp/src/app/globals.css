@@ -70,9 +70,16 @@
   --ease-spring: var(--pokrov-easing-spring);
 }
 
+/* While the theme view-transition cross-fades page snapshots, mute component
+   color transitions so only one animation runs. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
 /* Subtle status pulse for the success hero emblem (wave-2 polish). */
-@keyframes heroPulse {
-  0% {
+@keyframes heroPulse {  0% {
     transform: scale(1);
     opacity: 0.5;
   }

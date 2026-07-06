@@ -24,6 +24,7 @@ import {
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getCopyText, getTariffPlans, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
+import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
 
 function fallbackPlans(): PlanCatalogRow[] {
   return getTariffPlans()
@@ -57,8 +58,8 @@ function planHint(plan: PlanCatalogRow): string {
   const days = Number(plan.days || 0);
   const deviceLimit = Number(plan.device_limit || 0);
   const parts = [];
-  if (days > 0) parts.push(`${days} дней`);
-  if (deviceLimit > 0) parts.push(`до ${deviceLimit} устройств`);
+  if (days > 0) parts.push(formatDays(days));
+  if (deviceLimit > 0) parts.push(formatDevicesLimit(deviceLimit));
   return parts.join(" · ") || "срок уточняется";
 }
 

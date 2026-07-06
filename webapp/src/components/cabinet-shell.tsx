@@ -107,23 +107,31 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
       pathname.startsWith("/downloads/") ||
       pathname === "/dashboard/downloads" ||
       pathname.startsWith("/dashboard/downloads/"),
-    meta: { title: "Доступ", subtitle: "Приложение и восстановление." },
+    meta: { title: "Загрузки", subtitle: "Приложение и восстановление." },
   },
   {
     match: (pathname) => pathname === "/dashboard" || (pathname.startsWith("/dashboard/") && !pathname.startsWith("/dashboard/downloads")),
     meta: { title: "Главная", subtitle: "Статус и следующее действие." },
   },
   {
-    match: (pathname) => pathname.startsWith("/subscription") || pathname.startsWith("/redeem"),
-    meta: { title: "Доступ", subtitle: "Оплата и установка." },
+    match: (pathname) => pathname.startsWith("/subscription/checkout"),
+    meta: { title: "Оплата", subtitle: "Срок, способ и итог." },
+  },
+  {
+    match: (pathname) => pathname.startsWith("/subscription"),
+    meta: { title: "Продление", subtitle: "Срок и тарифы." },
+  },
+  {
+    match: (pathname) => pathname.startsWith("/redeem"),
+    meta: { title: "Активация кода", subtitle: "Оплата, подарок или промокод." },
   },
   {
     match: (pathname) => pathname.startsWith("/devices"),
-    meta: { title: "Главная", subtitle: "Устройства и подключение." },
+    meta: { title: "Устройства", subtitle: "Связанные телефоны и компьютеры." },
   },
   {
     match: (pathname) => pathname.startsWith("/statistics"),
-    meta: { title: "Главная", subtitle: "Короткая сводка." },
+    meta: { title: "Статистика", subtitle: "Короткая сводка." },
   },
   {
     match: (pathname) => pathname.startsWith("/support"),
@@ -293,13 +301,21 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         .querySelectorAll('meta[name="theme-color"]')
         .forEach((meta) => meta.setAttribute("content", themeColor));
     };
-    const doc = document as Document & { startViewTransition?: (callback: () => void) => unknown };
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+    };
     if (firstThemeApplyRef.current || reduceMotion || typeof doc.startViewTransition !== "function") {
       firstThemeApplyRef.current = false;
       apply();
     } else {
-      // Cross-fade the whole page between themes - the iOS appearance-switch feel.
-      doc.startViewTransition(apply);
+      // Cross-fade the whole page between themes - the iOS appearance-switch
+      // feel. Component color transitions are muted for the duration so the
+      // snapshot cross-fade is the only animation running.
+      document.documentElement.classList.add("theme-switching");
+      const transition = doc.startViewTransition(apply);
+      void transition.finished.finally(() => {
+        document.documentElement.classList.remove("theme-switching");
+      });
     }
     localStorage.setItem(POKROV_THEME_STORAGE_KEY, dark ? "dark" : "light");
   }, [dark, reduceMotion]);
@@ -613,23 +629,25 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               </div>
             </header>
 
-            {showActivity ? (
-              <div className="mb-4 flex items-center gap-2" role="status">
-                <div
-                  className="h-0.5 flex-1 overflow-hidden rounded-full bg-progress-track"
-                  aria-hidden="true"
-                >
-                  <div className="h-full w-1/3 rounded-full bg-progress-fill motion-safe:animate-pulse" />
-                </div>
-                {refreshing ? (
-                  <span className="shrink-0 rounded-full bg-canvas-alt px-2.5 py-0.5 text-xs font-semibold text-ink-soft">
-                    Обновляем данные
-                  </span>
-                ) : (
-                  <span className="sr-only">Открываем раздел</span>
-                )}
+            <div
+              className={cn(
+                "mb-3 flex h-5 items-center gap-2 transition-opacity duration-200 motion-reduce:transition-none",
+                showActivity ? "opacity-100" : "opacity-0",
+              )}
+              role="status"
+              aria-hidden={!showActivity}
+            >
+              <div className="h-0.5 flex-1 overflow-hidden rounded-full bg-progress-track" aria-hidden="true">
+                <div className="h-full w-1/3 rounded-full [background:var(--pokrov-progress-fill)] motion-safe:animate-pulse" />
               </div>
-            ) : null}
+              {refreshing ? (
+                <span className="shrink-0 rounded-full bg-canvas-alt px-2.5 py-0.5 text-xs font-semibold text-ink-soft">
+                  Обновляем данные
+                </span>
+              ) : (
+                <span className="sr-only">Открываем раздел</span>
+              )}
+            </div>
 
             <RouteTransition>{children}</RouteTransition>
           </div>

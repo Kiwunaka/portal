@@ -32,7 +32,7 @@ export function Hero() {
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-12 pb-16 sm:px-6 sm:pt-16 sm:pb-24 lg:grid-cols-[1.15fr_1fr]">
       <div className="flex flex-col items-start gap-6">
         <Chip>
-          <span className="size-1.5 rounded-full bg-status-green" />
+          <span className="size-1.5 rounded-full bg-brand" />
           {getCopyText("marketing.home.hero.kicker", "5 дней бесплатно · карта не нужна")}
         </Chip>
         <h1 className="font-display text-[2.5rem] leading-[1.08] font-extrabold tracking-[-0.01em] text-ink sm:text-[3.25rem] lg:text-[3.5rem]">

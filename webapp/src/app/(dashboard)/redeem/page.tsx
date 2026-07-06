@@ -14,6 +14,7 @@ import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } fr
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { formatDevicesLimit } from "@/lib/ru-plural";
 
 function normalizeKey(value: string): string {
   return String(value || "").trim().toUpperCase();
@@ -159,7 +160,7 @@ export default function RedeemPage() {
             </Button>
           </div>
           <p className="text-xs leading-5 text-ink-muted">
-            Если у вас длинная ссылка `connect.pokrov.space`, откройте ручную настройку в разделе доступа.
+            Если у вас длинная ссылка connect.pokrov.space, откройте ручную настройку в разделе доступа.
           </p>
         </div>
       </GroupedSection>
@@ -171,7 +172,7 @@ export default function RedeemPage() {
         {status ? (
           <>
             <Row icon={status.exists ? CircleCheck : CircleHelp} label="Проверка" hint={status.exists ? "Код найден" : "Код не найден"} value={status.exists ? "найден" : "не найден"} />
-            <Row icon={BadgeCheck} label="Что дает" hint={status.plan?.label || status.kind || "Уточним после проверки"} value={`до ${status.device_limit || 1} устройств`} />
+            <Row icon={BadgeCheck} label="Что дает" hint={status.plan?.label || status.kind || "Уточним после проверки"} value={formatDevicesLimit(status.device_limit || 1)} />
             <Row icon={CalendarCheck} label="Использован" hint="По данным кабинета" value={formatDate(status.redeemed_at)} />
           </>
         ) : (

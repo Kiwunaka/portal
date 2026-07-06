@@ -2,10 +2,13 @@ import { cn } from "@/components/utils";
 
 type MeterTone = "ok" | "warning" | "danger";
 
+// component.progress fills can be gradients, so they must land on the
+// `background` shorthand - Tailwind `bg-*` compiles to background-color,
+// which silently drops gradient values.
 const FILL_CLASS: Record<MeterTone, string> = {
-  ok: "bg-progress-fill",
-  warning: "bg-progress-warn",
-  danger: "bg-progress-danger",
+  ok: "[background:var(--pokrov-progress-fill)]",
+  warning: "[background:var(--pokrov-progress-warning-fill)]",
+  danger: "[background:var(--pokrov-progress-danger-fill)]",
 };
 
 export function Meter({

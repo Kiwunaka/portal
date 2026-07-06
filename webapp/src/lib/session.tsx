@@ -27,7 +27,7 @@ import {
   telegramAuthRefreshMessage,
 } from "@/lib/telegram-login-refresh";
 import { getTgUser, type TgUser } from "@/lib/telegram";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 type PortalSessionContextValue = {
   loading: boolean;
@@ -326,25 +326,42 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     }
   }, []);
 
+  const value = useMemo(
+    () => ({
+      loading,
+      coldStart: loading,
+      refreshing,
+      error,
+      webLoginRequired,
+      webLoginBusy,
+      webLoginError,
+      user,
+      dash,
+      tgUser,
+      refresh,
+      startTelegramLogin,
+      loginByWidget,
+      logoutWebSession,
+    }),
+    [
+      loading,
+      refreshing,
+      error,
+      webLoginRequired,
+      webLoginBusy,
+      webLoginError,
+      user,
+      dash,
+      tgUser,
+      refresh,
+      startTelegramLogin,
+      loginByWidget,
+      logoutWebSession,
+    ],
+  );
+
   return (
-    <PortalSessionContext.Provider
-      value={{
-        loading,
-        coldStart: loading,
-        refreshing,
-        error,
-        webLoginRequired,
-        webLoginBusy,
-        webLoginError,
-        user,
-        dash,
-        tgUser,
-        refresh,
-        startTelegramLogin,
-        loginByWidget,
-        logoutWebSession,
-      }}
-    >
+    <PortalSessionContext.Provider value={value}>
       {children}
     </PortalSessionContext.Provider>
   );

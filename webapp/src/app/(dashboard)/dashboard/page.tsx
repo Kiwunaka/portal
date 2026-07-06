@@ -30,6 +30,7 @@ import {
 } from "@/lib/access-policy";
 import { getCopyText, getTariffPlan, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
+import { formatDays } from "@/lib/ru-plural";
 
 const TRIAL_DAYS = 5;
 
@@ -58,14 +59,6 @@ function formatDateTime(value?: string | null): string {
 function formatCount(value?: number | null): string {
   if (value == null || !Number.isFinite(Number(value))) return "0";
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
-}
-
-function formatDays(value: number): string {
-  const mod10 = value % 10;
-  const mod100 = value % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${value} день`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${value} дня`;
-  return `${value} дней`;
 }
 
 function getDaysRemaining(expiryAt?: string | null): number | null {
