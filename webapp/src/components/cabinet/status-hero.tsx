@@ -53,7 +53,10 @@ export function StatusHero({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">
           {Icon ? (
-            <span className={cn("grid size-14 shrink-0 place-items-center rounded-2xl ring-1", toneStyle.emblem)} aria-hidden="true">
+            <span className={cn("relative grid size-14 shrink-0 place-items-center rounded-2xl ring-1", toneStyle.emblem)} aria-hidden="true">
+              {tone === "success" ? (
+                <span className="absolute inset-0 rounded-2xl ring-2 ring-ok-line motion-safe:animate-[heroPulse_2.8s_ease-out_infinite]" />
+              ) : null}
               <Icon size={26} strokeWidth={1.9} />
             </span>
           ) : null}

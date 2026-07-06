@@ -65,13 +65,20 @@ export function Row({
       </span>
       {value ? <span className="max-w-[48%] min-w-0 truncate text-right text-sm font-medium text-ink-soft">{value}</span> : null}
       {action ? <span className="shrink-0">{action}</span> : null}
-      {href || onClick ? <ChevronRight size={18} strokeWidth={2} aria-hidden="true" className="shrink-0 text-ink-muted" /> : null}
+      {href || onClick ? (
+        <ChevronRight
+          size={18}
+          strokeWidth={2}
+          aria-hidden="true"
+          className="shrink-0 text-ink-muted transition-transform duration-200 group-hover/row:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover/row:translate-x-0"
+        />
+      ) : null}
     </>
   );
 
   const classes = cn(
-    "flex min-h-[52px] w-full items-center gap-3 px-4 py-2.5 text-left",
-    (href || onClick) && "transition-colors duration-150 hover:bg-canvas-alt motion-reduce:transition-none",
+    "group/row flex min-h-[52px] w-full items-center gap-3 px-4 py-2.5 text-left",
+    (href || onClick) && "transition-colors duration-150 hover:bg-canvas-alt active:bg-nav-hover motion-reduce:transition-none",
     className,
   );
 

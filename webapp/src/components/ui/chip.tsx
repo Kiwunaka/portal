@@ -15,7 +15,7 @@ export function Chip({ active, className, children, type = "button", ...props }:
     <button
       type={type}
       className={cn(
-        "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold transition-colors duration-200 ease-apple motion-reduce:transition-none",
+        "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold transition-[background-color,border-color,color,transform] duration-200 ease-apple active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
         active
           ? "border-brand bg-brand-soft text-brand-strong"
           : "border-line bg-surface text-ink-soft hover:bg-canvas-alt hover:text-ink",

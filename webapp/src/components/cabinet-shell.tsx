@@ -406,21 +406,29 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-control px-2.5 py-2 text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none",
-                  active ? "bg-brand text-brand-contrast shadow-soft" : "text-ink-soft hover:bg-nav-hover hover:text-ink",
+                  "group relative flex items-center gap-3 rounded-control px-2.5 py-2 text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none",
+                  active ? "text-brand-contrast" : "text-ink-soft hover:bg-nav-hover hover:text-ink",
                 )}
                 aria-current={active ? "page" : undefined}
               >
+                {active ? (
+                  <motion.span
+                    layoutId="sidebar-nav-pill"
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-control bg-brand shadow-soft"
+                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 480, damping: 40 }}
+                  />
+                ) : null}
                 <span
                   className={cn(
-                    "grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors duration-200 motion-reduce:transition-none",
+                    "relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors duration-200 motion-reduce:transition-none",
                     active ? "bg-white/20 text-current" : "bg-canvas-alt text-brand group-hover:bg-surface",
                   )}
                 >
                   <Icon size={18} strokeWidth={2} aria-hidden="true" />
                 </span>
-                <span className="min-w-0 truncate">{item.label}</span>
-                {isAdminItem ? adminTag(active) : null}
+                <span className="relative z-10 min-w-0 truncate">{item.label}</span>
+                {isAdminItem ? <span className="relative z-10 ml-auto">{adminTag(active)}</span> : null}
               </AppRouteLink>
             );
           })}
@@ -564,7 +572,15 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-1.5">
                 <span className="hidden sm:inline-flex">{statusChip}</span>
                 <button type="button" onClick={() => setDark((value) => !value)} className={ICON_BUTTON_CLASS} aria-label="Переключить тему">
-                  {dark ? <Sun size={19} strokeWidth={2} aria-hidden="true" /> : <Moon size={19} strokeWidth={2} aria-hidden="true" />}
+                  <motion.span
+                    key={dark ? "sun" : "moon"}
+                    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, rotate: -90, scale: 0.6 }}
+                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    className="grid place-items-center"
+                  >
+                    {dark ? <Sun size={19} strokeWidth={2} aria-hidden="true" /> : <Moon size={19} strokeWidth={2} aria-hidden="true" />}
+                  </motion.span>
                 </button>
                 <AppRouteLink
                   href="/settings/"
@@ -616,13 +632,21 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex min-h-11 flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 text-[0.625rem] font-semibold transition-colors duration-200 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100",
-                    active ? "bg-brand text-brand-contrast" : "text-ink-soft",
+                    "relative flex min-h-11 flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 text-[0.625rem] font-semibold transition-[color,transform] duration-200 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100",
+                    active ? "text-brand-contrast" : "text-ink-soft",
                   )}
                   aria-current={active ? "page" : undefined}
                 >
-                  <Icon size={22} strokeWidth={2} aria-hidden="true" />
-                  <span className="truncate">{item.label}</span>
+                  {active ? (
+                    <motion.span
+                      layoutId="tabbar-nav-pill"
+                      aria-hidden="true"
+                      className="absolute inset-0 rounded-2xl bg-brand"
+                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 480, damping: 40 }}
+                    />
+                  ) : null}
+                  <Icon size={22} strokeWidth={2} aria-hidden="true" className="relative z-10" />
+                  <span className="relative z-10 truncate">{item.label}</span>
                 </AppRouteLink>
               );
             })}

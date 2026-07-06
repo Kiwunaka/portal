@@ -30,7 +30,7 @@ export function Card({
     "block rounded-card border border-line bg-surface shadow-soft",
     PADDING_CLASS[padding],
     hover &&
-      "transition-[transform,box-shadow,border-color] duration-200 ease-apple hover:-translate-y-px hover:border-line-strong hover:shadow-medium motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+      "transition-[transform,box-shadow,border-color] duration-200 ease-apple hover:-translate-y-px hover:border-line-strong hover:shadow-medium active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
     className,
   );
 

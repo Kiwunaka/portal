@@ -70,6 +70,22 @@
   --ease-spring: var(--pokrov-easing-spring);
 }
 
+/* Subtle status pulse for the success hero emblem (wave-2 polish). */
+@keyframes heroPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.22);
+    opacity: 0;
+  }
+}
+
 
 :root {
   --bg: var(--pokrov-bg, #f7f3eb);

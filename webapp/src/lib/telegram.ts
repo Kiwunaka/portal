@@ -36,6 +36,12 @@ export function haptic(type: "success" | "error") {
   tg.HapticFeedback.notificationOccurred(type);
 }
 
+export function hapticImpact(style: "light" | "medium" | "rigid" = "light") {
+  const tg = getWebApp();
+  if (!tg?.HapticFeedback?.impactOccurred) return;
+  tg.HapticFeedback.impactOccurred(style);
+}
+
 export function openLink(url: string) {
   const tg = getWebApp();
   if (tg?.openLink) {

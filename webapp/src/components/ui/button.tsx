@@ -10,7 +10,7 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "md" | "sm";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-colors duration-200 ease-apple select-none disabled:pointer-events-none disabled:opacity-55 motion-reduce:transition-none";
+  "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-[background-color,border-color,color,transform,box-shadow] duration-200 ease-apple select-none active:scale-[0.97] disabled:pointer-events-none disabled:opacity-55 motion-reduce:transition-none motion-reduce:active:scale-100";
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
   md: "min-h-11 px-5 text-[0.9375rem]",
