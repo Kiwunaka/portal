@@ -40,3 +40,12 @@
 - Gates: app_shell 143/143, windows_shell 4/4, android_shell 4/4, contract greps clean (`connectedGreen` only in disc/switch/palette/test; no `0xFF0F725D`/`SF Pro`).
 - Foreign uncommitted work in the client repo (flutter_secure_storage bootstrap changes + release-doc edits) left untouched; the pubspec fonts commit excluded their dependency line.
 - Remaining for owner: visual review on a Windows shell run (`flutter run` in `apps/windows_shell`), real-device captures stay `MANUAL_OWNER_TEST`.
+
+### Phase E — iPhone-feel pass (2026-07-06, owner request, landed)
+
+- `PokrovSwitch`: real `CupertinoSwitch` on every platform (status-green on-track, selection tick on toggle); replaced the Material switches in the WARP row and WARP consent sheet.
+- `PokrovCheckRow`: iOS Settings picker row with a springy emerald checkmark; the theme picker (Системная/Светлая/Тёмная) now selects with checkmarks instead of «Выбрана» labels (ValueKeys preserved).
+- `PokrovScrollBehavior`: iOS bouncing physics + no Android glow/stretch on every scrollable.
+- Cupertino page transitions (slide-from-right with parallax) on all platforms; Material ripple replaced by transparent splash + quiet UIKit-style highlight (deliberately NOT `NoSplash.splashFactory` — it leaks a raw pending Timer in drag-heavy widget tests).
+- Android high refresh rate: `flutter_displaymode` in `android_shell`, `setHighRefreshRate()` best-effort at boot — animations run at the panel's native 90/120Hz.
+- Gates: app_shell 143/143, windows/android shells 4/4 each. Lock files intentionally NOT committed: they picked up the parallel session's uncommitted `flutter_secure_storage` transitives and will land with that work.
