@@ -7,6 +7,70 @@
  */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Tailwind v4 token bridge (2026-07 redesign wave 2): every utility
+ * color/radius/shadow resolves from the adaptive --pokrov-* tokens injected
+ * by getDesignTokenThemeCss("cabinet"), so `dark:` overrides for colors are
+ * unnecessary - the variables remap under `.dark`. Components must not
+ * hand-write hex values or legacy `-dark`-suffixed variables.
+ */
+@theme inline {
+  --color-canvas: var(--pokrov-bg);
+  --color-canvas-alt: var(--pokrov-bg-alt);
+  --color-surface: var(--pokrov-surface);
+  --color-surface-subtle: var(--pokrov-surface-subtle);
+  --color-surface-muted: var(--pokrov-surface-muted);
+  --color-surface-raised: var(--pokrov-surface-raised);
+  --color-ink: var(--pokrov-text);
+  --color-ink-soft: var(--pokrov-text-soft);
+  --color-ink-muted: var(--pokrov-text-muted);
+  --color-ink-inverse: var(--pokrov-text-inverse);
+  --color-brand: var(--pokrov-accent);
+  --color-brand-strong: var(--pokrov-accent-hover);
+  --color-brand-soft: var(--pokrov-accent-soft);
+  --color-brand-contrast: var(--pokrov-accent-contrast);
+  --color-brand-mint: var(--pokrov-mint);
+  --color-status-green: var(--pokrov-status-green);
+  --color-line: var(--pokrov-line);
+  --color-line-strong: var(--pokrov-line-strong);
+  --color-ok-bg: var(--pokrov-status-success-bg);
+  --color-ok-text: var(--pokrov-status-success-text);
+  --color-ok-line: var(--pokrov-status-success-line);
+  --color-warn-bg: var(--pokrov-status-warning-bg);
+  --color-warn-text: var(--pokrov-status-warning-text);
+  --color-warn-line: var(--pokrov-status-warning-line);
+  --color-danger-bg: var(--pokrov-status-danger-bg);
+  --color-danger-text: var(--pokrov-status-danger-text);
+  --color-danger-line: var(--pokrov-status-danger-line);
+  --color-info-bg: var(--pokrov-status-info-bg);
+  --color-info-text: var(--pokrov-status-info-text);
+  --color-info-line: var(--pokrov-status-info-line);
+  --color-neutral-bg: var(--pokrov-status-neutral-bg);
+  --color-neutral-text: var(--pokrov-status-neutral-text);
+  --color-neutral-line: var(--pokrov-status-neutral-line);
+  --color-nav-hover: var(--pokrov-nav-hover-bg);
+  --color-nav-active: var(--pokrov-nav-active-bg);
+  --color-skeleton: var(--pokrov-skeleton-base);
+  --color-skeleton-hi: var(--pokrov-skeleton-highlight);
+  --color-progress-track: var(--pokrov-progress-track);
+  --color-progress-fill: var(--pokrov-progress-fill);
+  --color-progress-warn: var(--pokrov-progress-warning-fill);
+  --color-progress-danger: var(--pokrov-progress-danger-fill);
+  --font-display: var(--font-golos), "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --font-body: var(--font-golos), "Golos Text", "Segoe UI", system-ui, sans-serif;
+  --radius-card: var(--pokrov-radius-card);
+  --radius-panel: var(--pokrov-radius-panel);
+  --radius-control: var(--pokrov-radius-control);
+  --radius-tile: var(--pokrov-radius-tile);
+  --radius-modal: var(--pokrov-radius-modal);
+  --shadow-soft: var(--pokrov-shadow-soft);
+  --shadow-medium: var(--pokrov-shadow-medium);
+  --shadow-strong: var(--pokrov-shadow-strong);
+  --ease-apple: var(--pokrov-easing);
+  --ease-spring: var(--pokrov-easing-spring);
+}
+
+
 :root {
   --bg: var(--pokrov-bg, #f7f3eb);
   --bg-dark: var(--pokrov-bg-dark, #0f1714);
@@ -502,69 +566,7 @@ body {
    POKROV Dashboard Utilities (Redesign 2025)
    ═══════════════════════════════════════════ */
 
-/* ── Mobile Bottom Nav ── */
-.mobile-nav-root {
-  display: flex;
-  position: fixed;
-  bottom: calc(0.75rem + var(--tg-safe-area-bottom, 0px));
-  left: 0.75rem;
-  right: 0.75rem;
-  z-index: 40;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem;
-  overflow: hidden;
-  border-radius: 1.5rem;
-  border: 1px solid var(--atlas-border);
-  background: var(--atlas-surface);
-  padding: 0.5rem 0.5rem calc(0.5rem + var(--tg-safe-area-bottom, 0px));
-  box-shadow: var(--atlas-shadow-medium, 0 20px 50px -28px rgba(15, 23, 42, 0.25));
-  backdrop-filter: blur(16px);
-}
-
-.mobile-nav-item {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.125rem;
-  padding: 0.375rem 0.25rem;
-  border-radius: 1rem;
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--atlas-text-soft);
-  transition: all 0.16s var(--ease-apple);
-}
-
-.mobile-nav-item.active {
-  background: var(--atlas-primary);
-  color: var(--atlas-primary-text);
-}
-
-.mobile-nav-item:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--atlas-canvas, #f7f3eb), 0 0 0 4px var(--atlas-focus, #20674f);
-}
-
-.mobile-nav-item svg {
-  transition: transform 0.22s var(--ease-apple);
-}
-.mobile-nav-item:active {
-  transform: scale(0.93);
-}
-.mobile-nav-item.active svg {
-  transform: translateY(-1px) scale(1.08);
-}
-@media (prefers-reduced-motion: reduce) {
-  .mobile-nav-item:active { transform: none; }
-  .mobile-nav-item.active svg { transform: none; }
-}
-
-@media (min-width: 1024px) {
-  .mobile-nav-root {
-    display: none;
-  }
-}
+/* ── Mobile Bottom Nav ── (moved to Tailwind utilities in cabinet-shell.tsx, wave 2) */
 
 /* ════════════════════════════════════════════════════════════
    Cabinet UI primitives — Apple HID, token-driven, dark-aware

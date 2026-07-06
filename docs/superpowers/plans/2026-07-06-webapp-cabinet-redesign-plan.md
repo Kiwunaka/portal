@@ -38,6 +38,11 @@
 - 2.3 Rebuild shell: Sidebar, MobileTabBar, TopActivityBar, ThemeToggle (iOS switch), BootstrapScreen (§7.1); migrate shell icons to direct lucide.
 - 2.4 Light+dark screenshot pass of the shell; full e2e.
 
+### Phase 2 findings (2026-07-06)
+
+- Bridge + `ui/` set landed (button, badge, chip, input/field, iOS switch, card/panel, page-header, meter, skeleton, empty/error state, toast). `cabinet/toast.tsx` is a re-export shim so the single toast context survives until pages migrate.
+- Shell rebuilt on utilities + direct lucide; `.mobile-nav-*` CSS block replaced by utilities (class kept as e2e marker); desktop sidebar gained the «Тёмная тема» iOS-switch row and the «Обновляем данные» chip landed next to the activity bar. Gates: build green, e2e 46/46, light/dark screenshots in `.playwright-mcp/phase2/`.
+
 ## Phase 3 — Page rebuilds (each page replaces legacy on completion)
 
 - 3.1 `/dashboard` — Access Cockpit: StatusHero, NextAction, RunwayMeter, QuickTiles + page skeleton (§7.2).

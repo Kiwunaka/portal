@@ -1,27 +1,44 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-
-import AppRouteLink from "@/components/app-route-link";
-import { CabinetIcon } from "@/components/cabinet/icon";
-import CabinetEntryAuth from "@/components/cabinet-entry-auth";
-import RouteTransition from "@/components/route-transition";
-import { ToastProvider } from "@/components/cabinet/toast";
-import { Button } from "@/components/cabinet/ui";
-import { FOCUS_RING } from "@/components/utils";
-import { resolvePlanLabel } from "@/lib/access-policy";
-import { usePortalSession } from "@/lib/session";
+import {
+  CircleUserRound,
+  CreditCard,
+  ExternalLink,
+  LifeBuoy,
+  LogOut,
+  Menu,
+  Moon,
+  Shield,
+  ShieldCheck,
+  Sun,
+  TriangleAlert,
+  Wrench,
+  X,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+
+import AppRouteLink from "@/components/app-route-link";
+import CabinetEntryAuth from "@/components/cabinet-entry-auth";
+import RouteTransition from "@/components/route-transition";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SkeletonBlock, SkeletonLine, SkeletonRegion } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { ToastProvider } from "@/components/ui/toast";
+import { cn, FOCUS_RING } from "@/components/utils";
+import { resolvePlanLabel } from "@/lib/access-policy";
+import { usePortalSession } from "@/lib/session";
 
 import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBranding } from "@/app/branding";
 import PokrovLogo from "@/app/pokrov-logo";
 
 type NavItem = {
   href: string;
-  icon: string;
+  icon: LucideIcon;
   label: string;
   description: string;
   match: (pathname: string) => boolean;
@@ -37,7 +54,7 @@ const CABINET_SITE_URL = pokrovBranding.marketingUrl;
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
-    icon: "shield",
+    icon: Shield,
     label: "Главная",
     description: "Статус и устройство",
     match: (pathname) =>
@@ -48,7 +65,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/subscription",
-    icon: "payments",
+    icon: CreditCard,
     label: "Доступ",
     description: "Продление и коды",
     match: (pathname) =>
@@ -61,36 +78,27 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/support",
-    icon: "support_agent",
+    icon: LifeBuoy,
     label: "Помощь",
     description: "Вопросы и диалоги",
     match: (pathname) => pathname.startsWith("/support"),
   },
   {
     href: "/settings",
-    icon: "account_circle",
+    icon: CircleUserRound,
     label: "Аккаунт",
     description: "Вход и бонусы",
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
   },
 ];
 
-const MOBILE_NAV_ITEMS: Array<{ href: string; icon: string; label: string; match: (pathname: string) => boolean }> = [
-  {
-    href: "/dashboard",
-    icon: "shield",
-    label: "Главная",
-    match: (p) => p === "/dashboard" || p.startsWith("/devices") || p.startsWith("/statistics") || (p.startsWith("/dashboard/") && !p.startsWith("/dashboard/downloads")),
-  },
-  {
-    href: "/subscription",
-    icon: "payments",
-    label: "Доступ",
-    match: (p) => p.startsWith("/subscription") || p.startsWith("/redeem") || p.startsWith("/downloads") || p.startsWith("/dashboard/downloads"),
-  },
-  { href: "/support", icon: "support_agent", label: "Помощь", match: (p) => p.startsWith("/support") },
-  { href: "/settings", icon: "account_circle", label: "Аккаунт", match: (p) => p.startsWith("/settings") || p.startsWith("/profile") },
-];
+const ADMIN_NAV_ITEM: NavItem = {
+  href: "/admin/dashboard",
+  icon: Wrench,
+  label: "Управление",
+  description: "Админ-панель оператора",
+  match: (pathname) => pathname.startsWith("/admin"),
+};
 
 const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta }> = [
   {
@@ -159,17 +167,14 @@ function cleanProfileText(value?: string | null): string {
   return String(value || "").trim();
 }
 
-function profileLabel({
-  username,
-  displayName,
-  email,
-  tgId,
-}: {
+type ProfileArgs = {
   username?: string | null;
   displayName?: string | null;
   email?: string | null;
   tgId?: number | null;
-}): string {
+};
+
+function profileLabel({ username, displayName, email, tgId }: ProfileArgs): string {
   const name = cleanProfileText(displayName);
   if (name) return name;
   const handle = cleanProfileText(username);
@@ -181,17 +186,7 @@ function profileLabel({
   return "Аккаунт POKROV";
 }
 
-function profileMark({
-  username,
-  displayName,
-  email,
-  tgId,
-}: {
-  username?: string | null;
-  displayName?: string | null;
-  email?: string | null;
-  tgId?: number | null;
-}): string {
+function profileMark({ username, displayName, email, tgId }: ProfileArgs): string {
   const source = cleanProfileText(displayName) || cleanProfileText(username) || cleanProfileText(email).split("@")[0];
   if (source) return source.slice(0, 1).toUpperCase();
   if (isSyntheticEmailAccount(tgId)) return "PK";
@@ -215,20 +210,20 @@ function ShellState({
   children?: ReactNode;
 }) {
   return (
-    <main className="mx-auto grid min-h-[72vh] w-full max-w-[760px] place-items-center py-8">
-      <section className="w-full rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-6 shadow-[var(--atlas-shadow-medium)] sm:p-8">
+    <main className="mx-auto grid min-h-[72vh] w-full max-w-[760px] place-items-center px-4 py-8">
+      <section className="w-full rounded-panel border border-line bg-surface p-6 shadow-medium sm:p-8">
         <PokrovLogo
           showWordmark
           className="inline-flex items-center gap-3"
-          markClassName="h-12 w-12 rounded-[18px] bg-[color:var(--atlas-canvas-alt)] p-2.5 ring-1 ring-[color:var(--atlas-border)]"
+          markClassName="h-12 w-12 rounded-[18px] bg-canvas-alt p-2.5 ring-1 ring-line"
           caption={pokrovBranding.cabinetName}
           label="POKROV cabinet"
         />
-        <p className="mt-6 cab-eyebrow">{pokrovBranding.entryEyebrow}</p>
-        <h1 className="mt-2 font-display text-[clamp(1.9rem,5vw,2.7rem)] font-semibold leading-[1.02] tracking-[-0.03em] text-[color:var(--atlas-text)]">
+        <p className="mt-6 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">{pokrovBranding.entryEyebrow}</p>
+        <h1 className="mt-2 font-display text-[clamp(1.9rem,5vw,2.7rem)] leading-[1.02] font-semibold tracking-[-0.02em] text-ink">
           {title}
         </h1>
-        <p className="mt-3 text-sm leading-7 text-[color:var(--atlas-text-soft)]">{description}</p>
+        <p className="mt-3 text-sm leading-7 text-ink-soft">{description}</p>
         {children ? <div className="mt-6">{children}</div> : null}
         {actions ? <div className="mt-6 flex flex-wrap gap-3">{actions}</div> : null}
       </section>
@@ -236,48 +231,42 @@ function ShellState({
   );
 }
 
-function SkeletonLine({ className }: { className: string }) {
-  return <div className={`motion-safe:animate-pulse rounded-full bg-[color:var(--atlas-skeleton-base)] ${className}`} aria-hidden="true" />;
-}
-
-function SkeletonPanel({ className }: { className: string }) {
-  return (
-    <div
-      className={`motion-safe:animate-pulse rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] ${className}`}
-      aria-hidden="true"
-    />
-  );
-}
-
-function InitialCabinetSkeleton() {
+/** Honest cold-start screen: renders only when no usable session state exists. */
+function BootstrapScreen() {
   return (
     <main
       className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-4 lg:px-5"
       style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}
-      aria-busy="true"
-      aria-live="polite"
     >
-      <div className="grid min-h-[calc(100dvh-2rem)] gap-4 lg:grid-cols-[252px,1fr]">
-        <aside className="hidden rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-4 shadow-[var(--atlas-shadow-soft)] lg:block">
-          <SkeletonLine className="h-11 w-36" />
-          <div className="mt-5 space-y-2">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <SkeletonPanel key={index} className="h-[52px]" />
-            ))}
-          </div>
-        </aside>
+      <SkeletonRegion label="Открываем кабинет POKROV">
+        <div className="grid min-h-[calc(100dvh-2rem)] gap-4 lg:grid-cols-[252px_1fr]">
+          <aside className="hidden rounded-panel border border-line bg-surface p-4 shadow-soft lg:block">
+            <SkeletonLine className="h-11 w-36" />
+            <div className="mt-5 space-y-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <SkeletonBlock key={index} className="h-[52px]" />
+              ))}
+            </div>
+          </aside>
 
-        <section className="min-w-0 pb-24 lg:pb-8" aria-label="Открываем кабинет POKROV">
-          <div className="mx-auto w-full max-w-[760px] space-y-4">
-            <SkeletonPanel className="h-32" />
-            <SkeletonPanel className="h-44" />
-            <SkeletonPanel className="h-32" />
-          </div>
-        </section>
-      </div>
+          <section className="min-w-0 pb-24 lg:pb-8">
+            <div className="mx-auto w-full max-w-[760px] space-y-4">
+              <p className="text-sm font-semibold text-ink-soft">Открываем кабинет — проверяем сессию и данные доступа.</p>
+              <SkeletonBlock className="h-32" />
+              <SkeletonBlock className="h-44" />
+              <SkeletonBlock className="h-32" />
+            </div>
+          </section>
+        </div>
+      </SkeletonRegion>
     </main>
   );
 }
+
+const ICON_BUTTON_CLASS = cn(
+  "inline-flex h-11 w-11 items-center justify-center rounded-control text-ink-soft transition-colors duration-200 hover:bg-nav-hover hover:text-ink motion-reduce:transition-none",
+  FOCUS_RING,
+);
 
 export default function CabinetShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -326,7 +315,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   }, []);
 
   if (loading) {
-    return <InitialCabinetSkeleton />;
+    return <BootstrapScreen />;
   }
 
   if (webLoginRequired) {
@@ -354,14 +343,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   }
 
   const isAdmin = Boolean(user?.is_admin);
-  const adminNavItem: NavItem = {
-    href: "/admin/dashboard",
-    icon: "admin_panel_settings",
-    label: "Управление",
-    description: "Админ-панель оператора",
-    match: (pathname) => pathname.startsWith("/admin"),
-  };
-  const allNavItems = isAdmin ? [...NAV_ITEMS, adminNavItem] : NAV_ITEMS;
+  const allNavItems = isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
   const meta = routeMetaFor(pathname);
   const activeNav = allNavItems.find((item) => item.match(pathname)) || allNavItems[0];
   const linkedEmail = user.email || user.linked_identities?.email?.email || null;
@@ -379,47 +361,36 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     ? `План ${planLabel.toLowerCase()} до ${formatExpiry(dash.expiry_at)}.`
     : "Срок закончился. Продление вернет доступ в том же аккаунте.";
 
-  const navItemClass = (active: boolean) =>
-    `group flex items-center gap-3 rounded-[var(--pokrov-radius-control)] px-2.5 py-2 text-sm font-semibold transition-all duration-200 ${
-      active
-        ? "bg-[color:var(--atlas-primary)] text-[color:var(--atlas-primary-text)] shadow-[var(--atlas-shadow-soft)]"
-        : "text-[color:var(--atlas-text-soft)] hover:bg-[color:var(--atlas-nav-hover)] hover:text-[color:var(--atlas-text)] hover:translate-x-0.5"
-    }`;
-
-  const navIconClass = (active: boolean) =>
-    `grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors duration-200 ${
-      active
-        ? "bg-white/20 text-current"
-        : "bg-[color:var(--atlas-canvas-alt)] text-[color:var(--atlas-primary)] group-hover:bg-[color:var(--atlas-surface)]"
-    }`;
-
   const adminTag = (active: boolean) => (
     <span
-      className={`ml-auto inline-flex items-center rounded-[var(--pokrov-radius-pill)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-        active ? "bg-[color:var(--atlas-surface)] text-current" : "bg-[color:var(--atlas-status-neutral-bg)] text-[color:var(--atlas-status-neutral-text)]"
-      }`}
+      className={cn(
+        "ml-auto inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase",
+        active ? "bg-surface text-ink" : "bg-neutral-bg text-neutral-text",
+      )}
     >
       admin
     </span>
   );
 
-  const iconButtonClass = `inline-flex h-9 w-9 items-center justify-center rounded-[var(--pokrov-radius-control)] text-[color:var(--atlas-text-muted)] transition-colors hover:bg-[color:var(--atlas-nav-hover)] hover:text-[color:var(--atlas-text)] ${FOCUS_RING}`;
-
   const statusChip = (
-    <span className="cab-badge" data-tone={dash.is_active ? "success" : "warning"}>
-      <CabinetIcon name={dash.is_active ? "shield_check" : "warning"} className="h-3.5 w-3.5" />
+    <Badge tone={dash.is_active ? "success" : "warning"}>
+      {dash.is_active ? (
+        <ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />
+      ) : (
+        <TriangleAlert size={14} strokeWidth={2} aria-hidden="true" />
+      )}
       {statusLabel}
-    </span>
+    </Badge>
   );
 
   const sidebar = (
     <aside className="hidden w-[252px] shrink-0 lg:block xl:w-[280px]">
-      <div className="sticky top-4 flex min-h-[calc(100vh-2rem)] flex-col rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-4 shadow-[var(--atlas-shadow-soft)]">
+      <div className="sticky top-4 flex min-h-[calc(100vh-2rem)] flex-col rounded-panel border border-line bg-surface px-3 py-4 shadow-soft">
         <div className="px-2">
           <PokrovLogo
             showWordmark
             className="inline-flex items-center gap-3"
-            markClassName="h-11 w-11 rounded-[16px] bg-[color:var(--atlas-canvas-alt)] p-2.5 ring-1 ring-[color:var(--atlas-border)]"
+            markClassName="h-11 w-11 rounded-[16px] bg-canvas-alt p-2.5 ring-1 ring-line"
             caption={pokrovBranding.cabinetName}
             label="POKROV cabinet navigation"
           />
@@ -429,10 +400,24 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           {allNavItems.map((item) => {
             const active = item.href === activeNav.href;
             const isAdminItem = item.href.startsWith("/admin");
+            const Icon = item.icon;
             return (
-              <AppRouteLink key={item.href} href={item.href} className={navItemClass(active)} aria-current={active ? "page" : undefined}>
-                <span className={navIconClass(active)}>
-                  <CabinetIcon name={item.icon} className="h-[18px] w-[18px]" />
+              <AppRouteLink
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "group flex items-center gap-3 rounded-control px-2.5 py-2 text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none",
+                  active ? "bg-brand text-brand-contrast shadow-soft" : "text-ink-soft hover:bg-nav-hover hover:text-ink",
+                )}
+                aria-current={active ? "page" : undefined}
+              >
+                <span
+                  className={cn(
+                    "grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors duration-200 motion-reduce:transition-none",
+                    active ? "bg-white/20 text-current" : "bg-canvas-alt text-brand group-hover:bg-surface",
+                  )}
+                >
+                  <Icon size={18} strokeWidth={2} aria-hidden="true" />
                 </span>
                 <span className="min-w-0 truncate">{item.label}</span>
                 {isAdminItem ? adminTag(active) : null}
@@ -442,30 +427,35 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="mt-auto space-y-3 pt-4">
-          <div className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-3">
+          <div className="rounded-card border border-line bg-canvas-alt p-3">
             <div className="flex items-center justify-between gap-2">
               {statusChip}
-              <span className="text-xs text-[color:var(--atlas-text-muted)]">{planLabel}</span>
+              <span className="text-xs text-ink-muted">{planLabel}</span>
             </div>
-            <p className="mt-2 text-xs leading-5 text-[color:var(--atlas-text-muted)]">{sidebarSummary}</p>
+            <p className="mt-2 text-xs leading-5 text-ink-muted">{sidebarSummary}</p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[color:var(--atlas-primary)] text-xs font-semibold uppercase text-[color:var(--atlas-primary-text)]">
+          <div className="flex items-center justify-between gap-2 rounded-card border border-line bg-canvas-alt p-3">
+            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <Moon size={16} strokeWidth={2} aria-hidden="true" className="text-ink-soft" />
+              Тёмная тема
+            </span>
+            <Switch checked={dark} onChange={setDark} aria-label="Переключить тему" />
+          </div>
+
+          <div className="flex items-center gap-3 rounded-card border border-line bg-canvas-alt p-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-contrast uppercase">
               {accountMark}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-[color:var(--atlas-text)]">{accountLabel}</p>
+              <p className="truncate text-sm font-semibold text-ink">{accountLabel}</p>
             </div>
-            <div className="flex gap-1">
-              <button type="button" onClick={() => setDark((value) => !value)} className={iconButtonClass} aria-label="Переключить тему">
-                <CabinetIcon name={dark ? "light_mode" : "dark_mode"} className="h-[18px] w-[18px]" />
-              </button>
-              <AppRouteLink href={CABINET_SITE_URL} hardNavigate className={iconButtonClass} aria-label="На сайт">
-                <CabinetIcon name="open_in_new" className="h-[18px] w-[18px]" />
+            <div className="flex gap-0.5">
+              <AppRouteLink href={CABINET_SITE_URL} hardNavigate className={cn(ICON_BUTTON_CLASS, "h-9 w-9")} aria-label="На сайт">
+                <ExternalLink size={17} strokeWidth={2} aria-hidden="true" />
               </AppRouteLink>
-              <button type="button" onClick={logoutWebSession} className={iconButtonClass} aria-label="Выйти">
-                <CabinetIcon name="logout" className="h-[18px] w-[18px]" />
+              <button type="button" onClick={logoutWebSession} className={cn(ICON_BUTTON_CLASS, "h-9 w-9")} aria-label="Выйти">
+                <LogOut size={17} strokeWidth={2} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -484,7 +474,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
       transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
     >
       <motion.aside
-        className="h-full w-[min(86vw,340px)] rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-4 shadow-[var(--atlas-shadow-medium)]"
+        className="h-full w-[min(86vw,340px)] overflow-y-auto rounded-panel border border-line bg-surface p-4 shadow-medium"
         onClick={(event) => event.stopPropagation()}
         initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
         animate={{ opacity: 1, x: 0 }}
@@ -495,12 +485,12 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           <PokrovLogo
             showWordmark
             className="inline-flex items-center gap-3"
-            markClassName="h-11 w-11 rounded-[16px] bg-[color:var(--atlas-canvas-alt)] p-2.5 ring-1 ring-[color:var(--atlas-border)]"
+            markClassName="h-11 w-11 rounded-[16px] bg-canvas-alt p-2.5 ring-1 ring-line"
             caption={pokrovBranding.cabinetName}
             label="POKROV cabinet mobile menu"
           />
-          <button type="button" onClick={() => setDrawerOpen(false)} className={iconButtonClass} aria-label="Закрыть меню">
-            <CabinetIcon name="close" className="h-5 w-5" />
+          <button type="button" onClick={() => setDrawerOpen(false)} className={ICON_BUTTON_CLASS} aria-label="Закрыть меню">
+            <X size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
 
@@ -508,32 +498,39 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           {allNavItems.map((item) => {
             const active = item.href === activeNav.href;
             const isAdminItem = item.href.startsWith("/admin");
+            const Icon = item.icon;
             return (
               <AppRouteLink
                 key={item.href}
                 href={item.href}
-                className={`flex items-start gap-3 rounded-[var(--pokrov-radius-control)] px-3 py-3 transition-colors ${
-                  active
-                    ? "bg-[color:var(--atlas-primary)] text-[color:var(--atlas-primary-text)]"
-                    : "text-[color:var(--atlas-text-soft)] hover:bg-[color:var(--atlas-nav-hover)]"
-                }`}
+                className={cn(
+                  "flex items-start gap-3 rounded-control px-3 py-3 transition-colors motion-reduce:transition-none",
+                  active ? "bg-brand text-brand-contrast" : "text-ink-soft hover:bg-nav-hover",
+                )}
               >
-                <CabinetIcon name={item.icon} className="mt-0.5 h-5 w-5 shrink-0" />
+                <Icon size={20} strokeWidth={2} aria-hidden="true" className="mt-0.5 shrink-0" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="block text-sm font-semibold">{item.label}</span>
                     {isAdminItem ? adminTag(active) : null}
                   </span>
-                  <span className={`block text-xs leading-5 ${active ? "opacity-80" : "text-[color:var(--atlas-text-muted)]"}`}>{item.description}</span>
+                  <span className={cn("block text-xs leading-5", active ? "opacity-80" : "text-ink-muted")}>{item.description}</span>
                 </span>
               </AppRouteLink>
             );
           })}
         </div>
 
-        <div className="mt-5 rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-4">
-          <p className="text-sm font-semibold text-[color:var(--atlas-text)]">{accountLabel}</p>
-          <p className="mt-1 text-sm text-[color:var(--atlas-text-soft)]">{planLabel}</p>
+        <div className="mt-5 rounded-card border border-line bg-canvas-alt p-4">
+          <p className="text-sm font-semibold text-ink">{accountLabel}</p>
+          <p className="mt-1 text-sm text-ink-soft">{planLabel}</p>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <Moon size={16} strokeWidth={2} aria-hidden="true" className="text-ink-soft" />
+              Тёмная тема
+            </span>
+            <Switch checked={dark} onChange={setDark} aria-label="Переключить тему" />
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" href={CABINET_SITE_URL} hardNavigate>На сайт</Button>
             <Button variant="ghost" size="sm" onClick={logoutWebSession}>Выйти</Button>
@@ -554,27 +551,27 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           {sidebar}
 
           <div className="min-w-0 flex-1 pb-24 lg:pb-8" style={{ paddingTop: "max(0.25rem, var(--tg-safe-area-top, 0px))" }}>
-            <header className="mb-4 flex items-center justify-between gap-3 rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-2.5 shadow-[var(--atlas-shadow-soft)] lg:hidden">
+            <header className="mb-4 flex items-center justify-between gap-3 rounded-panel border border-line bg-surface px-3 py-2 shadow-soft lg:hidden">
               <div className="flex min-w-0 items-center gap-2">
-                <button type="button" onClick={() => setDrawerOpen(true)} className={iconButtonClass} aria-label="Открыть меню">
-                  <CabinetIcon name="menu" className="h-5 w-5" />
+                <button type="button" onClick={() => setDrawerOpen(true)} className={ICON_BUTTON_CLASS} aria-label="Открыть меню">
+                  <Menu size={20} strokeWidth={2} aria-hidden="true" />
                 </button>
-                <h1 className="truncate font-display text-[1.3rem] font-semibold leading-none tracking-[-0.02em] text-[color:var(--atlas-text)]">
+                <h1 className="truncate font-display text-[1.3rem] leading-none font-semibold tracking-[-0.02em] text-ink">
                   {meta.title}
                 </h1>
               </div>
 
               <div className="flex items-center gap-1.5">
-                <span className="cab-badge hidden sm:inline-flex" data-tone={dash.is_active ? "success" : "warning"}>
-                  <CabinetIcon name={dash.is_active ? "shield_check" : "warning"} className="h-3.5 w-3.5" />
-                  {statusLabel}
-                </span>
-                <button type="button" onClick={() => setDark((value) => !value)} className={iconButtonClass} aria-label="Переключить тему">
-                  <CabinetIcon name={dark ? "light_mode" : "dark_mode"} className="h-5 w-5" />
+                <span className="hidden sm:inline-flex">{statusChip}</span>
+                <button type="button" onClick={() => setDark((value) => !value)} className={ICON_BUTTON_CLASS} aria-label="Переключить тему">
+                  {dark ? <Sun size={19} strokeWidth={2} aria-hidden="true" /> : <Moon size={19} strokeWidth={2} aria-hidden="true" />}
                 </button>
                 <AppRouteLink
                   href="/settings/"
-                  className={`grid h-9 w-9 place-items-center rounded-full bg-[color:var(--atlas-primary)] text-xs font-semibold uppercase text-[color:var(--atlas-primary-text)] ${FOCUS_RING}`}
+                  className={cn(
+                    "grid h-10 w-10 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-contrast uppercase",
+                    FOCUS_RING,
+                  )}
                   aria-label={accountLabel}
                 >
                   {accountMark}
@@ -583,12 +580,20 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
             </header>
 
             {showActivity ? (
-              <div
-                className="mb-4 h-1 overflow-hidden rounded-full bg-[color:var(--atlas-progress-track)] lg:h-0.5"
-                role="status"
-                aria-label={refreshing ? "Обновляем данные кабинета" : "Открываем раздел"}
-              >
-                <div className="h-full w-1/3 rounded-full bg-[color:var(--atlas-primary)] motion-safe:animate-pulse" />
+              <div className="mb-4 flex items-center gap-2" role="status">
+                <div
+                  className="h-0.5 flex-1 overflow-hidden rounded-full bg-progress-track"
+                  aria-hidden="true"
+                >
+                  <div className="h-full w-1/3 rounded-full bg-progress-fill motion-safe:animate-pulse" />
+                </div>
+                {refreshing ? (
+                  <span className="shrink-0 rounded-full bg-canvas-alt px-2.5 py-0.5 text-xs font-semibold text-ink-soft">
+                    Обновляем данные
+                  </span>
+                ) : (
+                  <span className="sr-only">Открываем раздел</span>
+                )}
               </div>
             ) : null}
 
@@ -599,12 +604,24 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         <AnimatePresence>{drawerOpen ? mobileMenu : null}</AnimatePresence>
 
         {!drawerOpen ? (
-          <nav className="mobile-nav-root lg:hidden" aria-label="Навигация кабинета">
-            {MOBILE_NAV_ITEMS.map((item) => {
+          <nav
+            className="mobile-nav-root fixed inset-x-3 bottom-[calc(0.75rem+var(--tg-safe-area-bottom,0px))] z-40 flex items-center justify-between gap-1 overflow-hidden rounded-3xl border border-line bg-surface px-2 pt-2 pb-[calc(0.5rem+var(--tg-safe-area-bottom,0px))] shadow-medium lg:hidden"
+            aria-label="Навигация кабинета"
+          >
+            {NAV_ITEMS.map((item) => {
               const active = item.match(pathname);
+              const Icon = item.icon;
               return (
-                <AppRouteLink key={item.href} href={item.href} className={`mobile-nav-item ${active ? "active" : ""}`}>
-                  <CabinetIcon name={item.icon} className="h-[22px] w-[22px]" />
+                <AppRouteLink
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex min-h-11 flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 text-[0.625rem] font-semibold transition-colors duration-200 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100",
+                    active ? "bg-brand text-brand-contrast" : "text-ink-soft",
+                  )}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <Icon size={22} strokeWidth={2} aria-hidden="true" />
                   <span className="truncate">{item.label}</span>
                 </AppRouteLink>
               );
