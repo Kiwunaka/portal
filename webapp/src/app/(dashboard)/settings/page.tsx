@@ -1,12 +1,28 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import {
+  AtSign,
+  CalendarCheck,
+  CircleCheck,
+  CirclePlus,
+  CircleUserRound,
+  Download,
+  LifeBuoy,
+  Megaphone,
+  MonitorSmartphone,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { icon } from "@/components/cabinet/icon";
-import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
-import { useToast } from "@/components/cabinet/toast";
-import { Button, Input, Note } from "@/components/cabinet/ui";
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { GroupedSection, Row } from "@/components/ui/grouped";
+import { Input } from "@/components/ui/input";
+import { Note } from "@/components/ui/note";
+import { ActionCard, ActionGrid, Tile, TileGrid } from "@/components/ui/tiles";
+import { useToast } from "@/components/ui/toast";
 import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import {
   checkChannelSubscriberStatus,
@@ -22,6 +38,8 @@ import {
 import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
+
+const LINK_BUTTON_CLASS = "text-sm font-semibold text-brand hover:text-brand-strong disabled:opacity-55";
 
 function formatDate(value?: string | null): string {
   if (!value) return "уточняется";
@@ -225,13 +243,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="cab-page">
-      <CabinetStatus
+    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+      <StatusHero
         title="Аккаунт"
         meta={profileName}
         body={dash?.is_active ? "Вход, устройства и бонусы этого профиля." : "Продлите доступ или откройте поддержку, если что-то не сходится."}
         tone={dash?.is_active ? "success" : "warning"}
-        emblem={icon("account_circle", "h-7 w-7")}
+        icon={CircleUserRound}
         action={
           <Button href="/subscription/" className="w-full sm:w-auto">
             Продлить
@@ -240,23 +258,23 @@ export default function SettingsPage() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Профиль</h2>
-        <CabinetTiles>
-          <CabinetTile icon={icon("verified_user")} label="Доступ" value={resolvePlanLabel(dash, user)} hint={resolveTrafficStatusText(dash, user)} tone="success" href="/subscription/" />
-          <CabinetTile icon={icon("calendar_month")} label="Срок" value={formatDate(dash?.expiry_at || user?.expiry_at)} hint="По профилю" tone="neutral" />
-          <CabinetTile icon={icon("devices")} label="Устройства" value={`до ${deviceLimit}`} hint="Лимит профиля" tone="neutral" href="/devices/" />
-        </CabinetTiles>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Профиль</h2>
+        <TileGrid className="xl:grid-cols-3">
+          <Tile icon={ShieldCheck} label="Доступ" value={resolvePlanLabel(dash, user)} hint={resolveTrafficStatusText(dash, user)} tone="success" href="/subscription/" />
+          <Tile icon={CalendarCheck} label="Срок" value={formatDate(dash?.expiry_at || user?.expiry_at)} hint="По профилю" tone="neutral" />
+          <Tile icon={MonitorSmartphone} label="Устройства" value={`до ${deviceLimit}`} hint="Лимит профиля" tone="neutral" href="/devices/" />
+        </TileGrid>
       </section>
 
-      <CabinetGroup title="Вход и восстановление">
-        <CabinetRow
-          icon={icon("send")}
+      <GroupedSection title="Вход и восстановление">
+        <Row
+          icon={Send}
           label="Telegram"
           hint={hasLinkedTelegram ? "Подключен к этому профилю" : "Для входа, бонуса и восстановления"}
           value={telegramName}
           action={
             hasLinkedTelegram ? (
-              <AppRouteLink href={supportLink} className="cab-link">
+              <AppRouteLink href={supportLink} className={LINK_BUTTON_CLASS}>
                 Поддержка
               </AppRouteLink>
             ) : (
@@ -264,39 +282,39 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => void onTelegramLink()}
                 disabled={telegramLinkBusy}
-                className="cab-link"
+                className={LINK_BUTTON_CLASS}
               >
                 {telegramLinkBusy ? "Открываем..." : "Подключить Telegram"}
               </button>
             )
           }
         />
-        <CabinetRow
-          icon={icon("alternate_email")}
+        <Row
+          icon={AtSign}
           label="Email"
           hint={linkedEmail ? "Дополнительный вход подключен" : emailAuthReady ? "Можно добавить к этому профилю" : "Пока входите через Telegram или поддержку"}
           value={linkedEmail || (emailAuthReady ? "доступен" : emailAuthChecked ? "недоступен" : "проверяем")}
           action={
             canLinkEmail ? (
-              <a href="#email-link" className="cab-link">
+              <a href="#email-link" className={LINK_BUTTON_CLASS}>
                 Добавить
               </a>
             ) : null
           }
         />
-      </CabinetGroup>
+      </GroupedSection>
 
       {emailLinkUnavailable ? (
         <Note tone="info">Email-вход временно недоступен. Используйте Telegram, а если нужно восстановить доступ, напишите в поддержку.</Note>
       ) : null}
 
       {telegramLinkError ? (
-        <div className="cab-note" data-tone="danger">{telegramLinkError}</div>
+        <Note tone="danger">{telegramLinkError}</Note>
       ) : telegramLinkPayload ? (
         telegramLinkPayload.linked ? (
-          <div className="cab-note" data-tone="success">Telegram уже подключен к этому профилю.</div>
+          <Note tone="success">Telegram уже подключен к этому профилю.</Note>
         ) : (
-          <div className="cab-note flex flex-wrap items-center justify-between gap-3" data-tone="info">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-info-line bg-info-bg px-3.5 py-2.5 text-sm text-info-text">
             <span className="font-semibold">Откройте бота и завершите привязку Telegram.</span>
             <Button variant="secondary" size="sm" href={telegramLinkPayload.bot_url || supportLink} target="_blank" hardNavigate={false}>
               Открыть бота
@@ -308,9 +326,9 @@ export default function SettingsPage() {
       {canLinkEmail ? (
         <section id="email-link" className="scroll-mt-24 space-y-2">
           <div className="px-1">
-            <h2 className="cab-eyebrow">Подключить email к текущему аккаунту</h2>
+            <h2 className="text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Подключить email к текущему аккаунту</h2>
           </div>
-          <div className="cab-panel p-4">
+          <div className="rounded-card border border-line bg-surface p-4 shadow-soft">
             <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
               <form className="space-y-3" onSubmit={onEmailLinkRequest}>
                 <Input
@@ -359,25 +377,25 @@ export default function SettingsPage() {
           </div>
         </section>
       ) : emailLinkMessage ? (
-        <p className="px-1 text-sm font-semibold text-[color:var(--atlas-primary)]">{emailLinkMessage}</p>
+        <p className="px-1 text-sm font-semibold text-brand">{emailLinkMessage}</p>
       ) : null}
 
-      <CabinetGroup title="Telegram-бонус">
-        <CabinetRow
-          icon={icon("campaign")}
+      <GroupedSection title="Telegram-бонус">
+        <Row
+          icon={Megaphone}
           label="Канал"
           hint="Официальные новости и бонус"
           value="@pokrov_vpn"
           action={
             channelLink ? (
-              <AppRouteLink href={channelLink} target="_blank" hardNavigate={false} className="cab-link">
+              <AppRouteLink href={channelLink} target="_blank" hardNavigate={false} className={LINK_BUTTON_CLASS}>
                 Открыть
               </AppRouteLink>
             ) : null
           }
         />
-        <CabinetRow
-          icon={icon("fact_check")}
+        <Row
+          icon={CircleCheck}
           label="Проверка"
           hint={bonusStatusText}
           action={
@@ -385,14 +403,14 @@ export default function SettingsPage() {
               type="button"
               onClick={() => void onCheckBonus()}
               disabled={bonusBusy !== ""}
-              className="cab-link"
+              className={LINK_BUTTON_CLASS}
             >
               {bonusBusy === "check" ? "Проверяем..." : "Проверить подписку"}
             </button>
           }
         />
-        <CabinetRow
-          icon={icon("add_circle")}
+        <Row
+          icon={CirclePlus}
           label={`Бонус +${channelBonusDays} дней`}
           hint={bonusError || (channelBonusClaimedAt ? "Уже добавлен" : "После подтверждения канала")}
           action={
@@ -400,21 +418,21 @@ export default function SettingsPage() {
               type="button"
               onClick={() => void onClaimBonus()}
               disabled={bonusBusy !== "" || Boolean(channelBonusClaimedAt) || (!canClaimBonus && !bonusCheck?.subscriber)}
-              className="cab-link"
+              className={LINK_BUTTON_CLASS}
             >
               {bonusBusy === "claim" ? "Добавляем..." : `Забрать +${channelBonusDays} дней`}
             </button>
           }
         />
-      </CabinetGroup>
+      </GroupedSection>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Действия</h2>
-        <CabinetActionGrid>
-          <CabinetActionCard icon={icon("devices")} title="Устройства" hint="Связанные телефоны и компьютеры" href="/devices/" />
-          <CabinetActionCard icon={icon("download")} title="Загрузки" hint="Android и Windows" href="/downloads/" />
-          <CabinetActionCard icon={icon("support_agent")} title="Поддержка" hint="Обращения, вложения и Telegram" href="/support/" />
-        </CabinetActionGrid>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Действия</h2>
+        <ActionGrid className="sm:grid-cols-3">
+          <ActionCard icon={MonitorSmartphone} title="Устройства" hint="Связанные телефоны и компьютеры" href="/devices/" />
+          <ActionCard icon={Download} title="Загрузки" hint="Android и Windows" href="/downloads/" />
+          <ActionCard icon={LifeBuoy} title="Поддержка" hint="Обращения, вложения и Telegram" href="/support/" />
+        </ActionGrid>
       </section>
     </main>
   );
