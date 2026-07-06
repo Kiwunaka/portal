@@ -39,7 +39,11 @@
 - Theme persistence: `PokrovFileThemeModeStore` (best-effort file store, default system) wired into `PokrovSeedApp`; covered by a new contract test.
 - Gates: app_shell 143/143, windows_shell 4/4, android_shell 4/4, contract greps clean (`connectedGreen` only in disc/switch/palette/test; no `0xFF0F725D`/`SF Pro`).
 
-### Consilium backlog (2026-07-06, two review agents on features; ranked, not yet done)
+### Consilium backlog (2026-07-06, two review agents on features; ranked)
+
+**Closed same-day** (9 commits `a189973..87337a5`, tests 149/149): interaction 1-10 (chat scroll-to-new + draft-on-failure, redeem sheet keyboard + inline validation, rewards hub live-reactive + awaited refresh + maybePop + in-sheet copy morph, device revoke confirm + result snacks, locations real error/retry, app-picker keyboard/clear/drag-dismiss, onboarding restore autofocus + Android back-to-choice, selected-apps AnimatedSize + inline invalid + autofocus); visual 11 (weight soup), 12 (one status-pill metric), 14 (16px tab gutter), 18 (WARP panel tokens), 19 (honest desktop header affordances); round-1 leftovers: dim disabled rows (`enabled` flag), full-row WARP toggle, Pressable Listener→GestureDetector (scroll twitch gone).
+
+**Still open (next wave):**
 
 Landed same-day quick fixes: white-on-mint → `onPrimary` (onboarding icon, chat user bubble), tabular figures in `labelLarge`, 44pt notifications CTA, plus round-1 items (Cupertino WARP switch, inset separators, readable snack icons + inset above tab bar, settled theme pick).
 
