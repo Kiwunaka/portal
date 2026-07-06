@@ -2,37 +2,30 @@
 
 import { useEffect } from "react";
 
-import { ShellBoundary } from "@/components/shell-boundary";
+import { CabinetBoundary } from "@/components/cabinet-boundary";
+import { Button } from "@/components/ui/button";
 
 type ErrorProps = {
   error: Error & { digest?: string };
   reset: () => void;
 };
 
-export default function DashboardError({ error, reset }: ErrorProps) {
+export default function DashboardGroupError({ error, reset }: ErrorProps) {
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   return (
-    <ShellBoundary
-      eyebrow="cabinet recovery"
-      title="Кабинет не смог открыть этот экран"
-      description="Это сбой экрана или временная проблема данных. Мы можем повторить запрос или вернуться в безопасную точку входа."
-      badgeLabel={error.digest ? `digest ${error.digest.slice(0, 8)}` : "dashboard error"}
-      badgeTone="warning"
-      primaryAction={{ label: "Повторить", onClick: reset }}
-      secondaryAction={{ label: "В кабинет", href: "/dashboard/" }}
-      metrics={[
-        { label: "Область", value: "dashboard", hint: "Проблема возникла внутри кабинета." },
-        { label: "Действие", value: "retry", hint: "Повторный запрос часто возвращает страницу сразу." },
-      ]}
-      steps={[
-        { title: "Нажмите повтор", description: "Это быстро пересоберёт страницу без полного выхода из кабинета.", tone: "info" },
-        { title: "Вернитесь на главную кабинета", description: "Если текущий экран сломан, стартовая точка безопаснее всего.", tone: "warning" },
-        { title: "Откройте поддержку", description: "Пришлите скрин и опишите, на каком экране остановилось открытие.", tone: "success" },
-      ]}
-      icon="report_problem"
+    <CabinetBoundary
+      kind="error"
+      title="Кабинет не смог открыть этот раздел"
+      description="Это обычно временная проблема сети или данных. Повторите попытку или вернитесь на главную кабинета."
+      actions={
+        <>
+          <Button onClick={reset}>Повторить</Button>
+          <Button href="/dashboard/" variant="secondary">В кабинет</Button>
+        </>
+      }
     />
   );
 }

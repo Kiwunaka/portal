@@ -201,14 +201,14 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   };
 
   const inputClass =
-    "w-full rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-4 py-3 text-sm outline-none transition focus:border-[color:var(--atlas-focus)] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--atlas-focus)_20%,transparent)]";
+    "w-full rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink outline-none transition focus:border-brand focus:shadow-[0_0_0_3px_var(--pokrov-accent-soft)] motion-reduce:transition-none";
   const passwordInputClass = `${inputClass} pr-12`;
-  const legalLinkClass = "text-[color:var(--atlas-text-soft)] underline-offset-4 transition hover:text-[color:var(--atlas-text)] hover:underline";
+  const legalLinkClass = "text-ink-soft underline-offset-4 transition hover:text-ink hover:underline";
   const emailAuthReady = isEmailAuthPublicReady(emailAuthStatus);
 
   const passwordField = (
     <div>
-      <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Пароль</label>
+      <label className="mb-2 block text-sm font-medium text-ink-soft">Пароль</label>
       <div className="relative">
         <input
           ref={passwordRef}
@@ -223,7 +223,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           type="button"
           aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
           onClick={() => setShowPassword((value) => !value)}
-          className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[color:var(--atlas-text-soft)] transition hover:bg-[color:var(--atlas-canvas-alt)] hover:text-[color:var(--atlas-text)]"
+          className="absolute top-1/2 right-3 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-soft transition hover:bg-canvas-alt hover:text-ink"
         >
           {showPassword ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
         </button>
@@ -235,7 +235,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     <div className="space-y-5">
       {emailAuthReady ? (
         <div>
-          <div className="grid grid-cols-2 rounded-[1.5rem] bg-[color:var(--atlas-canvas-alt)] p-1 shadow-inner">
+          <div className="grid grid-cols-2 rounded-[1.5rem] bg-canvas-alt p-1 shadow-inner">
             {(["login", "register"] as const).map((mode) => (
               <button
                 key={mode}
@@ -243,8 +243,8 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                 onClick={() => setMode(mode)}
                 className={`min-h-12 rounded-[1.25rem] px-4 text-sm font-semibold transition ${
                   emailMode === mode
-                    ? "bg-[color:var(--atlas-surface)] text-[color:var(--atlas-primary)] shadow-sm"
-                    : "text-[color:var(--atlas-text-soft)] hover:text-[color:var(--atlas-text)]"
+                    ? "bg-surface text-brand shadow-sm"
+                    : "text-ink-soft hover:text-ink"
                 }`}
               >
                 {EMAIL_MODE_LABELS[mode]}
@@ -256,7 +256,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             {emailMode === "login" ? (
               <form className="space-y-4" onSubmit={submitLogin}>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Email</label>
+                  <label className="mb-2 block text-sm font-medium text-ink-soft">Email</label>
                   <input
                     className={inputClass}
                     value={email}
@@ -268,13 +268,13 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                   />
                 </div>
                 {passwordField}
-                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
                   {emailBusy ? "Входим..." : "Войти"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("recover")}
-                  className="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold text-[color:var(--atlas-text-soft)]"
+                  className="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-canvas-alt motion-reduce:transition-none"
                 >
                   Забыли пароль?
                 </button>
@@ -284,7 +284,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             {emailMode === "register" ? (
               <form className="space-y-4" onSubmit={submitRegister}>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Email</label>
+                  <label className="mb-2 block text-sm font-medium text-ink-soft">Email</label>
                   <input
                     className={inputClass}
                     value={email}
@@ -296,7 +296,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Имя</label>
+                  <label className="mb-2 block text-sm font-medium text-ink-soft">Имя</label>
                   <input
                     className={inputClass}
                     value={displayName}
@@ -306,11 +306,11 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                   />
                 </div>
                 {passwordField}
-                <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)]">{PASSWORD_HINT}</p>
-                <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)]">
+                <p className="text-xs leading-5 text-ink-soft">{PASSWORD_HINT}</p>
+                <p className="text-xs leading-5 text-ink-soft">
                   Уже начали в приложении? Откройте кабинет из приложения и добавьте email там, чтобы доступ остался в одном профиле.
                 </p>
-                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
                   {emailBusy ? "Создаем..." : "Зарегистрироваться"}
                 </button>
               </form>
@@ -319,7 +319,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             {emailMode === "verify" ? (
               <form className="space-y-4" onSubmit={submitVerify}>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Код из письма</label>
+                  <label className="mb-2 block text-sm font-medium text-ink-soft">Код из письма</label>
                   <input
                     className={inputClass}
                     value={verifyToken}
@@ -329,10 +329,10 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                     required
                   />
                 </div>
-                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
                   {emailBusy ? "Проверяем..." : "Подтвердить"}
                 </button>
-                <button type="button" onClick={() => setMode("login")} className="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold">
+                <button type="button" onClick={() => setMode("login")} className="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-canvas-alt motion-reduce:transition-none">
                   Вернуться ко входу
                 </button>
               </form>
@@ -341,7 +341,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
             {emailMode === "recover" ? (
               <form className="space-y-4" onSubmit={submitRecovery}>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Email</label>
+                  <label className="mb-2 block text-sm font-medium text-ink-soft">Email</label>
                   <input
                     className={inputClass}
                     value={email}
@@ -353,7 +353,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Код из письма для восстановления</label>
+                  <label className="mb-2 block text-sm font-medium text-ink-soft">Код из письма для восстановления</label>
                   <input
                     className={inputClass}
                     value={recoveryToken}
@@ -363,7 +363,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[color:var(--atlas-text-soft)]">Новый пароль</label>
+                  <label className="mb-2 block text-sm font-medium text-ink-soft">Новый пароль</label>
                   <div className="relative">
                     <input
                       ref={newPasswordRef}
@@ -378,16 +378,16 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                       type="button"
                       aria-label={showNewPassword ? "Скрыть пароль" : "Показать пароль"}
                       onClick={() => setShowNewPassword((value) => !value)}
-                      className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[color:var(--atlas-text-soft)] transition hover:bg-[color:var(--atlas-canvas-alt)] hover:text-[color:var(--atlas-text)]"
+                      className="absolute top-1/2 right-3 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-soft transition hover:bg-canvas-alt hover:text-ink"
                     >
                       {showNewPassword ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
                     </button>
                   </div>
                 </div>
-                <button type="submit" disabled={emailBusy} className="btn-primary w-full rounded-2xl px-5 py-4 text-sm font-semibold disabled:opacity-60">
+                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
                   {emailBusy ? "Отправляем..." : recoveryToken ? "Сбросить пароль и войти" : "Отправить письмо"}
                 </button>
-                <button type="button" onClick={() => setMode("login")} className="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold">
+                <button type="button" onClick={() => setMode("login")} className="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-canvas-alt motion-reduce:transition-none">
                   Вернуться ко входу
                 </button>
               </form>
@@ -395,7 +395,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-[color:var(--atlas-status-info-line)] bg-[color:var(--atlas-status-info-bg)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-status-info-text)]">
+        <div className="rounded-2xl border border-info-line bg-info-bg px-4 py-3 text-sm leading-6 text-info-text">
           {emailAuthChecked
             ? "Email-вход временно недоступен. Войдите через Telegram, а если нужна помощь с доступом, напишите в поддержку."
             : "Проверяем доступность входа по email..."}
@@ -403,36 +403,36 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       )}
 
       {emailMessage ? (
-        <div className="rounded-2xl border border-[color:var(--atlas-status-success-line)] bg-[color:var(--atlas-status-success-bg)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-status-success-text)]">
+        <div className="rounded-2xl border border-ok-line bg-ok-bg px-4 py-3 text-sm leading-6 text-ok-text">
           {emailMessage}
         </div>
       ) : null}
       {emailError ? (
-        <div className="rounded-2xl border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-status-danger-text)]">
+        <div className="rounded-2xl border border-danger-line bg-danger-bg px-4 py-3 text-sm leading-6 text-danger-text">
           {emailError}
         </div>
       ) : null}
 
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-[color:var(--atlas-border)]" />
-        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--atlas-text-muted)]">или</span>
-        <div className="h-px flex-1 bg-[color:var(--atlas-border)]" />
+        <div className="h-px flex-1 bg-line" />
+        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">или</span>
+        <div className="h-px flex-1 bg-line" />
       </div>
 
       <TelegramLoginWidget
-        buttonClassName="outline-btn w-full rounded-2xl px-5 py-3 text-sm font-semibold"
+        buttonClassName="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-canvas-alt motion-reduce:transition-none"
         buttonLabel={getCopyText("webapp.entry.primary_cta", "Войти через Telegram")}
         busyLabel="Открываем Telegram..."
         showHint={false}
       />
 
       {webLoginError ? (
-        <div className="rounded-2xl border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-status-danger-text)]">
+        <div className="rounded-2xl border border-danger-line bg-danger-bg px-4 py-3 text-sm leading-6 text-danger-text">
           {webLoginError}
         </div>
       ) : null}
       {webLoginBusy ? (
-        <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)]">
+        <p className="text-xs leading-5 text-ink-soft">
           Подтвердите вход в Telegram и вернитесь сюда. Кабинет откроется автоматически.
         </p>
       ) : null}

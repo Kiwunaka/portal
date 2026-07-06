@@ -32,7 +32,7 @@ function StateShell({
       <span className={cn("flex size-12 items-center justify-center rounded-full bg-canvas-alt", iconClassName)}>
         <Icon size={22} strokeWidth={1.8} aria-hidden="true" />
       </span>
-      <p className="text-base font-semibold text-ink">{title}</p>
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
       {body ? <p className="max-w-sm text-sm leading-relaxed text-ink-soft">{body}</p> : null}
       {actions ? <div className="mt-2 flex flex-wrap justify-center gap-2">{actions}</div> : null}
     </div>
