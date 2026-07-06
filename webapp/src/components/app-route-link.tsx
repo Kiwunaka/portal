@@ -9,6 +9,8 @@ type AnchorProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps
 
 type AppRouteLinkProps = LinkProps &
   AnchorProps & {
+    /** Force a full document navigation. Reserved for auth-boundary flows
+     * (login/logout, OIDC redirects, handoff-token URLs) and external hosts. */
     hardNavigate?: boolean;
   };
 
@@ -52,15 +54,6 @@ function dispatchRouteActivity(href: string): void {
   }
 }
 
-function navigateWithBrowser(href: string): boolean {
-  if (typeof window === "undefined" || !isInternalNavigationTarget(href)) {
-    return false;
-  }
-  dispatchRouteActivity(href);
-  window.location.assign(href);
-  return true;
-}
-
 const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function AppRouteLink(
   { hardNavigate = false, onClick, target, rel, className, href, ...props },
   ref,
@@ -89,10 +82,9 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
           window.location.assign(targetHref);
           return;
         }
-        if (isInternalNavigationTarget(targetHref)) {
-          event.preventDefault();
-          navigateWithBrowser(targetHref);
-        }
+        // Client-side navigation: Next Link handles the transition, the shell
+        // shows route activity until the pathname changes.
+        dispatchRouteActivity(targetHref);
       }}
     />
   );

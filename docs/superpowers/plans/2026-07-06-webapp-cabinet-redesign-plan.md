@@ -23,6 +23,14 @@
 - 1.3 Route activity: 2px indeterminate top bar + pending nav state + «Обновляем данные» chip (§5.4); wire prefetch for sidebar/tab-bar routes (§5.6).
 - 1.4 Verify budgets manually (route feedback <150ms) and no document reload between sidebar routes; full e2e.
 
+### Phase 1 findings (2026-07-06)
+
+- `AppRouteLink` soft path now lets `next/link` run true client transitions; `hardNavigate` prop unchanged for auth-boundary/external callers.
+- New export bug found and fixed: Next 16 static export writes route-group RSC segment payloads as nested dirs (`__next.!<group>/page.txt`) while the client requests dot-joined paths (`__next.!<group>.page.txt`) — 404 on every transition/prefetch, silent full-payload fallback. Fix: `webapp/scripts/fix-export-segment-paths.mjs` post-build creates dot-joined copies (72 files); wired into `npm run build`. Marketing is unaffected (no route groups).
+- Next 16.2.10 upgrade attempt REVERTED: it does not fix the export layout and regresses `router.replace` with query params on static export (admin users URL-filter e2e fails). Stay pinned to `16.1.6`; re-test the segment-path workaround on any future Next upgrade.
+- Shell loading branch needed no change: `PortalSessionProvider` persists in `(dashboard)/layout.tsx` across client transitions, so `loading=true` (full skeleton) now happens only on true cold start; warm navigation swaps content only (verified: 1 page-data API call on nav, no session re-bootstrap).
+- Gates: e2e 46/46 green (export mode), SPA nav check clean (marker survives 3 transitions, 0 console errors), build green. Visible «Обновляем данные» chip moves to the Phase 2 shell reskin.
+
 ## Phase 2 — Foundation primitives & shell reskin
 
 - 2.1 `globals.css`: add Tailwind `@theme` bridge to adaptive `--pokrov-*` (marketing pattern); keep legacy classes alive during migration.
