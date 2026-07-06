@@ -67,3 +67,12 @@
 - 5.3 Full e2e + build + browser smoke (375/1280, light/dark, reduced-motion) per §11.5–11.6.
 - 5.4 Same-wave docs: `webapp/README.md`, DESIGN.md shim note, design-system-sync if needed.
 - 5.5 Owner visual review → push → webapp deploy on owner go (§11.7).
+
+### Phase 3–5 findings (2026-07-06)
+
+- Rebuilt on wave-2 primitives: dashboard (Access Cockpit + honest runway meter), downloads (+instructions/FAQ retokenized), subscription, devices, statistics, support (+thread/legal), redeem, settings, entry `/` + `CabinetEntryAuth` (mechanical retokenization, logic untouched), verify/recover, all 8 error/not-found boundaries (shared `CabinetBoundary` on ErrorState/EmptyState).
+- Deleted dead legacy: `shell-boundary.tsx`, `shell-primitives.tsx`, `ui/double-bezel.tsx`, `ui/preloader.tsx`, `cabinet/use-count-up.ts`; globals.css pruned of zero-consumer blocks (toast/plan/download/step/faq CSS) — 1358 → ~1100 lines.
+- **Deferred debt (explicit):** `/subscription/checkout` reskin is blocked by uncommitted foreign work on the same file (parallel tariff session) — it still consumes `cabinet/surface|ui|icon` and the remaining `.cab-*` classes, so those files and the material-symbols name shim stay until a checkout follow-up lands. The `--atlas-*` body bridge stays for the admin surface until wave 2b. `webapp/README.md` nav-model update deferred for the same reason (foreign edits in the file).
+- Copy: all user-visible strings preserved verbatim or reuse existing `webapp.*` keys; no catalog changes required; copy/text-integrity guardrails green.
+- Stale pre-existing guardrails fixed to current canon: `test_admin_design_guardrails.py` now asserts `getDesignTokenDensityCssVariables("admin")` and the marketing `@theme` bridge (lp-бридж умер в волне 1); `scripts/ui_visual_smoke.py` dashboard markers updated to `StatusHero`/`GroupedSection`.
+- Gates at wave end: build green, e2e 46/46 (full) + 14 (settings/telegram/oidc) + qa-overlay 1/1 (with `NEXT_PUBLIC_ENABLE_QA_OVERLAY`), python guardrails 15/15, SPA nav console-error-free, light/dark/mobile/reduced-motion screenshot passes in `.playwright-mcp/phase3*`.

@@ -15,7 +15,9 @@ def _read(path: Path) -> str:
 def test_admin_layout_uses_admin_density_tokens() -> None:
     source = _read(ADMIN_LAYOUT)
 
-    assert 'getDesignTokenCssVariables("admin")' in source
+    # Scoped density overrides must come from the density emitter so inline
+    # styles never freeze adaptive colors (DESIGN.md theme model).
+    assert 'getDesignTokenDensityCssVariables("admin")' in source
     assert "style={ADMIN_DESIGN_TOKEN_VARS}" in source
 
 
@@ -35,21 +37,23 @@ def test_admin_shared_helpers_keep_radius_tokenized() -> None:
     assert legacy_tailwind_radius == []
 
 
-def test_marketing_lp_variables_bridge_to_design_tokens() -> None:
+def test_marketing_globals_bridge_to_design_tokens() -> None:
+    # The legacy --lp-* bridge died with the sub-project 1 rebuild; marketing
+    # utilities now resolve through the Tailwind v4 @theme token bridge.
     source = _read(MARKETING_GLOBALS)
 
     required_bridges = [
-        "--lp-bg: var(--pokrov-bg,",
-        "--lp-bg-2: var(--pokrov-bg-alt,",
-        "--lp-surface: var(--pokrov-surface-glass,",
-        "--lp-surface-strong: var(--pokrov-surface-glass-strong,",
-        "--lp-text: var(--pokrov-text,",
-        "--lp-text-soft: var(--pokrov-text-soft,",
-        "--lp-line: var(--pokrov-line,",
-        "--lp-primary: var(--pokrov-emerald,",
-        "--lp-shadow: var(--pokrov-shadow-medium,",
-        "--lp-shadow-soft: var(--pokrov-shadow-soft,",
+        "--color-canvas: var(--pokrov-bg)",
+        "--color-surface: var(--pokrov-surface)",
+        "--color-ink: var(--pokrov-text)",
+        "--color-ink-soft: var(--pokrov-text-soft)",
+        "--color-brand: var(--pokrov-accent)",
+        "--color-line: var(--pokrov-line)",
+        "--radius-card: var(--pokrov-radius-card)",
+        "--shadow-soft: var(--pokrov-shadow-soft)",
     ]
 
     for bridge in required_bridges:
         assert bridge in source
+
+    assert "--lp-" not in source

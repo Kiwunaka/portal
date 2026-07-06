@@ -114,7 +114,7 @@ export default function DashboardPage() {
   const planDays = trialMode ? TRIAL_DAYS : getTariffPlan(normalizePlanCode(dash?.current_plan_code))?.duration_days || null;
   const runway =
     isActive && daysRemaining !== null && planDays
-      ? { value: Math.min(daysRemaining, planDays), max: planDays }
+      ? { days: daysRemaining, value: Math.min(daysRemaining, planDays), max: planDays }
       : null;
   const runwayTone = daysRemaining !== null && daysRemaining <= 3 ? "danger" : daysRemaining !== null && daysRemaining <= 7 ? "warning" : "ok";
 
@@ -137,8 +137,8 @@ export default function DashboardPage() {
         {runway ? (
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="font-semibold text-ink">Осталось {formatDays(runway.value)}</span>
-              <span className="text-ink-muted">из {formatDays(runway.max)}</span>
+              <span className="font-semibold text-ink">Осталось {formatDays(runway.days)}</span>
+              <span className="text-ink-muted">план на {formatDays(runway.max)}</span>
             </div>
             <Meter value={runway.value} max={runway.max} tone={runwayTone} label="Оставшийся срок доступа" />
           </div>
