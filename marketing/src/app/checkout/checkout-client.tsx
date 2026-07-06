@@ -9,11 +9,12 @@ import { Chip } from "../../components/ui/chip";
 import { cn } from "../../components/utils";
 import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import {
+  getCheckoutTariffPlans,
   getPricingPreviewDiscountPercent,
   getPokrovPublicConfig,
   getPromoSlotsCatalog,
-  getTariffPlans,
   normalizePlanCode,
+  tariffPlanAllowsDiscount,
 } from "../../lib/pokrov";
 
 const INPUT_CLASS =
@@ -107,13 +108,19 @@ type PublicRubOrderResponse = {
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const promoCatalog = getPromoSlotsCatalog();
-const CHECKOUT_READY_PLAN_CODES = new Set(["start_99"]);
+type PaymentMethodChoice = "sbp" | "card";
+
+const PAYMENT_METHOD_OPTIONS: Array<{
+  code: PaymentMethodChoice;
+  label: string;
+  hint: string;
+}> = [
+  { code: "sbp", label: "СБП", hint: "Через приложение банка" },
+  { code: "card", label: "Карта", hint: "Банковская карта" },
+];
 
 function fallbackPlans(): PlanOption[] {
-  return getTariffPlans()
-    .filter((plan) => Boolean(plan.is_active) && CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()))
-    .slice()
-    .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+  return getCheckoutTariffPlans()
     .map((plan) => ({
       code: plan.code,
       label: plan.label,
@@ -183,6 +190,7 @@ async function createPublicRubOrder(payload: {
   buyer_email: string;
   promo_code?: string;
   currency?: string;
+  payment_method?: PaymentMethodChoice;
 }): Promise<PublicRubOrderResponse> {
   let lastError = "Не удалось создать платеж.";
   for (const base of candidateApiBases()) {
@@ -197,6 +205,7 @@ async function createPublicRubOrder(payload: {
           source: "site",
           promo_code: payload.promo_code || undefined,
           currency: payload.currency || "RUB",
+          payment_method: payload.payment_method,
         }),
       });
       if (!response.ok) {
@@ -233,6 +242,10 @@ function describePromoContent(contentId: string): { title: string; body: string 
 function formatPrice(price: number, discountPercent: number): string {
   const total = Math.max(1, Math.round(price * (1 - discountPercent / 100)));
   return `${total} ₽`;
+}
+
+function planDiscountPercent(planCode: string, promoCode: string): number {
+  return tariffPlanAllowsDiscount(planCode) ? getPricingPreviewDiscountPercent(promoCode) : 0;
 }
 
 function buildRedeemHref(key: string): string {
@@ -293,6 +306,7 @@ export default function CheckoutClient() {
   const [statusText, setStatusText] = useState("");
   const [keyBusy, setKeyBusy] = useState(false);
   const [buyerEmail, setBuyerEmail] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>("sbp");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   useEffect(() => {
@@ -304,7 +318,7 @@ export default function CheckoutClient() {
         return;
       }
       const nextPlans = (nextCatalog.plans || [])
-        .filter((plan) => plan?.is_active !== false && Boolean(plan?.code) && CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()))
+        .filter((plan) => plan?.is_active !== false && Boolean(plan?.code) && Number(plan?.amount_rub || 0) > 0)
         .map((plan) => ({
           code: String(plan.code || "").trim().toLowerCase(),
           label: String(plan.label || plan.code || "").trim(),
@@ -371,7 +385,9 @@ export default function CheckoutClient() {
     [plans, selectedPlan],
   );
 
-  const discountPercent = getPricingPreviewDiscountPercent(promoCode);
+  const rawDiscountPercent = getPricingPreviewDiscountPercent(promoCode);
+  const discountPercent = planDiscountPercent(activePlan.code, promoCode);
+  const activePlanDiscountBlocked = rawDiscountPercent > 0 && !tariffPlanAllowsDiscount(activePlan.code);
   const redeemHref = keyStatus?.key ? buildRedeemHref(keyStatus.key) : buildRedeemHref(keyInput);
   const marketingPromoIds =
     promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
@@ -395,8 +411,9 @@ export default function CheckoutClient() {
         provider: activeProviderCode,
         plan_code: activePlan.code,
         buyer_email: email,
-        promo_code: promoCode || undefined,
+        promo_code: discountPercent > 0 ? promoCode : undefined,
         currency: "RUB",
+        payment_method: paymentMethod,
       });
       const paymentUrl = String(order.payment_url || "").trim();
       if (!paymentUrl) {
@@ -456,27 +473,30 @@ export default function CheckoutClient() {
         <Card className="flex flex-col gap-7">
           <h2 className="font-display text-[1.375rem] font-bold text-ink">Выберите срок</h2>
           <div className="flex flex-col gap-2.5">
-            {plans.map((plan) => (
-              <button
-                key={plan.code}
-                type="button"
-                onClick={() => setSelectedPlan(plan.code)}
-                className={cn(
-                  "flex min-h-11 items-center justify-between gap-4 rounded-(--radius-control) border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-(--ease-apple)",
-                  selectedPlan === plan.code
-                    ? "border-brand bg-brand-soft shadow-soft"
-                    : "border-line bg-surface hover:border-line-strong",
-                )}
-              >
-                <span className="flex flex-col gap-0.5">
-                  <strong className="text-[0.9375rem] font-semibold text-ink">{plan.label}</strong>
-                  <span className="text-[0.8125rem] text-ink-soft">
-                    {plan.days} дней • до {plan.device_limit} устройств
+            {plans.map((plan) => {
+              const planPreviewDiscountPercent = planDiscountPercent(plan.code, promoCode);
+              return (
+                <button
+                  key={plan.code}
+                  type="button"
+                  onClick={() => setSelectedPlan(plan.code)}
+                  className={cn(
+                    "flex min-h-11 items-center justify-between gap-4 rounded-(--radius-control) border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-(--ease-apple)",
+                    selectedPlan === plan.code
+                      ? "border-brand bg-brand-soft shadow-soft"
+                      : "border-line bg-surface hover:border-line-strong",
+                  )}
+                >
+                  <span className="flex flex-col gap-0.5">
+                    <strong className="text-[0.9375rem] font-semibold text-ink">{plan.label}</strong>
+                    <span className="text-[0.8125rem] text-ink-soft">
+                      {plan.days} дней • до {plan.device_limit} устройств
+                    </span>
                   </span>
-                </span>
-                <span className="text-[1.0625rem] font-bold text-ink">{formatPrice(plan.amount_rub, discountPercent)}</span>
-              </button>
-            ))}
+                  <span className="text-[1.0625rem] font-bold text-ink">{formatPrice(plan.amount_rub, planPreviewDiscountPercent)}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex flex-col gap-2.5">
@@ -501,7 +521,9 @@ export default function CheckoutClient() {
               className={INPUT_CLASS}
             />
             <p className="text-[0.8125rem] text-ink-muted">
-              {discountPercent > 0
+              {activePlanDiscountBlocked
+                ? "Для приветственного тарифа 99 ₽ промокод не применяется."
+                : discountPercent > 0
                 ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
                 : "Промокод меняет только итоговую сумму."}
             </p>
@@ -569,6 +591,32 @@ export default function CheckoutClient() {
                 required
               />
             </label>
+          ) : null}
+
+          {checkoutReady ? (
+            <div className="flex flex-col gap-2">
+              <span className="text-[0.875rem] font-medium text-ink">Способ оплаты</span>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {PAYMENT_METHOD_OPTIONS.map((option) => {
+                  const selected = option.code === paymentMethod;
+                  return (
+                    <button
+                      key={option.code}
+                      type="button"
+                      onClick={() => setPaymentMethod(option.code)}
+                      className={cn(
+                        "min-h-11 rounded-(--radius-control) border px-3 py-2 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple)",
+                        selected ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
+                      )}
+                      aria-pressed={selected}
+                    >
+                      <span className="block text-[0.875rem] font-semibold text-ink">{option.label}</span>
+                      <span className="block text-[0.75rem] text-ink-soft">{option.hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : null}
 
           {checkoutReady ? (

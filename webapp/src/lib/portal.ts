@@ -24,10 +24,13 @@ export {
 } from "../../../shared/promo-slots";
 
 export {
+  getCheckoutTariffPlans,
   getPricingPreviewDiscountPercent,
   getTariffCatalog,
   getTariffPlan,
   getTariffPlans,
+  isCheckoutTariffPlan,
+  tariffPlanAllowsDiscount,
 } from "../../../shared/tariff-catalog";
 
 export {

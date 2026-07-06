@@ -5,7 +5,7 @@ import { CabinetActionCard, CabinetActionGrid, CabinetGroup, CabinetRow, Cabinet
 import { Button, Chip, Input } from "@/components/cabinet/ui";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
-import { getCopyText, getPricingPreviewDiscountPercent, getTariffPlans, normalizePlanCode } from "@/lib/portal";
+import { getCheckoutTariffPlans, getCopyText, getPricingPreviewDiscountPercent, normalizePlanCode, tariffPlanAllowsDiscount } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -22,8 +22,6 @@ type DisplayPlan = {
 
 type PaymentMethodChoice = "sbp" | "card";
 
-const CHECKOUT_READY_PLAN_CODES = new Set(["start_99"]);
-
 const PAYMENT_METHOD_OPTIONS: Array<{
   code: PaymentMethodChoice;
   label: string;
@@ -33,15 +31,7 @@ const PAYMENT_METHOD_OPTIONS: Array<{
   { code: "card", label: "Карта", hint: "Visa, Mastercard или МИР" },
 ];
 
-const SHARED_PLANS: DisplayPlan[] = getTariffPlans()
-  .slice()
-  .filter(
-    (plan) =>
-      Boolean(plan.is_active) &&
-      Number(plan.amount_rub || 0) > 0 &&
-      CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()),
-  )
-  .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+const SHARED_PLANS: DisplayPlan[] = getCheckoutTariffPlans()
   .map((plan) => ({
     code: plan.code,
     label: plan.label,
@@ -95,8 +85,7 @@ export default function CheckoutPage() {
           .filter(
             (plan) =>
               Boolean(plan.is_active) &&
-              Number(plan.amount_rub || 0) > 0 &&
-              CHECKOUT_READY_PLAN_CODES.has(String(plan.code || "").trim().toLowerCase()),
+              Number(plan.amount_rub || 0) > 0,
           )
           .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
           .map((plan) => ({
@@ -152,7 +141,9 @@ export default function CheckoutPage() {
     [plans, selectedCode],
   );
   const promoCode = normalizePromo(promoInput);
-  const discountPercent = getPricingPreviewDiscountPercent(promoCode);
+  const rawDiscountPercent = getPricingPreviewDiscountPercent(promoCode);
+  const discountPercent = tariffPlanAllowsDiscount(activePlan?.code) ? rawDiscountPercent : 0;
+  const promoBlockedByPlan = rawDiscountPercent > 0 && !tariffPlanAllowsDiscount(activePlan?.code);
   const discountAmount = Math.round((Number(activePlan?.amountRub || 0) * discountPercent) / 100);
   const totalAmount = Math.max(0, Number(activePlan?.amountRub || 0) - discountAmount);
   const checkoutReady = Boolean(providerState?.ok && !providerState?.blocked && providerCode);
@@ -260,6 +251,11 @@ export default function CheckoutPage() {
             onChange={(event) => setPromoInput(event.target.value)}
             placeholder="Промокод"
           />
+          {promoBlockedByPlan ? (
+            <p className="text-sm text-[color:var(--atlas-status-warning-text)]">
+              Для приветственного тарифа 99 ₽ промокод не применяется.
+            </p>
+          ) : null}
           <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-4 py-3 text-sm leading-6 text-[color:var(--atlas-text-soft)]">
             <div className="flex justify-between gap-3">
               <span>Базовая цена</span>
