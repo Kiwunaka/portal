@@ -131,7 +131,7 @@ function detectHapticStyle(element: Element): "light" | "medium" | "heavy" | "ri
   if (element.closest('[data-haptic="rigid"]')) return "rigid";
   if (element.closest('[data-haptic="soft"]')) return "soft";
   if (element.closest(".btn-primary")) return "medium";
-  if (element.closest(".cab-btn--primary")) return "medium";
+  if (element.closest(".bg-brand")) return "medium";
   return "light";
 }
 

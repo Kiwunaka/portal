@@ -76,3 +76,9 @@
 - Copy: all user-visible strings preserved verbatim or reuse existing `webapp.*` keys; no catalog changes required; copy/text-integrity guardrails green.
 - Stale pre-existing guardrails fixed to current canon: `test_admin_design_guardrails.py` now asserts `getDesignTokenDensityCssVariables("admin")` and the marketing `@theme` bridge (lp-бридж умер в волне 1); `scripts/ui_visual_smoke.py` dashboard markers updated to `StatusHero`/`GroupedSection`.
 - Gates at wave end: build green, e2e 46/46 (full) + 14 (settings/telegram/oidc) + qa-overlay 1/1 (with `NEXT_PUBLIC_ENABLE_QA_OVERLAY`), python guardrails 15/15, SPA nav console-error-free, light/dark/mobile/reduced-motion screenshot passes in `.playwright-mcp/phase3*`.
+
+### Checkout follow-up closed (2026-07-06, same day)
+
+- Parallel-session tariff work committed separately (`checkout: open full tariff ladder…`), then `/subscription/checkout` rebuilt on wave-2 primitives (radio-row plan picker, payment chips, promo/summary block); payment logic untouched.
+- Last legacy consumers died: `cabinet/surface.tsx`, `cabinet/ui.tsx`, `cabinet/icon.tsx` (material-symbols shim — DESIGN.md updated), `cabinet/toast.tsx` shim deleted; the whole `.cab-*` CSS layer removed (globals.css 1358 → 585 lines). Remaining `--atlas-*` bridge + "Redesign 2025" classes serve only the retained legacy admin routes (admin redesign cancelled by owner — dedicated `adminapp/` is being built in a parallel session).
+- Tactile polish pass also landed earlier: sliding nav pill, stretching iOS switch with impact haptics, tap-scale feedback, theme icon morph, success-emblem pulse.
