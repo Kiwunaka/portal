@@ -38,6 +38,36 @@
 - Golos Text: static TTFs 400–800 (latin+cyrillic) + OFL bundled in `pokrov_app_shell`; theme `fontFamily: 'packages/pokrov_app_shell/Golos Text'`; dead `SF Pro Display` reference removed.
 - Theme persistence: `PokrovFileThemeModeStore` (best-effort file store, default system) wired into `PokrovSeedApp`; covered by a new contract test.
 - Gates: app_shell 143/143, windows_shell 4/4, android_shell 4/4, contract greps clean (`connectedGreen` only in disc/switch/palette/test; no `0xFF0F725D`/`SF Pro`).
+
+### Consilium backlog (2026-07-06, two review agents on features; ranked, not yet done)
+
+Landed same-day quick fixes: white-on-mint → `onPrimary` (onboarding icon, chat user bubble), tabular figures in `labelLarge`, 44pt notifications CTA, plus round-1 items (Cupertino WARP switch, inset separators, readable snack icons + inset above tab bar, settled theme pick).
+
+Interaction (files:lines in agent report wording):
+1. Support chat: no scroll-to-new-message (`support_chat.dart:617`, append at 254/275) — add ScrollController+animateTo.
+2. Redeem sheet ignores keyboard: `isScrollControlled` + `viewInsets` padding + submit-from-keyboard + validate before pop (`profile_sheets.dart:37,110-124`).
+3. Rewards hub sheet is frozen-stateless with fake pull-to-refresh (`rewards_hub.dart:28,62-67,137,170`) — make reactive, await real refresh, `maybePop`.
+4. Device revoke: destructive without confirm, silent failure, skeleton flash instead of animated row removal (`profile_sheets.dart:243-257,416-421`).
+5. Locations: `locationsCatalogError`/`onRefreshLocationsCatalog` are dead props — no error state, no retry (`locations_surface.dart:24-25`).
+6. Rules app-picker: fixed 0.82 height vs keyboard, no `keyboardDismissBehavior: onDrag`, no clear button (`rules_surface.dart:696,756-776,815`).
+7. Copy-confirmation snack hides under the open rewards sheet (`rewards_hub.dart:842-870`) — in-sheet copy→check morph.
+8. Chat composer clears text before await; failures lose the draft (`support_chat.dart:257,324-352`).
+9. Onboarding restore: no autofocus/`textCapitalization.characters`, Android back exits instead of returning to choice (`onboarding_flow.dart:381-405`).
+10. Selected-apps list: no insert/remove transitions, silent invalid manual input (`rules_surface.dart:450-461,300-307,369-401`).
+
+Visual:
+11. Weight soup: w700 title+value in settings rows, bold muted subtitles (`pokrov_controls.dart:805-813`, `home_surface.dart:986-994,1059-1063,1296-1302`).
+12. Two status-pill components with different heights/sizes (`shell_widgets.dart:133-149` vs `pokrov_controls.dart:995-1013`) — unify.
+13. Home rhythm off the 4pt grid (10/14/6/2 everywhere; `PokrovSpacing` barely used in features) — normalize to 8/12/16.
+14. Page top padding jumps between tabs (12/24/18/34) and sheet gutters (18/20/22) — one token each.
+15. Triple access-info repetition on Home; profile «Ваш доступ» duplicates pills vs rows (`home_surface.dart:266-340,693-699`, `profile_surface.dart:474-524`).
+16. Leading-icon zoo (54/46/42/38/36/34 px, radius 18..11) — two sizes (44 hero / 36 row), one chevron alpha.
+17. Radii off `PokrovRadii` in home/locations tiles; app-picker sheet radius 24 vs canonical 28.
+18. WARP consent panel white-alpha colors → tokens (`warp_sheet.dart:44-49`).
+19. Desktop Home header fake affordances: «Профиль» tooltip opens Rules, bell opens connection info (`home_surface.dart:415-426`).
+20. Theme restore lands after first frame (flash when explicit theme set) — read store pre-`runApp` or gate first frame.
+
+Round-1 leftovers still open: dim disabled rows (explicit `enabled` param), `RefreshIndicator`→Cupertino refresh, WARP tile full-row tappable, `PokrovPressable` Listener→GestureDetector (scroll twitch), consolidate four press implementations, typed state instead of string sniffing (`accessLabel.startsWith('5 ')`, `_isTerminalConnectMessage`).
 - Foreign uncommitted work in the client repo (flutter_secure_storage bootstrap changes + release-doc edits) left untouched; the pubspec fonts commit excluded their dependency line.
 - Remaining for owner: visual review on a Windows shell run (`flutter run` in `apps/windows_shell`), real-device captures stay `MANUAL_OWNER_TEST`.
 
