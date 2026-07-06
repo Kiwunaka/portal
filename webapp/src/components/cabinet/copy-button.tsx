@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 
-import { CabinetIcon } from "@/components/cabinet/icon";
-import { Button } from "@/components/cabinet/ui";
-import { useToast } from "@/components/cabinet/toast";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 /*
- * Copy-to-clipboard button with an icon morph (copy → check) and a
+ * Copy-to-clipboard button with an icon morph (copy -> check) and a
  * success toast. The check resets back to the copy icon after 1.6s.
  */
 
@@ -59,7 +59,11 @@ export default function CopyButton({
   return (
     <span data-haptic="rigid" className="inline-flex">
       <Button variant={variant} size={size} disabled={disabled} onClick={() => void onCopy()} className={className}>
-        <CabinetIcon name={copied ? "check" : "content_copy"} className="h-[18px] w-[18px]" />
+        {copied ? (
+          <Check size={18} strokeWidth={2.2} aria-hidden="true" />
+        ) : (
+          <Copy size={18} strokeWidth={2} aria-hidden="true" />
+        )}
         {copied ? copiedLabel : label}
       </Button>
     </span>

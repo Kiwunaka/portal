@@ -1,8 +1,11 @@
 "use client";
 
-import { icon } from "@/components/cabinet/icon";
-import { CabinetGroup, CabinetRow, CabinetStatus, CabinetTile, CabinetTiles } from "@/components/cabinet/surface";
-import { Button } from "@/components/cabinet/ui";
+import { CalendarSync, CreditCard, Download, Gauge, Globe, LifeBuoy, MonitorSmartphone, ShieldCheck, TriangleAlert, Users, Wifi } from "lucide-react";
+
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { GroupedSection, Row } from "@/components/ui/grouped";
+import { Tile, TileGrid } from "@/components/ui/tiles";
 import { getDeviceLimit, getNextResetAt, resolvePlanLabel, resolveTrafficStatusText } from "@/lib/access-policy";
 import { getCopyText } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
@@ -40,13 +43,13 @@ export default function StatisticsPage() {
   const nextResetAt = getNextResetAt(dash, user);
 
   return (
-    <main className="cab-page">
-      <CabinetStatus
+    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+      <StatusHero
         title={getCopyText("webapp.statistics.title", "Статистика")}
         meta={resolvePlanLabel(dash, user)}
         body={getCopyText("webapp.statistics.subtitle", "Безопасная сводка без личных ссылок, адресов точек доступа и технических параметров.")}
         tone={dash?.is_active ? "success" : "warning"}
-        emblem={icon(dash?.is_active ? "verified_user" : "warning", "h-7 w-7")}
+        icon={dash?.is_active ? ShieldCheck : TriangleAlert}
         action={
           <Button variant="secondary" href="/support/" className="w-full sm:w-auto">
             Поддержка
@@ -55,23 +58,23 @@ export default function StatisticsPage() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Безопасная сводка</h2>
-        <CabinetTiles>
-          <CabinetTile icon={icon("verified_user")} label="Режим" value={resolvePlanLabel(dash, user)} hint={dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дата уточняется"} tone="success" href="/subscription/" />
-          <CabinetTile icon={icon("speed")} label="Трафик" value={formatGb(trafficUsed)} hint={resolveTrafficStatusText(dash, user)} tone="info" />
-          <CabinetTile icon={icon("devices")} label="Устройства" value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`} hint="Связанные экраны" tone="neutral" href="/devices/" />
-          <CabinetTile icon={icon("wifi_tethering")} label="Подключения сейчас" value={formatCount(activeConnections)} hint="Живая активность" tone="success" />
-          <CabinetTile icon={icon("group")} label="Людей онлайн" value={formatCount(activeUsersEstimate)} hint="Ориентир, не список" tone="neutral" />
-          <CabinetTile icon={icon("hub")} label="Точки доступа" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} hint="Счетчик готовности" tone="info" />
-          <CabinetTile icon={icon("event_repeat")} label="Обновление лимита" value={nextResetAt ? formatDate(nextResetAt) : "не нужно"} hint="Для текущего режима" tone="neutral" />
-        </CabinetTiles>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Безопасная сводка</h2>
+        <TileGrid>
+          <Tile icon={ShieldCheck} label="Режим" value={resolvePlanLabel(dash, user)} hint={dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дата уточняется"} tone="success" href="/subscription/" />
+          <Tile icon={Gauge} label="Трафик" value={formatGb(trafficUsed)} hint={resolveTrafficStatusText(dash, user)} tone="info" />
+          <Tile icon={MonitorSmartphone} label="Устройства" value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`} hint="Связанные экраны" tone="neutral" href="/devices/" />
+          <Tile icon={Wifi} label="Подключения сейчас" value={formatCount(activeConnections)} hint="Живая активность" tone="success" />
+          <Tile icon={Users} label="Людей онлайн" value={formatCount(activeUsersEstimate)} hint="Ориентир, не список" tone="neutral" />
+          <Tile icon={Globe} label="Точки доступа" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} hint="Счетчик готовности" tone="info" />
+          <Tile icon={CalendarSync} label="Обновление лимита" value={nextResetAt ? formatDate(nextResetAt) : "не нужно"} hint="Для текущего режима" tone="neutral" />
+        </TileGrid>
       </section>
 
-      <CabinetGroup title="Действия">
-        <CabinetRow icon={icon("support_agent")} label="Открыть поддержку" hint="Если цифры выглядят странно" href="/support/" />
-        <CabinetRow icon={icon("payments")} label="Продлить доступ" hint="Срок и тарифы" href="/subscription/" />
-        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
-      </CabinetGroup>
+      <GroupedSection title="Действия">
+        <Row icon={LifeBuoy} label="Открыть поддержку" hint="Если цифры выглядят странно" href="/support/" />
+        <Row icon={CreditCard} label="Продлить доступ" hint="Срок и тарифы" href="/subscription/" />
+        <Row icon={Download} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
+      </GroupedSection>
     </main>
   );
 }

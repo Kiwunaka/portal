@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CircleCheck, Download, KeyRound, LifeBuoy, QrCode, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import AppRouteLink from "@/components/app-route-link";
-import { icon } from "@/components/cabinet/icon";
 import CopyButton from "@/components/cabinet/copy-button";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
-import { Button } from "@/components/cabinet/ui";
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { GroupedSection, Row } from "@/components/ui/grouped";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
+import { cn } from "@/components/utils";
 import {
   getAccessState,
   getNextResetAt,
@@ -139,13 +141,13 @@ export default function SubscriptionPage() {
     : "";
 
   return (
-    <main className="cab-page">
-      <CabinetStatus
+    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+      <StatusHero
         title={getCopyText("webapp.subscription.title", "Продлить доступ")}
         meta={`${resolvePlanLabel(dash, user)} · ${accessHint}`}
         body={statusBody}
         tone={statusTone}
-        emblem={icon(dash?.is_active ? "verified_user" : "warning", "h-7 w-7")}
+        icon={dash?.is_active ? ShieldCheck : TriangleAlert}
         action={
           <Button href="/subscription/checkout/" className="w-full sm:w-auto">
             Оплатить
@@ -154,8 +156,8 @@ export default function SubscriptionPage() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Срок</h2>
-        <div className="cab-plans">
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Срок</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {visiblePlans.map((plan) => {
             const normalizedCode = normalizePlanCode(plan.code);
             const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
@@ -163,46 +165,58 @@ export default function SubscriptionPage() {
             const amountRub = Number(plan.amount_rub || 0);
             const days = Number(plan.days || 0);
             return (
-              <article key={plan.code} className={`cab-plan${isFeatured ? " cab-plan--featured" : ""}${isCurrent ? " cab-plan--current" : ""}`}>
-                {plan.badge || isFeatured ? (
-                  <span className="cab-plan-badge" data-tone={isFeatured ? "success" : "neutral"}>{plan.badge || "выгодно"}</span>
-                ) : (
-                  <span className="cab-plan-badge" data-tone="neutral">срок</span>
+              <article
+                key={plan.code}
+                className={cn(
+                  "flex flex-col gap-2 rounded-card border bg-surface p-4 shadow-soft",
+                  isFeatured ? "border-brand shadow-medium" : "border-line",
+                  isCurrent && "border-ok-line bg-ok-bg/40",
                 )}
-                <h3 className="cab-plan-title">{plan.label}</h3>
-                <div className="cab-plan-price">
-                  {amountRub} ₽{days > 0 ? <span> / {days} дн.</span> : null}
+              >
+                <span
+                  className={cn(
+                    "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase",
+                    isFeatured ? "border-ok-line bg-ok-bg text-ok-text" : "border-neutral-line bg-neutral-bg text-neutral-text",
+                  )}
+                >
+                  {plan.badge || (isFeatured ? "выгодно" : "срок")}
+                </span>
+                <h3 className="text-sm font-semibold text-ink">{plan.label}</h3>
+                <div className="text-xl leading-none font-bold text-ink">
+                  {amountRub} ₽{days > 0 ? <span className="text-sm font-medium text-ink-muted"> / {days} дн.</span> : null}
                 </div>
-                <p className="cab-plan-meta">{planHint(plan)}</p>
+                <p className="flex-1 text-xs leading-5 text-ink-muted">{planHint(plan)}</p>
                 {isCurrent ? (
-                  <span className="cab-plan-current-tag">
-                    {icon("check_circle", "h-[18px] w-[18px]")}
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-ok-text">
+                    <CircleCheck size={18} strokeWidth={2} aria-hidden="true" />
                     Действует сейчас
                   </span>
                 ) : (
-                  <AppRouteLink
+                  <Button
                     href={`/subscription/checkout/?plan=${encodeURIComponent(plan.code)}`}
-                    className={`cab-btn ${isFeatured ? "cab-btn--primary" : "cab-btn--secondary"} cab-btn--block`}
+                    variant={isFeatured ? "primary" : "secondary"}
+                    size="sm"
+                    block
                   >
                     Выбрать
-                  </AppRouteLink>
+                  </Button>
                 )}
               </article>
             );
           })}
         </div>
       </section>
-      {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Часть тарифов не обновилась: {error}</p> : null}
+      {error ? <p className="px-1 text-sm text-warn-text">Часть тарифов не обновилась: {error}</p> : null}
 
-      <CabinetGroup title="Действия">
-        <CabinetRow icon={icon("key")} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
-        <CabinetRow icon={icon("download")} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
-        <CabinetRow icon={icon("support_agent")} label="Помощь" hint="Если оплата не обновилась" href="/support/" />
-      </CabinetGroup>
+      <GroupedSection title="Действия">
+        <Row icon={KeyRound} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
+        <Row icon={Download} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
+        <Row icon={LifeBuoy} label="Помощь" hint="Если оплата не обновилась" href="/support/" />
+      </GroupedSection>
 
       <section id="manual-setup" className="scroll-mt-24 space-y-2">
         <div className="flex items-center justify-between gap-3 px-1">
-          <h2 className="cab-eyebrow">Ручная настройка</h2>
+          <h2 className="text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Ручная настройка</h2>
           <Button
             variant="secondary"
             size="sm"
@@ -212,23 +226,23 @@ export default function SubscriptionPage() {
             {manualAccessVisible ? "Скрыть" : "Показать"}
           </Button>
         </div>
-        <div className="cab-panel">
-          <CabinetRow
-            icon={icon("qr_code_2")}
+        <div className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+          <Row
+            icon={QrCode}
             label="Личная ссылка и QR"
             hint={manualAccessReady ? "Только для восстановления или совместимого клиента" : "Появится после активации"}
             value={manualAccessVisible ? "открыто" : "скрыто"}
           />
           {manualAccessVisible ? (
-            <div className="space-y-5 border-t border-[color:var(--atlas-table-divider)] p-4">
+            <div className="space-y-5 border-t border-line p-4">
               <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
                 <div className="min-w-0">
-                  <p className="text-sm leading-6 text-[color:var(--atlas-text-soft)]">
+                  <p className="text-sm leading-6 text-ink-soft">
                     Скопируйте ссылку только на устройстве, которому доверяете. Она открывает профиль подключения.
                   </p>
-                  <div className="mt-4 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-3">
-                    <p className="break-all font-mono text-xs leading-6 text-[color:var(--atlas-text)]">{subscriptionUrl}</p>
+                  <div className="mt-4 rounded-control border border-line bg-canvas-alt px-3 py-3">
+                    <p className="font-mono text-xs leading-6 break-all text-ink">{subscriptionUrl}</p>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <CopyButton
@@ -246,12 +260,36 @@ export default function SubscriptionPage() {
               </div>
 
               <div>
-                <p className="cab-eyebrow mb-2">Совместимые клиенты</p>
-                <div className="cab-panel">
-                  <CabinetRow label="Hiddify" value="Android и Windows" action={<a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="cab-link">Скачать</a>} />
-                  <CabinetRow label="v2rayN" value="Windows" action={<a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="cab-link">Скачать</a>} />
-                  <CabinetRow label="NekoBox" value="Android" action={<a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="cab-link">Скачать</a>} />
-                </div>
+                <p className="mb-2 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Совместимые клиенты</p>
+                <GroupedSection>
+                  <Row
+                    label="Hiddify"
+                    value="Android и Windows"
+                    action={
+                      <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
+                        Скачать
+                      </a>
+                    }
+                  />
+                  <Row
+                    label="v2rayN"
+                    value="Windows"
+                    action={
+                      <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
+                        Скачать
+                      </a>
+                    }
+                  />
+                  <Row
+                    label="NekoBox"
+                    value="Android"
+                    action={
+                      <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
+                        Скачать
+                      </a>
+                    }
+                  />
+                </GroupedSection>
               </div>
             </div>
           ) : null}
