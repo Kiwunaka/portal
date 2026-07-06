@@ -1,7 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
 import { Zap } from "lucide-react";
+import { useRef } from "react";
 
 import { AppPhoneIllustration } from "../illustrations/app-phone";
 
@@ -36,16 +37,39 @@ function FloatingChip({
   );
 }
 
-/** Client hero visual: live app screen with gently floating trust chips. */
+/** Client hero visual: live app screen with gently floating trust chips and a
+ * subtle desktop pointer tilt (transform-only, reduced-motion safe). */
 export function HeroVisual() {
   const reduceMotion = useReducedMotion();
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const pointerX = useMotionValue(0.5);
+  const pointerY = useMotionValue(0.5);
+  const rotateX = useSpring(useTransform(pointerY, [0, 1], [3.5, -3.5]), { stiffness: 180, damping: 24 });
+  const rotateY = useSpring(useTransform(pointerX, [0, 1], [-4, 4]), { stiffness: 180, damping: 24 });
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (reduceMotion || event.pointerType !== "mouse") return;
+    const bounds = frameRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    pointerX.set((event.clientX - bounds.left) / bounds.width);
+    pointerY.set((event.clientY - bounds.top) / bounds.height);
+  };
+
+  const onPointerLeave = () => {
+    pointerX.set(0.5);
+    pointerY.set(0.5);
+  };
 
   return (
-    <div className="relative flex justify-center lg:justify-end">
+    <div className="relative flex justify-center lg:justify-end" style={{ perspective: 1100 }}>
       <motion.div
+        ref={frameRef}
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
         initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
         animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE }}
+        style={reduceMotion ? undefined : { rotateX, rotateY, transformStyle: "preserve-3d" }}
       >
         <AppPhoneIllustration variant="connect" />
       </motion.div>

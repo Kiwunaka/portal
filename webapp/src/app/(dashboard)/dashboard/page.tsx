@@ -163,7 +163,10 @@ export default function DashboardPage() {
             value={
               activeConnections > 0 ? (
                 <span className="inline-flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-status-green" aria-hidden="true" />
+                  <span className="relative flex size-2" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-status-green opacity-60 motion-safe:animate-[ping_2.4s_cubic-bezier(0,0,0.2,1)_infinite]" />
+                    <span className="relative inline-flex size-2 rounded-full bg-status-green" />
+                  </span>
                   {formatCount(activeConnections)} активно
                 </span>
               ) : (

@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
 import CabinetEntryAuth from "@/components/cabinet-entry-auth";
@@ -281,10 +281,28 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   const [routeActivity, setRouteActivity] = useState(false);
   const showActivity = refreshing || routeActivity;
 
+  const firstThemeApplyRef = useRef(true);
+
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
+    const apply = () => {
+      document.documentElement.classList.toggle("dark", dark);
+      // Keep the mobile browser chrome in sync with the manual theme choice
+      // (the static viewport meta only follows prefers-color-scheme).
+      const themeColor = dark ? "#111715" : "#ffffff";
+      document
+        .querySelectorAll('meta[name="theme-color"]')
+        .forEach((meta) => meta.setAttribute("content", themeColor));
+    };
+    const doc = document as Document & { startViewTransition?: (callback: () => void) => unknown };
+    if (firstThemeApplyRef.current || reduceMotion || typeof doc.startViewTransition !== "function") {
+      firstThemeApplyRef.current = false;
+      apply();
+    } else {
+      // Cross-fade the whole page between themes - the iOS appearance-switch feel.
+      doc.startViewTransition(apply);
+    }
     localStorage.setItem(POKROV_THEME_STORAGE_KEY, dark ? "dark" : "light");
-  }, [dark]);
+  }, [dark, reduceMotion]);
 
   useEffect(() => {
     document.body.classList.toggle("modal-open", drawerOpen);
