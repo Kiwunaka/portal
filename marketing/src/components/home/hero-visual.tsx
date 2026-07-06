@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { Zap } from "lucide-react";
 
 import { AppPhoneIllustration } from "../illustrations/app-phone";
 
@@ -50,9 +51,7 @@ export function HeroVisual() {
       </motion.div>
 
       <FloatingChip delay={0.35} className="top-14 -left-1 sm:left-2 lg:-left-10">
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <path d="M7 1.4 8.6 5l3.8.3-2.9 2.5.9 3.7L7 9.5l-3.4 2 .9-3.7L1.6 5.3 5.4 5 7 1.4Z" fill="var(--pokrov-status-green)" />
-        </svg>
+        <Zap size={12} strokeWidth={1.5} fill="currentColor" className="text-status-green" aria-hidden="true" />
         1 тап — и работает
       </FloatingChip>
 

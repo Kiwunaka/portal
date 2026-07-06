@@ -77,6 +77,8 @@ The control vocabulary for cabinet, admin, and client surfaces (implemented per 
 ## Iconography
 
 - Web surfaces: `lucide-react` is the single icon family. The legacy material-symbols naming shim in the cabinet shell is a migration target for sub-project 2 — retire it, do not extend it.
+- Third-party service logos (YouTube, TikTok, Instagram, Discord, …) come from `simple-icons` in the brand's official color; never redraw brand marks by hand. If a brand is absent from simple-icons (e.g. OpenAI, removed at the brand's request), fall back to a semantic lucide icon — do not hand-roll the logo.
+- Glyph characters (▶ ♪ ⌘ ✦ and similar) are not icons; they are banned in UI.
 - Custom SVG is reserved for the POKROV mark and product graphics.
 - Client: flutter-material per client-repo canon.
 

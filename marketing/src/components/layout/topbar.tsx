@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { MarketingBrandLogo } from "../marketing-brand-logo";
@@ -72,13 +73,11 @@ export function Topbar({ labels }: { labels: TopbarLabels }) {
           aria-label={menuOpen ? labels.menuClose : labels.menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            {menuOpen ? (
-              <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            ) : (
-              <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            )}
-          </svg>
+          {menuOpen ? (
+            <X size={20} strokeWidth={1.8} aria-hidden="true" />
+          ) : (
+            <Menu size={20} strokeWidth={1.8} aria-hidden="true" />
+          )}
         </button>
       </div>
 

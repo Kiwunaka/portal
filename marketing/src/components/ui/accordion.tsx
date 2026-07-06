@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Plus } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { cn } from "../utils";
@@ -32,9 +33,7 @@ function AccordionRow({ item, defaultOpen = false }: { item: AccordionItem; defa
             open && "rotate-45",
           )}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
+          <Plus size={14} strokeWidth={2} aria-hidden="true" />
         </span>
       </button>
       <AnimatePresence initial={false}>

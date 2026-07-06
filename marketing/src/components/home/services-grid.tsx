@@ -1,10 +1,15 @@
+import type { ReactNode } from "react";
+import { Infinity as InfinityIcon, Sparkles } from "lucide-react";
+import { siDiscord, siInstagram, siTiktok, siYoutube } from "simple-icons";
+
 import { Reveal, Stagger } from "../motion/reveal";
+import { BrandIcon } from "../ui/brand-icon";
 import { Card } from "../ui/card";
 import { SectionHeading } from "../ui/section-heading";
 import { getCopyText } from "../../lib/pokrov";
 
 type ServiceTile = {
-  emojiLabel: string;
+  icon: ReactNode;
   text: string;
   title: string;
 };
@@ -12,32 +17,32 @@ type ServiceTile = {
 export function ServicesGrid() {
   const tiles: ServiceTile[] = [
     {
-      emojiLabel: "▶",
+      icon: <BrandIcon icon={siYoutube} />,
       title: getCopyText("marketing.home.services.youtube.title", "YouTube в полном качестве"),
       text: getCopyText("marketing.home.services.youtube.text", "Без замедлений, буферизации и «крутилки» на 480p"),
     },
     {
-      emojiLabel: "♪",
+      icon: <BrandIcon icon={siTiktok} />,
       title: getCopyText("marketing.home.services.tiktok.title", "TikTok снова открывается"),
       text: getCopyText("marketing.home.services.tiktok.text", "Лента, лайки и загрузка роликов работают как раньше"),
     },
     {
-      emojiLabel: "◎",
+      icon: <BrandIcon icon={siInstagram} />,
       title: getCopyText("marketing.home.services.social.title", "Соцсети и мессенджеры"),
       text: getCopyText("marketing.home.services.social.text", "Instagram, звонки и медиа в чатах — без танцев с бубном"),
     },
     {
-      emojiLabel: "✦",
+      icon: <Sparkles size={18} strokeWidth={1.8} className="text-brand" aria-hidden="true" />,
       title: getCopyText("marketing.home.services.ai.title", "ИИ-сервисы"),
       text: getCopyText("marketing.home.services.ai.text", "ChatGPT и другие инструменты открываются напрямую"),
     },
     {
-      emojiLabel: "⌘",
+      icon: <BrandIcon icon={siDiscord} />,
       title: getCopyText("marketing.home.services.games.title", "Игры и Discord"),
       text: getCopyText("marketing.home.services.games.text", "Голосовые каналы и магазины игр без обрывов"),
     },
     {
-      emojiLabel: "∞",
+      icon: <InfinityIcon size={18} strokeWidth={1.8} className="text-brand" aria-hidden="true" />,
       title: getCopyText("marketing.home.services.rest.title", "И всё остальное"),
       text: getCopyText("marketing.home.services.rest.text", "Маршрут «всё, кроме РУ»: российские сайты идут напрямую"),
     },
@@ -61,9 +66,9 @@ export function ServicesGrid() {
             <Card key={tile.title} hover className="flex h-full flex-col gap-2.5">
               <span
                 aria-hidden="true"
-                className="flex size-10 items-center justify-center rounded-(--radius-control) bg-brand-soft text-lg font-bold text-brand"
+                className="flex size-10 items-center justify-center rounded-(--radius-control) bg-canvas-alt"
               >
-                {tile.emojiLabel}
+                {tile.icon}
               </span>
               <h3 className="text-[1.0625rem] font-semibold text-ink">{tile.title}</h3>
               <p className="text-[0.9375rem] leading-relaxed text-ink-soft">{tile.text}</p>
