@@ -1,12 +1,24 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  Archive,
+  Download,
+  FileText,
+  Hourglass,
+  LifeBuoy,
+  LogIn,
+  MonitorSmartphone,
+  RefreshCw,
+  Smartphone,
+} from "lucide-react";
 
-import { icon } from "@/components/cabinet/icon";
 import { InstructionSteps } from "@/components/cabinet/instructions";
-import { CabinetGroup, CabinetRow, CabinetStatus } from "@/components/cabinet/surface";
-import { Button } from "@/components/cabinet/ui";
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { GroupedSection, Row } from "@/components/ui/grouped";
 import { fetchClientApps, type ClientAppsPayload } from "@/lib/api";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 
@@ -14,7 +26,8 @@ const config = getPortalPublicConfig(process.env as Record<string, string | unde
 
 type DownloadRow = {
   key: string;
-  icon: string;
+  icon: LucideIcon;
+  platform?: "android" | "windows";
   label: string;
   hint: string;
   value: string;
@@ -34,7 +47,7 @@ function formatDate(value?: string | null): string {
 
 function externalAction(href: string, label: string): ReactNode {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="cab-link">
+    <a href={href} target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
       {label}
     </a>
   );
@@ -51,7 +64,8 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
   return [
     ...androidVariants.map((variant) => ({
       key: `android-${variant.abi || "apk"}`,
-      icon: "android",
+      icon: Smartphone,
+      platform: "android" as const,
       label: variant.abi === "armeabi-v7a" ? "Android для старых устройств" : "Android для новых устройств",
       hint: variant.abi === "armeabi-v7a" ? "ARMv7 · если телефон очень старый" : "ARM64 · основной файл для большинства телефонов",
       value: "APK",
@@ -61,7 +75,8 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
     !androidVariants.length && androidApk
       ? {
           key: "android-apk",
-          icon: "android",
+          icon: Smartphone,
+          platform: "android" as const,
           label: "Приложение для Android",
           hint: "Публичная бета · скачивайте файл только отсюда",
           value: "APK",
@@ -72,7 +87,7 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
     androidMirror
       ? {
           key: "android-mirror",
-          icon: "backup",
+          icon: Archive,
           label: "Резерв Android",
           hint: "Если основная ссылка не открылась",
           value: "резерв",
@@ -83,7 +98,8 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
     windowsExe
       ? {
           key: "windows-exe",
-          icon: "desktop_windows",
+          icon: MonitorSmartphone,
+          platform: "windows" as const,
           label: "Приложение для Windows",
           hint: "Windows может показать предупреждение о неизвестном издателе",
           value: "EXE",
@@ -94,7 +110,7 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
     windowsMirror
       ? {
           key: "windows-mirror",
-          icon: "backup",
+          icon: Archive,
           label: "Запасная ссылка для Windows",
           hint: "Если основной файл не скачался",
           value: "резерв",
@@ -105,7 +121,7 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
     docsUrl
       ? {
           key: "docs",
-          icon: "description",
+          icon: FileText,
           label: "Короткая инструкция",
           hint: "Если нужна установка с первого раза",
           value: "гайд",
@@ -151,18 +167,18 @@ export function CabinetDownloadsSurface() {
   const firstDownload = rows.find((item) => item.key === "android-apk") || rows.find((item) => item.key === "windows-exe") || rows[0] || null;
 
   return (
-    <main className="cab-page">
-      <CabinetStatus
+    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+      <StatusHero
         title={getCopyText("webapp.downloads.title", "Загрузки")}
         meta={rows.length ? "Публичная бета" : "Файлы подгружаются"}
         body={getCopyText("webapp.downloads.subtitle", "Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт.")}
         tone={rows.length ? "success" : "neutral"}
-        emblem={icon("download", "h-7 w-7")}
+        icon={Download}
         action={
           firstDownload?.href ? (
-            <a href={firstDownload.href} target="_blank" rel="noreferrer" className="cab-btn cab-btn--primary w-full sm:w-auto">
+            <Button href={firstDownload.href} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
               Скачать
-            </a>
+            </Button>
           ) : (
             <Button href="/support/" className="w-full sm:w-auto">
               Поддержка
@@ -172,45 +188,52 @@ export function CabinetDownloadsSurface() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Файлы</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Файлы</h2>
         {primaryRows.length ? (
-          <div className="cab-dlgrid">
-            {primaryRows.map((item) => (
-              <article key={item.key} className="cab-dlcard">
-                <div className="cab-dltop">
-                  <span className="cab-dlicon" data-platform={item.icon === "desktop_windows" ? "windows" : "android"}>
-                    {icon(item.icon, "h-6 w-6")}
-                  </span>
-                  <span className="cab-dlbadge">{item.value}</span>
-                </div>
-                <h3 className="cab-dltitle">{item.label}</h3>
-                <p className="cab-dlhint">{item.hint}</p>
-                {item.href ? (
-                  <a href={item.href} target="_blank" rel="noreferrer" className="cab-btn cab-btn--primary cab-btn--block">
-                    Скачать
-                  </a>
-                ) : null}
-              </article>
-            ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {primaryRows.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article key={item.key} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4 shadow-soft">
+                  <div className="flex items-center justify-between">
+                    <span className="grid size-11 place-items-center rounded-[12px] bg-brand-soft text-brand">
+                      <Icon size={22} strokeWidth={1.9} aria-hidden="true" />
+                    </span>
+                    <span className="rounded-full bg-neutral-bg px-2.5 py-0.5 text-xs font-bold text-neutral-text uppercase">
+                      {item.value}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-ink">{item.label}</h3>
+                    <p className="mt-1 text-[13px] leading-5 text-ink-soft">{item.hint}</p>
+                  </div>
+                  {item.href ? (
+                    <Button href={item.href} target="_blank" rel="noreferrer" block>
+                      Скачать
+                    </Button>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         ) : (
-          <div className="cab-panel">
-            <CabinetRow icon={icon("hourglass_empty")} label="Файлы подгружаются" hint="Если срочно, откройте поддержку" href="/support/" />
-          </div>
+          <GroupedSection>
+            <Row icon={Hourglass} label="Файлы подгружаются" hint="Если срочно, откройте поддержку" href="/support/" />
+          </GroupedSection>
         )}
         {secondaryRows.length ? (
-          <div className="cab-panel">
+          <GroupedSection>
             {secondaryRows.map((item) => (
-              <CabinetRow key={item.key} icon={icon(item.icon)} label={item.label} hint={item.hint} value={item.value} action={item.action} />
+              <Row key={item.key} icon={item.icon} label={item.label} hint={item.hint} value={item.value} action={item.action} />
             ))}
-          </div>
+          </GroupedSection>
         ) : null}
       </section>
 
-      {error ? <p className="px-1 text-sm text-[color:var(--atlas-status-warning-text)]">Часть ссылок не удалось обновить: {error}</p> : null}
+      {error ? <p className="px-1 text-sm text-warn-text">Часть ссылок не удалось обновить: {error}</p> : null}
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Как подключиться за 3 шага</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Как подключиться за 3 шага</h2>
         <InstructionSteps
           steps={[
             {
@@ -232,12 +255,12 @@ export function CabinetDownloadsSurface() {
         />
       </section>
 
-      <CabinetGroup title="После скачивания">
-        <CabinetRow icon={icon("login")} label="Войти в тот же аккаунт" hint="Профиль подтянется сам" value={hasAndroid || hasWindows ? "важно" : undefined} />
-        <CabinetRow icon={icon("devices")} label="Проверить устройство" hint="После входа оно появится в списке" href="/devices/" />
-        <CabinetRow icon={icon("support_agent")} label="Поддержка" hint="Если файл не открылся или вход не прошел" href="/support/" />
-        <CabinetRow icon={icon("update")} label="Обновлено" hint="По данным страницы загрузок" value={formatDate(payload?.updated_at)} />
-      </CabinetGroup>
+      <GroupedSection title="После скачивания">
+        <Row icon={LogIn} label="Войти в тот же аккаунт" hint="Профиль подтянется сам" value={hasAndroid || hasWindows ? "важно" : undefined} />
+        <Row icon={MonitorSmartphone} label="Проверить устройство" hint="После входа оно появится в списке" href="/devices/" />
+        <Row icon={LifeBuoy} label="Поддержка" hint="Если файл не открылся или вход не прошел" href="/support/" />
+        <Row icon={RefreshCw} label="Обновлено" hint="По данным страницы загрузок" value={formatDate(payload?.updated_at)} />
+      </GroupedSection>
     </main>
   );
 }

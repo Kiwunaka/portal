@@ -1,18 +1,24 @@
 "use client";
 
-import AppRouteLink from "@/components/app-route-link";
-import { icon } from "@/components/cabinet/icon";
 import {
-  CabinetActionCard,
-  CabinetActionGrid,
-  CabinetGroup,
-  CabinetRow,
-  CabinetStatus,
-  CabinetTile,
-  CabinetTiles,
-} from "@/components/cabinet/surface";
-import { Button } from "@/components/cabinet/ui";
-import { useCountUp } from "@/components/cabinet/use-count-up";
+  CalendarCheck,
+  Gauge,
+  KeyRound,
+  LifeBuoy,
+  Lock,
+  MonitorSmartphone,
+  ShieldCheck,
+  Smartphone,
+  TriangleAlert,
+  Wifi,
+} from "lucide-react";
+
+import AppRouteLink from "@/components/app-route-link";
+import { StatusHero } from "@/components/cabinet/status-hero";
+import { Button } from "@/components/ui/button";
+import { GroupedSection, Row } from "@/components/ui/grouped";
+import { Meter } from "@/components/ui/meter";
+import { ActionCard, ActionGrid, Tile, TileGrid } from "@/components/ui/tiles";
 import {
   getAccessState,
   getDeviceLimit,
@@ -22,8 +28,10 @@ import {
   resolvePlanLabel,
   resolveTrafficStatusText,
 } from "@/lib/access-policy";
-import { getCopyText } from "@/lib/portal";
+import { getCopyText, getTariffPlan, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
+
+const TRIAL_DAYS = 5;
 
 function formatDate(value?: string | null): string {
   if (!value) return "уточняется";
@@ -50,6 +58,14 @@ function formatDateTime(value?: string | null): string {
 function formatCount(value?: number | null): string {
   if (value == null || !Number.isFinite(Number(value))) return "0";
   return new Intl.NumberFormat("ru-RU").format(Math.max(0, Math.round(Number(value))));
+}
+
+function formatDays(value: number): string {
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${value} день`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${value} дня`;
+  return `${value} дней`;
 }
 
 function getDaysRemaining(expiryAt?: string | null): number | null {
@@ -80,8 +96,6 @@ export default function DashboardPage() {
   const deviceCount = user?.sync?.device_count ?? user?.devices?.length ?? 0;
   const activeConnections = dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0;
   const isActive = Boolean(dash?.is_active);
-  const animatedDeviceCount = useCountUp(Math.max(0, Math.round(Number(deviceCount) || 0)));
-  const animatedConnections = useCountUp(Math.max(0, Math.round(Number(activeConnections) || 0)));
 
   const statusTone = !isActive ? "warning" : softMode ? "warning" : "success";
   const statusTitle = !isActive ? "Доступ закончился" : softMode ? "Скорость ограничена" : "Доступ активен";
@@ -95,45 +109,62 @@ export default function DashboardPage() {
         : "Откройте приложение и нажмите Подключить.";
   const primaryHref = isActive ? "/downloads/" : "/subscription/checkout/";
   const primaryLabel = isActive ? "Скачать приложение" : "Продлить";
-  const emblemName = !isActive ? "lock" : softMode ? "warning" : "verified_user";
+  const statusIcon = !isActive ? Lock : softMode ? TriangleAlert : ShieldCheck;
+
+  const planDays = trialMode ? TRIAL_DAYS : getTariffPlan(normalizePlanCode(dash?.current_plan_code))?.duration_days || null;
+  const runway =
+    isActive && daysRemaining !== null && planDays
+      ? { value: Math.min(daysRemaining, planDays), max: planDays }
+      : null;
+  const runwayTone = daysRemaining !== null && daysRemaining <= 3 ? "danger" : daysRemaining !== null && daysRemaining <= 7 ? "warning" : "ok";
 
   const deviceRows = (user?.devices || []).slice(0, 2);
 
   return (
-    <main className="cab-page cab-page--wide">
-      <CabinetStatus
+    <main className="mx-auto flex w-full max-w-[980px] flex-col gap-5">
+      <StatusHero
         title={statusTitle}
         meta={statusMeta}
         body={statusBody}
         tone={statusTone}
-        emblem={icon(emblemName, "h-7 w-7")}
+        icon={statusIcon}
         action={
           <Button href={primaryHref} className="w-full sm:w-auto">
             {primaryLabel}
           </Button>
         }
-      />
+      >
+        {runway ? (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="font-semibold text-ink">Осталось {formatDays(runway.value)}</span>
+              <span className="text-ink-muted">из {formatDays(runway.max)}</span>
+            </div>
+            <Meter value={runway.value} max={runway.max} tone={runwayTone} label="Оставшийся срок доступа" />
+          </div>
+        ) : null}
+      </StatusHero>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Сводка</h2>
-        <CabinetTiles>
-          <CabinetTile icon={icon("speed")} label="Трафик" value={dash?.traffic_policy?.kind === "unlimited" ? "Безлимит" : trafficText} tone="info" />
-          <CabinetTile
-            icon={icon("devices")}
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Сводка</h2>
+        <TileGrid>
+          <Tile icon={Gauge} label="Трафик" value={dash?.traffic_policy?.kind === "unlimited" ? "Безлимит" : trafficText} tone="info" />
+          <Tile
+            icon={MonitorSmartphone}
             label="Устройства"
-            value={`${formatCount(animatedDeviceCount)} из ${formatCount(deviceLimit)}`}
+            value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`}
             hint="Подключенные"
             tone="neutral"
             href="/devices/"
           />
-          <CabinetTile
-            icon={icon("wifi_tethering")}
+          <Tile
+            icon={Wifi}
             label="Подключения"
             value={
               activeConnections > 0 ? (
                 <span className="inline-flex items-center gap-2">
-                  <span className="status-dot status-dot-online" aria-hidden="true" />
-                  {formatCount(animatedConnections)} активно
+                  <span className="size-2 rounded-full bg-status-green" aria-hidden="true" />
+                  {formatCount(activeConnections)} активно
                 </span>
               ) : (
                 "нет активных"
@@ -141,30 +172,42 @@ export default function DashboardPage() {
             }
             tone="success"
           />
-          <CabinetTile icon={icon("event_available")} label="Доступ до" value={formatDate(dash?.expiry_at)} tone="neutral" href="/subscription/" />
-        </CabinetTiles>
+          <Tile icon={CalendarCheck} label="Доступ до" value={formatDate(dash?.expiry_at)} tone="neutral" href="/subscription/" />
+        </TileGrid>
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="cab-eyebrow px-1">Быстрый доступ</h2>
-        <CabinetActionGrid>
-          <CabinetActionCard icon={icon("key")} title="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
-          <CabinetActionCard icon={icon("support_agent")} title={getCopyText("webapp.dashboard.support_cta", "Помощь")} hint="Обращения и Telegram" href="/support/" />
-        </CabinetActionGrid>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Быстрый доступ</h2>
+        <ActionGrid>
+          <ActionCard icon={KeyRound} title="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
+          <ActionCard
+            icon={LifeBuoy}
+            title={getCopyText("webapp.dashboard.support_cta", "Помощь")}
+            hint="Обращения и Telegram"
+            href="/support/"
+          />
+        </ActionGrid>
       </section>
 
       {deviceRows.length ? (
-        <CabinetGroup title="Последние устройства" action={<AppRouteLink href="/devices/" className="cab-link">Все</AppRouteLink>}>
+        <GroupedSection
+          title="Последние устройства"
+          action={
+            <AppRouteLink href="/devices/" className="text-sm font-semibold text-brand hover:text-brand-strong">
+              Все
+            </AppRouteLink>
+          }
+        >
           {deviceRows.map((device) => (
-            <CabinetRow
+            <Row
               key={device.id}
-              icon={icon(device.platform?.toLowerCase().includes("win") ? "desktop_windows" : "smartphone")}
+              icon={device.platform?.toLowerCase().includes("win") ? MonitorSmartphone : Smartphone}
               label={deviceTitle(device.name, device.platform)}
               value={device.is_current ? "сейчас" : formatDateTime(device.last_seen_at)}
               href="/devices/"
             />
           ))}
-        </CabinetGroup>
+        </GroupedSection>
       ) : null}
     </main>
   );

@@ -1,20 +1,21 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/components/utils";
 
 /*
  * Illustrated instruction steps + FAQ accordion for cabinet surfaces.
- * Pictograms are inline SVG drawn with adaptive --atlas-* variables,
+ * Pictograms are inline SVG drawn with adaptive --pokrov-* variables,
  * so they follow light/dark themes without extra assets.
  */
 
 export type StepArtKind = "download" | "login" | "connect" | "shield" | "link" | "refresh";
 
-const ART_STROKE = "var(--atlas-primary)";
-const ART_SOFT = "var(--atlas-status-success-bg)";
-const ART_LINE = "var(--atlas-border-strong)";
+const ART_STROKE = "var(--pokrov-accent)";
+const ART_SOFT = "var(--pokrov-status-success-bg)";
+const ART_LINE = "var(--pokrov-line-strong)";
 
 function StepArt({ kind }: { kind: StepArtKind }) {
   const common = {
@@ -91,16 +92,18 @@ type InstructionStepsProps = {
 
 export function InstructionSteps({ steps, className }: InstructionStepsProps) {
   return (
-    <ol className={cn("cab-steps", className)}>
+    <ol className={cn("m-0 grid list-none gap-3 p-0 sm:grid-cols-3", className)}>
       {steps.map((step, index) => (
-        <li key={index} className="cab-step">
-          <span className="cab-step-art" aria-hidden="true">
+        <li key={index} className="flex gap-3.5 rounded-card border border-line bg-surface p-4 shadow-soft sm:flex-col">
+          <span className="relative grid size-14 shrink-0 place-items-center rounded-2xl bg-canvas-alt" aria-hidden="true">
             <StepArt kind={step.art} />
-            <span className="cab-step-num">{index + 1}</span>
+            <span className="absolute -top-1.5 -right-1.5 grid size-5 place-items-center rounded-full bg-brand text-[11px] font-bold text-brand-contrast">
+              {index + 1}
+            </span>
           </span>
           <span className="min-w-0">
-            <span className="block text-sm font-semibold text-[color:var(--atlas-text)]">{step.title}</span>
-            <span className="mt-1 block text-[13px] leading-5 text-[color:var(--atlas-text-soft)]">{step.description}</span>
+            <span className="block text-sm font-semibold text-ink">{step.title}</span>
+            <span className="mt-1 block text-[13px] leading-5 text-ink-soft">{step.description}</span>
           </span>
         </li>
       ))}
@@ -120,16 +123,19 @@ type FaqAccordionProps = {
 
 export function FaqAccordion({ entries, className }: FaqAccordionProps) {
   return (
-    <div className={cn("cab-panel", className)}>
+    <div className={cn("divide-y divide-line overflow-hidden rounded-card border border-line bg-surface shadow-soft", className)}>
       {entries.map((entry, index) => (
-        <details key={index} className="cab-faq">
-          <summary className="cab-faq-q">
+        <details key={index} className="group">
+          <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-canvas-alt motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
             <span className="min-w-0 flex-1">{entry.question}</span>
-            <svg className="cab-faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronDown
+              size={18}
+              strokeWidth={2}
+              aria-hidden="true"
+              className="shrink-0 text-ink-muted transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+            />
           </summary>
-          <div className="cab-faq-a">{entry.answer}</div>
+          <div className="px-4 pb-4 text-sm leading-6 text-ink-soft">{entry.answer}</div>
         </details>
       ))}
     </div>
