@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleCheck, Download, KeyRound, LifeBuoy, QrCode, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import AppRouteLink from "@/components/app-route-link";
@@ -63,6 +64,7 @@ function planHint(plan: PlanCatalogRow): string {
 
 export default function SubscriptionPage() {
   const { user, dash } = usePortalSession();
+  const reduceMotion = useReducedMotion();
   const [plans, setPlans] = useState<PlanCatalogRow[]>(() => fallbackPlans());
   const [error, setError] = useState("");
   const [manualAccessOpen, setManualAccessOpen] = useState(false);
@@ -233,8 +235,16 @@ export default function SubscriptionPage() {
             hint={manualAccessReady ? "Только для восстановления или совместимого клиента" : "Появится после активации"}
             value={manualAccessVisible ? "открыто" : "скрыто"}
           />
-          {manualAccessVisible ? (
-            <div className="space-y-5 border-t border-line p-4">
+          <AnimatePresence initial={false}>
+            {manualAccessVisible ? (
+              <motion.div
+                initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                animate={reduceMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+                exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-5 border-t border-line p-4">
               <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
                 <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
                 <div className="min-w-0">
@@ -291,8 +301,10 @@ export default function SubscriptionPage() {
                   />
                 </GroupedSection>
               </div>
-            </div>
-          ) : null}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </section>
     </main>

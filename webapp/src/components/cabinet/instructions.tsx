@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useId, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/components/utils";
@@ -121,22 +123,53 @@ type FaqAccordionProps = {
   className?: string;
 };
 
+function FaqRow({ entry }: { entry: FaqEntry }) {
+  const [open, setOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const regionId = useId();
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={regionId}
+        onClick={() => setOpen((value) => !value)}
+        className="flex min-h-[52px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-ink transition-colors duration-150 hover:bg-canvas-alt motion-reduce:transition-none"
+      >
+        <span className="min-w-0 flex-1">{entry.question}</span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
+          className="shrink-0 text-ink-muted"
+        >
+          <ChevronDown size={18} strokeWidth={2} aria-hidden="true" />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            id={regionId}
+            role="region"
+            initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            animate={reduceMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 text-sm leading-6 whitespace-pre-line text-ink-soft">{entry.answer}</div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function FaqAccordion({ entries, className }: FaqAccordionProps) {
   return (
     <div className={cn("divide-y divide-line overflow-hidden rounded-card border border-line bg-surface shadow-soft", className)}>
       {entries.map((entry, index) => (
-        <details key={index} className="group">
-          <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-canvas-alt motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
-            <span className="min-w-0 flex-1">{entry.question}</span>
-            <ChevronDown
-              size={18}
-              strokeWidth={2}
-              aria-hidden="true"
-              className="shrink-0 text-ink-muted transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
-            />
-          </summary>
-          <div className="px-4 pb-4 text-sm leading-6 text-ink-soft">{entry.answer}</div>
-        </details>
+        <FaqRow key={index} entry={entry} />
       ))}
     </div>
   );

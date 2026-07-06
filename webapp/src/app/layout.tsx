@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const designTokenThemeCss = getDesignTokenThemeCss("cabinet");
 
   return (
-    <html lang="ru" className={`scroll-smooth ${fontBody.variable}`} suppressHydrationWarning>
+    <html lang="ru" className={`scroll-smooth ${fontBody.variable}`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body
         className="relative min-h-screen overflow-x-hidden bg-[var(--bg)] font-body text-[var(--text)] antialiased selection:bg-[color:color-mix(in_srgb,var(--atlas-primary)_16%,transparent)] selection:text-[color:var(--atlas-text)]"
         suppressHydrationWarning

@@ -77,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const designTokenThemeCss = getDesignTokenThemeCss("public");
 
   return (
-    <html lang="ru" className={fontBody.variable} suppressHydrationWarning>
+    <html lang="ru" className={fontBody.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <style id="pokrov-design-tokens" dangerouslySetInnerHTML={{ __html: designTokenThemeCss }} />
       </head>
