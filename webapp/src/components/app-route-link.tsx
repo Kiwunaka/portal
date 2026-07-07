@@ -55,7 +55,7 @@ function dispatchRouteActivity(href: string): void {
 }
 
 const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function AppRouteLink(
-  { hardNavigate = false, onClick, target, rel, className, href, ...props },
+  { hardNavigate = false, onClick, target, rel, className, href, prefetch = false, ...props },
   ref,
 ) {
   const nextRel = target === "_blank" ? [rel, "noopener noreferrer"].filter(Boolean).join(" ") : rel;
@@ -66,6 +66,7 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
       className={cn(FOCUS_RING, className)}
       ref={ref}
       href={href}
+      prefetch={prefetch}
       rel={nextRel}
       target={target}
       onClick={(event) => {

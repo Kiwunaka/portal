@@ -68,6 +68,7 @@ export function OpsShell({ section }: { section: string }) {
               <Link
                 key={item.id}
                 href={item.href}
+                prefetch={false}
                 className={cn(
                   "flex min-h-[var(--pokrov-nav-item-min-height)] items-center gap-2 rounded-[var(--pokrov-radius-card)] px-3 text-sm font-medium text-[color:var(--pokrov-nav-text)] transition",
                   selected && "bg-[color:var(--pokrov-nav-active-bg)] text-[color:var(--atlas-text)]",
@@ -106,6 +107,7 @@ export function OpsShell({ section }: { section: string }) {
                 <Link
                   key={item.id}
                   href={item.href}
+                  prefetch={false}
                   className={cn(
                     "inline-flex h-9 shrink-0 items-center gap-2 rounded-[var(--pokrov-radius-card)] border px-3 text-xs font-semibold",
                     selected
