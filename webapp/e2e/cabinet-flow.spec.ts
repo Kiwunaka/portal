@@ -500,6 +500,29 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
   });
 
+  test("deduplicates rapid same-section left clicks", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const supportRscRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/support") && url.includes("_rsc=")) {
+        supportRscRequests.push(url);
+      }
+    });
+
+    await page.goto("/dashboard/");
+    const supportLink = page.locator("aside nav a[href='/support/']").first();
+    await expect(supportLink).toBeVisible();
+    await supportLink.evaluate((element) => {
+      for (let index = 0; index < 3; index += 1) {
+        element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+      }
+    });
+
+    await expect(page).toHaveURL(/\/support\/?$/);
+    expect(supportRscRequests.length).toBeLessThanOrEqual(1);
+  });
+
   test("shows email and Telegram entry on the root auth entry", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.removeItem("portal_web_session_token");

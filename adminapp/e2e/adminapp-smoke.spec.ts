@@ -140,7 +140,7 @@ function jsonResponse(route: Route, data: unknown, status = 200) {
   });
 }
 
-async function mockAdminApi(page: Page, options: { requireInitDataForSession?: boolean } = {}): Promise<ApiCall[]> {
+async function mockAdminApi(page: Page, options: { requireInitDataForSession?: boolean; delayMs?: number } = {}): Promise<ApiCall[]> {
   const calls: ApiCall[] = [];
   await page.route("**/api/admin/**", async (route) => {
     const request = route.request();
@@ -181,6 +181,10 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
         user: { id: 9999, username: "owner", role: "superadmin" }
       });
       return;
+    }
+
+    if (options.delayMs) {
+      await new Promise((resolve) => setTimeout(resolve, options.delayMs));
     }
 
     if (url.pathname === "/api/admin/ops/overview") {
@@ -359,6 +363,20 @@ test("left-click shell navigation changes ops sections without a reload", async 
   await expect(page).toHaveURL(/\/nodes\/?$/);
   await expect(page.getByRole("heading", { name: "Nodes" })).toBeVisible();
   await expect(page.locator("main")).toContainText("Node status");
+});
+
+test("rapid shell navigation ignores stale admin loads", async ({ page }) => {
+  await mockAdminApi(page, { delayMs: 120 });
+  await gotoWithAdminSession(page, "/");
+
+  await page.locator('a[href="/nodes"]:visible').first().click({ button: "left", noWaitAfter: true });
+  await page.locator('a[href="/traffic"]:visible').first().click({ button: "left", noWaitAfter: true });
+  await page.locator('a[href="/free-tier"]:visible').first().click({ button: "left" });
+
+  await expect(page).toHaveURL(/\/free-tier\/?$/);
+  await expect(page.getByRole("main").getByRole("heading", { name: "Free tier" })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("Failed to fetch");
+  await expect(page.locator("main")).not.toContainText("Admin API error");
 });
 
 test("provider caps saves configured quota through mock API", async ({ page }) => {

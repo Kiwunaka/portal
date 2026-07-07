@@ -321,8 +321,8 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
   }
 }
 
-export function fetchOpsOverview(): Promise<OpsOverview> {
-  return apiFetch<OpsOverview>("/api/admin/ops/overview");
+export function fetchOpsOverview(init?: ApiRequestInit): Promise<OpsOverview> {
+  return apiFetch<OpsOverview>("/api/admin/ops/overview", init);
 }
 
 export function createAdminSession(): Promise<AdminSessionPayload> {
@@ -334,8 +334,8 @@ export async function fetchAlerts(status = "active"): Promise<OpsAlert[]> {
   return data.alerts || [];
 }
 
-export async function fetchProviderQuotas(): Promise<ProviderQuotaConfig[]> {
-  const data = await apiFetch<{ quotas: ProviderQuotaConfig[] }>("/api/admin/provider-quotas");
+export async function fetchProviderQuotas(init?: ApiRequestInit): Promise<ProviderQuotaConfig[]> {
+  const data = await apiFetch<{ quotas: ProviderQuotaConfig[] }>("/api/admin/provider-quotas", init);
   return data.quotas || [];
 }
 
@@ -380,23 +380,23 @@ export async function silenceAlert(id: number, minutes = 60): Promise<OpsAlert> 
   return data.alert;
 }
 
-export async function fetchFreeUsers(): Promise<FreeTierUser[]> {
-  const data = await apiFetch<{ users: FreeTierUser[] }>("/api/admin/free-tier/users?limit=500");
+export async function fetchFreeUsers(init?: ApiRequestInit): Promise<FreeTierUser[]> {
+  const data = await apiFetch<{ users: FreeTierUser[] }>("/api/admin/free-tier/users?limit=500", init);
   return data.users || [];
 }
 
-export async function fetchTrafficSummary(): Promise<TrafficSummaryRow[]> {
-  const data = await apiFetch<{ rows: TrafficSummaryRow[] }>("/api/admin/traffic/summary");
+export async function fetchTrafficSummary(init?: ApiRequestInit): Promise<TrafficSummaryRow[]> {
+  const data = await apiFetch<{ rows: TrafficSummaryRow[] }>("/api/admin/traffic/summary", init);
   return data.rows || [];
 }
 
-export async function fetchNodeTimeseries(nodeCode = ""): Promise<NodeTimeseriesRow[]> {
+export async function fetchNodeTimeseries(nodeCode = "", init?: ApiRequestInit): Promise<NodeTimeseriesRow[]> {
   const qs = nodeCode ? `?node_code=${encodeURIComponent(nodeCode)}` : "";
-  const data = await apiFetch<{ rows: NodeTimeseriesRow[] }>(`/api/admin/nodes/timeseries${qs}`);
+  const data = await apiFetch<{ rows: NodeTimeseriesRow[] }>(`/api/admin/nodes/timeseries${qs}`, init);
   return data.rows || [];
 }
 
-export async function fetchAdminModule(section: string): Promise<AdminModulePayload> {
+export async function fetchAdminModule(section: string, init?: ApiRequestInit): Promise<AdminModulePayload> {
   const normalized = String(section || "").trim();
   const pathBySection: Record<string, string> = {
     users: "/api/admin/users?page_size=50",
@@ -409,7 +409,7 @@ export async function fetchAdminModule(section: string): Promise<AdminModulePayl
   };
   const path = pathBySection[normalized];
   if (!path) return { section: normalized, rows: [], payload: {} };
-  const payload = await apiFetch<Record<string, unknown>>(path);
+  const payload = await apiFetch<Record<string, unknown>>(path, init);
   const rows =
     (Array.isArray(payload.users) && payload.users) ||
     (Array.isArray(payload.tickets) && payload.tickets) ||

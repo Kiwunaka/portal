@@ -14,6 +14,17 @@ type AppRouteLinkProps = LinkProps &
     hardNavigate?: boolean;
   };
 
+type RouteNavigationLock = {
+  key: string;
+  startedAt: number;
+};
+
+type RouteWindow = Window & {
+  __pokrovRouteNavigationLock?: RouteNavigationLock;
+};
+
+const DUPLICATE_NAVIGATION_WINDOW_MS = 1200;
+
 function shouldUseBrowserNavigation(event: MouseEvent<HTMLAnchorElement>): boolean {
   return !(
     event.defaultPrevented ||
@@ -30,15 +41,15 @@ function normalizeAppPath(pathname: string): string {
   return pathname.replace(/\/+$/, "");
 }
 
-function isInternalNavigationTarget(href: string): boolean {
-  if (typeof window === "undefined") return false;
+function internalNavigationKey(href: string): string | null {
+  if (typeof window === "undefined") return null;
   try {
     const targetUrl = new URL(href, window.location.href);
     const currentPath = `${normalizeAppPath(window.location.pathname)}${window.location.search}${window.location.hash}`;
     const targetPath = `${normalizeAppPath(targetUrl.pathname)}${targetUrl.search}${targetUrl.hash}`;
-    return targetUrl.origin === window.location.origin && targetPath !== currentPath;
+    return targetUrl.origin === window.location.origin && targetPath !== currentPath ? targetPath : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -46,12 +57,33 @@ function dispatchRouteActivity(href: string): void {
   if (typeof window === "undefined") return;
   try {
     const targetUrl = new URL(href, window.location.href);
-    if (isInternalNavigationTarget(href)) {
+    if (internalNavigationKey(href)) {
       window.dispatchEvent(new CustomEvent("pokrov-route-activity", { detail: { href: targetUrl.href } }));
     }
   } catch {
     // Ignore unusual href values and let Next handle the click.
   }
+}
+
+function shouldSuppressDuplicateNavigation(href: string): boolean {
+  if (typeof window === "undefined") return false;
+  const key = internalNavigationKey(href);
+  if (!key) return false;
+
+  const routeWindow = window as RouteWindow;
+  const now = window.performance?.now?.() ?? Date.now();
+  const lock = routeWindow.__pokrovRouteNavigationLock;
+  if (lock && lock.key === key && now - lock.startedAt < DUPLICATE_NAVIGATION_WINDOW_MS) {
+    return true;
+  }
+
+  routeWindow.__pokrovRouteNavigationLock = { key, startedAt: now };
+  window.setTimeout(() => {
+    if (routeWindow.__pokrovRouteNavigationLock?.key === key) {
+      delete routeWindow.__pokrovRouteNavigationLock;
+    }
+  }, DUPLICATE_NAVIGATION_WINDOW_MS);
+  return false;
 }
 
 const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function AppRouteLink(
@@ -81,6 +113,10 @@ const AppRouteLink = forwardRef<HTMLAnchorElement, AppRouteLinkProps>(function A
         if (hardNavigate) {
           event.preventDefault();
           window.location.assign(targetHref);
+          return;
+        }
+        if (shouldSuppressDuplicateNavigation(targetHref)) {
+          event.preventDefault();
           return;
         }
         // Client-side navigation: Next Link handles the transition, the shell

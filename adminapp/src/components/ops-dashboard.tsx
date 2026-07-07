@@ -388,6 +388,8 @@ function ModuleActionPanel({ section, onDone }: { section: OpsDashboardSection; 
 
 export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
   const mountedRef = useRef(true);
+  const loadAbortRef = useRef<AbortController | null>(null);
+  const loadSeqRef = useRef(0);
   const [authReady, setAuthReady] = useState(false);
   const [overview, setOverview] = useState<OpsOverview | null>(null);
   const [alerts, setAlerts] = useState<OpsAlert[]>([]);
@@ -412,11 +414,19 @@ export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      loadAbortRef.current?.abort();
     };
   }, []);
 
   const load = useCallback(async () => {
+    loadSeqRef.current += 1;
+    const seq = loadSeqRef.current;
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+
     if (!hasAdminAuthMaterial()) {
+      if (loadAbortRef.current === controller) loadAbortRef.current = null;
       setLoading(false);
       setAuthReady(false);
       return;
@@ -426,14 +436,14 @@ export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
     setError("");
     try {
       const [overviewData, freeData, trafficData, timeseriesData, quotaData, moduleData] = await Promise.all([
-        fetchOpsOverview(),
-        fetchFreeUsers().catch(() => []),
-        fetchTrafficSummary().catch(() => []),
-        fetchNodeTimeseries().catch(() => []),
-        fetchProviderQuotas().catch(() => []),
-        moduleSections.has(section) ? fetchAdminModule(section).catch(() => null) : Promise.resolve(null)
+        fetchOpsOverview({ signal: controller.signal }),
+        fetchFreeUsers({ signal: controller.signal }).catch(() => []),
+        fetchTrafficSummary({ signal: controller.signal }).catch(() => []),
+        fetchNodeTimeseries("", { signal: controller.signal }).catch(() => []),
+        fetchProviderQuotas({ signal: controller.signal }).catch(() => []),
+        moduleSections.has(section) ? fetchAdminModule(section, { signal: controller.signal }).catch(() => null) : Promise.resolve(null)
       ]);
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || controller.signal.aborted || loadSeqRef.current !== seq) return;
       setOverview(overviewData);
       setAlerts(overviewData.alerts?.active || []);
       setFreeUsers(freeData);
@@ -442,11 +452,12 @@ export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
       setQuotas(quotaData);
       setModulePayload(moduleData);
     } catch (err) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || controller.signal.aborted || loadSeqRef.current !== seq) return;
       setError(err instanceof Error ? err.message : "Admin API error");
       if (String(err).includes("401") || String(err).includes("403")) setAuthReady(false);
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (loadAbortRef.current === controller) loadAbortRef.current = null;
+      if (mountedRef.current && loadSeqRef.current === seq) setLoading(false);
     }
   }, [section]);
 
