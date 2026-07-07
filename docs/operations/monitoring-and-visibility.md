@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-07-04
+Last updated: 2026-07-05
 
 ## Document Status
 
@@ -212,6 +212,9 @@ Availability rule:
 - `mini` / `RFMINI` is the canonical RU-origin operator sandbox and preferred RU probe host
 - if `mini` TCP reachability is present but SSH auth fails, treat the run as `RU-origin check: BLOCKED_BY_ACCESS`, not as proof that RU visibility is absent
 - if `mini` is actually down, treat RU-origin observability as degraded until a replacement external RU host is ready
+- `mini` remains a bridge/sandbox, not a normal RU delivery node
+- the planned new RU server may become both a full RU node and a second bridge; until it has probe evidence, treat it as planned capacity only
+- bridge health, RU-node health, and RU-origin release readiness must be separate fields in operator notes
 
 RU-origin scope:
 
@@ -357,6 +360,20 @@ Runtime telemetry wave `2026-06-02`:
 - `/api/admin/funnel/summary` combines anonymous site events with known `events`, `pay_attempts`, and `external_orders` to show the operator path: site entry, cabinet/bot open, checkout start, paid confirmation, and connection confirmation
 - funnel counts are operational direction signals, not billing reconciliation; paid truth still comes from signed provider callbacks and fulfillment records
 
+Admin ops app wave `2026-07-06`:
+
+- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first and may expose only triage/status views on mobile
+- v1 does not require Grafana, Beszel, Netdata, VictoriaMetrics, or provider APIs; first-party Postgres tables, collected node samples, usage rollups, and admin API snapshots are the source of truth
+- `/api/admin/ops/overview` is the top-level ops snapshot combining `/api/admin/summary`, metrics freshness, node capacity, free-tier burn, provider cap status, and durable active alerts
+- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` expose the current free-tier truth: dedicated `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, and `1 device`
+- `/api/admin/provider-quotas`, `/api/admin/provider-quotas/{node_code}`, and `/api/admin/provider-quotas/status` own manual provider/hoster traffic-cap configuration, reset windows, thresholds, status, and audit trail
+- `/api/admin/nodes/timeseries` exposes CPU, RAM, disk, network, traffic-counter, and capacity history from `node_health_samples` and `node_runtime_metrics`
+- `/api/admin/traffic/summary` groups `key_usage_rollups` by day, node, and pool for free/premium traffic review
+- `/api/admin/alerts`, `/api/admin/alerts/{id}/ack`, and `/api/admin/alerts/{id}/silence` own durable alert center behavior; alert rows store severity, source, status, first/last seen, resolved state, ack, silence window, and Telegram delivery status
+- durable alert sources in v1 are free cap, provider cap, node metrics freshness, node capacity, and selected security/admin error counters
+- `portal_bot/worker.py` runs `admin_ops_alert_refresh` on a short interval so durable alerts and Telegram admin notifications do not depend on an operator opening `adminapp/`
+- Telegram admin notifications for new warning/critical and resolved critical alerts must include only short titles and fingerprints; do not include raw config payloads, API tokens, provider secrets, panel passwords, or full metadata JSON
+
 Primary repository touchpoints:
 
 - `scripts/collect_node_metrics.py`
@@ -373,6 +390,10 @@ Primary repository touchpoints:
 - `/api/admin/metrics/status`
 - `/api/admin/nodes/health`
 - `/api/admin/nodes/runtime`
+- `/api/admin/ops/overview`
+- `/api/admin/free-tier/summary`
+- `/api/admin/provider-quotas/status`
+- `/api/admin/alerts`
 - `/api/admin/funnel/summary`
 - `/api/funnel/events`
 - `/api/internal/observer/batches`
@@ -416,6 +437,7 @@ RF role split:
 - `mini` / `RFMINI` is the canonical RU probe origin and universal operator sandbox
 - `rf1` is the reserve ingress for operator and VIP/manual access
 - owner-approved exception on `2026-06-01`: `mini` may carry emergency `ru_bridge_relay` traffic on `tcp/443` for allowlisted or incident-promoted cohorts, bridging only to POKROV delivery nodes except US
+- planned topology after the new RU host is live: eligible foreign non-US nodes may have two bridge paths, `mini` and the new RU bridge; each path needs independent listener, downstream, and rollback evidence
 - do not treat `rf1` as a general delivery node until repeated RU probes prove stability
 - owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) also runs the Telegram-only `portal-mtproto.service` on `tcp/9443`; monitor it separately from POKROV delivery-node health and do not count it as normal subscription traffic
 

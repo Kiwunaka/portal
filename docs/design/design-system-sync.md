@@ -1,6 +1,6 @@
 # Design System Sync
 
-Last updated: 2026-07-03
+Last updated: 2026-07-05
 
 `DESIGN.md` is the root design contract for this repository. `shared/design-tokens.json` is the machine-readable token source for marketing, cabinet, admin, and release-support UI.
 
@@ -16,7 +16,7 @@ Last updated: 2026-07-03
 
 ## Atlas Glass Notes
 
-- The current web direction is the `2026-07 HIG wave` recorded in `DESIGN.md`: token-remapped light/dark themes, calmer HIG-style surfaces, and app-first onboarding around `trial -> install -> first connection`.
+- The current web direction is the `2026-07-redesign-w01` wave recorded in `DESIGN.md`: the `pokrov-clear` white/emerald foundation, Golos Text, calmer app-first surfaces, and onboarding around `trial -> install -> first connection`.
 - `shared/design-tokens.json` remains the authority for light/dark palette, glass surfaces, shadows, density, focus, status color, skeleton, progress, and navigation tokens.
 - `shared/design-tokens.schema.json` must require every token field consumed by `shared/design-tokens.ts`; optional schema fields are allowed only when the adapter does not dereference them directly.
 - `product`, `public`, `cabinet`, and `admin` are separate density modes. `product` is no longer an alias for `public`.
@@ -27,7 +27,7 @@ Last updated: 2026-07-03
 
 ## Open Beta v4 Notes
 
-- Marketing, checkout, cabinet, admin, and client docs must stay visually aligned around the `2026-07 HIG wave` direction and the retained `quiet-core-luminous-edge` product truth.
+- Marketing, checkout, cabinet, admin, and client docs must stay visually aligned around the `2026-07-redesign-w01` direction and the retained `pokrov-clear` product truth.
 - Android and Windows public visuals must not imply public readiness until signing, handoff, and audit gates pass.
 - Admin views should use the `admin` density and favor compact evidence over large promotional layouts.
 - The completed June cabinet and web/admin/site density plans are archived under `docs/archive/design-plans/`. Current work should start from `DESIGN.md`, `shared/design-tokens.json`, and implemented UI, not from those completed plans.

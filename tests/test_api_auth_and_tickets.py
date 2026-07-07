@@ -1445,6 +1445,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         allow_origins = middleware_options.get("allow_origins") or []
         self.assertNotIn("*", allow_origins)
         self.assertIn("https://app.pokrov.space", allow_origins)
+        self.assertIn("https://admin.pokrov.space", allow_origins)
         self.assertTrue(middleware_options.get("allow_credentials"))
 
     def test_request_client_ip_trusts_forwarded_headers_only_from_proxy(self) -> None:
@@ -1469,6 +1470,16 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         )
         self.assertEqual(allowed.headers.get("access-control-allow-origin"), "https://app.pokrov.space")
         self.assertEqual(allowed.headers.get("access-control-allow-credentials"), "true")
+
+        admin_allowed = self.client.options(
+            "/api/admin/ops/overview",
+            headers={
+                "Origin": "https://admin.pokrov.space",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertEqual(admin_allowed.headers.get("access-control-allow-origin"), "https://admin.pokrov.space")
+        self.assertEqual(admin_allowed.headers.get("access-control-allow-credentials"), "true")
 
         blocked = self.client.options(
             "/api/me",
@@ -2296,6 +2307,79 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertIn("text/plain", plain.headers.get("content-type", ""))
         self.assertIsInstance(plain.text, str)
         self.assertTrue(bool(plain.text.strip()))
+
+    def test_subscription_endpoint_supports_happ_format_with_custom_tunnel_config(self) -> None:
+        from db import SessionLocal
+        from models import Node, User, UserNode
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.is_active = True
+            user.expiry_at = _utcnow() + timedelta(days=10)
+            node = Node(
+                code="de",
+                name="Germany",
+                host="de.example.test",
+                vless_port=443,
+                reality_sni="www.google.com",
+                reality_pbk="pbk-de",
+                reality_sid="sid-de",
+                panel_base_url="https://de.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+            )
+            s.add(node)
+            s.flush()
+            s.add(UserNode(tg_id=1001, node_id=node.id, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.commit()
+        finally:
+            s.close()
+
+        rollout_config = self.api.normalized_network_rollout_config(
+            {
+                self.api.RU_BRIDGE_RELAY: {
+                    "enabled": True,
+                    "reality_public_key": "bridge-pbk",
+                    "reality_short_id": "bridge-sid",
+                    "excluded_node_codes": [],
+                }
+            }
+        )
+        with patch.object(self.api, "load_network_rollout_config", return_value=rollout_config):
+            happ = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
+            happ_ua = self.client.get(
+                "/s8Kx2mP7qR4wT/token_1001_secure",
+                headers={"Host": "connect.pokrov.space", "User-Agent": "Happ/3.0"},
+            )
+
+        self.assertEqual(happ.status_code, 200, happ.text)
+        self.assertIn("text/plain", happ.headers.get("content-type", ""))
+        self.assertIn("POKROV_Happ_Subscription", happ.headers.get("content-disposition", ""))
+        self.assertEqual(happ.headers.get("subscriptions-expand-now"), "1")
+        self.assertIn("#custom-tunnel-config: ", happ.text)
+        self.assertIn("#subscriptions-expand-now: 1", happ.text)
+        self.assertIn("vless://", happ.text)
+        self.assertIn("Белые списки", happ.text)
+        self.assertNotEqual(happ.text.lstrip()[:1], "{")
+
+        custom_line = next(line for line in happ.text.splitlines() if line.startswith("#custom-tunnel-config: "))
+        cfg = json.loads(custom_line.split(": ", 1)[1])
+        self.assertTrue(
+            any("Белые списки" in str(outbound.get("tag") or "") for outbound in cfg.get("outbounds", [])),
+            cfg,
+        )
+
+        self.assertEqual(happ_ua.status_code, 200, happ_ua.text)
+        self.assertIn("text/plain", happ_ua.headers.get("content-type", ""))
+        self.assertIn("#custom-tunnel-config: ", happ_ua.text)
 
     def test_subscription_endpoint_defaults_to_smart_profile_on_connect_host(self) -> None:
         from db import SessionLocal

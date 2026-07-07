@@ -113,34 +113,17 @@ def _prepare_frontend_build_copy(cwd: Path) -> Path:
     copy_dst = temp_root / "copy"
     if copy_src.exists():
         shutil.copytree(copy_src, copy_dst, dirs_exist_ok=True)
-    source_node_modules = cwd / "node_modules"
-    target_node_modules = target / "node_modules"
-    if cwd.name.lower() == "webapp" or not source_node_modules.exists():
-        proc = subprocess.run(
-            [_npm_exec(), "ci", "--no-audit", "--no-fund"],
-            cwd=str(target),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        if proc.returncode != 0:
-            raise RuntimeError(f"Failed to install dependencies for {cwd}: {(proc.stdout or '').strip()}")
-        return target
-    if os.name == "nt":
-        proc = subprocess.run(
-            ["cmd", "/c", "mklink", "/J", str(target_node_modules), str(source_node_modules)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        if proc.returncode != 0:
-            raise RuntimeError(f"Failed to create node_modules junction for {cwd}: {(proc.stdout or '').strip()}")
-    else:
-        target_node_modules.symlink_to(source_node_modules, target_is_directory=True)
+    proc = subprocess.run(
+        [_npm_exec(), "ci", "--no-audit", "--no-fund"],
+        cwd=str(target),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"Failed to install dependencies for {cwd}: {(proc.stdout or '').strip()}")
     return target
 
 
@@ -225,7 +208,7 @@ def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
             shutil.rmtree(cleanup_path, ignore_errors=True)
     duration = time.perf_counter() - started
     out = (proc.stdout or "").strip()
-    tail = "\n".join(out.splitlines()[-40:]) if out else ""
+    tail = "\n".join(line.rstrip() for line in out.splitlines()[-40:]) if out else ""
     return GateResult(
         name=name,
         command=" ".join(prepared_command),
@@ -533,6 +516,7 @@ def _default_gates(*, client_platform_gates: list[str] | None = None) -> list[tu
         _api_lifecycle_smoke_gate(),
         ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
         ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
+        ("AdminApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "adminapp"),
         ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
         ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
         ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),
@@ -551,6 +535,7 @@ def _quick_gates(*, client_platform_gates: list[str] | None = None) -> list[tupl
         _api_lifecycle_smoke_gate(),
         ("Public link checks", [sys.executable, "scripts/check-links.py"], REPO_ROOT),
         ("Marketing production build", [_npm_exec(), "run", "build"], REPO_ROOT / "marketing"),
+        ("AdminApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "adminapp"),
         ("Admin webapp smoke", [sys.executable, "scripts/admin_webapp_smoke.py"], REPO_ROOT),
         ("WebApp production build", [_npm_exec(), "run", "build"], REPO_ROOT / "webapp"),
         ("WebApp Playwright E2E", [_npm_exec(), "run", "test:e2e"], REPO_ROOT / "webapp"),

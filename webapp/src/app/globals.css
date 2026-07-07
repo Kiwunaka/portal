@@ -95,6 +95,7 @@
 
 
 :root {
+  --font-golos: "Golos Text";
   --bg: var(--pokrov-bg, #f7f3eb);
   --bg-dark: var(--pokrov-bg-dark, #0f1714);
   --text: var(--pokrov-text, #1f2636);

@@ -77,14 +77,14 @@ Inherited evidence consulted only from `docs/developer/work-orders/2026-04-beta-
 - confirmed: `marketing/src/app/install/page.tsx` correctly avoids direct public downloads and routes Android/Windows beta artifacts through cabinet/help; Android is described as internal beta and Windows as possibly unsigned.
 - confirmed: `marketing/src/app/offer/page.tsx` explicitly says Android APK is internal beta until signing, handoff, and physical localhost/control-surface audit; Windows beta may be unsigned; support is best-effort rather than production SLA.
 - confirmed: Apple install copy is readiness/upcoming-only and does not promise a shipped iOS/macOS app.
-- confirmed: `copy/catalog.ru.json` contains Apple copy as “скоро” / readiness style and cabinet email continuation as “Email скоро подключим”, matching canonical soon-state rules.
+- confirmed: `copy/catalog.ru.json` contains Apple copy in a "soon/readiness" style and cabinet email continuation in an "email soon" style, matching canonical soon-state rules.
 - probable: `webapp/src/components/cabinet-downloads-page.tsx` is the weakest availability surface: when `APP_*`/API URLs exist, it exposes Android Play/APK and Windows EXE cards as live download paths without repeating Android internal-only/public-blocked status or Windows unsigned warning.
 
 ### Encoding / Public Text Integrity
 
-- confirmed: `webapp/src/components/cabinet-downloads-page.tsx` contains many mojibake literals such as `РЈС‚РѕС‡РЅРёРј...`, `Android В· APK`, and `РЎРєР°С‡Р°С‚СЊ`. This is visible cabinet copy and a public beta blocker for the downloads route.
+- confirmed: `webapp/src/components/cabinet-downloads-page.tsx` contained many mojibake literals; exact examples are intentionally redacted here so the historical note does not trip active text-integrity checks. This was visible cabinet copy and a public beta blocker for the downloads route.
 - confirmed: `webapp/src/app/loading.tsx` contains mojibake visible loading copy, including the loading eyebrow and headline/body.
-- confirmed: `webapp/src/app/(dashboard)/admin/network/page.tsx` contains mojibake in visible admin copy and separators (`вЂ”`, `В·`). It is operator-only, but it harms visual QA and release confidence.
+- confirmed: `webapp/src/app/(dashboard)/admin/network/page.tsx` contained mojibake in visible admin copy and separators; exact examples are intentionally redacted here. It is operator-only, but it harms visual QA and release confidence.
 - probable: More mojibake may exist outside the inspected high-risk files; the PowerShell scan found at least these three active webapp surfaces.
 
 ### QA / Dev Visibility

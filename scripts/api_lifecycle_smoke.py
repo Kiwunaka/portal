@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TARGET = "tests.test_api_lifecycle_smoke.ApiLifecycleSmokeTests.test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase"
+TESTS_ROOT = REPO_ROOT / "tests"
+DEFAULT_TARGET = "test_api_lifecycle_smoke.ApiLifecycleSmokeTests.test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase"
 
 
 def main() -> int:
@@ -20,9 +22,17 @@ def main() -> int:
     args = parser.parse_args()
 
     command = [sys.executable, "-m", "unittest", args.target]
+    env = os.environ.copy()
+    existing_pythonpath = str(env.get("PYTHONPATH") or "")
+    env["PYTHONPATH"] = (
+        str(TESTS_ROOT)
+        if not existing_pythonpath
+        else f"{TESTS_ROOT}{os.pathsep}{existing_pythonpath}"
+    )
     proc = subprocess.run(
         command,
         cwd=str(REPO_ROOT),
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

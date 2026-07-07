@@ -1,6 +1,6 @@
 # POKROV Source Symbol Coverage Audit
 
-Last updated: 2026-06-27
+Last updated: 2026-07-05
 
 ## Purpose
 
@@ -21,21 +21,21 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3127 |
-| Story dependency source file | 610 |
-| Entrypoint mapped | 457 |
-| Direct token test ref | 222 |
-| Module test ref | 74 |
-| Private inventory only | 6 |
+| Story source file | 3201 |
+| Story dependency source file | 707 |
+| Entrypoint mapped | 464 |
+| Direct token test ref | 249 |
+| Module test ref | 77 |
+| Private inventory only | 17 |
 | Client platform host manual gate | 77 |
 | Entrypoint route test ref | 9 |
-| Next route boundary inventory | 7 |
 | Operator tooling inventory | 5 |
+| Next route boundary inventory | 7 |
 | Client desktop tray manual gate | 3 |
-| Script CLI deprecated | 2 |
 | QA tooling inventory | 1 |
-| Entrypoint story source ref | 1 |
+| Script CLI deprecated | 2 |
 | Telegram WebApp bootstrap inventory | 1 |
+| Entrypoint story source ref | 7 |
 | Client package public API review | 0 |
 | Entrypoint needs mapping review | 0 |
 | Public symbol review | 0 |
@@ -77,7 +77,7 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 - `client_package_public_api_review`: 0.
 - Manual-gate buckets remain evidence honest: `client_platform_host_manual_gate` 77, `client_desktop_tray_manual_gate` 3, and `telegram_webapp_bootstrap_inventory` 1. Platform/tray manual-tier rows carry `manual_gate_refs`; Telegram bootstrap inventory is tracked through browser/Telegram WebApp integration evidence rather than the platform owner-gate matrix.
 - `entrypoint_needs_mapping_review`: 0.
-- `private_inventory_only` public/entrypoint leakage: 0.
+- `private_inventory_only` public/entrypoint leakage: 0; current private inventory-only rows: 17.
 
 ## Latest Fixes
 

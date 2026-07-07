@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --font-body: var(--font-golos), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: var(--font-golos), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --ease-ops: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--pokrov-bg, #ffffff);
+  color: var(--pokrov-text, #16181d);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+body {
+  --atlas-canvas: var(--pokrov-bg, #ffffff);
+  --atlas-canvas-alt: var(--pokrov-bg-alt, #f5f7f6);
+  --atlas-surface: var(--pokrov-surface-raised, #ffffff);
+  --atlas-text: var(--pokrov-text, #16181d);
+  --atlas-text-soft: var(--pokrov-text-soft, #5e6772);
+  --atlas-text-muted: var(--pokrov-text-muted, #9aa1a9);
+  --atlas-border: var(--pokrov-line, rgba(17, 24, 20, 0.08));
+  --atlas-border-strong: var(--pokrov-line-strong, rgba(18, 128, 90, 0.18));
+  --atlas-focus: var(--pokrov-focus-ring, #12805a);
+  --atlas-primary: var(--pokrov-button-bg, #12805a);
+  --atlas-primary-hover: var(--pokrov-button-bg-hover, #0f6b47);
+  --atlas-primary-text: var(--pokrov-button-text, #ffffff);
+  --atlas-status-success-bg: var(--pokrov-status-success-bg, #e6f4ed);
+  --atlas-status-success-text: var(--pokrov-status-success-text, #174f3d);
+  --atlas-status-success-line: var(--pokrov-status-success-line, rgba(32, 103, 79, 0.22));
+  --atlas-status-warning-bg: var(--pokrov-status-warning-bg, #f7efd9);
+  --atlas-status-warning-text: var(--pokrov-status-warning-text, #765d23);
+  --atlas-status-warning-line: var(--pokrov-status-warning-line, rgba(145, 111, 39, 0.22));
+  --atlas-status-danger-bg: var(--pokrov-status-danger-bg, #f8e7e3);
+  --atlas-status-danger-text: var(--pokrov-status-danger-text, #8d352e);
+  --atlas-status-danger-line: var(--pokrov-status-danger-line, rgba(141, 53, 46, 0.22));
+  --atlas-status-info-bg: var(--pokrov-status-info-bg, #e7eef2);
+  --atlas-status-info-text: var(--pokrov-status-info-text, #315c70);
+  --atlas-status-info-line: var(--pokrov-status-info-line, rgba(49, 92, 112, 0.2));
+  --atlas-status-neutral-bg: var(--pokrov-status-neutral-bg, rgba(31, 38, 54, 0.055));
+  --atlas-status-neutral-text: var(--pokrov-status-neutral-text, #4f5868);
+  --atlas-status-neutral-line: var(--pokrov-status-neutral-line, rgba(31, 38, 54, 0.12));
+  --atlas-shadow-soft: var(--pokrov-shadow-soft, 0 2px 8px rgba(17, 24, 20, 0.05));
+  --atlas-shadow-medium: var(--pokrov-shadow-medium, 0 8px 24px rgba(17, 24, 20, 0.07));
+}
+
+.ops-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ops-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(18, 128, 90, 0.28);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -40,7 +40,7 @@ def test_shared_surface_fact_loaders_expose_canonical_product_and_url_truth():
     assert urls["surfaces"]["checkout"] == "https://pay.pokrov.space/checkout/"
     assert urls["telegram"]["channel_username"] == "@pokrov_vpn"
 
-    assert design["theme"]["name"] == "quiet-core-luminous-edge"
+    assert design["theme"]["name"] == "pokrov-clear"
     assert design["glass"]["content_planes"] == "solid"
     assert design["motion"]["reduced_motion_fallback"] == "fade-only"
 

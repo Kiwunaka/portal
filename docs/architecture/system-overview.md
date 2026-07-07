@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-06-06
+Last updated: 2026-07-06
 
 ## Document Status
 
@@ -11,7 +11,7 @@ This file is living source of truth for the platform architecture map.
 `POKROV` is a platform composed of:
 
 - a Python backend and Telegram control plane
-- a user cabinet and admin web surface
+- a user cabinet, a standalone admin ops app, and a retained legacy admin web surface during parity
 - a marketing and legal site
 - a dedicated active client repo at `C:/Users/kiwun/Documents/ai/POKROV-app`
 - a retained `app-next/` bootstrap archive/reference lane
@@ -28,7 +28,7 @@ The new target architecture for the global rework freezes these boundaries befor
 - `external/client-fork/app/` is the retired rollback/archive client reference workspace
 - the front-end rebuild is an atlas-driven shell reset: acquisition lives on `marketing/`, continuation lives on `webapp/`, and the app shell is locked to `Protection / Locations / Rules / Profile`
 - one app-first account becomes the identity root for `install_id`, email, Telegram, devices, and activation keys
-- public acquisition, pricing, and paywall move entirely onto `marketing/`, with trial, install, and first connection as the primary public CTA path and checkout as explicit continuation, while `webapp/` becomes session-aware continuation, redeem, support, renewal continuation, and admin only
+- public acquisition, pricing, and paywall move entirely onto `marketing/`, with trial, install, and first connection as the primary public CTA path and checkout as explicit continuation, while `webapp/` becomes session-aware continuation, redeem, support, and renewal continuation; `adminapp/` owns the new dedicated operator surface
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
 - visible user-facing cabinet IA is `Главная / Доступ / Помощь / Аккаунт`, with `/devices/`, `/statistics/`, `/downloads/`, `/redeem/`, support thread/legal routes, and hosted-checkout continuation treated as task/detail routes rather than parallel acquisition surfaces
 - commerce moves to hosted checkout plus activation-key issuance and redemption instead of raw subscription-link-first UX
@@ -130,7 +130,9 @@ Node lifecycle rule:
 ### User Interfaces
 
 - `webapp/`
-  user cabinet, session continuation, and the primary admin operator surface
+  user cabinet and session continuation; legacy admin routes stay only until `adminapp/` parity is proven
+- `adminapp/`
+  standalone Next.js operator surface for `https://admin.pokrov.space/`, with ops dashboard, nodes, traffic, free-tier, provider caps, durable alerts, users, tickets, payments, promos, referrals, releases, broadcast, and funnel modules
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `C:/Users/kiwun/Documents/ai/POKROV-app/`
@@ -147,7 +149,8 @@ Current public-surface split:
 - `marketing/` owns the homepage, public `/checkout/` pricing/paywall flow, offer/privacy pages, indexable SEO landings, and metadata assets such as `robots`, `sitemap`, `manifest`, Open Graph, Twitter, and JSON-LD
 - current canonical indexable entry routes are `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO slugs
 - public marketing CTA priority is app-first trial, install, and first connection; checkout, install help, and cabinet-open flows remain explicit exits for known intent
-- `webapp/` owns browser entry, dashboard, subscription, devices, statistics, support, task routes such as downloads, redeem, and hosted-checkout continuation, compatibility redirects for older cabinet routes, and the primary admin operator surface
+- `webapp/` owns browser entry, dashboard, subscription, devices, statistics, support, task routes such as downloads, redeem, and hosted-checkout continuation, plus compatibility redirects for older cabinet routes
+- `adminapp/` owns `admin.pokrov.space` and is the new primary operator surface; existing `webapp/src/app/(admin)/admin/` routes are retained only as a parity fallback until the dedicated panel covers every operator workflow and the old routes pass a deletion checklist
 - `webapp/` browser entry is a continuation router for app handoff, Telegram login, and email login when delivery readiness is green
 - `/pricing/` in `webapp/` is compatibility-only continuation that now redirects to `/subscription/` and must not drift back into a public acquisition surface
 - `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR; it serves the rollout-selected app-managed profile, with `legacy_reality_fallback` as the baseline until canary cohorts flip to `grpc_443_primary`
@@ -159,9 +162,11 @@ Client release safety rule:
 
 Admin ownership rule:
 
-- `webapp` is the primary admin surface for user, node, ticket, and metrics work
+- `adminapp` is the primary new admin surface for user, node, ticket, metrics, traffic, free-tier, provider-cap, and durable-alert work
+- `webapp` admin routes are retained as a temporary parity fallback and must not be deleted until the dedicated `adminapp` has full workflow parity and regression coverage
 - Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
-- `/api/admin/summary` is the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
+- `/api/admin/summary` remains the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
+- `/api/admin/ops/overview` is the new dedicated ops snapshot for `adminapp`, combining summary, metrics freshness, capacity, traffic cap visibility, free-tier burn, provider quotas, and durable alerts
 
 Public connection delivery rule:
 

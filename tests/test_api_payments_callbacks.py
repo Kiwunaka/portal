@@ -839,6 +839,89 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(body.get("amount_rub") or 0), 199)
         self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.fk.money/?"))
 
+    def test_lavatop_public_order_applies_direct_promo_to_non_start99_plan_with_card(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, PromoCode, PromoUsage, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4449,
+                    username="promo_card",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4449",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(PromoCode(code="WELCOME20", promo_type="discount", value=20, uses_left=-1))
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4449,
+            plan_code="1_month",
+            promo_code="WELCOME20",
+            campaign_key="launch_w1",
+            source="bot",
+        )
+        captured: dict[str, object] = {}
+
+        async def _fake_create_rub_payment(**kwargs):
+            captured.update(kwargs)
+            return {
+                "payment_url": "https://app.lava.top/pay/card-promo-test",
+                "remote": {"payment_url": "https://app.lava.top/pay/card-promo-test"},
+            }
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _fake_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "1_month",
+                    "checkout_ticket": ticket,
+                    "currency": "RUB",
+                    "payment_method": "card",
+                },
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body.get("ok"))
+        self.assertTrue(body.get("discount_applied"))
+        self.assertEqual(int(body.get("discount_pct") or 0), 20)
+        self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
+        self.assertEqual(int(body.get("amount_rub") or 0), 199)
+        self.assertEqual(captured["provider"], "lavatop")
+        self.assertEqual(int(captured["amount_rub"]), 199)
+        self.assertEqual(captured["custom"]["promo_code"], "WELCOME20")
+        self.assertEqual(captured["custom"]["payment_method"], "card")
+        self.assertEqual(captured["custom"]["lavatop_payment_provider"], "SMART_GLOCAL")
+        self.assertEqual(captured["custom"]["lavatop_payment_method"], "CARD")
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4449, ExternalOrder.provider == "lavatop").first()
+            self.assertIsNotNone(row)
+            meta = json.loads(row.meta_json or "{}")
+            self.assertEqual(meta.get("request", {}).get("promo_code"), "WELCOME20")
+            self.assertEqual(meta.get("request", {}).get("payment_method"), "card")
+            self.assertEqual(meta.get("pricing", {}).get("direct_discount_pct"), 20)
+            self.assertEqual(meta.get("pricing", {}).get("direct_discount_source"), "promo_code")
+            self.assertIsNone(s.query(PromoUsage).filter(PromoUsage.promo_code == "WELCOME20").first())
+        finally:
+            s.close()
+
     def test_start99_public_order_ignores_referral_and_pending_discounts(self) -> None:
         client = TestClient(self.api.app)
 
@@ -907,9 +990,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(str(user.pending_discount_code or ""), "WELCOME20")
             row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 2005, ExternalOrder.provider == "freekassa").first()
             self.assertIsNotNone(row)
-            self.assertIn("\"discount_pct\":0", str(row.meta_json or ""))
-            self.assertIn("\"final_amount_rub\":99", str(row.meta_json or ""))
-            self.assertIn("\"referral_discount_eligible\":false", str(row.meta_json or ""))
+            meta = json.loads(row.meta_json or "{}")
+            self.assertEqual(meta.get("request", {}).get("requested_promo_code"), "WELCOME20")
+            self.assertEqual(meta.get("request", {}).get("promo_code"), "")
+            self.assertEqual(meta.get("pricing", {}).get("discount_pct"), 0)
+            self.assertEqual(meta.get("pricing", {}).get("final_amount_rub"), 99)
         finally:
             s.close()
 

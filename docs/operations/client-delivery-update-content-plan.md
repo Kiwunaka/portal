@@ -1,6 +1,6 @@
 # Client Delivery, Update Check, And Dynamic Content Plan
 
-Last updated: 2026-06-07
+Last updated: 2026-07-05
 
 Status: active product/operations plan
 
@@ -86,6 +86,35 @@ Current platform contract:
 - unauthenticated GitHub release asset range smoke is the evidence required
   before a URL is treated as public-user-ready; current `v1.0.0-beta` public
   repo smoke is `PASS_PUBLIC_GITHUB_RELEASES_206`
+
+## Platform Roadmap Order
+
+Implementation and public-claim order:
+
+1. Android + Windows remain the primary release targets. Close release-build
+   connect/disconnect, normal fallback without WARP, local WARP toggle, signing,
+   and manual owner smoke before stronger public claims.
+2. Linux comes next after Android/Windows gates. Plan Flutter desktop packaging
+   for Ubuntu/Fedora with AppImage plus deb/rpm only after the primary platforms
+   are stable enough to avoid splitting release attention.
+3. macOS/iOS are later Apple signing/store lanes. Build, sign, notarize, and
+   TestFlight/App Store proof are required before any public Apple availability
+   claim.
+
+`Pokrov-client` may be referenced internally as an owned open-source fallback
+lane, but it stays source-only until it has separate binary release evidence.
+
+WARP product rule:
+
+- target behavior is a local toggle like Hiddify: user explicitly enables WARP,
+  the client routes through the core with WARP layered on top, and runtime
+  failures fall back to the normal POKROV connection path instead of blocking
+  all access
+- marketing can mention WARP only as beta/feature copy after Android and
+  Windows runtime proof covers connect, disconnect, WARP-on, WARP-failure
+  fallback, and WARP-off
+- production WARP claims remain gated by the same release-build evidence, not
+  by backend material telemetry alone
 
 ## Startup Update Check
 

@@ -1,6 +1,6 @@
 # POKROV Canonical Feature And User Story Tracker
 
-Last updated: 2026-06-27
+Last updated: 2026-07-05
 
 ## Purpose
 
@@ -33,9 +33,9 @@ Interpretation rule: in this tracker, `function` means a product capability or e
 - `client-app`: `C:\Users\kiwun\Documents\ai\POKROV-app\outputs\019f05ac-cfd2-7423-96b6-a7fb48dc87a9\pokrov_flutter_feature_user_story_tracker.xlsx` (67 story rows imported)
 - generated backend API rows use `source_tracker = generated from portal_bot/api.py route decorators` (165 route rows imported; all 165 now have direct test-reference mappings)
 - generated script/operator rows use `source_tracker = generated from scripts/manifest.yaml` (123 active script/operator workflow rows imported; all 123 now have direct test-reference mappings; 2 legacy FreeKassa CLIs are explicitly deprecated)
-- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (4602 low-level source symbols inventoried; 0 parser errors)
-- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (4602 rows; 0 generic public-symbol review rows; 0 client-package public-API review rows; 0 entrypoint mapping gaps; 0 script-manifest review rows; 80 platform/tray manual-tier rows carry `manual_gate_refs`)
-- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 decision matrix (6 current low-risk private helper rows; 0 high risk, 0 medium risk, 6 low risk; owner accepted story/symbol tiers for this audit)
+- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (4827 low-level source symbols inventoried; 0 parser errors)
+- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (4827 rows; 0 generic public-symbol review rows; 0 client-package public-API review rows; 0 entrypoint mapping gaps; 0 script-manifest review rows; 80 platform/tray manual-tier rows carry `manual_gate_refs`)
+- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 decision matrix (17 current private helper rows; 0 high risk, 2 medium risk, 15 low risk; owner accepted story/symbol tiers for this audit)
 - `generated-story-test-evidence-audit`: canonical tracker evidence, retest proof, and field-completeness classifier (525 rows audited; 524 direct file refs, 524 `direct_test_ref_passed` rows, 0 imported-pass rows without direct file refs, 1 manual owner gate / `manual_owner_gate_open`, 0 stale refs; 0 missing story contract fields; every row has at least one resolvable concrete `code_evidence` ref, with no wildcard source evidence; 0 unresolved `source_tracker` refs)
 - `generated-defect-fix-retest-ledger`: canonical rows with documented defects or discrepancies (18 rows; 16 `closed_retested`, 2 `closed_retested_no_product_change`, 0 weak/open closure rows; all 18 have `direct_test_ref_passed`)
 - `generated-entrypoint-story-coverage`: source entrypoint to route/story/script evidence bridge (514 entrypoints audited; 514 direct evidence mappings; 0 review gaps)
@@ -93,10 +93,10 @@ No backend route scenario gaps remain in the current coverage map. If a new rout
 
 | Metric | Count |
 | --- | ---: |
-| Total source symbols | 4602 |
-| Root repo symbols | 3406 |
-| POKROV-app symbols | 1196 |
-| Symbols with token-level test references | 1496 |
+| Total source symbols | 4827 |
+| Root repo symbols | 3586 |
+| POKROV-app symbols | 1241 |
+| Symbols with token-level test references | 1580 |
 | Parser errors | 0 |
 
 This companion inventory is intentionally `inventory_only`: token-level test references are a triage signal, not a claim that every private helper has a dedicated behavior test.
@@ -105,21 +105,21 @@ This companion inventory is intentionally `inventory_only`: token-level test ref
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3127 |
-| Story dependency source file | 610 |
-| Entrypoint mapped | 457 |
-| Direct token test ref | 222 |
-| Module test ref | 74 |
-| Private inventory only | 6 |
+| Story source file | 3201 |
+| Story dependency source file | 707 |
+| Entrypoint mapped | 464 |
+| Direct token test ref | 249 |
+| Module test ref | 77 |
+| Private inventory only | 17 |
 | Client platform host manual gate | 77 |
 | Entrypoint route test ref | 9 |
-| Next route boundary inventory | 7 |
 | Operator tooling inventory | 5 |
+| Next route boundary inventory | 7 |
 | Client desktop tray manual gate | 3 |
 | QA tooling inventory | 1 |
 | Script CLI deprecated | 2 |
-| Entrypoint story source ref | 1 |
 | Telegram WebApp bootstrap inventory | 1 |
+| Entrypoint story source ref | 7 |
 | Client package public API review | 0 |
 | Entrypoint needs mapping review | 0 |
 | Public symbol review | 0 |
@@ -132,11 +132,11 @@ Client platform/tray manual-tier symbol rows also carry `manual_gate_refs`: Andr
 
 | Metric | Count |
 | --- | ---: |
-| Private helper rows | 6 |
-| Rows needing Q-001 owner decision | 6 |
+| Private helper rows | 17 |
+| Rows needing Q-001 owner decision | 17 |
 | High risk rows | 0 |
-| Medium risk rows | 0 |
-| Low risk rows | 6 |
+| Medium risk rows | 2 |
+| Low risk rows | 15 |
 
 `pokrov-private-helper-coverage.csv` expands the `private_inventory_only`
 tier into per-symbol expected behavior, risk, proof status, and next action.
@@ -390,7 +390,7 @@ Machine-readable ledger: [pokrov-open-questions.csv](C:/Users/kiwun/Documents/ai
 1. Keep backend API coverage at `165/165` by adding every new route to the canonical CSV and mapping it to a direct scenario test before promotion.
 2. Keep `scripts/manifest.yaml` authoritative: every new `scripts/*.py` CLI `main()` must be active, deprecated, archive-only, or denylisted, and active scripts must keep direct workflow tests before promotion.
 3. Keep story evidence audit at `0` imported-pass rows by mapping every new non-manual story row to direct automated tests before promotion.
-4. Decide the remaining policy part of Q-001: current `private_inventory_only` rows are `0`, but the owner still needs to choose whether future helper/class-method rows require dedicated behavior tests or whether token-level test references plus user-story tests are sufficient.
+4. Keep Q-001 policy recorded: current `private_inventory_only` rows are `17`, and the owner has accepted story/symbol tiers unless a future stricter one-test-per-private-helper policy is explicitly requested.
 5. Continue the same story-test-fix-retest loop for the 8 owner-gated client/runtime scenarios in `pokrov-owner-gated-scenarios.csv`.
 6. Ask the owner to choose the next Q-004 release gate before attempting live/device/provider/RU checks.
 7. For any failed or mismatched story, add a defect row in the relevant source tracker or this canonical CSV, fix the code/copy/UX, then rerun the matching tests.

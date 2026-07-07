@@ -942,7 +942,7 @@ def test_generated_story_evidence_artifacts_match_canonical_files(tmp_path: Path
             "--entrypoint-out",
             str(entrypoint_out),
             "--updated-at",
-            "2026-06-27",
+            "2026-07-05",
         ]
     )
 
@@ -1611,9 +1611,15 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
 
     completion_body = COMPLETION_AUDIT.read_text(encoding="utf-8")
     work_order_index = WORK_ORDER_INDEX.read_text(encoding="utf-8")
+    with TRACKER.open("r", encoding="utf-8", newline="") as f:
+        tracker_rows_for_refs = list(csv.DictReader(f))
+    source_ref_count = sum(
+        len(_source_refs(row.get("code_evidence", "")))
+        for row in tracker_rows_for_refs
+    )
     assert "COMPLETION-AUDIT.csv" in completion_body
     assert "COMPLETION-AUDIT.csv" in work_order_index
-    assert "1078 canonical source-evidence file refs" in completion_body
+    assert f"{source_ref_count} canonical source-evidence file refs" in completion_body
     assert "352 explicit line refs" in completion_body
     assert "525 source-tracker refs" in completion_body
     assert "test_work_order_current_output_counts_match_csv_artifacts" in completion_body
@@ -1675,6 +1681,15 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
     evidence_by_requirement = {
         row["requirement_id"]: row.get("evidence_refs", "") for row in rows
     }
+    with CODE_FUNCTION_INVENTORY.open("r", encoding="utf-8", newline="") as f:
+        code_rows = list(csv.DictReader(f))
+    with SYMBOL_COVERAGE_AUDIT.open("r", encoding="utf-8", newline="") as f:
+        symbol_rows = list(csv.DictReader(f))
+    symbol_tier_counts = Counter(row["coverage_tier"] for row in symbol_rows)
+    manual_symbol_rows = symbol_tier_counts.get("client_platform_host_manual_gate", 0) + symbol_tier_counts.get(
+        "client_desktop_tray_manual_gate", 0
+    )
+    private_inventory_rows = symbol_tier_counts.get("private_inventory_only", 0)
     req_001_refs = evidence_by_requirement["REQ-001"]
     for evidence_ref in (
         "tests/test_story_test_evidence_audit.py::test_canonical_tracker_markdown_summary_matches_csv_artifacts",
@@ -1756,7 +1771,7 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
     ):
         assert evidence_ref in req_008_refs
         assert evidence_ref.split("::", 1)[1] in completion_body
-    assert "4602 symbols across root and active `POKROV-app`" in completion_body
+    assert f"{len(code_rows)} symbols across root and active `POKROV-app`" in completion_body
     assert "parser errors: 0" in completion_body
     assert "Owner accepted the current Q-001 story/symbol-tier approach on 2026-06-28" in completion_body
     req_009_refs = evidence_by_requirement["REQ-009"]
@@ -1768,8 +1783,11 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
         assert evidence_ref in req_009_refs
         assert evidence_ref.split("::", 1)[1] in completion_body
     assert "manual-tier rows have resolvable `manual_gate_refs`" in completion_body
-    assert "80 platform/tray manual-tier rows have `manual_gate_refs`" in completion_body
-    assert "6 private-inventory rows remain source-inventory-only under the accepted Q-001 policy" in completion_body
+    assert f"{manual_symbol_rows} platform/tray manual-tier rows have `manual_gate_refs`" in completion_body
+    assert (
+        f"{private_inventory_rows} private-inventory rows remain source-inventory-only "
+        "under the accepted Q-001 policy"
+    ) in completion_body
     assert "0 review-tier rows remain" in completion_body
     req_010_refs = evidence_by_requirement["REQ-010"]
     for evidence_ref in (

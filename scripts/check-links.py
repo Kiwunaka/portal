@@ -21,6 +21,10 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
+def _read_many(paths: tuple[Path, ...]) -> str:
+    return "\n".join(_read(path) for path in paths)
+
+
 def _add_pass(findings: list[Finding], path: Path, message: str) -> None:
     findings.append(Finding("PASS", str(path.relative_to(REPO_ROOT)), message))
 
@@ -33,7 +37,12 @@ def _collect_findings() -> list[Finding]:
     findings: list[Finding] = []
 
     marketing_root = REPO_ROOT / "marketing" / "src"
-    marketing_landing = marketing_root / "components" / "marketing-landing.tsx"
+    marketing_home_page = marketing_root / "app" / "page.tsx"
+    marketing_home_hero = marketing_root / "components" / "home" / "hero.tsx"
+    marketing_home_pricing = marketing_root / "components" / "home" / "pricing.tsx"
+    marketing_shell = marketing_root / "components" / "layout" / "page-shell.tsx"
+    marketing_footer = marketing_root / "components" / "layout" / "footer.tsx"
+    marketing_site = marketing_root / "lib" / "marketing-site.ts"
     marketing_layout = marketing_root / "app" / "layout.tsx"
     marketing_checkout = marketing_root / "app" / "checkout" / "checkout-client.tsx"
     marketing_offer = marketing_root / "app" / "offer" / "page.tsx"
@@ -62,26 +71,38 @@ def _collect_findings() -> list[Finding]:
         else:
             _add_fail(findings, path, "Missing marketing SEO route")
 
-    landing_text = _read(marketing_landing)
-    if "href={config.connectUrl}" in landing_text:
-        _add_fail(findings, marketing_landing, "Public marketing CTA still routes to connect host")
+    home_text = _read_many(
+        (
+            marketing_home_page,
+            marketing_home_hero,
+            marketing_home_pricing,
+            marketing_shell,
+            marketing_footer,
+            marketing_site,
+        )
+    )
+    if "config.connectUrl" in home_text or "CANONICAL_CONNECT_URL" in home_text:
+        _add_fail(findings, marketing_home_page, "Public marketing CTA still routes to connect host")
     else:
-        _add_pass(findings, marketing_landing, "Public marketing CTA no longer routes to connect host")
+        _add_pass(findings, marketing_home_page, "Public marketing CTA no longer routes to connect host")
 
-    if "config.webappUrl" in landing_text:
-        _add_pass(findings, marketing_landing, "Public cabinet CTA points to webapp host")
+    shell_text = _read(marketing_shell)
+    if "CANONICAL_WEBAPP_URL" in shell_text:
+        _add_pass(findings, marketing_shell, "Public cabinet CTA points to webapp host")
     else:
-        _add_fail(findings, marketing_landing, "Public cabinet CTA is not wired to webapp host")
+        _add_fail(findings, marketing_shell, "Public cabinet CTA is not wired to webapp host")
 
-    if '"/checkout/?plan=${encodeURIComponent(planCode)}"' in landing_text or 'return `/checkout/?plan=${encodeURIComponent(planCode)}`;' in landing_text:
-        _add_pass(findings, marketing_landing, "Pricing CTA routes through public checkout gateway")
+    pricing_text = _read(marketing_home_pricing)
+    if "MARKETING_CANONICAL_PATHS.checkout" in pricing_text and "encodeURIComponent(plan.code)" in pricing_text:
+        _add_pass(findings, marketing_home_pricing, "Pricing CTA routes through public checkout gateway")
     else:
-        _add_fail(findings, marketing_landing, "Pricing CTA does not route through public checkout gateway")
+        _add_fail(findings, marketing_home_pricing, "Pricing CTA does not route through public checkout gateway")
 
-    if "config.newsChannelUrl" in landing_text:
-        _add_pass(findings, marketing_landing, "Marketing footer exposes canonical news channel")
+    footer_text = _read(marketing_footer)
+    if "CANONICAL_NEWS_CHANNEL_URL" in footer_text:
+        _add_pass(findings, marketing_footer, "Marketing footer exposes canonical news channel")
     else:
-        _add_fail(findings, marketing_landing, "Marketing footer misses canonical news channel")
+        _add_fail(findings, marketing_footer, "Marketing footer misses canonical news channel")
 
     layout_text = _read(marketing_layout)
     for required in ("metadataBase", "manifest", "icons", "apple", "/favicon.ico", "/apple-icon.png"):
@@ -90,11 +111,19 @@ def _collect_findings() -> list[Finding]:
         else:
             _add_fail(findings, marketing_layout, f"Layout misses `{required}` metadata wiring")
 
+    site_text = _read(marketing_site)
     for required in ("alternates", "canonical", "twitter", "images"):
-        if required in landing_text:
-            _add_pass(findings, marketing_landing, f"Marketing metadata declares `{required}`")
+        if required in site_text:
+            _add_pass(findings, marketing_site, f"Marketing metadata declares `{required}`")
         else:
-            _add_fail(findings, marketing_landing, f"Marketing metadata misses `{required}`")
+            _add_fail(findings, marketing_site, f"Marketing metadata misses `{required}`")
+
+    home_page_text = _read(marketing_home_page)
+    for required in ("buildMarketingMetadata", "buildSoftwareApplicationJsonLd", "buildFaqJsonLd"):
+        if required in home_page_text:
+            _add_pass(findings, marketing_home_page, f"Home page wires `{required}`")
+        else:
+            _add_fail(findings, marketing_home_page, f"Home page misses `{required}`")
 
     checkout_text = _read(marketing_checkout)
     if "config.connectUrl" in checkout_text:

@@ -1,6 +1,6 @@
 # POKROV Low-Level Code Function Inventory
 
-Last updated: 2026-06-27
+Last updated: 2026-07-05
 
 ## Purpose
 
@@ -37,20 +37,20 @@ Excluded:
 
 | Metric | Count |
 | --- | ---: |
-| Total symbols | 4602 |
-| Root repo symbols | 3406 |
-| POKROV-app symbols | 1196 |
-| Symbols with token-level test references | 1496 |
+| Total symbols | 4827 |
+| Root repo symbols | 3586 |
+| POKROV-app symbols | 1241 |
+| Symbols with token-level test references | 1580 |
 | Parser errors | 0 |
 
 ### By Language
 
 | Language | Count |
 | --- | ---: |
-| Python | 2623 |
-| Dart | 946 |
-| TSX | 509 |
-| TypeScript | 274 |
+| Python | 2744 |
+| Dart | 991 |
+| TSX | 551 |
+| TypeScript | 291 |
 | Kotlin | 130 |
 | Swift | 92 |
 | C++ | 23 |
@@ -60,29 +60,29 @@ Excluded:
 
 | Subsystem | Count |
 | --- | ---: |
-| Backend and Telegram bots | 1563 |
-| POKROV client app | 1168 |
-| Scripts and Ops | 1060 |
-| WebApp and Admin | 665 |
-| Marketing site | 83 |
-| Shared constants | 63 |
+| Backend and Telegram bots | 1663 |
+| POKROV client app | 1202 |
+| Scripts and Ops | 1081 |
+| WebApp and Admin | 695 |
+| Marketing site | 105 |
+| Shared constants | 81 |
 
 ### By Symbol Kind
 
 | Symbol kind | Count |
 | --- | ---: |
-| Function | 3266 |
-| Method | 892 |
-| Class | 444 |
+| Function | 3425 |
+| Method | 930 |
+| Class | 472 |
 
 ### By Entrypoint Hint
 
 | Entrypoint hint | Count |
 | --- | ---: |
-| FastAPI route handler | 173 |
-| Telegram handler | 170 |
+| FastAPI route handler | 185 |
+| Telegram handler | 171 |
 | Script CLI main | 125 |
-| Framework override | 98 |
+| Framework override | 101 |
 | FastAPI middleware | 1 |
 | Next.js page component | 1 |
 
@@ -95,7 +95,7 @@ Excluded:
 - The generated private-helper coverage matrix currently has 6 low-risk private inventory-only rows; Q-001 records that story/symbol tiers are sufficient for this audit.
 - For public behavior, prefer feature/user-story tests over one-test-per-helper churn.
 - Entrypoint hints are conservative labels; Aiogram `router.*` handlers are classified as Telegram handlers before HTTP route detection, and HTTP route detection requires route decorators such as `app.get`, `app.post`, or `app.api_route`.
-- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 4602 symbols.
+- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 4827 symbols.
 - Source-symbol coverage also includes `expected_behavior_from_code`, a generated behavior-preservation note for every symbol that keeps manual/review buckets honest instead of treating them as direct proof.
 
 ## Regeneration

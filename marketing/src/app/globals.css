@@ -36,6 +36,7 @@
 
 html {
   scroll-behavior: smooth;
+  --font-golos: "Golos Text";
 }
 
 @media (prefers-reduced-motion: reduce) {

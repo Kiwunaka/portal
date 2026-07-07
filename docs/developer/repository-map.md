@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-07-03
+Last updated: 2026-07-06
 
 ## Document Status
 
@@ -16,7 +16,8 @@ Legacy filename note:
 | Path | Purpose | Local authority |
 | --- | --- | --- |
 | `portal_bot/` | FastAPI backend, Telegram bots, worker, data model, panel sync | root canonical docs plus `portal_bot/api.py`, `portal_bot/app_first_service.py`, `portal_bot/channel_bonus_service.py`, `portal_bot/warp_service.py`, and related tests |
-| `webapp/` | Next.js continuation-first cabinet with visible IA `Главная / Доступ / Помощь / Аккаунт`, task/detail routes for entry, devices, statistics, downloads, redeem, support threads/legal docs, and checkout continuation, plus the primary admin surface and compatibility aliases for older cabinet and pricing paths | `webapp/README.md`, `webapp/src/app/(dashboard)/` for the cabinet route group, `webapp/src/app/(admin)/admin/` for the operator route group, `webapp/src/components/admin/users/`, `webapp/src/lib/api.ts`, `webapp/e2e/`, `webapp/scripts/serve_export.py` |
+| `webapp/` | Next.js continuation-first cabinet with visible IA `Главная / Доступ / Помощь / Аккаунт`, task/detail routes for entry, devices, statistics, downloads, redeem, support threads/legal docs, checkout continuation, and retained legacy admin routes until `adminapp/` parity deletion | `webapp/README.md`, `webapp/src/app/(dashboard)/` for the cabinet route group, `webapp/src/app/(admin)/admin/` for the temporary parity fallback operator route group, `webapp/src/lib/api.ts`, `webapp/e2e/`, `webapp/scripts/serve_export.py` |
+| `adminapp/` | standalone Next.js operator app for `https://admin.pokrov.space/`, using shared POKROV design tokens, TanStack Table, Recharts, first-party ops APIs, provider quotas, durable alerts, and existing admin endpoints for parity modules | `adminapp/README.md`, `adminapp/src/app/`, `adminapp/src/components/`, `adminapp/src/lib/api.ts`, `portal_bot/api.py`, `tests/test_admin_ops_api.py` |
 | `marketing/` | app-first public website, checkout continuation, legal pages, SEO routes, install help, and brand assets | root canonical docs plus `marketing/src/`, `marketing/src/app/install/`, `marketing/public/_redirects`, `shared/copy.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `copy/catalog.ru.json` |
 | `shared/` | shared host config, locked product facts, design tokens, token schema, and governed public copy for bot/site/app | `shared/portal-config.ts`, `shared/product-facts.json`, `shared/public-urls.json`, `shared/design-tokens.json`, `shared/design-tokens.schema.json`, `shared/copy.ts` |
 | `infra/` | runtime units and infra assets | `infra/portal-node-metrics.service`, `infra/portal-node-metrics.timer`, `infra/portal-node-observer.service`, `infra/portal-node-observer.timer` |

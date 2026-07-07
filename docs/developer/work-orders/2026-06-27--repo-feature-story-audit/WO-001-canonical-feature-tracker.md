@@ -99,10 +99,10 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 - Backend route direct test-reference mappings: `165/165`; scenario gaps: `0`
 - Scripts/Ops workflow rows: `123`
 - Script workflow direct test-reference mappings: `123/123`; scenario gaps: `0`
-- Low-level code function inventory rows: `4602`; parser errors: `0`; token-level test-reference hints: `1496`
-- Low-level entrypoint hints: `173` FastAPI route handlers, `1` FastAPI middleware, `170` Telegram handlers, `125` script CLI mains, `98` framework overrides, `1` Next.js page component; `portal_bot/bot.py` FastAPI mislabels: `0`
-- Source symbol coverage audit rows: `4602`; expected-behavior notes: `4602`; entrypoint mapping gaps: `0`; story source refs: `3127`; story dependency refs: `610`; module test refs: `74`; direct token test refs: `222`; private inventory-only rows: `6`; private inventory public/entrypoint leakage: `0`; client platform manual-gate rows: `77`; client desktop tray manual-gate rows: `3`; platform/tray manual-gate rows with `manual_gate_refs`: `80`; client package public-API review rows: `0`; script CLI manifest review rows: `0`; script CLI deprecated rows: `2`; public symbol review rows: `0`
-- Private helper coverage matrix rows: `6`; Q-001 owner-decision rows: `6`; high risk rows: `0`; medium risk rows: `0`; low risk rows: `6`
+- Low-level code function inventory rows: `4827`; parser errors: `0`; token-level test-reference hints: `1580`
+- Low-level entrypoint hints: `185` FastAPI route handlers, `1` FastAPI middleware, `171` Telegram handlers, `125` script CLI mains, `101` framework overrides, `1` Next.js page component; `portal_bot/bot.py` FastAPI mislabels: `0`
+- Source symbol coverage audit rows: `4827`; expected-behavior notes: `4827`; entrypoint mapping gaps: `0`; story source refs: `3201`; story dependency refs: `707`; module test refs: `77`; direct token test refs: `249`; private inventory-only rows: `17`; private inventory public/entrypoint leakage: `0`; client platform manual-gate rows: `77`; client desktop tray manual-gate rows: `3`; platform/tray manual-gate rows with `manual_gate_refs`: `80`; client package public-API review rows: `0`; script CLI manifest review rows: `0`; script CLI deprecated rows: `2`; public symbol review rows: `0`
+- Private helper coverage matrix rows: `17`; Q-001 owner-decision rows: `17`; high risk rows: `0`; medium risk rows: `2`; low risk rows: `15`
 - Story evidence audit rows: `525`; direct file refs: `524`; imported-pass rows without direct file refs: `0`; manual owner gates: `1`; stale refs: `0`
 - Story retest proof rows: `524` `direct_test_ref_passed`; `1` `manual_owner_gate_open`; weak/stale/imported/textual proof buckets: `0`
 - Defect/fix/retest ledger rows: `18`; `closed_retested`: `16`; `closed_retested_no_product_change`: `2`; weak/open closure rows: `0`
@@ -112,7 +112,7 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 - Coverage policy decision guide and private-helper coverage matrix exist and are linked from Q-001, the canonical tracker, developer navigation, and the open-questions/private-helper guards; Q-001 is answered as `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28
 - Owner-gated execution guide exists and is linked from Q-004, the owner-gated summary, developer navigation, and the canonical tracker; every current owner gate ID and required result-ledger field is present in the guide
 - Entrypoint story coverage rows: `514`; direct route refs: `165`; direct script refs: `123`; direct story refs: `226`; review gaps: `0`
-- Canonical source-evidence file refs checked: `1078`; missing source refs: `0`
+- Canonical source-evidence file refs checked: `1089`; missing source refs: `0`
 - Canonical line-number source refs checked: `352`; out-of-bounds line refs: `0`
 - Canonical source-tracker refs checked: `525`; unresolved source-tracker refs: `0`; generated labels are backed by `portal_bot/api.py` and `scripts/manifest.yaml`
 - Developer navigation docs and work-orders README link the canonical tracker, evidence audit, entrypoint map, function inventory, symbol coverage audit, owner-gated matrix/result ledger, open-questions ledger, completion audit work-order artifacts, and the active feature-story audit wave; wave-local imported coverage counts match canonical tracker subsystem counts; missing navigation artifact refs: `0`

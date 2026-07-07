@@ -1,6 +1,6 @@
 # Payment And Access-Key Contract
 
-Last updated: 2026-06-08
+Last updated: 2026-07-05
 
 ## Current Rule
 
@@ -31,6 +31,7 @@ Current fulfillment contract:
 - the authenticated cabinet may show the same `connect.pokrov.space` subscription link and QR after access is active, so beta users can connect manually while native apps are still gated;
 - anonymous public checkout requires buyer email and issues one access key through email delivery after a valid paid callback;
 - app redemption uses the unified `POST /api/redeem` facade for paid access keys, legacy gift-card codes, and promo codes; paid checkout keys still remain a payment fulfillment artifact, while gift/promo codes remain non-payment bonus or campaign artifacts;
+- every active, non-hidden RUB plan with positive `amount_rub` may be exposed in hosted checkout after the provider gate; Lava.top receives the backend-calculated final dynamic amount and the selected `sbp` or `card` payment method;
 - `start_99` is a one-time user plan: backend order creation must reject it before provider invoice creation when `User.first_purchase_done=true` or when the user already has any successful paid Lava.top order;
 - `start_99` must keep its configured amount and must not stack referral, promo, or pending-discount reductions; those discount mechanics are reserved for standard paid plans when backend eligibility allows them;
 - amount, currency, plan, provider auth, local order binding, replay idempotency, and failed/cancelled events are mandatory gate checks before access changes;

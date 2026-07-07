@@ -31,6 +31,7 @@ from models import (
     FunnelEvent,
     KeyActionHistory,
     NodeHealthSample,
+    OpsAlert,
     PayAttempt,
     ReferralBonusQueue,
     RenderedSubscriptionSnapshot,
@@ -43,6 +44,7 @@ from node_policy import free_pool_node_codes
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
+from admin_ops_service import refresh_ops_alerts_for_current_state
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,7 @@ PAY_ATTEMPT_RETENTION_DAYS = max(1, int(os.getenv("PAY_ATTEMPT_RETENTION_DAYS", 
 EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS = max(1, int(os.getenv("EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS", "180")))
 SUBSCRIPTION_EVENT_RETENTION_DAYS = max(1, int(os.getenv("SUBSCRIPTION_EVENT_RETENTION_DAYS", "90")))
 TELEMETRY_RETENTION_INTERVAL_SECONDS = max(3600, int(os.getenv("TELEMETRY_RETENTION_INTERVAL_SECONDS", "21600")))
+ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS = max(60, int(os.getenv("ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS", "300")))
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
 _TEMPLATE_CACHE: dict[str, tuple[datetime, str]] = {}
@@ -322,7 +325,32 @@ async def _telegram_get_chat_member(channel_username: str, user_id: int) -> tupl
                 if _normalize_channel_membership_reason(status_raw) == "not_member":
                     return False, status_raw or "not_member"
                 return status_raw in {"creator", "administrator", "member", "restricted"}, status_raw
-    except Exception:
+    except asyncio.TimeoutError:
+        logger.warning("telegram_get_chat_member timeout channel=%s user_id=%s", channel_username, int(user_id))
+        return False, "telegram_timeout"
+    except aiohttp.ClientError as exc:
+        logger.warning(
+            "telegram_get_chat_member network_error channel=%s user_id=%s error=%s",
+            channel_username,
+            int(user_id),
+            exc.__class__.__name__,
+        )
+        return False, "telegram_network_error"
+    except (ValueError, TypeError) as exc:
+        logger.warning(
+            "telegram_get_chat_member payload_error channel=%s user_id=%s error=%s",
+            channel_username,
+            int(user_id),
+            exc.__class__.__name__,
+        )
+        return False, "telegram_payload_error"
+    except Exception as exc:
+        logger.warning(
+            "telegram_get_chat_member exception channel=%s user_id=%s error=%s",
+            channel_username,
+            int(user_id),
+            exc.__class__.__name__,
+        )
         return False, "telegram_exception"
 
 
@@ -937,6 +965,78 @@ async def node_metrics_watchdog_job() -> None:
         await asyncio.sleep(3600)
 
 
+async def admin_ops_alert_refresh_once() -> int:
+    notifications: list[dict] = []
+    s = SessionLocal()
+    try:
+        stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
+        _rows, notifications, _metrics_status, _capacity_payload = refresh_ops_alerts_for_current_state(
+            s=s,
+            now=_utcnow(),
+            free_limit_gb=int(FREE_TOTAL_GB),
+            cycle_days=30,
+            stale_after_seconds=stale_after_seconds,
+        )
+        s.commit()
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+    try:
+        await _deliver_ops_alert_notifications(notifications)
+    except Exception:
+        logger.exception("admin_ops_alert notification delivery failed")
+    return len(notifications)
+
+
+async def _deliver_ops_alert_notifications(notifications: list[dict]) -> None:
+    if not notifications or not int(Settings.ADMIN_ID or 0):
+        return
+    delivered: dict[str, str] = {}
+    for item in notifications[:20]:
+        fingerprint = str(item.get("fingerprint") or "")
+        kind = str(item.get("kind") or "active")
+        severity = str(item.get("severity") or "warning").upper()
+        title = str(item.get("title") or fingerprint)
+        prefix = "RESOLVED" if kind == "resolved" else severity
+        ok = await _telegram_send_message(
+            chat_id=int(Settings.ADMIN_ID),
+            text=f"POKROV ops alert: {prefix}\n{title}\n{fingerprint}",
+        )
+        delivered[fingerprint] = "sent" if ok else "send_failed"
+    if not delivered:
+        return
+    s = SessionLocal()
+    try:
+        now = _utcnow()
+        for fingerprint, status in delivered.items():
+            row = s.query(OpsAlert).filter(OpsAlert.fingerprint == fingerprint).first()
+            if not row:
+                continue
+            row.last_delivery_at = now
+            row.last_delivery_status = status
+            row.updated_at = now
+        s.commit()
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+async def admin_ops_alert_refresh_job() -> None:
+    while True:
+        try:
+            notification_count = await admin_ops_alert_refresh_once()
+            if notification_count:
+                logger.info("admin_ops_alert_refresh notifications=%s", notification_count)
+        except Exception:
+            logger.exception("admin_ops_alert_refresh_job failed")
+        await asyncio.sleep(ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS)
+
+
 async def channel_bonus_guard_job() -> None:
     last_verify_error_alert_at: datetime | None = None
     while True:
@@ -1130,6 +1230,7 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("oto_free", oto_free_job)),
         asyncio.create_task(_supervise_job("reactivation", reactivation_job)),
         asyncio.create_task(_supervise_job("node_metrics_watchdog", node_metrics_watchdog_job)),
+        asyncio.create_task(_supervise_job("admin_ops_alert_refresh", admin_ops_alert_refresh_job)),
         asyncio.create_task(_supervise_job("channel_bonus_guard", channel_bonus_guard_job)),
         asyncio.create_task(_supervise_job("free_cycle_reset", free_cycle_reset_job)),
         asyncio.create_task(_supervise_job("observer_retention", observer_retention_job)),

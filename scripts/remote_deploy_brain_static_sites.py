@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 REQUIRED_LOCAL_STATIC_FILES = (
     ("webapp", "index.html"),
+    ("adminapp", "index.html"),
     ("marketing", "index.html"),
     ("marketing", "checkout", "index.html"),
 )
@@ -112,9 +113,10 @@ def _cache_bust_next_static_refs(local_dir: Path, *, release_id: str, label: str
     _safe_print(f"[cache-bust] {label}: {touched} html files")
 
 
-def _local_static_output_validation_failures(*, local_webapp: Path, local_marketing: Path) -> list[str]:
+def _local_static_output_validation_failures(*, local_webapp: Path, local_adminapp: Path, local_marketing: Path) -> list[str]:
     roots = {
         "webapp": local_webapp,
+        "adminapp": local_adminapp,
         "marketing": local_marketing,
     }
     failures: list[str] = []
@@ -130,9 +132,10 @@ def _local_static_output_validation_failures(*, local_webapp: Path, local_market
     return failures
 
 
-def _release_payload_validation_checks(*, remote_webapp: str, remote_marketing: str) -> list[str]:
+def _release_payload_validation_checks(*, remote_webapp: str, remote_adminapp: str, remote_marketing: str) -> list[str]:
     checks = [
         f"test -f {remote_webapp}/index.html",
+        f"test -f {remote_adminapp}/index.html",
         f"test -f {remote_marketing}/index.html",
         f"test -f {remote_marketing}/checkout/index.html",
     ]
@@ -143,7 +146,7 @@ def _release_payload_validation_checks(*, remote_webapp: str, remote_marketing: 
     return checks
 
 
-def _post_deploy_smoke_commands(*, web_domain: str, api_domain: str) -> list[str]:
+def _post_deploy_smoke_commands(*, web_domain: str, api_domain: str, admin_domain: str) -> list[str]:
     def resolved_curl(domain: str, path: str, extra: str = "head -c 120 || true") -> str:
         return f"curl -fsS --insecure --resolve {domain}:443:127.0.0.1 https://{domain}{path} | {extra}"
 
@@ -170,19 +173,23 @@ def _post_deploy_smoke_commands(*, web_domain: str, api_domain: str) -> list[str
         resolved_curl(api_domain, "/api/health", "head -c 200 || true"),
         resolved_curl(web_domain, "/", "head -c 80 || true"),
         resolved_curl("app.pokrov.space", "/", "head -c 80 || true"),
+        resolved_curl(admin_domain, "/", "head -c 80 || true"),
         *legacy_checks,
         resolved_curl("pay.pokrov.space", "/checkout/", "head -c 120 || true"),
     ]
 
 
-def _build_local_static_bundles(*, local_webapp: Path, local_marketing: Path, release_id: str) -> None:
+def _build_local_static_bundles(*, local_webapp: Path, local_adminapp: Path, local_marketing: Path, release_id: str) -> None:
     with tempfile.TemporaryDirectory(prefix="pokrov-static-") as temp_root:
         temp_dir = Path(temp_root)
         webapp_bundle = temp_dir / f"webapp-{release_id}.tar.gz"
+        adminapp_bundle = temp_dir / f"adminapp-{release_id}.tar.gz"
         marketing_bundle = temp_dir / f"marketing-{release_id}.tar.gz"
         _cache_bust_next_static_refs(local_webapp, release_id=release_id, label="webapp")
+        _cache_bust_next_static_refs(local_adminapp, release_id=release_id, label="adminapp")
         _cache_bust_next_static_refs(local_marketing, release_id=release_id, label="marketing")
         _build_static_bundle(local_webapp, webapp_bundle, label="webapp")
+        _build_static_bundle(local_adminapp, adminapp_bundle, label="adminapp")
         _build_static_bundle(local_marketing, marketing_bundle, label="marketing")
 
 
@@ -243,7 +250,7 @@ def _release_id() -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Deploy marketing/out + webapp/out to brain and reload Caddy.")
+    ap = argparse.ArgumentParser(description="Deploy marketing/out + webapp/out + adminapp/out to brain and reload Caddy.")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument(
         "--web-domain",
@@ -254,6 +261,11 @@ def main() -> int:
         "--api-domain",
         default="api.pokrov.space",
         help="Public API domain for /api/health checks",
+    )
+    ap.add_argument(
+        "--admin-domain",
+        default="admin.pokrov.space",
+        help="Public admin domain for adminapp checks",
     )
     ap.add_argument(
         "--domain",
@@ -267,24 +279,30 @@ def main() -> int:
     args = ap.parse_args()
 
     local_webapp = REPO_ROOT / "webapp" / "out"
+    local_adminapp = REPO_ROOT / "adminapp" / "out"
     local_mkt = REPO_ROOT / "marketing" / "out"
     local_failures = _local_static_output_validation_failures(
         local_webapp=local_webapp,
+        local_adminapp=local_adminapp,
         local_marketing=local_mkt,
     )
     if local_failures:
         raise SystemExit("\n".join(local_failures))
     web_domain = (args.domain or "").strip() or (args.web_domain or "").strip()
     api_domain = (args.api_domain or "").strip()
+    admin_domain = (args.admin_domain or "").strip()
     if not web_domain:
         raise SystemExit("Missing --web-domain")
     if not api_domain:
         raise SystemExit("Missing --api-domain")
+    if not admin_domain:
+        raise SystemExit("Missing --admin-domain")
 
     release_id = _release_id()
     if args.plan_only:
         _build_local_static_bundles(
             local_webapp=local_webapp,
+            local_adminapp=local_adminapp,
             local_marketing=local_mkt,
             release_id=release_id,
         )
@@ -304,23 +322,28 @@ def main() -> int:
         releases_root = f"{remote_root}/releases"
         remote_release = f"{releases_root}/{release_id}"
         remote_webapp = f"{remote_release}/webapp"
+        remote_adminapp = f"{remote_release}/adminapp"
         remote_marketing = f"{remote_release}/marketing"
 
         # Upload into a versioned release directory first, then switch symlinks.
-        _run(ssh, f"mkdir -p {remote_webapp} {remote_marketing}", timeout=60)
+        _run(ssh, f"mkdir -p {remote_webapp} {remote_adminapp} {remote_marketing}", timeout=60)
 
         with tempfile.TemporaryDirectory(prefix="pokrov-static-") as temp_root:
             temp_dir = Path(temp_root)
             webapp_bundle = temp_dir / f"webapp-{release_id}.tar.gz"
+            adminapp_bundle = temp_dir / f"adminapp-{release_id}.tar.gz"
             marketing_bundle = temp_dir / f"marketing-{release_id}.tar.gz"
             _cache_bust_next_static_refs(local_webapp, release_id=release_id, label="webapp")
+            _cache_bust_next_static_refs(local_adminapp, release_id=release_id, label="adminapp")
             _cache_bust_next_static_refs(local_mkt, release_id=release_id, label="marketing")
             _build_static_bundle(local_webapp, webapp_bundle, label="webapp")
+            _build_static_bundle(local_adminapp, adminapp_bundle, label="adminapp")
             _build_static_bundle(local_mkt, marketing_bundle, label="marketing")
 
             sftp = ssh.open_sftp()
             try:
                 _deploy_static_bundle(ssh, sftp, webapp_bundle, label="webapp", remote_dir=remote_webapp, release_id=release_id)
+                _deploy_static_bundle(ssh, sftp, adminapp_bundle, label="adminapp", remote_dir=remote_adminapp, release_id=release_id)
                 _deploy_static_bundle(ssh, sftp, marketing_bundle, label="marketing", remote_dir=remote_marketing, release_id=release_id)
             finally:
                 sftp.close()
@@ -328,6 +351,7 @@ def main() -> int:
         # Validate release payload before switching public paths.
         for check in _release_payload_validation_checks(
             remote_webapp=remote_webapp,
+            remote_adminapp=remote_adminapp,
             remote_marketing=remote_marketing,
         ):
             code, _out, _err = _run(ssh, check, timeout=30)
@@ -345,9 +369,14 @@ fi
 if [ -e {remote_root}/marketing ] && [ ! -L {remote_root}/marketing ]; then
   mv {remote_root}/marketing {remote_root}/legacy_backups/marketing-$(date +%s)
 fi
+if [ -e {remote_root}/adminapp ] && [ ! -L {remote_root}/adminapp ]; then
+  mv {remote_root}/adminapp {remote_root}/legacy_backups/adminapp-$(date +%s)
+fi
 
 ln -sfn {remote_webapp} {remote_root}/webapp.next
 mv -T {remote_root}/webapp.next {remote_root}/webapp
+ln -sfn {remote_adminapp} {remote_root}/adminapp.next
+mv -T {remote_root}/adminapp.next {remote_root}/adminapp
 ln -sfn {remote_marketing} {remote_root}/marketing.next
 mv -T {remote_root}/marketing.next {remote_root}/marketing
 
@@ -361,7 +390,7 @@ find {releases_root} -mindepth 1 -maxdepth 1 -type d | sort | head -n -5 | xargs
         _run(ssh, "DEBIAN_FRONTEND=noninteractive apt-get install -y curl >/dev/null 2>&1 || true", timeout=600)
 
         # Quick smoke checks (through localhost resolve on standard HTTPS port).
-        for c in _post_deploy_smoke_commands(web_domain=web_domain, api_domain=api_domain):
+        for c in _post_deploy_smoke_commands(web_domain=web_domain, api_domain=api_domain, admin_domain=admin_domain):
             _, out, err = _run(ssh, c, timeout=30)
             _safe_print(out.strip() or err.strip())
         return 0

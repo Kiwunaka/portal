@@ -784,6 +784,226 @@ def _ensure_capacity_domain_postgres(conn) -> None:
     )
 
 
+def _ensure_admin_ops_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS provider_traffic_quotas (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              node_code VARCHAR(32) NOT NULL,
+              included_bytes BIGINT DEFAULT 0 NOT NULL,
+              reset_day INTEGER DEFAULT 1 NOT NULL,
+              timezone VARCHAR(64) DEFAULT 'UTC' NOT NULL,
+              warning_ratio FLOAT DEFAULT 0.80 NOT NULL,
+              critical_ratio FLOAT DEFAULT 0.95 NOT NULL,
+              enabled BOOLEAN DEFAULT 1 NOT NULL,
+              notes TEXT,
+              updated_by BIGINT,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS provider_traffic_quota_audit (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              quota_id INTEGER,
+              node_code VARCHAR(32) NOT NULL,
+              actor_tg_id BIGINT,
+              action VARCHAR(32) NOT NULL,
+              before_json TEXT,
+              after_json TEXT,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ops_alerts (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              fingerprint VARCHAR(160) NOT NULL,
+              source VARCHAR(64) NOT NULL,
+              severity VARCHAR(16) NOT NULL,
+              status VARCHAR(24) DEFAULT 'active' NOT NULL,
+              title VARCHAR(180) NOT NULL,
+              body VARCHAR(1000),
+              node_code VARCHAR(32),
+              tg_id BIGINT,
+              key_id INTEGER,
+              first_seen_at DATETIME NOT NULL,
+              last_seen_at DATETIME NOT NULL,
+              resolved_at DATETIME,
+              acknowledged_at DATETIME,
+              acknowledged_by BIGINT,
+              silence_until DATETIME,
+              last_delivery_at DATETIME,
+              last_delivery_status VARCHAR(64),
+              metadata_json TEXT,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    for table, cols in {
+        "provider_traffic_quotas": [
+            ("included_bytes", "BIGINT DEFAULT 0 NOT NULL"),
+            ("reset_day", "INTEGER DEFAULT 1 NOT NULL"),
+            ("timezone", "VARCHAR(64) DEFAULT 'UTC' NOT NULL"),
+            ("warning_ratio", "FLOAT DEFAULT 0.80 NOT NULL"),
+            ("critical_ratio", "FLOAT DEFAULT 0.95 NOT NULL"),
+            ("enabled", "BOOLEAN DEFAULT 1 NOT NULL"),
+            ("notes", "TEXT"),
+            ("updated_by", "BIGINT"),
+            ("created_at", "DATETIME"),
+            ("updated_at", "DATETIME"),
+        ],
+        "ops_alerts": [
+            ("source", "VARCHAR(64) DEFAULT 'ops' NOT NULL"),
+            ("severity", "VARCHAR(16) DEFAULT 'warning' NOT NULL"),
+            ("status", "VARCHAR(24) DEFAULT 'active' NOT NULL"),
+            ("body", "VARCHAR(1000)"),
+            ("node_code", "VARCHAR(32)"),
+            ("tg_id", "BIGINT"),
+            ("key_id", "INTEGER"),
+            ("resolved_at", "DATETIME"),
+            ("acknowledged_at", "DATETIME"),
+            ("acknowledged_by", "BIGINT"),
+            ("silence_until", "DATETIME"),
+            ("last_delivery_at", "DATETIME"),
+            ("last_delivery_status", "VARCHAR(64)"),
+            ("metadata_json", "TEXT"),
+            ("created_at", "DATETIME"),
+            ("updated_at", "DATETIME"),
+        ],
+    }.items():
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name=:table;"), {"table": table}).fetchone():
+            for col, ddl in cols:
+                if not _sqlite_column_exists(conn, table, col):
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl};"))
+    for sql in [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_provider_traffic_quotas_node_code ON provider_traffic_quotas(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_provider_traffic_quotas_enabled ON provider_traffic_quotas(enabled);",
+        "CREATE INDEX IF NOT EXISTS ix_provider_traffic_quota_audit_node_code ON provider_traffic_quota_audit(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_provider_traffic_quota_audit_created_at ON provider_traffic_quota_audit(created_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_ops_alerts_fingerprint ON ops_alerts(fingerprint);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_source ON ops_alerts(source);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_severity ON ops_alerts(severity);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_status ON ops_alerts(status);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_node_code ON ops_alerts(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_last_seen_at ON ops_alerts(last_seen_at);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_admin_ops_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS provider_traffic_quotas (
+              id SERIAL PRIMARY KEY,
+              node_code VARCHAR(32) NOT NULL,
+              included_bytes BIGINT NOT NULL DEFAULT 0,
+              reset_day INTEGER NOT NULL DEFAULT 1,
+              timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
+              warning_ratio DOUBLE PRECISION NOT NULL DEFAULT 0.80,
+              critical_ratio DOUBLE PRECISION NOT NULL DEFAULT 0.95,
+              enabled BOOLEAN NOT NULL DEFAULT TRUE,
+              notes TEXT,
+              updated_by BIGINT,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS provider_traffic_quota_audit (
+              id SERIAL PRIMARY KEY,
+              quota_id INTEGER,
+              node_code VARCHAR(32) NOT NULL,
+              actor_tg_id BIGINT,
+              action VARCHAR(32) NOT NULL,
+              before_json TEXT,
+              after_json TEXT,
+              created_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ops_alerts (
+              id SERIAL PRIMARY KEY,
+              fingerprint VARCHAR(160) NOT NULL,
+              source VARCHAR(64) NOT NULL,
+              severity VARCHAR(16) NOT NULL,
+              status VARCHAR(24) NOT NULL DEFAULT 'active',
+              title VARCHAR(180) NOT NULL,
+              body VARCHAR(1000),
+              node_code VARCHAR(32),
+              tg_id BIGINT,
+              key_id INTEGER,
+              first_seen_at TIMESTAMP NOT NULL,
+              last_seen_at TIMESTAMP NOT NULL,
+              resolved_at TIMESTAMP,
+              acknowledged_at TIMESTAMP,
+              acknowledged_by BIGINT,
+              silence_until TIMESTAMP,
+              last_delivery_at TIMESTAMP,
+              last_delivery_status VARCHAR(64),
+              metadata_json TEXT,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    for table, column, ddl in [
+        ("provider_traffic_quotas", "included_bytes", "BIGINT DEFAULT 0"),
+        ("provider_traffic_quotas", "reset_day", "INTEGER DEFAULT 1"),
+        ("provider_traffic_quotas", "timezone", "VARCHAR(64) DEFAULT 'UTC'"),
+        ("provider_traffic_quotas", "warning_ratio", "DOUBLE PRECISION DEFAULT 0.80"),
+        ("provider_traffic_quotas", "critical_ratio", "DOUBLE PRECISION DEFAULT 0.95"),
+        ("provider_traffic_quotas", "enabled", "BOOLEAN DEFAULT TRUE"),
+        ("provider_traffic_quotas", "notes", "TEXT"),
+        ("provider_traffic_quotas", "updated_by", "BIGINT"),
+        ("ops_alerts", "body", "VARCHAR(1000)"),
+        ("ops_alerts", "node_code", "VARCHAR(32)"),
+        ("ops_alerts", "tg_id", "BIGINT"),
+        ("ops_alerts", "key_id", "INTEGER"),
+        ("ops_alerts", "resolved_at", "TIMESTAMP"),
+        ("ops_alerts", "acknowledged_at", "TIMESTAMP"),
+        ("ops_alerts", "acknowledged_by", "BIGINT"),
+        ("ops_alerts", "silence_until", "TIMESTAMP"),
+        ("ops_alerts", "last_delivery_at", "TIMESTAMP"),
+        ("ops_alerts", "last_delivery_status", "VARCHAR(64)"),
+        ("ops_alerts", "metadata_json", "TEXT"),
+    ]:
+        _postgres_add_column_if_missing(conn, table, column, ddl)
+    for sql in [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_provider_traffic_quotas_node_code ON provider_traffic_quotas(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_provider_traffic_quotas_enabled ON provider_traffic_quotas(enabled);",
+        "CREATE INDEX IF NOT EXISTS ix_provider_traffic_quota_audit_node_code ON provider_traffic_quota_audit(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_provider_traffic_quota_audit_created_at ON provider_traffic_quota_audit(created_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_ops_alerts_fingerprint ON ops_alerts(fingerprint);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_source ON ops_alerts(source);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_severity ON ops_alerts(severity);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_status ON ops_alerts(status);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_node_code ON ops_alerts(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ops_alerts_last_seen_at ON ops_alerts(last_seen_at);",
+    ]:
+        conn.execute(text(sql))
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -1230,6 +1450,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_sampled_at ON node_health_samples(sampled_at);"))
 
         _ensure_capacity_domain_sqlite(conn)
+        _ensure_admin_ops_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -2057,6 +2278,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "node_health_samples", "transport_health_json", "TEXT")
 
         _ensure_capacity_domain_postgres(conn)
+        _ensure_admin_ops_domain_postgres(conn)
 
         conn.execute(
             text(

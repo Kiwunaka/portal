@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-06-08
+Last updated: 2026-07-05
 
 ## Document Status
 
@@ -19,7 +19,7 @@ This file is living source of truth for product direction and user-facing produc
 - `Android`
 - `Windows`
 
-`iOS` and `macOS` are readiness tracks only for this release wave. They are not part of the full public `v1` promise.
+`Linux`, `iOS`, and `macOS` are roadmap/readiness tracks only for this release wave. They are not part of the full public `v1` promise.
 
 Primary user goal:
 
@@ -42,7 +42,7 @@ The current program is locked around these target product decisions:
 - `external/client-fork/app/` remains retained rollback/archive reference material only
 - the front-end rebuild is an atlas-driven shell reset: `marketing` acquires, `webapp` continues known-user work, and the app shell stays locked to the four-tab consumer layout
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
-- public delivery scope for this wave remains `Android + Windows`; Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
+- public delivery scope for this wave remains `Android + Windows`; Linux packaging and Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
 - commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
 - `marketing` is the only public acquisition, pricing, and paywall surface, and its default public path is `trial -> install -> first connection`; checkout remains an honest continuation after product check or explicit plan intent. `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
@@ -64,6 +64,7 @@ Client-canon note:
 - primary identity model: `app-first`
 - browser identity continuation: app handoff, `Telegram`, and additive `email` continuation when delivery readiness is green
 - full public `v1` scope: `Android + Windows`
+- Linux order: after Android/Windows gates, package Flutter desktop for Ubuntu/Fedora through AppImage plus deb/rpm evidence before public claims
 - Apple scope in this wave: readiness, signing prep, and store prerequisites only
 - default runtime core: `sing-box`
 - `xray` role: advanced compatibility fallback only
@@ -79,6 +80,7 @@ Client-canon note:
 ## Current Release Constraints
 
 - release target remains `Android + Windows`
+- next platform after those gates is Linux; Apple platforms follow later only with build/sign/notarization/TestFlight/App Store evidence
 - outside-store public beta for Android + Windows is `GO` as of `2026-05-15` with the retained launch-decision evidence pack
 - `Windows` stays in scope for the public `v1` ship when its normal gates are green; the current outside-store beta remains unsigned and must keep unknown-publisher warning copy visible
 - `Android` public beta promotion uses the operator-approved physical-device audit plus the APK/EXE outside-store handoff; store publishing, raw physical audit proof, and stronger Android safety claims remain separate later gates
@@ -310,6 +312,7 @@ Official Telegram surfaces:
 - `free_monthly` keeps monthly traffic reset via the free-cycle job
 - after `5 GB` is exhausted, the account stays usable in `soft mode` until the next reset
 - `paid` remains unlimited traffic with up to `5 devices`
+- all active, non-hidden RUB plans with positive `amount_rub` are eligible for hosted checkout after the payment gate; frontend checkout must not keep a stale one-plan allowlist
 - `start_99` is a one-time user plan; checkout must reject repeat attempts before provider invoice creation when the account has already made a first purchase or already has any successful paid Lava.top order
 - `start_99` is already the first-month action price and must not receive referral, promo, or pending-discount reductions; discount mechanics apply only to standard paid plans when backend eligibility allows them
 
@@ -336,6 +339,16 @@ Visible in advanced:
 - DNS overrides
 - logs and debugging
 - custom import
+
+WARP rule:
+
+- target UX is a local user-controlled toggle comparable to Hiddify: the user
+  explicitly enables WARP, the client layers it through the core, and failure
+  falls back to normal POKROV connection instead of leaving the user offline
+- WARP may move from hidden/advanced to visible beta feature only after
+  Android and Windows release-build proof covers connect, disconnect, WARP-on,
+  WARP-failure fallback, and WARP-off
+- do not make production WARP claims from backend telemetry alone
 
 ## Branding Rules
 

@@ -58,6 +58,8 @@ RF access rule:
 - `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS`
 - current `mini` SSH access, verified on `2026-06-01`: use `kiwunaka@176.123.166.119:22` with the retained local password bundle; `29374` opens TCP but resets before the SSH banner and should not be used as the primary SSH path
 - RU probe readiness itself is a tracked operational dependency for release confidence and is scoped to `POKROV` public hosts, API health, and delivery-node reachability
+- current topology decision as of `2026-07-05`: `mini` remains a bridge/sandbox, not a normal RU delivery node; the planned new RU server may become a full RU node plus a second bridge after provisioning, but no public RU-origin/readiness claim is allowed until that host has current probe evidence
+- target bridge topology after the new RU host is live: each eligible foreign non-US node may have two bridge paths, the existing `mini` bridge and the new RU bridge; rollout must keep per-bridge health, downstream target reachability, and rollback controls separate
 
 ## Operator Shell Policy
 
@@ -144,9 +146,10 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
-- static deploy packages `marketing/out` and `webapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp}` symlinks
-- `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out` plus `webapp/out` without opening SSH; local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
-- before bundling, static deploy appends the release id as `?v=<release>` to `/_next/static/*` references inside exported HTML so browsers do not keep stale cabinet chunks after a deploy; `pokrov.space`, `app.pokrov.space`, and `pay.pokrov.space/checkout/` HTML should serve `Cache-Control: no-cache, must-revalidate` from Caddy
+- static deploy packages `marketing/out`, `webapp/out`, and `adminapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp,adminapp}` symlinks
+- `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out`, `webapp/out`, and `adminapp/out` without opening SSH; local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
+- before bundling, static deploy appends the release id as `?v=<release>` to `/_next/static/*` references inside exported HTML so browsers do not keep stale cabinet/admin chunks after a deploy; `pokrov.space`, `app.pokrov.space`, `admin.pokrov.space`, and `pay.pokrov.space/checkout/` HTML should serve `Cache-Control: no-cache, must-revalidate` from Caddy
+- `admin.pokrov.space` serves the dedicated `adminapp/` static export and must route API calls to `https://api.pokrov.space`; `https://admin.pokrov.space` is part of the default credentialed API CORS allowlist, reuses the existing POKROV admin auth model, and does not make `webapp/` the admin host
 - public Caddy on `brain` should keep HTTP/3 disabled with `servers { protocols h1 h2 }` and should serve `Alt-Svc: clear` on public HTTPS responses while browsers may still have the previous `h3=":8444"` alternative cached; this avoids user networks that fail QUIC or non-standard UDP paths while preserving standard HTTPS on `443`
 - security baseline for `brain`: expose only `80/tcp`, `443/tcp`, and the active SSH port publicly; Caddy `:8444`, API `:8080`, legacy `:2096`, and panel ports must be loopback-only or firewall allowlisted
 - `infra/brain-haproxy-l4.cfg` and `infra/portal-transport-front.cfg` use HAProxy TCP stick-tables as a self-hosted burst guard; this is not a volumetric DDoS guarantee and hoster/network filtering remains a separate incident-control layer
@@ -235,6 +238,7 @@ Status:
 
 - previous `remote_install_mini_canary_stack.py` xhttp/hysteria experiments remain historical/operator tooling only
 - `remote_apply_ru_bridge_relay.py` is the current owner-approved emergency bridge path: it syncs active user UUIDs from `brain`, installs/preserves `mini` Xray Reality on `tcp/443`, restricts bridge egress to POKROV target nodes, excludes `us`, and patches public bridge metadata into `network_rollout_config`
+- when the new RU server is available, add it as a separate RU-node/bridge lane instead of replacing `mini`; prove both bridge paths independently before promoting a cohort
 - rerun `remote_apply_ru_bridge_relay.py --apply --update-brain-rollout` after meaningful user growth or before relying on the bridge for a live incident, because `mini` authorizes the active UUID snapshot that was synced at apply time
 - when bridge targets mix DNS hosts and raw IP hosts, keep Xray routing allow rules split by `domain` and `ip`; one rule containing both fields can fail to match the country-hop connection and make every `Белые списки` detour appear dead
 - generated Hiddify/sing-box profiles must keep the bridge hop as a hidden technical outbound (`POKROV мост §hide§`) and expose only the country choices plus `Белые списки`; a standalone bridge delay failure is not a country-node outage

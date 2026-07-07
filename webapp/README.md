@@ -1,20 +1,20 @@
 # POKROV WebApp
 
-Last updated: 2026-06-06
+Last updated: 2026-07-06
 
 ## Document Status
 
-This file is the local authority for `webapp/` and the browser cabinet/admin surface at `https://app.pokrov.space/`.
+This file is the local authority for `webapp/` and the browser cabinet surface at `https://app.pokrov.space/`.
 
 ## Purpose
 
-`webapp/` is the continuation-first cabinet and admin surface for:
+`webapp/` is the continuation-first cabinet surface for:
 
 - browser entry and web-login continuation from app handoff, Telegram, and email when the runtime email delivery gate is fully ready
 - personal cabinet flows with visible IA `Главная`, `Доступ`, `Помощь`, and `Аккаунт`
 - task/detail routes for devices, statistics, downloads, redeem, support threads/legal docs, and hosted-checkout continuation inside that same compact cabinet model
 - hosted key-first checkout continuation
-- the primary admin operator surface
+- retained legacy admin routes while the dedicated `adminapp/` reaches full parity
 
 It is not the public marketing or SEO surface, and it must not become a second landing page. Public acquisition pages live in `marketing/` at `https://pokrov.space/`.
 
@@ -41,7 +41,7 @@ Current user-facing route families in `webapp/src/app/`:
 
 Cabinet routes live under `webapp/src/app/(dashboard)/`. The route group is URL-invisible and owns the `CabinetShell`.
 
-Current operator routes:
+Current retained operator routes:
 
 - `/admin/`
 - `/admin/dashboard/`
@@ -56,7 +56,7 @@ Current operator routes:
 - `/admin/release/`
 - `/admin/broadcast/`
 
-Operator routes live under `webapp/src/app/(admin)/admin/`. The route group is URL-invisible and keeps the admin shell independent from the personal cabinet shell.
+Operator routes live under `webapp/src/app/(admin)/admin/`. The route group is URL-invisible and remains a parity fallback only. New primary operator work belongs in `adminapp/` for `https://admin.pokrov.space/`; delete these routes only after the dedicated panel covers every workflow and passes the parity checklist.
 
 ## Surface Boundary
 
@@ -64,7 +64,8 @@ Keep the public/browser split explicit:
 
 - `marketing/` owns the homepage, public `/checkout/`, offer/privacy pages, and indexable SEO landing pages
 - `marketing/` keeps trial, install, and first connection as the primary public path; checkout stays an honest continuation after the user has checked the product or when plan context is explicit
-- `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, statistics, or admin tooling
+- `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, or statistics
+- `adminapp/` starts when the operator needs admin tooling at `https://admin.pokrov.space/`
 - browser entry should route known or newly verified users into the same cabinet session model whether they arrived from app handoff, Telegram, or the public email lane when delivery is fully ready
 - public `Open cabinet` CTA should point to `https://app.pokrov.space/`
 - public pricing and acquisition belong to `marketing/`; cabinet checkout is continuation-only and should defer to the hosted key-first flow
@@ -97,7 +98,7 @@ Rules:
 - Dashboard and user snapshots may be kept only in React memory as last-good state during warm refresh; do not persist dashboard cache to browser storage.
 - Theme follows the system preference by default. Manual light/dark choice is a browser UI preference and should not store account or dashboard data.
 - Mobile cabinet navigation keeps bottom tabs stable on cabinet routes.
-- Admin navigation uses its own route group and must not depend on `CabinetShell` or dashboard path checks.
+- Retained admin navigation uses its own route group and must not depend on `CabinetShell` or dashboard path checks; new primary admin navigation lives in `adminapp/`.
 
 ## Frontend Environment
 
@@ -153,7 +154,7 @@ npm.cmd run dev
 npm.cmd run build
 npm.cmd run test:e2e:cabinet
 npm.cmd run test:e2e
-npm.cmd run test:e2e:admin
+npm.cmd run test:e2e:admin  # retained admin parity fallback only
 ```
 
 From the repository root, run the shared text guard when visible copy changes:
@@ -168,7 +169,7 @@ Verification rule:
 - run `python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q` from the repository root when Russian copy, shared copy, or visible frontend text changes
 - run `npm.cmd run test:e2e:cabinet` for focused cabinet route work
 - run `npm.cmd run test:e2e` when cabinet, pricing, renewal, downloads, support, or login flows change
-- run `npm.cmd run test:e2e:admin` when admin routes, permissions, dashboards, or operator actions change
+- run `npm.cmd run test:e2e:admin` only when retained `webapp` admin parity routes, permissions, dashboards, or operator actions change
 - `npm.cmd run test:e2e` now builds the static export and serves `webapp/out` on port `3102` through `webapp/scripts/serve_export.py`, so the full browser pack runs against the same export-style surface that deploy uses
 - `npm.cmd run test:e2e:cabinet` uses the same build-plus-export-server flow on port `3103` for the focused cabinet spec
 - `npm.cmd run test:e2e:admin` uses the same build-plus-export-server flow on port `3101`, which removes the standalone admin flake that came from `next dev` cold-start and HMR reload noise

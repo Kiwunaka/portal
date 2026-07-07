@@ -35,6 +35,8 @@ out/
 webapp/dist/
 marketing/out/
 webapp/test-results/
+adminapp/test-results/
+adminapp/playwright-report/
 
 # Local machine generated inventories / reports
 node_facts*.json

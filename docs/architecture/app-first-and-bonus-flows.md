@@ -342,8 +342,20 @@ Current user-facing delivery semantics:
 Compatibility note:
 
 - `?format=plain` still exists for backend compatibility and advanced/manual recovery
+- `?format=happ` exists for Happ-compatible open subscription delivery; it returns VLESS fallback lines plus Happ `custom-tunnel-config` carrying the same smart sing-box manifest, including `Белые списки` where the client version supports that parameter
 - that compatibility override must stay out of normal user-facing onboarding and CTA copy
 - app-first managed flows may still receive `grpc_443_primary` during rollout, but manual/export recovery and legacy browser-visible compatibility paths stay on Reality until the share-link parity wave lands
+
+Focused compatibility matrix to run before changing support copy:
+
+| Client | URL format | Import result | Server list result | Connect result | Decision |
+| --- | --- | --- | --- | --- | --- |
+| Hiddify | default JSON/sing-box plus `?format=plain` if needed | required proof | required proof | required proof | verified fallback only after green import/list/connect |
+| Happ | `?format=happ`; plain VLESS only as no-bridge fallback | required proof | VLESS fallback should render; `Белые списки` require client support for `custom-tunnel-config` | test direct server first, then БС where visible | best-effort with dedicated format |
+| Karing | default JSON/sing-box, then `?format=plain`/`?format=clash` if practical | required proof | required proof | required proof | best-effort until green matrix |
+| v2rayN | `?format=plain`, `?format=vless`, `?format=clash` where supported | required proof | required proof | required proof | advanced/manual fallback |
+
+`Pokrov-client` is an owned open-source source-only lane until it has separate APK/EXE/binary release evidence. Do not present it as an official user-facing binary fallback before that gate.
 
 ## Support Ticket Continuation
 

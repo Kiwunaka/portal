@@ -493,6 +493,64 @@ class NodeProvisioningJob(Base):
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class ProviderTrafficQuota(Base):
+    __tablename__ = "provider_traffic_quotas"
+    __table_args__ = (UniqueConstraint("node_code", name="uq_provider_traffic_quotas_node_code"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    node_code = Column(String(32), index=True, nullable=False)
+    included_bytes = Column(BigInteger, default=0, nullable=False)
+    reset_day = Column(Integer, default=1, nullable=False)
+    timezone = Column(String(64), default="UTC", nullable=False)
+    warning_ratio = Column(Float, default=0.80, nullable=False)
+    critical_ratio = Column(Float, default=0.95, nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)
+    notes = Column(Text, nullable=True)
+    updated_by = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ProviderTrafficQuotaAudit(Base):
+    __tablename__ = "provider_traffic_quota_audit"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    quota_id = Column(Integer, index=True, nullable=True)
+    node_code = Column(String(32), index=True, nullable=False)
+    actor_tg_id = Column(BigInteger, index=True, nullable=True)
+    action = Column(String(32), nullable=False)
+    before_json = Column(Text, nullable=True)
+    after_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class OpsAlert(Base):
+    __tablename__ = "ops_alerts"
+    __table_args__ = (UniqueConstraint("fingerprint", name="uq_ops_alerts_fingerprint"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fingerprint = Column(String(160), index=True, nullable=False)
+    source = Column(String(64), index=True, nullable=False)
+    severity = Column(String(16), index=True, nullable=False)
+    status = Column(String(24), index=True, default="active", nullable=False)
+    title = Column(String(180), nullable=False)
+    body = Column(String(1000), nullable=True)
+    node_code = Column(String(32), index=True, nullable=True)
+    tg_id = Column(BigInteger, index=True, nullable=True)
+    key_id = Column(Integer, index=True, nullable=True)
+    first_seen_at = Column(DateTime, default=_utcnow, nullable=False)
+    last_seen_at = Column(DateTime, default=_utcnow, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+    acknowledged_at = Column(DateTime, nullable=True)
+    acknowledged_by = Column(BigInteger, nullable=True)
+    silence_until = Column(DateTime, nullable=True)
+    last_delivery_at = Column(DateTime, nullable=True)
+    last_delivery_status = Column(String(64), nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class AdminAudit(Base):
     __tablename__ = "admin_audit"
 

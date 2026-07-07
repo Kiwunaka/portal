@@ -509,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Only write the story evidence audit CSV.",
     )
-    parser.add_argument("--updated-at", default="2026-06-27")
+    parser.add_argument("--updated-at", default="2026-07-05")
     args = parser.parse_args(argv)
 
     tracker_path = Path(args.tracker)

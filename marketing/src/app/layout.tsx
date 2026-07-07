@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Golos_Text } from "next/font/google";
 
 import JsonLd from "../components/json-ld";
 import FunnelTracker from "../components/funnel-tracker";
@@ -13,12 +12,6 @@ import {
 } from "../lib/marketing-site";
 import { CANONICAL_MARKETING_SITE_URL, CANONICAL_PLATFORM_BRAND, getDesignTokenThemeCss } from "../lib/pokrov";
 import "./globals.css";
-
-const fontBody = Golos_Text({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-golos",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
@@ -77,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const designTokenThemeCss = getDesignTokenThemeCss("public");
 
   return (
-    <html lang="ru" className={fontBody.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html lang="ru" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <style id="pokrov-design-tokens" dangerouslySetInnerHTML={{ __html: designTokenThemeCss }} />
       </head>

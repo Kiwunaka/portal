@@ -29,40 +29,57 @@ class UiVisualSmokeTests(unittest.TestCase):
 
         checks = {check.name: check for check in smoke._default_checks()}
 
-        hero_check = checks["marketing-home-cta"]
-        self.assertTrue(str(hero_check.path).endswith("marketing\\src\\components\\marketing-landing.tsx"))
-        self.assertIn("config.webappUrl", hero_check.must_contain)
-        self.assertIn("config.newsChannelUrl", hero_check.must_contain)
-        self.assertIn("/checkout/?plan=", hero_check.must_contain)
-        self.assertIn("POKROV открывает YouTube, TikTok и другие сервисы", hero_check.must_contain)
-        self.assertIn("Один сценарий под эту задачу.", hero_check.must_contain)
-        self.assertIn("lp-hero-stage", hero_check.must_contain)
-        self.assertIn("lp-trust-grid", hero_check.must_contain)
-        self.assertIn("lp-pricing-shell", hero_check.must_contain)
-        self.assertIn("lp-footer-cta", hero_check.must_contain)
-        self.assertIn('className="lp-faq-item"', hero_check.must_contain)
-        self.assertIn("href={config.connectUrl}", hero_check.must_not_contain)
-        self.assertIn("managed premium", hero_check.must_not_contain)
+        page_check = checks["marketing-home-page"]
+        self.assertTrue(str(page_check.path).endswith("marketing\\src\\app\\page.tsx"))
+        self.assertIn("buildMarketingMetadata", page_check.must_contain)
+        self.assertIn("buildSoftwareApplicationJsonLd", page_check.must_contain)
+        self.assertIn("<Hero />", page_check.must_contain)
+        self.assertIn("<Pricing />", page_check.must_contain)
+        self.assertIn("config.connectUrl", page_check.must_not_contain)
+
+        shell_check = checks["marketing-home-shell"]
+        self.assertIn("CANONICAL_WEBAPP_URL", shell_check.must_contain)
+        self.assertIn("MARKETING_CANONICAL_PATHS.install", shell_check.must_contain)
+        self.assertIn("CANONICAL_CONNECT_URL", shell_check.must_not_contain)
+
+        topbar_check = checks["marketing-home-topbar"]
+        self.assertIn("MarketingBrandLogo", topbar_check.must_contain)
+        self.assertIn("aria-expanded={menuOpen}", topbar_check.must_contain)
+        self.assertIn("setMenuOpen(false)", topbar_check.must_contain)
+
+        hero_check = checks["marketing-home-hero"]
+        self.assertIn("HeroVisual", hero_check.must_contain)
+        self.assertIn("MARKETING_CANONICAL_PATHS.install", hero_check.must_contain)
+        self.assertIn('href="/#how-it-works"', hero_check.must_contain)
+
+        pricing_check = checks["marketing-home-pricing"]
+        self.assertIn("getTariffPlans()", pricing_check.must_contain)
+        self.assertIn(".filter((plan) => plan.is_active)", pricing_check.must_contain)
+        self.assertIn("MARKETING_CANONICAL_PATHS.checkout", pricing_check.must_contain)
+        self.assertIn("CHECKOUT_READY_PLAN_CODES", pricing_check.must_not_contain)
+
+        footer_check = checks["marketing-home-footer"]
+        self.assertIn("CANONICAL_NEWS_CHANNEL_URL", footer_check.must_contain)
+        self.assertIn("CANONICAL_GITHUB_RELEASES_URL", footer_check.must_contain)
 
         layout_check = checks["marketing-layout-seo"]
         self.assertIn("metadataBase", layout_check.must_contain)
         self.assertIn("/apple-icon.png", layout_check.must_contain)
 
-        offer_check = checks["marketing-offer-flow"]
-        self.assertIn("Открыть Telegram-бота", offer_check.must_contain)
-
-        privacy_check = checks["marketing-privacy-flow"]
-        self.assertIn("config.contactEmail", privacy_check.must_contain)
-
         checkout_check = checks["marketing-checkout-gateway"]
         self.assertIn("config.webappUrl", checkout_check.must_contain)
         self.assertIn("fetchPaymentProviderState", checkout_check.must_contain)
         self.assertIn("/api/payments/providers", checkout_check.must_contain)
-        self.assertIn("Оплата временно недоступна", checkout_check.must_contain)
-        self.assertIn("код активации", checkout_check.must_contain)
-        self.assertIn("Продолжить в Telegram", checkout_check.must_contain)
+        self.assertIn("tariffPlanAllowsDiscount", checkout_check.must_contain)
+        self.assertIn("payment_method: paymentMethod", checkout_check.must_contain)
         self.assertIn("config.connectUrl", checkout_check.must_not_contain)
         self.assertIn("activation key", checkout_check.must_not_contain)
+
+        offer_check = checks["marketing-offer-flow"]
+        self.assertIn("buildMarketingMetadata", offer_check.must_contain)
+
+        privacy_check = checks["marketing-privacy-flow"]
+        self.assertIn("config.contactEmail", privacy_check.must_contain)
 
         webapp_entry = checks["webapp-entry"]
         self.assertIn("POKROV cabinet", webapp_entry.must_contain)

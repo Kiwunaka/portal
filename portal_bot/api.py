@@ -70,10 +70,13 @@ from models import (
     NodeProvisioningJob,
     NodeRuntimeMetric,
     ObserverUserState,
+    OpsAlert,
     PlanCatalog,
     PromoCode,
     PromoUsage,
     PayAttempt,
+    ProviderTrafficQuota,
+    ProviderTrafficQuotaAudit,
     ReferralBonusQueue,
     RenderedSubscriptionSnapshot,
     Review,
@@ -223,6 +226,22 @@ from warp_service import (
     revoke_warp_material,
     warp_material_public_payload,
 )
+from admin_ops_service import (
+    admin_nodes_capacity_payload as _ops_admin_nodes_capacity_payload,
+    alert_payload as _ops_alert_payload,
+    build_admin_metrics_status_snapshot as _ops_build_admin_metrics_status_snapshot,
+    build_alert_candidates as _ops_build_alert_candidates,
+    bytes_to_gb as _ops_bytes_to_gb,
+    free_tier_summary as _ops_free_tier_summary,
+    free_tier_user_rows as _ops_free_tier_user_rows,
+    gb_to_bytes as _ops_gb_to_bytes,
+    node_timeseries_rows as _ops_node_timeseries_rows,
+    provider_quota_payload as _ops_provider_quota_payload,
+    provider_quota_status_rows as _ops_provider_quota_status_rows,
+    refresh_ops_alerts_for_current_state as _ops_refresh_alerts_for_current_state,
+    refresh_ops_alerts as _ops_refresh_alerts,
+    traffic_summary_rows as _ops_traffic_summary_rows,
+)
 
 
 HIDDIFY_HIDDEN_TAG_SUFFIX = " §hide§"
@@ -351,6 +370,7 @@ PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
+ADMIN_WEB_SESSION_TTL_SECONDS = max(300, env_int("ADMIN_WEB_SESSION_TTL_SECONDS", 3600))
 CABINET_HANDOFF_TTL_SECONDS = max(60, min(120, env_int("CABINET_HANDOFF_TTL_SECONDS", 120)))
 CABINET_HANDOFF_LEDGER_RETENTION_SECONDS = max(3600, env_int("CABINET_HANDOFF_LEDGER_RETENTION_SECONDS", 86400))
 NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
@@ -405,6 +425,7 @@ def _build_cors_allowed_origins() -> list[str]:
         "https://pokrov.space",
         "https://www.pokrov.space",
         "https://app.pokrov.space",
+        "https://admin.pokrov.space",
         "https://pay.pokrov.space",
     ]
     for attr in ("WEBAPP_URL", "PAY_CHECKOUT_URL", "API_BASE_URL"):
@@ -1395,6 +1416,34 @@ class AdminKeyRotateIn(BaseModel):
     dry_run: bool = False
 
 
+class AdminProviderQuotaIn(BaseModel):
+    node_code: str = Field(min_length=1, max_length=32)
+    included_bytes: int | None = Field(default=None, ge=0)
+    included_gb: float | None = Field(default=None, ge=0)
+    reset_day: int = Field(default=1, ge=1, le=31)
+    timezone: str = Field(default="UTC", min_length=1, max_length=64)
+    warning_ratio: float = Field(default=0.80, ge=0.01, le=1.0)
+    critical_ratio: float = Field(default=0.95, ge=0.01, le=1.0)
+    enabled: bool = True
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class AdminProviderQuotaPatchIn(BaseModel):
+    included_bytes: int | None = Field(default=None, ge=0)
+    included_gb: float | None = Field(default=None, ge=0)
+    reset_day: int | None = Field(default=None, ge=1, le=31)
+    timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    warning_ratio: float | None = Field(default=None, ge=0.01, le=1.0)
+    critical_ratio: float | None = Field(default=None, ge=0.01, le=1.0)
+    enabled: bool | None = None
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class AdminAlertSilenceIn(BaseModel):
+    minutes: int = Field(default=60, ge=1, le=43200)
+    note: str | None = Field(default=None, max_length=300)
+
+
 class AdminUserKeysBulkActionIn(BaseModel):
     action: str = Field(min_length=3, max_length=24)  # disable|enable|reset|resync
     segment: str = Field(default="all_active", min_length=2, max_length=32)
@@ -2295,6 +2344,36 @@ def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) ->
         return base, 0
     discounted = int(round(base * (1.0 - (pct / 100.0))))
     return max(1, discounted), pct
+
+
+def _checkout_discount_code_preview_pct(*, s, promo_code: str | None) -> tuple[int, str, str]:
+    code = str(promo_code or "").strip().upper()[:20]
+    if not code:
+        return 0, "", ""
+
+    promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == code).first()
+    if promo:
+        promo_type = str(getattr(promo, "promo_type", "") or "").strip().lower()
+        value = int(getattr(promo, "value", 0) or 0)
+        uses_left = int(getattr(promo, "uses_left", 0) or 0)
+        expires_at = getattr(promo, "expires_at", None)
+        if (
+            promo_type == "discount"
+            and value > 0
+            and uses_left != 0
+            and (not expires_at or expires_at >= _utcnow())
+        ):
+            return max(1, min(95, value)), str(getattr(promo, "code", code) or code).strip().upper()[:20], "promo_code"
+        return 0, str(getattr(promo, "code", code) or code).strip().upper()[:20], "promo_code_unavailable"
+
+    preview_codes = ((_TARIFF_CATALOG.get("pricing_preview") or {}).get("discount_codes") or {})
+    try:
+        preview_pct = int(preview_codes.get(code) or 0)
+    except Exception:
+        preview_pct = 0
+    if preview_pct > 0:
+        return max(1, min(95, preview_pct)), code, "catalog_preview"
+    return 0, code, ""
 
 
 def _generate_gift_code_for_admin(s) -> str:
@@ -6233,6 +6312,33 @@ async def auth_session(request: Request, x_telegram_init_data: str = Header(defa
     }
 
 
+@app.post("/api/admin/auth/session")
+async def admin_auth_session(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = _require_admin(x_telegram_init_data, request=request)
+    actor_id = int(actor.get("id") or 0)
+    token = create_web_session_token(
+        tg_id=actor_id,
+        username=str(actor.get("username") or "").strip() or None,
+        auth_type="admin",
+        auth_origin="adminapp",
+        ttl_seconds=int(ADMIN_WEB_SESSION_TTL_SECONDS),
+        purpose="admin",
+    )
+    if not token:
+        raise HTTPException(status_code=500, detail="Admin session is not configured")
+    return {
+        "ok": True,
+        "token": token,
+        "token_transport": "bearer",
+        "expires_in": int(ADMIN_WEB_SESSION_TTL_SECONDS),
+        "user": {
+            "id": actor_id,
+            "username": str(actor.get("username") or "").strip() or None,
+            "role": "superadmin",
+        },
+    }
+
+
 @app.post("/api/client/session/start-trial")
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
     client_policy: dict[str, Any] | None = None
@@ -8494,9 +8600,13 @@ async def _rub_create_order_internal(
         discount_pct = 0
         discount_applied = False
         discount_allowed = normalized_plan_code != "start_99"
-        effective_promo = (promo_code or "").strip().upper()[:32]
+        requested_promo = (promo_code or "").strip().upper()[:32]
+        effective_promo = ""
         pending_code = (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20] if user else ""
         pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0) if user else 0
+        direct_discount_pct = 0
+        direct_discount_code = ""
+        direct_discount_source = ""
         referral_discount_eligible = bool(
             discount_allowed
             and user
@@ -8508,8 +8618,16 @@ async def _rub_create_order_internal(
             working_amount = max(1, int(round(working_amount * 0.8)))
         if discount_allowed and pending_pct > 0:
             working_amount, _ = _price_with_pending_discount(amount_rub=working_amount, pending_pct=pending_pct)
-            if not effective_promo and pending_code:
+            if pending_code:
                 effective_promo = pending_code[:32]
+        elif discount_allowed and requested_promo:
+            direct_discount_pct, direct_discount_code, direct_discount_source = _checkout_discount_code_preview_pct(
+                s=s,
+                promo_code=requested_promo,
+            )
+            if direct_discount_pct > 0:
+                working_amount, _ = _price_with_pending_discount(amount_rub=working_amount, pending_pct=direct_discount_pct)
+                effective_promo = direct_discount_code[:32]
         final_amount = max(1, int(working_amount)) if base_amount > 0 else 0
         discount_applied = bool(base_amount > 0 and final_amount < base_amount)
         discount_pct = int(round((1.0 - (float(final_amount) / float(base_amount))) * 100)) if discount_applied else 0
@@ -8534,6 +8652,7 @@ async def _rub_create_order_internal(
                 {
                     "source": source,
                     "campaign": campaign,
+                    "requested_promo_code": requested_promo or None,
                     "promo_code": effective_promo,
                     "tg_id": int(normalized_tg_id) if normalized_tg_id > 0 else None,
                     "buyer_email": buyer_email_norm or None,
@@ -8553,6 +8672,9 @@ async def _rub_create_order_internal(
                         "discount_pct": int(discount_pct),
                         "discount_applied": bool(discount_applied),
                         "pending_discount_code": pending_code or None,
+                        "direct_discount_pct": int(direct_discount_pct),
+                        "direct_discount_code": direct_discount_code or None,
+                        "direct_discount_source": direct_discount_source or None,
                         "referral_discount_eligible": bool(referral_discount_eligible),
                     },
                 },
@@ -8582,6 +8704,7 @@ async def _rub_create_order_internal(
         "plan_code": normalized_plan_code,
         "plan_label": plan_label,
         "campaign": campaign or "",
+        "requested_promo_code": requested_promo or "",
         "promo_code": effective_promo or "",
         "source": source,
         "payment_method": payment_method_choice or "",
@@ -8648,6 +8771,12 @@ async def _rub_create_order_internal(
                         "final_amount_rub": int(final_amount),
                         "discount_pct": int(discount_pct),
                         "discount_applied": bool(discount_applied),
+                        "requested_promo_code": requested_promo or None,
+                        "promo_code": effective_promo or None,
+                        "pending_discount_code": pending_code or None,
+                        "direct_discount_pct": int(direct_discount_pct),
+                        "direct_discount_code": direct_discount_code or None,
+                        "direct_discount_source": direct_discount_source or None,
                     },
                     "fulfillment": {
                         "mode": fulfillment_mode,
@@ -9051,119 +9180,6 @@ def _nullable_node_network_value(
     return rx_total, tx_total, rx_rate, tx_rate, total_rate
 
 
-def _build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_seconds: int) -> dict[str, Any]:
-    nodes = (
-        s.query(Node)
-        .filter(Node.enabled == True)
-        .order_by(Node.weight.desc(), Node.code.asc())
-        .all()
-    )
-    rows: list[dict[str, Any]] = []
-    active_alerts: list[dict[str, Any]] = []
-    overall_last_sample: datetime | None = None
-    overall_age_seconds: int | None = None
-
-    for node in nodes:
-        samples = (
-            s.query(NodeHealthSample)
-            .filter(NodeHealthSample.node_code == str(node.code or ""))
-            .order_by(NodeHealthSample.sampled_at.desc(), NodeHealthSample.id.desc())
-            .limit(NODE_METRICS_SUSTAINED_SAMPLES)
-            .all()
-        )
-        latest = samples[0] if samples else None
-        last_sample_at = getattr(latest, "sampled_at", None) or getattr(node, "last_health_at", None)
-        age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
-        alert_kinds = _active_node_metric_alert_kinds(
-            samples=samples,
-            last_sample_at=last_sample_at,
-            stale_after_seconds=stale_after_seconds,
-            now=now,
-        )
-        if not alert_kinds:
-            alert_kinds = _node_snapshot_alert_kinds(
-                node=node,
-                last_sample_at=last_sample_at,
-                stale_after_seconds=stale_after_seconds,
-                now=now,
-            )
-        if last_sample_at and (overall_last_sample is None or last_sample_at > overall_last_sample):
-            overall_last_sample = last_sample_at
-        if age_seconds is not None:
-            overall_age_seconds = age_seconds if overall_age_seconds is None else max(overall_age_seconds, age_seconds)
-        row = {
-            "node_code": str(node.code or ""),
-            "code": str(node.code or ""),
-            "status": "stale" if "stale_metrics" in alert_kinds else "fresh",
-            "freshness_status": "stale" if "stale_metrics" in alert_kinds else "fresh",
-            "last_sample_at": _safe_iso(last_sample_at),
-            "age_seconds": age_seconds,
-            "cpu_percent": float(getattr(latest, "cpu_percent", getattr(node, "cpu_percent", 0.0)) or 0.0),
-            "memory_percent": _sample_memory_percent(latest),
-            "disk_percent": _sample_disk_percent(latest),
-            "network_total_mbps": float(getattr(latest, "network_total_mbps", getattr(node, "network_total_mbps", 0.0)) or 0.0),
-            "network_utilization_percent": _network_utilization_percent(
-                getattr(latest, "network_total_mbps", getattr(node, "network_total_mbps", 0.0))
-            ),
-            "active_clients": int(getattr(latest, "active_clients", getattr(node, "active_clients", 0)) or 0),
-            "observer_last_push_at": _safe_iso(getattr(node, "observer_last_push_at", None)),
-            "observer_is_stale": bool(_observer_is_stale(node, now=now)),
-            "alert_kinds": sorted(set(alert_kinds)),
-            "alerts": _legacy_node_alerts(alert_kinds),
-        }
-        rows.append(row)
-        for kind in row["alert_kinds"]:
-            active_alerts.append(
-                {
-                    "node_code": row["node_code"],
-                    "kind": kind,
-                    "status": row["status"],
-                    "age_seconds": row["age_seconds"],
-                    "last_sample_at": row["last_sample_at"],
-                }
-            )
-
-    overall_status = "fresh" if rows and all(row["status"] == "fresh" for row in rows) else "stale"
-    legacy_alert_counts = {
-        "stale_nodes": sum(1 for row in rows if row["freshness_status"] == "stale"),
-        "high_cpu_nodes": sum(1 for row in rows if "high_cpu" in row["alerts"]),
-        "high_memory_nodes": sum(1 for row in rows if "high_memory" in row["alerts"]),
-        "high_disk_nodes": sum(1 for row in rows if "high_disk" in row["alerts"]),
-        "high_network_nodes": sum(1 for row in rows if "high_network" in row["alerts"]),
-        "high_latency_nodes": sum(1 for row in rows if "high_latency" in row["alerts"]),
-        "high_error_rate_nodes": sum(1 for row in rows if "high_error_rate" in row["alerts"]),
-        "high_client_density_nodes": sum(1 for row in rows if "high_client_density" in row["alerts"]),
-    }
-    since_24h = now - timedelta(hours=24)
-    security_rows = (
-        s.query(SecurityEvent.event_type, func.count(SecurityEvent.id))
-        .filter(SecurityEvent.created_at >= since_24h)
-        .group_by(SecurityEvent.event_type)
-        .all()
-    )
-    security_counts = {str(event_type): int(count or 0) for event_type, count in security_rows}
-    return {
-        "status": overall_status,
-        "last_sample_at": _safe_iso(overall_last_sample),
-        "age_seconds": overall_age_seconds,
-        "stale_after_seconds": stale_after_seconds,
-        "nodes": rows,
-        "active_alerts": active_alerts,
-        "node_statuses": rows,
-        "alerts": legacy_alert_counts,
-        "security": {
-            "window": "24h",
-            "rate_limit_hits": int(security_counts.get("rate_limit_hit", 0)),
-            "payment_callback_invalid_signatures": int(security_counts.get("payment_callback_invalid_signature", 0)),
-            "support_upload_rejects": int(security_counts.get("support_upload_reject", 0)),
-            "support_attachment_denies": int(security_counts.get("support_attachment_denied", 0)),
-            "admin_access_denies": int(security_counts.get("admin_access_denied", 0)),
-            "subscription_lookup_failures": int(security_counts.get("subscription_lookup_failed", 0)),
-            "events": security_counts,
-        },
-    }
-
-
 @app.get("/api/admin/metrics/status")
 async def admin_metrics_status(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data, request=request)
@@ -9171,7 +9187,7 @@ async def admin_metrics_status(request: Request, x_telegram_init_data: str = Hea
     now = _utcnow()
     s = SessionLocal()
     try:
-        return _build_admin_metrics_status_snapshot(
+        return _ops_build_admin_metrics_status_snapshot(
             s=s,
             now=now,
             stale_after_seconds=stale_after_seconds,
@@ -11953,7 +11969,7 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             .scalar()
             or 0
         )
-        metrics_status = _build_admin_metrics_status_snapshot(
+        metrics_status = _ops_build_admin_metrics_status_snapshot(
             s=s,
             now=now,
             stale_after_seconds=stale_after_seconds,
@@ -14947,56 +14963,441 @@ async def admin_nodes_capacity(x_telegram_init_data: str = Header(default="")) -
     _require_admin(x_telegram_init_data)
     s = SessionLocal()
     try:
-        rows = s.query(Node).order_by(Node.enabled.desc(), Node.code.asc()).all()
-        policy_by_code = _node_capacity_policy_by_code(s)
-        pressure_by_code = {
-            str(node_code or "").strip().lower(): int(count or 0)
-            for node_code, count in (
-                s.query(KeyPressureState.node_code, func.count(KeyPressureState.key_id))
-                .filter(KeyPressureState.state != "ok")
-                .group_by(KeyPressureState.node_code)
-                .all()
-            )
-        }
-        now = _utcnow()
-        nodes_payload = []
-        for node in rows:
-            code = str(getattr(node, "code", "") or "").strip().lower()
-            policy = policy_by_code.get(code)
-            capacity = node_capacity_status(node, policy=policy, now=now)
-            nodes_payload.append(
-                {
-                    "code": code,
-                    "name": str(getattr(node, "name", "") or ""),
-                    "enabled": bool(getattr(node, "enabled", True)),
-                    "accepting_new_clients": bool(getattr(node, "accepting_new_clients", True)),
-                    "is_draining": bool(getattr(node, "is_draining", False)),
-                    "capacity_state": str(capacity.get("state") or "unknown"),
-                    "capacity_score": float(capacity.get("score") or 0.0),
-                    "reject_reason": str(capacity.get("reject_reason") or "") or None,
-                    "tx_mbps": capacity.get("tx_mbps"),
-                    "tx_ratio": capacity.get("tx_ratio"),
-                    "capacity_mbps": capacity.get("capacity_mbps"),
-                    "cpu_percent": float(getattr(node, "cpu_percent", 0.0) or 0.0),
-                    "dataplane_ok": getattr(node, "dataplane_ok", None),
-                    "dataplane_rtt_ms": getattr(node, "dataplane_rtt_ms", None),
-                    "packet_loss_percent": getattr(node, "packet_loss_percent", None),
-                    "tcp_retrans_percent": getattr(node, "tcp_retrans_percent", None),
-                    "provisioned_clients_count": int(capacity.get("provisioned_clients_count") or 0),
-                    "online_connections_hint": int(capacity.get("online_connections_hint") or 0),
-                    "pressure_keys": int(pressure_by_code.get(code, 0) or 0),
-                    "last_health_at": _safe_iso(getattr(node, "last_health_at", None)),
-                    "policy": {
-                        "soft_tx_ratio": getattr(policy, "soft_tx_ratio", None),
-                        "drain_tx_ratio": getattr(policy, "drain_tx_ratio", None),
-                        "hard_tx_ratio": getattr(policy, "hard_tx_ratio", None),
-                        "stale_after_seconds": getattr(policy, "stale_after_seconds", None),
-                    },
-                }
-            )
-        return {"ok": True, "updated_at": _safe_iso(now), "nodes": nodes_payload}
+        return _ops_admin_nodes_capacity_payload(s=s, now=_utcnow())
     finally:
         s.close()
+
+
+def _provider_quota_bytes_from_payload(payload: AdminProviderQuotaIn | AdminProviderQuotaPatchIn, existing: int = 0) -> int:
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("included_bytes") is not None:
+        return max(0, int(data.get("included_bytes") or 0))
+    if data.get("included_gb") is not None:
+        return _ops_gb_to_bytes(float(data.get("included_gb") or 0.0))
+    return max(0, int(existing or 0))
+
+
+def _provider_quota_audit_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
+    if not row:
+        return None
+    return _ops_provider_quota_payload(row)
+
+
+def _add_provider_quota_audit(
+    *,
+    s,
+    quota: ProviderTrafficQuota | None,
+    node_code: str,
+    actor: int,
+    action: str,
+    before: dict[str, Any] | None,
+    after: dict[str, Any] | None,
+) -> None:
+    s.add(
+        ProviderTrafficQuotaAudit(
+            quota_id=int(quota.id) if quota and quota.id is not None else None,
+            node_code=str(node_code or "").strip().lower()[:32],
+            actor_tg_id=int(actor) if actor else None,
+            action=str(action or "")[:32],
+            before_json=json.dumps(before, ensure_ascii=False, separators=(",", ":"))[:4000] if before is not None else None,
+            after_json=json.dumps(after, ensure_ascii=False, separators=(",", ":"))[:4000] if after is not None else None,
+            created_at=_utcnow(),
+        )
+    )
+
+
+async def _deliver_ops_alert_notifications(notifications: list[dict[str, Any]]) -> None:
+    if not notifications or not int(Settings.ADMIN_ID or 0):
+        return
+    delivered: dict[str, str] = {}
+    for item in notifications[:20]:
+        fingerprint = str(item.get("fingerprint") or "")
+        kind = str(item.get("kind") or "active")
+        severity = str(item.get("severity") or "warning").upper()
+        title = str(item.get("title") or fingerprint)
+        prefix = "RESOLVED" if kind == "resolved" else severity
+        ok = await _telegram_send_message(
+            int(Settings.ADMIN_ID),
+            f"POKROV ops alert: {prefix}\n{title}\n{fingerprint}",
+            disable_web_page_preview=True,
+        )
+        delivered[fingerprint] = "sent" if ok else "send_failed"
+    if not delivered:
+        return
+    s = SessionLocal()
+    try:
+        now = _utcnow()
+        for fingerprint, status in delivered.items():
+            row = s.query(OpsAlert).filter(OpsAlert.fingerprint == fingerprint).first()
+            if not row:
+                continue
+            row.last_delivery_at = now
+            row.last_delivery_status = status
+            row.updated_at = now
+        s.commit()
+    except Exception:
+        s.rollback()
+    finally:
+        s.close()
+
+
+async def _refresh_ops_alerts_for_payload(*, s, now: datetime) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
+    rows, notifications, _metrics_status, _capacity_payload = _ops_refresh_alerts_for_current_state(
+        s=s,
+        now=now,
+        free_limit_gb=int(FREE_TOTAL_GB),
+        cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
+        stale_after_seconds=stale_after_seconds,
+    )
+    return rows, notifications
+
+
+@app.get("/api/admin/provider-quotas")
+async def admin_provider_quotas(x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        rows = s.query(ProviderTrafficQuota).order_by(ProviderTrafficQuota.node_code.asc()).all()
+        return {"ok": True, "quotas": [_ops_provider_quota_payload(row) for row in rows]}
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/provider-quotas")
+async def admin_provider_quota_create(payload: AdminProviderQuotaIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    node_code = str(payload.node_code or "").strip().lower()
+    if not node_code:
+        raise HTTPException(status_code=400, detail="node_code is required")
+    if float(payload.warning_ratio or 0.0) >= float(payload.critical_ratio or 0.0):
+        raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
+    s = SessionLocal()
+    try:
+        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == node_code).first()
+        before = _provider_quota_audit_payload(row)
+        now = _utcnow()
+        if not row:
+            row = ProviderTrafficQuota(node_code=node_code, created_at=now)
+            s.add(row)
+            action = "create"
+        else:
+            action = "update"
+        row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
+        row.reset_day = int(payload.reset_day or 1)
+        row.timezone = str(payload.timezone or "UTC").strip()[:64] or "UTC"
+        row.warning_ratio = float(payload.warning_ratio or 0.8)
+        row.critical_ratio = float(payload.critical_ratio or 0.95)
+        row.enabled = bool(payload.enabled)
+        row.notes = str(payload.notes or "").strip()[:1000] or None
+        row.updated_by = int(actor)
+        row.updated_at = now
+        s.flush()
+        after = _ops_provider_quota_payload(row)
+        _add_provider_quota_audit(s=s, quota=row, node_code=node_code, actor=actor, action=action, before=before, after=after)
+        s.commit()
+        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_upsert", meta={"node_code": node_code, "action": action})
+        return {"ok": True, "quota": after}
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.patch("/api/admin/provider-quotas/{node_code}")
+async def admin_provider_quota_update(node_code: str, payload: AdminProviderQuotaPatchIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Provider quota not found")
+        before = _provider_quota_audit_payload(row)
+        data = payload.model_dump(exclude_unset=True)
+        if "included_bytes" in data or "included_gb" in data:
+            row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
+        if data.get("reset_day") is not None:
+            row.reset_day = int(data["reset_day"])
+        if data.get("timezone") is not None:
+            row.timezone = str(data["timezone"] or "UTC").strip()[:64] or "UTC"
+        if data.get("warning_ratio") is not None:
+            row.warning_ratio = float(data["warning_ratio"])
+        if data.get("critical_ratio") is not None:
+            row.critical_ratio = float(data["critical_ratio"])
+        if float(row.warning_ratio or 0.0) >= float(row.critical_ratio or 0.0):
+            raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
+        if data.get("enabled") is not None:
+            row.enabled = bool(data["enabled"])
+        if "notes" in data:
+            row.notes = str(data.get("notes") or "").strip()[:1000] or None
+        row.updated_by = int(actor)
+        row.updated_at = _utcnow()
+        after = _ops_provider_quota_payload(row)
+        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="update", before=before, after=after)
+        s.commit()
+        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_update", meta={"node_code": wanted})
+        return {"ok": True, "quota": after}
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.delete("/api/admin/provider-quotas/{node_code}")
+async def admin_provider_quota_delete(node_code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    s = SessionLocal()
+    try:
+        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Provider quota not found")
+        before = _provider_quota_audit_payload(row)
+        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="delete", before=before, after=None)
+        s.delete(row)
+        s.commit()
+        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_delete", meta={"node_code": wanted})
+        return {"ok": True, "node_code": wanted}
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/provider-quotas/status")
+async def admin_provider_quota_status(x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        now = _utcnow()
+        return {"ok": True, "generated_at": _safe_iso(now), "nodes": _ops_provider_quota_status_rows(s=s, now=now)}
+    finally:
+        s.close()
+
+
+def _admin_free_tier_facts_payload() -> dict[str, Any]:
+    return {
+        "node_pool": str(_FREE_TIER_FACTS.get("location_code") or "NL-free"),
+        "traffic_limit_gb": int(FREE_TOTAL_GB),
+        "cycle_days": int(_FREE_TIER_FACTS.get("cycle_days") or 30),
+        "speed_limit_mbps": int(_FREE_TIER_FACTS.get("speed_limit_mbps") or 50),
+        "device_limit": int(_FREE_TIER_FACTS.get("device_limit") or 1),
+        "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
+        "source": "shared_product_facts",
+    }
+
+
+@app.get("/api/admin/free-tier/summary")
+async def admin_free_tier_summary(x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        now = _utcnow()
+        return {
+            "ok": True,
+            "summary": _ops_free_tier_summary(
+                s=s,
+                now=now,
+                free_limit_gb=int(FREE_TOTAL_GB),
+                cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
+            ),
+            "facts": _admin_free_tier_facts_payload(),
+        }
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/free-tier/users")
+async def admin_free_tier_users(
+    x_telegram_init_data: str = Header(default=""),
+    q: str = Query(default=""),
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        now = _utcnow()
+        rows, total = _ops_free_tier_user_rows(
+            s=s,
+            now=now,
+            free_limit_gb=int(FREE_TOTAL_GB),
+            cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
+            limit=int(limit),
+            offset=int(offset),
+            q=q,
+        )
+        return {"ok": True, "generated_at": _safe_iso(now), "total": total, "facts": _admin_free_tier_facts_payload(), "users": rows}
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/nodes/timeseries")
+async def admin_nodes_timeseries(
+    x_telegram_init_data: str = Header(default=""),
+    node_code: str = Query(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default="", alias="to"),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    from_dt, to_dt = _admin_metrics_range(from_, to, max_days=90)
+    s = SessionLocal()
+    try:
+        return {
+            "ok": True,
+            "from": from_dt.isoformat(),
+            "to": to_dt.isoformat(),
+            "node_code": str(node_code or "").strip().lower() or None,
+            "rows": _ops_node_timeseries_rows(s=s, from_dt=from_dt, to_dt=to_dt, node_code=node_code),
+        }
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/traffic/summary")
+async def admin_traffic_summary(
+    x_telegram_init_data: str = Header(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default="", alias="to"),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    from_dt, to_dt = _admin_metrics_range(from_, to, max_days=120)
+    s = SessionLocal()
+    try:
+        rows = _ops_traffic_summary_rows(s=s, from_dt=from_dt, to_dt=to_dt)
+        totals_by_pool: dict[str, int] = {}
+        for row in rows:
+            pool = str(row.get("pool_code") or "unknown")
+            totals_by_pool[pool] = int(totals_by_pool.get(pool, 0)) + int(row.get("traffic_bytes") or 0)
+        return {
+            "ok": True,
+            "from": from_dt.date().isoformat(),
+            "to": to_dt.date().isoformat(),
+            "rows": rows,
+            "totals_by_pool": {pool: {"traffic_bytes": value, "traffic_gb": _ops_bytes_to_gb(value)} for pool, value in sorted(totals_by_pool.items())},
+        }
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/alerts")
+async def admin_ops_alerts(x_telegram_init_data: str = Header(default=""), status: str = Query(default="active")) -> dict:
+    _require_admin(x_telegram_init_data)
+    wanted = str(status or "active").strip().lower()
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        refreshed, notifications = await _refresh_ops_alerts_for_payload(s=s, now=now)
+        s.commit()
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    await _deliver_ops_alert_notifications(notifications)
+    if wanted in {"active", "open"}:
+        rows = [row for row in refreshed if row["status"] in {"active", "silenced"}]
+    elif wanted in {"all", "*"}:
+        rows = refreshed
+    else:
+        rows = [row for row in refreshed if row["status"] == wanted or row.get("raw_status") == wanted]
+    return {"ok": True, "generated_at": _safe_iso(now), "alerts": rows, "notifications": len(notifications)}
+
+
+@app.post("/api/admin/alerts/{alert_id}/ack")
+async def admin_ops_alert_ack(alert_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        row = s.query(OpsAlert).filter(OpsAlert.id == int(alert_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        row.acknowledged_at = _utcnow()
+        row.acknowledged_by = int(actor)
+        row.updated_at = _utcnow()
+        s.commit()
+        payload = _ops_alert_payload(row)
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_ops_alert_ack", meta={"alert_id": int(alert_id)})
+    return {"ok": True, "alert": payload}
+
+
+@app.post("/api/admin/alerts/{alert_id}/silence")
+async def admin_ops_alert_silence(alert_id: int, payload: AdminAlertSilenceIn, x_telegram_init_data: str = Header(default="")) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        row = s.query(OpsAlert).filter(OpsAlert.id == int(alert_id)).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        row.silence_until = _utcnow() + timedelta(minutes=int(payload.minutes))
+        row.acknowledged_at = row.acknowledged_at or _utcnow()
+        row.acknowledged_by = row.acknowledged_by or int(actor)
+        row.updated_at = _utcnow()
+        meta = _json_obj(row.metadata_json)
+        if payload.note:
+            meta["silence_note"] = str(payload.note or "")[:300]
+            row.metadata_json = json.dumps(meta, ensure_ascii=False, separators=(",", ":"))[:4000]
+        s.commit()
+        alert_out = _ops_alert_payload(row)
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    _audit_admin(actor_tg_id=actor, action="admin_ops_alert_silence", meta={"alert_id": int(alert_id), "minutes": int(payload.minutes)})
+    return {"ok": True, "alert": alert_out}
+
+
+@app.get("/api/admin/ops/overview")
+async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    now = _utcnow()
+    stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
+    s = SessionLocal()
+    try:
+        summary_payload = await admin_summary(x_telegram_init_data=x_telegram_init_data)
+        metrics_status = _ops_build_admin_metrics_status_snapshot(s=s, now=now, stale_after_seconds=stale_after_seconds)
+        capacity_payload = _ops_admin_nodes_capacity_payload(s=s, now=now)
+        provider_status = _ops_provider_quota_status_rows(s=s, now=now)
+        free_summary = _ops_free_tier_summary(
+            s=s,
+            now=now,
+            free_limit_gb=int(FREE_TOTAL_GB),
+            cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
+        )
+        alert_rows, notifications = await _refresh_ops_alerts_for_payload(s=s, now=now)
+        s.commit()
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    await _deliver_ops_alert_notifications(notifications)
+    active_alerts = [row for row in alert_rows if row["status"] in {"active", "silenced"}]
+    return {
+        "ok": True,
+        "generated_at": _safe_iso(now),
+        "summary": summary_payload,
+        "metrics": metrics_status,
+        "capacity": capacity_payload,
+        "free_tier": free_summary,
+        "provider_quotas": provider_status,
+        "alerts": {
+            "active": active_alerts,
+            "active_count": len(active_alerts),
+            "critical_count": sum(1 for row in active_alerts if row.get("severity") == "critical"),
+            "warning_count": sum(1 for row in active_alerts if row.get("severity") == "warning"),
+        },
+    }
 
 
 @app.get("/api/admin/keys/pressure")
@@ -16517,15 +16918,65 @@ def _resolve_subscription_client_format(
         return "singbox"
     if hint == "clash":
         return "clash"
+    if hint in {"happ", "happ_plain", "happ-plain"}:
+        return "happ"
     if hint in {"vless", "raw"}:
         return "vless_raw"
     if hint in {"plain", "legacy"}:
         return "plain_base64"
     ua = str(user_agent or "").lower()
+    if "happ" in ua:
+        return "happ"
     is_smart_client = any(x in ua for x in ["hiddify", "dart", "sing-box", "nekobox"])
     if str(sub_type or "").upper() == "FREE" or is_smart_client or is_connect_request:
         return "singbox"
     return "vless_raw"
+
+
+def _subscription_singbox_config(
+    *,
+    user_uuid: str,
+    sub_type: str,
+    nodes: list[Any],
+    transport_profile: str,
+    rollout_config: dict[str, Any],
+) -> dict[str, Any]:
+    if transport_profile == RU_BRIDGE_RELAY:
+        return _singbox_ru_bridge_config(
+            user_uuid=user_uuid,
+            nodes=nodes,
+            title="POKROV",
+            rollout_config=rollout_config,
+        )
+    if str(sub_type or "").upper() == "FREE":
+        return _singbox_free_allowlist_config(
+            user_uuid=user_uuid,
+            nodes=nodes,
+            title="POKROV (Free)",
+            transport_profile=transport_profile,
+        )
+    return _singbox_multi_node_config(
+        user_uuid=user_uuid,
+        nodes=nodes,
+        title="POKROV",
+        transport_profile=transport_profile,
+        rollout_config=rollout_config,
+    )
+
+
+def _happ_subscription_text(*, singbox_config: dict[str, Any], vless_links: list[str]) -> str:
+    lines = [
+        "#subscription-auto-update-enable: 1",
+        "#subscription-auto-update-open-enable: 1",
+        "#subscriptions-collapse: 0",
+        "#subscriptions-expand-now: 1",
+        "#ping-type: proxy",
+        "#check-url-via-proxy: https://cp.cloudflare.com/generate_204",
+        "#custom-tunnel-config: "
+        + json.dumps(singbox_config, ensure_ascii=False, separators=(",", ":")),
+    ]
+    lines.extend([line for line in vless_links if str(line or "").strip()])
+    return "\n".join(lines) + "\n"
 
 
 def _subscription_no_cache_headers(headers: dict[str, str]) -> dict[str, str]:
@@ -16940,29 +17391,12 @@ async def subscription(token: str, request: Request, format: str = Query(default
             # Dedicated free pool is required for FREE users.
             return Response(content="", media_type="text/plain", status_code=503)
 
-        cfg = (
-            _singbox_ru_bridge_config(
-                user_uuid=user.uuid,
-                nodes=smart_nodes_for_user,
-                title="POKROV",
-                rollout_config=rollout_config,
-            )
-            if smart_transport_profile == RU_BRIDGE_RELAY
-            else
-            _singbox_free_allowlist_config(
-                user_uuid=user.uuid,
-                nodes=smart_nodes_for_user,
-                title="POKROV (Free)",
-                transport_profile=smart_transport_profile,
-            )
-            if (user.sub_type or "").upper() == "FREE"
-            else _singbox_multi_node_config(
-                user_uuid=user.uuid,
-                nodes=smart_nodes_for_user,
-                title="POKROV",
-                transport_profile=smart_transport_profile,
-                rollout_config=rollout_config,
-            )
+        cfg = _subscription_singbox_config(
+            user_uuid=user.uuid,
+            sub_type=str(user.sub_type or ""),
+            nodes=smart_nodes_for_user,
+            transport_profile=smart_transport_profile,
+            rollout_config=rollout_config,
         )
         headers["Content-Disposition"] = 'attachment; filename="POKROV.json"'
         headers["Profile-Title"] = "POKROV"
@@ -16988,6 +17422,43 @@ async def subscription(token: str, request: Request, format: str = Query(default
     for n in legacy_nodes_for_user:
         links.append(_generate_vless_link(user_uuid=user.uuid, node=n, name=_node_label_ru(n.code, n.name)))
     raw = "\n".join(links)
+    if client_format == "happ":
+        if (user.sub_type or "").upper() == "FREE" and not smart_nodes_for_user:
+            return Response(content="", media_type="text/plain", status_code=503)
+
+        cfg = _subscription_singbox_config(
+            user_uuid=user.uuid,
+            sub_type=str(user.sub_type or ""),
+            nodes=smart_nodes_for_user,
+            transport_profile=smart_transport_profile,
+            rollout_config=rollout_config,
+        )
+        content_text = _happ_subscription_text(singbox_config=cfg, vless_links=links)
+        headers["Content-Disposition"] = 'attachment; filename="POKROV_Happ_Subscription"'
+        headers["Profile-Title"] = "POKROV"
+        headers["subscriptions-collapse"] = "0"
+        headers["subscriptions-expand-now"] = "1"
+        headers["subscription-auto-update-enable"] = "1"
+        headers["subscription-auto-update-open-enable"] = "1"
+        headers["ping-type"] = "proxy"
+        headers["check-url-via-proxy"] = "https://cp.cloudflare.com/generate_204"
+        _record_subscription_render(
+            user=user,
+            token_fp=token_fp,
+            lookup_mode=lookup_mode,
+            client_format=client_format,
+            user_agent=user_agent,
+            request_host=request_host,
+            node_codes=[str(getattr(n, "code", "") or "").strip().lower() for n in smart_nodes_for_user],
+            excluded_nodes=smart_excluded_nodes,
+            response_status=200,
+            content_text=content_text,
+            profile_revision=str(client_policy.get("profile_revision") or ""),
+        )
+        if request.method == "HEAD":
+            return Response(content="", media_type="text/plain", headers=headers)
+        return Response(content=content_text, media_type="text/plain", headers=headers)
+
     if client_format == "clash":
         content_text = _clash_subscription_config(
             user_uuid=str(user.uuid or ""),

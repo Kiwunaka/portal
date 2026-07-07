@@ -42,7 +42,7 @@ PUBLIC_FORBIDDEN_PATTERNS = [
 MOJIBAKE_MARKERS = ["Р РЋ", "Р Сџ", "РЎРѓ", "РІР‚", "СЂСџ", "РІС™", "РІСљ", "�"]
 
 PUBLIC_BETA_SURFACE_FILES = [
-    ROOT / "marketing/src/components/marketing-landing.tsx",
+    ROOT / "marketing/src/app/page.tsx",
     ROOT / "marketing/src/app/checkout/page.tsx",
     ROOT / "marketing/src/app/checkout/checkout-client.tsx",
     ROOT / "marketing/src/app/devices/page.tsx",
@@ -53,7 +53,21 @@ PUBLIC_BETA_SURFACE_FILES = [
     ROOT / "marketing/src/app/telegram/page.tsx",
     ROOT / "marketing/src/app/tiktok/page.tsx",
     ROOT / "marketing/src/app/youtube/page.tsx",
-    ROOT / "marketing/src/components/home/homepage.tsx",
+    ROOT / "marketing/src/components/home/faq.tsx",
+    ROOT / "marketing/src/components/home/final-cta.tsx",
+    ROOT / "marketing/src/components/home/hero.tsx",
+    ROOT / "marketing/src/components/home/hero-visual.tsx",
+    ROOT / "marketing/src/components/home/honesty-strip.tsx",
+    ROOT / "marketing/src/components/home/pricing.tsx",
+    ROOT / "marketing/src/components/home/services-grid.tsx",
+    ROOT / "marketing/src/components/home/showcase.tsx",
+    ROOT / "marketing/src/components/home/showcase-scroller.tsx",
+    ROOT / "marketing/src/components/home/steps.tsx",
+    ROOT / "marketing/src/components/home/telegram-bonus.tsx",
+    ROOT / "marketing/src/components/intent/intent-landing.tsx",
+    ROOT / "marketing/src/components/layout/footer.tsx",
+    ROOT / "marketing/src/components/layout/page-shell.tsx",
+    ROOT / "marketing/src/components/layout/topbar.tsx",
     ROOT / "webapp/src/app/loading.tsx",
     ROOT / "webapp/src/components/cabinet/downloads-surface.tsx",
 ]

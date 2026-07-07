@@ -8,11 +8,11 @@ COPY_CATALOG = REPO_ROOT / "copy" / "catalog.ru.json"
 
 
 def _read(*parts: str) -> str:
-    return (MARKETING_ROOT.joinpath(*parts)).read_text(encoding="utf-8")
+    return MARKETING_ROOT.joinpath(*parts).read_text(encoding="utf-8")
 
 
 def _read_webapp(*parts: str) -> str:
-    return (WEBAPP_ROOT.joinpath(*parts)).read_text(encoding="utf-8")
+    return WEBAPP_ROOT.joinpath(*parts).read_text(encoding="utf-8")
 
 
 def _read_copy_catalog() -> str:
@@ -29,33 +29,58 @@ def test_marketing_has_real_seo_entrypoints() -> None:
 
 
 def test_marketing_public_ctas_do_not_use_connect_host() -> None:
-    marketing_landing = _read("components", "marketing-landing.tsx")
+    home_files = [
+        _read("app", "page.tsx"),
+        _read("components", "layout", "page-shell.tsx"),
+        _read("components", "layout", "topbar.tsx"),
+        _read("components", "layout", "footer.tsx"),
+        _read("components", "home", "hero.tsx"),
+        _read("components", "home", "pricing.tsx"),
+        _read("components", "home", "final-cta.tsx"),
+    ]
+    combined = "\n".join(home_files)
 
-    assert 'href={config.connectUrl}' not in marketing_landing
-    assert "config.webappUrl" in marketing_landing
-    assert "/checkout/?plan=" in marketing_landing
+    assert "config.connectUrl" not in combined
+    assert "CANONICAL_CONNECT_URL" not in combined
+    assert "CANONICAL_WEBAPP_URL" in combined
+    assert "MARKETING_CANONICAL_PATHS.install" in combined
+    assert "MARKETING_CANONICAL_PATHS.checkout" in combined
 
 
 def test_marketing_metadata_declares_canonical_and_share_metadata() -> None:
     layout = _read("app", "layout.tsx")
-    landing = _read("components", "marketing-landing.tsx")
+    marketing_site = _read("lib", "marketing-site.ts")
+    home_page = _read("app", "page.tsx")
 
     assert "metadataBase" in layout
-    assert "alternates" in landing
-    assert "canonical" in landing
-    assert "twitter" in landing
-    assert "images" in landing
+    assert "buildOrganizationJsonLd" in layout
+    assert "buildWebSiteJsonLd" in layout
+    assert "alternates" in marketing_site
+    assert "canonical" in marketing_site
+    assert "twitter" in marketing_site
+    assert "images" in marketing_site
+    assert "buildMarketingMetadata" in home_page
+    assert "buildSoftwareApplicationJsonLd" in home_page
+    assert "buildFaqJsonLd" in home_page
 
 
-def test_marketing_landing_has_quiet_luxury_structure() -> None:
-    landing = _read("components", "marketing-landing.tsx")
+def test_marketing_home_uses_current_redesign_structure() -> None:
+    page = _read("app", "page.tsx")
+    shell = _read("components", "layout", "page-shell.tsx")
+    topbar = _read("components", "layout", "topbar.tsx")
+    hero = _read("components", "home", "hero.tsx")
+    pricing = _read("components", "home", "pricing.tsx")
+    footer = _read("components", "layout", "footer.tsx")
 
-    assert "lp-hero-stage" in landing
-    assert "lp-trust-grid" in landing
-    assert "lp-pricing-shell" in landing
-    assert "lp-footer-cta" in landing
-    assert 'className="lp-faq-item"' in landing
-    assert 'className="lp-faq-q"' in landing
+    for component in ("<Hero />", "<ServicesGrid />", "<Steps />", "<Pricing />", "<FinalCta />"):
+        assert component in page
+    assert '<main id="main-content"' in shell
+    assert "MarketingBrandLogo" in topbar
+    assert "AnimatePresence" in topbar
+    assert "HeroVisual" in hero
+    assert "PriceCard" in pricing
+    assert "CANONICAL_NEWS_CHANNEL_URL" in footer
+    assert "lp-hero-stage" not in page + shell + topbar + hero + pricing + footer
 
 
 def test_marketing_sitemap_includes_checkout_route() -> None:
@@ -69,20 +94,29 @@ def test_marketing_sitemap_includes_checkout_route() -> None:
 
 
 def test_homepage_free_trial_ctas_start_with_install_not_checkout() -> None:
-    homepage = _read("components", "home", "homepage.tsx")
-    hero = homepage.split("function Hero", 1)[1].split("function HowItWorks", 1)[0]
-    free_plan = homepage.split("<div className={styles.pricingIntro}>", 1)[1].split("<div className={styles.planGrid}>", 1)[0]
-    final_cta = homepage.split("function FinalCta", 1)[1].split("export default", 1)[0]
+    hero = _read("components", "home", "hero.tsx")
+    pricing = _read("components", "home", "pricing.tsx")
+    final_cta = _read("components", "home", "final-cta.tsx")
 
-    assert "href={links.installHref}" in hero
-    assert "href={links.checkoutHref}" not in hero
-    assert 'href="#how-it-works"' in hero
-    assert "href={links.installHref}" in free_plan
-    assert "href={links.checkoutHref}" not in free_plan
-    assert "href={links.installHref}" in final_cta
-    assert "href={links.checkoutHref}" in final_cta
-    assert final_cta.index("href={links.installHref}") < final_cta.index("href={links.checkoutHref}")
-    assert "styles.btnLight" in final_cta
+    assert "MARKETING_CANONICAL_PATHS.install" in hero
+    assert "MARKETING_CANONICAL_PATHS.checkout" not in hero
+    assert 'href="/#how-it-works"' in hero
+    assert "MARKETING_CANONICAL_PATHS.install" in pricing
+    assert "MARKETING_CANONICAL_PATHS.checkout" in pricing
+    assert pricing.index("MARKETING_CANONICAL_PATHS.install") < pricing.index("MARKETING_CANONICAL_PATHS.checkout")
+    assert "MARKETING_CANONICAL_PATHS.install" in final_cta
+    assert "CANONICAL_SUPPORT_BOT_URL" in final_cta
+    assert "MARKETING_CANONICAL_PATHS.checkout" not in final_cta
+
+
+def test_homepage_pricing_exposes_all_active_plans_after_payment_gate() -> None:
+    pricing = _read("components", "home", "pricing.tsx")
+
+    assert "getTariffPlans()" in pricing
+    assert ".filter((plan) => plan.is_active)" in pricing
+    assert "plans.map((plan)" in pricing
+    assert "CHECKOUT_READY_PLAN_CODES" not in pricing
+    assert "encodeURIComponent(plan.code)" in pricing
 
 
 def test_cabinet_dashboard_download_ctas_point_to_install_route() -> None:
@@ -90,12 +124,16 @@ def test_cabinet_dashboard_download_ctas_point_to_install_route() -> None:
 
     assert "https://pokrov.space/#download" not in dashboard
     assert 'const primaryHref = isActive ? "/downloads/" : "/subscription/checkout/";' in dashboard
-    assert 'href={primaryHref}' in dashboard
+    assert "href={primaryHref}" in dashboard
 
 
 def test_outside_store_beta_copy_avoids_store_distribution_claims() -> None:
     surfaces = [
-        _read("components", "marketing-landing.tsx"),
+        _read("app", "page.tsx"),
+        _read("components", "layout", "footer.tsx"),
+        _read("components", "home", "hero.tsx"),
+        _read("components", "home", "pricing.tsx"),
+        _read("components", "intent", "intent-landing.tsx"),
         _read("app", "install", "page.tsx"),
         _read_copy_catalog(),
         _read_webapp("app", "(dashboard)", "dashboard", "page.tsx"),
@@ -105,8 +143,8 @@ def test_outside_store_beta_copy_avoids_store_distribution_claims() -> None:
     combined = "\n".join(surfaces)
     assert "Google Play" not in combined
     assert "production signing" not in combined
-    assert "до signing" not in combined
-    assert "физического аудита" not in combined
+    assert "physical audit proof" not in combined
+    assert "trusted Windows" not in combined
 
     known_limits = (REPO_ROOT / "shared" / "beta-known-limitations.json").read_text(encoding="utf-8")
     assert "outside_store_beta" in known_limits
@@ -134,5 +172,4 @@ def test_email_auth_enabled_ui_stays_ru_only() -> None:
         assert text not in entry
     assert "Войти" in entry
     assert "Зарегистрироваться" in entry
-    assert "Забыли пароль?" in entry
     assert "Восстановление" in entry

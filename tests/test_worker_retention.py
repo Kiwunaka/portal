@@ -135,6 +135,26 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertFalse(is_member)
         self.assertEqual(reason, "channel_not_found")
 
+    def test_get_chat_member_classifies_timeout_without_revocation_reason(self) -> None:
+        class _FakeSession:
+            def post(self, *args, **kwargs):
+                raise self_module.worker.asyncio.TimeoutError()
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        self_module = self
+        with mock.patch.object(self.worker.aiohttp, "ClientSession", return_value=_FakeSession()):
+            is_member, reason = self.worker.asyncio.run(
+                self.worker._telegram_get_chat_member("pokrov_vpn", 123456789)
+            )
+
+        self.assertFalse(is_member)
+        self.assertEqual(reason, "telegram_timeout")
+
     def test_referral_queue_does_not_double_increment_already_counted_referral(self) -> None:
         from models import Event, ReferralBonusQueue, User
 
