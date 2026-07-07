@@ -130,7 +130,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(84px+var(--tg-safe-area-bottom,0px))] z-[70] flex flex-col items-center gap-2 px-4 lg:bottom-6 lg:items-end lg:px-6"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(1rem+var(--tg-safe-area-bottom,0px))] z-[70] flex flex-col items-center gap-2 px-4 lg:bottom-6 lg:items-end lg:px-6"
       >
         <AnimatePresence initial={false}>
           {toasts.map((toast) => (

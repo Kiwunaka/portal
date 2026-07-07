@@ -489,12 +489,12 @@ test.describe("Cabinet flow", () => {
     await expect(siteLink).toHaveAttribute("href", /https:\/\/pokrov\.space\/?$/);
   });
 
-  test("uses desktop navigation at 1280px instead of the mobile bottom menu", async ({ page }) => {
+  test("uses desktop navigation at 1280px without mobile navigation chrome", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto("/dashboard/");
 
     await expect(page.getByRole("complementary").first()).toBeVisible();
-    await expect(page.locator(".mobile-nav-root")).toBeHidden();
+    await expect(page.locator(".mobile-nav-root")).toHaveCount(0);
     await page.locator("aside nav a[href='/subscription/']").click();
     await expect(page).toHaveURL(/\/subscription\/?$/);
     await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
@@ -611,20 +611,13 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("button", { name: "Скопировать" })).toHaveCount(0);
   });
 
-  test("shows the compact mobile cabinet shell and one dashboard action", async ({ page }) => {
+  test("uses the side drawer as the only mobile cabinet navigation", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/dashboard/");
 
-    const mobileNav = page.locator(".mobile-nav-root");
-    await expect(mobileNav).toBeVisible();
-    await expect(mobileNav.locator("a")).toHaveCount(4);
-    await expect(mobileNav).toContainText("Главная");
-    await expect(mobileNav).toContainText("Доступ");
-    await expect(mobileNav).toContainText("Помощь");
-    await expect(mobileNav).toContainText("Аккаунт");
-    await expect(mobileNav).not.toContainText("Статистика");
-    await expect(mobileNav).not.toContainText("Устройства");
-
+    await expect(page.locator(".mobile-nav-root")).toHaveCount(0);
+    const menuButton = page.getByRole("button", { name: "Открыть меню" });
+    await expect(menuButton).toBeVisible();
     await expect(page.getByRole("heading", { name: "Доступ активен" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Скачать приложение" })).toHaveCount(1);
     await expect(page.locator("main")).toContainText("Трафик");
@@ -633,6 +626,24 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("Следующий шаг");
     await expect(page.locator("main")).not.toContainText("Ручная настройка");
     await expect(page.locator("main")).not.toContainText("mock_token");
+
+    await menuButton.click();
+
+    const drawer = page.getByTestId("mobile-cabinet-drawer");
+    await expect(drawer).toBeVisible();
+    const drawerNav = drawer.getByRole("navigation", { name: "Навигация кабинета" });
+    await expect(drawerNav.locator("a")).toHaveCount(4);
+    await expect(drawerNav).toContainText("Главная");
+    await expect(drawerNav).toContainText("Доступ");
+    await expect(drawerNav).toContainText("Помощь");
+    await expect(drawerNav).toContainText("Аккаунт");
+    await expect(drawerNav).not.toContainText("Статистика");
+    await expect(drawerNav).not.toContainText("Устройства");
+    await drawerNav.locator("a[href='/subscription/']").click();
+    await expect(page).toHaveURL(/\/subscription\/?$/);
+    await expect(drawer).toHaveCount(0);
+
+    await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);

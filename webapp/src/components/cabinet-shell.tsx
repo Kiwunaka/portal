@@ -257,7 +257,7 @@ function BootstrapScreen() {
             </div>
           </aside>
 
-          <section className="min-w-0 pb-24 lg:pb-8">
+          <section className="min-w-0 pb-[calc(2rem+var(--tg-safe-area-bottom,0px))] lg:pb-8">
             <div className="mx-auto w-full max-w-[760px] space-y-4">
               <p className="text-sm font-semibold text-ink-soft">Открываем кабинет — проверяем сессию и данные доступа.</p>
               <SkeletonBlock className="h-32" />
@@ -516,6 +516,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
       transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
     >
       <motion.aside
+        data-testid="mobile-cabinet-drawer"
         className="h-full w-[min(86vw,340px)] overflow-y-auto rounded-panel border border-line bg-surface p-4 shadow-medium"
         onClick={(event) => event.stopPropagation()}
         initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
@@ -536,7 +537,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           </button>
         </div>
 
-        <div className="mt-5 space-y-1.5">
+        <nav className="mt-5 space-y-1.5" aria-label="Навигация кабинета">
           {allNavItems.map((item) => {
             const active = item.href === activeNav.href;
             const isAdminItem = item.href.startsWith("/admin");
@@ -545,6 +546,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               <AppRouteLink
                 key={item.href}
                 href={item.href}
+                onClick={() => setDrawerOpen(false)}
                 className={cn(
                   "flex items-start gap-3 rounded-control px-3 py-3 transition-colors motion-reduce:transition-none",
                   active ? "bg-brand text-brand-contrast" : "text-ink-soft hover:bg-nav-hover",
@@ -561,7 +563,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               </AppRouteLink>
             );
           })}
-        </div>
+        </nav>
 
         <div className="mt-5 rounded-card border border-line bg-canvas-alt p-4">
           <p className="text-sm font-semibold text-ink">{accountLabel}</p>
@@ -592,8 +594,8 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex min-h-screen max-w-[1400px] gap-4 px-3 py-4 sm:px-4 lg:px-5">
           {sidebar}
 
-          <div className="min-w-0 flex-1 pb-24 lg:pb-8" style={{ paddingTop: "max(0.25rem, var(--tg-safe-area-top, 0px))" }}>
-            <header className="mb-4 flex items-center justify-between gap-3 rounded-panel border border-line bg-surface px-3 py-2 shadow-soft lg:hidden">
+          <div className="min-w-0 flex-1 pb-[calc(2rem+var(--tg-safe-area-bottom,0px))] lg:pb-8" style={{ paddingTop: "max(0.25rem, var(--tg-safe-area-top, 0px))" }}>
+            <header className="sticky top-[calc(0.5rem+var(--tg-safe-area-top,0px))] z-30 mb-4 flex items-center justify-between gap-3 rounded-panel border border-line bg-surface px-3 py-2 shadow-soft lg:hidden">
               <div className="flex min-w-0 items-center gap-2">
                 <button type="button" onClick={() => setDrawerOpen(true)} className={ICON_BUTTON_CLASS} aria-label="Открыть меню">
                   <Menu size={20} strokeWidth={2} aria-hidden="true" />
@@ -654,40 +656,6 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
         </div>
 
         <AnimatePresence>{drawerOpen ? mobileMenu : null}</AnimatePresence>
-
-        {!drawerOpen ? (
-          <nav
-            className="mobile-nav-root fixed inset-x-3 bottom-[calc(0.75rem+var(--tg-safe-area-bottom,0px))] z-40 flex items-center justify-between gap-1 overflow-hidden rounded-3xl border border-line bg-surface px-2 pt-2 pb-[calc(0.5rem+var(--tg-safe-area-bottom,0px))] shadow-medium lg:hidden"
-            aria-label="Навигация кабинета"
-          >
-            {NAV_ITEMS.map((item) => {
-              const active = item.match(pathname);
-              const Icon = item.icon;
-              return (
-                <AppRouteLink
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "relative flex min-h-11 flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 text-[0.625rem] font-semibold transition-[color,transform] duration-200 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100",
-                    active ? "text-brand-contrast" : "text-ink-soft",
-                  )}
-                  aria-current={active ? "page" : undefined}
-                >
-                  {active ? (
-                    <motion.span
-                      layoutId="tabbar-nav-pill"
-                      aria-hidden="true"
-                      className="absolute inset-0 rounded-2xl bg-brand"
-                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 480, damping: 40 }}
-                    />
-                  ) : null}
-                  <Icon size={22} strokeWidth={2} aria-hidden="true" className="relative z-10" />
-                  <span className="relative z-10 truncate">{item.label}</span>
-                </AppRouteLink>
-              );
-            })}
-          </nav>
-        ) : null}
       </div>
     </ToastProvider>
   );
