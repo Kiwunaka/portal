@@ -109,6 +109,8 @@ def _cache_bust_next_static_refs(local_dir: Path, *, release_id: str, label: str
 
         def repl(match: re.Match[str]) -> str:
             url = match.group("url")
+            if url.startswith("/_next/static/media/"):
+                return url
             return f"{url}{suffix}"
 
         updated = _NEXT_STATIC_REF_RE.sub(repl, raw)

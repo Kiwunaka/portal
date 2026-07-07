@@ -22,6 +22,24 @@ class StaticDeployCacheBustTests(unittest.TestCase):
             self.assertIn("/_next/static/chunks/a.js?v=20260522010101", text)
             self.assertIn("/_next/static/chunks/b.css?v=20260522010101", text)
 
+    def test_media_refs_do_not_get_release_query(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            html = root / "index.html"
+            html.write_text(
+                '<link rel="preload" href="/_next/static/media/font.woff2?v=old" as="font">'
+                '<img src="/_next/static/media/logo.png">',
+                encoding="utf-8",
+            )
+
+            _cache_bust_next_static_refs(root, release_id="20260522010101", label="test")
+
+            text = html.read_text(encoding="utf-8")
+            self.assertIn('/_next/static/media/font.woff2"', text)
+            self.assertIn('/_next/static/media/logo.png"', text)
+            self.assertNotIn("/_next/static/media/font.woff2?v=", text)
+            self.assertNotIn("/_next/static/media/logo.png?v=", text)
+
     def test_existing_release_query_is_replaced(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

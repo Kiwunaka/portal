@@ -33,7 +33,12 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, admin.pokrov.sp
 
   @webapp_host host app.pokrov.space
   handle @webapp_host {
-    header Cache-Control "no-cache, must-revalidate"
+    @webapp_static path /_next/static/*
+    @webapp_html {
+      not path /_next/static/*
+    }
+    header @webapp_static Cache-Control "public, max-age=31536000, immutable"
+    header @webapp_html Cache-Control "no-cache, must-revalidate"
     root * /var/www/portal/webapp
     try_files {path} {path}/index.html /index.html
     file_server
@@ -41,7 +46,12 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, admin.pokrov.sp
 
   @adminapp_host host admin.pokrov.space www.admin.pokrov.space
   handle @adminapp_host {
-    header Cache-Control "no-cache, must-revalidate"
+    @adminapp_static path /_next/static/*
+    @adminapp_html {
+      not path /_next/static/*
+    }
+    header @adminapp_static Cache-Control "public, max-age=31536000, immutable"
+    header @adminapp_html Cache-Control "no-cache, must-revalidate"
     root * /var/www/portal/adminapp
     try_files {path} {path}/index.html /index.html
     file_server
