@@ -7,7 +7,7 @@
 # Internal Caddy listener behind HAProxy TCP passthrough.
 # External :443 is terminated/passed by L4 on brain.
 
-pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, admin.pokrov.space:8444, connect.pokrov.space:8444, api.pokrov.space:8444, pay.pokrov.space:8444, portal-privacy.online:8444, www.portal-privacy.online:8444, connect.portal-privacy.online:8444, kiwunaka.space:8444, www.kiwunaka.space:8444, pay.kiwunaka.space:8444 {
+pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, admin.pokrov.space:8444, www.admin.pokrov.space:8444, connect.pokrov.space:8444, api.pokrov.space:8444, pay.pokrov.space:8444, portal-privacy.online:8444, www.portal-privacy.online:8444, connect.portal-privacy.online:8444, kiwunaka.space:8444, www.kiwunaka.space:8444, pay.kiwunaka.space:8444 {
   encode zstd gzip
   header {
     Alt-Svc "clear"
@@ -39,7 +39,7 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, admin.pokrov.sp
     file_server
   }
 
-  @adminapp_host host admin.pokrov.space
+  @adminapp_host host admin.pokrov.space www.admin.pokrov.space
   handle @adminapp_host {
     header Cache-Control "no-cache, must-revalidate"
     root * /var/www/portal/adminapp
