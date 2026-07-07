@@ -27,6 +27,12 @@ FORBIDDEN_LEGACY_MARKETING_STATIC_FILES = (
     "fk-verify.html",
     "fk-payment-theme.css",
 )
+FORBIDDEN_STATIC_CONTENT = (
+    "http://127.0.0.1:3107",
+    "https://127.0.0.1:3107",
+    "http://localhost:3107",
+    "https://localhost:3107",
+)
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
@@ -129,6 +135,18 @@ def _local_static_output_validation_failures(*, local_webapp: Path, local_admina
         forbidden = local_marketing / file_name
         if forbidden.exists():
             failures.append(f"forbidden legacy payment static file is present: {forbidden}")
+    for label, root in roots.items():
+        for path in sorted(root.rglob("*")):
+            if not path.is_file():
+                continue
+            try:
+                raw = path.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            for needle in FORBIDDEN_STATIC_CONTENT:
+                if needle in raw:
+                    failures.append(f"forbidden dev API origin {needle!r} in {label} static file: {path}")
+                    break
     return failures
 
 

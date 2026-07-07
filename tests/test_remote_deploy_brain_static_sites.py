@@ -100,6 +100,18 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
 
             (local_marketing / "fk-verify.html").unlink()
             (local_marketing / "fk-payment-theme.css").unlink()
+            (local_adminapp / "bad.js").write_text('fetch("http://127.0.0.1:3107/api/admin/auth/session")', encoding="utf-8")
+            failures = self.module._local_static_output_validation_failures(
+                local_webapp=local_webapp,
+                local_adminapp=local_adminapp,
+                local_marketing=local_marketing,
+            )
+            self.assertIn(
+                f"forbidden dev API origin 'http://127.0.0.1:3107' in adminapp static file: {local_adminapp / 'bad.js'}",
+                failures,
+            )
+
+            (local_adminapp / "bad.js").unlink()
             self.assertEqual(
                 [],
                 self.module._local_static_output_validation_failures(

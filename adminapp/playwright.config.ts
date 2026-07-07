@@ -16,10 +16,6 @@ export default defineConfig({
   },
   webServer: {
     command: "npm.cmd run build && python -m http.server 3107 --bind 127.0.0.1 --directory out",
-    env: {
-      ...process.env,
-      NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:3107"
-    },
     url: "http://127.0.0.1:3107",
     reuseExistingServer: false,
     timeout: 180_000
