@@ -108,7 +108,7 @@ Current truth:
 - `Blocked only` remains internal or compatibility-only until geo assets, DNS split behavior, and leak checks are complete
 - the full routing strategy and geo-asset wiring are not yet complete
 - do not market RU-special routing as fully shipped until the real strategy layer, DNS split checks, and release smoke are in place
-- `All except RU` should default to tunneled remote DNS with local direct resolution only for curated direct paths
+- `All except RU` subscription profiles should default to tunneled remote DNS; any split-DNS/local direct resolver behavior needs separate client-side implementation evidence and leak-check proof before public claims
 - the public consumer path should stay `TUN`-first; loopback proxy mechanics remain advanced or internal-only
 
 ## Current User Surfaces

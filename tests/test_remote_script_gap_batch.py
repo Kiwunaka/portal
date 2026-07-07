@@ -4,6 +4,7 @@ import importlib.util
 import base64
 import io
 import json
+import shlex
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -380,6 +381,36 @@ def test_remote_brain_patch_caddy_webapp_api_proxy_writes_expected_caddyfile(
     assert "--resolve pokrov.space:8444:127.0.0.1" in joined
     assert "https://pokrov.space:8444/api/health" in joined
     assert "ok:curl" in capsys.readouterr().out
+
+
+def test_remote_deploy_brain_caddy_config_validates_backs_up_installs_and_reloads(monkeypatch, capsys) -> None:
+    module = _load_script("remote_deploy_brain_caddy_config.py")
+    fake = _FakeSSH()
+    monkeypatch.setattr(module, "connect_node", lambda **_kwargs: (fake, "env"))
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "remote_deploy_brain_caddy_config.py",
+            "--brain-ip",
+            "82.21.114.104",
+        ],
+    )
+
+    assert module.main() == 0
+
+    uploaded_paths = [path for path in fake.files if path.startswith("/tmp/pokrov-caddy-")]
+    assert len(uploaded_paths) == 1
+    assert b"auto_https disable_redirects" in fake.files[uploaded_paths[0]]
+    joined = "\n".join(fake.commands)
+    assert f"caddy validate --adapter caddyfile --config {shlex.quote(uploaded_paths[0])}" in joined
+    assert "cp -a /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-" in joined
+    assert f"install -m 0644 {shlex.quote(uploaded_paths[0])} /etc/caddy/Caddyfile" in joined
+    assert "caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile" in joined
+    assert "systemctl reload caddy || systemctl restart caddy" in joined
+    assert "rm -f" in joined
+    assert fake.closed is True
+    assert "brain caddy config deployed:" in capsys.readouterr().out
 
 
 def test_remote_install_feedbackbot_service_writes_expected_systemd_unit(monkeypatch, capsys) -> None:

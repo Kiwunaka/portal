@@ -2389,6 +2389,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             any("Белые списки" in str(outbound.get("tag") or "") for outbound in cfg.get("outbounds", [])),
             cfg,
         )
+        self.assertEqual(cfg["dns"]["servers"], [{"tag": "google", "address": "8.8.8.8", "detour": "🌍 Страны"}])
+        self.assertEqual(cfg["dns"]["final"], "google")
 
         self.assertEqual(happ_ua.status_code, 200, happ_ua.text)
         self.assertIn("text/plain", happ_ua.headers.get("content-type", ""))

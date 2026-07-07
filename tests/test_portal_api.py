@@ -144,6 +144,8 @@ class PortalApiTests(unittest.TestCase):
         self.assertEqual(len(vless_outbounds), 3)
         selector = next(o for o in cfg["outbounds"] if o.get("type") == "selector")
         self.assertIn(selector["default"], selector["outbounds"])
+        self.assertEqual(cfg["dns"]["servers"], [{"tag": "google", "address": "8.8.8.8", "detour": selector["tag"]}])
+        self.assertEqual(cfg["dns"]["final"], "google")
         self.assertEqual(len(selector["outbounds"]), 3)
         self.assertEqual(set(selector["outbounds"]), {o.get("tag") for o in vless_outbounds})
         self.assertEqual(selector["default"], vless_outbounds[0].get("tag"))
@@ -270,6 +272,8 @@ class PortalApiTests(unittest.TestCase):
         selector = next(o for o in cfg["outbounds"] if o.get("type") == "selector")
         selector_tag = selector["tag"]
         self.assertEqual(cfg["route"]["final"], selector_tag)
+        self.assertEqual(cfg["dns"]["servers"], [{"tag": "google", "address": "8.8.8.8", "detour": selector_tag}])
+        self.assertEqual(cfg["dns"]["final"], "google")
         first_vless = next(o for o in cfg["outbounds"] if o.get("type") == "vless")
         self.assertNotIn("transport", first_vless)
         self.assertEqual(selector["default"], first_vless["tag"])

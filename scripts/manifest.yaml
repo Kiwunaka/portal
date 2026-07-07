@@ -67,6 +67,7 @@
     "scripts/remote_check_brain_panel.py",
     "scripts/remote_cleanup_inactive_users.py",
     "scripts/remote_configure_brain_for_vless_443.py",
+    "scripts/remote_deploy_brain_caddy_config.py",
     "scripts/remote_deploy_brain_portal_code.py",
     "scripts/remote_deploy_brain_static_sites.py",
     "scripts/remote_find_panel_service.py",

@@ -16345,6 +16345,15 @@ def _singbox_common_route_rules(*, selector_tag: str, youtube_direct: bool = Fal
     return rules
 
 
+def _singbox_tunneled_dns(selector_tag: str) -> dict[str, Any]:
+    return {
+        "servers": [
+            {"tag": "google", "address": "8.8.8.8", "detour": selector_tag},
+        ],
+        "final": "google",
+    }
+
+
 def _singbox_multi_node_config(
     *,
     user_uuid: str,
@@ -16416,12 +16425,7 @@ def _singbox_multi_node_config(
 
     return {
         "log": {"level": "warn", "timestamp": True},
-        "dns": {
-            "servers": [
-                {"tag": "google", "address": "8.8.8.8", "detour": selector_tag},
-                {"tag": "local", "address": "local", "detour": "direct"},
-            ]
-        },
+        "dns": _singbox_tunneled_dns(selector_tag),
         "inbounds": [],
         "outbounds": outbounds,
         "route": {
@@ -16517,12 +16521,7 @@ def _singbox_ru_bridge_config(
 
     return {
         "log": {"level": "warn", "timestamp": True},
-        "dns": {
-            "servers": [
-                {"tag": "google", "address": "8.8.8.8", "detour": selector_tag},
-                {"tag": "local", "address": "local", "detour": "direct"},
-            ]
-        },
+        "dns": _singbox_tunneled_dns(selector_tag),
         "inbounds": [],
         "outbounds": outbounds,
         "route": {
@@ -16586,12 +16585,7 @@ def _singbox_free_allowlist_config(
 
     return {
         "log": {"level": "warn", "timestamp": True},
-        "dns": {
-            "servers": [
-                {"tag": "google", "address": "8.8.8.8", "detour": selector_tag},
-                {"tag": "local", "address": "local", "detour": "direct"},
-            ]
-        },
+        "dns": _singbox_tunneled_dns(selector_tag),
         "inbounds": [],
         "outbounds": outbounds,
         "route": {

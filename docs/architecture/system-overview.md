@@ -409,7 +409,7 @@ Current release validation also has to correlate:
 
 - client localhost-listener security smoke
 - routing preset smoke for `Full tunnel` and `Все, кроме РФ`
-- DNS split and leak checks
+- subscription-rendered DNS defaults plus DNS split/leak checks; current sing-box subscription profiles use tunneled remote DNS by default, and client-side split-DNS remains evidence-gated
 - three-vantage node checks from current operator origin, `brain`, and an RU-origin probe when available
 
 Dashboard and user-cabinet traffic visibility must come from server-side node runtime snapshots rather than app-only telemetry.

@@ -1,4 +1,5 @@
-﻿{
+{
+  auto_https disable_redirects
   servers {
     protocols h1 h2
   }
@@ -7,7 +8,11 @@
 # Internal Caddy listener behind HAProxy TCP passthrough.
 # External :443 is terminated/passed by L4 on brain.
 
-pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, admin.pokrov.space:8444, www.admin.pokrov.space:8444, connect.pokrov.space:8444, api.pokrov.space:8444, pay.pokrov.space:8444, portal-privacy.online:8444, www.portal-privacy.online:8444, connect.portal-privacy.online:8444, kiwunaka.space:8444, www.kiwunaka.space:8444, pay.kiwunaka.space:8444 {
+http://pokrov.space, http://www.pokrov.space, http://app.pokrov.space, http://www.app.pokrov.space, http://admin.pokrov.space, http://www.admin.pokrov.space, http://connect.pokrov.space, http://www.connect.pokrov.space, http://api.pokrov.space, http://www.api.pokrov.space, http://pay.pokrov.space, http://www.pay.pokrov.space, http://portal-privacy.online, http://www.portal-privacy.online, http://connect.portal-privacy.online, http://kiwunaka.space, http://www.kiwunaka.space, http://pay.kiwunaka.space {
+  redir https://{host}{uri} 308
+}
+
+pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.space:8444, admin.pokrov.space:8444, www.admin.pokrov.space:8444, connect.pokrov.space:8444, www.connect.pokrov.space:8444, api.pokrov.space:8444, www.api.pokrov.space:8444, pay.pokrov.space:8444, www.pay.pokrov.space:8444, portal-privacy.online:8444, www.portal-privacy.online:8444, connect.portal-privacy.online:8444, kiwunaka.space:8444, www.kiwunaka.space:8444, pay.kiwunaka.space:8444 {
   encode zstd gzip
   header {
     Alt-Svc "clear"
@@ -19,7 +24,32 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, admin.pokrov.sp
     -Server
   }
 
-  @marketing_hosts host pokrov.space www.pokrov.space
+  @www_marketing host www.pokrov.space
+  handle @www_marketing {
+    redir https://pokrov.space{uri} 308
+  }
+
+  @www_webapp host www.app.pokrov.space
+  handle @www_webapp {
+    redir https://app.pokrov.space{uri} 308
+  }
+
+  @www_connect host www.connect.pokrov.space
+  handle @www_connect {
+    redir https://connect.pokrov.space{uri} 308
+  }
+
+  @www_api host www.api.pokrov.space
+  handle @www_api {
+    redir https://api.pokrov.space{uri} 308
+  }
+
+  @www_pay host www.pay.pokrov.space
+  handle @www_pay {
+    redir https://pay.pokrov.space{uri} 308
+  }
+
+  @marketing_hosts host pokrov.space
   handle @marketing_hosts {
     @apex_api path /api/* /pay/* /s8Kx2mP7qR4wT/*
     redir @apex_api https://api.pokrov.space{uri} 308
