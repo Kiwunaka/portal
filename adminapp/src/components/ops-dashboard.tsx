@@ -112,37 +112,52 @@ function AuthGate({ onReady }: { onReady: () => void }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const autoTriedRef = useRef(false);
+  const startSession = useCallback(
+    async (initData?: string, options?: { silent?: boolean }) => {
+      setBusy(true);
+      if (!options?.silent) setError("");
+      try {
+        const clean = String(initData || "").trim();
+        if (clean) saveAdminInitData(clean);
+        const session = await createAdminSession();
+        saveAdminSessionToken(session.token);
+        clearAdminInitData();
+        onReady();
+      } catch (err) {
+        if (!options?.silent) setError(errorMessage(err, "Admin session exchange failed"));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [onReady]
+  );
+  useEffect(() => {
+    if (autoTriedRef.current) return;
+    autoTriedRef.current = true;
+    void startSession("", { silent: true });
+  }, [startSession]);
+
   return (
     <div className="grid min-h-[62vh] place-items-center">
       <Card className="w-full max-w-xl">
-        <SectionTitle title="Admin auth" description="Вставь Telegram WebApp initData один раз или войди через существующую web session. Admin session короткая и хранится только до закрытия вкладки." />
+        <SectionTitle title="Admin auth" description="Сначала пробуем текущую web session из кабинета. Если браузер ее не прислал, вставь Telegram WebApp initData один раз." />
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder="query_id=...&user=...&auth_date=...&hash=..."
           className="min-h-28 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 text-xs outline-none focus:border-[color:var(--atlas-focus)]"
         />
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button tone="primary" disabled={busy} onClick={() => void startSession()}>
+            {busy ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />} Войти через текущую сессию
+          </Button>
           <Button
-            tone="primary"
+            tone="secondary"
             disabled={busy || !value.trim()}
-            onClick={async () => {
-              setBusy(true);
-              setError("");
-              try {
-                saveAdminInitData(value);
-                const session = await createAdminSession();
-                saveAdminSessionToken(session.token);
-                clearAdminInitData();
-                onReady();
-              } catch (err) {
-                setError(errorMessage(err, "Admin session exchange failed"));
-              } finally {
-                setBusy(false);
-              }
-            }}
+            onClick={() => void startSession(value)}
           >
-            {busy ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />} Start session
+            {busy ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />} Войти по initData
           </Button>
           <Button
             tone="ghost"

@@ -4,6 +4,7 @@ type ApiCall = {
   method: string;
   path: string;
   auth: string;
+  initData: string;
   body: unknown;
 };
 
@@ -139,7 +140,7 @@ function jsonResponse(route: Route, data: unknown, status = 200) {
   });
 }
 
-async function mockAdminApi(page: Page): Promise<ApiCall[]> {
+async function mockAdminApi(page: Page, options: { requireInitDataForSession?: boolean } = {}): Promise<ApiCall[]> {
   const calls: ApiCall[] = [];
   await page.route("**/api/admin/**", async (route) => {
     const request = route.request();
@@ -158,6 +159,7 @@ async function mockAdminApi(page: Page): Promise<ApiCall[]> {
       method,
       path: `${url.pathname}${url.search}`,
       auth: request.headers().authorization || "",
+      initData: request.headers()["x-telegram-init-data"] || "",
       body
     });
 
@@ -167,6 +169,10 @@ async function mockAdminApi(page: Page): Promise<ApiCall[]> {
     }
 
     if (url.pathname === "/api/admin/auth/session") {
+      if (options.requireInitDataForSession && !request.headers()["x-telegram-init-data"]) {
+        await jsonResponse(route, { detail: "Telegram auth required" }, 401);
+        return;
+      }
       await jsonResponse(route, {
         ok: true,
         token: "mock-admin-token",
@@ -310,7 +316,7 @@ async function mockAdminApi(page: Page): Promise<ApiCall[]> {
 async function authenticate(page: Page) {
   await expect(page.getByText("Admin auth")).toBeVisible();
   await page.getByPlaceholder("query_id=...&user=...&auth_date=...&hash=...").fill("query_id=test&user=%7B%22id%22%3A9999%7D&auth_date=1&hash=test");
-  await page.getByRole("button", { name: /Start session/ }).click();
+  await page.getByRole("button", { name: /Войти по initData/ }).click();
   await expect(page.getByRole("button", { name: /Refresh/ })).toBeVisible();
 }
 
@@ -322,15 +328,24 @@ async function gotoWithAdminSession(page: Page, path: string) {
   await expect(page.getByRole("button", { name: /Refresh/ })).toBeVisible();
 }
 
-test("dashboard exchanges initData for short admin session and renders overview", async ({ page }) => {
+test("dashboard reuses an existing browser session and renders overview", async ({ page }) => {
   const calls = await mockAdminApi(page);
   await page.goto("/");
-  await authenticate(page);
+  await expect(page.getByRole("button", { name: /Refresh/ })).toBeVisible();
 
   expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session")).toBe(true);
   expect(calls.some((call) => call.path === "/api/admin/ops/overview" && call.auth === "Bearer mock-admin-token")).toBe(true);
   await expect(page.getByText("Users active")).toBeVisible();
   await expect(page.getByText("NL-free traffic near provider cap")).toBeVisible();
+});
+
+test("dashboard exchanges initData when browser session is missing", async ({ page }) => {
+  const calls = await mockAdminApi(page, { requireInitDataForSession: true });
+  await page.goto("/");
+  await authenticate(page);
+
+  expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session" && call.initData.includes("query_id=test"))).toBe(true);
+  await expect(page.getByText("Users active")).toBeVisible();
 });
 
 test("provider caps saves configured quota through mock API", async ({ page }) => {

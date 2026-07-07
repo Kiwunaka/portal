@@ -1446,6 +1446,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertNotIn("*", allow_origins)
         self.assertIn("https://app.pokrov.space", allow_origins)
         self.assertIn("https://admin.pokrov.space", allow_origins)
+        self.assertIn("https://www.admin.pokrov.space", allow_origins)
         self.assertTrue(middleware_options.get("allow_credentials"))
 
     def test_request_client_ip_trusts_forwarded_headers_only_from_proxy(self) -> None:
@@ -1479,6 +1480,18 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             },
         )
         self.assertEqual(admin_allowed.headers.get("access-control-allow-origin"), "https://admin.pokrov.space")
+
+        admin_www_allowed = self.client.options(
+            "/api/admin/ops/overview",
+            headers={
+                "Origin": "https://www.admin.pokrov.space",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertEqual(
+            admin_www_allowed.headers.get("access-control-allow-origin"),
+            "https://www.admin.pokrov.space",
+        )
         self.assertEqual(admin_allowed.headers.get("access-control-allow-credentials"), "true")
 
         blocked = self.client.options(

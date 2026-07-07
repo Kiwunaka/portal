@@ -1,6 +1,6 @@
 # POKROV AdminApp
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Purpose
 
@@ -34,6 +34,10 @@ Primary host:
 
 - `https://admin.pokrov.space/`
 
+Temporary DNS/SSL alias while Timeweb propagation is being resolved:
+
+- `https://www.admin.pokrov.space/`
+
 API host:
 
 - `https://api.pokrov.space/`
@@ -41,7 +45,8 @@ API host:
 Auth:
 
 - reuses the existing POKROV admin auth model
-- accepts the same Telegram WebApp initData / browser session material used by current admin APIs
+- first tries the existing browser web session cookie from the cabinet and exchanges it for a short admin bearer session
+- accepts Telegram WebApp initData as a manual fallback when the browser session is missing or not admin-authorized
 - roles v1: single superadmin
 
 Key v1 endpoints:

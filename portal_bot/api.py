@@ -426,6 +426,7 @@ def _build_cors_allowed_origins() -> list[str]:
         "https://www.pokrov.space",
         "https://app.pokrov.space",
         "https://admin.pokrov.space",
+        "https://www.admin.pokrov.space",
         "https://pay.pokrov.space",
     ]
     for attr in ("WEBAPP_URL", "PAY_CHECKOUT_URL", "API_BASE_URL"):
