@@ -4,6 +4,7 @@ import io
 import os
 import base64
 import struct
+import socket
 from pathlib import Path
 
 import paramiko
@@ -248,12 +249,21 @@ def connect_node(
             users.append(candidate_user)
 
     last_error: Exception | None = None
+    bind_source = os.getenv("POKROV_SSH_BIND_SOURCE", "").strip()
     for target_user in users:
         for target_port in ports:
             for method, auth in attempts:
                 cli = paramiko.SSHClient()
                 configure_ssh_host_key_policy(cli)
+                sock = None
                 try:
+                    connect_kwargs = dict(auth)
+                    if bind_source:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(30)
+                        sock.bind((bind_source, 0))
+                        sock.connect((host, target_port))
+                        connect_kwargs["sock"] = sock
                     cli.connect(
                         host,
                         port=target_port,
@@ -263,7 +273,7 @@ def connect_node(
                         auth_timeout=30,
                         allow_agent=False,
                         look_for_keys=False,
-                        **auth,
+                        **connect_kwargs,
                     )
                     t = cli.get_transport()
                     if t:
@@ -275,4 +285,9 @@ def connect_node(
                         cli.close()
                     except Exception:
                         pass
+                    if sock is not None:
+                        try:
+                            sock.close()
+                        except Exception:
+                            pass
     raise RuntimeError(f"SSH auth failed for node {code}: {last_error}")

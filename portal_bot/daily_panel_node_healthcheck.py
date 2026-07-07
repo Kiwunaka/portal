@@ -195,8 +195,6 @@ async def run() -> int:
             issues.append(f"node_{row['code']}_metrics_stale")
         if not row["is_healthy"]:
             issues.append(f"node_{row['code']}_unhealthy")
-        if row["mapped_users"] != row["expected_users"]:
-            issues.append(f"node_{row['code']}_mapping_{row['mapped_users']}_expected_{row['expected_users']}")
 
     panel_rows = await _panel_rows(expected_by_node, expected_uuid_by_node)
     report["checks"]["panels"] = panel_rows

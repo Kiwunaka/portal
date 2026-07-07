@@ -811,6 +811,8 @@ def build_alert_candidates(
     for row in capacity_rows:
         node_code = str(row.get("code") or row.get("node_code") or "").strip().lower()
         state = str(row.get("capacity_state") or "").strip().lower()
+        if row.get("enabled") is False:
+            continue
         if not node_code or state in {"", "ok", "healthy", "normal", "unknown"}:
             continue
         severity = "critical" if state in {"hard_reject", "critical", "disabled"} else "warning"

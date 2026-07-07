@@ -252,6 +252,35 @@ def test_provider_quota_cycle_bounds_handles_short_month_reset(monkeypatch, tmp_
     assert end == datetime(2026, 3, 31, 0, 0, 0)
 
 
+def test_capacity_alert_candidates_ignore_disabled_nodes(monkeypatch, tmp_path) -> None:
+    _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import build_alert_candidates
+
+    candidates = build_alert_candidates(
+        metrics_status={},
+        provider_status=[],
+        free_summary={},
+        capacity_rows=[
+            {
+                "code": "brain",
+                "enabled": False,
+                "capacity_state": "hard_reject",
+                "reject_reason": "disabled",
+            },
+            {
+                "code": "us",
+                "enabled": True,
+                "capacity_state": "hard_reject",
+                "reject_reason": "unhealthy",
+            },
+        ],
+    )
+
+    fingerprints = {row["fingerprint"] for row in candidates}
+    assert "node_capacity:brain" not in fingerprints
+    assert "node_capacity:us" in fingerprints
+
+
 def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     sent_messages: list[tuple[int, str]] = []

@@ -341,6 +341,8 @@ Operational rule:
 - `portal-daily-healthcheck.timer` runs on `brain` once per day at `06:30 UTC` / `09:30 MSK` and writes a JSON summary under `/root/portal_bot/health_reports/`
 - the daily summary checks API health, `portal-api-healthcheck.timer`, `portal-node-metrics.timer`, per-node metrics freshness, DB `user_nodes` expected counts, and real 3x-ui managed-client counts
 - daily panel counts must compare only managed identities (`tgId`, `User_<tg_id>`, or a panel UUID that maps to an expected POKROV user); legacy/manual 3x-ui rows without a POKROV managed identity are tracked as `unknown_rows` and require a separate cleanup decision before deletion
+- retained `user_nodes` rows for inactive or retired access are reported in the JSON summary but must not page operators by themselves when panel managed identities match the current expected users
+- disabled nodes and control-plane rows must stay visible in capacity payloads when useful, but must not create `node_capacity:*` active alerts merely because their disabled state is intentional
 - node metrics collection must parse both 3x-ui `settings` response shapes, JSON string and object/dict, before deriving `provisioned_clients_count`
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
