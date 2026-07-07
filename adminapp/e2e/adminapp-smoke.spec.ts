@@ -348,6 +348,19 @@ test("dashboard exchanges initData when browser session is missing", async ({ pa
   await expect(page.getByText("Users active")).toBeVisible();
 });
 
+test("left-click shell navigation changes ops sections without a reload", async ({ page }) => {
+  await mockAdminApi(page);
+  await gotoWithAdminSession(page, "/");
+
+  const navEntries = page.locator('a[href="/nodes"]:visible');
+  await expect(navEntries.first()).toBeVisible();
+  await navEntries.first().click({ button: "left" });
+
+  await expect(page).toHaveURL(/\/nodes\/?$/);
+  await expect(page.getByRole("heading", { name: "Nodes" })).toBeVisible();
+  await expect(page.locator("main")).toContainText("Node status");
+});
+
 test("provider caps saves configured quota through mock API", async ({ page }) => {
   const calls = await mockAdminApi(page);
   await gotoWithAdminSession(page, "/provider-caps");

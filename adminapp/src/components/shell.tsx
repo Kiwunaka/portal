@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import {
   Activity,
   Bell,
@@ -44,9 +43,33 @@ const icons: Record<OpsSectionId, LucideIcon> = {
 
 const sectionMap = new Map(OPS_SECTIONS.map((item) => [item.id, item]));
 
+function sectionFromPath(pathname: string): OpsSectionId {
+  const raw = pathname.replace(/^\/+|\/+$/g, "");
+  return normalizeOpsSection(raw || "dashboard");
+}
+
 export function OpsShell({ section }: { section: string }) {
-  const pathname = usePathname();
-  const active = normalizeOpsSection(section);
+  const [active, setActive] = useState<OpsSectionId>(() => normalizeOpsSection(section));
+
+  useEffect(() => {
+    setActive(normalizeOpsSection(section));
+  }, [section]);
+
+  useEffect(() => {
+    const syncFromHistory = () => setActive(sectionFromPath(window.location.pathname));
+    window.addEventListener("popstate", syncFromHistory);
+    return () => window.removeEventListener("popstate", syncFromHistory);
+  }, []);
+
+  const handleNavClick = useCallback((event: MouseEvent<HTMLAnchorElement>, item: (typeof OPS_SECTIONS)[number]) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    setActive(item.id);
+    window.history.pushState({ pokrovAdminSection: item.id }, "", item.href);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[color:var(--atlas-canvas-alt)] text-[color:var(--atlas-text)]">
@@ -63,12 +86,12 @@ export function OpsShell({ section }: { section: string }) {
         <nav className="ops-scrollbar flex max-h-[calc(100vh-92px)] flex-col gap-1 overflow-y-auto pr-1">
           {OPS_SECTIONS.map((item) => {
             const Icon = icons[item.id];
-            const selected = active === item.id || (item.href !== "/" && pathname?.startsWith(item.href));
+            const selected = active === item.id;
             return (
-              <Link
+              <a
                 key={item.id}
                 href={item.href}
-                prefetch={false}
+                onClick={(event) => handleNavClick(event, item)}
                 className={cn(
                   "flex min-h-[var(--pokrov-nav-item-min-height)] items-center gap-2 rounded-[var(--pokrov-radius-card)] px-3 text-sm font-medium text-[color:var(--pokrov-nav-text)] transition",
                   selected && "bg-[color:var(--pokrov-nav-active-bg)] text-[color:var(--atlas-text)]",
@@ -77,7 +100,7 @@ export function OpsShell({ section }: { section: string }) {
               >
                 <Icon size={17} strokeWidth={1.85} />
                 <span className="truncate">{item.label}</span>
-              </Link>
+              </a>
             );
           })}
         </nav>
@@ -104,10 +127,10 @@ export function OpsShell({ section }: { section: string }) {
               const Icon = icons[item.id];
               const selected = active === item.id;
               return (
-                <Link
+                <a
                   key={item.id}
                   href={item.href}
-                  prefetch={false}
+                  onClick={(event) => handleNavClick(event, item)}
                   className={cn(
                     "inline-flex h-9 shrink-0 items-center gap-2 rounded-[var(--pokrov-radius-card)] border px-3 text-xs font-semibold",
                     selected
@@ -117,7 +140,7 @@ export function OpsShell({ section }: { section: string }) {
                 >
                   <Icon size={15} />
                   {item.label}
-                </Link>
+                </a>
               );
             })}
           </nav>
