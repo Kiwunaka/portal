@@ -24,12 +24,14 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
     def test_release_payload_validation_requires_legacy_payment_static_absent(self) -> None:
         checks = self.module._release_payload_validation_checks(
             remote_webapp="/var/www/portal/releases/202605070001/webapp",
+            remote_adminapp="/var/www/portal/releases/202605070001/adminapp",
             remote_marketing="/var/www/portal/releases/202605070001/marketing",
         )
 
         joined = "\n".join(checks)
 
         self.assertIn("test -f /var/www/portal/releases/202605070001/webapp/index.html", joined)
+        self.assertIn("test -f /var/www/portal/releases/202605070001/adminapp/index.html", joined)
         self.assertIn("test -f /var/www/portal/releases/202605070001/marketing/index.html", joined)
         self.assertIn("test -f /var/www/portal/releases/202605070001/marketing/checkout/index.html", joined)
         self.assertIn("test ! -e /var/www/portal/releases/202605070001/marketing/fk-verify.html", joined)
@@ -40,6 +42,7 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
         commands = self.module._post_deploy_smoke_commands(
             web_domain="pokrov.space",
             api_domain="api.pokrov.space",
+            admin_domain="admin.pokrov.space",
         )
 
         joined = "\n".join(commands)
@@ -47,6 +50,7 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
         self.assertIn("https://api.pokrov.space/api/health", joined)
         self.assertIn("https://pokrov.space/", joined)
         self.assertIn("https://app.pokrov.space/", joined)
+        self.assertIn("https://admin.pokrov.space/", joined)
         self.assertIn("https://pokrov.space/fk-verify.html", joined)
         self.assertIn("https://pokrov.space/fk-payment-theme.css", joined)
         self.assertIn('[ "$status" = "404" ] || [ "$status" = "410" ]', joined)
@@ -61,20 +65,25 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)
             local_webapp = root / "webapp" / "out"
+            local_adminapp = root / "adminapp" / "out"
             local_marketing = root / "marketing" / "out"
 
             failures = self.module._local_static_output_validation_failures(
                 local_webapp=local_webapp,
+                local_adminapp=local_adminapp,
                 local_marketing=local_marketing,
             )
 
             self.assertIn(f"missing local static file: {local_webapp / 'index.html'}", failures)
+            self.assertIn(f"missing local static file: {local_adminapp / 'index.html'}", failures)
             self.assertIn(f"missing local static file: {local_marketing / 'index.html'}", failures)
             self.assertIn(f"missing local static file: {local_marketing / 'checkout' / 'index.html'}", failures)
 
             (local_webapp).mkdir(parents=True)
+            (local_adminapp).mkdir(parents=True)
             (local_marketing / "checkout").mkdir(parents=True)
             (local_webapp / "index.html").write_text("app", encoding="utf-8")
+            (local_adminapp / "index.html").write_text("admin", encoding="utf-8")
             (local_marketing / "index.html").write_text("marketing", encoding="utf-8")
             (local_marketing / "checkout" / "index.html").write_text("checkout", encoding="utf-8")
             (local_marketing / "fk-verify.html").write_text("legacy", encoding="utf-8")
@@ -82,6 +91,7 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
 
             failures = self.module._local_static_output_validation_failures(
                 local_webapp=local_webapp,
+                local_adminapp=local_adminapp,
                 local_marketing=local_marketing,
             )
 
@@ -94,6 +104,7 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
                 [],
                 self.module._local_static_output_validation_failures(
                     local_webapp=local_webapp,
+                    local_adminapp=local_adminapp,
                     local_marketing=local_marketing,
                 ),
             )
@@ -102,10 +113,13 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)
             local_webapp = root / "webapp" / "out"
+            local_adminapp = root / "adminapp" / "out"
             local_marketing = root / "marketing" / "out"
             (local_webapp).mkdir(parents=True)
+            (local_adminapp).mkdir(parents=True)
             (local_marketing / "checkout").mkdir(parents=True)
             (local_webapp / "index.html").write_text("app", encoding="utf-8")
+            (local_adminapp / "index.html").write_text("admin", encoding="utf-8")
             (local_marketing / "index.html").write_text("marketing", encoding="utf-8")
             (local_marketing / "checkout" / "index.html").write_text("checkout", encoding="utf-8")
 
