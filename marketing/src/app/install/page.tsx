@@ -9,7 +9,9 @@ import { SectionHeading } from "../../components/ui/section-heading";
 import {
   buildBreadcrumbJsonLd,
   buildFaqJsonLd,
+  buildHowToJsonLd,
   buildMarketingMetadata,
+  buildWebPageJsonLd,
 } from "../../lib/marketing-site";
 import {
   CANONICAL_PLATFORM_BRAND,
@@ -17,8 +19,10 @@ import {
   getPokrovPublicConfig,
   getSharedProductFacts,
 } from "../../lib/pokrov";
+import { getSeoPage, SEO_PAGE_PATHS } from "../../lib/seo-pages";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+const SEO_PAGE = getSeoPage("/install/");
 
 function buildCabinetDownloadsHref(platform: "android" | "windows"): string {
   const url = new URL(config.webappUrl);
@@ -28,14 +32,10 @@ function buildCabinetDownloadsHref(platform: "android" | "windows"): string {
 }
 
 export const metadata = buildMarketingMetadata(
-  getCopyText("marketing.install.meta.title", "Как установить POKROV на Android и Windows | Инструкция"),
-  getCopyText(
-    "marketing.install.meta.description",
-    "Пошаговая установка приложения POKROV: скачать файл, разрешить установку, нажать «Подключить». С картинками и честными ответами про SmartScreen.",
-  ),
+  SEO_PAGE.title,
+  SEO_PAGE.description,
   {
     path: "/install/",
-    keywords: ["установка pokrov", "apk pokrov", "windows pokrov", "инструкция pokrov", "как установить pokrov"],
   },
 );
 
@@ -58,7 +58,7 @@ export default function InstallPage() {
           title: getCopyText("marketing.install.android.step1.title", "Скачайте файл"),
           text: getCopyText(
             "marketing.install.android.step1.text",
-            "Откройте кабинет — он выдаст актуальный APK для вашего аккаунта.",
+            "Откройте кабинет. Он выдаст актуальный APK для вашего аккаунта.",
           ),
         },
         {
@@ -66,7 +66,7 @@ export default function InstallPage() {
           title: getCopyText("marketing.install.android.step2.title", "Разрешите установку"),
           text: getCopyText(
             "marketing.install.android.step2.text",
-            "Android спросит разрешение на установку из этого источника — нажмите «Разрешить». Так система относится к любым файлам вне магазина.",
+            "Android спросит разрешение на установку из этого источника. Нажмите «Разрешить». Так система относится к любым файлам вне магазина.",
           ),
         },
         {
@@ -84,7 +84,7 @@ export default function InstallPage() {
       label: getCopyText("marketing.install.tabs.windows", "Windows"),
       note: getCopyText(
         "marketing.install.windows.note",
-        "Приложение пока распространяется вне магазина и без подписи издателя, поэтому предупреждение SmartScreen — ожидаемое поведение системы.",
+        "Приложение пока распространяется вне магазина и без подписи издателя, поэтому предупреждение SmartScreen ожидаемо.",
       ),
       steps: [
         {
@@ -92,7 +92,7 @@ export default function InstallPage() {
           title: getCopyText("marketing.install.windows.step1.title", "Скачайте установщик"),
           text: getCopyText(
             "marketing.install.windows.step1.text",
-            "Откройте кабинет — он выдаст актуальный EXE-файл для вашего аккаунта.",
+            "Откройте кабинет. Он выдаст актуальный EXE-файл для вашего аккаунта.",
           ),
         },
         {
@@ -124,7 +124,7 @@ export default function InstallPage() {
       ),
     },
     {
-      question: getCopyText("marketing.install.faq.smartscreen.q", "Windows ругается на файл — это нормально?"),
+      question: getCopyText("marketing.install.faq.smartscreen.q", "Windows ругается на файл, это нормально?"),
       answer: getCopyText(
         "marketing.install.faq.smartscreen.a",
         "Да. Пока приложение распространяется вне магазина и без подписи издателя, SmartScreen показывает стандартное предупреждение. Нажмите «Подробнее» → «Выполнить в любом случае».",
@@ -134,14 +134,14 @@ export default function InstallPage() {
       question: getCopyText("marketing.install.faq.apk.q", "Какой APK выбрать на Android?"),
       answer: getCopyText(
         "marketing.install.faq.apk.a",
-        "Основной файл (arm64) подходит почти всем современным телефонам. Если телефон старый и файл не ставится — возьмите в кабинете legacy-версию (armeabi).",
+        "Основной файл (arm64) подходит почти всем современным телефонам. Если телефон старый и файл не ставится, возьмите в кабинете legacy-версию (armeabi).",
       ),
     },
     {
-      question: getCopyText("marketing.install.faq.stuck.q", "Не получается — куда идти?"),
+      question: getCopyText("marketing.install.faq.stuck.q", "Не получается, куда идти?"),
       answer: getCopyText(
         "marketing.install.faq.stuck.a",
-        "Напишите в Telegram-поддержку: подскажем по шагам — от установки до первого подключения. Живой человек, не бот-заглушка.",
+        "Напишите в Telegram-поддержку: подскажем по шагам от установки до первого подключения. Живой человек, не бот-заглушка.",
       ),
     },
   ];
@@ -155,6 +155,8 @@ export default function InstallPage() {
         ])}
       />
       <JsonLd data={buildFaqJsonLd(faqItems.map((item) => ({ question: item.question, answer: String(item.answer) })))} />
+      <JsonLd data={buildWebPageJsonLd(SEO_PAGE)} />
+      {SEO_PAGE.steps?.length ? <JsonLd data={buildHowToJsonLd(SEO_PAGE)} /> : null}
 
       <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-16">
         <Chip>
@@ -162,12 +164,12 @@ export default function InstallPage() {
           {getCopyText("marketing.install.kicker", "Установка за минуту")}
         </Chip>
         <h1 className="font-display text-[2.25rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.75rem]">
-          {getCopyText("marketing.install.title", "Скачайте — остальное уже настроено")}
+          {getCopyText("marketing.install.title", "Скачайте, остальное уже настроено")}
         </h1>
         <p className="max-w-xl text-lg leading-relaxed text-ink-soft">
           {getCopyText(
             "marketing.install.subtitle",
-            "Три шага для Android или Windows. Файлы выдаёт кабинет — так вы всегда получаете настоящую и свежую версию.",
+            "Три шага для Android или Windows. Файлы выдаёт кабинет, так вы всегда получаете настоящую и свежую версию.",
           )}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
@@ -191,13 +193,19 @@ export default function InstallPage() {
           <Reveal>
             <SectionHeading
               kicker={getCopyText("marketing.install.faq.kicker", "Частые вопросы")}
-              title={getCopyText("marketing.install.faq.title", "Про установку — честно")}
+              title={getCopyText("marketing.install.faq.title", "Про установку честно")}
             />
           </Reveal>
           <Reveal>
             <Accordion items={faqItems} />
           </Reveal>
           <Reveal className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Button href={SEO_PAGE_PATHS.installAndroid} variant="secondary">
+              Android-гайд
+            </Button>
+            <Button href={SEO_PAGE_PATHS.installWindows} variant="secondary">
+              Windows-гайд
+            </Button>
             <Button href={config.supportTelegramUrl} variant="secondary" target="_blank" rel="noreferrer">
               {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
             </Button>

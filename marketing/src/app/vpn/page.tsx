@@ -14,39 +14,16 @@ import {
   buildFaqJsonLd,
   buildMarketingMetadata,
   buildMarketingUrl,
+  buildWebPageJsonLd,
   MARKETING_CANONICAL_PATHS,
 } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
+import { getSeoPage, SEO_PAGE_PATHS } from "../../lib/seo-pages";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+const SEO_PAGE = getSeoPage(MARKETING_CANONICAL_PATHS.vpn);
 
-const VPN_FAQ = [
-  {
-    question: "Можно ли скачать VPN бесплатно?",
-    answer:
-      "Да. В POKROV можно начать с 5 дней бесплатно без карты: установите приложение для Android или Windows, проверьте подключение и только потом решайте, нужен ли платный срок.",
-  },
-  {
-    question: "POKROV подходит, если я ищу лучший ВПН?",
-    answer:
-      "Мы не обещаем быть лучшими для всех. POKROV стоит попробовать, если вам нужен понятный VPN для Android и Windows: приложение, пробный период, кабинет, Telegram-бонус и поддержка без ручной настройки на первом шаге.",
-  },
-  {
-    question: "Нужно ли вручную настраивать VPN-профиль?",
-    answer:
-      "В обычном сценарии нет. Пользователь скачивает приложение, запускает бесплатный период и подключается внутри POKROV. Ручные варианты остаются для совместимости и восстановления, когда они действительно нужны.",
-  },
-  {
-    question: "Какие устройства поддерживаются?",
-    answer:
-      "Текущая публичная бета POKROV рассчитана на Android и Windows. iOS и macOS не входят в публичное обещание этой волны.",
-  },
-  {
-    question: "Это полностью бесплатный VPN навсегда?",
-    answer:
-      "Нет. Есть бесплатный старт на 5 дней без карты и базовый бесплатный режим после пробного периода. Для регулярного использования предусмотрены платные сроки с понятной разовой оплатой — автосписаний нет.",
-  },
-];
+const VPN_FAQ = SEO_PAGE.faq;
 
 function buildArticleJsonLd() {
   return {
@@ -74,23 +51,10 @@ function buildArticleJsonLd() {
 }
 
 export const metadata = buildMarketingMetadata(
-  "VPN скачать бесплатно | POKROV для Android и Windows",
-  "POKROV - VPN для Android и Windows с 5 днями бесплатно без карты. Скачайте приложение, проверьте подключение и продлите срок только если все подходит.",
+  SEO_PAGE.title,
+  SEO_PAGE.description,
   {
     path: MARKETING_CANONICAL_PATHS.vpn,
-    keywords: [
-      "vpn",
-      "впн",
-      "vpn скачать",
-      "впн скачать",
-      "vpn скачать бесплатно",
-      "впн скачать бесплатно",
-      "лучший vpn",
-      "лучший впн",
-      "vpn android",
-      "vpn windows",
-      "pokrov vpn",
-    ],
   },
 );
 
@@ -117,6 +81,7 @@ export default function VpnSeoPage() {
         ])}
       />
       <JsonLd data={buildArticleJsonLd()} />
+      <JsonLd data={buildWebPageJsonLd(SEO_PAGE)} />
       <JsonLd data={buildFaqJsonLd(VPN_FAQ)} />
 
       <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-12 pb-12 text-center sm:px-6 sm:pt-16">
@@ -125,7 +90,7 @@ export default function VpnSeoPage() {
           VPN · ВПН · скачать бесплатно
         </Chip>
         <h1 className="font-display text-[2.25rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.75rem]">
-          POKROV VPN для Android и Windows
+          POKROV: VPN для Android и Windows
         </h1>
         <p className="max-w-xl text-lg leading-relaxed text-ink-soft">
           Скачайте приложение, включите 5 дней бесплатно и проверьте связь на своих устройствах. Без длинной ручной
@@ -145,7 +110,7 @@ export default function VpnSeoPage() {
         <Reveal>
           <SectionHeading
             kicker="Почему POKROV"
-            title="Не просто «скачать ВПН», а получить понятный рабочий сценарий"
+            title="Скачать ВПН и быстро проверить рабочий сценарий"
             sub="Когда человек ищет «VPN скачать бесплатно», ему не нужна лекция о протоколах. Ему нужно быстро поставить приложение, понять, работает ли связь, и не попасть на мутный файл из случайного архива."
           />
         </Reveal>
@@ -165,7 +130,7 @@ export default function VpnSeoPage() {
               </P>
             </LongformBlock>
 
-            <LongformBlock title="«Лучший VPN» — это тот, который работает именно у вас">
+            <LongformBlock title="Как оценивать запрос «лучший VPN»">
               <P>
                 В поиске слово «лучший» понятно: хочется не сравнивать десятки сервисов, а сразу выбрать надёжный вариант.
                 Но честнее смотреть на признаки, которые можно проверить: есть ли официальный источник скачивания, понятен
@@ -185,9 +150,9 @@ export default function VpnSeoPage() {
                 месячным лимитом.
               </P>
               <P>
-                Оплата — разовым ключом, без автосписаний: заплатили за срок и пользуетесь, никакая подписка не
+                Оплата идёт разовым ключом, без автосписаний: заплатили за срок и пользуетесь, никакая подписка не
                 продлевается втихую. Мы используем обычный язык, которым люди ищут приложение: «VPN», «ВПН», «скачать»,
-                «бесплатно» — но за этими словами стоит понятный ответ: где скачать, что именно бесплатно и когда писать
+                «бесплатно». За этими словами стоит понятный ответ: где скачать, что именно бесплатно и когда писать
                 в поддержку.
               </P>
             </LongformBlock>
@@ -200,7 +165,7 @@ export default function VpnSeoPage() {
               </P>
               <P>
                 Текущая публичная бета рассчитана на Android и Windows. Для Windows файл может показать предупреждение о
-                неизвестном издателе — это стандартное поведение системы для приложений вне магазина.
+                неизвестном издателе. Это стандартное поведение системы для приложений вне магазина.
               </P>
             </LongformBlock>
 
@@ -237,7 +202,7 @@ export default function VpnSeoPage() {
               <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Где скачать</span>
               <h3 className="text-[1.0625rem] font-semibold text-ink">Только официальный путь</h3>
               <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-                Откройте страницу установки и следуйте трём шагам — файл выдаст кабинет.
+                Откройте страницу установки и следуйте трём шагам. Файл выдаст кабинет.
               </p>
               <Button href={MARKETING_CANONICAL_PATHS.install}>Открыть установку</Button>
             </Card>
@@ -256,6 +221,12 @@ export default function VpnSeoPage() {
                 </Link>
                 <Link href={MARKETING_CANONICAL_PATHS.telegram} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
                   Telegram
+                </Link>
+                <Link href={SEO_PAGE_PATHS.android} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
+                  Android
+                </Link>
+                <Link href={SEO_PAGE_PATHS.windows} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
+                  Windows
                 </Link>
               </div>
             </Card>

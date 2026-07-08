@@ -1,12 +1,14 @@
 import { IntentLanding } from "../../components/intent/intent-landing";
 import { buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { getSeoPage } from "../../lib/seo-pages";
+
+const seoPage = getSeoPage(MARKETING_CANONICAL_PATHS.tiktok);
 
 export const metadata = buildMarketingMetadata(
-  "TikTok снова открывается | POKROV для Android и Windows",
-  "POKROV возвращает TikTok: лента, лайки и загрузка роликов работают как раньше. 5 дней бесплатно без карты.",
+  seoPage.title,
+  seoPage.description,
   {
     path: MARKETING_CANONICAL_PATHS.tiktok,
-    keywords: ["проверка tiktok", "tiktok не работает", "короткие ролики", "pokrov tiktok"],
   },
 );
 
@@ -16,10 +18,10 @@ export default function TiktokPage() {
       pagePath={MARKETING_CANONICAL_PATHS.tiktok}
       breadcrumbName="TikTok"
       heroKicker="Для TikTok и коротких роликов"
-      heroTitle="TikTok снова открывается"
-      heroSubtitle="Лента, лайки и загрузка своих роликов — как раньше. Скачайте приложение и проверьте бесплатно: 5 дней, карта не нужна."
+      heroTitle="Проверьте TikTok через POKROV"
+      heroSubtitle="Лента, лайки и загрузка роликов проверяются на вашем устройстве. Скачайте приложение бесплатно: 5 дней, карта не нужна."
       scenarioTitle="Как вернуть ленту за минуту"
-      scenarioBody="Приложение уже настроено — остаётся установить и нажать одну кнопку."
+      scenarioBody="Приложение уже настроено: остаётся установить, нажать кнопку и проверить свой сценарий."
       scenarioCards={[
         {
           eyebrow: "Сначала проверка",
@@ -37,6 +39,7 @@ export default function TiktokPage() {
           desc: "Никаких автосписаний: заплатили за срок — пользуетесь, продлевать или нет — решаете сами.",
         },
       ]}
+      seoPage={seoPage}
     />
   );
 }

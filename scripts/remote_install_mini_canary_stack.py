@@ -18,8 +18,8 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from node_access import connect_node
+from node_inventory import DEFAULT_INVENTORY, inventory_ipv4_map
 
-DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
 DEFAULT_XRAY_CONFIG = "/usr/local/etc/xray/config.json"
 DEFAULT_HYSTERIA_CONFIG = "/etc/hysteria/config.yaml"
 DEFAULT_HYSTERIA_SERVICE = "/etc/systemd/system/hysteria-server.service"
@@ -76,16 +76,9 @@ def _random_password() -> str:
 
 
 def _read_inventory_ip(code: str, inventory_path: Path) -> str:
-    text = inventory_path.read_text(encoding="utf-8", errors="replace")
-    for line in text.splitlines():
-        if f"`{code}`" not in line:
-            continue
-        parts = [part.strip() for part in line.strip("|").split("|")]
-        if len(parts) < 7:
-            continue
-        ip = parts[6].strip("` ").strip()
-        if ip and ip != "TBD":
-            return ip
+    ip = inventory_ipv4_map(inventory_path).get(code.strip().lower(), "")
+    if ip:
+        return ip
     raise SystemExit(f"Unable to resolve node IP for {code} from {inventory_path}")
 
 

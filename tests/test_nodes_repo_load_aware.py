@@ -33,7 +33,7 @@ class NodesRepoLoadAwareTests(unittest.TestCase):
             else:
                 os.environ[k] = v
 
-    def test_enabled_nodes_prefers_healthy_by_score(self) -> None:
+    def test_enabled_nodes_keeps_unhealthy_nodes_but_orders_them_last(self) -> None:
         from models import Node
         from nodes_repo import enabled_nodes
 
@@ -100,7 +100,7 @@ class NodesRepoLoadAwareTests(unittest.TestCase):
             s.commit()
             rows = enabled_nodes(s)
             self.assertEqual(rows[0].code, "pl_b")
-            self.assertNotIn("it", [n.code for n in rows])
+            self.assertEqual([n.code for n in rows], ["pl_b", "pl", "it"])
         finally:
             s.close()
 

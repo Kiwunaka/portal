@@ -72,10 +72,11 @@ def _score_value(n: Node) -> float:
 
 
 def _sort_nodes(rows: list[Node]) -> list[Node]:
-    # First by health score, then by static weight.
+    # Keep enabled nodes visible, but order degraded ones after healthy nodes.
     return sorted(
         rows,
         key=lambda n: (
+            not bool(getattr(n, "is_healthy", True)),
             -_score_value(n),
             -int(n.weight or 0),
             (n.code or ""),
@@ -136,8 +137,7 @@ def enabled_nodes(session) -> list[NodeRuntime]:
     rows: list[Node] = session.query(Node).filter_by(enabled=True).all()
     if not rows:
         return [legacy_node()]
-    healthy_rows = [n for n in rows if bool(getattr(n, "is_healthy", True))]
-    chosen_rows = _sort_nodes(healthy_rows) if healthy_rows else _sort_nodes(rows)
+    chosen_rows = _sort_nodes(rows)
     out: list[NodeRuntime] = []
     for n in chosen_rows:
         out.append(

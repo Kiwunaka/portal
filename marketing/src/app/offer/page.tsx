@@ -14,7 +14,6 @@ export const metadata = buildMarketingMetadata(
   "Базовые условия цифровой подписки POKROV, порядок продления и контакты поддержки.",
   {
     path: "/offer/",
-    keywords: ["оферта pokrov", "условия подписки", "pokrov offer"],
   },
 );
 

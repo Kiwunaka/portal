@@ -33,8 +33,19 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 600) -> tuple[int,
 
 
 SYNC_SNIPPET = r"""
-import asyncio, os
-from datetime import datetime
+import asyncio, os, subprocess
+
+def load_service_env(service='portal-api'):
+    pid = subprocess.check_output(['systemctl', 'show', service, '-p', 'MainPID', '--value'], text=True).strip()
+    if not pid or pid == '0':
+        raise SystemExit(f'{service} has no MainPID')
+    for item in open(f'/proc/{pid}/environ', 'rb').read().split(b'\0'):
+        if item and b'=' in item:
+            key, value = item.split(b'=', 1)
+            os.environ[key.decode()] = value.decode(errors='replace')
+
+load_service_env(os.getenv('PORTAL_ENV_SERVICE', 'portal-api'))
+
 from db import SessionLocal, init_db
 from models import User
 from nodes_repo import enabled_nodes
@@ -159,7 +170,7 @@ def main() -> int:
         finally:
             sftp.close()
 
-        env = f"DATABASE_URL=sqlite:////root/portal_bot/portal.db SYNC_CONCURRENCY={int(args.concurrency)} SYNC_PASSES={int(args.passes)}"
+        env = f"export SYNC_CONCURRENCY={int(args.concurrency)} SYNC_PASSES={int(args.passes)};"
         cmd = f"cd /root/portal_bot && {env} . venv/bin/activate && python /root/portal_bot/portal_sync_users_to_nodes.py"
         code, out, err = _run(ssh, cmd, timeout=3600)
         if out.strip():

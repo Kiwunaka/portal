@@ -1,33 +1,48 @@
 # POKROV
 
-Last updated: 2026-06-01
+Last updated: 2026-07-08
 
-POKROV is an app-first connectivity product for Android and Windows. The public beta flow is simple: install the app, start 5 days free without a card, connect from the app, then manage duration, devices, recovery, and support through the cabinet.
+POKROV is an app-first VPN product for Android and Windows. The public beta flow is simple: install the app, start 5 days free without a card, connect from the app, then manage duration, devices, recovery, and support through the cabinet.
 
 ## Canonical URLs
 
 - Public site: https://pokrov.space/
 - Install help: https://pokrov.space/install/
+- Android app page: https://pokrov.space/android/
+- Windows app page: https://pokrov.space/windows/
 - Pricing and checkout continuation: https://pokrov.space/checkout/
 - Cabinet: https://app.pokrov.space/
 - API: https://api.pokrov.space/
 - Connection delivery host for explicit manual recovery: https://connect.pokrov.space/
+- Public release files: https://github.com/Kiwunaka/pokrov/releases
 
 ## Product facts
 
 - Brand: POKROV
 - Public beta platforms: Android and Windows
 - Trial: 5 days free, no card required
-- Telegram reward: +10 days after account linking and channel check
-- Paid plans: up to 5 devices, depending on plan
+- Telegram reward: +10 days after explicit account linking and channel check
+- Paid plans: from 99 RUB for 30 days; up to 5 devices depending on plan
+- Billing model: one-time paid access periods, no automatic renewal in the public flow
 - Free fallback after trial: monthly limited base mode
-- Support: cabinet, support bot, and support email
+- Support: cabinet, support bot, news channel, and support email
+- Release files: Android APK and Windows files are distributed through official surfaces and GitHub Releases
 
 ## Useful pages
 
 - Home: https://pokrov.space/
+- VPN hub: https://pokrov.space/vpn/
+- Android VPN: https://pokrov.space/android/
+- Windows VPN: https://pokrov.space/windows/
+- Android install guide: https://pokrov.space/install/android/
+- Windows install guide: https://pokrov.space/install/windows/
+- Install support: https://pokrov.space/support/install/
+- 5 days free without card: https://pokrov.space/trial/no-card/
+- No automatic renewal: https://pokrov.space/billing/no-autosubscription/
+- GitHub Releases and checksums: https://pokrov.space/trust/github-releases/
+- Free VPN criteria: https://pokrov.space/compare/free-vpn/
 - Android and mobile start: https://pokrov.space/mobile/
-- Android and Windows: https://pokrov.space/devices/
+- Android and Windows devices: https://pokrov.space/devices/
 - YouTube scenario: https://pokrov.space/youtube/
 - TikTok scenario: https://pokrov.space/tiktok/
 - Telegram bonus and support: https://pokrov.space/telegram/
@@ -35,6 +50,16 @@ POKROV is an app-first connectivity product for Android and Windows. The public 
 - Offer: https://pokrov.space/offer/
 - Privacy: https://pokrov.space/privacy/
 
+## Pricing summary
+
+- Free start: 0 RUB, 5 days, no card required
+- Start on 30 days: 99 RUB, 30 days, 1 device
+- 1 month: 249 RUB, 30 days, up to 5 devices
+- 3 months: 699 RUB, 91 days, up to 5 devices
+- 6 months: 1199 RUB, 182 days, up to 5 devices
+- 9 months: 1399 RUB, 273 days, up to 5 devices
+- 12 months: 1644 RUB, 365 days, up to 5 devices
+
 ## Release honesty
 
-The current public beta is outside-store for Android and Windows. Do not describe POKROV as store-published, stable 1.0.0, trusted-signed on Windows, or production-mature beyond the evidence on the public site and official documentation.
+The current public beta is outside-store for Android and Windows. Do not describe POKROV as store-published, a stable production release, trusted-signed on Windows, production-mature beyond the evidence on the public site, or ready for Russian-origin public reachability claims.

@@ -13,6 +13,7 @@ import {
   buildFaqJsonLd,
   buildMarketingMetadata,
   buildSoftwareApplicationJsonLd,
+  buildTrustLinksJsonLd,
   MARKETING_FAQ,
 } from "../lib/marketing-site";
 
@@ -21,16 +22,6 @@ export const metadata = buildMarketingMetadata(
   "Скачайте POKROV на Android или Windows, попробуйте 5 дней без карты и продлите доступ от 99 ₽ за 30 дней.",
   {
     path: "/",
-    keywords: [
-      "pokrov",
-      "доступ к сайтам",
-      "приложение для подключения",
-      "android",
-      "windows",
-      "5 дней бесплатно",
-      "кабинет pokrov",
-      "поддержка pokrov",
-    ],
   },
 );
 
@@ -39,6 +30,7 @@ export default function HomePage() {
     <PageShell>
       <JsonLd data={buildSoftwareApplicationJsonLd({ pagePath: "/" })} />
       <JsonLd data={buildFaqJsonLd(MARKETING_FAQ)} />
+      <JsonLd data={buildTrustLinksJsonLd()} />
       <Hero />
       <HonestyStrip />
       <ServicesGrid />

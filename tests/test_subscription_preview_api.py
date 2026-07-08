@@ -87,6 +87,30 @@ def test_client_subscription_preview_ignores_partial_provisioning_evidence(monke
     assert response.json()["node_order"] == ["pl", "de", "it"]
 
 
+def test_client_subscription_preview_keeps_unhealthy_nodes_as_fallback(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    db = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=db, key="network_rollout_config", value=_rollout_payload())
+        db.commit()
+    finally:
+        db.close()
+
+    now = _utcnow()
+    _add_node(api, code="pl", health_score=98.0, weight=110, is_healthy=True, last_health_at=now)
+    _add_node(api, code="de", health_score=96.0, weight=105, is_healthy=True, last_health_at=now)
+    _add_node(api, code="it", health_score=99.0, weight=100, is_healthy=False, last_health_at=now)
+    _add_node(api, code="nl-free", health_score=99.0, weight=999, last_health_at=now)
+
+    start_body = _start_trial(client, install_id="install-sub-preview-unhealthy-fallback")
+    response = client.get("/api/client/subscription/preview?format=vless", headers=_auth_headers(start_body))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["node_order"] == ["pl", "de", "it"]
+
+
 def test_admin_subscription_preview_debugs_order_without_raw_subscription_secret(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)

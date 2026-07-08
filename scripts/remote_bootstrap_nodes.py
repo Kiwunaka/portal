@@ -29,9 +29,11 @@ from pathlib import Path
 import paramiko
 from ssh_host_keys import configure_ssh_host_key_policy
 
+from node_inventory import DEFAULT_INVENTORY, read_inventory
+from node_passwords import parse_password_candidates
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 
 
@@ -44,31 +46,11 @@ class Node:
 
 def _parse_inventory(path: Path) -> list[Node]:
     """
-    Parse `docs/08-node-inventory.md` table rows.
+    Parse retained node inventory table rows.
     Expected row example:
     | `brain` | Brain / control-plane candidate | ... | `82.21.114.104` |
     """
-    txt = path.read_text(encoding="utf-8", errors="replace")
-    nodes: list[Node] = []
-    for line in txt.splitlines():
-        line = line.strip()
-        if not line.startswith("|"):
-            continue
-        if "`" not in line:
-            continue
-        parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 5:
-            continue
-        code = parts[0].strip("`").strip()
-        role = parts[1].strip()
-        ip = parts[-1].strip("`").strip()
-        if not code or not ip or code.lower() == "code":
-            continue
-        if not re.fullmatch(r"[a-z0-9_-]+", code):
-            continue
-        if not re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip):
-            continue
-        nodes.append(Node(code=code, ip=ip, role=role))
+    nodes = [Node(code=row.code, ip=row.ip, role=row.role) for row in read_inventory(path)]
     if not nodes:
         raise SystemExit(f"Failed to parse inventory: {path}")
     return nodes
@@ -88,6 +70,8 @@ def _parse_passwords(path: Path) -> dict[str, str]:
     markers = {
         "brain": "BRAINnode",
         "us": "USnode",
+        "ru": "RUnode",
+        "ru_spb": "RUnodeSPB",
         "pl": "PLnode",
         "it": "ITnode",
         "nl": "NLnode",
@@ -117,14 +101,13 @@ def _parse_passwords(path: Path) -> dict[str, str]:
     return out
 
 
-def _password_for(code: str, *, env_prefix: str, file_map: dict[str, str]) -> str:
+def _passwords_for(code: str, *, env_prefix: str, file_candidates: dict[str, list[str]]) -> list[str]:
     # Highest priority: per-node env var
     v = os.getenv(f"{env_prefix}{code.upper()}", "").strip()
     if v:
-        return v
+        return [v]
     # Fallback: file map
-    v = file_map.get(code, "").strip()
-    return v
+    return [v for v in file_candidates.get(code, []) if v.strip()]
 
 
 def _ssh_connect(ip: str, *, user: str, port: int, password: str) -> paramiko.SSHClient:
@@ -317,7 +300,7 @@ def _read_panel_access(ssh: paramiko.SSHClient) -> dict[str, object] | None:
 
 def _ensure_authorized_key(ssh: paramiko.SSHClient, pubkey: str) -> None:
     pubkey = pubkey.strip()
-    if not pubkey.startswith("ssh-ed25519 "):
+    if not pubkey.startswith(("ssh-ed25519 ", "ssh-rsa ", "ecdsa-sha2-nistp256 ", "ecdsa-sha2-nistp384 ", "ecdsa-sha2-nistp521 ")):
         return
     # Idempotent append.
     cmd = (
@@ -451,10 +434,18 @@ def main() -> int:
     if only:
         nodes = [n for n in nodes if n.code in only]
 
-    pw_file_map: dict[str, str] = {}
+    pw_file_candidates: dict[str, list[str]] = {}
     pw_path = Path(args.passwords)
     if pw_path.exists():
-        pw_file_map = _parse_passwords(pw_path)
+        requested_codes = [n.code for n in nodes]
+        pw_file_candidates = parse_password_candidates(pw_path, requested_codes=requested_codes)
+        legacy_map = _parse_passwords(pw_path)
+        for code, password in legacy_map.items():
+            if not password:
+                continue
+            candidates = pw_file_candidates.setdefault(code, [])
+            if password not in candidates:
+                candidates.append(password)
 
     pubkeys: dict[str, str] = {}
     if args.add_pubkeys:
@@ -475,20 +466,29 @@ def main() -> int:
 
     results: list[dict] = []
     for n in nodes:
-        pw = _password_for(n.code, env_prefix=args.env_prefix, file_map=pw_file_map)
-        if not pw:
+        passwords = _passwords_for(n.code, env_prefix=args.env_prefix, file_candidates=pw_file_candidates)
+        if not passwords:
             raise SystemExit(f"Missing password for node {n.code}. Provide {args.env_prefix}{n.code.upper()} or fill PASSWORDS.txt.")
 
         print(f"[{n.code}] connecting to {n.ip} ...")
-        facts = bootstrap_node(
-            n,
-            ssh_user=args.ssh_user,
-            ssh_port=args.ssh_port,
-            ssh_password=pw,
-            control_plane_ip=args.control_plane_ip,
-            set_pubkey=pubkeys.get(n.code),
-            dry_run=bool(args.dry_run),
-        )
+        last_error = ""
+        for idx, pw in enumerate(passwords, 1):
+            try:
+                facts = bootstrap_node(
+                    n,
+                    ssh_user=args.ssh_user,
+                    ssh_port=args.ssh_port,
+                    ssh_password=pw,
+                    control_plane_ip=args.control_plane_ip,
+                    set_pubkey=pubkeys.get(n.code),
+                    dry_run=bool(args.dry_run),
+                )
+                break
+            except paramiko.AuthenticationException as e:
+                last_error = f"password candidate {idx} failed: {e}"
+                continue
+        else:
+            raise SystemExit(f"[{n.code}] SSH authentication failed after {len(passwords)} password candidate(s): {last_error}")
         results.append(facts)
         print(f"[{n.code}] ok={facts.get('ok')} panel_port={facts.get('panel_port')}")
         time.sleep(0.2)

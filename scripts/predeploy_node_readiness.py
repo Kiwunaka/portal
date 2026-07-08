@@ -20,6 +20,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from audit_node_dns import _build_hosts, _parse_inventory_ipv4, _resolve_with_nslookup
 from node_access import DEFAULT_PASSWORDS, connect_node
+from node_inventory import DEFAULT_INVENTORY
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -479,7 +480,7 @@ def main() -> int:
     parser.add_argument("--ssh-user", default="root")
     parser.add_argument("--ssh-port", type=int, default=29374)
     parser.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
-    parser.add_argument("--inventory", default=str(REPO_ROOT / "docs" / "08-node-inventory.md"))
+    parser.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     parser.add_argument("--stale-after-seconds", type=int, default=1800)
     parser.add_argument("--observer-stale-after-seconds", type=int, default=180)
     parser.add_argument("--json-out", default="")

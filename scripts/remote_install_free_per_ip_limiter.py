@@ -12,16 +12,16 @@ Example:
 
 import argparse
 import os
-import re
 import sys
 from pathlib import Path
 
 import paramiko
 from ssh_host_keys import configure_ssh_host_key_policy
 
+from node_inventory import DEFAULT_INVENTORY, inventory_ipv4_map
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 
 try:
@@ -39,24 +39,7 @@ def _run(ssh: paramiko.SSHClient, cmd: str, timeout: int = 300) -> tuple[int, st
 
 
 def _parse_inventory(path: Path) -> dict[str, str]:
-    txt = path.read_text(encoding="utf-8", errors="replace")
-    out: dict[str, str] = {}
-    for line in txt.splitlines():
-        line = line.strip()
-        if not line.startswith("|") or "`" not in line:
-            continue
-        parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 4:
-            continue
-        code = parts[0].strip("`").strip().lower()
-        ip = parts[3].strip("`").strip()
-        if not code or code == "code":
-            continue
-        if not re.fullmatch(r"[a-z0-9_-]+", code):
-            continue
-        if not re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip):
-            continue
-        out[code] = ip
+    out = inventory_ipv4_map(path)
     if not out:
         raise SystemExit(f"Failed to parse inventory: {path}")
     return out

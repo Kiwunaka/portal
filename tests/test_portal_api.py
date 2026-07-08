@@ -150,6 +150,10 @@ class PortalApiTests(unittest.TestCase):
         self.assertEqual(set(selector["outbounds"]), {o.get("tag") for o in vless_outbounds})
         self.assertEqual(selector["default"], vless_outbounds[0].get("tag"))
         self.assertTrue(any(r.get("tag") == "geoip-ru" for r in cfg["route"]["rule_set"]))
+        rule_urls = {r.get("tag"): r.get("url") for r in cfg["route"]["rule_set"]}
+        self.assertEqual(rule_urls["geoip-ru"], "https://connect.pokrov.space/rules/geoip-ru.srs")
+        self.assertEqual(rule_urls["geosite-category-ads-all"], "https://connect.pokrov.space/rules/adblock.srs")
+        self.assertFalse(any("raw.githubusercontent.com" in str(url) for url in rule_urls.values()))
         rules = cfg["route"]["rules"]
         self.assertTrue(any(r.get("rule_set") == ["geoip-ru"] and r.get("outbound") == "direct" for r in rules))
         self.assertTrue(any(r.get("protocol") == "bittorrent" and r.get("outbound") == "direct" for r in rules))
@@ -212,6 +216,105 @@ class PortalApiTests(unittest.TestCase):
             1,
             sum(1 for outbound in cfg["outbounds"] if outbound.get("type") == "vless" and outbound.get("detour") == bridge_tag),
         )
+
+    def test_singbox_bridge_supports_three_hidden_ru_bridge_choices(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        nodes = [
+            SimpleNamespace(code="pl", host="pl.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+            SimpleNamespace(code="us", host="us.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+        ]
+        rollout_config = api.normalized_network_rollout_config(
+            {
+                "ru_bridge_relay": {
+                    "enabled": True,
+                    "excluded_node_codes": ["us"],
+                    "endpoints": [
+                        {
+                            "id": "mini",
+                            "label": "Белые списки",
+                            "endpoint_host": "176.123.166.119",
+                            "reality_public_key": "mini-pbk",
+                            "reality_short_id": "mini-sid",
+                        },
+                        {
+                            "id": "ru",
+                            "label": "Белые списки тип 2",
+                            "endpoint_host": "158.255.3.39",
+                            "reality_public_key": "ru-pbk",
+                            "reality_short_id": "ru-sid",
+                        },
+                        {
+                            "id": "ru_spb",
+                            "label": "Белые списки тип 3",
+                            "endpoint_host": "193.233.216.73",
+                            "reality_public_key": "spb-pbk",
+                            "reality_short_id": "spb-sid",
+                        },
+                    ],
+                }
+            }
+        )
+
+        cfg = api._singbox_multi_node_config(
+            user_uuid="11111111-1111-1111-1111-111111111111",
+            nodes=nodes,
+            title="Portal",
+            rollout_config=rollout_config,
+        )
+        outbounds = {o.get("tag"): o for o in cfg["outbounds"]}
+        selector = next(o for o in cfg["outbounds"] if o.get("type") == "selector")
+
+        self.assertIn("🇵🇱 Польша · Белые списки", selector["outbounds"])
+        self.assertIn("🇵🇱 Польша · Белые списки тип 2", selector["outbounds"])
+        self.assertIn("🇵🇱 Польша · Белые списки тип 3", selector["outbounds"])
+        self.assertIn("🇺🇸 США", selector["outbounds"])
+        self.assertNotIn("🇺🇸 США · Белые списки", outbounds)
+
+        hidden_tags = [tag for tag in outbounds if str(tag or "").endswith(api.HIDDIFY_HIDDEN_TAG_SUFFIX)]
+        self.assertEqual(len(hidden_tags), 3)
+        self.assertEqual(outbounds["🇵🇱 Польша · Белые списки"]["detour"], api.RU_BRIDGE_OUTBOUND_TAG)
+        self.assertEqual(outbounds["🇵🇱 Польша · Белые списки тип 2"]["server"], "pl.test")
+        self.assertEqual(outbounds["🇵🇱 Польша · Белые списки тип 2"]["detour"], "POKROV мост Белые списки тип 2 §hide§")
+        self.assertEqual(outbounds["POKROV мост Белые списки тип 2 §hide§"]["server"], "158.255.3.39")
+        self.assertEqual(outbounds["POKROV мост Белые списки тип 3 §hide§"]["server"], "193.233.216.73")
+
+    def test_node_label_ru_supports_russia_variants(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        self.assertEqual(api._node_label_ru("ru", "Russia"), "🇷🇺 Россия")
+        self.assertEqual(api._node_label_ru("ru_spb", "Russia SPB"), "🇷🇺 Россия Spb")
+
+    def test_singbox_routes_bittorrent_to_ru_nodes_when_available(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        nodes = [
+            SimpleNamespace(code="pl", host="pl.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+            SimpleNamespace(code="ru", host="ru.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+            SimpleNamespace(code="ru_spb", host="ru-spb.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+            SimpleNamespace(code="us", host="us.test", vless_port=443, reality_sni="sni", reality_pbk="pbk", reality_sid="sid", fingerprint="firefox", flow="xtls-rprx-vision"),
+        ]
+
+        cfg = api._singbox_multi_node_config(user_uuid="11111111-1111-1111-1111-111111111111", nodes=nodes, title="Portal")
+        outbounds = {o.get("tag"): o for o in cfg["outbounds"]}
+        torrent_rule = next(r for r in cfg["route"]["rules"] if r.get("protocol") == "bittorrent")
+        geoip_rule = next(r for r in cfg["route"]["rules"] if r.get("rule_set") == ["geoip-ru"])
+
+        torrent_tag = torrent_rule["outbound"]
+        self.assertLess(cfg["route"]["rules"].index(torrent_rule), cfg["route"]["rules"].index(geoip_rule))
+        self.assertTrue(str(torrent_tag).endswith(api.HIDDIFY_HIDDEN_TAG_SUFFIX))
+        self.assertEqual(outbounds[torrent_tag]["outbounds"], ["🇷🇺 Россия", "🇷🇺 Россия Spb"])
+        self.assertNotIn("🇺🇸 США", outbounds[torrent_tag]["outbounds"])
+        self.assertNotIn("🇵🇱 Польша", outbounds[torrent_tag]["outbounds"])
 
     def test_singbox_config_keeps_unique_tags_for_poland_canary_nodes(self) -> None:
         import importlib

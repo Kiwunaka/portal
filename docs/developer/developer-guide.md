@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-07-05
+Last updated: 2026-07-08
 
 ## Document Status
 
@@ -209,6 +209,8 @@ The expanded runtime KB expects `SUPPORT_AI_MAX_CONTEXT_CHARS=32000` or higher s
 - `reserve_xhttp_cdn` is the dormant reserve transport profile; it stays disabled by default and is only for explicit allowlisted fallback
 - `network_rollout_config` is the operator-owned rollout policy for transport, DNS, routing, and operator-lab allowlists; treat it as the source of truth for app-managed policy resolution
 - node shaping is repo-truth driven through `infra/node-qdisc-profiles.json` and the `remote_apply_node_qdisc.py` / `remote_node_qdisc_smoke.py` helpers, so treat qdisc changes as part of release verification instead of an informal operator tweak
+- `scripts/node_inventory.py` is a compatibility reader for the retained archive snapshot at `docs/archive/flat-docs/08-node-inventory.md`; it exists so old bootstrap, DNS, and remote-maintenance helpers do not silently weaken checks after `docs/08-node-inventory.md` moved to archive
+- do not treat that archive snapshot as runtime node truth; live node role, host, health, transport, and pool decisions must come from Postgres/admin APIs, `nodes.transport_profiles_json`, `network_rollout_config`, and current probe evidence
 - public user-facing version labels across app, web, cabinet, and release notes must stay on `0.x.x-beta`; treat inherited strings like `2.5.7 dev` as regressions
 - when reporting node reachability during rollout work, keep `current-origin check`, `brain-origin check`, and `RU-origin check` separate instead of collapsing them into one status
 - versioned release metadata belongs under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/` for retained bridge lineage and under `.../artifacts/releases/pokrov-app/<version>/` for canonical client-lane bundles
@@ -536,6 +538,7 @@ Out of scope for routine repo cleanup:
 
 - Postgres is production truth.
 - 3x-ui is an execution layer, not the product authority.
+- `docs/archive/flat-docs/08-node-inventory.md` is compatibility/bootstrap evidence only; `scripts/node_inventory.py` may read it for legacy operator helpers, but it must not override live Postgres, rollout config, or current probe/admin API evidence.
 - local SQLite files and archived snapshots are historical only.
 - root-level historical guides moved into `docs/archive/` are not current docs.
 

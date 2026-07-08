@@ -44,7 +44,10 @@ def configure_ssh_host_key_policy(
     except Exception:
         pass
     if path.exists():
-        client.load_host_keys(str(path))
+        try:
+            client.load_host_keys(str(path))
+        except AttributeError:
+            pass
 
     allow_tofu = _env_bool("POKROV_SSH_TRUST_ON_FIRST_USE", False) if allow_trust_on_first_use is None else bool(allow_trust_on_first_use)
     if allow_tofu:

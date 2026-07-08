@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import hmac
 import importlib
+import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
@@ -356,6 +357,238 @@ def test_admin_short_lived_session_can_authorize_ops_endpoints(monkeypatch, tmp_
     overview = client.get("/api/admin/ops/overview", headers={"Authorization": f"Bearer {body['token']}"})
     assert overview.status_code == 200, overview.text
     assert overview.json()["ok"] is True
+
+
+def test_admin_payments_summary_counts_revenue_attention_and_abandoned(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import Event, ExternalOrder, FunnelEvent, PayAttempt
+
+    now = _utcnow()
+    _seed_ops_fixture(api, now=now)
+    s = api.SessionLocal()
+    try:
+        s.add_all(
+            [
+                ExternalOrder(
+                    order_id="paid-ops-1",
+                    tg_id=1001,
+                    provider="lavatop",
+                    plan_code="1_month",
+                    source="site",
+                    amount=990.0,
+                    currency="RUB",
+                    status="paid",
+                    created_at=now - timedelta(hours=3),
+                    paid_at=now - timedelta(hours=2),
+                ),
+                ExternalOrder(
+                    order_id="pending-ops-1",
+                    tg_id=1002,
+                    provider="lavatop",
+                    plan_code="1_month",
+                    source="site",
+                    amount=990.0,
+                    currency="RUB",
+                    status="pending",
+                    created_at=now - timedelta(hours=2),
+                ),
+                ExternalOrder(
+                    order_id="manual-ops-1",
+                    tg_id=1002,
+                    provider="lavatop",
+                    plan_code="1_month",
+                    source="site",
+                    amount=990.0,
+                    currency="RUB",
+                    status="manual_review",
+                    created_at=now - timedelta(hours=1),
+                ),
+                ExternalOrder(
+                    order_id="failed-ops-1",
+                    tg_id=1002,
+                    provider="lavatop",
+                    plan_code="1_month",
+                    source="site",
+                    amount=990.0,
+                    currency="RUB",
+                    status="failed",
+                    created_at=now - timedelta(minutes=30),
+                ),
+                FunnelEvent(
+                    session_id="checkout-session-1",
+                    channel="site",
+                    event_name="checkout_start",
+                    stage="checkout_start",
+                    source="site",
+                    path="/checkout",
+                    created_at=now - timedelta(hours=3),
+                ),
+                FunnelEvent(
+                    session_id="checkout-session-2",
+                    channel="site",
+                    event_name="checkout_view",
+                    stage="checkout_view",
+                    source="site",
+                    path="/checkout",
+                    created_at=now - timedelta(hours=2),
+                ),
+                Event(tg_id=1001, event_name="clicked_pay", source="webapp", created_at=now - timedelta(hours=3)),
+                Event(tg_id=1002, event_name="pay_started", source="webapp", created_at=now - timedelta(hours=2)),
+                Event(tg_id=1001, event_name="paid", source="webapp", created_at=now - timedelta(hours=1)),
+                PayAttempt(
+                    tg_id=1002,
+                    source="bot",
+                    plan_code="1_month",
+                    amount_stars=0,
+                    currency="RUB",
+                    status="started",
+                    invoice_payload="ops-summary-started",
+                    started_at=now - timedelta(hours=2),
+                    updated_at=now - timedelta(hours=2),
+                ),
+            ]
+        )
+        s.commit()
+    finally:
+        s.close()
+
+    client = TestClient(api.app)
+    response = client.get("/api/admin/payments/summary?period=7d", headers=_admin_headers())
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["period"]["key"] == "7d"
+    assert body["revenue"]["currency"] == "RUB"
+    assert body["revenue"]["amount"] == 990.0
+    assert body["revenue"]["paid_count"] == 1
+    assert body["attention"]["pending_count"] == 1
+    assert body["attention"]["manual_review_count"] == 1
+    assert body["attention"]["failed_count"] == 1
+    assert body["attention"]["problem_count"] == 3
+    assert body["abandoned"]["buy_click_not_paid"] >= 1
+    assert body["abandoned"]["checkout_not_paid"] >= 1
+    assert {row["order_id"] for row in body["problem_orders"]} >= {"pending-ops-1", "manual-ops-1", "failed-ops-1"}
+
+
+def test_admin_online_users_aggregate_omits_raw_ips(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import KeyPressureState, ObserverUserState
+
+    now = _utcnow()
+    _seed_ops_fixture(api, now=now)
+    s = api.SessionLocal()
+    try:
+        s.add_all(
+            [
+                KeyPressureState(
+                    key_id=9001,
+                    tg_id=1001,
+                    node_code="de",
+                    panel_email="nearcap@example.test",
+                    state="watch",
+                    pressure_score=72.5,
+                    reasons_json=json.dumps(["multi_ip", "burst"], ensure_ascii=False),
+                    distinct_source_ips_1h=2,
+                    distinct_source_ips_24h=2,
+                    node_count_24h=1,
+                    traffic_gb_24h=1.25,
+                    manual_review_required=True,
+                    updated_at=now,
+                ),
+                ObserverUserState(
+                    tg_id=1001,
+                    state="watch",
+                    reasons_json=json.dumps(["multi_ip"], ensure_ascii=False),
+                    observed_ip_count_24h=2,
+                    observed_ip_count_7d=2,
+                    observed_ip_count_30d=2,
+                    observed_node_count_24h=1,
+                    observed_node_count_7d=1,
+                    observed_node_count_30d=1,
+                    last_observed_at=now,
+                    updated_at=now,
+                ),
+            ]
+        )
+        s.commit()
+    finally:
+        s.close()
+
+    class FakeControlPanel:
+        async def get_node_online_clients(self, *, node_codes=None):
+            return {
+                "rows": [
+                    {
+                        "node_code": "de",
+                        "node_name": "DE",
+                        "tg_id": 1001,
+                        "panel_email": "nearcap@example.test",
+                        "client_uuid": "client-1001",
+                        "ip_count": 2,
+                        "last_online_at": now.isoformat(),
+                        "source_ip_raw": "203.0.113.77",
+                    },
+                    {
+                        "node_code": "nl-free",
+                        "panel_email": "unknown@example.test",
+                        "client_uuid": "client-unknown",
+                        "ip_count": 1,
+                        "last_online_at": now.isoformat(),
+                        "source_ip_raw": "198.51.100.42",
+                    },
+                ],
+                "errors": [{"node_code": "pl", "error": "panel timeout"}],
+            }
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(api, "ControlPanel", FakeControlPanel)
+    client = TestClient(api.app)
+    response = client.get("/api/admin/online/users?limit=50", headers=_admin_headers())
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["summary"]["raw_ip_exposed"] is False
+    assert body["summary"]["known_users_online"] == 1
+    assert body["summary"]["unknown_online_keys"] == 1
+    assert body["summary"]["nodes_with_panel_errors"] == 1
+    known = next(row for row in body["rows"] if row["tg_id"] == 1001)
+    assert known["raw_ip_exposed"] is False
+    assert known["online_connections_now"] == 2
+    assert "manual_review" in known["risk_flags"]
+    assert "multi_ip" in known["risk_flags"]
+    assert "observer:watch" in known["risk_flags"]
+    assert "203.0.113.77" not in response.text
+    assert "198.51.100.42" not in response.text
+
+
+def test_admin_broadcast_dry_run_does_not_send(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    now = _utcnow()
+    _seed_ops_fixture(api, now=now)
+    sent_messages: list[tuple[int, str]] = []
+
+    async def fake_send(chat_id: int, text: str, **_kwargs) -> bool:
+        sent_messages.append((chat_id, text))
+        return True
+
+    monkeypatch.setattr(api, "_telegram_send_message", fake_send)
+    client = TestClient(api.app)
+    response = client.post(
+        "/api/admin/broadcast",
+        headers=_admin_headers(),
+        json={"text": "Проверка dry-run", "segment": "all_active", "limit": 20, "dry_run": True},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["ok"] is True
+    assert body["dry_run"] is True
+    assert body["attempted"] == 2
+    assert body["sent"] == 0
+    assert body["failed"] == 0
+    assert sent_messages == []
 
 
 def test_provider_quota_usage_handles_counter_reset(monkeypatch, tmp_path) -> None:

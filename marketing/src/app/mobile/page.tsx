@@ -1,12 +1,14 @@
 import { IntentLanding } from "../../components/intent/intent-landing";
 import { buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { getSeoPage } from "../../lib/seo-pages";
+
+const seoPage = getSeoPage(MARKETING_CANONICAL_PATHS.mobile);
 
 export const metadata = buildMarketingMetadata(
-  "Быстрый старт на телефоне | POKROV для Android",
-  "POKROV на Android: установка за минуту, 5 дней бесплатно без карты, одна кнопка подключения. Кабинет и поддержка под рукой.",
+  seoPage.title,
+  seoPage.description,
   {
     path: MARKETING_CANONICAL_PATHS.mobile,
-    keywords: ["проверка связи на телефоне", "android", "быстрый старт", "pokrov на телефон"],
   },
 );
 
@@ -37,6 +39,7 @@ export default function MobilePage() {
           desc: "Сколько дней осталось и как продлить — видно прямо на экране аккаунта.",
         },
       ]}
+      seoPage={seoPage}
     />
   );
 }

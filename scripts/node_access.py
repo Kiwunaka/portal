@@ -5,6 +5,7 @@ import os
 import base64
 import struct
 import socket
+import logging
 from pathlib import Path
 
 import paramiko
@@ -16,6 +17,8 @@ from puttykeys import ppkraw_to_openssh
 from node_passwords import parse_password_candidates, parse_passwords
 
 
+logging.getLogger("paramiko.transport").setLevel(logging.CRITICAL)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 DEFAULT_KEY_DIR = REPO_ROOT / "VPN NODE SSH KEYS"
@@ -24,6 +27,9 @@ KEY_STEMS: dict[str, list[str]] = {
     "brain": ["BRAINnode"],
     "de": ["DEnodeMAX", "DEMAX", "DEnode", "GermanyNode"],
     "us": ["USnode"],
+    "ru": ["RUnode", "RUSSIA", "Russia"],
+    "ru_spb": ["RUnodeSPB", "RUSSIA", "Russia"],
+    "ruspb": ["RUnodeSPB", "RUSSIA", "Russia"],
     "pl": ["PLnode"],
     "it": ["ITnode"],
     "nl": ["NLnode", "Low ping v2", "LowPingV2"],
@@ -42,6 +48,12 @@ DEFAULT_PORTS: dict[str, list[int]] = {
     # DEMAX currently exposes SSH on the raw IP through tcp/22, while the DNS
     # route may still answer on the operator port.
     "de": [22, 29374],
+    # Fresh 2026-07 replacement nodes expose SSH on the provider-default port.
+    "us": [22, 29374],
+    "ru": [22, 29374],
+    "ru_spb": [22, 29374],
+    "ruspb": [22, 29374],
+    "nl": [22, 29374],
     "mini": [22, 29374],
 }
 

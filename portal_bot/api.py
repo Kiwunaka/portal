@@ -193,11 +193,12 @@ from network_rollout import (
     normalized_network_rollout_config,
     ru_bridge_relay_config,
     ru_bridge_relay_enabled,
+    ru_bridge_relay_endpoints,
     resolved_client_policy,
     transport_node_allowlist,
     transport_node_exclusions,
 )
-from public_urls import build_subscription_url, public_connect_host
+from public_urls import build_subscription_url, public_connect_base_url, public_connect_host
 from shared_surface_facts import (
     get_access_matrix,
     get_product_facts,
@@ -991,6 +992,7 @@ class AdminBroadcastIn(BaseModel):
     segment: str = Field(default="all_active")
     limit: int = Field(default=500, ge=1, le=1000)
     tg_ids: list[int] = Field(default_factory=list)
+    dry_run: bool = False
 
 
 class AdminTicketReplyIn(TicketMessageIn):
@@ -12239,6 +12241,129 @@ def _admin_payment_order_payload(*, s, order: ExternalOrder) -> dict[str, Any]:
     }
 
 
+def _admin_payment_period_bounds(period: str) -> tuple[str, datetime, datetime]:
+    period_norm = str(period or "7d").strip().lower()
+    now = _utcnow()
+    if period_norm in {"today", "day", "1d"}:
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        label = "today"
+    elif period_norm in {"30d", "month"}:
+        start = now - timedelta(days=30)
+        label = "30d"
+    else:
+        start = now - timedelta(days=7)
+        label = "7d"
+    return label, start, now
+
+
+def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
+    label, from_dt, to_dt = _admin_payment_period_bounds(period)
+    paid_time = func.coalesce(ExternalOrder.paid_at, ExternalOrder.created_at)
+    paid_rows = (
+        s.query(
+            ExternalOrder.currency,
+            func.count(ExternalOrder.id),
+            func.sum(func.coalesce(ExternalOrder.amount, 0.0)),
+        )
+        .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
+        .filter(paid_time >= from_dt, paid_time <= to_dt)
+        .group_by(ExternalOrder.currency)
+        .all()
+    )
+    revenue_by_currency = [
+        {
+            "currency": str(currency or "RUB"),
+            "paid_count": int(count or 0),
+            "revenue": round(float(total or 0.0), 2),
+        }
+        for currency, count, total in paid_rows
+    ]
+    primary_revenue = next((row for row in revenue_by_currency if row["currency"].upper() == "RUB"), None)
+    if not primary_revenue and revenue_by_currency:
+        primary_revenue = revenue_by_currency[0]
+    if not primary_revenue:
+        primary_revenue = {"currency": "RUB", "paid_count": 0, "revenue": 0.0}
+
+    status_counts = {
+        str(status or "created"): int(count or 0)
+        for status, count in (
+            s.query(ExternalOrder.status, func.count(ExternalOrder.id))
+            .filter(ExternalOrder.created_at >= from_dt, ExternalOrder.created_at <= to_dt)
+            .group_by(ExternalOrder.status)
+            .all()
+        )
+    }
+    pending_count = sum(int(status_counts.get(status, 0)) for status in ("created", "pending", "pending_verification"))
+    manual_review_count = int(status_counts.get("manual_review", 0))
+    failed_count = sum(int(status_counts.get(status, 0)) for status in ("failed", "cancelled", "refunded", "chargeback"))
+
+    site_checkout_intent = _count_funnel_sessions(
+        s,
+        from_dt=from_dt,
+        to_dt=to_dt,
+        stages={"checkout_view", "checkout_start"},
+    )
+    known_buy_clicks = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"clicked_pay"})
+    known_checkout_events = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"pay_started"})
+    pay_attempts_started = _count_pay_attempt_users(s, from_dt=from_dt, to_dt=to_dt)
+    buy_clicks = site_checkout_intent + known_buy_clicks
+    checkout_started = site_checkout_intent + max(known_checkout_events, pay_attempts_started)
+    paid_count = int(primary_revenue.get("paid_count") or 0)
+
+    recent_problem_orders = (
+        s.query(ExternalOrder)
+        .filter(ExternalOrder.created_at >= from_dt, ExternalOrder.created_at <= to_dt)
+        .filter(func.lower(func.coalesce(ExternalOrder.status, "")).in_(["created", "pending", "pending_verification", "manual_review", "failed"]))
+        .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
+        .limit(25)
+        .all()
+    )
+
+    return {
+        "ok": True,
+        "period": {
+            "key": label,
+            "from": _safe_iso(from_dt),
+            "to": _safe_iso(to_dt),
+        },
+        "revenue": {
+            "currency": primary_revenue["currency"],
+            "paid_count": paid_count,
+            "amount": float(primary_revenue["revenue"]),
+            "by_currency": revenue_by_currency,
+        },
+        "status_counts": status_counts,
+        "attention": {
+            "pending_count": int(pending_count),
+            "manual_review_count": int(manual_review_count),
+            "failed_count": int(failed_count),
+            "problem_count": int(pending_count + manual_review_count + failed_count),
+        },
+        "abandoned": {
+            "buy_clicks": int(buy_clicks),
+            "checkout_started": int(checkout_started),
+            "paid": int(paid_count),
+            "buy_click_not_paid": max(0, int(buy_clicks) - int(paid_count)),
+            "checkout_not_paid": max(0, int(checkout_started) - int(paid_count)),
+            "note": "Диагностический funnel-счетчик; бухгалтерская правда остается в signed payment callbacks и external_orders.",
+        },
+        "problem_orders": [_admin_payment_order_payload(s=s, order=row) for row in recent_problem_orders],
+    }
+
+
+@app.get("/api/admin/payments/summary")
+async def admin_payments_summary(
+    x_telegram_init_data: str = Header(default=""),
+    period: str = Query(default="7d"),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return _admin_payments_summary_payload(s=s, period=period)
+    finally:
+        s.close()
+
+
 @app.get("/api/admin/payments/orders")
 async def admin_payment_orders(
     x_telegram_init_data: str = Header(default=""),
@@ -13681,6 +13806,22 @@ async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str =
             target_ids = [int(r[0]) for r in query.order_by(User.tg_id.asc()).limit(limit).all()]
     finally:
         s.close()
+
+    if bool(payload.dry_run):
+        _audit_admin(
+            actor_tg_id=actor,
+            action="admin_broadcast_preview",
+            meta={"segment": segment, "attempted": min(len(target_ids), limit), "limit": limit},
+        )
+        return {
+            "ok": True,
+            "dry_run": True,
+            "segment": segment,
+            "attempted": min(len(target_ids), limit),
+            "sent": 0,
+            "failed": 0,
+            "sample_tg_ids": [int(value) for value in target_ids[:5]],
+        }
 
     sent = 0
     failed = 0
@@ -15443,6 +15584,236 @@ async def admin_keys_pressure(
         s.close()
 
 
+def _parse_panel_datetime(value: Any) -> datetime | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    except Exception:
+        return None
+
+
+def _pressure_reasons(row: KeyPressureState) -> list[str]:
+    try:
+        parsed = json.loads(str(row.reasons_json or "[]"))
+    except Exception:
+        parsed = []
+    return [str(item) for item in parsed if str(item or "").strip()] if isinstance(parsed, list) else []
+
+
+def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict], limit: int) -> dict[str, Any]:
+    tg_ids = sorted(
+        {
+            int(row.get("tg_id"))
+            for row in live_rows
+            if row.get("tg_id") is not None and str(row.get("tg_id")).lstrip("-").isdigit()
+        }
+    )
+    panel_emails = sorted({str(row.get("panel_email") or "").strip().lower() for row in live_rows if str(row.get("panel_email") or "").strip()})
+
+    users_by_tg: dict[int, User] = {}
+    users_by_email: dict[str, User] = {}
+    if tg_ids:
+        for user in s.query(User).filter(User.tg_id.in_(tg_ids)).all():
+            users_by_tg[int(user.tg_id)] = user
+            email = str(getattr(user, "email", "") or "").strip().lower()
+            if email:
+                users_by_email[email] = user
+    if panel_emails:
+        for user in s.query(User).filter(func.lower(func.coalesce(User.email, "")).in_(panel_emails)).all():
+            users_by_tg[int(user.tg_id)] = user
+            email = str(getattr(user, "email", "") or "").strip().lower()
+            if email:
+                users_by_email[email] = user
+
+    pressure_rows: list[KeyPressureState] = []
+    pressure_filters = []
+    if tg_ids:
+        pressure_filters.append(KeyPressureState.tg_id.in_(tg_ids))
+    if panel_emails:
+        pressure_filters.append(func.lower(func.coalesce(KeyPressureState.panel_email, "")).in_(panel_emails))
+    if pressure_filters:
+        pressure_rows = s.query(KeyPressureState).filter(or_(*pressure_filters)).all()
+    pressure_by_tg: dict[int, list[KeyPressureState]] = {}
+    pressure_by_email: dict[str, list[KeyPressureState]] = {}
+    for row in pressure_rows:
+        if row.tg_id is not None:
+            pressure_by_tg.setdefault(int(row.tg_id), []).append(row)
+        email = str(row.panel_email or "").strip().lower()
+        if email:
+            pressure_by_email.setdefault(email, []).append(row)
+
+    observer_by_tg: dict[int, ObserverUserState] = {}
+    if tg_ids:
+        for row in s.query(ObserverUserState).filter(ObserverUserState.tg_id.in_(tg_ids)).all():
+            observer_by_tg[int(row.tg_id)] = row
+
+    aggregates: dict[str, dict[str, Any]] = {}
+    for live in live_rows:
+        raw_tg_id = live.get("tg_id")
+        tg_id = int(raw_tg_id) if raw_tg_id is not None and str(raw_tg_id).lstrip("-").isdigit() else None
+        panel_email = str(live.get("panel_email") or "").strip()
+        email_key = panel_email.lower()
+        user = users_by_tg.get(int(tg_id)) if tg_id is not None else None
+        if user is None and email_key:
+            user = users_by_email.get(email_key)
+        effective_tg_id = int(user.tg_id) if user else tg_id
+        identity = f"tg:{effective_tg_id}" if effective_tg_id is not None else f"panel:{email_key or live.get('client_uuid') or live.get('node_code')}"
+        agg = aggregates.setdefault(
+            identity,
+            {
+                "identity": identity,
+                "tg_id": effective_tg_id,
+                "username": getattr(user, "username", None) if user else None,
+                "display_name": getattr(user, "display_name", None) if user else None,
+                "sub_type": getattr(user, "sub_type", None) if user else None,
+                "status": _user_effective_status(user) if user else "unknown",
+                "origin": _user_origin(user) if user else "unknown",
+                "nodes_online_set": set(),
+                "online_keys_now": 0,
+                "online_connections_now": 0,
+                "ip_count": 0,
+                "panel_email_set": set(),
+                "last_online_dt": None,
+                "last_online_at": None,
+                "risk_flags": set(),
+                "pressure_score": 0.0,
+                "traffic_gb_24h": 0.0,
+            },
+        )
+        if user and agg.get("username") is None:
+            agg["username"] = getattr(user, "username", None)
+            agg["display_name"] = getattr(user, "display_name", None)
+            agg["sub_type"] = getattr(user, "sub_type", None)
+            agg["status"] = _user_effective_status(user)
+            agg["origin"] = _user_origin(user)
+        node_code = str(live.get("node_code") or "").strip()
+        if node_code:
+            agg["nodes_online_set"].add(node_code)
+        if panel_email:
+            agg["panel_email_set"].add(panel_email)
+        ip_count = max(1, int(live.get("ip_count") or 1))
+        agg["online_keys_now"] += 1
+        agg["online_connections_now"] += ip_count
+        agg["ip_count"] += ip_count
+        last_dt = _parse_panel_datetime(live.get("last_online_at"))
+        if last_dt is not None and (agg["last_online_dt"] is None or last_dt > agg["last_online_dt"]):
+            agg["last_online_dt"] = last_dt
+            agg["last_online_at"] = _safe_iso(last_dt)
+
+    for agg in aggregates.values():
+        tg_id = agg.get("tg_id")
+        panel_email_values = {str(email).strip().lower() for email in (agg.get("panel_email_set") or set()) if str(email).strip()}
+        pressure_matches: list[KeyPressureState] = []
+        if tg_id is not None:
+            pressure_matches.extend(pressure_by_tg.get(int(tg_id), []))
+        for email in panel_email_values:
+            pressure_matches.extend(pressure_by_email.get(email, []))
+        seen_pressure_keys: set[int] = set()
+        for pressure in pressure_matches:
+            key_id = int(pressure.key_id)
+            if key_id in seen_pressure_keys:
+                continue
+            seen_pressure_keys.add(key_id)
+            state = str(pressure.state or "ok")
+            if state != "ok":
+                agg["risk_flags"].add(f"key_pressure:{state}")
+            if bool(pressure.manual_review_required):
+                agg["risk_flags"].add("manual_review")
+            for reason in _pressure_reasons(pressure):
+                agg["risk_flags"].add(str(reason))
+            agg["pressure_score"] = max(float(agg.get("pressure_score") or 0.0), float(pressure.pressure_score or 0.0))
+            agg["traffic_gb_24h"] += float(pressure.traffic_gb_24h or 0.0)
+        if int(agg.get("ip_count") or 0) > 1:
+            agg["risk_flags"].add("multi_ip")
+        if tg_id is None:
+            agg["risk_flags"].add("unknown_identity")
+        elif int(tg_id) in observer_by_tg:
+            observer = observer_by_tg[int(tg_id)]
+            state = str(observer.state or "ok")
+            if state != "ok":
+                agg["risk_flags"].add(f"observer:{state}")
+
+    rows: list[dict[str, Any]] = []
+    for agg in aggregates.values():
+        panel_emails_out = sorted({str(email) for email in agg.pop("panel_email_set", set()) if str(email).strip()})
+        nodes_online = sorted({str(code) for code in agg.pop("nodes_online_set", set()) if str(code).strip()})
+        agg.pop("last_online_dt", None)
+        risk_flags = sorted({str(flag) for flag in agg.pop("risk_flags", set()) if str(flag).strip()})
+        rows.append(
+            {
+                **agg,
+                "nodes_online": nodes_online,
+                "nodes_online_count": len(nodes_online),
+                "risk_flags": risk_flags,
+                "panel_email": panel_emails_out[0] if panel_emails_out and agg.get("tg_id") is None else None,
+                "panel_email_count": len(panel_emails_out),
+                "raw_ip_exposed": False,
+                "traffic_gb_24h": round(float(agg.get("traffic_gb_24h") or 0.0), 3),
+                "pressure_score": round(float(agg.get("pressure_score") or 0.0), 1),
+            }
+        )
+    rows.sort(
+        key=lambda row: (
+            "manual_review" not in set(row.get("risk_flags") or []),
+            -float(row.get("pressure_score") or 0.0),
+            -int(row.get("ip_count") or 0),
+            str(row.get("last_online_at") or ""),
+        )
+    )
+    bounded = rows[: max(1, min(int(limit), 500))]
+    return {
+        "ok": True,
+        "generated_at": _safe_iso(_utcnow()),
+        "rows": bounded,
+        "total": len(rows),
+        "limit": max(1, min(int(limit), 500)),
+        "summary": {
+            "online_identities": len(rows),
+            "known_users_online": sum(1 for row in rows if row.get("tg_id") is not None),
+            "unknown_online_keys": sum(1 for row in rows if row.get("tg_id") is None),
+            "online_keys_now": sum(int(row.get("online_keys_now") or 0) for row in rows),
+            "online_connections_now": sum(int(row.get("online_connections_now") or 0) for row in rows),
+            "nodes_with_panel_errors": len(errors),
+            "raw_ip_exposed": False,
+        },
+        "panel_errors": errors,
+        "notes": [
+            "Список построен по live panel online state.",
+            "IP-адреса здесь не возвращаются; raw IP видны только в карточке конкретного пользователя через observer block.",
+        ],
+    }
+
+
+@app.get("/api/admin/online/users")
+async def admin_online_users(
+    x_telegram_init_data: str = Header(default=""),
+    limit: int = Query(default=200, ge=1, le=500),
+    only: str = Query(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    only_codes = [part.strip().lower() for part in str(only or "").split(",") if part.strip()]
+    panel = ControlPanel()
+    try:
+        live = await panel.get_node_online_clients(node_codes=only_codes or None)
+    finally:
+        await panel.close()
+    s = SessionLocal()
+    try:
+        return _admin_online_users_payload(
+            s=s,
+            live_rows=list(live.get("rows") or []),
+            errors=list(live.get("errors") or []),
+            limit=int(limit),
+        )
+    finally:
+        s.close()
+
+
 @app.post("/api/admin/keys/{key_id}/rotate")
 async def admin_key_rotate_request(
     key_id: int,
@@ -15956,8 +16327,14 @@ def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
     return order
 
 
-def _ru_bridge_outbound(*, user_uuid: str, rollout_config: dict[str, Any], tag: str = RU_BRIDGE_OUTBOUND_TAG) -> dict[str, Any]:
-    bridge = ru_bridge_relay_config(rollout_config)
+def _ru_bridge_outbound(
+    *,
+    user_uuid: str,
+    rollout_config: dict[str, Any],
+    tag: str = RU_BRIDGE_OUTBOUND_TAG,
+    bridge: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    bridge = dict(bridge or ru_bridge_relay_config(rollout_config))
     tls_server_name = str(bridge.get("tls_server_name") or "www.yandex.ru").strip()
     return {
         "type": "vless",
@@ -15981,6 +16358,13 @@ def _ru_bridge_outbound(*, user_uuid: str, rollout_config: dict[str, Any], tag: 
             },
         },
     }
+
+
+def _ru_bridge_endpoint_tag(index: int, endpoint: dict[str, Any]) -> str:
+    if index <= 0:
+        return RU_BRIDGE_OUTBOUND_TAG
+    label = str(endpoint.get("label") or f"тип {index + 1}").strip()
+    return f"POKROV мост {label}{HIDDIFY_HIDDEN_TAG_SUFFIX}"
 
 
 def _synthetic_transport_node() -> Any:
@@ -16220,7 +16604,7 @@ def _node_label_ru(code: str, fallback_name: str = "") -> str:
     if "free" in code_raw.lower():
         return "🇳🇱 NL Free"
     base = _node_code_base(code_raw)
-    flags = {"pl": "🇵🇱", "it": "🇮🇹", "us": "🇺🇸", "nl": "🇳🇱", "brain": "🇩🇪", "de": "🇩🇪"}
+    flags = {"pl": "🇵🇱", "it": "🇮🇹", "us": "🇺🇸", "nl": "🇳🇱", "brain": "🇩🇪", "de": "🇩🇪", "ru": "🇷🇺"}
     names = {
         "pl": "Польша",
         "it": "Италия",
@@ -16228,6 +16612,7 @@ def _node_label_ru(code: str, fallback_name: str = "") -> str:
         "nl": "Нидерланды",
         "brain": "Германия",
         "de": "Германия",
+        "ru": "Россия",
     }
     flag = flags.get(base, "🏳️")
     nm = names.get(base, fallback_name or (base.upper() if base else (code_raw or "Node")))
@@ -16241,20 +16626,30 @@ def _node_label_ru(code: str, fallback_name: str = "") -> str:
     return f"{flag} {nm} {variant}".strip()
 
 
+def _singbox_rule_set_base_url() -> str:
+    configured = str(os.getenv("SINGBOX_RULESET_BASE_URL", "") or "").strip()
+    if configured:
+        return configured.rstrip("/")
+    return f"{public_connect_base_url().rstrip('/')}/rules"
+
+
 def _singbox_remote_rule_sets() -> list[dict[str, Any]]:
+    base_url = _singbox_rule_set_base_url()
     return [
         {
             "type": "remote",
             "tag": "geoip-ru",
             "format": "binary",
-            "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs",
+            "url": f"{base_url}/geoip-ru.srs",
+            "update_interval": "1d",
             "download_detour": "direct",
         },
         {
             "type": "remote",
             "tag": "geosite-category-ads-all",
             "format": "binary",
-            "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs",
+            "url": f"{base_url}/adblock.srs",
+            "update_interval": "1d",
             "download_detour": "direct",
         },
     ]
@@ -16318,7 +16713,12 @@ def _steam_direct_process_names() -> list[str]:
     ]
 
 
-def _singbox_common_route_rules(*, selector_tag: str, youtube_direct: bool = False) -> list[dict[str, Any]]:
+def _singbox_common_route_rules(
+    *,
+    selector_tag: str,
+    youtube_direct: bool = False,
+    torrent_outbound: str | None = None,
+) -> list[dict[str, Any]]:
     youtube_domain_suffix = [
         "youtube.com",
         "youtu.be",
@@ -16327,11 +16727,12 @@ def _singbox_common_route_rules(*, selector_tag: str, youtube_direct: bool = Fal
         "youtubei.googleapis.com",
         "yt3.ggpht.com",
     ]
+    torrent_target = str(torrent_outbound or "").strip() or "direct"
     rules: list[dict[str, Any]] = [
+        {"protocol": "bittorrent", "outbound": torrent_target},
         {"rule_set": ["geoip-ru"], "outbound": "direct"},
         {"process_name": _steam_direct_process_names(), "outbound": "direct"},
         {"domain_suffix": _steam_direct_domain_suffixes(), "outbound": "direct"},
-        {"protocol": "bittorrent", "outbound": "direct"},
     ]
     if youtube_direct:
         rules.append({"domain_suffix": youtube_domain_suffix, "outbound": "direct"})
@@ -16364,9 +16765,10 @@ def _singbox_multi_node_config(
 ) -> dict:
     outbounds = []
     selector_opts = []
+    ru_torrent_outbounds: list[str] = []
     selector_tag = "🌍 Страны"
     bridge_enabled = bool(rollout_config and ru_bridge_relay_enabled(rollout_config))
-    bridge_tag = RU_BRIDGE_OUTBOUND_TAG
+    bridge_endpoints = ru_bridge_relay_endpoints(rollout_config or {}) if bridge_enabled else []
     bridge_excluded_codes = set(transport_node_exclusions(rollout_config or {}, RU_BRIDGE_RELAY)) if bridge_enabled else set()
 
     def bridge_excluded(node: Any) -> bool:
@@ -16393,18 +16795,41 @@ def _singbox_multi_node_config(
             transport_profile=transport_profile,
         )
         outbounds.append(direct_outbound)
+        if base == "ru":
+            ru_torrent_outbounds.append(tag)
 
         if has_bridge_choice:
-            bridge_node_tag = f"{tag} · Белые списки"
-            bridged_outbound = dict(direct_outbound)
-            bridged_outbound["tag"] = bridge_node_tag
-            bridged_outbound["detour"] = bridge_tag
-            outbounds.append(bridged_outbound)
-            selector_opts.append(bridge_node_tag)
+            for idx, endpoint in enumerate(bridge_endpoints):
+                bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
+                bridge_node_tag = f"{tag} · {bridge_label}"
+                bridged_outbound = dict(direct_outbound)
+                bridged_outbound["tag"] = bridge_node_tag
+                bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
+                outbounds.append(bridged_outbound)
+                selector_opts.append(bridge_node_tag)
 
     selector_default = selector_opts[0] if selector_opts else "direct"
+    torrent_outbound_tag = ""
+    if ru_torrent_outbounds:
+        torrent_outbound_tag = f"POKROV торренты RU{HIDDIFY_HIDDEN_TAG_SUFFIX}"
+        outbounds.append(
+            {
+                "type": "selector",
+                "tag": torrent_outbound_tag,
+                "outbounds": ru_torrent_outbounds,
+                "default": ru_torrent_outbounds[0],
+            }
+        )
     if bridge_enabled:
-        outbounds.append(_ru_bridge_outbound(user_uuid=user_uuid, rollout_config=rollout_config or {}, tag=bridge_tag))
+        for idx, endpoint in enumerate(bridge_endpoints):
+            outbounds.append(
+                _ru_bridge_outbound(
+                    user_uuid=user_uuid,
+                    rollout_config=rollout_config or {},
+                    tag=_ru_bridge_endpoint_tag(idx, endpoint),
+                    bridge=endpoint,
+                )
+            )
     outbounds.extend(
         [
             {
@@ -16421,7 +16846,11 @@ def _singbox_multi_node_config(
 
     meta: dict[str, Any] = {"title": title}
     if bridge_enabled:
-        meta["ru_bridge"] = {"enabled": True, "excluded_node_codes": sorted(bridge_excluded_codes)}
+        meta["ru_bridge"] = {
+            "enabled": True,
+            "excluded_node_codes": sorted(bridge_excluded_codes),
+            "endpoints": [{"id": item.get("id"), "label": item.get("label")} for item in bridge_endpoints],
+        }
 
     return {
         "log": {"level": "warn", "timestamp": True},
@@ -16430,7 +16859,7 @@ def _singbox_multi_node_config(
         "outbounds": outbounds,
         "route": {
             "rule_set": _singbox_remote_rule_sets(),
-            "rules": _singbox_common_route_rules(selector_tag=selector_tag),
+            "rules": _singbox_common_route_rules(selector_tag=selector_tag, torrent_outbound=torrent_outbound_tag),
             "auto_detect_interface": True,
             "final": selector_tag,
         },
@@ -16450,11 +16879,12 @@ def _singbox_ru_bridge_config(
 ) -> dict:
     bridge = ru_bridge_relay_config(rollout_config)
     selector_tag = "🌍 Страны"
-    bridge_tag = RU_BRIDGE_OUTBOUND_TAG
+    bridge_endpoints = ru_bridge_relay_endpoints(rollout_config)
     excluded = set(transport_node_exclusions(rollout_config, RU_BRIDGE_RELAY))
 
     outbounds = []
     selector_opts = []
+    ru_torrent_outbounds: list[str] = []
     def bridge_excluded(node: Any) -> bool:
         code = str(getattr(node, "code", "") or "").strip().lower()
         base = _node_code_base(code)
@@ -16477,6 +16907,8 @@ def _singbox_ru_bridge_config(
         )
         outbounds.append(direct_outbound)
         country_opts.append(normal_tag)
+        if base == "ru":
+            ru_torrent_outbounds.append(normal_tag)
         if code in excluded or base in excluded:
             outbounds.append(
                 {
@@ -16488,12 +16920,14 @@ def _singbox_ru_bridge_config(
             )
             continue
 
-        bridge_node_tag = f"{label} · Белые списки"
-        bridged_outbound = dict(direct_outbound)
-        bridged_outbound["tag"] = bridge_node_tag
-        bridged_outbound["detour"] = bridge_tag
-        outbounds.append(bridged_outbound)
-        country_opts.append(bridge_node_tag)
+        for idx, endpoint in enumerate(bridge_endpoints):
+            bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
+            bridge_node_tag = f"{label} · {bridge_label}"
+            bridged_outbound = dict(direct_outbound)
+            bridged_outbound["tag"] = bridge_node_tag
+            bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
+            outbounds.append(bridged_outbound)
+            country_opts.append(bridge_node_tag)
         outbounds.append(
             {
                 "type": "selector",
@@ -16504,9 +16938,28 @@ def _singbox_ru_bridge_config(
         )
 
     selector_default = selector_opts[0] if selector_opts else "direct"
+    torrent_outbound_tag = ""
+    if ru_torrent_outbounds:
+        torrent_outbound_tag = f"POKROV торренты RU{HIDDIFY_HIDDEN_TAG_SUFFIX}"
+        outbounds.append(
+            {
+                "type": "selector",
+                "tag": torrent_outbound_tag,
+                "outbounds": ru_torrent_outbounds,
+                "default": ru_torrent_outbounds[0],
+            }
+        )
     outbounds.extend(
         [
-            _ru_bridge_outbound(user_uuid=user_uuid, rollout_config=rollout_config, tag=bridge_tag),
+            *[
+                _ru_bridge_outbound(
+                    user_uuid=user_uuid,
+                    rollout_config=rollout_config,
+                    tag=_ru_bridge_endpoint_tag(idx, endpoint),
+                    bridge=endpoint,
+                )
+                for idx, endpoint in enumerate(bridge_endpoints)
+            ],
             {
                 "type": "selector",
                 "tag": selector_tag,
@@ -16526,12 +16979,19 @@ def _singbox_ru_bridge_config(
         "outbounds": outbounds,
         "route": {
             "rule_set": _singbox_remote_rule_sets(),
-            "rules": _singbox_common_route_rules(selector_tag=selector_tag),
+            "rules": _singbox_common_route_rules(selector_tag=selector_tag, torrent_outbound=torrent_outbound_tag),
             "auto_detect_interface": True,
             "final": selector_tag,
         },
         "experimental": {"cache_file": {"enabled": True}},
-        "_meta": {"title": title, "ru_bridge": {"enabled": True, "excluded_node_codes": bridge.get("excluded_node_codes", [])}},
+        "_meta": {
+            "title": title,
+            "ru_bridge": {
+                "enabled": True,
+                "excluded_node_codes": bridge.get("excluded_node_codes", []),
+                "endpoints": [{"id": item.get("id"), "label": item.get("label")} for item in bridge_endpoints],
+            },
+        },
     }
 
 
@@ -16693,9 +17153,7 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
             if not filtered:
                 filtered = list(pool)
 
-        # 2) Prefer healthy nodes when health data is available; fallback to full pool.
-        healthy = [node for node in filtered if bool(getattr(node, "is_healthy", True))]
-        return healthy or filtered
+        return filtered
 
     candidate_nodes = [node for node in nodes if _node_accepts_new_clients(node)]
     if not candidate_nodes:

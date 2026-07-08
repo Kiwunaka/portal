@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --font-body: var(--font-golos), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: var(--font-golos), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-golos: "Golos Text";
+  --font-body: var(--font-golos, "Golos Text"), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: var(--font-golos, "Golos Text"), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --ease-ops: cubic-bezier(0.22, 1, 0.36, 1);
 }

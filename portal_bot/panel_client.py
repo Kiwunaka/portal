@@ -309,6 +309,7 @@ class PanelClient:
         try:
             async with self.session.get(
                 f"{self._base()}/csrf-token",
+                headers={"X-Requested-With": "XMLHttpRequest"},
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=15),
             ) as resp:
@@ -331,9 +332,11 @@ class PanelClient:
     async def _csrf_headers(self, *, refresh: bool = True) -> dict[str, str]:
         if refresh and not self.csrf_token:
             await self._refresh_csrf_token()
+        headers = {"X-Requested-With": "XMLHttpRequest"}
         if not self.csrf_token:
-            return {}
-        return {"X-CSRF-Token": self.csrf_token}
+            return headers
+        headers["X-CSRF-Token"] = self.csrf_token
+        return headers
 
     async def login(self) -> bool:
         await self.ensure_session()
@@ -844,6 +847,107 @@ class PanelClient:
             "online_keys_now": int(len(online_keys)),
             "online_connections_now": int(sum(online_connections_by_email.values())),
         }
+
+    async def get_node_online_clients(self) -> list[dict]:
+        """
+        Return bounded live online client rows for operator aggregates.
+
+        The payload deliberately exposes connection counts and identifiers only;
+        raw source IP addresses stay in the per-user observer/admin card.
+        """
+        inbounds = self._selected_inbounds(await self._get_inbounds())
+        if not inbounds:
+            return []
+        online_emails_fetched = False
+        online_emails: set[str] = set()
+        rows: list[dict] = []
+        seen: set[tuple[int, str]] = set()
+
+        for target_inbound in inbounds:
+            inbound_id = int(target_inbound.get("id") or 0)
+            settings = self._decode_settings(target_inbound.get("settings", "{}"))
+            clients = settings.get("clients", []) or []
+            stats_by_email: dict[str, dict] = {}
+            for stat in target_inbound.get("clientStats", []) or []:
+                email = str((stat or {}).get("email", "") or "").strip()
+                if email:
+                    stats_by_email[email] = dict(stat or {})
+
+            for client in clients:
+                item = dict(client or {})
+                email = str(item.get("email", "") or "").strip()
+                if not email:
+                    continue
+                identity = (inbound_id, email)
+                if identity in seen:
+                    continue
+                stat = stats_by_email.get(email)
+                online = None
+                ip_count_value = None
+                last_online_epoch = None
+
+                if isinstance(stat, dict):
+                    for key in ("online", "isOnline", "is_online"):
+                        if key in stat:
+                            online = self._as_bool(stat.get(key))
+                            break
+                    ip_count = stat.get("ipCount", stat.get("ip_count"))
+                    if ip_count is not None:
+                        try:
+                            ip_count_value = max(0, int(ip_count))
+                            if online is None:
+                                online = ip_count_value > 0
+                        except Exception:
+                            ip_count_value = None
+                    for key in ("lastOnlineTime", "lastOnline", "last_online", "lastSeen", "last_seen"):
+                        if key in stat:
+                            last_online_epoch = self._as_epoch_seconds(stat.get(key))
+                            if last_online_epoch is not None:
+                                break
+
+                if online is None:
+                    if not online_emails_fetched:
+                        online_emails_fetched, online_emails = await self._get_online_emails()
+                    if online_emails_fetched:
+                        online = email in online_emails
+                if online is None and last_online_epoch is not None:
+                    recent_sec = max(15, self._to_int(os.getenv("PANEL_ONLINE_RECENT_SECONDS"), 90))
+                    online = (int(datetime.now(timezone.utc).timestamp()) - int(last_online_epoch)) <= recent_sec
+
+                if online is not True:
+                    continue
+                seen.add(identity)
+                last_online_at = None
+                last_online_age_seconds = None
+                if last_online_epoch is not None:
+                    dt = datetime.fromtimestamp(last_online_epoch, tz=timezone.utc)
+                    last_online_at = dt.isoformat().replace("+00:00", "Z")
+                    last_online_age_seconds = max(0, int(datetime.now(timezone.utc).timestamp()) - int(last_online_epoch))
+                tg_id = None
+                try:
+                    raw_tg_id = str(item.get("tgId", "") or "").strip()
+                    if raw_tg_id.lstrip("-").isdigit():
+                        tg_id = int(raw_tg_id)
+                except Exception:
+                    tg_id = None
+                rows.append(
+                    {
+                        "node_code": str(self.node.code or ""),
+                        "node_name": str(getattr(self.node, "name", "") or ""),
+                        "node_host": str(getattr(self.node, "host", "") or ""),
+                        "inbound_id": inbound_id,
+                        "tg_id": tg_id,
+                        "panel_email": email,
+                        "client_uuid": str(item.get("id", "") or ""),
+                        "enabled": bool(item.get("enable", True)),
+                        "ip_count": max(1, int(ip_count_value or 1)),
+                        "up": int((stat or {}).get("up", 0) or 0) if isinstance(stat, dict) else 0,
+                        "down": int((stat or {}).get("down", 0) or 0) if isinstance(stat, dict) else 0,
+                        "last_online_at": last_online_at,
+                        "last_online_age_seconds": last_online_age_seconds,
+                    }
+                )
+        return rows
 
     async def add_client(
         self,

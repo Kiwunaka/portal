@@ -4,15 +4,21 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from node_inventory import DEFAULT_INVENTORY, inventory_ipv4_map
+
 
 RE_IPV4 = re.compile(r"(\d{1,3}(?:\.\d{1,3}){3})")
 RE_IPV6 = re.compile(r"\b(?:[0-9a-fA-F]{0,4}:){2,}[0-9a-fA-F]{0,4}\b")
-RE_ROW = re.compile(r"^\|\s*`(?P<code>[^`]+)`\s*\|.*\|\s*`(?P<ip>[^`]+)`\s*\|\s*$")
 
 
 @dataclass
@@ -23,18 +29,7 @@ class NodeHost:
 
 
 def _parse_inventory_ipv4(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    out: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = RE_ROW.match(line.strip())
-        if not m:
-            continue
-        code = m.group("code").strip().lower()
-        ip = m.group("ip").strip()
-        if code and RE_IPV4.fullmatch(ip):
-            out[code] = ip
-    return out
+    return inventory_ipv4_map(path)
 
 
 def _resolve(host: str, resolver: str | None) -> tuple[list[str], list[str], str]:
@@ -65,9 +60,8 @@ def _resolve(host: str, resolver: str | None) -> tuple[list[str], list[str], str
 
 def _build_hosts(*, domain: str, include_brain: bool, inventory: dict[str, str]) -> list[NodeHost]:
     hosts = [
-        NodeHost(code="pl", host=f"pl.{domain}", expected_ipv4=inventory.get("pl")),
-        NodeHost(code="it", host=f"it.{domain}", expected_ipv4=inventory.get("it")),
-        NodeHost(code="us", host=f"us.{domain}", expected_ipv4=inventory.get("us")),
+        NodeHost(code=code, host=f"{code}.{domain}", expected_ipv4=inventory.get(code))
+        for code in ("pl", "it", "us", "nl", "free")
     ]
     if include_brain:
         hosts.append(NodeHost(code="brain", host=domain, expected_ipv4=inventory.get("brain")))
@@ -77,7 +71,7 @@ def _build_hosts(*, domain: str, include_brain: bool, inventory: dict[str, str])
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run DNS audit against multiple resolvers for node hosts.")
     ap.add_argument("--domain", required=True, help="Root domain, e.g. pokrov.space")
-    ap.add_argument("--inventory", default="docs/08-node-inventory.md")
+    ap.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     ap.add_argument("--include-brain", action="store_true")
     ap.add_argument("--resolvers", default="system,1.1.1.1,8.8.8.8,9.9.9.9")
     ap.add_argument("--out", default="")

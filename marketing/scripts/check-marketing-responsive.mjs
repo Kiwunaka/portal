@@ -11,7 +11,25 @@ const projectRoot = join(__dirname, "..");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const devCommand = process.platform === "win32" ? "cmd.exe" : npmCommand;
 
-const ROUTES = ["/", "/mobile/", "/devices/", "/telegram/", "/youtube/", "/tiktok/", "/vpn/"];
+const ROUTES = [
+  "/",
+  "/mobile/",
+  "/devices/",
+  "/telegram/",
+  "/youtube/",
+  "/tiktok/",
+  "/vpn/",
+  "/android/",
+  "/windows/",
+  "/install/",
+  "/install/android/",
+  "/install/windows/",
+  "/trial/no-card/",
+  "/billing/no-autosubscription/",
+  "/trust/github-releases/",
+  "/compare/free-vpn/",
+  "/support/install/",
+];
 const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844 },
   { name: "tablet", width: 700, height: 900 },

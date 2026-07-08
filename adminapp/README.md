@@ -1,6 +1,6 @@
 # POKROV AdminApp
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 
 ## Purpose
 
@@ -8,11 +8,17 @@ Last updated: 2026-07-07
 
 It owns the new admin surface for:
 
-- ops overview and alert triage
-- nodes, capacity, traffic, and time series
+- action-first ops overview: critical nodes, stuck payments, provider/free-tier limits, key pressure, and fresh tickets
+- global search by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifier
+- users: search, table, user card, access/online first, node/key/IP details only inside the user card, payments, tickets, and action history
+- online users: bounded live panel aggregate without raw IPs in the shared list
+- nodes: health-first view with panel/dataplane/probe/TLS/freshness/latency/observer/IP/transport/capacity and guarded lifecycle actions
+- payments: today/7d/30d revenue, stuck payments, orders, and abandoned buy/checkout counts
+- funnel: stage and source breakdown instead of raw JSON dumps
+- tickets, alerts, capacity, traffic, free-tier burn, provider/hoster quotas
 - free-tier burn and user caps
 - provider/hoster traffic quotas
-- users, tickets, payments, promos, referrals, release, broadcast, and funnel parity modules
+- promos, referrals, release readiness, and broadcast with preview/dry-run before real send
 
 The old `webapp/src/app/(admin)/admin/` routes stay as a parity fallback until the dedicated panel covers every operator workflow and the regression checklist is green.
 
@@ -25,6 +31,8 @@ The old `webapp/src/app/(admin)/admin/` routes stay as a parity fallback until t
 - TanStack Table for dense operator tables
 - Recharts for v1 charts
 - lucide-react icons
+
+The app intentionally avoids build-time `next/font/google` fetches; production builds use the local/system font stack with the POKROV token fallback.
 
 No Grafana, Beszel, Netdata, VictoriaMetrics, or provider API is required for v1.
 
@@ -52,6 +60,21 @@ Auth:
 Key v1 endpoints:
 
 - `GET /api/admin/ops/overview`
+- `GET /api/admin/users`
+- `GET /api/admin/users/{tg_id}`
+- `GET /api/admin/online/users`
+- `GET /api/admin/nodes/health`
+- `GET /api/admin/nodes/runtime`
+- `GET /api/admin/nodes/drift`
+- `POST /api/admin/nodes/{node_code}/drain`
+- `POST /api/admin/nodes/{node_code}/enable`
+- `POST /api/admin/nodes/{node_code}/undrain`
+- `POST /api/admin/nodes/{node_code}/disable`
+- `POST /api/admin/nodes/{node_code}/resync`
+- `GET /api/admin/keys/pressure`
+- `GET /api/admin/payments/summary?period=today|7d|30d`
+- `GET /api/admin/payments/orders`
+- `GET /api/admin/funnel/summary`
 - `GET /api/admin/free-tier/summary`
 - `GET /api/admin/free-tier/users`
 - `GET/POST/PATCH/DELETE /api/admin/provider-quotas`
@@ -61,8 +84,14 @@ Key v1 endpoints:
 - `GET /api/admin/alerts`
 - `POST /api/admin/alerts/{id}/ack`
 - `POST /api/admin/alerts/{id}/silence`
+- `POST /api/admin/broadcast` with `dry_run=true` for preview
 
-Parity modules reuse existing admin endpoints such as `/api/admin/users`, `/api/admin/tickets`, `/api/admin/payments/orders`, `/api/admin/promos`, `/api/admin/referrals/pending`, `/api/admin/live-updates`, `/api/admin/broadcast`, and `/api/admin/funnel/summary`.
+Parity modules reuse existing admin endpoints such as `/api/admin/tickets`, `/api/admin/promos`, `/api/admin/referrals/pending`, `/api/admin/live-updates`, and `/api/admin/gift-codes`.
+
+Privacy rule:
+
+- shared online lists must not expose raw IP addresses
+- raw/recent IP details are allowed only inside the individual user card for operator investigation
 
 ## Local Run
 
@@ -89,6 +118,12 @@ npm.cmd run build
 npm.cmd run lint
 ```
 
+Browser regression:
+
+```powershell
+npm.cmd run test:e2e
+```
+
 Static output is emitted to:
 
 - `adminapp/out`
@@ -100,6 +135,7 @@ Minimum checks for adminapp work:
 ```powershell
 npm.cmd run build
 npm.cmd run lint
+npm.cmd run test:e2e
 python -m pytest tests/test_admin_ops_api.py -q
 ```
 

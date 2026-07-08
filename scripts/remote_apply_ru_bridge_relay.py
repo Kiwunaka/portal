@@ -141,12 +141,17 @@ PY
     return json.loads(out)
 
 
-def ensure_reality_material(ssh: paramiko.SSHClient, *, meta_path: str = DEFAULT_BRIDGE_META) -> dict[str, Any]:
+def ensure_reality_material(
+    ssh: paramiko.SSHClient,
+    *,
+    meta_path: str = DEFAULT_BRIDGE_META,
+    xray_bin: str = "xray",
+) -> dict[str, Any]:
     existing = _remote_read_json(ssh, meta_path)
     if _clean_text(existing.get("private_key")) and _clean_text(existing.get("public_key")) and _clean_text(existing.get("short_id")):
         return existing
 
-    code, out, err = _run(ssh, "xray x25519", timeout=30)
+    code, out, err = _run(ssh, f"{shlex.quote(xray_bin)} x25519", timeout=30)
     if code != 0:
         raise SystemExit((err or out or "xray x25519 failed").strip())
     private_key = ""
@@ -168,6 +173,23 @@ def ensure_reality_material(ssh: paramiko.SSHClient, *, meta_path: str = DEFAULT
     return material
 
 
+def detect_xray_bin(ssh: paramiko.SSHClient, preferred: str = "auto") -> str:
+    preferred = _clean_text(preferred)
+    if preferred and preferred != "auto":
+        return preferred
+    candidates = [
+        "command -v xray 2>/dev/null",
+        "test -x /usr/local/x-ui/bin/xray-linux-amd64 && echo /usr/local/x-ui/bin/xray-linux-amd64",
+        "test -x /usr/local/x-ui/bin/xray && echo /usr/local/x-ui/bin/xray",
+    ]
+    for cmd in candidates:
+        code, out, _err = _run(ssh, cmd, timeout=20)
+        value = _clean_text(out.splitlines()[0] if out.strip() else "")
+        if code == 0 and value:
+            return value
+    raise SystemExit("xray binary not found; install 3x-ui/Xray first or pass --xray-bin")
+
+
 def build_bridge_xray_config(
     *,
     client_uuids: list[str],
@@ -176,6 +198,8 @@ def build_bridge_xray_config(
     server_names: list[str],
     short_ids: list[str],
     exclude_codes: set[str],
+    listen_host: str = "0.0.0.0",
+    listen_port: int = 443,
 ) -> dict[str, Any]:
     clients = [{"id": _clean_text(uuid), "flow": "xtls-rprx-vision"} for uuid in client_uuids if _clean_text(uuid)]
     allowed_ips: list[str] = []
@@ -223,8 +247,8 @@ def build_bridge_xray_config(
         "inbounds": [
             {
                 "tag": BRIDGE_INBOUND_TAG,
-                "listen": "0.0.0.0",
-                "port": 443,
+                "listen": listen_host,
+                "port": int(listen_port),
                 "protocol": "vless",
                 "settings": {"clients": clients, "decryption": "none"},
                 "streamSettings": {
@@ -255,13 +279,20 @@ def build_bridge_xray_config(
     }
 
 
-def merge_bridge_xray_config(existing: dict[str, Any], bridge: dict[str, Any]) -> dict[str, Any]:
+def merge_bridge_xray_config(
+    existing: dict[str, Any],
+    bridge: dict[str, Any],
+    *,
+    replace_legacy_public_443: bool = True,
+) -> dict[str, Any]:
     existing = dict(existing or {})
-    inbounds = [
-        item
-        for item in list(existing.get("inbounds") or [])
-        if _clean_text(item.get("tag")) != BRIDGE_INBOUND_TAG and int(item.get("port") or 0) != 443
-    ]
+    inbounds = []
+    for item in list(existing.get("inbounds") or []):
+        if _clean_text(item.get("tag")) == BRIDGE_INBOUND_TAG:
+            continue
+        if replace_legacy_public_443 and int(item.get("port") or 0) == 443:
+            continue
+        inbounds.append(item)
     inbounds.extend(bridge.get("inbounds") or [])
 
     bridge_tags = {BRIDGE_ALLOW_TAG, BRIDGE_BLOCK_TAG}
@@ -294,23 +325,118 @@ def build_rollout_ru_bridge_patch(
     public_key: str,
     short_id: str,
     excluded_node_codes: list[str],
+    bridge_id: str = "mini",
+    bridge_label: str = "Белые списки",
+    endpoint_port: int = 443,
 ) -> dict[str, Any]:
+    endpoint = {
+        "id": bridge_id,
+        "label": bridge_label,
+        "enabled": True,
+        "endpoint_host": endpoint_host,
+        "endpoint_port": int(endpoint_port),
+        "tls_server_name": "www.yandex.ru",
+        "reality_public_key": public_key,
+        "reality_short_id": short_id,
+        "fingerprint": "chrome",
+    }
     return {
         "ru_bridge_relay": {
             "enabled": True,
-            "endpoint_host": endpoint_host,
-            "endpoint_port": 443,
-            "tls_server_name": "www.yandex.ru",
-            "reality_public_key": public_key,
-            "reality_short_id": short_id,
-            "fingerprint": "chrome",
+            "endpoint_host": endpoint["endpoint_host"],
+            "endpoint_port": endpoint["endpoint_port"],
+            "tls_server_name": endpoint["tls_server_name"],
+            "reality_public_key": endpoint["reality_public_key"],
+            "reality_short_id": endpoint["reality_short_id"],
+            "fingerprint": endpoint["fingerprint"],
             "allowlist_node_codes": [],
             "excluded_node_codes": excluded_node_codes,
             "urltest_url": "https://www.gstatic.com/generate_204",
             "urltest_interval": "10m",
             "urltest_tolerance": 80,
+            "endpoints": [endpoint],
         }
     }
+
+
+def rollout_endpoint_key(item: dict[str, Any]) -> str:
+    if not isinstance(item, dict):
+        return ""
+    return _clean_text(item.get("id") or item.get("code") or item.get("endpoint_host") or item.get("host")).lower()
+
+
+def rollout_single_bridge_as_endpoint(
+    bridge: dict[str, Any],
+    *,
+    fallback_id: str = "mini",
+    fallback_label: str = "Белые списки",
+) -> dict[str, Any] | None:
+    if not isinstance(bridge, dict) or not _clean_text(bridge.get("endpoint_host")):
+        return None
+    if not _clean_text(bridge.get("reality_public_key")):
+        return None
+    return {
+        "id": _clean_text(bridge.get("id") or fallback_id).lower(),
+        "label": _clean_text(bridge.get("label") or fallback_label),
+        "enabled": bridge.get("enabled", True),
+        "endpoint_host": _clean_text(bridge.get("endpoint_host")),
+        "endpoint_port": int(bridge.get("endpoint_port") or 443),
+        "tls_server_name": _clean_text(bridge.get("tls_server_name") or "www.yandex.ru"),
+        "reality_public_key": _clean_text(bridge.get("reality_public_key")),
+        "reality_short_id": _clean_text(bridge.get("reality_short_id")),
+        "fingerprint": _clean_text(bridge.get("fingerprint") or "chrome"),
+    }
+
+
+def merge_ru_bridge_rollout(current_bridge: dict[str, Any] | None, patch_bridge: dict[str, Any] | None) -> dict[str, Any]:
+    current_bridge = current_bridge if isinstance(current_bridge, dict) else {}
+    patch_bridge = patch_bridge if isinstance(patch_bridge, dict) else {}
+    ordered: list[str] = []
+    by_key: dict[str, dict[str, Any]] = {}
+
+    def add(item: dict[str, Any] | None) -> None:
+        if not isinstance(item, dict):
+            return
+        key = rollout_endpoint_key(item)
+        if not key:
+            return
+        endpoint = dict(item)
+        endpoint["id"] = _clean_text(endpoint.get("id") or endpoint.get("code") or key).lower()
+        if key in by_key:
+            by_key[key].update(endpoint)
+            return
+        by_key[key] = endpoint
+        ordered.append(key)
+
+    current_endpoints = current_bridge.get("endpoints")
+    if isinstance(current_endpoints, list) and current_endpoints:
+        for item in current_endpoints:
+            add(item)
+    else:
+        add(rollout_single_bridge_as_endpoint(current_bridge))
+
+    patch_endpoints = patch_bridge.get("endpoints")
+    if isinstance(patch_endpoints, list) and patch_endpoints:
+        for item in patch_endpoints:
+            add(item)
+    else:
+        add(
+            rollout_single_bridge_as_endpoint(
+                patch_bridge,
+                fallback_id=_clean_text(patch_bridge.get("id") or "mini"),
+            )
+        )
+
+    endpoints = [by_key[key] for key in ordered if key in by_key]
+    merged = dict(current_bridge)
+    merged.update({key: value for key, value in patch_bridge.items() if key != "endpoints"})
+    merged["endpoints"] = endpoints
+    if endpoints:
+        primary = endpoints[0]
+        for key in ("endpoint_host", "endpoint_port", "tls_server_name", "reality_public_key", "reality_short_id", "fingerprint"):
+            if primary.get(key) not in (None, ""):
+                merged[key] = primary.get(key)
+    return merged
 
 
 def apply_mini_bridge(
@@ -320,8 +446,13 @@ def apply_mini_bridge(
     targets: list[dict[str, Any]],
     exclude_codes: set[str],
     config_path: str = DEFAULT_XRAY_CONFIG,
+    meta_path: str = DEFAULT_BRIDGE_META,
+    listen_host: str = "0.0.0.0",
+    listen_port: int = 443,
+    service_name: str = "xray",
+    xray_bin: str = "xray",
 ) -> dict[str, Any]:
-    material = ensure_reality_material(ssh)
+    material = ensure_reality_material(ssh, meta_path=meta_path, xray_bin=xray_bin)
     bridge_config = build_bridge_xray_config(
         client_uuids=client_uuids,
         allowed_targets=targets,
@@ -329,17 +460,54 @@ def apply_mini_bridge(
         server_names=list(material.get("server_names") or ["www.yandex.ru", "yandex.ru"]),
         short_ids=[str(material["short_id"])],
         exclude_codes=exclude_codes,
+        listen_host=listen_host,
+        listen_port=listen_port,
     )
     existing = _remote_read_json(ssh, config_path, default={"log": {"loglevel": "warning"}, "inbounds": [], "outbounds": []})
-    merged = merge_bridge_xray_config(existing, bridge_config)
+    merged = merge_bridge_xray_config(
+        existing,
+        bridge_config,
+        replace_legacy_public_443=int(listen_port) == 443,
+    )
     rendered = json.dumps(merged, indent=2, ensure_ascii=False) + "\n"
     _remote_write_text(ssh, config_path, rendered, mode="600")
-    code, out, err = _run(ssh, f"sudo xray run -test -config {shlex.quote(config_path)}", timeout=60)
+    code, out, err = _run(ssh, f"sudo {shlex.quote(xray_bin)} run -test -config {shlex.quote(config_path)}", timeout=60)
     if code != 0:
         raise SystemExit((err or out or "xray config test failed").strip())
-    code, out, err = _run(ssh, "sudo systemctl restart xray && systemctl is-active xray && ss -lntp | grep ':443' || true")
+    service_name = _clean_text(service_name) or "xray"
+    if service_name != "xray":
+        service_path = f"/etc/systemd/system/{service_name}.service"
+        service_text = f"""[Unit]
+Description=POKROV RU bridge relay
+After=network.target
+
+[Service]
+User=root
+ExecStart={xray_bin} run -config {config_path}
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+"""
+        _remote_write_text(ssh, service_path, service_text, mode="644")
+        code, out, err = _run(
+            ssh,
+            f"sudo systemctl daemon-reload && sudo systemctl enable --now {shlex.quote(service_name)} && sudo systemctl restart {shlex.quote(service_name)}",
+            timeout=120,
+        )
+    else:
+        code, out, err = _run(ssh, "sudo systemctl restart xray", timeout=120)
     if code != 0:
-        raise SystemExit((err or out or "xray restart failed").strip())
+        raise SystemExit((err or out or f"{service_name} restart failed").strip())
+    code, out, err = _run(
+        ssh,
+        f"systemctl is-active {shlex.quote(service_name)} && ss -lntp | grep {shlex.quote(':' + str(int(listen_port)))} || true",
+        timeout=30,
+    )
+    if code != 0:
+        raise SystemExit((err or out or f"{service_name} status failed").strip())
     return {
         "public_key": str(material["public_key"]),
         "short_id": str(material["short_id"]),
@@ -363,6 +531,77 @@ from db import SessionLocal, init_db
 from models import AppSetting
 
 patch = json.loads({json.dumps(remote_patch)})
+
+def clean_text(value):
+    return str(value or "").strip()
+
+def endpoint_key(item):
+    if not isinstance(item, dict):
+        return ""
+    return clean_text(item.get("id") or item.get("code") or item.get("endpoint_host") or item.get("host")).lower()
+
+def single_bridge_as_endpoint(bridge, fallback_id="mini", fallback_label="Белые списки"):
+    if not isinstance(bridge, dict) or not clean_text(bridge.get("endpoint_host")):
+        return None
+    if not clean_text(bridge.get("reality_public_key")):
+        return None
+    return {{
+        "id": clean_text(bridge.get("id") or fallback_id).lower(),
+        "label": clean_text(bridge.get("label") or fallback_label),
+        "enabled": bridge.get("enabled", True),
+        "endpoint_host": clean_text(bridge.get("endpoint_host")),
+        "endpoint_port": int(bridge.get("endpoint_port") or 443),
+        "tls_server_name": clean_text(bridge.get("tls_server_name") or "www.yandex.ru"),
+        "reality_public_key": clean_text(bridge.get("reality_public_key")),
+        "reality_short_id": clean_text(bridge.get("reality_short_id")),
+        "fingerprint": clean_text(bridge.get("fingerprint") or "chrome"),
+    }}
+
+def merge_ru_bridge(current_bridge, patch_bridge):
+    current_bridge = current_bridge if isinstance(current_bridge, dict) else {{}}
+    patch_bridge = patch_bridge if isinstance(patch_bridge, dict) else {{}}
+    ordered = []
+    by_key = {{}}
+
+    def add(item):
+        if not isinstance(item, dict):
+            return
+        key = endpoint_key(item)
+        if not key:
+            return
+        endpoint = dict(item)
+        endpoint["id"] = clean_text(endpoint.get("id") or endpoint.get("code") or key).lower()
+        if key in by_key:
+            by_key[key].update(endpoint)
+            return
+        by_key[key] = endpoint
+        ordered.append(key)
+
+    current_endpoints = current_bridge.get("endpoints")
+    if isinstance(current_endpoints, list) and current_endpoints:
+        for item in current_endpoints:
+            add(item)
+    else:
+        add(single_bridge_as_endpoint(current_bridge))
+
+    patch_endpoints = patch_bridge.get("endpoints")
+    if isinstance(patch_endpoints, list) and patch_endpoints:
+        for item in patch_endpoints:
+            add(item)
+    else:
+        add(single_bridge_as_endpoint(patch_bridge, fallback_id=clean_text(patch_bridge.get("id") or "mini")))
+
+    endpoints = [by_key[key] for key in ordered if key in by_key]
+    merged = dict(current_bridge)
+    merged.update({{k: v for k, v in patch_bridge.items() if k != "endpoints"}})
+    merged["endpoints"] = endpoints
+    if endpoints:
+        primary = endpoints[0]
+        for key in ("endpoint_host", "endpoint_port", "tls_server_name", "reality_public_key", "reality_short_id", "fingerprint"):
+            if primary.get(key) not in (None, ""):
+                merged[key] = primary.get(key)
+    return merged
+
 init_db()
 s = SessionLocal()
 try:
@@ -373,6 +612,9 @@ try:
             current = json.loads(row.value_json)
         except Exception:
             current = {{}}
+    if "ru_bridge_relay" in patch:
+        current["ru_bridge_relay"] = merge_ru_bridge(current.get("ru_bridge_relay"), patch.get("ru_bridge_relay"))
+        patch = {{k: v for k, v in patch.items() if k != "ru_bridge_relay"}}
     current.update(patch)
     if not row:
         row = AppSetting(key="network_rollout_config", value_json=json.dumps(current, ensure_ascii=False))
@@ -390,23 +632,33 @@ PY
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Install and sync the mini RU bridge relay to non-US POKROV nodes.")
+    parser = argparse.ArgumentParser(description="Install and sync a RU bridge relay endpoint to non-US POKROV nodes.")
     parser.add_argument("--brain-host", default=DEFAULT_BRAIN_HOST)
     parser.add_argument("--mini-host", default=DEFAULT_MINI_HOST)
     parser.add_argument("--brain-node-code", default="brain")
     parser.add_argument("--mini-node-code", default="mini")
+    parser.add_argument("--bridge-id", default="", help="stable endpoint id in network_rollout_config; defaults to --mini-node-code")
+    parser.add_argument("--bridge-label", default="Белые списки", help="selector label, e.g. 'Белые списки тип 2'")
     parser.add_argument("--brain-ssh-user", default="root")
     parser.add_argument("--mini-ssh-user", default="root")
     parser.add_argument("--brain-ssh-port", type=int, default=29374)
     parser.add_argument("--mini-ssh-port", type=int, default=29374)
     parser.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     parser.add_argument("--exclude-codes", default="us")
+    parser.add_argument("--listen-host", default="0.0.0.0")
+    parser.add_argument("--listen-port", type=int, default=443)
+    parser.add_argument("--public-endpoint-port", type=int, default=443)
+    parser.add_argument("--xray-config", default=DEFAULT_XRAY_CONFIG)
+    parser.add_argument("--xray-service", default="xray")
+    parser.add_argument("--xray-bin", default="auto")
+    parser.add_argument("--meta-path", default=DEFAULT_BRIDGE_META)
     parser.add_argument("--skip-free-target", action="store_true")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--update-brain-rollout", action="store_true")
     args = parser.parse_args()
 
     exclude_codes = {_clean_text(item).lower() for item in str(args.exclude_codes or "").split(",") if _clean_text(item)}
+    bridge_id = _clean_text(args.bridge_id) or _clean_text(args.mini_node_code) or "mini"
     brain, brain_auth = connect_node(
         code=args.brain_node_code,
         host=args.brain_host,
@@ -425,6 +677,8 @@ def main() -> int:
     print(f"brain_auth={brain_auth}")
     print(f"active_client_uuid_count={len(client_uuids)}")
     print("bridge_target_codes=" + ",".join(str(item.get("code") or "") for item in safe_targets))
+    print(f"bridge_id={bridge_id}")
+    print(f"bridge_listen={args.listen_host}:{int(args.listen_port)}")
     if not args.apply:
         print("dry_run=true")
         return 0
@@ -437,11 +691,18 @@ def main() -> int:
         passwords_path=Path(args.passwords),
     )
     try:
+        xray_bin = detect_xray_bin(mini, args.xray_bin)
         result = apply_mini_bridge(
             mini,
             client_uuids=client_uuids,
             targets=safe_targets,
             exclude_codes=exclude_codes,
+            config_path=args.xray_config,
+            meta_path=args.meta_path,
+            listen_host=args.listen_host,
+            listen_port=int(args.listen_port),
+            service_name=args.xray_service,
+            xray_bin=xray_bin,
         )
     finally:
         mini.close()
@@ -459,6 +720,9 @@ def main() -> int:
             public_key=str(result["public_key"]),
             short_id=str(result["short_id"]),
             excluded_node_codes=sorted(exclude_codes),
+            bridge_id=bridge_id,
+            bridge_label=args.bridge_label,
+            endpoint_port=int(args.public_endpoint_port),
         )
         brain, _brain_auth = connect_node(
             code=args.brain_node_code,

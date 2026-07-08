@@ -12,7 +12,6 @@ This script:
 
 import argparse
 import os
-import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,9 +19,10 @@ from pathlib import Path
 import paramiko
 from ssh_host_keys import configure_ssh_host_key_policy
 
+from node_inventory import DEFAULT_INVENTORY, read_inventory
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 
 
@@ -33,24 +33,7 @@ class Node:
 
 
 def _parse_inventory(path: Path) -> list[Node]:
-    txt = path.read_text(encoding="utf-8", errors="replace")
-    nodes: list[Node] = []
-    for line in txt.splitlines():
-        line = line.strip()
-        if not line.startswith("|") or "`" not in line:
-            continue
-        parts = [p.strip() for p in line.strip("|").split("|")]
-        if len(parts) < 4:
-            continue
-        code = parts[0].strip("`").strip()
-        ip = parts[3].strip("`").strip()
-        if not code or code.lower() == "code":
-            continue
-        if not re.fullmatch(r"[a-z0-9_-]+", code):
-            continue
-        if not re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip):
-            continue
-        nodes.append(Node(code=code, ip=ip))
+    nodes = [Node(code=row.code, ip=row.ip) for row in read_inventory(path)]
     if not nodes:
         raise SystemExit(f"Failed to parse inventory: {path}")
     return nodes

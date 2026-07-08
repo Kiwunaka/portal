@@ -1,12 +1,14 @@
 import { IntentLanding } from "../../components/intent/intent-landing";
 import { buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { getSeoPage } from "../../lib/seo-pages";
+
+const seoPage = getSeoPage(MARKETING_CANONICAL_PATHS.telegram);
 
 export const metadata = buildMarketingMetadata(
-  "Telegram-бонус +10 дней и поддержка | POKROV",
-  "Подпишитесь на Telegram-канал POKROV и получите +10 дней доступа. Там же — живая поддержка и новости сервиса.",
+  seoPage.title,
+  seoPage.description,
   {
     path: MARKETING_CANONICAL_PATHS.telegram,
-    keywords: ["telegram pokrov", "поддержка pokrov", "бонус telegram", "быстрая поддержка"],
   },
 );
 
@@ -37,6 +39,7 @@ export default function TelegramPage() {
           desc: "Если что-то меняется — маршруты, версии, акции — вы узнаете первым в канале.",
         },
       ]}
+      seoPage={seoPage}
     />
   );
 }

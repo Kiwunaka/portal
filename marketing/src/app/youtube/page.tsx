@@ -1,12 +1,14 @@
 import { IntentLanding } from "../../components/intent/intent-landing";
 import { buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { getSeoPage } from "../../lib/seo-pages";
+
+const seoPage = getSeoPage(MARKETING_CANONICAL_PATHS.youtube);
 
 export const metadata = buildMarketingMetadata(
-  "YouTube без замедлений | POKROV для Android и Windows",
-  "POKROV возвращает YouTube нормальную скорость: 5 дней бесплатно без карты, одна кнопка в приложении, полное качество видео.",
+  seoPage.title,
+  seoPage.description,
   {
     path: MARKETING_CANONICAL_PATHS.youtube,
-    keywords: ["проверка youtube", "youtube замедление", "длинные видео", "pokrov youtube", "видео через pokrov"],
   },
 );
 
@@ -16,10 +18,10 @@ export default function YoutubePage() {
       pagePath={MARKETING_CANONICAL_PATHS.youtube}
       breadcrumbName="YouTube"
       heroKicker="Для YouTube и длинных видео"
-      heroTitle="YouTube снова в полном качестве"
-      heroSubtitle="Скачайте приложение, нажмите «Подключить» — и видео идут в полном качестве, без «крутилки». Проверьте бесплатно, 5 дней без карты."
+      heroTitle="Проверьте YouTube через POKROV"
+      heroSubtitle="Скачайте приложение, нажмите «Подключить» и откройте свои обычные видео. Проверка бесплатна: 5 дней без карты."
       scenarioTitle="Как дойти до первого видео"
-      scenarioBody="Никаких настроек и профилей: приложение само делает то, что нужно."
+      scenarioBody="Без ручных профилей: ставите приложение, включаете подключение и смотрите результат на своей сети."
       scenarioCards={[
         {
           eyebrow: "Сначала проверка",
@@ -37,6 +39,7 @@ export default function YoutubePage() {
           desc: "Маршрут «всё, кроме РУ»: банк и госуслуги продолжают открываться напрямую.",
         },
       ]}
+      seoPage={seoPage}
     />
   );
 }

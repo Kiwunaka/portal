@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-06-05
+Last updated: 2026-07-08
 
 ## Document Status
 
@@ -136,7 +136,7 @@ Rollout note:
   state/reason, per-state counts, and recent runtime event headers without
   client messages or raw metadata
 - allowlisted carrier or cohort overrides may switch app-managed flows to `grpc_443_primary` without changing the public endpoint set
-- allowlisted carrier or cohort overrides may switch app-managed flows to `ru_bridge_relay` during a RU reachability incident; that manifest keeps countries as the top-level choice, nests `Обычный` and `Белые списки` via-`mini` choices under non-US countries, and leaves US as direct-only
+- allowlisted carrier or cohort overrides may switch app-managed flows to `ru_bridge_relay` during a RU reachability incident; that manifest keeps countries as the top-level choice, nests `Обычный` and configured `Белые списки` bridge endpoint choices under non-US countries, and leaves US as direct-only. The legacy top-level single-bridge fields continue to describe the primary `mini` bridge for older readers, while `ru_bridge_relay.endpoints[]` can add RU/RU-SPB type 2/type 3 choices by stable `id`.
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
 - manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `subscription_url` remains a compatibility and recovery artifact for manual import, legacy browser-visible delivery, and fallback when the managed manifest cannot be fetched

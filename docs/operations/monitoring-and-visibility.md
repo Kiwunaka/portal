@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-07-05
+Last updated: 2026-07-08
 
 ## Document Status
 
@@ -362,11 +362,20 @@ Runtime telemetry wave `2026-06-02`:
 - `/api/admin/funnel/summary` combines anonymous site events with known `events`, `pay_attempts`, and `external_orders` to show the operator path: site entry, cabinet/bot open, checkout start, paid confirmation, and connection confirmation
 - funnel counts are operational direction signals, not billing reconciliation; paid truth still comes from signed provider callbacks and fulfillment records
 
-Admin ops app wave `2026-07-06`:
+Admin ops app wave `2026-07-06`, redesigned `2026-07-08`:
 
-- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first and may expose only triage/status views on mobile
+- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and may expose only triage/status views on mobile
+- the first screen is "Требует действий": critical/warning nodes, stuck payments, provider/free-tier limits, suspicious key pressure, active alerts, and fresh tickets, followed by revenue, online, node health, and funnel summaries
+- global admin search routes operators into user investigation by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifiers
 - v1 does not require Grafana, Beszel, Netdata, VictoriaMetrics, or provider APIs; first-party Postgres tables, collected node samples, usage rollups, and admin API snapshots are the source of truth
 - `/api/admin/ops/overview` is the top-level ops snapshot combining `/api/admin/summary`, metrics freshness, node capacity, free-tier burn, provider cap status, and durable active alerts
+- `/api/admin/online/users` is the bounded live online aggregate for the "Сейчас онлайн" screen; it includes user identity, subscription type, online node/count fields, pressure score, and risk flags, and must not expose raw IP addresses in shared lists
+- raw/recent IP details are allowed only inside the individual user card, using observer-backed investigation data already available to admins
+- `/api/admin/payments/summary?period=today|7d|30d` is the payments aggregate for revenue, paid count, pending/manual-review/failed counts, and abandoned buy-click/checkout counts
+- `/api/admin/payments/orders` remains the order table source; problem orders should be surfaced above the table
+- `/api/admin/nodes/health`, `/api/admin/nodes/runtime`, `/api/admin/nodes/drift`, and `/api/admin/keys/pressure` power the health-first node, online, and key-risk screens
+- node lifecycle actions in `adminapp` require explicit typed confirmation; node resync supports dry-run before execution
+- `/api/admin/broadcast` supports `dry_run=true`; the UI must preview/dry-run before allowing a real broadcast send
 - `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` expose the current free-tier truth: dedicated `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, and `1 device`
 - `/api/admin/provider-quotas`, `/api/admin/provider-quotas/{node_code}`, and `/api/admin/provider-quotas/status` own manual provider/hoster traffic-cap configuration, reset windows, thresholds, status, and audit trail
 - `/api/admin/nodes/timeseries` exposes CPU, RAM, disk, network, traffic-counter, and capacity history from `node_health_samples` and `node_runtime_metrics`
@@ -392,7 +401,11 @@ Primary repository touchpoints:
 - `/api/admin/metrics/status`
 - `/api/admin/nodes/health`
 - `/api/admin/nodes/runtime`
+- `/api/admin/nodes/drift`
 - `/api/admin/ops/overview`
+- `/api/admin/online/users`
+- `/api/admin/keys/pressure`
+- `/api/admin/payments/summary`
 - `/api/admin/free-tier/summary`
 - `/api/admin/provider-quotas/status`
 - `/api/admin/alerts`

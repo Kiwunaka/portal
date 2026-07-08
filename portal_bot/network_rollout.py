@@ -262,6 +262,27 @@ def _normalize_warp_policy(value: Any, *, include_secrets: bool = False) -> dict
     return out
 
 
+def _normalize_ru_bridge_endpoint(value: Any, *, fallback: dict[str, Any], index: int) -> dict[str, Any]:
+    src = value if isinstance(value, dict) else {}
+    try:
+        endpoint_port = int(src.get("endpoint_port") or src.get("port") or fallback["endpoint_port"])
+    except Exception:
+        endpoint_port = int(fallback["endpoint_port"])
+    label_default = "Белые списки" if index == 0 else f"Белые списки тип {index + 1}"
+    endpoint_id_default = "mini" if index == 0 else f"bridge_{index + 1}"
+    return {
+        "id": _clean_text(src.get("id") or src.get("code"), fallback=endpoint_id_default).lower(),
+        "label": _clean_text(src.get("label"), fallback=label_default),
+        "enabled": _as_bool(src.get("enabled")) if "enabled" in src else True,
+        "endpoint_host": _clean_text(src.get("endpoint_host") or src.get("host"), fallback=fallback["endpoint_host"]),
+        "endpoint_port": max(1, min(65535, endpoint_port)),
+        "tls_server_name": _clean_text(src.get("tls_server_name"), fallback=fallback["tls_server_name"]),
+        "reality_public_key": _clean_text(src.get("reality_public_key") or src.get("public_key")),
+        "reality_short_id": _clean_text(src.get("reality_short_id") or src.get("short_id")),
+        "fingerprint": _clean_text(src.get("fingerprint"), fallback=fallback["fingerprint"]),
+    }
+
+
 def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
     defaults = default_network_rollout_config()
     src = payload if isinstance(payload, dict) else {}
@@ -315,20 +336,50 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
         urltest_tolerance = int((ru_bridge_src or {}).get("urltest_tolerance") or default_ru_bridge["urltest_tolerance"])
     except Exception:
         urltest_tolerance = int(default_ru_bridge["urltest_tolerance"])
-    ru_bridge_relay = {
-        "enabled": _as_bool((ru_bridge_src or {}).get("enabled")) if isinstance(ru_bridge_src, dict) else False,
+    bridge_base = {
         "endpoint_host": _clean_text((ru_bridge_src or {}).get("endpoint_host"), fallback=default_ru_bridge["endpoint_host"]),
         "endpoint_port": max(1, min(65535, endpoint_port)),
         "tls_server_name": _clean_text((ru_bridge_src or {}).get("tls_server_name"), fallback=default_ru_bridge["tls_server_name"]),
-        "reality_public_key": _clean_text((ru_bridge_src or {}).get("reality_public_key")),
-        "reality_short_id": _clean_text((ru_bridge_src or {}).get("reality_short_id")),
         "fingerprint": _clean_text((ru_bridge_src or {}).get("fingerprint"), fallback=default_ru_bridge["fingerprint"]),
+    }
+    raw_endpoints = (ru_bridge_src or {}).get("endpoints") if isinstance(ru_bridge_src, dict) else None
+    endpoints: list[dict[str, Any]] = []
+    if isinstance(raw_endpoints, list):
+        for idx, raw_endpoint in enumerate(raw_endpoints):
+            endpoint = _normalize_ru_bridge_endpoint(raw_endpoint, fallback=bridge_base, index=idx)
+            if endpoint["id"] and endpoint["endpoint_host"]:
+                endpoints.append(endpoint)
+    if not endpoints:
+        endpoints = [
+            _normalize_ru_bridge_endpoint(
+                {
+                    **bridge_base,
+                    "id": "mini",
+                    "label": "Белые списки",
+                    "enabled": True,
+                    "reality_public_key": (ru_bridge_src or {}).get("reality_public_key") if isinstance(ru_bridge_src, dict) else "",
+                    "reality_short_id": (ru_bridge_src or {}).get("reality_short_id") if isinstance(ru_bridge_src, dict) else "",
+                },
+                fallback=bridge_base,
+                index=0,
+            )
+        ]
+    primary_endpoint = endpoints[0]
+    ru_bridge_relay = {
+        "enabled": _as_bool((ru_bridge_src or {}).get("enabled")) if isinstance(ru_bridge_src, dict) else False,
+        "endpoint_host": primary_endpoint["endpoint_host"],
+        "endpoint_port": primary_endpoint["endpoint_port"],
+        "tls_server_name": primary_endpoint["tls_server_name"],
+        "reality_public_key": primary_endpoint["reality_public_key"],
+        "reality_short_id": primary_endpoint["reality_short_id"],
+        "fingerprint": primary_endpoint["fingerprint"],
         "allowlist_node_codes": _normalize_string_list((ru_bridge_src or {}).get("allowlist_node_codes"), lower=True),
         "excluded_node_codes": _normalize_string_list((ru_bridge_src or {}).get("excluded_node_codes"), lower=True)
         or list(default_ru_bridge["excluded_node_codes"]),
         "urltest_url": _clean_text((ru_bridge_src or {}).get("urltest_url"), fallback=default_ru_bridge["urltest_url"]),
         "urltest_interval": _clean_text((ru_bridge_src or {}).get("urltest_interval"), fallback=default_ru_bridge["urltest_interval"]),
         "urltest_tolerance": max(0, urltest_tolerance),
+        "endpoints": endpoints,
     }
 
     package_catalog_feed = src.get("package_catalog_feed") if isinstance(src.get("package_catalog_feed"), dict) else {}
@@ -415,11 +466,40 @@ def reserve_xhttp_cdn_enabled(config: dict[str, Any]) -> bool:
 
 def ru_bridge_relay_enabled(config: dict[str, Any]) -> bool:
     bridge = dict(config.get(RU_BRIDGE_RELAY) or {})
-    return _as_bool(bridge.get("enabled")) and bool(_clean_text(bridge.get("reality_public_key")))
+    if not _as_bool(bridge.get("enabled")):
+        return False
+    endpoints = bridge.get("endpoints")
+    if isinstance(endpoints, list):
+        return any(
+            bool(item.get("enabled", True)) and bool(_clean_text(item.get("reality_public_key")))
+            for item in endpoints
+            if isinstance(item, dict)
+        )
+    return bool(_clean_text(bridge.get("reality_public_key")))
 
 
 def ru_bridge_relay_config(config: dict[str, Any]) -> dict[str, Any]:
     return dict(normalized_network_rollout_config(config).get(RU_BRIDGE_RELAY) or {})
+
+
+def ru_bridge_relay_endpoints(config: dict[str, Any]) -> list[dict[str, Any]]:
+    bridge = ru_bridge_relay_config(config)
+    endpoints = bridge.get("endpoints")
+    if not isinstance(endpoints, list):
+        endpoints = [bridge]
+    out: list[dict[str, Any]] = []
+    for idx, item in enumerate(endpoints):
+        if not isinstance(item, dict):
+            continue
+        endpoint = dict(item)
+        if not endpoint.get("enabled", True):
+            continue
+        if not _clean_text(endpoint.get("reality_public_key")):
+            continue
+        endpoint.setdefault("id", "mini" if idx == 0 else f"bridge_{idx + 1}")
+        endpoint.setdefault("label", "Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")
+        out.append(endpoint)
+    return out
 
 
 def _cohort_matches(rule: dict[str, Any], *, install_id: str, tg_ids: list[int], platform: str) -> bool:

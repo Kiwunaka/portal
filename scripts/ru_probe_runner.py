@@ -17,10 +17,10 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import node_dataplane_probe as dataplane_probe
+from node_inventory import DEFAULT_INVENTORY, read_inventory
 
 
 REPO_ROOT = SCRIPT_DIR.parent
-DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
 DEFAULT_TIMEOUT_SEC = 5.0
 
 
@@ -29,30 +29,18 @@ def _utcnow_text() -> str:
 
 
 def _parse_inventory(path: Path) -> list[dict[str, str]]:
-    text = path.read_text(encoding="utf-8", errors="replace")
-    rows: list[dict[str, str]] = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line.startswith("|") or "`" not in line:
-            continue
-        parts = [part.strip() for part in line.strip("|").split("|")]
-        if len(parts) < 7:
-            continue
-        code = parts[0].strip("`").strip().lower()
-        if not code or code == "code":
-            continue
-        rows.append(
-            {
-                "code": code,
-                "physical_name": parts[1].strip("`").strip(),
-                "country": parts[2].strip("`").strip().upper(),
-                "role": parts[3].strip("`").strip(),
-                "runtime_status": parts[4].strip("`").strip(),
-                "plan": parts[5].strip("`").strip(),
-                "ip": parts[6].strip("`").strip(),
-            }
-        )
-    return rows
+    return [
+        {
+            "code": row.code,
+            "physical_name": row.physical_name,
+            "country": row.country,
+            "role": row.role,
+            "runtime_status": row.runtime_status,
+            "plan": row.plan,
+            "ip": row.ip,
+        }
+        for row in read_inventory(path)
+    ]
 
 
 def _build_default_targets(inventory_path: Path, reserve_host: str = "", reserve_hysteria_port: int = 443) -> list[dict[str, Any]]:
@@ -104,7 +92,7 @@ def _build_default_targets(inventory_path: Path, reserve_host: str = "", reserve
             continue
         if code in {"brain", "mini", "rf1"} or country == "RU":
             continue
-        if "delivery" not in role and "pool" not in role:
+        if role and "delivery" not in role and "pool" not in role:
             continue
         targets.append(
             {

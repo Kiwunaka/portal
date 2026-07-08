@@ -1,12 +1,14 @@
 import { IntentLanding } from "../../components/intent/intent-landing";
 import { buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { getSeoPage } from "../../lib/seo-pages";
+
+const seoPage = getSeoPage(MARKETING_CANONICAL_PATHS.devices);
 
 export const metadata = buildMarketingMetadata(
-  "Android и Windows | POKROV на всех устройствах",
-  "Один аккаунт POKROV — телефон и компьютер: до 5 устройств на основных тарифах, 5 дней бесплатно без карты.",
+  seoPage.title,
+  seoPage.description,
   {
     path: MARKETING_CANONICAL_PATHS.devices,
-    keywords: ["android и windows", "устройства pokrov", "телефон и компьютер", "до 5 устройств"],
   },
 );
 
@@ -37,6 +39,7 @@ export default function DevicesPage() {
           desc: "5 дней без карты, чтобы проверить связь на всех своих устройствах до оплаты.",
         },
       ]}
+      seoPage={seoPage}
     />
   );
 }

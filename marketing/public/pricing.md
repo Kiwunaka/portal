@@ -1,10 +1,12 @@
 # Pricing - POKROV
 
-Last updated: 2026-06-01
+Last updated: 2026-07-08
 
 Canonical checkout page: https://pokrov.space/checkout/
 
-POKROV starts with 5 days free in the Android or Windows app. Paid access is continued through an activation key and the same POKROV account. Prices are shown in RUB before payment.
+POKROV starts with 5 days free in the Android or Windows app. The free start does not require a bank card. Paid access is continued through the same POKROV account for a selected duration. Prices are shown in RUB before payment.
+
+Public billing model: one-time paid access periods. No automatic renewal is promised or used in the public marketing flow.
 
 ## Free start
 
@@ -13,6 +15,13 @@ POKROV starts with 5 days free in the Android or Windows app. Paid access is con
 - Card required: no
 - Platforms: Android and Windows public beta
 - Start path: install the app, open it, and start the free period
+
+## Telegram reward
+
+- Reward: +10 days
+- Requirement: explicit account linking and official channel check
+- Channel: https://t.me/pokrov_vpn
+- Support: https://t.me/pokrov_supportbot
 
 ## Start on 30 days
 
@@ -61,6 +70,14 @@ POKROV starts with 5 days free in the Android or Windows app. Paid access is con
 - Duration: 365 days
 - Device limit: 5
 - Notes: longest available public plan
+
+## Official download and trust paths
+
+- Install help: https://pokrov.space/install/
+- Android guide: https://pokrov.space/install/android/
+- Windows guide: https://pokrov.space/install/windows/
+- GitHub Releases: https://github.com/Kiwunaka/pokrov/releases
+- Release trust page: https://pokrov.space/trust/github-releases/
 
 ## Support and recovery
 

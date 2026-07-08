@@ -357,6 +357,46 @@ class ControlPanel:
             out[str(code)] = dict(summary or {})
         return out
 
+    async def get_node_online_clients(self, *, node_codes: list[str] | None = None) -> dict:
+        nodes = await self.refresh()
+        selected_nodes: list = []
+        seen: set[str] = set()
+        if node_codes:
+            groups = self._requested_node_groups(nodes, node_codes)
+            for _group_key, candidates in groups:
+                for n in candidates:
+                    code = str(getattr(n, "code", "") or "").strip()
+                    if not code or code in seen:
+                        continue
+                    seen.add(code)
+                    selected_nodes.append(n)
+        else:
+            selected_nodes = list(nodes)
+
+        semaphore = asyncio.Semaphore(max(1, int(self._concurrency or 1)))
+
+        async def _collect(node):
+            code = str(getattr(node, "code", "") or "").strip()
+            if not code:
+                return {"node_code": "", "rows": [], "error": "missing_node_code"}
+            async with semaphore:
+                try:
+                    rows = await self._clients[code].get_node_online_clients()
+                    return {"node_code": code, "rows": rows, "error": ""}
+                except Exception as exc:
+                    return {"node_code": code, "rows": [], "error": str(exc)[:300]}
+
+        collected = await asyncio.gather(*[_collect(n) for n in selected_nodes], return_exceptions=False)
+        rows: list[dict] = []
+        errors: list[dict] = []
+        for item in collected:
+            if not item:
+                continue
+            if item.get("error"):
+                errors.append({"node_code": item.get("node_code"), "error": item.get("error")})
+            rows.extend([dict(row or {}) for row in item.get("rows") or []])
+        return {"rows": rows, "errors": errors}
+
     async def get_node_runtime_snapshots(self, *, node_codes: list[str] | None = None) -> dict[str, dict]:
         nodes = await self.refresh()
         selected_nodes: list = []

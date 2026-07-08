@@ -31,6 +31,9 @@ def _find_marker_index(lines: list[str], code: str) -> int | None:
         "brain": ["brainnode"],
         "de": ["denodemax", "demax", "de node", "denode", "germany", "germany node", "германия"],
         "us": ["usnode"],
+        "ru": ["runode", "ru node", "russia node", "россия node"],
+        "ru_spb": ["runodespb", "ru spb", "russia spb", "spb", "санкт-петербург"],
+        "ruspb": ["runodespb", "ru spb", "russia spb", "spb", "санкт-петербург"],
         "pl": ["plnode"],
         "it": ["itnode"],
         "nl": ["nlnode", "low ping v2"],
@@ -43,12 +46,15 @@ def _find_marker_index(lines: list[str], code: str) -> int | None:
         [
             re.compile(rf"\b{re.escape(code)}node\b", flags=re.IGNORECASE),
             re.compile(rf"\b{re.escape(code)}\s*node\b", flags=re.IGNORECASE),
-            re.compile(rf"\b{re.escape(code)}\b", flags=re.IGNORECASE),
         ]
     )
+    if len(code) > 2:
+        patterns.append(re.compile(rf"\b{re.escape(code)}\b", flags=re.IGNORECASE))
     if code == "free":
         patterns.insert(0, re.compile(r"\bfree\s*node\b", flags=re.IGNORECASE))
     for idx, line in enumerate(lines):
+        if line.strip().startswith(("ssh-ed25519 ", "ssh-rsa ")):
+            continue
         if any(p.search(line) for p in patterns):
             return idx
     return None

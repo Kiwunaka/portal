@@ -1129,11 +1129,13 @@ def test_remote_brain_sync_users_to_nodes_uploads_free_paid_partitioning_snippet
     assert module.main() == 0
 
     uploaded = fake.files["/root/portal_bot/portal_sync_users_to_nodes.py"].decode("utf-8")
+    assert "load_service_env" in uploaded
     assert "Dedicated FREE pools receive only FREE users." in uploaded
     assert "Other countries are PAID-only." in uploaded
     joined = "\n".join(fake.commands)
     assert "test -x /root/portal_bot/venv/bin/python" in joined
     assert "SYNC_CONCURRENCY=8 SYNC_PASSES=3" in joined
+    assert "DATABASE_URL=sqlite" not in joined
     assert "python /root/portal_bot/portal_sync_users_to_nodes.py" in joined
     assert "brain-secret" not in joined
     assert "brain-secret" not in capsys.readouterr().out

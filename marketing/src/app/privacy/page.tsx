@@ -14,7 +14,6 @@ export const metadata = buildMarketingMetadata(
   "Какие данные использует POKROV для работы аккаунта, поддержки и платежей, и как связаться с поддержкой.",
   {
     path: "/privacy/",
-    keywords: ["политика конфиденциальности", "privacy pokrov", "данные pokrov"],
   },
 );
 

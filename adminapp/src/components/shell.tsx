@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type MouseEvent } from "react";
 import {
   Activity,
   Bell,
@@ -12,11 +12,13 @@ import {
   Megaphone,
   Radio,
   Rocket,
+  Search,
   Server,
   Share2,
   ShieldCheck,
   Ticket,
   Users,
+  Wifi,
   type LucideIcon
 } from "lucide-react";
 
@@ -26,6 +28,7 @@ import { OPS_SECTIONS, normalizeOpsSection, type OpsSectionId } from "@/lib/sect
 
 const icons: Record<OpsSectionId, LucideIcon> = {
   dashboard: LayoutDashboard,
+  online: Wifi,
   nodes: Server,
   traffic: Activity,
   "free-tier": Gift,
@@ -50,10 +53,7 @@ function sectionFromPath(pathname: string): OpsSectionId {
 
 export function OpsShell({ section }: { section: string }) {
   const [active, setActive] = useState<OpsSectionId>(() => normalizeOpsSection(section));
-
-  useEffect(() => {
-    setActive(normalizeOpsSection(section));
-  }, [section]);
+  const [globalSearch, setGlobalSearch] = useState("");
 
   useEffect(() => {
     const syncFromHistory = () => setActive(sectionFromPath(window.location.pathname));
@@ -70,6 +70,16 @@ export function OpsShell({ section }: { section: string }) {
     setActive(item.id);
     window.history.pushState({ pokrovAdminSection: item.id }, "", item.href);
   }, []);
+
+  const submitGlobalSearch = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const q = globalSearch.trim();
+    if (!q) return;
+    setActive("users");
+    const href = `/users?q=${encodeURIComponent(q)}`;
+    window.history.pushState({ pokrovAdminSection: "users", q }, "", href);
+    window.dispatchEvent(new CustomEvent("pokrov-admin-global-search", { detail: { q } }));
+  }, [globalSearch]);
 
   return (
     <div className="min-h-screen bg-[color:var(--atlas-canvas-alt)] text-[color:var(--atlas-text)]">
@@ -108,16 +118,25 @@ export function OpsShell({ section }: { section: string }) {
 
       <div className="lg:pl-[248px]">
         <header className="sticky top-0 z-10 border-b border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]/95 px-4 py-3 backdrop-blur lg:px-6">
-          <div className="flex min-h-10 items-center justify-between gap-3">
+          <div className="grid min-h-10 gap-3 xl:grid-cols-[minmax(180px,0.7fr),minmax(320px,1.2fr),auto] xl:items-center">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--atlas-text-muted)]">Ops surface</div>
+              <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--atlas-text-muted)]">Ops admin</div>
               <h1 className="text-xl font-semibold leading-tight">{sectionMap.get(active)?.label}</h1>
             </div>
+            <form onSubmit={submitGlobalSearch} className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--atlas-text-muted)]" size={16} />
+              <input
+                value={globalSearch}
+                onChange={(event) => setGlobalSearch(event.target.value)}
+                placeholder="Найти: tg_id, username, заказ, нода, ключ/email"
+                className="h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] pl-9 pr-3 text-sm outline-none transition focus:border-[color:var(--atlas-focus)]"
+              />
+            </form>
             <div className="hidden items-center gap-2 sm:flex">
-              <span className="rounded-full border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-1 text-xs text-[color:var(--atlas-text-soft)]">
+              <span className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-1 text-xs text-[color:var(--atlas-text-soft)]">
                 POKROV API
               </span>
-              <span className="rounded-full border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-1 text-xs text-[color:var(--atlas-text-soft)]">
+              <span className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-1 text-xs text-[color:var(--atlas-text-soft)]">
                 superadmin v1
               </span>
             </div>

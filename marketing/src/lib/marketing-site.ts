@@ -4,6 +4,7 @@ import {
   CANONICAL_BOT_URL,
   CANONICAL_CHECKOUT_URL,
   CANONICAL_CONTACT_EMAIL,
+  CANONICAL_GITHUB_RELEASES_URL,
   CANONICAL_MARKETING_SITE_URL,
   CANONICAL_NEWS_CHANNEL_URL,
   CANONICAL_PLATFORM_BRAND,
@@ -11,6 +12,7 @@ import {
   CANONICAL_SUPPORT_BOT_URL,
   getTariffPlans,
 } from "./pokrov";
+import { SEO_LAST_REVIEWED_DATE, SEO_PAGE_PATHS, SEO_SITEMAP_ROUTES, type SeoPage } from "./seo-pages";
 
 export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
 export const DEFAULT_MARKETING_TWITTER_IMAGE_PATH = "/twitter-image.png";
@@ -19,12 +21,21 @@ export const DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT = 630;
 
 export const MARKETING_CANONICAL_PATHS = {
   home: "/",
+  android: SEO_PAGE_PATHS.android,
+  windows: SEO_PAGE_PATHS.windows,
   mobile: "/mobile/",
   tiktok: "/tiktok/",
   youtube: "/youtube/",
   devices: "/devices/",
   telegram: "/telegram/",
   vpn: "/vpn/",
+  installAndroid: SEO_PAGE_PATHS.installAndroid,
+  installWindows: SEO_PAGE_PATHS.installWindows,
+  trialNoCard: SEO_PAGE_PATHS.trialNoCard,
+  billingNoAutopay: SEO_PAGE_PATHS.billingNoAutopay,
+  trustGithubReleases: SEO_PAGE_PATHS.trustGithubReleases,
+  compareFreeVpn: SEO_PAGE_PATHS.compareFreeVpn,
+  supportInstall: SEO_PAGE_PATHS.supportInstall,
   checkout: "/checkout/",
   install: "/install/",
   offer: "/offer/",
@@ -42,7 +53,6 @@ const PUBLIC_TARIFF_PLANS = getTariffPlans()
   .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
 
 const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
-const SEO_LAST_REVIEWED_DATE = "2026-06-01";
 
 export const MARKETING_FEATURE_LIST = [
   "Android и Windows, 5 дней бесплатно",
@@ -56,23 +66,43 @@ export const MARKETING_FEATURE_LIST = [
 export type MarketingRouteConfig = {
   path: string;
   changeFrequency: NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
+  lastReviewed: string;
   priority: number;
 };
 
 export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
-  { path: MARKETING_CANONICAL_PATHS.home, changeFrequency: "weekly", priority: 1 },
-  { path: MARKETING_CANONICAL_PATHS.mobile, changeFrequency: "weekly", priority: 0.9 },
-  { path: MARKETING_CANONICAL_PATHS.devices, changeFrequency: "weekly", priority: 0.88 },
-  { path: MARKETING_CANONICAL_PATHS.youtube, changeFrequency: "weekly", priority: 0.82 },
-  { path: MARKETING_CANONICAL_PATHS.tiktok, changeFrequency: "weekly", priority: 0.82 },
-  { path: MARKETING_CANONICAL_PATHS.vpn, changeFrequency: "weekly", priority: 0.8 },
-  { path: MARKETING_CANONICAL_PATHS.telegram, changeFrequency: "weekly", priority: 0.78 },
-  { path: MARKETING_CANONICAL_PATHS.checkout, changeFrequency: "weekly", priority: 0.76 },
-  { path: MARKETING_CANONICAL_PATHS.install, changeFrequency: "weekly", priority: 0.72 },
-  { path: MARKETING_MACHINE_READABLE_PATHS.pricing, changeFrequency: "weekly", priority: 0.64 },
-  { path: MARKETING_MACHINE_READABLE_PATHS.llms, changeFrequency: "weekly", priority: 0.58 },
-  { path: MARKETING_CANONICAL_PATHS.offer, changeFrequency: "monthly", priority: 0.36 },
-  { path: MARKETING_CANONICAL_PATHS.privacy, changeFrequency: "monthly", priority: 0.34 },
+  { path: MARKETING_CANONICAL_PATHS.home, changeFrequency: "weekly", lastReviewed: SEO_LAST_REVIEWED_DATE, priority: 1 },
+  ...SEO_SITEMAP_ROUTES,
+  {
+    path: MARKETING_CANONICAL_PATHS.checkout,
+    changeFrequency: "weekly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.76,
+  },
+  {
+    path: MARKETING_MACHINE_READABLE_PATHS.pricing,
+    changeFrequency: "weekly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.64,
+  },
+  {
+    path: MARKETING_MACHINE_READABLE_PATHS.llms,
+    changeFrequency: "weekly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.58,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.offer,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.36,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.privacy,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.34,
+  },
 ];
 
 export type MarketingFaqItem = {
@@ -138,7 +168,6 @@ export function buildMarketingUrl(path = "/"): string {
 
 export type MarketingMetadataOptions = {
   path?: string;
-  keywords?: string[];
   noIndex?: boolean;
 };
 
@@ -153,7 +182,6 @@ export function buildMarketingMetadata(
   return {
     title,
     description,
-    keywords: options.keywords,
     category: "technology",
     creator: CANONICAL_PLATFORM_BRAND,
     publisher: CANONICAL_PLATFORM_BRAND,
@@ -211,7 +239,7 @@ export function buildMarketingMetadata(
 export function buildMarketingSitemap(): MetadataRoute.Sitemap {
   return MARKETING_SITEMAP_ROUTES.map((route) => ({
     url: buildMarketingUrl(route.path),
-    lastModified: new Date(),
+    lastModified: new Date(route.lastReviewed),
     changeFrequency: route.changeFrequency,
     priority: route.priority,
   }));
@@ -221,6 +249,7 @@ export function buildOrganizationJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": `${CANONICAL_MARKETING_SITE_URL}/#organization`,
     name: CANONICAL_PLATFORM_BRAND,
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     logo: buildMarketingUrl("/pokrov-logo.svg"),
@@ -244,11 +273,13 @@ export function buildWebSiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": `${CANONICAL_MARKETING_SITE_URL}/#website`,
     name: CANONICAL_PLATFORM_BRAND,
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     inLanguage: "ru-RU",
     publisher: {
       "@type": "Organization",
+      "@id": `${CANONICAL_MARKETING_SITE_URL}/#organization`,
       name: CANONICAL_PLATFORM_BRAND,
     },
     about: [
@@ -262,7 +293,7 @@ export function buildWebSiteJsonLd() {
   };
 }
 
-function buildOfferCatalogJsonLd() {
+export function buildOfferCatalogJsonLd() {
   return {
     "@type": "OfferCatalog",
     name: `${CANONICAL_PLATFORM_BRAND} access plans`,
@@ -325,6 +356,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
     ...(review.length ? { review } : {}),
     publisher: {
       "@type": "Organization",
+      "@id": `${CANONICAL_MARKETING_SITE_URL}/#organization`,
       name: CANONICAL_PLATFORM_BRAND,
       url: `${CANONICAL_MARKETING_SITE_URL}/`,
     },
@@ -350,6 +382,117 @@ export function buildSoftwareApplicationJsonLd(options?: {
     url: canonicalUrl,
     description:
       "POKROV помогает начать с приложения на Android или Windows, получить 5 дней бесплатно без карты и дальше управлять сроком и устройствами.",
+  };
+}
+
+export function buildWebPageJsonLd(page: SeoPage) {
+  const url = buildMarketingUrl(page.path);
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    name: page.h1,
+    headline: page.h1,
+    description: page.description,
+    url,
+    inLanguage: "ru-RU",
+    dateModified: page.lastReviewed,
+    isPartOf: {
+      "@type": "WebSite",
+      "@id": `${CANONICAL_MARKETING_SITE_URL}/#website`,
+      name: CANONICAL_PLATFORM_BRAND,
+    },
+    publisher: {
+      "@type": "Organization",
+      "@id": `${CANONICAL_MARKETING_SITE_URL}/#organization`,
+      name: CANONICAL_PLATFORM_BRAND,
+    },
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      url: buildMarketingUrl(DEFAULT_MARKETING_SHARE_IMAGE_PATH),
+    },
+    about: [page.cluster, CANONICAL_PLATFORM_BRAND, "Android", "Windows"],
+  };
+}
+
+export function buildHowToJsonLd(page: SeoPage) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "@id": `${buildMarketingUrl(page.path)}#howto`,
+    name: page.h1,
+    description: page.answer,
+    inLanguage: "ru-RU",
+    dateModified: page.lastReviewed,
+    step: (page.steps || []).map((step, index) => ({
+      "@type": "HowToStep",
+      position: index + 1,
+      name: step.name,
+      text: step.text,
+      url: buildMarketingUrl(page.path),
+    })),
+    publisher: {
+      "@type": "Organization",
+      "@id": `${CANONICAL_MARKETING_SITE_URL}/#organization`,
+      name: CANONICAL_PLATFORM_BRAND,
+    },
+  };
+}
+
+export function buildItemListJsonLd(page: SeoPage) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "@id": `${buildMarketingUrl(page.path)}#criteria`,
+    name: `${page.h1}: критерии`,
+    itemListElement: (page.comparisonRows || []).map((row, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: row.criterion,
+      description: `${row.criterion}: ${row.pokrov}`,
+    })),
+  };
+}
+
+export function buildCheckoutServiceJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "@id": `${buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout)}#service`,
+    name: `${CANONICAL_PLATFORM_BRAND} access plans`,
+    serviceType: "VPN application access",
+    url: buildMarketingUrl(MARKETING_CANONICAL_PATHS.checkout),
+    description:
+      "POKROV offers paid access periods after the free Android and Windows app trial. Public checkout shows price, duration and device limit before payment.",
+    provider: {
+      "@type": "Organization",
+      "@id": `${CANONICAL_MARKETING_SITE_URL}/#organization`,
+      name: CANONICAL_PLATFORM_BRAND,
+    },
+    hasOfferCatalog: buildOfferCatalogJsonLd(),
+  };
+}
+
+export function buildTrustLinksJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "@id": `${CANONICAL_MARKETING_SITE_URL}/#public-sources`,
+    name: `${CANONICAL_PLATFORM_BRAND} public sources`,
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "GitHub Releases",
+        url: CANONICAL_GITHUB_RELEASES_URL,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Support bot",
+        url: CANONICAL_SUPPORT_BOT_URL,
+      },
+    ],
   };
 }
 

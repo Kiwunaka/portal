@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Golos_Text } from "next/font/google";
 
 import { getDesignTokenThemeCss } from "@/lib/portal";
 
@@ -20,17 +19,11 @@ export const viewport: Viewport = {
   themeColor: "#ffffff"
 };
 
-const fontBody = Golos_Text({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-golos",
-  display: "swap"
-});
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const designTokenThemeCss = getDesignTokenThemeCss("admin");
 
   return (
-    <html lang="ru" className={fontBody.variable}>
+    <html lang="ru">
       <body>
         <style id="pokrov-design-tokens" dangerouslySetInnerHTML={{ __html: designTokenThemeCss }} />
         {children}

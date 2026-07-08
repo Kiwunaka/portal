@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
 import time
 from pathlib import Path
 
 import paramiko
 from ssh_host_keys import configure_ssh_host_key_policy
 
+from node_inventory import DEFAULT_INVENTORY, inventory_ipv4_map
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
-DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
 
 
 def _parse_passwords(path: Path) -> str:
@@ -36,17 +36,7 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
 
 
 def _parse_inventory_ips(path: Path) -> dict[str, str]:
-    raw = path.read_text(encoding="utf-8", errors="replace")
-    out: dict[str, str] = {}
-    row_re = re.compile(r"^\|\s*`([^`]+)`\s*\|.*?\|\s*`?(\d{1,3}(?:\.\d{1,3}){3})`?\s*\|\s*$")
-    for ln in raw.splitlines():
-        m = row_re.match(ln.strip())
-        if not m:
-            continue
-        code = m.group(1).strip().lower()
-        ip = m.group(2).strip()
-        out[code] = ip
-    return out
+    return inventory_ipv4_map(path)
 
 
 def main() -> int:

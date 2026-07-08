@@ -21,7 +21,6 @@ import argparse
 import base64
 import json
 import os
-import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,9 +32,10 @@ from cryptography.hazmat.primitives import serialization
 
 from node_passwords import parse_passwords
 
+from node_inventory import DEFAULT_INVENTORY, read_inventory
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INVENTORY = REPO_ROOT / "docs" / "08-node-inventory.md"
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 
 
@@ -80,6 +80,7 @@ def main() -> int:
     desired_protocol = desired["protocol"]
 
     base = f"http://127.0.0.1:{panel_port}/{panel_path}"
+    csrf_url = f"{base}/csrf-token"
     login_url = f"{base}/login"
     list_url = f"{base}/panel/api/inbounds/list"
     add_url = f"{base}/panel/api/inbounds/add"
@@ -87,14 +88,33 @@ def main() -> int:
     cj = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 
+    csrf_token = ""
+    try:
+        st, body, _ = _req(opener, "GET", csrf_url, headers={"X-Requested-With": "XMLHttpRequest"})
+        if st == 200:
+            data_obj = _json_loads(body) or {}
+            csrf_token = str(data_obj.get("obj") or data_obj.get("csrfToken") or data_obj.get("csrf_token") or data_obj.get("token") or "")
+    except Exception:
+        csrf_token = ""
+
+    request_headers = {"X-Requested-With": "XMLHttpRequest"}
+    if csrf_token:
+        request_headers["X-CSRF-Token"] = csrf_token
+
     # login
     data = urllib.parse.urlencode({"username": panel_user, "password": panel_pass}).encode("utf-8")
-    st, body, _ = _req(opener, "POST", login_url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    st, body, _ = _req(
+        opener,
+        "POST",
+        login_url,
+        data=data,
+        headers={**request_headers, "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"},
+    )
     if st != 200:
         print(json.dumps({"ok": False, "error": f"login_http_{st}"}))
         return 2
 
-    st, body, _ = _req(opener, "GET", list_url)
+    st, body, _ = _req(opener, "GET", list_url, headers={"X-Requested-With": "XMLHttpRequest"})
     obj = _json_loads(body) or {}
     if not obj.get("success"):
         print(json.dumps({"ok": False, "error": "list_failed", "details": obj}))
@@ -112,7 +132,7 @@ def main() -> int:
         "POST",
         add_url,
         data=json.dumps(desired).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={**request_headers, "Content-Type": "application/json"},
     )
     if st != 200:
         print(json.dumps({"ok": False, "error": f"add_http_{st}", "body": body.decode('utf-8', errors='replace')[:400]}))
@@ -122,7 +142,7 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "add_failed", "details": obj}))
         return 5
 
-    st, body, _ = _req(opener, "GET", list_url)
+    st, body, _ = _req(opener, "GET", list_url, headers={"X-Requested-With": "XMLHttpRequest"})
     obj = _json_loads(body) or {}
     if not obj.get("success"):
         print(json.dumps({"ok": False, "error": "list_failed_after_add", "details": obj}))
@@ -151,26 +171,7 @@ class Node:
 
 
 def _parse_inventory(path: Path) -> list[Node]:
-    txt = path.read_text(encoding="utf-8", errors="replace")
-    nodes: list[Node] = []
-    for line in txt.splitlines():
-        line = line.strip()
-        if not line.startswith("|") or "`" not in line:
-            continue
-        parts = [p.strip() for p in line.strip("|").split("|")]
-        # Expected table: | Code | Role | Plan | IP |
-        if len(parts) < 4:
-            continue
-        code = parts[0].strip("`").strip()
-        role = parts[1].strip("`").strip()
-        ip = parts[3].strip("`").strip()
-        if not code or code.lower() == "code":
-            continue
-        if not re.fullmatch(r"[a-z0-9_-]+", code):
-            continue
-        if not re.fullmatch(r"(\d{1,3}\.){3}\d{1,3}", ip):
-            continue
-        nodes.append(Node(code=code, ip=ip, role=role))
+    nodes = [Node(code=row.code, ip=row.ip, role=row.role) for row in read_inventory(path)]
     if not nodes:
         raise SystemExit(f"Failed to parse inventory: {path}")
     return nodes
@@ -267,8 +268,12 @@ def main() -> int:
     ap.add_argument("--dest", default="www.cloudflare.com:443")
     ap.add_argument("--flow", default="xtls-rprx-vision")
     ap.add_argument("--fingerprint", default="firefox")
+    ap.add_argument("--listen", default="", help="xray inbound listen address; empty means public listener")
+    ap.add_argument("--vless-port", type=int, default=443, help="actual xray inbound port on the node")
+    ap.add_argument("--public-vless-port", type=int, default=0, help="port advertised to clients; defaults to --vless-port")
     ap.add_argument("--out", default="", help="write JSON result to path")
     args = ap.parse_args()
+    public_vless_port = int(args.public_vless_port or args.vless_port)
 
     nodes = _parse_inventory(Path(args.inventory))
     only = {c.strip() for c in args.only.split(",") if c.strip()}
@@ -319,8 +324,8 @@ def main() -> int:
                 "remark": f"{n.code.upper()} Reality",
                 "enable": True,
                 "expiryTime": 0,
-                "listen": "",
-                "port": 443,
+                "listen": args.listen,
+                "port": int(args.vless_port),
                 "protocol": "vless",
                 "settings": json.dumps({"clients": [], "decryption": "none", "fallbacks": []}, ensure_ascii=True),
                 "streamSettings": json.dumps(
@@ -364,7 +369,8 @@ def main() -> int:
             # If it already existed, derive PBK/SID from the existing streamSettings.
             if resp.get("action") == "exists":
                 try:
-                    ss = json.loads(inb.get("streamSettings") or inb.get("stream_settings") or "{}")
+                    stream_raw = inb.get("streamSettings") or inb.get("stream_settings") or inb.get("stream_settings_json") or {}
+                    ss = stream_raw if isinstance(stream_raw, dict) else json.loads(stream_raw or "{}")
                 except Exception:
                     ss = {}
                 rs = ss.get("realitySettings") or {}
@@ -385,7 +391,9 @@ def main() -> int:
                     "ip": n.ip,
                     "role": n.role,
                     "inbound_id": inbound_id,
-                    "vless_port": 443,
+                    "listen": args.listen,
+                    "vless_port": public_vless_port,
+                    "local_vless_port": int(args.vless_port),
                     "reality_sni": sni,
                     "reality_sid": sid,
                     "reality_pbk": pbk,

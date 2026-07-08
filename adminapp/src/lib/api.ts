@@ -158,6 +158,115 @@ export type AdminModulePayload = {
   payload: Record<string, unknown>;
 };
 
+export type AdminUserRow = Record<string, unknown> & {
+  tg_id: number;
+  username?: string | null;
+  display_name?: string | null;
+  sub_type?: string | null;
+  status?: string | null;
+  origin?: string | null;
+  expiry_at?: string | null;
+  observer_state?: string | null;
+};
+
+export type AdminUsersPayload = {
+  page: number;
+  page_size: number;
+  total: number;
+  sort: string;
+  users: AdminUserRow[];
+};
+
+export type AdminUserCardPayload = Record<string, unknown> & {
+  user?: Record<string, unknown>;
+  tickets?: Array<Record<string, unknown>>;
+  key_policies?: Array<Record<string, unknown>>;
+  key_history?: Array<Record<string, unknown>>;
+  admin_actions?: Array<Record<string, unknown>>;
+  payment_orders?: Array<Record<string, unknown>>;
+  observer?: Record<string, unknown>;
+  risk?: Record<string, unknown>;
+  summary?: Record<string, unknown>;
+  keys?: Array<Record<string, unknown>>;
+  keys_state?: {
+    summary?: Record<string, unknown>;
+    keys?: Array<Record<string, unknown>>;
+  };
+};
+
+export type NodeHealthRow = Record<string, unknown> & {
+  code: string;
+  name?: string | null;
+  enabled?: boolean;
+  accepting_new_clients?: boolean;
+  is_draining?: boolean;
+  is_healthy?: boolean;
+  health_score?: number | null;
+  capacity_state?: string | null;
+  freshness_status?: string | null;
+  online_keys_now?: number | null;
+  online_connections_now?: number | null;
+  panel_latency_ms?: number | null;
+  dataplane_ok?: boolean | null;
+  dataplane_rtt_ms?: number | null;
+  ipv4_health?: string | null;
+  ipv6_health?: string | null;
+  observer_is_stale?: boolean | null;
+};
+
+export type NodeRuntimePayload = {
+  ok: boolean;
+  updated_at?: string;
+  nodes: Array<Record<string, unknown>>;
+};
+
+export type OnlineUserRow = Record<string, unknown> & {
+  identity: string;
+  tg_id?: number | null;
+  username?: string | null;
+  display_name?: string | null;
+  sub_type?: string | null;
+  status?: string | null;
+  nodes_online?: string[];
+  online_keys_now?: number;
+  online_connections_now?: number;
+  ip_count?: number;
+  risk_flags?: string[];
+  last_online_at?: string | null;
+  raw_ip_exposed?: boolean;
+};
+
+export type OnlineUsersPayload = {
+  ok: boolean;
+  generated_at?: string;
+  rows: OnlineUserRow[];
+  total: number;
+  limit: number;
+  summary: Record<string, unknown>;
+  panel_errors?: Array<Record<string, unknown>>;
+  notes?: string[];
+};
+
+export type PaymentsSummaryPayload = {
+  ok: boolean;
+  period: Record<string, unknown>;
+  revenue: {
+    currency: string;
+    paid_count: number;
+    amount: number;
+    by_currency?: Array<Record<string, unknown>>;
+  };
+  status_counts: Record<string, number>;
+  attention: {
+    pending_count: number;
+    manual_review_count: number;
+    failed_count: number;
+    problem_count: number;
+  };
+  abandoned: Record<string, unknown>;
+  problem_orders: Array<Record<string, unknown>>;
+};
+
 export type AdminSessionPayload = {
   ok: boolean;
   token: string;
@@ -422,7 +531,77 @@ export async function fetchAdminModule(section: string, init?: ApiRequestInit): 
   return { section: normalized, rows: rows as Array<Record<string, unknown>>, payload };
 }
 
-export async function sendBroadcast(payload: { text: string; segment: string; limit: number; tg_ids?: number[] }): Promise<Record<string, unknown>> {
+export async function fetchAdminUsers(params?: { q?: string; status?: string; limit?: number; offset?: number; sort?: string }, init?: ApiRequestInit): Promise<AdminUsersPayload> {
+  const query = new URLSearchParams();
+  query.set("page_size", String(Math.max(1, Math.min(Number(params?.limit || 50), 200))));
+  query.set("offset", String(Math.max(0, Number(params?.offset || 0))));
+  if (params?.q) query.set("q", params.q);
+  if (params?.status) query.set("status", params.status);
+  if (params?.sort) query.set("sort", params.sort);
+  return apiFetch<AdminUsersPayload>(`/api/admin/users?${query.toString()}`, init);
+}
+
+export function fetchAdminUserCard(tgId: number, init?: ApiRequestInit): Promise<AdminUserCardPayload> {
+  return apiFetch<AdminUserCardPayload>(`/api/admin/users/${encodeURIComponent(String(tgId))}`, init);
+}
+
+export async function fetchNodesHealth(init?: ApiRequestInit): Promise<NodeHealthRow[]> {
+  const data = await apiFetch<{ nodes: NodeHealthRow[] }>("/api/admin/nodes/health", init);
+  return data.nodes || [];
+}
+
+export function fetchNodesRuntime(init?: ApiRequestInit): Promise<NodeRuntimePayload> {
+  return apiFetch<NodeRuntimePayload>("/api/admin/nodes/runtime", init);
+}
+
+export function fetchNodesDrift(init?: ApiRequestInit): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>("/api/admin/nodes/drift", init);
+}
+
+export async function fetchKeyPressure(init?: ApiRequestInit): Promise<Array<Record<string, unknown>>> {
+  const data = await apiFetch<Record<string, unknown>>("/api/admin/keys/pressure?limit=80", init);
+  const rows = data.rows || data.keys || data.pressure || [];
+  return Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : [];
+}
+
+export function fetchOnlineUsers(params?: { limit?: number; only?: string }, init?: ApiRequestInit): Promise<OnlineUsersPayload> {
+  const query = new URLSearchParams();
+  query.set("limit", String(Math.max(1, Math.min(Number(params?.limit || 200), 500))));
+  if (params?.only) query.set("only", params.only);
+  return apiFetch<OnlineUsersPayload>(`/api/admin/online/users?${query.toString()}`, init);
+}
+
+export function fetchPaymentsSummary(period: "today" | "7d" | "30d", init?: ApiRequestInit): Promise<PaymentsSummaryPayload> {
+  return apiFetch<PaymentsSummaryPayload>(`/api/admin/payments/summary?period=${encodeURIComponent(period)}`, init);
+}
+
+export async function fetchPaymentOrders(limit = 80, init?: ApiRequestInit): Promise<Array<Record<string, unknown>>> {
+  const data = await apiFetch<Record<string, unknown>>(`/api/admin/payments/orders?limit=${Math.max(1, Math.min(Number(limit || 80), 200))}`, init);
+  const rows = data.orders || data.payments || [];
+  return Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : [];
+}
+
+export function nodeLifecycleAction(
+  nodeCode: string,
+  action: "drain" | "enable" | "undrain" | "disable",
+  payload?: { force?: boolean }
+): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(`/api/admin/nodes/${encodeURIComponent(nodeCode)}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+}
+
+export function nodeResync(nodeCode: string, payload?: { limit?: number; dry_run?: boolean }): Promise<Record<string, unknown>> {
+  return apiFetch<Record<string, unknown>>(`/api/admin/nodes/${encodeURIComponent(nodeCode)}/resync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+}
+
+export async function sendBroadcast(payload: { text: string; segment: string; limit: number; tg_ids?: number[]; dry_run?: boolean }): Promise<Record<string, unknown>> {
   return apiFetch<Record<string, unknown>>("/api/admin/broadcast", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

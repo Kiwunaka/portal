@@ -21,24 +21,24 @@ one-test-per-private-helper coverage.
 
 | Metric | Count |
 | --- | ---: |
-| Private helper rows | 17 |
-| Rows needing Q-001 owner decision | 17 |
+| Private helper rows | 14 |
+| Rows needing Q-001 owner decision | 14 |
 | High risk rows | 0 |
 | Medium risk rows | 2 |
-| Low risk rows | 15 |
+| Low risk rows | 12 |
 
 ### By Private Helper Area
 
 | Label | Count |
 | --- | ---: |
 | `client_private_ui_helper` | 9 |
-| `private_implementation_helper` | 8 |
+| `private_implementation_helper` | 5 |
 
 ### By Risk Tier
 
 | Label | Count |
 | --- | ---: |
-| `low` | 15 |
+| `low` | 12 |
 | `medium` | 2 |
 
 ### By Language
@@ -46,13 +46,13 @@ one-test-per-private-helper coverage.
 | Label | Count |
 | --- | ---: |
 | `dart` | 9 |
-| `python` | 8 |
+| `python` | 5 |
 
 ### By Current Status
 
 | Label | Count |
 | --- | ---: |
-| `source_inventory_only` | 17 |
+| `source_inventory_only` | 14 |
 
 ## Completion Rule
 

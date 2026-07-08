@@ -58,6 +58,58 @@ const providerQuotaConfig = {
   updated_at: generatedAt
 };
 
+const nodesHealth = [
+  {
+    code: "NL-free",
+    name: "Netherlands free",
+    enabled: true,
+    accepting_new_clients: true,
+    is_draining: false,
+    is_healthy: true,
+    health_score: 88,
+    panel_latency_ms: 84,
+    panel_error_rate: 0,
+    dataplane_ok: true,
+    dataplane_rtt_ms: 42,
+    capacity_state: "degraded",
+    capacity_score: 64,
+    capacity_reject_reason: "provider_cap_near",
+    freshness_status: "fresh",
+    freshness_age_seconds: 60,
+    last_probe_stage: "ok",
+    last_probe_error_kind: null,
+    ipv4_health: "ok",
+    ipv6_health: "missing",
+    transport_health: { reality: { ok: true }, xhttp: { ok: false } },
+    observer_is_stale: false,
+    mapped_users: 32,
+    online_keys_now: 12,
+    online_connections_now: 18
+  },
+  {
+    code: "DE-1",
+    name: "Germany premium",
+    enabled: true,
+    accepting_new_clients: true,
+    is_draining: false,
+    is_healthy: true,
+    health_score: 96,
+    panel_latency_ms: 34,
+    panel_error_rate: 0,
+    dataplane_ok: true,
+    dataplane_rtt_ms: 20,
+    capacity_state: "ok",
+    capacity_score: 92,
+    freshness_status: "fresh",
+    ipv4_health: "ok",
+    ipv6_health: "ok",
+    observer_is_stale: false,
+    mapped_users: 78,
+    online_keys_now: 24,
+    online_connections_now: 31
+  }
+];
+
 const overview = {
   ok: true,
   generated_at: generatedAt,
@@ -71,7 +123,7 @@ const overview = {
       unique_install_ids_7d: 44
     },
     tickets: { open: 3 },
-    nodes: { total: 3, healthy: 3 },
+    nodes: { total: 2, healthy: 1 },
     errors: {},
     observer: { watch_users: 4, suspicious_users: 1 }
   },
@@ -79,28 +131,10 @@ const overview = {
     status: "fresh",
     age_seconds: 42,
     alerts: {},
-    nodes: [
-      {
-        node_code: "NL-free",
-        status: "fresh",
-        cpu_percent: 18,
-        network_total_mbps: 92,
-        capacity_score: 0.72
-      }
-    ]
+    nodes: []
   },
   capacity: {
-    nodes: [
-      {
-        code: "NL-free",
-        node_code: "NL-free",
-        capacity_state: "ok",
-        capacity_score: 0.72,
-        tx_ratio: 0.24,
-        cpu_percent: 18,
-        reject_reason: null
-      }
-    ]
+    nodes: []
   },
   free_tier: {
     free_users: 32,
@@ -123,6 +157,80 @@ const overview = {
     critical_count: 0,
     warning_count: 1
   }
+};
+
+const onlineUsers = {
+  ok: true,
+  generated_at: generatedAt,
+  rows: [
+    {
+      identity: "tg:1001",
+      tg_id: 1001,
+      username: "operator_user",
+      display_name: "Operator User",
+      sub_type: "PAID",
+      status: "active",
+      nodes_online: ["NL-free", "DE-1"],
+      online_keys_now: 2,
+      online_connections_now: 3,
+      ip_count: 2,
+      risk_flags: ["multi_ip", "manual_review"],
+      last_online_at: generatedAt,
+      raw_ip_exposed: false,
+      source_ip_raw: "203.0.113.77"
+    }
+  ],
+  total: 1,
+  limit: 200,
+  summary: {
+    online_identities: 1,
+    known_users_online: 1,
+    unknown_online_keys: 0,
+    online_keys_now: 2,
+    online_connections_now: 3,
+    nodes_with_panel_errors: 0,
+    raw_ip_exposed: false
+  },
+  panel_errors: []
+};
+
+const paymentSummary = {
+  ok: true,
+  period: { key: "7d", from: "2026-07-01T00:00:00Z", to: generatedAt },
+  revenue: { currency: "RUB", paid_count: 4, amount: 3960, by_currency: [{ currency: "RUB", paid_count: 4, revenue: 3960 }] },
+  status_counts: { paid: 4, pending: 2, manual_review: 1, failed: 1 },
+  attention: { pending_count: 2, manual_review_count: 1, failed_count: 1, problem_count: 4 },
+  abandoned: {
+    buy_clicks: 17,
+    checkout_started: 12,
+    paid: 4,
+    buy_click_not_paid: 13,
+    checkout_not_paid: 8
+  },
+  problem_orders: [
+    { provider: "lavatop", order_id: "ord_pending", status: "pending", amount: 990, currency: "RUB", plan_code: "1_month", tg_id: 1001, created_at: generatedAt }
+  ]
+};
+
+const funnelPayload = {
+  period: { from: "2026-07-01", to: "2026-07-06" },
+  totals: { visitors: 100, app_opens: 52, checkouts: 22, paid: 9, connected: 7 },
+  stages: [
+    { key: "site_to_app", label: "Сайт → кабинет или бот", entered: 100, reached_next: 52, dropped: 48, conversion_pct: 52 },
+    { key: "app_to_checkout", label: "Кабинет/бот → оплата", entered: 52, reached_next: 22, dropped: 30, conversion_pct: 42.3 },
+    { key: "checkout_to_paid", label: "Оплата → подтверждение", entered: 22, reached_next: 9, dropped: 13, conversion_pct: 40.9 },
+    { key: "paid_to_connected", label: "Оплачено → подключение", entered: 9, reached_next: 7, dropped: 2, conversion_pct: 77.8 }
+  ],
+  drop_reasons: [
+    { reason: "Открыли кабинет/бот, но не начали оплату", count: 30 }
+  ],
+  by_source: [
+    { source: "site", visitors: 100, app_opens: 24, checkouts: 12, paid: 5, connected: 4 },
+    { source: "webapp", visitors: 0, app_opens: 28, checkouts: 10, paid: 4, connected: 3 }
+  ],
+  recent: [
+    { kind: "site", created_at: generatedAt, session_id: "s1", event_name: "checkout_start", stage: "checkout_start", source: "site", path: "/checkout" }
+  ]
 };
 
 function jsonResponse(route: Route, data: unknown, status = 200) {
@@ -192,6 +300,47 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
       return;
     }
 
+    if (url.pathname === "/api/admin/nodes/health") {
+      await jsonResponse(route, { ok: true, nodes: nodesHealth });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/nodes/runtime") {
+      await jsonResponse(route, { ok: true, updated_at: generatedAt, nodes: [{ node_code: "NL-free", online_clients: 12 }] });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/online/users") {
+      await jsonResponse(route, onlineUsers);
+      return;
+    }
+
+    if (url.pathname === "/api/admin/payments/summary") {
+      const period = url.searchParams.get("period") || "7d";
+      await jsonResponse(route, { ...paymentSummary, period: { ...paymentSummary.period, key: period }, revenue: { ...paymentSummary.revenue, amount: period === "today" ? 990 : period === "30d" ? 9900 : 3960 } });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/keys/pressure") {
+      await jsonResponse(route, {
+        ok: true,
+        keys: [
+          {
+            key_id: 7001,
+            tg_id: 1001,
+            node_code: "NL-free",
+            panel_email: "operator@example.test",
+            state: "watch",
+            pressure_score: 72,
+            reasons: ["multi_ip"],
+            manual_review_required: true,
+            updated_at: generatedAt
+          }
+        ]
+      });
+      return;
+    }
+
     if (url.pathname === "/api/admin/free-tier/users") {
       await jsonResponse(route, {
         ok: true,
@@ -235,7 +384,7 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
             node_code: "NL-free",
             cpu_percent: 18,
             network_total_mbps: 92,
-            capacity_score: 0.72
+            capacity_score: 72
           }
         ]
       });
@@ -278,37 +427,105 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
     }
 
     if (url.pathname === "/api/admin/broadcast" && method === "POST") {
-      await jsonResponse(route, { ok: true, sent: 12, skipped: 0, segment: "active" });
+      const dryRun = Boolean((body as { dry_run?: boolean } | null)?.dry_run);
+      await jsonResponse(route, { ok: true, dry_run: dryRun, attempted: 12, sent: dryRun ? 0 : 12, failed: 0, segment: "all_active" });
+      return;
+    }
+
+    if (/^\/api\/admin\/users\/\d+$/.test(url.pathname)) {
+      await jsonResponse(route, {
+        user: {
+          tg_id: 1001,
+          username: "operator_user",
+          display_name: "Operator User",
+          status: "active",
+          sub_type: "PAID",
+          expiry_at: "2026-08-01T00:00:00Z",
+          app_install_id: "install-1001",
+          observer_state: "watch"
+        },
+        summary: {
+          nodes_online: 2,
+          online_keys_now: 2,
+          online_connections_now: 3,
+          subid_mismatch_count: 0,
+          traffic_total_gb: 4.5
+        },
+        keys: [
+          { node_code: "NL-free", exists: true, enabled: true, online: true, current_connections: 2, total_gb: 3.1, sub_id_match: true },
+          { node_code: "DE-1", exists: true, enabled: true, online: true, current_connections: 1, total_gb: 1.4, sub_id_match: true }
+        ],
+        observer: {
+          state: "watch",
+          observed_ip_count_24h: 2,
+          recent_ips: [
+            { source_ip_raw: "203.0.113.77", node_code: "NL-free", counts_for_suspicion: true, last_seen_at: generatedAt }
+          ],
+          recent_nodes: []
+        },
+        risk: { state: "watch" },
+        tickets: [{ id: 2001, status: "open", subject: "Need help", updated_at: generatedAt }],
+        payment_orders: [{ provider: "lavatop", order_id: "ord_1", status: "pending", amount: 990, currency: "RUB", created_at: generatedAt }],
+        key_history: [{ action: "key_sync", node_code: "NL-free", actor_tg_id: 9999, created_at: generatedAt }],
+        admin_actions: [{ action: "admin_note", actor_tg_id: 9999, created_at: generatedAt }]
+      });
       return;
     }
 
     if (url.pathname === "/api/admin/users") {
-      await jsonResponse(route, { ok: true, users: [{ tg_id: 1001, username: "operator_user", status: "active" }] });
+      await jsonResponse(route, {
+        page: 1,
+        page_size: 80,
+        total: 1,
+        sort: "created_desc",
+        users: [
+          {
+            tg_id: 1001,
+            username: "operator_user",
+            display_name: "Operator User",
+            status: "active",
+            sub_type: "PAID",
+            expiry_at: "2026-08-01T00:00:00Z",
+            observer_state: "watch",
+            app_install_id: "install-1001"
+          }
+        ]
+      });
       return;
     }
 
     if (url.pathname === "/api/admin/tickets") {
-      await jsonResponse(route, { ok: true, tickets: [{ id: 2001, status: "open", subject: "Need help" }] });
+      await jsonResponse(route, { ok: true, tickets: [{ id: 2001, user_tg_id: 1001, status: "open", subject: "Need help", updated_at: generatedAt }] });
       return;
     }
 
     if (url.pathname === "/api/admin/payments/orders") {
-      await jsonResponse(route, { ok: true, orders: [{ provider: "lavatop", order_id: "ord_1", status: "pending" }] });
+      await jsonResponse(route, { ok: true, orders: [{ provider: "lavatop", order_id: "ord_1", status: "pending", amount: 990, currency: "RUB", plan_code: "1_month", tg_id: 1001, created_at: generatedAt }] });
       return;
     }
 
     if (url.pathname === "/api/admin/promos") {
-      await jsonResponse(route, { ok: true, promos: [{ code: "HELLO", promo_type: "discount", value: 15 }] });
+      await jsonResponse(route, { ok: true, promos: [{ id: 1, code: "HELLO", promo_type: "discount", value: 15, status: "active", created_at: generatedAt }] });
       return;
     }
 
     if (url.pathname === "/api/admin/referrals/pending") {
-      await jsonResponse(route, { ok: true, rows: [{ id: 1, referrer_tg_id: 1001, status: "pending" }] });
+      await jsonResponse(route, { ok: true, rows: [{ id: 1, referrer_tg_id: 1001, status: "pending", created_at: generatedAt }] });
       return;
     }
 
     if (url.pathname === "/api/admin/live-updates") {
-      await jsonResponse(route, { ok: true, updates: [{ id: 1, title: "Beta patch", is_active: true }] });
+      await jsonResponse(route, { ok: true, updates: [{ id: 1, title: "Beta patch", summary: "APK/EXE checksum refreshed", is_active: true, published_at: generatedAt, sort_order: 10 }] });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/funnel/summary") {
+      await jsonResponse(route, funnelPayload);
+      return;
+    }
+
+    if (/^\/api\/admin\/nodes\/[^/]+\/(drain|enable|undrain|disable|resync)$/.test(url.pathname) && method === "POST") {
+      await jsonResponse(route, { ok: true, dry_run: Boolean((body as { dry_run?: boolean } | null)?.dry_run), node_code: url.pathname.split("/")[4], node: nodesHealth[0] });
       return;
     }
 
@@ -318,29 +535,31 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
 }
 
 async function authenticate(page: Page) {
-  await expect(page.getByText("Admin auth")).toBeVisible();
+  await expect(page.getByText("Вход в админку")).toBeVisible();
   await page.getByPlaceholder("query_id=...&user=...&auth_date=...&hash=...").fill("query_id=test&user=%7B%22id%22%3A9999%7D&auth_date=1&hash=test");
   await page.getByRole("button", { name: /Войти по initData/ }).click();
-  await expect(page.getByRole("button", { name: /Refresh/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Обновить/ })).toBeVisible();
 }
 
 async function gotoWithAdminSession(page: Page, path: string) {
   await page.addInitScript(() => {
     window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
   });
-  await page.goto(path);
-  await expect(page.getByRole("button", { name: /Refresh/ })).toBeVisible();
+  const target = path === "/" || path.endsWith("/") || path.includes("?") ? path : `${path}/`;
+  await page.goto(target);
+  await expect(page.getByRole("button", { name: /Обновить/ })).toBeVisible();
 }
 
-test("dashboard reuses an existing browser session and renders overview", async ({ page }) => {
+test("dashboard reuses browser session and renders action-first overview", async ({ page }) => {
   const calls = await mockAdminApi(page);
   await page.goto("/");
-  await expect(page.getByRole("button", { name: /Refresh/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Обновить/ })).toBeVisible();
 
   expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session")).toBe(true);
   expect(calls.some((call) => call.path === "/api/admin/ops/overview" && call.auth === "Bearer mock-admin-token")).toBe(true);
-  await expect(page.getByText("Users active")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Требует действий" })).toBeVisible();
   await expect(page.getByText("NL-free traffic near provider cap")).toBeVisible();
+  await expect(page.getByText("Выручка сегодня")).toBeVisible();
 });
 
 test("dashboard exchanges initData when browser session is missing", async ({ page }) => {
@@ -349,44 +568,75 @@ test("dashboard exchanges initData when browser session is missing", async ({ pa
   await authenticate(page);
 
   expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session" && call.initData.includes("query_id=test"))).toBe(true);
-  await expect(page.getByText("Users active")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Требует действий" })).toBeVisible();
 });
 
-test("left-click shell navigation changes ops sections without a reload", async ({ page }) => {
+test("global search opens users and renders card with raw IP only inside user card", async ({ page }) => {
+  const calls = await mockAdminApi(page);
+  await gotoWithAdminSession(page, "/");
+
+  await page.getByPlaceholder("Найти: tg_id, username, заказ, нода, ключ/email").fill("1001");
+  await page.keyboard.press("Enter");
+
+  await expect(page).toHaveURL(/\/users\/?\?q=1001$/);
+  await expect(page.getByRole("heading", { name: "Поиск пользователей" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Operator User tg/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "IP-наблюдения" })).toBeVisible();
+  await expect(page.getByText("203.0.113.77")).toBeVisible();
+  expect(calls.some((call) => call.path.includes("/api/admin/users?") && call.path.includes("q=1001"))).toBe(true);
+});
+
+test("online screen hides raw IP in the general list", async ({ page }) => {
   await mockAdminApi(page);
-  await gotoWithAdminSession(page, "/");
+  await gotoWithAdminSession(page, "/online");
 
-  const navEntries = page.locator('a[href="/nodes"]:visible');
-  await expect(navEntries.first()).toBeVisible();
-  await navEntries.first().click({ button: "left" });
-
-  await expect(page).toHaveURL(/\/nodes\/?$/);
-  await expect(page.getByRole("heading", { name: "Nodes" })).toBeVisible();
-  await expect(page.locator("main")).toContainText("Node status");
+  await expect(page.getByRole("main").getByRole("heading", { name: "Сейчас онлайн" })).toBeVisible();
+  await expect(page.getByText("Operator User")).toBeVisible();
+  await expect(page.getByText("IP только в карточке пользователя")).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("203.0.113.77");
 });
 
-test("rapid shell navigation ignores stale admin loads", async ({ page }) => {
-  await mockAdminApi(page, { delayMs: 120 });
-  await gotoWithAdminSession(page, "/");
+test("node detail requires text confirmation for lifecycle actions", async ({ page }) => {
+  const calls = await mockAdminApi(page);
+  await gotoWithAdminSession(page, "/nodes");
 
-  await page.locator('a[href="/nodes"]:visible').first().click({ button: "left", noWaitAfter: true });
-  await page.locator('a[href="/traffic"]:visible').first().click({ button: "left", noWaitAfter: true });
-  await page.locator('a[href="/free-tier"]:visible').first().click({ button: "left" });
+  await expect(page.getByRole("heading", { name: "Health-first ноды" })).toBeVisible();
+  await page.getByRole("button", { name: /^drain$/ }).click();
+  await page.getByLabel("введи node_code").fill("NL-free");
+  await page.getByRole("button", { name: /Выполнить/ }).click();
 
-  await expect(page).toHaveURL(/\/free-tier\/?$/);
-  await expect(page.getByRole("main").getByRole("heading", { name: "Free tier" })).toBeVisible();
-  await expect(page.locator("main")).not.toContainText("Failed to fetch");
-  await expect(page.locator("main")).not.toContainText("Admin API error");
+  await expect.poll(() => calls.some((call) => call.method === "POST" && call.path === "/api/admin/nodes/NL-free/drain")).toBe(true);
+});
+
+test("payments screen renders summaries, abandoned counts and orders", async ({ page }) => {
+  await mockAdminApi(page);
+  await gotoWithAdminSession(page, "/payments");
+
+  await expect(page.getByText("Кликнул, но не оплатил")).toBeVisible();
+  await expect(page.getByText("ord_pending")).toBeVisible();
+  await expect(page.getByText("checkout not paid")).toBeVisible();
+  await expect(page.getByText("ord_1")).toBeVisible();
+});
+
+test("funnel screen renders stages and source breakdown without raw JSON", async ({ page }) => {
+  await mockAdminApi(page);
+  await gotoWithAdminSession(page, "/funnel");
+
+  await expect(page.getByRole("heading", { name: "Stages" })).toBeVisible();
+  await expect(page.getByText("Сайт → кабинет или бот")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Source breakdown" })).toBeVisible();
+  await expect(page.locator("pre")).toHaveCount(0);
 });
 
 test("provider caps saves configured quota through mock API", async ({ page }) => {
   const calls = await mockAdminApi(page);
   await gotoWithAdminSession(page, "/provider-caps");
 
-  await expect(page.getByRole("main").getByRole("heading", { name: "Provider caps" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("heading", { name: "Лимиты провайдеров" })).toBeVisible();
   await expect(page.getByText("NL-free")).toBeVisible();
+  await page.getByRole("button", { name: /NL-free/ }).first().click();
   await page.locator("label").filter({ hasText: "included_gb" }).locator("input").fill("1200");
-  await page.getByRole("button", { name: /Save/ }).click();
+  await page.getByRole("button", { name: /Сохранить/ }).click();
   await expect
     .poll(() => calls.some((call) => call.method === "PATCH" && call.path.startsWith("/api/admin/provider-quotas/") && (call.body as { included_gb?: number } | null)?.included_gb === 1200))
     .toBe(true);
@@ -398,7 +648,7 @@ test("alerts can be acknowledged and silenced", async ({ page }) => {
 
   await page.getByRole("button", { name: /Ack/ }).click();
   await expect.poll(() => calls.some((call) => call.method === "POST" && call.path.endsWith("/ack"))).toBe(true);
-  await page.getByRole("button", { name: /2h/ }).click();
+  await page.getByRole("button", { name: /1ч/ }).click();
   await expect.poll(() => calls.some((call) => call.method === "POST" && call.path.endsWith("/silence"))).toBe(true);
 });
 
@@ -407,16 +657,22 @@ test("free-tier page renders user cap table", async ({ page }) => {
   await gotoWithAdminSession(page, "/free-tier");
 
   await expect(page.getByRole("main").getByRole("heading", { name: "Free tier" })).toBeVisible();
-  await expect(page.getByText("free_needle")).toBeVisible();
+  await expect(page.getByText("Free Needle")).toBeVisible();
   await expect(page.getByText("near_cap")).toBeVisible();
 });
 
-test("broadcast submits active segment message", async ({ page }) => {
+test("broadcast requires dry-run preview before sending", async ({ page }) => {
   const calls = await mockAdminApi(page);
   await gotoWithAdminSession(page, "/broadcast");
 
   await page.locator("textarea").fill("Ops smoke broadcast");
-  await page.getByRole("button", { name: /Send active 100/ }).click();
-  await expect.poll(() => calls.some((call) => call.method === "POST" && call.path === "/api/admin/broadcast")).toBe(true);
-  await expect(page.getByText(/"sent":12/)).toBeVisible();
+  await page.getByRole("button", { name: /Dry-run/ }).click();
+  await expect(page.getByText(/dry-run: 12/)).toBeVisible();
+  await page.getByPlaceholder("SEND").fill("SEND");
+  await page.getByRole("button", { name: /Отправить/ }).click();
+
+  await expect.poll(() => calls.filter((call) => call.method === "POST" && call.path === "/api/admin/broadcast").length).toBe(2);
+  const broadcastBodies = calls.filter((call) => call.method === "POST" && call.path === "/api/admin/broadcast").map((call) => call.body as { dry_run?: boolean });
+  expect(broadcastBodies[0]?.dry_run).toBe(true);
+  expect(broadcastBodies[1]?.dry_run).toBe(false);
 });

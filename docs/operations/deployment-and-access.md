@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-05
+Last updated: 2026-07-08
 
 ## Document Status
 
@@ -53,7 +53,7 @@ RF access rule:
 - do not add `rf1` to the normal runtime delivery pool in phase 1
 - keep a hard kill switch for the `rf1` VIP/manual contour so it can be withdrawn without touching the standard consumer path
 - `rf1` reserve work remains backlog-only
-- owner-approved exception on `2026-06-01`: `mini` may run `ru_bridge_relay` on `tcp/443` through Xray Reality as an emergency bridge to POKROV delivery nodes except US; do not add `mini` to the normal runtime delivery pool and do not move control-plane services onto it
+- owner-approved exception on `2026-06-01`: `mini` may run `ru_bridge_relay` on `tcp/443` through Xray Reality as the legacy primary emergency bridge to POKROV delivery nodes except US; additional RU bridge hosts may be added as separate `ru_bridge_relay.endpoints[]` ids without replacing `mini`. Do not add bridge hosts to the normal runtime delivery pool and do not move control-plane services onto them.
 - owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
 - `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS`
 - current `mini` SSH access, verified on `2026-06-01`: use `kiwunaka@176.123.166.119:22` with the retained local password bundle; `29374` opens TCP but resets before the SSH banner and should not be used as the primary SSH path
@@ -241,7 +241,8 @@ Current SSH note for running the probe remotely: `mini` is reachable as `kiwunak
 Status:
 
 - previous `remote_install_mini_canary_stack.py` xhttp/hysteria experiments remain historical/operator tooling only
-- `remote_apply_ru_bridge_relay.py` is the current owner-approved emergency bridge path: it syncs active user UUIDs from `brain`, installs/preserves `mini` Xray Reality on `tcp/443`, restricts bridge egress to POKROV target nodes, excludes `us`, and patches public bridge metadata into `network_rollout_config`
+- `remote_apply_ru_bridge_relay.py` is the current owner-approved emergency bridge path: it syncs active user UUIDs from `brain`, installs/preserves a bridge Xray Reality service, restricts bridge egress to POKROV target nodes, excludes `us`, and patches public bridge metadata into `network_rollout_config`
+- the brain rollout patch keeps the old single-bridge top-level metadata compatible and merges `ru_bridge_relay.endpoints[]` by stable endpoint `id`; rerunning a type 2/type 3 RU bridge rollout must update that endpoint without deleting the existing `mini` endpoint
 - when the new RU server is available, add it as a separate RU-node/bridge lane instead of replacing `mini`; prove both bridge paths independently before promoting a cohort
 - rerun `remote_apply_ru_bridge_relay.py --apply --update-brain-rollout` after meaningful user growth or before relying on the bridge for a live incident, because `mini` authorizes the active UUID snapshot that was synced at apply time
 - when bridge targets mix DNS hosts and raw IP hosts, keep Xray routing allow rules split by `domain` and `ip`; one rule containing both fields can fail to match the country-hop connection and make every `Белые списки` detour appear dead
@@ -284,10 +285,13 @@ Transport policy rule:
 - legacy node fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and should synthesize `legacy_reality_fallback` when the transport catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout source of truth for `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- old node-inventory markdown moved to `docs/archive/flat-docs/08-node-inventory.md`; `scripts/node_inventory.py` keeps legacy bootstrap, DNS, and remote-maintenance helpers compatible with that retained IP snapshot, but live deployment decisions must still use Postgres/admin API state, rollout config, and current probe evidence
 - `defaults` normally pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split`; live incident response may temporarily set `transport_profile=ru_bridge_relay`
 - `carrier_overrides` and `cohort_overrides` may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `reserve_xhttp_cdn` stays opt-in, disabled by default, and is intended only as a reserve path on eligible nodes until a later rollout wave promotes it explicitly
-- `ru_bridge_relay` stays opt-in unless an incident commander explicitly promotes it; app-managed sing-box manifests expose countries at the top level and nested `Обычный` / `Белые списки` choices under non-US nodes, while US remains a direct-only target and is never routed through the RU bridge
+- `ru_bridge_relay` stays opt-in unless an incident commander explicitly promotes it; app-managed sing-box manifests expose countries at the top level and nested `Обычный` / `Белые списки` endpoint choices under non-US nodes, while US remains a direct-only target and is never routed through the RU bridge
+- app-managed sing-box configs load runtime rule sets from `https://connect.pokrov.space/rules/geoip-ru.srs` and `https://connect.pokrov.space/rules/adblock.srs`; the brain host mirrors those files under `/var/www/portal/rules/` and refreshes them with `pokrov-singbox-rules-refresh.timer`
+- BitTorrent routing is RU-only when the rendered paid profile contains `ru`/`ru_spb` delivery outbounds: the generated config adds a hidden RU torrent selector and points `protocol=bittorrent` at it before the `geoip-ru` direct rule. Profiles without RU outbounds keep the old direct fallback.
 - `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only

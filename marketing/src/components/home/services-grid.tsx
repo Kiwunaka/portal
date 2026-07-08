@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Infinity as InfinityIcon, Sparkles } from "lucide-react";
 import { siDiscord, siInstagram, siTiktok, siYoutube } from "simple-icons";
 
@@ -7,8 +8,10 @@ import { BrandIcon } from "../ui/brand-icon";
 import { Card } from "../ui/card";
 import { SectionHeading } from "../ui/section-heading";
 import { getCopyText } from "../../lib/pokrov";
+import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 
 type ServiceTile = {
+  href: string;
   icon: ReactNode;
   text: string;
   title: string;
@@ -18,31 +21,37 @@ export function ServicesGrid() {
   const tiles: ServiceTile[] = [
     {
       icon: <BrandIcon icon={siYoutube} />,
+      href: MARKETING_CANONICAL_PATHS.youtube,
       title: getCopyText("marketing.home.services.youtube.title", "YouTube в полном качестве"),
       text: getCopyText("marketing.home.services.youtube.text", "Без замедлений, буферизации и «крутилки» на 480p"),
     },
     {
       icon: <BrandIcon icon={siTiktok} />,
+      href: MARKETING_CANONICAL_PATHS.tiktok,
       title: getCopyText("marketing.home.services.tiktok.title", "TikTok снова открывается"),
       text: getCopyText("marketing.home.services.tiktok.text", "Лента, лайки и загрузка роликов работают как раньше"),
     },
     {
       icon: <BrandIcon icon={siInstagram} />,
+      href: MARKETING_CANONICAL_PATHS.vpn,
       title: getCopyText("marketing.home.services.social.title", "Соцсети и мессенджеры"),
       text: getCopyText("marketing.home.services.social.text", "Instagram, звонки и медиа в чатах — без танцев с бубном"),
     },
     {
       icon: <Sparkles size={18} strokeWidth={1.8} className="text-brand" aria-hidden="true" />,
+      href: MARKETING_CANONICAL_PATHS.vpn,
       title: getCopyText("marketing.home.services.ai.title", "ИИ-сервисы"),
       text: getCopyText("marketing.home.services.ai.text", "ChatGPT и другие инструменты открываются напрямую"),
     },
     {
       icon: <BrandIcon icon={siDiscord} />,
+      href: MARKETING_CANONICAL_PATHS.vpn,
       title: getCopyText("marketing.home.services.games.title", "Игры и Discord"),
       text: getCopyText("marketing.home.services.games.text", "Голосовые каналы и магазины игр без обрывов"),
     },
     {
       icon: <InfinityIcon size={18} strokeWidth={1.8} className="text-brand" aria-hidden="true" />,
+      href: MARKETING_CANONICAL_PATHS.compareFreeVpn,
       title: getCopyText("marketing.home.services.rest.title", "И всё остальное"),
       text: getCopyText("marketing.home.services.rest.text", "Маршрут «всё, кроме РУ»: российские сайты идут напрямую"),
     },
@@ -63,16 +72,18 @@ export function ServicesGrid() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Stagger>
           {tiles.map((tile) => (
-            <Card key={tile.title} hover className="flex h-full flex-col gap-2.5">
-              <span
-                aria-hidden="true"
-                className="flex size-10 items-center justify-center rounded-(--radius-control) bg-canvas-alt"
-              >
-                {tile.icon}
-              </span>
-              <h3 className="text-[1.0625rem] font-semibold text-ink">{tile.title}</h3>
-              <p className="text-[0.9375rem] leading-relaxed text-ink-soft">{tile.text}</p>
-            </Card>
+            <Link key={tile.title} href={tile.href} className="block h-full text-inherit no-underline">
+              <Card hover className="flex h-full flex-col gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className="flex size-10 items-center justify-center rounded-(--radius-control) bg-canvas-alt"
+                >
+                  {tile.icon}
+                </span>
+                <h3 className="text-[1.0625rem] font-semibold text-ink">{tile.title}</h3>
+                <p className="text-[0.9375rem] leading-relaxed text-ink-soft">{tile.text}</p>
+              </Card>
+            </Link>
           ))}
         </Stagger>
       </div>

@@ -86,7 +86,9 @@ def test_audit_node_dns_matrix_writes_report_with_mocked_resolvers(
                 "| `pl` | paid | `203.0.113.10` |",
                 "| `it` | paid | `203.0.113.20` |",
                 "| `us` | paid | `203.0.113.30` |",
-                "| `brain` | api | `203.0.113.40` |",
+                "| `nl` | paid | `203.0.113.40` |",
+                "| `free` | free | `203.0.113.50` |",
+                "| `brain` | api | `203.0.113.60` |",
             ]
         ),
         encoding="utf-8",
@@ -99,7 +101,9 @@ def test_audit_node_dns_matrix_writes_report_with_mocked_resolvers(
             "pl.pokrov.space": "203.0.113.10",
             "it.pokrov.space": "203.0.113.20",
             "us.pokrov.space": "203.0.113.30",
-            "pokrov.space": "203.0.113.40",
+            "nl.pokrov.space": "203.0.113.40",
+            "free.pokrov.space": "203.0.113.50",
+            "pokrov.space": "203.0.113.60",
         }[host]
         stdout = f"Name: {host}\nAddress: {host_ip}\nAddress: 2001:db8::1\n"
         return subprocess.CompletedProcess(cmd, 0, stdout=stdout, stderr="")
@@ -129,7 +133,7 @@ def test_audit_node_dns_matrix_writes_report_with_mocked_resolvers(
     assert report["resolvers"] == ["system", "1.1.1.1"]
     assert set(report["matrix"]) == {"system", "1.1.1.1"}
     system_hosts = report["matrix"]["system"]["hosts"]
-    assert [row["code"] for row in system_hosts] == ["pl", "it", "us", "brain"]
+    assert [row["code"] for row in system_hosts] == ["pl", "it", "us", "nl", "free", "brain"]
     assert all(row["warnings"] == ["has_aaaa_records"] for row in system_hosts)
     assert "Report saved:" in capsys.readouterr().out
 

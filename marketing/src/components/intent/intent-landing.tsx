@@ -1,6 +1,7 @@
 import JsonLd from "../json-ld";
 import { PageShell } from "../layout/page-shell";
 import { Reveal, Stagger } from "../motion/reveal";
+import { Accordion } from "../ui/accordion";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
@@ -10,10 +11,13 @@ import { Pricing } from "../home/pricing";
 import { Steps } from "../home/steps";
 import {
   buildBreadcrumbJsonLd,
+  buildFaqJsonLd,
   buildSoftwareApplicationJsonLd,
+  buildWebPageJsonLd,
   MARKETING_CANONICAL_PATHS,
 } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getCopyText } from "../../lib/pokrov";
+import type { SeoPage } from "../../lib/seo-pages";
 
 export type IntentScenarioCard = {
   desc: string;
@@ -36,6 +40,7 @@ export type IntentLandingProps = {
   scenarioBody: string;
   scenarioCards: IntentScenarioCard[];
   scenarioTitle: string;
+  seoPage?: SeoPage;
 };
 
 const DEFAULT_RELATED: IntentRelatedLink[] = [
@@ -57,8 +62,10 @@ export function IntentLanding({
   scenarioBody,
   scenarioCards,
   scenarioTitle,
+  seoPage,
 }: IntentLandingProps) {
-  const relatedLinks = (related ?? DEFAULT_RELATED).filter((link) => link.href !== pagePath);
+  const relatedLinks = (related ?? seoPage?.related ?? DEFAULT_RELATED).filter((link) => link.href !== pagePath);
+  const faqItems = seoPage?.faq.map((item) => ({ answer: item.answer, question: item.question })) || [];
 
   return (
     <PageShell>
@@ -69,6 +76,8 @@ export function IntentLanding({
         ])}
       />
       <JsonLd data={buildSoftwareApplicationJsonLd({ pagePath })} />
+      {seoPage ? <JsonLd data={buildWebPageJsonLd(seoPage)} /> : null}
+      {faqItems.length ? <JsonLd data={buildFaqJsonLd(faqItems)} /> : null}
 
       <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-12 pb-12 text-center sm:px-6 sm:pt-16">
         <Chip>
@@ -79,6 +88,11 @@ export function IntentLanding({
           {heroTitle}
         </h1>
         <p className="max-w-xl text-lg leading-relaxed text-ink-soft">{heroSubtitle}</p>
+        {seoPage?.answer ? (
+          <p className="max-w-2xl rounded-(--radius-card) border border-line bg-surface px-5 py-4 text-[0.9375rem] leading-relaxed text-ink-soft shadow-soft">
+            {seoPage.answer}
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
             {getCopyText("marketing.intent.cta.primary", "Скачать бесплатно")}
@@ -110,6 +124,19 @@ export function IntentLanding({
 
       <Steps />
       <Pricing />
+
+      {faqItems.length ? (
+        <section className="border-t border-line bg-canvas-alt">
+          <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
+            <Reveal>
+              <SectionHeading kicker="FAQ" title="Короткие ответы" />
+            </Reveal>
+            <Reveal>
+              <Accordion items={faqItems} />
+            </Reveal>
+          </div>
+        </section>
+      ) : null}
 
       {relatedLinks.length ? (
         <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import JsonLd from "../../components/json-ld";
 import { PageShell } from "../../components/layout/page-shell";
-import { buildBreadcrumbJsonLd, buildMarketingMetadata } from "../../lib/marketing-site";
+import { buildBreadcrumbJsonLd, buildCheckoutServiceJsonLd, buildMarketingMetadata } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getCopyText } from "../../lib/pokrov";
 import CheckoutClient, { CheckoutLoadingFallback } from "./checkout-client";
 
@@ -15,7 +15,6 @@ export const metadata = buildMarketingMetadata(
   {
     path: "/checkout/",
     noIndex: false,
-    keywords: ["оплата pokrov", "продление pokrov", "тарифы pokrov"],
   },
 );
 
@@ -28,6 +27,7 @@ export default function CheckoutPage() {
           { name: getCopyText("marketing.checkout.breadcrumb", "Продление доступа"), path: "/checkout/" },
         ])}
       />
+      <JsonLd data={buildCheckoutServiceJsonLd()} />
       <Suspense fallback={<CheckoutLoadingFallback />}>
         <CheckoutClient />
       </Suspense>
