@@ -332,7 +332,7 @@ def main(argv: list[str] | None = None) -> int:
             neighbors=list(args.similar_bots_neighbor or []),
         ),
     )
-    encoded = json.dumps(report, ensure_ascii=False, indent=2)
+    encoded = json.dumps(report, ensure_ascii=True, indent=2)
     if args.output:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
