@@ -882,16 +882,54 @@ class BotPaywallTests(unittest.TestCase):
         command_payload = [(item.command, item.description) for item in fake.commands]
         self.assertEqual(
             command_payload,
-            [
-                ("start", "Открыть главное меню"),
-                ("cabinet", "Открыть кабинет"),
-                ("support", "Написать в поддержку"),
-                ("promo", "Активировать промокод"),
-                ("redeem", "Активировать ключ доступа"),
-            ],
+            [(item["command"], item["description"]) for item in self.bot_module.expected_public_command_payload()],
         )
         self.assertEqual(getattr(fake.menu_button, "text", ""), "POKROV")
         self.assertEqual(getattr(getattr(fake.menu_button, "web_app", None), "url", ""), "https://app.pokrov.space/")
+
+    def test_bot_entry_tracking_uses_safe_metadata(self) -> None:
+        tracked = []
+
+        def _fake_track_event(**kwargs):
+            tracked.append(kwargs)
+
+        old_track_event = self.bot_module.track_event
+        try:
+            self.bot_module.track_event = _fake_track_event
+            self.bot_module._track_bot_entry(
+                tg_id=1001,
+                entrypoint="start",
+                meta={
+                    "created_new": True,
+                    "start_arg_present": True,
+                    "start_arg_kind": "campaign",
+                    "raw_start_arg": "campaign_SECRET",
+                },
+            )
+        finally:
+            self.bot_module.track_event = old_track_event
+
+        self.assertEqual(len(tracked), 1)
+        self.assertEqual(tracked[0]["event_name"], "bot_entry_opened")
+        self.assertEqual(tracked[0]["source"], "bot")
+        self.assertEqual(tracked[0]["meta"]["entrypoint"], "start")
+        self.assertEqual(tracked[0]["meta"]["start_arg_kind"], "campaign")
+        self.assertNotIn("raw_start_arg", tracked[0]["meta"])
+
+    def test_start_arg_analytics_classification(self) -> None:
+        classify = self.bot_module._classify_start_arg_for_analytics
+
+        self.assertEqual(classify(start_arg=""), "plain")
+        self.assertEqual(classify(start_arg="SWAZ1234", referral_code="SWAZ1234"), "referral")
+        self.assertEqual(classify(start_arg="promo_HELLO", deeplink_promo_code="HELLO"), "promo")
+        self.assertEqual(classify(start_arg="campaign_ru", deeplink_campaign_key="ru"), "campaign")
+        self.assertEqual(
+            classify(start_arg="campaign_ru__promo_HELLO", deeplink_promo_code="HELLO", deeplink_campaign_key="ru"),
+            "campaign_promo",
+        )
+        self.assertEqual(classify(start_arg="gift3_ABC123", friend_gift_referral_code="ABC123"), "friend_gift")
+        self.assertEqual(classify(start_arg="launch14", opening_bonus_requested=True), "opening_bonus")
+        self.assertEqual(classify(start_arg="app", app_link_account_id=1001), "app_link")
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

@@ -14,23 +14,27 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
+PORTAL_BOT_DIR = REPO_ROOT / "portal_bot"
+if str(PORTAL_BOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PORTAL_BOT_DIR))
 
 from node_access import DEFAULT_PASSWORDS, connect_node
+from telegram_profile import (
+    TELEGRAM_PROFILE_WEBAPP_MENU_TEXT,
+    TELEGRAM_PROFILE_WEBAPP_MENU_URL,
+    expected_public_command_names,
+    expected_public_command_payload as _expected_public_command_payload,
+    expected_webapp_menu_button_payload as _expected_webapp_menu_button_payload,
+)
 
 
-EXPECTED_PUBLIC_COMMANDS = ["start", "cabinet", "support", "promo", "redeem"]
-EXPECTED_WEBAPP_MENU_URL_PREFIX = "https://app.pokrov.space/"
-EXPECTED_WEBAPP_MENU_TEXT = "POKROV"
+EXPECTED_PUBLIC_COMMANDS = expected_public_command_names()
+EXPECTED_WEBAPP_MENU_URL_PREFIX = TELEGRAM_PROFILE_WEBAPP_MENU_URL
+EXPECTED_WEBAPP_MENU_TEXT = TELEGRAM_PROFILE_WEBAPP_MENU_TEXT
 
 
 def expected_public_command_payload() -> list[dict[str, str]]:
-    return [
-        {"command": "start", "description": "Открыть главное меню"},
-        {"command": "cabinet", "description": "Открыть кабинет"},
-        {"command": "support", "description": "Написать в поддержку"},
-        {"command": "promo", "description": "Активировать промокод"},
-        {"command": "redeem", "description": "Активировать ключ доступа"},
-    ]
+    return _expected_public_command_payload()
 
 
 def _remote_env_probe_script(*, unit: str) -> str:
@@ -116,11 +120,7 @@ def _menu_button_ok(*, menu_api_ok: bool, menu_type: str, web_app_url: str) -> b
 
 
 def expected_webapp_menu_button_payload() -> dict[str, Any]:
-    return {
-        "type": "web_app",
-        "text": EXPECTED_WEBAPP_MENU_TEXT,
-        "web_app": {"url": EXPECTED_WEBAPP_MENU_URL_PREFIX},
-    }
+    return _expected_webapp_menu_button_payload()
 
 
 def build_report(

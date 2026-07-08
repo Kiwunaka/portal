@@ -1,6 +1,6 @@
 # Support And Feedback Flow
 
-Last updated: 2026-05-28
+Last updated: 2026-07-08
 
 ## Primary Paths
 
@@ -21,6 +21,7 @@ Last updated: 2026-05-28
 - AI responses are stored as support ticket messages with sender role `assistant`, so the admin history does not confuse model output with a human operator response.
 - WebApp and app surfaces that use the ticket API receive the same `assistant` messages in normal ticket payloads. Current client surfaces that open `@pokrov_supportbot` receive the same helper through the Telegram fallback path.
 - Ticket attachments are private backend files, not public static assets. New uploads use `POST /api/tickets/uploads`; downloads use authenticated `GET /api/tickets/attachments/{stored_name}` and require the account owner or admin.
+- Telegram support ticket replies in both `@pokrov_supportbot` and the main bot admin queue accept text, photo, document, and video messages; captions are stored as the message body, and attachment metadata is retained on the ticket message.
 - User upload MIME policy is intentionally narrow: PNG, JPEG, WebP, PDF, and UTF-8 TXT after magic-byte checks. SVG, HTML, video, and opaque octet-stream uploads are rejected.
 - AI ticket messages use safe plaintext mini-formatting only: short labels, line breaks, numbered steps, bullets, inline bold/code markers. The WebApp renders those markers as structured blocks without accepting raw HTML.
 - `@pokrov_supportbot` renders AI mini-formatting through escaped Telegram HTML and attaches quick follow-up buttons: `Не получилось`, `Дайте шаги`, `Оператор`, and `Открыть обращение`. Buttons either put the user into the same ticket reply flow or append a safe operator-request message to the ticket.

@@ -33,9 +33,15 @@ from bot_texts import bot_text
 from node_policy import canonical_free_node_code, free_pool_node_codes
 from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
 from public_urls import build_subscription_url as build_public_subscription_url
+from telegram_profile import (
+    TELEGRAM_PROFILE_WEBAPP_MENU_TEXT,
+    TELEGRAM_PROFILE_WEBAPP_MENU_URL,
+    expected_public_command_payload,
+)
 try:
     from aiogram import Bot, Dispatcher, F, Router, BaseMiddleware
     from aiogram.filters import Command, CommandStart
+    from aiogram.dispatcher.event.bases import SkipHandler
     from aiogram.types import (
         Message, CallbackQuery, PreCheckoutQuery,
         InlineKeyboardMarkup, InlineKeyboardButton,
@@ -118,6 +124,9 @@ except ModuleNotFoundError:
     class BaseMiddleware:
         async def __call__(self, handler, event, data):
             return await handler(event, data)
+
+    class SkipHandler(Exception):
+        pass
 
     class Command:
         def __init__(self, *_args, **_kwargs):
@@ -237,8 +246,8 @@ VLESS_FP = os.getenv("VLESS_FP", "firefox")
 VLESS_FLOW = os.getenv("VLESS_FLOW", "xtls-rprx-vision")
 
 # URLs
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://app.pokrov.space/").strip()
-PUBLIC_BOT_WEBAPP_MENU_URL = "https://app.pokrov.space/"
+WEBAPP_URL = os.getenv("WEBAPP_URL", TELEGRAM_PROFILE_WEBAPP_MENU_URL).strip()
+PUBLIC_BOT_WEBAPP_MENU_URL = TELEGRAM_PROFILE_WEBAPP_MENU_URL
 PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", f"https://{HOST_DOMAIN}")
 BOT_INTERNAL_API_BASE_URL = (os.getenv("BOT_INTERNAL_API_BASE_URL") or os.getenv("INTERNAL_API_BASE_URL") or "").strip()
 PAY_CHECKOUT_URL = (
@@ -685,6 +694,32 @@ def _track_bonus_event(*, tg_id: int, event_name: str, meta: dict | None = None)
         source="bot",
         meta=meta or None,
     )
+
+
+_BOT_ENTRY_META_KEYS = {
+    "command",
+    "created_new",
+    "entrypoint",
+    "start_arg_kind",
+    "start_arg_present",
+}
+
+
+def _track_bot_entry(*, tg_id: int, entrypoint: str, meta: dict | None = None) -> None:
+    safe_meta = {"entrypoint": str(entrypoint or "").strip()[:32]}
+    for key, value in (meta or {}).items():
+        if key not in _BOT_ENTRY_META_KEYS:
+            continue
+        safe_meta[str(key)] = value
+    try:
+        track_event(
+            tg_id=int(tg_id),
+            event_name="bot_entry_opened",
+            source="bot",
+            meta=safe_meta,
+        )
+    except Exception as exc:
+        logger.debug("bot entry analytics failed tg_id=%s entrypoint=%s: %s", tg_id, entrypoint, exc)
 
 
 def _naive_utc(dt: datetime | None) -> datetime | None:
@@ -1830,6 +1865,35 @@ def _parse_friend_gift_ref_code(start_arg: str) -> str:
     if not re.fullmatch(r"[A-Z0-9]{6,10}", code):
         return ""
     return code[:10]
+
+
+def _classify_start_arg_for_analytics(
+    *,
+    start_arg: str,
+    referral_code: str | None = None,
+    deeplink_promo_code: str = "",
+    deeplink_campaign_key: str = "",
+    friend_gift_referral_code: str = "",
+    opening_bonus_requested: bool = False,
+    app_link_account_id: int = 0,
+) -> str:
+    if not (start_arg or "").strip():
+        return "plain"
+    if int(app_link_account_id or 0) > 0:
+        return "app_link"
+    if opening_bonus_requested:
+        return "opening_bonus"
+    if friend_gift_referral_code:
+        return "friend_gift"
+    if referral_code:
+        return "referral"
+    if deeplink_promo_code and deeplink_campaign_key:
+        return "campaign_promo"
+    if deeplink_promo_code:
+        return "promo"
+    if deeplink_campaign_key:
+        return "campaign"
+    return "other"
 
 
 def _channel_bonus_ineligible_reason(*, tg_id: int, user: User | None) -> str | None:
@@ -3567,6 +3631,23 @@ async def cmd_start(message: Message):
             "promo_code": str(deeplink_promo_code or "").upper()[:20],
             "campaign_key": str(deeplink_campaign_key or "")[:64],
         }
+    _track_bot_entry(
+        tg_id=int(tg_id),
+        entrypoint="start",
+        meta={
+            "created_new": bool(created_new),
+            "start_arg_present": bool(start_arg),
+            "start_arg_kind": _classify_start_arg_for_analytics(
+                start_arg=start_arg,
+                referral_code=referral_code,
+                deeplink_promo_code=deeplink_promo_code,
+                deeplink_campaign_key=deeplink_campaign_key,
+                friend_gift_referral_code=friend_gift_referral_code,
+                opening_bonus_requested=opening_bonus_requested,
+                app_link_account_id=app_link_account_id,
+            ),
+        },
+    )
 
     if app_link_account_id > 0:
         bind_status = _bind_app_account_to_telegram(
@@ -5128,12 +5209,169 @@ def get_featured_reviews(limit: int = 5) -> list:
 pending_reviews = {}
 # Stores pending support ticket replies: tg_id -> ticket_id
 pending_ticket_replies: dict[int, int] = {}
+pending_ticket_reply_media_groups: dict[tuple[int, str], int] = {}
 # Pending one-shot inputs from buttons in "More" menu.
 pending_redeem_codes: set[int] = set()
 pending_promo_codes: set[int] = set()
 pending_auto_promo_codes: dict[int, str] = {}
 pending_auto_friend_gift_referrals: dict[int, str] = {}
 checkout_context_by_user: dict[int, dict[str, str]] = {}
+
+
+def _telegram_attachment_payload(message: Message) -> tuple[str | None, str | None, dict[str, Any]]:
+    photo = list(getattr(message, "photo", None) or [])
+    if photo:
+        item = photo[-1]
+        payload = {
+            "source": "telegram",
+            "kind": "photo",
+            "name": "Скриншот из Telegram",
+        }
+        for key in ("file_unique_id", "width", "height", "file_size"):
+            value = getattr(item, key, None)
+            if value is not None:
+                payload[key] = value
+        return "photo", getattr(item, "file_id", None), payload
+
+    document = getattr(message, "document", None)
+    if document is not None:
+        payload = {
+            "source": "telegram",
+            "kind": "file",
+            "name": getattr(document, "file_name", None) or "Файл из Telegram",
+            "content_type": getattr(document, "mime_type", None) or "application/octet-stream",
+        }
+        for key in ("file_unique_id", "file_size"):
+            value = getattr(document, key, None)
+            if value is not None:
+                payload[key] = value
+        return "file", getattr(document, "file_id", None), payload
+
+    video = getattr(message, "video", None)
+    if video is not None:
+        payload = {
+            "source": "telegram",
+            "kind": "video",
+            "name": getattr(video, "file_name", None) or "Видео из Telegram",
+            "content_type": getattr(video, "mime_type", None) or "video/mp4",
+        }
+        for key in ("file_unique_id", "width", "height", "duration", "file_size"):
+            value = getattr(video, key, None)
+            if value is not None:
+                payload[key] = value
+        return "video", getattr(video, "file_id", None), payload
+
+    return None, None, {}
+
+
+def _ticket_reply_media_group_id(message: Message) -> str:
+    return str(getattr(message, "media_group_id", "") or "").strip()
+
+
+def _ticket_reply_id_for_message(tg_id: int, message: Message) -> int:
+    ticket_id = int(pending_ticket_replies.get(tg_id, 0) or 0)
+    media_group_id = _ticket_reply_media_group_id(message)
+    if not ticket_id and media_group_id:
+        ticket_id = int(pending_ticket_reply_media_groups.get((int(tg_id), media_group_id), 0) or 0)
+    return ticket_id
+
+
+def _finish_ticket_reply_input(tg_id: int, message: Message, ticket_id: int) -> None:
+    media_group_id = _ticket_reply_media_group_id(message)
+    if media_group_id and int(ticket_id or 0) > 0:
+        pending_ticket_reply_media_groups[(int(tg_id), media_group_id)] = int(ticket_id)
+    pending_ticket_replies.pop(int(tg_id), None)
+
+
+def _ticket_delivery_text(prefix: str, body: str, *, limit: int = 950) -> str:
+    text = f"{prefix}\n{body}".strip()
+    if len(text) > limit:
+        return text[: limit - 1].rstrip() + "…"
+    return text
+
+
+async def _capture_ticket_reply_message(
+    message: Message,
+    *,
+    body: str,
+    media_type: str | None = None,
+    media_file_id: str | None = None,
+    media_payload: dict[str, Any] | None = None,
+) -> bool:
+    tg_id = int(message.from_user.id)
+    ticket_id = _ticket_reply_id_for_message(tg_id, message)
+    if ticket_id <= 0:
+        return False
+
+    body = (body or "").strip()
+    if not body:
+        await message.answer("❌ Отправь текст или файл для обращения.")
+        return True
+
+    session = Session()
+    try:
+        ticket = get_ticket_by_id(session, ticket_id)
+        if not ticket:
+            await message.answer("❌ Обращение не найдено.")
+            return True
+        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+            await message.answer("⛔ Нет доступа к обращению.")
+            return True
+
+        role = "admin" if tg_id == ADMIN_ID else "user"
+        add_ticket_message(
+            session,
+            ticket_id=ticket.id,
+            sender_tg_id=tg_id,
+            sender_role=role,
+            body=body,
+            media_type=media_type,
+            media_file_id=str(media_file_id or "").strip() or None,
+            media_payload=(
+                json.dumps(media_payload, ensure_ascii=False, separators=(",", ":"))
+                if media_payload
+                else None
+            ),
+        )
+        if tg_id == ADMIN_ID:
+            set_ticket_status(
+                session,
+                ticket=ticket,
+                status=STATUS_IN_PROGRESS,
+                assigned_admin_tg_id=ADMIN_ID,
+            )
+        else:
+            set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+        session.commit()
+
+        await message.answer(f"✅ Ответ добавлен в обращение #{ticket.id}.")
+
+        if tg_id == ADMIN_ID:
+            delivery = _ticket_delivery_text(f"💬 Новый ответ команды POKROV по обращению #{ticket.id}:", body)
+            try:
+                if media_type and media_file_id:
+                    await message.copy_to(ticket.user_tg_id, caption=delivery)
+                else:
+                    await message.bot.send_message(ticket.user_tg_id, delivery)
+            except Exception as exc:
+                logger.warning("main bot ticket reply to user failed ticket=%s err=%s", ticket.id, exc)
+        else:
+            delivery = _ticket_delivery_text(f"🆕 Новое сообщение в обращении #{ticket.id} от пользователя {ticket.user_tg_id}:", body)
+            try:
+                if media_type and media_file_id:
+                    await message.copy_to(ADMIN_ID, caption=delivery)
+                else:
+                    await message.bot.send_message(ADMIN_ID, delivery)
+            except Exception as exc:
+                logger.warning("main bot ticket reply to admin failed ticket=%s err=%s", ticket.id, exc)
+
+        _finish_ticket_reply_input(tg_id, message, ticket.id)
+        return True
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 @router.message(Command("review"))
 async def review_command(message: Message):
@@ -5219,10 +5457,10 @@ async def admin_broadcast_capture_any(message: Message):
     Uses Telegram copy_message/copy_to so admin doesn't have to write templates.
     """
     if message.from_user.id != ADMIN_ID:
-        return
+        raise SkipHandler()
     info = admin_pending_actions.get(ADMIN_ID)
     if not info:
-        return
+        raise SkipHandler()
     action = info.get("action")
     if action == "broadcast_capture":
         admin_pending_actions.pop(ADMIN_ID, None)
@@ -5257,6 +5495,30 @@ async def admin_broadcast_capture_any(message: Message):
             await message.answer("❌ Не удалось отправить. Возможно, пользователь заблокировал бота.")
         return
 
+    raise SkipHandler()
+
+
+@router.message(F.photo | F.document | F.video)
+async def capture_ticket_attachment(message: Message):
+    media_type, media_file_id, media_payload = _telegram_attachment_payload(message)
+    if not media_type or not media_file_id:
+        raise SkipHandler()
+
+    body = (getattr(message, "caption", None) or "").strip()
+    if not body:
+        body = str(media_payload.get("name") or "Вложение из Telegram").strip()
+
+    handled = await _capture_ticket_reply_message(
+        message,
+        body=body,
+        media_type=media_type,
+        media_file_id=media_file_id,
+        media_payload=media_payload,
+    )
+    if not handled:
+        raise SkipHandler()
+
+
 @router.message(F.text & ~F.text.startswith("/"))
 async def handle_text_input(message: Message):
     """Handle text inputs for reviews and admin actions"""
@@ -5265,72 +5527,8 @@ async def handle_text_input(message: Message):
     # Support ticket reply capture (user/admin).
     if tg_id in pending_ticket_replies:
         _set_support_context(tg_id, enabled=True)
-        ticket_id = pending_ticket_replies.get(tg_id, 0)
         body = (message.text or "").strip()
-        if not body:
-            await message.answer("❌ Отправь текст для обращения.")
-            return
-
-        session = Session()
-        try:
-            ticket = get_ticket_by_id(session, ticket_id)
-            if not ticket:
-                await message.answer("❌ Обращение не найден.")
-                return
-            if not can_access_ticket(ticket, tg_id, ADMIN_ID):
-                await message.answer("⛔ Нет доступа к обращениеу.")
-                return
-
-            role = "admin" if tg_id == ADMIN_ID else "user"
-            add_ticket_message(
-                session,
-                ticket_id=ticket.id,
-                sender_tg_id=tg_id,
-                sender_role=role,
-                body=body,
-            )
-            if tg_id == ADMIN_ID:
-                set_ticket_status(
-                    session,
-                    ticket=ticket,
-                    status=STATUS_IN_PROGRESS,
-                    assigned_admin_tg_id=ADMIN_ID,
-                )
-            else:
-                set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
-            session.commit()
-
-            await message.answer(f"✅ Ответ добавлен в обращение #{ticket.id}.")
-
-            # Notify opposite side.
-            if tg_id == ADMIN_ID:
-                kb = InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
-                )
-                try:
-                    await message.bot.send_message(
-                        ticket.user_tg_id,
-                        f"💬 Новый ответ оператора в обращениее #{ticket.id}.",
-                        reply_markup=kb,
-                    )
-                except Exception:
-                    pass
-            else:
-                kb = InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
-                )
-                try:
-                    await message.bot.send_message(
-                        ADMIN_ID,
-                        f"🆕 Новое сообщение в обращениее #{ticket.id} от `{ticket.user_tg_id}`",
-                        parse_mode=ParseMode.MARKDOWN,
-                        reply_markup=kb,
-                    )
-                except Exception:
-                    pass
-            pending_ticket_replies.pop(tg_id, None)
-        finally:
-            session.close()
+        await _capture_ticket_reply_message(message, body=body)
         return
 
     if tg_id in pending_redeem_codes:
@@ -5933,6 +6131,7 @@ async def show_support(callback: CallbackQuery):
 @router.message(Command("cabinet"))
 async def cabinet_command(message: Message):
     _set_support_context(message.from_user.id, enabled=False)
+    _track_bot_entry(tg_id=int(message.from_user.id), entrypoint="cabinet", meta={"command": "cabinet"})
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=PUBLIC_BOT_WEBAPP_MENU_URL))],
@@ -5950,6 +6149,7 @@ async def cabinet_command(message: Message):
 @router.message(Command("support"))
 async def support_command(message: Message):
     _set_support_context(message.from_user.id, enabled=True)
+    _track_bot_entry(tg_id=int(message.from_user.id), entrypoint="support", meta={"command": "support"})
     await message.answer(
         bot_text("bot.support.hub"),
         reply_markup=_support_hub_keyboard(),
@@ -6244,7 +6444,7 @@ async def ticket_reply(callback: CallbackQuery):
 
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
-        f"Ответ в обращение #{ticket_id}: отправь одно текстовое сообщение.",
+        f"Ответ в обращение #{ticket_id}: отправь текст, скриншот или файл одним сообщением.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"ticket_view_{ticket_id}")]]
         ),
@@ -10706,20 +10906,17 @@ async def monitor_expiry(bot: Bot) -> None:
 async def _configure_public_bot_menu(bot: Bot) -> None:
     try:
         await bot.set_my_commands(
-            [
-                BotCommand(command="start", description="Открыть главное меню"),
-                BotCommand(command="cabinet", description="Открыть кабинет"),
-                BotCommand(command="support", description="Написать в поддержку"),
-                BotCommand(command="promo", description="Активировать промокод"),
-                BotCommand(command="redeem", description="Активировать ключ доступа"),
-            ]
+            [BotCommand(command=item["command"], description=item["description"]) for item in expected_public_command_payload()]
         )
     except Exception as e:
         logger.warning("set_my_commands failed: %s", e)
 
     try:
         await bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(text="POKROV", web_app=WebAppInfo(url=PUBLIC_BOT_WEBAPP_MENU_URL))
+            menu_button=MenuButtonWebApp(
+                text=TELEGRAM_PROFILE_WEBAPP_MENU_TEXT,
+                web_app=WebAppInfo(url=PUBLIC_BOT_WEBAPP_MENU_URL),
+            )
         )
     except Exception as e:
         logger.warning("set_chat_menu_button failed: %s", e)

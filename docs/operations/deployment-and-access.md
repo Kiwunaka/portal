@@ -581,6 +581,8 @@ Current trusted origins in `BotFather` should include:
 - `https://pokrov.space/`
 - `https://app.pokrov.space/`
 
+Telegram bot profile and native `Similar bots` readiness live in [Telegram Bot Profile Growth](C:/Users/kiwun/Documents/ai/VPN/docs/operations/telegram-bot-profile-growth.md).
+
 Current official public surfaces:
 
 - marketing and public site: `https://pokrov.space/`

@@ -523,7 +523,7 @@ async def ticket_reply(callback: CallbackQuery) -> None:
 
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
-        f"Ответ для обращения #{ticket_id}: отправьте одно текстовое сообщение, и мы сразу добавим его в диалог.",
+        f"Ответ для обращения #{ticket_id}: отправьте текст, скриншот или файл, и мы сразу добавим его в диалог.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"hb_ticket_view_{ticket_id}")]]
         ),

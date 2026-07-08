@@ -118,6 +118,7 @@ notes stay legacy unless the owner explicitly reopens that lane.
 - [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 - [docs/operations/client-delivery-update-content-plan.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
 - [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
+- [docs/operations/telegram-bot-profile-growth.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/telegram-bot-profile-growth.md)
 - [docs/operations/2026-06-06-plans-decisions-closure-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
 - [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md)
 - [docs/operations/payment-reconciliation.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/payment-reconciliation.md)

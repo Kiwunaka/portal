@@ -147,3 +147,47 @@ def test_support_feedback_and_legacy_bot_story_triggers_remain_present() -> None
         ),
         context="legacy redirect bot",
     )
+
+
+def test_main_bot_profile_growth_contracts_remain_present() -> None:
+    bot = _read("portal_bot/bot.py")
+    profile = _read("portal_bot/telegram_profile.py")
+    checker = _read("scripts/brain_telegram_bot_profile_check.py")
+
+    _assert_contains(
+        bot,
+        (
+            "expected_public_command_payload",
+            "TELEGRAM_PROFILE_WEBAPP_MENU_TEXT",
+            "_track_bot_entry",
+            "bot_entry_opened",
+            "_classify_start_arg_for_analytics",
+        ),
+        context="main bot profile and analytics hooks",
+    )
+    _assert_contains(
+        profile,
+        (
+            "BOT_PROFILE_NAME",
+            "POKROV VPN",
+            "BOT_PROFILE_SHORT_DESCRIPTION",
+            "BOT_PROFILE_DESCRIPTION",
+            "expected_webapp_menu_button_payload",
+            "validate_profile_spec",
+        ),
+        context="telegram profile source of truth",
+    )
+    _assert_contains(
+        checker,
+        (
+            "getMyName",
+            "getMyShortDescription",
+            "getMyDescription",
+            "setMyName",
+            "setMyShortDescription",
+            "setMyDescription",
+            "telegram_similar_bots_manual",
+            "MANUAL_OWNER_TEST",
+        ),
+        context="telegram profile drift checker",
+    )
