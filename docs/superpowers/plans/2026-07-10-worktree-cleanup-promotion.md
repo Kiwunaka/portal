@@ -146,7 +146,35 @@ function Invoke-GitPathSet {
     param([string]$Repo, [string[]]$GitArgs)
     $lines = @(& git -c core.quotepath=false -C $Repo @GitArgs)
     if ($LASTEXITCODE -ne 0) { throw "git failed in ${Repo}: $($GitArgs -join ' ')" }
-    return @($lines | Where-Object { $_ -ne '' } | ForEach-Object { $_.Replace('\', '/') } | Sort-Object -Unique)
+    $normalized = @($lines | Where-Object { $_ -ne '' } | ForEach-Object { $_.Replace('\', '/') })
+    $set = New-OrdinalSet $normalized "git paths in $Repo"
+    return @(Get-OrdinalSortedValues $set)
+}
+
+function New-OrdinalSet {
+    param([object[]]$Values, [string]$Label)
+    $set = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($value in @($Values)) {
+        if ($value -isnot [string] -or $value.Length -eq 0) { throw "$Label has an empty or non-string value" }
+        if (-not $set.Add($value)) { throw "$Label has a duplicate value: $value" }
+    }
+    return ,$set
+}
+
+function Get-OrdinalSortedValues {
+    param([Collections.Generic.HashSet[string]]$Set)
+    [string[]]$values = @($Set)
+    [Array]::Sort($values, [StringComparer]::Ordinal)
+    return $values
+}
+
+function Assert-OrdinalBijection {
+    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
+    $expectedSet = New-OrdinalSet $Expected "$Label expected"
+    $actualSet = New-OrdinalSet $Actual "$Label actual"
+    if ($expectedSet.Count -ne $actualSet.Count -or -not $expectedSet.SetEquals($actualSet)) {
+        throw "$Label is not an ordinal one-to-one match"
+    }
 }
 
 $specs = @(
@@ -199,28 +227,28 @@ function Get-IgnoredClass {
     param([string]$Id, [string]$RelativePath)
     $path = $RelativePath.Replace('\', '/')
 
-    if ($Id -eq 'release-hardening-platform' -and $path -match '^ops-local(?:/|$)') { return 'retained_snapshotted' }
-    if ($Id -eq 'release-hardening-client' -and (
-        $path -match '^artifacts(?:/|$)' -or
-        $path -in @(
+    if ($Id -ceq 'release-hardening-platform' -and $path -cmatch '^ops-local(?:/|$)') { return 'retained_snapshotted' }
+    if ($Id -ceq 'release-hardening-client' -and (
+        $path -cmatch '^artifacts(?:/|$)' -or
+        $path -cin @(
             'apps/android_shell/android/gradle/wrapper/gradle-wrapper.jar',
             'apps/android_shell/android/gradlew',
             'apps/android_shell/android/gradlew.bat',
             'apps/android_shell/android/local.properties'
         ) -or
-        $path -match '^apps/ios_shell/ios/Flutter(?:/|$)'
+        $path -cmatch '^apps/ios_shell/ios/Flutter(?:/|$)'
     )) { return 'retained_snapshotted' }
 
-    if ($path -match '(^|/)(node_modules|\.next|out|\.dart_tool|build|__pycache__)(/|$)' -or
-        $path -match '(^|/)flutter/ephemeral(/|$)' -or
-        $path -match '^(\.pytest_cache|\.tmp)(/|$)' -or
-        $path -match '(^|/)portal_api_test_[^/]*\.db$' -or
-        ($Id -ne 'release-hardening-client' -and $path -in @('marketing/next-env.d.ts', 'webapp/next-env.d.ts')) -or
-        ($Id -eq 'release-hardening-client' -and (
-            $path -match '^(apps|packages)/(?:.*/)?\.flutter-plugins[^/]*$' -or
-            $path -match '^apps/android_shell/android/\.gradle(?:/|$)' -or
-            $path -match '^apps/android_shell/android/(?:.*/)?GeneratedPluginRegistrant\.java$' -or
-            $path -match '^apps/ios_shell/ios/Runner/GeneratedPluginRegistrant\.[^/]+$'
+    if ($path -cmatch '(^|/)(node_modules|\.next|out|\.dart_tool|build|__pycache__)(/|$)' -or
+        $path -cmatch '(^|/)flutter/ephemeral(/|$)' -or
+        $path -cmatch '^(\.pytest_cache|\.tmp)(/|$)' -or
+        $path -cmatch '(^|/)portal_api_test_[^/]*\.db$' -or
+        ($Id -cne 'release-hardening-client' -and $path -cin @('marketing/next-env.d.ts', 'webapp/next-env.d.ts')) -or
+        ($Id -ceq 'release-hardening-client' -and (
+            $path -cmatch '^(apps|packages)/(?:.*/)?\.flutter-plugins[^/]*$' -or
+            $path -cmatch '^apps/android_shell/android/\.gradle(?:/|$)' -or
+            $path -cmatch '^apps/android_shell/android/(?:.*/)?GeneratedPluginRegistrant\.java$' -or
+            $path -cmatch '^apps/ios_shell/ios/Runner/GeneratedPluginRegistrant\.[^/]+$'
         ))
     ) { return 'generated_disposable' }
 
@@ -237,6 +265,7 @@ foreach ($entry in $entries) {
     $entry | Add-Member -NotePropertyName ignored_classification -NotePropertyValue @($classified)
     $entry | Add-Member -NotePropertyName high_risk_paths -NotePropertyValue @($classified | Where-Object classification -eq 'high_risk' | ForEach-Object path)
     $entry | Add-Member -NotePropertyName unknown_paths -NotePropertyValue @($classified | Where-Object classification -eq 'unknown' | ForEach-Object path)
+    Assert-OrdinalBijection @($entry.ignored_paths) @($classified | ForEach-Object path) "$($entry.id) ignored classification"
 }
 ```
 
@@ -247,10 +276,23 @@ in their local worktree.
 - [ ] **Step 3: Persist inventory, classifications, expectations, and blockers**
 
 ```powershell
+$expectedIds = @('premium-bank-app-portal', 'release-hardening-platform', 'release-hardening-client')
+Assert-OrdinalBijection $expectedIds @($entries | ForEach-Object id) 'worktree IDs'
+foreach ($entry in $entries) {
+    if ($entry.tracked_count -ne @($entry.tracked_paths).Count -or
+        $entry.untracked_count -ne @($entry.untracked_paths).Count -or
+        $entry.ignored_count -ne @($entry.ignored_paths).Count -or
+        @($entry.ignored_classification).Count -ne $entry.ignored_count) {
+        throw "$($entry.id) persisted counts do not match path arrays"
+    }
+    Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) persisted classification"
+}
+$blockers = @($entries | ForEach-Object { @($_.high_risk_paths) + @($_.unknown_paths) })
+$inventoryState = if ($drift.Count -eq 0 -and $blockers.Count -eq 0) { 'INVENTORY_VERIFIED' } else { 'INVENTORY_BLOCKED' }
 $manifest = [pscustomobject]@{
     schema_version = 2
     created_utc = [DateTime]::UtcNow.ToString('o')
-    stage_a_state = 'INVENTORY_ONLY'
+    stage_a_state = $inventoryState
     audit_expectations = [pscustomobject]@{
         observed_on = '2026-07-10'
         platform_ops_local = [pscustomobject]@{ file_count=2; byte_count=2052 }
@@ -259,14 +301,25 @@ $manifest = [pscustomobject]@{
     audit_drift = @($drift)
     worktrees = @($entries)
     retained_snapshots = @()
-    stashes = [pscustomobject]@{}
+    stashes = @()
+    cleanup_receipts = @()
 }
 $json = $manifest | ConvertTo-Json -Depth 12
 [IO.File]::WriteAllText($manifestPath, $json, [Text.UTF8Encoding]::new($false))
 
-$blockers = @($entries | ForEach-Object { @($_.high_risk_paths) + @($_.unknown_paths) })
 if ($drift.Count -gt 0) { throw "Preflight drift recorded in manifest; review before a new Stage A run" }
 if ($blockers.Count -gt 0) { throw "Unknown/high-risk ignored paths recorded in manifest; cleanup remains blocked" }
+$reloaded = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+if ($reloaded.stage_a_state -cne 'INVENTORY_VERIFIED' -or @($reloaded.audit_drift).Count -ne 0) { throw "Reloaded inventory is not verified" }
+Assert-OrdinalBijection $expectedIds @($reloaded.worktrees | ForEach-Object id) 'reloaded worktree IDs'
+foreach ($entry in @($reloaded.worktrees)) {
+    if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$($entry.id) reloaded blockers are non-empty" }
+    if ($entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count) { throw "$($entry.id) reloaded counts mismatch" }
+    Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) reloaded classification"
+    foreach ($classification in @($entry.ignored_classification | ForEach-Object classification)) {
+        if ($classification -cnotin @('generated_disposable', 'retained_snapshotted')) { throw "$($entry.id) has unsafe classification $classification" }
+    }
+}
 ```
 
 Expected: `manifest.json` persists complete relative path sets and counts,
@@ -300,6 +353,59 @@ $backupRoot = [IO.Path]::GetFullPath('C:\Users\kiwun\Documents\ai\worktree-snaps
 $manifestPath = Join-Path $backupRoot 'manifest.json'
 $comparison = [StringComparison]::OrdinalIgnoreCase
 
+function New-OrdinalSet {
+    param([object[]]$Values, [string]$Label)
+    $set = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($value in @($Values)) {
+        if ($value -isnot [string] -or $value.Length -eq 0 -or -not $set.Add($value)) { throw "$Label has an invalid or duplicate value: $value" }
+    }
+    return ,$set
+}
+function Assert-OrdinalBijection {
+    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
+    $expectedSet = New-OrdinalSet $Expected "$Label expected"
+    $actualSet = New-OrdinalSet $Actual "$Label actual"
+    if ($expectedSet.Count -ne $actualSet.Count -or -not $expectedSet.SetEquals($actualSet)) { throw "$Label mismatch" }
+}
+function New-OrdinalRecordMap {
+    param([object[]]$Records, [string]$KeyProperty, [string]$Label)
+    $map = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($record in @($Records)) {
+        $key = $record.$KeyProperty
+        if ($key -isnot [string] -or $key.Length -eq 0 -or $map.ContainsKey($key)) { throw "$Label has an invalid or duplicate key: $key" }
+        $map.Add($key, $record)
+    }
+    return ,$map
+}
+function Assert-InventoryPredecessor {
+    param([object]$Manifest)
+    if ($Manifest.schema_version -ne 2 -or $Manifest.stage_a_state -cne 'INVENTORY_VERIFIED') { throw 'Snapshot task requires exact INVENTORY_VERIFIED predecessor state' }
+    if (@($Manifest.audit_drift).Count -ne 0 -or @($Manifest.retained_snapshots).Count -ne 0 -or @($Manifest.stashes).Count -ne 0 -or @($Manifest.cleanup_receipts).Count -ne 0) { throw 'Inventory predecessor contains drift or premature proof records' }
+    $expected = @(
+        [pscustomobject]@{ id='premium-bank-app-portal'; tracked=30; untracked=2; ignored=45423 },
+        [pscustomobject]@{ id='release-hardening-platform'; tracked=91; untracked=117; ignored=42122 },
+        [pscustomobject]@{ id='release-hardening-client'; tracked=26; untracked=27; ignored=143 }
+    )
+    Assert-OrdinalBijection @($expected | ForEach-Object id) @($Manifest.worktrees | ForEach-Object id) 'inventory worktree IDs'
+    $expectedMap = New-OrdinalRecordMap $expected id 'expected worktrees'
+    foreach ($entry in @($Manifest.worktrees)) {
+        $spec = $expectedMap[$entry.id]
+        if ($entry.tracked_count -ne $spec.tracked -or $entry.untracked_count -ne $spec.untracked -or $entry.ignored_count -ne $spec.ignored -or
+            $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or
+            $entry.ignored_count -ne @($entry.ignored_paths).Count -or @($entry.ignored_classification).Count -ne $entry.ignored_count) {
+            throw "$($entry.id) inventory count mismatch"
+        }
+        if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$($entry.id) inventory blockers are non-empty" }
+        Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) classification"
+        foreach ($classification in @($entry.ignored_classification | ForEach-Object classification)) {
+            if ($classification -cnotin @('generated_disposable', 'retained_snapshotted')) { throw "$($entry.id) unsafe classification: $classification" }
+        }
+    }
+}
+
+$inventoryManifest = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+Assert-InventoryPredecessor $inventoryManifest
+
 function Assert-PlainTree {
     param([string]$Root)
     $rootItem = Get-Item -Force -LiteralPath $Root
@@ -313,7 +419,7 @@ function Assert-PlainTree {
 function Get-RetainedRecords {
     param([string]$Worktree, [string[]]$RelativeSpecs)
     $worktreeRoot = [IO.Path]::GetFullPath($Worktree)
-    $filesByRelativePath = @{}
+    $filesByRelativePath = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
     foreach ($spec in $RelativeSpecs) {
         $source = [IO.Path]::GetFullPath((Join-Path $worktreeRoot $spec))
         if (-not $source.StartsWith($worktreeRoot + [IO.Path]::DirectorySeparatorChar, $comparison)) { throw "Retained source escaped worktree: $source" }
@@ -327,10 +433,13 @@ function Get-RetainedRecords {
         foreach ($file in $files) {
             $relative = [IO.Path]::GetRelativePath($worktreeRoot, $file.FullName).Replace('\', '/')
             if ($relative -eq '..' -or $relative.StartsWith('../')) { throw "Retained file escaped worktree" }
-            $filesByRelativePath[$relative] = $file.FullName
+            if ($filesByRelativePath.ContainsKey($relative)) { throw "Duplicate retained relative path: $relative" }
+            $filesByRelativePath.Add($relative, $file.FullName)
         }
     }
-    return @($filesByRelativePath.Keys | Sort-Object | ForEach-Object {
+    [string[]]$relativePaths = @($filesByRelativePath.Keys)
+    [Array]::Sort($relativePaths, [StringComparer]::Ordinal)
+    return @($relativePaths | ForEach-Object {
         $file = Get-Item -Force -LiteralPath $filesByRelativePath[$_]
         [pscustomobject]@{
             relative_path = $_
@@ -343,10 +452,9 @@ function Get-RetainedRecords {
 
 function Assert-RecordMatch {
     param([object[]]$Expected, [object[]]$Actual, [string]$Label)
-    $expectedByPath = @{}; foreach ($record in @($Expected)) { $expectedByPath[$record.relative_path] = $record }
-    $actualByPath = @{}; foreach ($record in @($Actual)) { $actualByPath[$record.relative_path] = $record }
-    $delta = @(Compare-Object @($expectedByPath.Keys | Sort-Object) @($actualByPath.Keys | Sort-Object) -CaseSensitive)
-    if ($delta.Count -gt 0) { throw "$Label relative-path set mismatch" }
+    $expectedByPath = New-OrdinalRecordMap $Expected relative_path "$Label expected records"
+    $actualByPath = New-OrdinalRecordMap $Actual relative_path "$Label actual records"
+    Assert-OrdinalBijection @($expectedByPath.Keys) @($actualByPath.Keys) "$Label relative-path set"
     foreach ($path in $expectedByPath.Keys) {
         if ($expectedByPath[$path].byte_length -ne $actualByPath[$path].byte_length -or $expectedByPath[$path].sha256 -ne $actualByPath[$path].sha256) {
             throw "$Label length/hash mismatch: $path"
@@ -404,7 +512,7 @@ function New-RetainedSnapshot {
                 byte_length = $_.Length
                 sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
             }
-        } | Sort-Object relative_path)
+        })
     $sourceAfterCopy = @(Get-RetainedRecords $Worktree $RelativeSpecs | Select-Object relative_path, byte_length, sha256)
     Assert-RecordMatch @($saved.files) $sourceAfterCopy "$Id source-after-copy"
     Assert-RecordMatch @($saved.files) $destinationRecords "$Id destination"
@@ -439,12 +547,20 @@ re-enumerated after the copy; count-only or hash-only proof is insufficient.
 
 ```powershell
 $manifest = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+Assert-InventoryPredecessor $manifest
+Assert-OrdinalBijection @('release-hardening-platform', 'release-hardening-client') @($platformSnapshot.id, $clientSnapshot.id) 'new retained snapshot IDs'
 $manifest.retained_snapshots = @($platformSnapshot, $clientSnapshot)
 $manifest.stage_a_state = 'SNAPSHOTS_VERIFIED'
 $temporaryManifest = "$manifestPath.tmp"
 if (Test-Path -LiteralPath $temporaryManifest) { throw "Manifest temp collision" }
 [IO.File]::WriteAllText($temporaryManifest, ($manifest | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
 [IO.File]::Move($temporaryManifest, $manifestPath, $true)
+$reloaded = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+if ($reloaded.stage_a_state -cne 'SNAPSHOTS_VERIFIED' -or @($reloaded.audit_drift).Count -ne 0 -or @($reloaded.stashes).Count -ne 0 -or @($reloaded.cleanup_receipts).Count -ne 0) { throw 'Snapshot transition did not persist exact state' }
+Assert-OrdinalBijection @('release-hardening-platform', 'release-hardening-client') @($reloaded.retained_snapshots | ForEach-Object id) 'persisted retained snapshot IDs'
+foreach ($snapshot in @($reloaded.retained_snapshots)) {
+    if ($snapshot.verified -ne $true -or $snapshot.file_count -le 0 -or $snapshot.byte_count -le 0) { throw "$($snapshot.id) snapshot summary is incomplete" }
+}
 ```
 
 Expected: the main manifest points to the two persisted, verified snapshot
@@ -469,20 +585,79 @@ by searching its message.
 $ErrorActionPreference = 'Stop'
 $manifestPath = 'C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
 $manifest = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
-if ($manifest.stage_a_state -ne 'SNAPSHOTS_VERIFIED' -or @($manifest.retained_snapshots | Where-Object verified -eq $true).Count -ne 2) {
-    throw "Retained snapshots are not fully verified"
-}
 
+function New-OrdinalSet {
+    param([object[]]$Values, [string]$Label)
+    $set = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($value in @($Values)) {
+        if ($value -isnot [string] -or $value.Length -eq 0 -or -not $set.Add($value)) { throw "$Label has an invalid or duplicate value: $value" }
+    }
+    return ,$set
+}
+function Get-OrdinalSortedValues {
+    param([Collections.Generic.HashSet[string]]$Set)
+    [string[]]$values = @($Set)
+    [Array]::Sort($values, [StringComparer]::Ordinal)
+    return $values
+}
+function Assert-OrdinalBijection {
+    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
+    $expectedSet = New-OrdinalSet $Expected "$Label expected"
+    $actualSet = New-OrdinalSet $Actual "$Label actual"
+    if ($expectedSet.Count -ne $actualSet.Count -or -not $expectedSet.SetEquals($actualSet)) { throw "$Label mismatch" }
+}
+function New-OrdinalRecordMap {
+    param([object[]]$Records, [string]$KeyProperty, [string]$Label)
+    $map = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($record in @($Records)) {
+        $key = $record.$KeyProperty
+        if ($key -isnot [string] -or $key.Length -eq 0 -or $map.ContainsKey($key)) { throw "$Label has an invalid or duplicate key: $key" }
+        $map.Add($key, $record)
+    }
+    return ,$map
+}
 function Invoke-GitPathSet {
     param([string]$Repo, [string[]]$GitArgs)
     $lines = @(& git -c core.quotepath=false -C $Repo @GitArgs)
     if ($LASTEXITCODE -ne 0) { throw "git failed in ${Repo}: $($GitArgs -join ' ')" }
-    return @($lines | Where-Object { $_ -ne '' } | ForEach-Object { $_.Replace('\', '/') } | Sort-Object -Unique)
+    $set = New-OrdinalSet @($lines | Where-Object { $_ -ne '' } | ForEach-Object { $_.Replace('\', '/') }) "git paths in $Repo"
+    return @(Get-OrdinalSortedValues $set)
 }
 function Assert-SamePathSet {
     param([object[]]$Expected, [object[]]$Actual, [string]$Label)
-    $delta = @(Compare-Object @($Expected | Sort-Object -Unique) @($Actual | Sort-Object -Unique) -CaseSensitive)
-    if ($delta.Count -gt 0) { throw "$Label path-set mismatch" }
+    Assert-OrdinalBijection $Expected $Actual $Label
+}
+function Assert-SnapshotPredecessor {
+    param([object]$Value)
+    if ($Value.schema_version -ne 2 -or $Value.stage_a_state -cne 'SNAPSHOTS_VERIFIED') { throw 'Stash task requires exact SNAPSHOTS_VERIFIED predecessor state' }
+    if (@($Value.audit_drift).Count -ne 0 -or @($Value.stashes).Count -ne 0 -or @($Value.cleanup_receipts).Count -ne 0) { throw 'Snapshot predecessor has drift or premature records' }
+    $expectedCounts = @(
+        [pscustomobject]@{ id='premium-bank-app-portal'; tracked=30; untracked=2; ignored=45423 },
+        [pscustomobject]@{ id='release-hardening-platform'; tracked=91; untracked=117; ignored=42122 },
+        [pscustomobject]@{ id='release-hardening-client'; tracked=26; untracked=27; ignored=143 }
+    )
+    Assert-OrdinalBijection @($expectedCounts | ForEach-Object id) @($Value.worktrees | ForEach-Object id) 'snapshot predecessor worktree IDs'
+    $countMap = New-OrdinalRecordMap $expectedCounts id 'snapshot predecessor expected counts'
+    foreach ($entry in @($Value.worktrees)) {
+        $spec = $countMap[$entry.id]
+        if ($entry.tracked_count -ne $spec.tracked -or $entry.untracked_count -ne $spec.untracked -or $entry.ignored_count -ne $spec.ignored -or
+            $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or
+            $entry.ignored_count -ne @($entry.ignored_paths).Count -or @($entry.ignored_classification).Count -ne $entry.ignored_count) { throw "$($entry.id) predecessor count mismatch" }
+        if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$($entry.id) predecessor blockers are non-empty" }
+        Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) predecessor classification"
+        foreach ($classification in @($entry.ignored_classification | ForEach-Object classification)) {
+            if ($classification -cnotin @('generated_disposable', 'retained_snapshotted')) { throw "$($entry.id) unsafe predecessor classification" }
+        }
+    }
+    Assert-OrdinalBijection @('release-hardening-platform', 'release-hardening-client') @($Value.retained_snapshots | ForEach-Object id) 'snapshot predecessor snapshot IDs'
+    foreach ($summary in @($Value.retained_snapshots)) {
+        if ($summary.verified -ne $true -or $summary.file_count -le 0 -or $summary.byte_count -le 0) { throw "$($summary.id) snapshot summary invalid" }
+        $snapshotManifestPath = Join-Path (Split-Path -Parent $manifestPath) $summary.manifest
+        $saved = [IO.File]::ReadAllText($snapshotManifestPath) | ConvertFrom-Json
+        $savedBytes=(@($saved.files)|Measure-Object -Property byte_length -Sum).Sum
+        if ($saved.id -cne $summary.id -or $saved.file_count -ne @($saved.files).Count -or $saved.file_count -ne $summary.file_count -or $saved.byte_count -ne $summary.byte_count -or $saved.byte_count -ne $savedBytes) { throw "$($summary.id) snapshot manifest count mismatch" }
+        [void](New-OrdinalRecordMap @($saved.files) relative_path "$($summary.id) snapshot files")
+    }
 }
 function Save-StageManifest {
     param([object]$Value)
@@ -491,12 +666,42 @@ function Save-StageManifest {
     [IO.File]::WriteAllText($temporary, ($Value | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
     [IO.File]::Move($temporary, $manifestPath, $true)
 }
-
-$messages = @{
-    'premium-bank-app-portal' = 'pre-cleanup/2026-07-10/premium-bank-app-portal'
-    'release-hardening-platform' = 'pre-cleanup/2026-07-10/release-hardening-platform'
-    'release-hardening-client' = 'pre-cleanup/2026-07-10/release-hardening-client'
+function Get-CleanPreviewRecords {
+    param([object]$Entry)
+    $classificationMap = New-OrdinalRecordMap @($Entry.ignored_classification) path "$($Entry.id) preview classifications"
+    $covered = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $previewPathSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $records = [Collections.Generic.List[object]]::new()
+    $lines = @(& git -c core.quotepath=false -C $Entry.worktree clean -ndX)
+    if ($LASTEXITCODE -ne 0) { throw "$($Entry.id) clean preview failed" }
+    foreach ($line in $lines) {
+        if (-not $line.StartsWith('Would remove ', [StringComparison]::Ordinal)) { throw "$($Entry.id) unparseable clean preview line: $line" }
+        $candidate = $line.Substring(13).Replace('\', '/').TrimEnd('/')
+        if ($candidate.Length -eq 0 -or $candidate.Contains('"') -or $candidate.Contains("`r") -or $candidate.Contains("`n") -or -not $previewPathSet.Add($candidate)) {
+            throw "$($Entry.id) unsafe or duplicate clean preview path: $candidate"
+        }
+        $matches = @($Entry.ignored_paths | Where-Object { $_ -ceq $candidate -or $_.StartsWith($candidate + '/', [StringComparison]::Ordinal) })
+        if ($matches.Count -eq 0) { throw "$($Entry.id) preview path covers no classified ignored path: $candidate" }
+        $classes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($path in $matches) {
+            if (-not $covered.Add($path)) { throw "$($Entry.id) overlapping clean preview coverage: $path" }
+            [void]$classes.Add([string]$classificationMap[$path].classification)
+        }
+        if ($classes.Count -ne 1) { throw "$($Entry.id) preview path mixes generated and retained data: $candidate" }
+        $records.Add([pscustomobject]@{ path=$candidate; classification=@($classes)[0] })
+    }
+    Assert-OrdinalBijection @($Entry.ignored_paths) @($covered) "$($Entry.id) preview coverage"
+    $recordMap = New-OrdinalRecordMap @($records) path "$($Entry.id) preview records"
+    [string[]]$keys = @($recordMap.Keys)
+    [Array]::Sort($keys, [StringComparer]::Ordinal)
+    return @($keys | ForEach-Object { $recordMap[$_] })
 }
+
+Assert-SnapshotPredecessor $manifest
+$messages = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+$messages.Add('premium-bank-app-portal', 'pre-cleanup/2026-07-10/premium-bank-app-portal')
+$messages.Add('release-hardening-platform', 'pre-cleanup/2026-07-10/release-hardening-platform')
+$messages.Add('release-hardening-client', 'pre-cleanup/2026-07-10/release-hardening-client')
 
 foreach ($entry in @($manifest.worktrees)) {
     $branch = @(& git -C $entry.worktree branch --show-current)
@@ -510,7 +715,8 @@ foreach ($entry in @($manifest.worktrees)) {
     Assert-SamePathSet @($entry.tracked_paths) $tracked "$($entry.id) tracked"
     Assert-SamePathSet @($entry.untracked_paths) $untracked "$($entry.id) untracked"
     Assert-SamePathSet @($entry.ignored_paths) $ignoredBefore "$($entry.id) ignored"
-    $preStashPaths = @(($tracked + $untracked) | Sort-Object -Unique)
+    $preStashSet = New-OrdinalSet @($tracked + $untracked) "$($entry.id) pre-stash paths"
+    $preStashPaths = @(Get-OrdinalSortedValues $preStashSet)
     if ($preStashPaths.Count -eq 0) { throw "$($entry.id) stash would be a no-op" }
 
     $preOid = @(& git -C $entry.repo_root rev-parse --verify -q refs/stash)
@@ -542,6 +748,7 @@ foreach ($entry in @($manifest.worktrees)) {
     Assert-SamePathSet @($entry.ignored_paths) $ignoredAfter "$($entry.id) post-stash ignored"
 
     $record = [pscustomobject]@{
+        id = $entry.id
         oid = $newOid[0]
         pre_oid = if ($preOid.Count -eq 1) { $preOid[0] } else { $null }
         message = $message
@@ -549,12 +756,32 @@ foreach ($entry in @($manifest.worktrees)) {
         path_count = $preStashPaths.Count
         verified_utc = [DateTime]::UtcNow.ToString('o')
     }
-    $manifest.stashes | Add-Member -NotePropertyName $entry.id -NotePropertyValue $record
+    $entry | Add-Member -NotePropertyName clean_preview_records -NotePropertyValue @(Get-CleanPreviewRecords $entry)
+    $existingStashMap = New-OrdinalRecordMap @($manifest.stashes) id 'persisted stashes'
+    if ($existingStashMap.ContainsKey($entry.id)) { throw "Duplicate persisted stash ID: $($entry.id)" }
+    $manifest.stashes = @($manifest.stashes) + @($record)
     Save-StageManifest $manifest
 }
 
+if ($manifest.stage_a_state -cne 'SNAPSHOTS_VERIFIED' -or @($manifest.audit_drift).Count -ne 0 -or @($manifest.cleanup_receipts).Count -ne 0) { throw 'Stash loop predecessor state drifted' }
+Assert-OrdinalBijection @('premium-bank-app-portal', 'release-hardening-platform', 'release-hardening-client') @($manifest.stashes | ForEach-Object id) 'verified stash IDs'
+foreach ($entry in @($manifest.worktrees)) {
+    Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) final classification"
+    [void](New-OrdinalRecordMap @($entry.clean_preview_records) path "$($entry.id) persisted clean preview")
+}
 $manifest.stage_a_state = 'STAGE_A_VERIFIED'
 Save-StageManifest $manifest
+$reloaded = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+if ($reloaded.stage_a_state -cne 'STAGE_A_VERIFIED' -or @($reloaded.audit_drift).Count -ne 0 -or @($reloaded.cleanup_receipts).Count -ne 0) { throw 'Final Stage A state did not persist exactly' }
+Assert-OrdinalBijection @('premium-bank-app-portal', 'release-hardening-platform', 'release-hardening-client') @($reloaded.worktrees | ForEach-Object id) 'reloaded final worktree IDs'
+Assert-OrdinalBijection @('premium-bank-app-portal', 'release-hardening-platform', 'release-hardening-client') @($reloaded.stashes | ForEach-Object id) 'reloaded final stash IDs'
+Assert-OrdinalBijection @('release-hardening-platform', 'release-hardening-client') @($reloaded.retained_snapshots | ForEach-Object id) 'reloaded final snapshot IDs'
+foreach ($entry in @($reloaded.worktrees)) {
+    if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0 -or $entry.ignored_count -ne @($entry.ignored_paths).Count -or @($entry.ignored_classification).Count -ne $entry.ignored_count) { throw "$($entry.id) reloaded final entry is incomplete" }
+    Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) reloaded final classification"
+    foreach($classification in @($entry.ignored_classification|ForEach-Object classification)){if($classification -cnotin @('generated_disposable','retained_snapshotted')){throw "$($entry.id) reloaded unsafe classification"}}
+    [void](New-OrdinalRecordMap @($entry.clean_preview_records) path "$($entry.id) reloaded clean preview")
+}
 ```
 
 Expected: each `stash push --include-untracked` exits 0, creates a different
@@ -577,6 +804,7 @@ already-created stash for recovery; never weaken the gate to continue.
 ### Task 5: Remove Only Classified Ignored Generated Output
 
 **Files:**
+- Create locally: `C:/Users/kiwun/Documents/ai/worktree-snapshots/2026-07-10-docs-renewal/cleanup-proof-gate.ps1`
 - Delete locally: only paths classified `generated_disposable`
 - Delete locally after snapshot verification: retained ignored roots already
   copied in Task 3
@@ -585,70 +813,351 @@ already-created stash for recovery; never weaken the gate to continue.
 - Consumes: exhaustive classification, snapshot, and readable stash
 - Produces: clean removable stale worktree
 
-- [ ] **Step 1: Preview ignored cleanup**
+- [ ] **Step 1: Create the single read-only destruction proof gate**
 
-Run:
-
-```powershell
-$ErrorActionPreference = 'Stop'
-$manifestPath = 'C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
-$manifest = [IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
-if ($manifest.stage_a_state -ne 'STAGE_A_VERIFIED' -or @($manifest.stashes.PSObject.Properties).Count -ne 3) {
-    throw "Stage A proof gate is not complete"
-}
-$worktrees = @($manifest.worktrees.worktree)
-foreach ($entry in @($manifest.worktrees)) {
-    $currentIgnored = @(& git -c core.quotepath=false -C $entry.worktree ls-files --others --ignored --exclude-standard)
-    if ($LASTEXITCODE -ne 0) { throw "Cannot re-inventory ignored paths for $($entry.id)" }
-    $delta = @(Compare-Object @($entry.ignored_paths | Sort-Object -Unique) @($currentIgnored | Sort-Object -Unique) -CaseSensitive)
-    if ($delta.Count -gt 0) { throw "$($entry.id) ignored path-set drift" }
-    if (@($entry.ignored_classification | Where-Object classification -notin @('generated_disposable', 'retained_snapshotted')).Count -gt 0) {
-        throw "$($entry.id) has an unsafe ignored classification"
-    }
-    git -C $entry.worktree clean -ndX
-    if ($LASTEXITCODE -ne 0) { throw "Ignored cleanup preview failed for $($entry.id)" }
-}
-```
-
-Expected: every listed path exists in Task 2 classification. If one path is
-unknown, stop; do not run the destructive command.
-
-- [ ] **Step 2: Revalidate the worktree absolute path**
-
-Before any recursive deletion:
+Save the following exact source as the local ignored file
+`cleanup-proof-gate.ps1` named above. This is the only proof implementation
+used before clean and worktree removal. It reads and hashes evidence but never
+changes a repository, worktree, stash, snapshot, or manifest.
 
 ```powershell
-$allowed = [IO.Path]::GetFullPath('C:\Users\kiwun\.config\superpowers\worktrees')
-$comparison = [StringComparison]::OrdinalIgnoreCase
-$worktrees = @(
-  'C:\Users\kiwun\.config\superpowers\worktrees\VPN\premium-bank-app-portal',
-  'C:\Users\kiwun\.config\superpowers\worktrees\VPN\release-hardening-platform',
-  'C:\Users\kiwun\.config\superpowers\worktrees\POKROV-app\release-hardening-client'
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][string]$ManifestPath,
+    [Parameter(Mandatory)][string]$EntryId,
+    [Parameter(Mandatory)][ValidateSet('BeforeClean','AfterClean','BeforeStaleRemoval','BeforeTemporaryRemoval')][string]$Mode
 )
-foreach ($worktree in $worktrees) {
-    $target = [IO.Path]::GetFullPath($worktree)
-    if (-not $target.StartsWith($allowed + [IO.Path]::DirectorySeparatorChar, $comparison)) {
-        throw "Worktree escaped allowed cleanup root: $target"
+$ErrorActionPreference = 'Stop'
+$comparison = [StringComparison]::OrdinalIgnoreCase
+
+function New-OrdinalSet {
+    param([object[]]$Values, [string]$Label)
+    $set = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($value in @($Values)) {
+        if ($value -isnot [string] -or $value.Length -eq 0 -or -not $set.Add($value)) { throw "$Label has an invalid or duplicate value: $value" }
+    }
+    return ,$set
+}
+function Assert-OrdinalBijection {
+    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
+    $expectedSet = New-OrdinalSet $Expected "$Label expected"
+    $actualSet = New-OrdinalSet $Actual "$Label actual"
+    if ($expectedSet.Count -ne $actualSet.Count -or -not $expectedSet.SetEquals($actualSet)) { throw "$Label mismatch" }
+}
+function New-OrdinalRecordMap {
+    param([object[]]$Records, [string]$KeyProperty, [string]$Label)
+    $map = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($record in @($Records)) {
+        $key = $record.$KeyProperty
+        if ($key -isnot [string] -or $key.Length -eq 0 -or $map.ContainsKey($key)) { throw "$Label has an invalid or duplicate key: $key" }
+        $map.Add($key, $record)
+    }
+    return ,$map
+}
+function Invoke-GitLines {
+    param([string]$Repo, [string[]]$GitArgs)
+    $lines = @(& git -c core.quotepath=false -C $Repo @GitArgs)
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) { throw "git failed in ${Repo} ($exitCode): $($GitArgs -join ' ')" }
+    return @($lines)
+}
+function Invoke-GitPathSet {
+    param([string]$Repo, [string[]]$GitArgs, [string]$Label)
+    $lines = @(Invoke-GitLines $Repo $GitArgs)
+    $set = New-OrdinalSet @($lines | Where-Object { $_ -ne '' } | ForEach-Object { $_.Replace('\', '/') }) $Label
+    return @($set)
+}
+function Assert-PlainTree {
+    param([string]$Root, [string]$Label)
+    $item = Get-Item -Force -LiteralPath $Root
+    if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "$Label root is not a plain directory" }
+    $reparse = @(Get-ChildItem -Force -Recurse -LiteralPath $Root | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint })
+    if ($reparse.Count -ne 0) { throw "$Label contains a reparse point" }
+}
+function Get-RecordSet {
+    param([string]$Root, [string]$ExcludedFullName)
+    $records = [Collections.Generic.List[object]]::new()
+    foreach ($file in @(Get-ChildItem -Force -File -Recurse -LiteralPath $Root)) {
+        if ($ExcludedFullName -and [string]::Equals($file.FullName, $ExcludedFullName, $comparison)) { continue }
+        $records.Add([pscustomobject]@{
+            relative_path = [IO.Path]::GetRelativePath($Root, $file.FullName).Replace('\', '/')
+            byte_length = $file.Length
+            sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+        })
+    }
+    return @($records)
+}
+function Get-RetainedSourceRecords {
+    param([string]$Worktree, [object[]]$RelativeSpecs)
+    $root = [IO.Path]::GetFullPath($Worktree)
+    $map = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+    foreach ($specValue in @($RelativeSpecs)) {
+        $spec = [string]$specValue
+        $source = [IO.Path]::GetFullPath((Join-Path $root $spec))
+        if (-not $source.StartsWith($root + [IO.Path]::DirectorySeparatorChar, $comparison) -or -not (Test-Path -LiteralPath $source)) { throw "Retained source escaped or is missing: $source" }
+        $sourceItem = Get-Item -Force -LiteralPath $source
+        if ($sourceItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Retained source is a reparse point: $source" }
+        $files = if ($sourceItem.PSIsContainer) { Assert-PlainTree $source "retained source $spec"; @(Get-ChildItem -Force -File -Recurse -LiteralPath $source) } else { @($sourceItem) }
+        foreach ($file in $files) {
+            $relative = [IO.Path]::GetRelativePath($root, $file.FullName).Replace('\', '/')
+            if ($map.ContainsKey($relative)) { throw "Duplicate retained source path: $relative" }
+            $map.Add($relative, $file.FullName)
+        }
+    }
+    $records = foreach ($pair in $map.GetEnumerator()) {
+        $file = Get-Item -Force -LiteralPath $pair.Value
+        [pscustomobject]@{ relative_path=$pair.Key; byte_length=$file.Length; sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash }
+    }
+    return @($records)
+}
+function Assert-RecordMatch {
+    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
+    $expectedMap = New-OrdinalRecordMap $Expected relative_path "$Label expected"
+    $actualMap = New-OrdinalRecordMap $Actual relative_path "$Label actual"
+    Assert-OrdinalBijection @($expectedMap.Keys) @($actualMap.Keys) "$Label paths"
+    foreach ($path in $expectedMap.Keys) {
+        if ($expectedMap[$path].byte_length -ne $actualMap[$path].byte_length -or [string]$expectedMap[$path].sha256 -cne [string]$actualMap[$path].sha256) { throw "$Label length/hash mismatch: $path" }
     }
 }
+function Get-LivePreviewRecords {
+    param([object]$Entry)
+    $classMap = New-OrdinalRecordMap @($Entry.ignored_classification) path "$($Entry.id) classifications"
+    $covered = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $previewPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $records = [Collections.Generic.List[object]]::new()
+    foreach ($line in @(Invoke-GitLines $Entry.worktree @('clean','-ndX'))) {
+        if (-not $line.StartsWith('Would remove ', [StringComparison]::Ordinal)) { throw "$($Entry.id) unparseable clean preview: $line" }
+        $candidate = $line.Substring(13).Replace('\', '/').TrimEnd('/')
+        if ($candidate.Length -eq 0 -or $candidate.Contains('"') -or $candidate.Contains("`r") -or $candidate.Contains("`n") -or -not $previewPaths.Add($candidate)) { throw "$($Entry.id) unsafe/duplicate preview path: $candidate" }
+        $matches = @($Entry.ignored_paths | Where-Object { $_ -ceq $candidate -or $_.StartsWith($candidate + '/', [StringComparison]::Ordinal) })
+        if ($matches.Count -eq 0) { throw "$($Entry.id) preview path has no authorized leaf: $candidate" }
+        $classes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($path in $matches) {
+            if (-not $covered.Add($path)) { throw "$($Entry.id) overlapping preview coverage: $path" }
+            [void]$classes.Add([string]$classMap[$path].classification)
+        }
+        if ($classes.Count -ne 1) { throw "$($Entry.id) preview mixes generated and retained data: $candidate" }
+        $target = [IO.Path]::GetFullPath((Join-Path $Entry.worktree $candidate))
+        if (-not $target.StartsWith([IO.Path]::GetFullPath($Entry.worktree) + [IO.Path]::DirectorySeparatorChar, $comparison)) { throw "$($Entry.id) preview escaped worktree" }
+        if (Test-Path -LiteralPath $target) {
+            $targetItem = Get-Item -Force -LiteralPath $target
+            if ($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "$($Entry.id) preview target is a reparse point: $candidate" }
+            if ($targetItem.PSIsContainer) { Assert-PlainTree $target "$($Entry.id) preview $candidate" }
+        }
+        $records.Add([pscustomobject]@{ path=$candidate; classification=@($classes)[0] })
+    }
+    Assert-OrdinalBijection @($Entry.ignored_paths) @($covered) "$($Entry.id) preview coverage"
+    return @($records)
+}
+function Assert-PreviewRecordMatch {
+    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
+    $expectedMap = New-OrdinalRecordMap $Expected path "$Label expected"
+    $actualMap = New-OrdinalRecordMap $Actual path "$Label actual"
+    Assert-OrdinalBijection @($expectedMap.Keys) @($actualMap.Keys) "$Label paths"
+    foreach ($path in $expectedMap.Keys) {
+        if ([string]$expectedMap[$path].classification -cne [string]$actualMap[$path].classification) { throw "$Label classification mismatch: $path" }
+    }
+}
+function Assert-RegisteredWorktree {
+    param([object]$Spec)
+    $records = [Collections.Generic.List[object]]::new(); $current = $null
+    foreach ($line in @(Invoke-GitLines $Spec.repo_root @('worktree','list','--porcelain'))) {
+        if ($line.StartsWith('worktree ', [StringComparison]::Ordinal)) {
+            if ($null -ne $current) { $records.Add($current) }
+            $current = [pscustomobject]@{ path=$line.Substring(9); head=$null; branch=$null }
+        } elseif ($null -ne $current -and $line.StartsWith('HEAD ', [StringComparison]::Ordinal)) { $current.head=$line.Substring(5) }
+        elseif ($null -ne $current -and $line.StartsWith('branch ', [StringComparison]::Ordinal)) { $current.branch=$line.Substring(7) }
+    }
+    if ($null -ne $current) { $records.Add($current) }
+    $matches = @($records | Where-Object { [string]::Equals([IO.Path]::GetFullPath($_.path), [IO.Path]::GetFullPath($Spec.worktree), $comparison) })
+    if ($matches.Count -ne 1 -or $matches[0].head -cne $Spec.head -or $matches[0].branch -cne "refs/heads/$($Spec.branch)") { throw "$($Spec.id) worktree registration mismatch" }
+}
+
+$manifestFullPath = [IO.Path]::GetFullPath($ManifestPath)
+$backupRoot = Split-Path -Parent $manifestFullPath
+$manifest = [IO.File]::ReadAllText($manifestFullPath) | ConvertFrom-Json
+$expectedState = if ($Mode -cin @('BeforeClean','AfterClean')) { 'STAGE_A_VERIFIED' } else { 'CLEANED_VERIFIED' }
+if ($manifest.schema_version -ne 2 -or $manifest.stage_a_state -cne $expectedState -or @($manifest.audit_drift).Count -ne 0) { throw "Manifest is not in exact $expectedState state" }
+if ($manifest.audit_expectations.platform_ops_local.file_count -ne 2 -or $manifest.audit_expectations.platform_ops_local.byte_count -ne 2052 -or
+    $manifest.audit_expectations.client_artifacts.file_count -ne 114 -or $manifest.audit_expectations.client_artifacts.byte_count -ne 2016578139) { throw 'Manifest retained audit expectations mismatch' }
+if ($manifest.proof_gate.path -cne 'cleanup-proof-gate.ps1') { throw 'Manifest proof-gate path mismatch' }
+$selfPath = [IO.Path]::GetFullPath($PSCommandPath)
+if (-not [string]::Equals($selfPath, [IO.Path]::GetFullPath((Join-Path $backupRoot $manifest.proof_gate.path)), $comparison)) { throw 'Running an unregistered proof gate' }
+if ((Get-Item -Force -LiteralPath $selfPath).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Proof gate is a reparse point' }
+if ((Get-FileHash -LiteralPath $selfPath -Algorithm SHA256).Hash -cne $manifest.proof_gate.sha256) { throw 'Proof-gate hash mismatch' }
+
+$staleSpecs = @(
+    [pscustomobject]@{ id='premium-bank-app-portal'; worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\premium-bank-app-portal'; repo_root='C:\Users\kiwun\Documents\ai\VPN'; branch='codex/premium-bank-app-portal'; tracked=30; untracked=2; ignored=45423; retained_branch='master' },
+    [pscustomobject]@{ id='release-hardening-platform'; worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\release-hardening-platform'; repo_root='C:\Users\kiwun\Documents\ai\VPN'; branch='codex/release-hardening-platform'; tracked=91; untracked=117; ignored=42122; retained_branch='master' },
+    [pscustomobject]@{ id='release-hardening-client'; worktree='C:\Users\kiwun\.config\superpowers\worktrees\POKROV-app\release-hardening-client'; repo_root='C:\Users\kiwun\Documents\ai\POKROV-app'; branch='codex/release-hardening-client'; tracked=26; untracked=27; ignored=143; retained_branch='main' }
+)
+$temporarySpecs = @(
+    [pscustomobject]@{ id='agent-context-refactor-platform'; worktree='C:\Users\kiwun\Documents\ai\VPN\.worktrees\agent-context-refactor'; repo_root='C:\Users\kiwun\Documents\ai\VPN'; branch='codex/agent-context-refactor'; retained_branch='master'; head=$null },
+    [pscustomobject]@{ id='agent-context-refactor-client'; worktree='C:\Users\kiwun\Documents\ai\POKROV-app\.worktrees\agent-context-refactor-client'; repo_root='C:\Users\kiwun\Documents\ai\POKROV-app'; branch='codex/agent-context-refactor-client'; retained_branch='main'; head=$null }
+)
+$staleMap = New-OrdinalRecordMap $staleSpecs id 'expected stale worktrees'
+$entryMap = New-OrdinalRecordMap @($manifest.worktrees) id 'manifest worktrees'
+Assert-OrdinalBijection @($staleMap.Keys) @($entryMap.Keys) 'manifest worktree IDs'
+if ($expectedState -ceq 'CLEANED_VERIFIED') {
+    Assert-OrdinalBijection @($staleMap.Keys) @($manifest.cleanup_receipts | ForEach-Object id) 'cleanup receipt IDs'
+    foreach($receipt in @($manifest.cleanup_receipts)){if($receipt.ignored_count -ne 0 -or $receipt.preview_count -ne 0){throw "$($receipt.id) cleanup receipt is not empty-state proof"}}
+}
+foreach ($id in $staleMap.Keys) {
+    $spec = $staleMap[$id]; $entry = $entryMap[$id]
+    if (-not [string]::Equals([IO.Path]::GetFullPath($entry.worktree), [IO.Path]::GetFullPath($spec.worktree), $comparison) -or
+        -not [string]::Equals([IO.Path]::GetFullPath($entry.repo_root), [IO.Path]::GetFullPath($spec.repo_root), $comparison) -or
+        $entry.branch -cne $spec.branch -or $entry.tracked_count -ne $spec.tracked -or $entry.untracked_count -ne $spec.untracked -or $entry.ignored_count -ne $spec.ignored -or
+        $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count -or
+        @($entry.ignored_classification).Count -ne $entry.ignored_count -or @($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$id manifest shape mismatch" }
+    Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$id classification"
+    foreach ($classification in @($entry.ignored_classification | ForEach-Object classification)) {
+        if ($classification -cnotin @('generated_disposable','retained_snapshotted')) { throw "$id unsafe classification" }
+    }
+    [void](New-OrdinalRecordMap @($entry.clean_preview_records) path "$id frozen preview")
+}
+Assert-OrdinalBijection @('release-hardening-platform','release-hardening-client') @($manifest.retained_snapshots | ForEach-Object id) 'snapshot IDs'
+Assert-OrdinalBijection @($staleMap.Keys) @($manifest.stashes | ForEach-Object id) 'stash IDs'
+$stashMap = New-OrdinalRecordMap @($manifest.stashes) id 'stash records'
+$stashOidSets = [Collections.Generic.Dictionary[string,Collections.Generic.HashSet[string]]]::new([StringComparer]::Ordinal)
+foreach ($repoRoot in @('C:\Users\kiwun\Documents\ai\VPN','C:\Users\kiwun\Documents\ai\POKROV-app')) {
+    $oidSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($oid in @(Invoke-GitLines $repoRoot @('stash','list','--format=%H'))) { [void]$oidSet.Add($oid) }
+    $stashOidSets.Add($repoRoot, $oidSet)
+}
+foreach ($id in $staleMap.Keys) {
+    $spec=$staleMap[$id]; $entry=$entryMap[$id]; $stash=$stashMap[$id]
+    [void](Invoke-GitLines $spec.repo_root @('cat-file','-e',"$($stash.oid)^{commit}"))
+    if (-not $stashOidSets[$spec.repo_root].Contains([string]$stash.oid)) { throw "$id direct stash OID is no longer in refs/stash history" }
+    $subject=@(Invoke-GitLines $spec.repo_root @('show','-s','--format=%s',[string]$stash.oid))
+    if ($subject.Count -ne 1 -or $subject[0] -cne $stash.subject -or $stash.subject -cne "On $($entry.branch): $($stash.message)") { throw "$id stash subject mismatch" }
+    $stashPaths=@(Invoke-GitPathSet $spec.repo_root @('stash','show','--include-untracked','--name-only','--no-renames',[string]$stash.oid) "$id stash paths")
+    $expectedStashPaths = New-OrdinalSet @(@($entry.tracked_paths) + @($entry.untracked_paths)) "$id expected stash paths"
+    Assert-OrdinalBijection @($expectedStashPaths) $stashPaths "$id stash contents"
+    if ($stash.path_count -ne $expectedStashPaths.Count) { throw "$id stash count mismatch" }
+}
+foreach ($summary in @($manifest.retained_snapshots)) {
+    $snapshotManifestPath=[IO.Path]::GetFullPath((Join-Path $backupRoot $summary.manifest))
+    if (-not $snapshotManifestPath.StartsWith($backupRoot + [IO.Path]::DirectorySeparatorChar,$comparison)) { throw "$($summary.id) snapshot manifest escaped backup root" }
+    $snapshotRoot=Split-Path -Parent $snapshotManifestPath
+    Assert-PlainTree $snapshotRoot "$($summary.id) snapshot"
+    $saved=[IO.File]::ReadAllText($snapshotManifestPath) | ConvertFrom-Json
+    $savedBytes=(@($saved.files)|Measure-Object -Property byte_length -Sum).Sum
+    if ($saved.id -cne $summary.id -or $saved.file_count -ne @($saved.files).Count -or $saved.file_count -ne $summary.file_count -or $saved.byte_count -ne $summary.byte_count -or $saved.byte_count -ne $savedBytes) { throw "$($summary.id) snapshot manifest shape mismatch" }
+    Assert-RecordMatch @($saved.files) @(Get-RecordSet $snapshotRoot $snapshotManifestPath) "$($summary.id) snapshot contents"
+    if ($Mode -ceq 'BeforeClean' -and [string]::Equals([IO.Path]::GetFullPath($saved.source_worktree),[IO.Path]::GetFullPath($staleMap[$EntryId].worktree),$comparison)) {
+        Assert-RecordMatch @($saved.files) @(Get-RetainedSourceRecords $saved.source_worktree @($saved.relative_specs)) "$($summary.id) live retained source"
+    }
+}
+
+if ($Mode -ceq 'BeforeTemporaryRemoval') {
+    $temporaryMap=New-OrdinalRecordMap $temporarySpecs id 'expected temporary worktrees'
+    if (-not $temporaryMap.ContainsKey($EntryId)) { throw "Unexpected temporary worktree ID: $EntryId" }
+    $spec=$temporaryMap[$EntryId]
+    $head=@(Invoke-GitLines $spec.repo_root @('rev-parse','--verify',"$($spec.branch)^{commit}"))
+    if ($head.Count -ne 1) { throw "$EntryId branch HEAD is ambiguous" }
+    $spec.head=$head[0]
+    Assert-RegisteredWorktree $spec
+    $currentBranch=@(Invoke-GitLines $spec.worktree @('branch','--show-current'))
+    $currentHead=@(Invoke-GitLines $spec.worktree @('rev-parse','HEAD'))
+    if($currentBranch.Count -ne 1 -or $currentBranch[0] -cne $spec.branch -or $currentHead.Count -ne 1 -or $currentHead[0] -cne $spec.head){throw "$EntryId current branch/HEAD mismatch"}
+    [void](Invoke-GitLines $spec.repo_root @('merge-base','--is-ancestor',$spec.branch,$spec.retained_branch))
+    $tracked=@(Invoke-GitPathSet $spec.worktree @('diff','HEAD','--name-only','--no-renames') "$EntryId tracked")
+    $untracked=@(Invoke-GitPathSet $spec.worktree @('ls-files','--others','--exclude-standard') "$EntryId untracked")
+    $ignored=@(Invoke-GitPathSet $spec.worktree @('ls-files','--others','--ignored','--exclude-standard') "$EntryId ignored")
+    $preview=@(Invoke-GitLines $spec.worktree @('clean','-ndX'))
+    if ($tracked.Count -ne 0 -or $untracked.Count -ne 0 -or $ignored.Count -ne 0 -or $preview.Count -ne 0) { throw "$EntryId temporary worktree is not fully clean" }
+    $rootItem=Get-Item -Force -LiteralPath $spec.worktree
+    if (-not $rootItem.PSIsContainer -or ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "$EntryId temporary worktree root is unsafe" }
+    Write-Output "PROOF_OK $Mode $EntryId"
+    return
+}
+
+if (-not $staleMap.ContainsKey($EntryId)) { throw "Unexpected stale worktree ID: $EntryId" }
+$spec=$staleMap[$EntryId]; $entry=$entryMap[$EntryId]; $spec | Add-Member -NotePropertyName head -NotePropertyValue $entry.head
+Assert-RegisteredWorktree $spec
+$branch=@(Invoke-GitLines $entry.worktree @('branch','--show-current')); $head=@(Invoke-GitLines $entry.worktree @('rev-parse','HEAD'))
+if ($branch.Count -ne 1 -or $branch[0] -cne $entry.branch -or $head.Count -ne 1 -or $head[0] -cne $entry.head) { throw "$EntryId branch/HEAD drift" }
+$tracked=@(Invoke-GitPathSet $entry.worktree @('diff','HEAD','--name-only','--no-renames') "$EntryId current tracked")
+$untracked=@(Invoke-GitPathSet $entry.worktree @('ls-files','--others','--exclude-standard') "$EntryId current untracked")
+if ($tracked.Count -ne 0 -or $untracked.Count -ne 0) { throw "$EntryId has tracked/untracked changes" }
+$ignored=@(Invoke-GitPathSet $entry.worktree @('ls-files','--others','--ignored','--exclude-standard') "$EntryId current ignored")
+if ($Mode -ceq 'BeforeClean') {
+    Assert-OrdinalBijection @($entry.ignored_paths) $ignored "$EntryId live ignored"
+    Assert-PreviewRecordMatch @($entry.clean_preview_records) @(Get-LivePreviewRecords $entry) "$EntryId live preview"
+} else {
+    if ($ignored.Count -ne 0 -or @(Invoke-GitLines $entry.worktree @('clean','-ndX')).Count -ne 0) { throw "$EntryId ignored/preview state is not empty after clean" }
+}
+if ($Mode -ceq 'BeforeStaleRemoval') {
+    Assert-OrdinalBijection @($staleMap.Keys) @($manifest.cleanup_receipts | ForEach-Object id) 'cleanup receipt IDs'
+    [void](Invoke-GitLines $spec.repo_root @('merge-base','--is-ancestor',$spec.branch,$spec.retained_branch))
+}
+$rootItem=Get-Item -Force -LiteralPath $entry.worktree
+if (-not $rootItem.PSIsContainer -or ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "$EntryId worktree root is unsafe" }
+Write-Output "PROOF_OK $Mode $EntryId"
 ```
 
-Expected: assertion passes for each of the three stale worktrees.
+- [ ] **Step 2: Pin the proof gate before any destructive call**
 
-- [ ] **Step 3: Remove classified ignored paths**
-
-Only after Step 1 proves the current ignored relative-path set exactly matches
-the manifest and the preview contains no path outside its classification:
+Run after saving the exact script. A changed gate cannot authorize cleanup:
 
 ```powershell
-foreach ($worktree in $worktrees) {
-    git -C $worktree clean -fdX
-    git -C $worktree status --short --ignored
-}
+$ErrorActionPreference='Stop'
+$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
+$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
+$manifest=[IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+if ($manifest.stage_a_state -cne 'STAGE_A_VERIFIED' -or @($manifest.audit_drift).Count -ne 0 -or $manifest.PSObject.Properties.Name -contains 'proof_gate') { throw 'Proof gate can only be pinned once from exact STAGE_A_VERIFIED state' }
+$proofItem=Get-Item -Force -LiteralPath $proofGatePath
+if ($proofItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Proof gate is a reparse point' }
+$manifest | Add-Member -NotePropertyName proof_gate -NotePropertyValue ([pscustomobject]@{ path='cleanup-proof-gate.ps1'; sha256=(Get-FileHash -LiteralPath $proofGatePath -Algorithm SHA256).Hash })
+$temporary="$manifestPath.tmp"
+if (Test-Path -LiteralPath $temporary) { throw 'Manifest temp collision' }
+[IO.File]::WriteAllText($temporary,($manifest|ConvertTo-Json -Depth 14),[Text.UTF8Encoding]::new($false))
+[IO.File]::Move($temporary,$manifestPath,$true)
 ```
 
-Expected: no ignored path remains; retained copies and hashes still exist under
-the external snapshot root.
+- [ ] **Step 3: Prove, clean, and prove again without separating the calls**
+
+Run this whole block. Do not copy a `git clean -fdX` line without its adjacent
+proof calls and immediate exit check:
+
+```powershell
+$ErrorActionPreference='Stop'
+$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
+$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
+$ids=@('premium-bank-app-portal','release-hardening-platform','release-hardening-client')
+foreach($id in $ids){
+    $manifest=[IO.File]::ReadAllText($manifestPath)|ConvertFrom-Json
+    $entry=@($manifest.worktrees|Where-Object id -CEQ $id)
+    if($entry.Count -ne 1){throw "$id manifest entry mismatch"}
+    & $proofGatePath -ManifestPath $manifestPath -EntryId $id -Mode BeforeClean
+    if(-not $?){throw "$id pre-clean proof failed"}
+    & git -C $entry[0].worktree clean -fdX
+    $cleanExit=$LASTEXITCODE
+    if($cleanExit -ne 0){throw "$id git clean failed ($cleanExit)"}
+    & $proofGatePath -ManifestPath $manifestPath -EntryId $id -Mode AfterClean
+    if(-not $?){throw "$id post-clean proof failed"}
+
+    $manifest=[IO.File]::ReadAllText($manifestPath)|ConvertFrom-Json
+    $receiptIds=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach($receipt in @($manifest.cleanup_receipts)){if(-not $receiptIds.Add([string]$receipt.id)){throw 'Duplicate cleanup receipt ID'}}
+    if(-not $receiptIds.Add($id)){throw "$id already has a cleanup receipt"}
+    $manifest.cleanup_receipts=@($manifest.cleanup_receipts)+@([pscustomobject]@{id=$id;verified_utc=[DateTime]::UtcNow.ToString('o');ignored_count=0;preview_count=0})
+    $temporary="$manifestPath.tmp"; if(Test-Path -LiteralPath $temporary){throw 'Manifest temp collision'}
+    [IO.File]::WriteAllText($temporary,($manifest|ConvertTo-Json -Depth 14),[Text.UTF8Encoding]::new($false));[IO.File]::Move($temporary,$manifestPath,$true)
+}
+$manifest=[IO.File]::ReadAllText($manifestPath)|ConvertFrom-Json
+$receiptSet=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach($receipt in @($manifest.cleanup_receipts)){if(-not $receiptSet.Add([string]$receipt.id)){throw 'Duplicate cleanup receipt ID'}}
+$expected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal);foreach($id in $ids){[void]$expected.Add($id)}
+if($manifest.stage_a_state -cne 'STAGE_A_VERIFIED' -or -not $expected.SetEquals($receiptSet)){throw 'All three post-clean proofs are required'}
+$manifest.stage_a_state='CLEANED_VERIFIED'
+$temporary="$manifestPath.tmp";if(Test-Path -LiteralPath $temporary){throw 'Manifest temp collision'}
+[IO.File]::WriteAllText($temporary,($manifest|ConvertTo-Json -Depth 14),[Text.UTF8Encoding]::new($false));[IO.File]::Move($temporary,$manifestPath,$true)
+```
+
+Expected: each clean is authorized by a fresh live proof, exits 0, and is
+followed immediately by an ignored-empty proof. The manifest reaches
+`CLEANED_VERIFIED` only after three distinct post-clean receipts.
 
 ### Task 6: Remove Stale Worktrees And Merged Branches
 
@@ -659,43 +1168,43 @@ the external snapshot root.
 - Consumes: clean worktree, readable stash, verified ignored snapshot
 - Produces: removed stale worktree and retained branch history
 
-- [ ] **Step 1: Prove branch reachability**
+- [ ] **Step 1: Prove and remove each stale worktree without force**
 
-For platform branches:
-
-```powershell
-git -C 'C:\Users\kiwun\Documents\ai\VPN' merge-base --is-ancestor codex/premium-bank-app-portal master
-git -C 'C:\Users\kiwun\Documents\ai\VPN' merge-base --is-ancestor codex/release-hardening-platform master
-```
-
-For the client:
+The reusable gate checks `CLEANED_VERIFIED`, exact cleanup receipts, current
+branch/HEAD, reachability, empty tracked/untracked/ignored/preview state, and
+all recovery evidence immediately before each removal:
 
 ```powershell
-git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' merge-base --is-ancestor codex/release-hardening-client main
-```
-
-Expected: every command exits 0. A non-zero result blocks branch deletion.
-
-- [ ] **Step 2: Remove each clean worktree without force**
-
-Run from the owning main checkout:
-
-```powershell
-git -C 'C:\Users\kiwun\Documents\ai\VPN' worktree remove 'C:\Users\kiwun\.config\superpowers\worktrees\VPN\premium-bank-app-portal'
-git -C 'C:\Users\kiwun\Documents\ai\VPN' worktree remove 'C:\Users\kiwun\.config\superpowers\worktrees\VPN\release-hardening-platform'
-git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' worktree remove 'C:\Users\kiwun\.config\superpowers\worktrees\POKROV-app\release-hardening-client'
+$ErrorActionPreference='Stop'
+$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
+$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
+$removals=@(
+    [pscustomobject]@{id='premium-bank-app-portal';repo='C:\Users\kiwun\Documents\ai\VPN';worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\premium-bank-app-portal'},
+    [pscustomobject]@{id='release-hardening-platform';repo='C:\Users\kiwun\Documents\ai\VPN';worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\release-hardening-platform'},
+    [pscustomobject]@{id='release-hardening-client';repo='C:\Users\kiwun\Documents\ai\POKROV-app';worktree='C:\Users\kiwun\.config\superpowers\worktrees\POKROV-app\release-hardening-client'}
+)
+foreach($removal in $removals){
+    & $proofGatePath -ManifestPath $manifestPath -EntryId $removal.id -Mode BeforeStaleRemoval
+    if(-not $?){throw "$($removal.id) pre-removal proof failed"}
+    & git -C $removal.repo worktree remove $removal.worktree
+    $removeExit=$LASTEXITCODE
+    if($removeExit -ne 0){throw "$($removal.id) worktree removal failed ($removeExit)"}
+}
 ```
 
 Expected: all commands succeed without `--force`.
 
-- [ ] **Step 3: Delete only the merged local branches**
+- [ ] **Step 2: Delete only the merged local branches**
 
 Run:
 
 ```powershell
-git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/premium-bank-app-portal
-git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/release-hardening-platform
-git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' branch -d codex/release-hardening-client
+& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/premium-bank-app-portal
+if($LASTEXITCODE -ne 0){throw 'premium branch deletion failed'}
+& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/release-hardening-platform
+if($LASTEXITCODE -ne 0){throw 'platform release branch deletion failed'}
+& git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' branch -d codex/release-hardening-client
+if($LASTEXITCODE -ne 0){throw 'client release branch deletion failed'}
 ```
 
 Expected: normal `-d` deletion succeeds; named stashes remain readable.
@@ -777,28 +1286,32 @@ do not force push.
 - Consumes: commits reachable from retained platform/client branches
 - Produces: requested steady state
 
-- [ ] **Step 1: Prove temporary branch reachability**
-
-Run:
-
-```powershell
-git merge-base --is-ancestor codex/product-audit-closure master
-git merge-base --is-ancestor codex/agent-context-refactor master
-git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' merge-base --is-ancestor codex/agent-context-refactor-client main
-```
-
-Expected: all commands exit 0.
-
-- [ ] **Step 2: Remove temporary clean worktrees and branches**
+- [ ] **Step 1: Remove temporary clean worktrees and branches**
 
 Run without `--force`:
 
 ```powershell
-git -C 'C:\Users\kiwun\Documents\ai\VPN' worktree remove 'C:\Users\kiwun\Documents\ai\VPN\.worktrees\agent-context-refactor'
-git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/agent-context-refactor
-git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/product-audit-closure
-git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' worktree remove 'C:\Users\kiwun\Documents\ai\POKROV-app\.worktrees\agent-context-refactor-client'
-git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' branch -d codex/agent-context-refactor-client
+$ErrorActionPreference='Stop'
+$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
+$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
+
+& $proofGatePath -ManifestPath $manifestPath -EntryId 'agent-context-refactor-platform' -Mode BeforeTemporaryRemoval
+if(-not $?){throw 'platform docs worktree proof failed'}
+& git -C 'C:\Users\kiwun\Documents\ai\VPN' worktree remove 'C:\Users\kiwun\Documents\ai\VPN\.worktrees\agent-context-refactor'
+if($LASTEXITCODE -ne 0){throw 'platform docs worktree removal failed'}
+& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/agent-context-refactor
+if($LASTEXITCODE -ne 0){throw 'platform docs branch deletion failed'}
+& git -C 'C:\Users\kiwun\Documents\ai\VPN' merge-base --is-ancestor codex/product-audit-closure master
+if($LASTEXITCODE -ne 0){throw 'product-audit branch is not reachable from master'}
+& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/product-audit-closure
+if($LASTEXITCODE -ne 0){throw 'product-audit branch deletion failed'}
+
+& $proofGatePath -ManifestPath $manifestPath -EntryId 'agent-context-refactor-client' -Mode BeforeTemporaryRemoval
+if(-not $?){throw 'client docs worktree proof failed'}
+& git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' worktree remove 'C:\Users\kiwun\Documents\ai\POKROV-app\.worktrees\agent-context-refactor-client'
+if($LASTEXITCODE -ne 0){throw 'client docs worktree removal failed'}
+& git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' branch -d codex/agent-context-refactor-client
+if($LASTEXITCODE -ne 0){throw 'client docs branch deletion failed'}
 ```
 
 Expected steady state:

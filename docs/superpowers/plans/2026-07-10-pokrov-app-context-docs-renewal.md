@@ -262,18 +262,80 @@ powershell -ExecutionPolicy Bypass -File .\test\docs-contract.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\validate-seed.ps1
 git diff --check
 git diff --name-only -- artifacts/releases
-$task1Files = @('AGENTS.md', 'docs/README.md', 'test/docs-contract.ps1', 'scripts/validate-seed.ps1', 'test/README.md')
-foreach ($path in $task1Files) {
-  $text = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $PWD $path)))
-  if ($text.Contains("`r")) { throw "$path contains CR bytes; Task 1 must preserve .editorconfig LF endings" }
+$task1BaselineRef = 'codex/market-ready-cis-client-integration'
+$task1Existing = @('docs/README.md', 'scripts/validate-seed.ps1', 'test/README.md')
+$task1New = @('AGENTS.md', 'test/docs-contract.ps1')
+$task1Files = @($task1Existing + $task1New)
+
+$repoRootResult = @(& git rev-parse --show-toplevel)
+if ($LASTEXITCODE -ne 0 -or $repoRootResult.Count -ne 1) { throw 'Cannot resolve client repository root' }
+$repoRoot = $repoRootResult[0]
+$headResult = @(& git rev-parse --verify 'HEAD^{commit}')
+if ($LASTEXITCODE -ne 0 -or $headResult.Count -ne 1) { throw 'Cannot resolve HEAD' }
+$head = $headResult[0]
+$baselineResult = @(& git merge-base $head $task1BaselineRef)
+if ($LASTEXITCODE -ne 0 -or $baselineResult.Count -ne 1) { throw "Cannot resolve Task 1 baseline from $task1BaselineRef" }
+$baseline = $baselineResult[0]
+if ($head -cne $baseline) { throw "Task 1 must be validated before its first commit; HEAD $head is not fork baseline $baseline" }
+
+$baselineFiles = @(& git ls-tree -r --name-only $baseline -- $task1Files)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect Task 1 baseline paths' }
+$baselineSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($path in $baselineFiles) { if (-not $baselineSet.Add($path)) { throw "Duplicate baseline path: $path" } }
+$missingAtBaseline = @($task1Existing | Where-Object { -not $baselineSet.Contains($_) })
+$unexpectedAtBaseline = @($task1New | Where-Object { $baselineSet.Contains($_) })
+if ($missingAtBaseline.Count -ne 0 -or $unexpectedAtBaseline.Count -ne 0) {
+  throw "Task 1 baseline shape drifted. Missing existing: $($missingAtBaseline -join ', '); unexpectedly pre-existing: $($unexpectedAtBaseline -join ', ')"
 }
+
+$tracked = @(& git diff --name-only --no-renames $baseline --)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate tracked Task 1 delta' }
+$untracked = @(& git ls-files --others --exclude-standard --)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate untracked Task 1 delta' }
+$changedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($path in @($tracked) + @($untracked)) {
+  if ($path -and -not $changedSet.Add($path.Replace('\', '/'))) { throw "Duplicate changed path: $path" }
+}
+$expectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($path in $task1Files) { if (-not $expectedSet.Add($path)) { throw "Duplicate expected Task 1 path: $path" } }
+if (-not $expectedSet.SetEquals($changedSet)) {
+  $missing = @($task1Files | Where-Object { -not $changedSet.Contains($_) })
+  $extra = @($changedSet | Where-Object { -not $expectedSet.Contains($_) })
+  throw "Task 1 Git-visible write set must be exactly five files. Missing: $($missing -join ', '); extra: $($extra -join ', ')"
+}
+
+$strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+foreach ($path in $task1Files) {
+  $absolute = Join-Path $repoRoot $path
+  if (-not (Test-Path -LiteralPath $absolute -PathType Leaf)) { throw "$path must exist as a file" }
+  [byte[]]$bytes = [IO.File]::ReadAllBytes($absolute)
+  try { [void]$strictUtf8.GetString($bytes) } catch { throw "$path is not valid UTF-8" }
+  if ($bytes -contains [byte]13) { throw "$path contains CR bytes; Task 1 requires LF-only text" }
+  if ($bytes.Length -eq 0 -or $bytes[-1] -ne [byte]10) { throw "$path must be non-empty and end with LF" }
+}
+
+foreach ($path in $task1Existing) {
+  $semanticNumstat = @(& git diff --no-ext-diff --no-textconv --no-renames --text --numstat --ignore-cr-at-eol $baseline -- $path)
+  if ($LASTEXITCODE -ne 0) { throw "Cannot inspect semantic delta for $path" }
+  [long]$semanticLines = 0
+  foreach ($row in $semanticNumstat) {
+    $columns = $row -split "`t", 3
+    if ($columns.Count -lt 3 -or $columns[0] -notmatch '^\d+$' -or $columns[1] -notmatch '^\d+$') { throw "Unexpected semantic numstat for ${path}: $row" }
+    $semanticLines += [long]$columns[0] + [long]$columns[1]
+  }
+  if ($semanticLines -eq 0) { throw "$path has no semantic text delta against $baseline; pure EOL or mode-only churn is forbidden" }
+}
+
 git diff --numstat -- $task1Files
+if ($LASTEXITCODE -ne 0) { throw 'Cannot display final Task 1 numstat' }
 git add AGENTS.md docs/README.md test/docs-contract.ps1 test/README.md scripts/validate-seed.ps1
 git commit -m "docs: add thin client agent contract"
 ```
 
-Expected: tests pass, artifact diff is empty, every Task 1 file remains LF,
-and the numstat review shows semantic edits rather than whole-file EOL churn.
+Expected: tests pass, artifact diff is empty, all five Task 1 files are valid
+LF-only UTF-8, the Git-visible write set is exactly those five files, new files
+are allowed, and every pre-existing file has a real semantic delta against the
+frozen fork baseline. Pure CRLF-to-LF or mode-only churn fails before staging.
 
 ### Task 2: Reconcile Current Client Canon
 
