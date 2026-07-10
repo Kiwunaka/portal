@@ -1,0 +1,3 @@
+# Raw browser and Telegram evidence contains private UI, account identifiers,
+# order/link capabilities, and expiring CDN URLs. Keep it outside git.
+quattro/
