@@ -191,7 +191,8 @@ $entries = foreach ($spec in $specs) {
     $head = @(& git -C $worktree rev-parse HEAD)
     if ($LASTEXITCODE -ne 0 -or $head.Count -ne 1) { throw "Cannot read HEAD for $worktree" }
     $tracked = @(Invoke-GitPathSet $worktree @('diff', 'HEAD', '--name-only', '--no-renames'))
-    $trackedFiles = @(Invoke-GitPathSet $worktree @('ls-files'))
+    $headTree = @(Invoke-GitPathSet $worktree @('ls-tree', '-r', '--name-only', 'HEAD'))
+    $indexFiles = @(Invoke-GitPathSet $worktree @('ls-files'))
     $untracked = @(Invoke-GitPathSet $worktree @('ls-files', '--others', '--exclude-standard'))
     $ignored = @(Invoke-GitPathSet $worktree @('ls-files', '--others', '--ignored', '--exclude-standard'))
     if ($branch[0] -ne $spec.expected_branch) { $drift.Add("$($spec.id): branch") }
@@ -206,8 +207,10 @@ $entries = foreach ($spec in $specs) {
         head = $head[0]
         tracked_paths = $tracked
         tracked_count = $tracked.Count
-        tracked_file_paths = $trackedFiles
-        tracked_file_count = $trackedFiles.Count
+        head_tree_paths = $headTree
+        head_tree_count = $headTree.Count
+        index_file_paths = $indexFiles
+        index_file_count = $indexFiles.Count
         untracked_paths = $untracked
         untracked_count = $untracked.Count
         ignored_paths = $ignored
@@ -217,7 +220,9 @@ $entries = foreach ($spec in $specs) {
 ```
 
 Expected: staged plus unstaged tracked paths come from
-`git diff HEAD --name-only`; untracked and ignored paths remain separate.
+`git diff HEAD --name-only`. The exact `HEAD` tree and current index are frozen
+separately with exit-checked `git ls-tree -r --name-only HEAD` and
+`git ls-files`; untracked and ignored paths remain separate.
 
 - [ ] **Step 2: Classify ignored paths using path metadata only**
 
@@ -283,7 +288,8 @@ $expectedIds = @('premium-bank-app-portal', 'release-hardening-platform', 'relea
 Assert-OrdinalBijection $expectedIds @($entries | ForEach-Object id) 'worktree IDs'
 foreach ($entry in $entries) {
     if ($entry.tracked_count -ne @($entry.tracked_paths).Count -or
-        $entry.tracked_file_count -ne @($entry.tracked_file_paths).Count -or
+        $entry.head_tree_count -ne @($entry.head_tree_paths).Count -or
+        $entry.index_file_count -ne @($entry.index_file_paths).Count -or
         $entry.untracked_count -ne @($entry.untracked_paths).Count -or
         $entry.ignored_count -ne @($entry.ignored_paths).Count -or
         @($entry.ignored_classification).Count -ne $entry.ignored_count) {
@@ -318,7 +324,7 @@ if ($reloaded.stage_a_state -cne 'INVENTORY_VERIFIED' -or @($reloaded.audit_drif
 Assert-OrdinalBijection $expectedIds @($reloaded.worktrees | ForEach-Object id) 'reloaded worktree IDs'
 foreach ($entry in @($reloaded.worktrees)) {
     if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$($entry.id) reloaded blockers are non-empty" }
-    if ($entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.tracked_file_count -ne @($entry.tracked_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count) { throw "$($entry.id) reloaded counts mismatch" }
+    if ($entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.head_tree_count -ne @($entry.head_tree_paths).Count -or $entry.index_file_count -ne @($entry.index_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count) { throw "$($entry.id) reloaded counts mismatch" }
     Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) reloaded classification"
     foreach ($classification in @($entry.ignored_classification | ForEach-Object classification)) {
         if ($classification -cnotin @('generated_disposable', 'retained_snapshotted')) { throw "$($entry.id) has unsafe classification $classification" }
@@ -395,7 +401,7 @@ function Assert-InventoryPredecessor {
     foreach ($entry in @($Manifest.worktrees)) {
         $spec = $expectedMap[$entry.id]
         if ($entry.tracked_count -ne $spec.tracked -or $entry.untracked_count -ne $spec.untracked -or $entry.ignored_count -ne $spec.ignored -or
-            $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.tracked_file_count -ne @($entry.tracked_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or
+            $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.head_tree_count -ne @($entry.head_tree_paths).Count -or $entry.index_file_count -ne @($entry.index_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or
             $entry.ignored_count -ne @($entry.ignored_paths).Count -or @($entry.ignored_classification).Count -ne $entry.ignored_count) {
             throw "$($entry.id) inventory count mismatch"
         }
@@ -448,15 +454,16 @@ function Get-RetainedRecords {
         }
     }
     $trackedDirty=New-OrdinalSet @($InventoryEntry.tracked_paths) "$($InventoryEntry.id) tracked-dirty inventory"
-    $trackedFiles=New-OrdinalSet @($InventoryEntry.tracked_file_paths) "$($InventoryEntry.id) tracked-file inventory"
+    $headTree=New-OrdinalSet @($InventoryEntry.head_tree_paths) "$($InventoryEntry.id) HEAD-tree inventory"
+    $indexFiles=New-OrdinalSet @($InventoryEntry.index_file_paths) "$($InventoryEntry.id) index-file inventory"
     $untracked=New-OrdinalSet @($InventoryEntry.untracked_paths) "$($InventoryEntry.id) untracked inventory"
     $ignored=New-OrdinalSet @($InventoryEntry.ignored_paths) "$($InventoryEntry.id) ignored inventory"
     $classificationMap=New-OrdinalRecordMap @($InventoryEntry.ignored_classification) path "$($InventoryEntry.id) ignored classifications"
     $deletions=[Collections.Generic.List[object]]::new()
     foreach($path in $trackedDirty){
         if(-not (Test-RetainedSpecPath $path $RelativeSpecs) -or $filesByRelativePath.ContainsKey($path)){continue}
-        if(-not $trackedFiles.Contains($path) -or $untracked.Contains($path) -or $ignored.Contains($path)){throw "Conflicting tracked-deleted retained state: $path"}
-        $deletions.Add([pscustomobject]@{relative_path=$path;original_git_state='tracked_deleted';snapshot_present=$false})
+        if(-not $headTree.Contains($path) -or $untracked.Contains($path) -or $ignored.Contains($path)){throw "Absent dirty retained path is not an exact HEAD-tree deletion: $path"}
+        $deletions.Add([pscustomobject]@{relative_path=$path;original_git_state='tracked_deleted';snapshot_present=$false;head_present=$true;index_present=$indexFiles.Contains($path)})
     }
     $deletionMap=New-OrdinalRecordMap @($deletions) relative_path "$($InventoryEntry.id) tracked deletions"
     foreach($specValue in $RelativeSpecs){
@@ -468,14 +475,16 @@ function Get-RetainedRecords {
     [Array]::Sort($relativePaths, [StringComparer]::Ordinal)
     $files=@($relativePaths | ForEach-Object {
         $file = Get-Item -Force -LiteralPath $filesByRelativePath[$_]
-        $isIgnored=$ignored.Contains($_);$isUntracked=$untracked.Contains($_);$isTracked=$trackedFiles.Contains($_);$isDirty=$trackedDirty.Contains($_)
+        $isIgnored=$ignored.Contains($_);$isUntracked=$untracked.Contains($_);$isHead=$headTree.Contains($_);$isIndex=$indexFiles.Contains($_);$isDirty=$trackedDirty.Contains($_)
         if($isIgnored){
-            if($isUntracked -or $isTracked -or $isDirty -or -not $classificationMap.ContainsKey($_) -or $classificationMap[$_].classification -cne 'retained_snapshotted'){throw "Conflicting ignored retained state: $_"}
+            if($isUntracked -or $isHead -or $isIndex -or $isDirty -or -not $classificationMap.ContainsKey($_) -or $classificationMap[$_].classification -cne 'retained_snapshotted'){throw "Conflicting ignored retained state: $_"}
             $state='ignored_retained'
         }elseif($isUntracked){
-            if($isTracked -or $isDirty){throw "Conflicting untracked retained state: $_"};$state='untracked'
-        }elseif($isTracked){
-            $state=if($isDirty){'tracked_dirty'}else{'tracked_clean'}
+            if($isHead -or $isIndex -or $isDirty){throw "Conflicting untracked retained state: $_"};$state='untracked'
+        }elseif($isDirty -and ($isHead -or $isIndex)){
+            $state='tracked_dirty'
+        }elseif(-not $isDirty -and $isHead -and $isIndex){
+            $state='tracked_clean'
         }else{throw "Retained path has no frozen Git state: $_"}
         [pscustomobject]@{
             relative_path = $_
@@ -484,6 +493,8 @@ function Get-RetainedRecords {
             sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
             original_git_state = $state
             snapshot_present = $true
+            head_present = $isHead
+            index_present = $isIndex
         }
     })
     Assert-OrdinalBijection @($files|ForEach-Object relative_path) @($filesByRelativePath.Keys) "$($InventoryEntry.id) saved retained states"
@@ -502,13 +513,14 @@ function Assert-RecordMatch {
             throw "$Label length/hash mismatch: $path"
         }
         if($expectedByPath[$path].PSObject.Properties.Name -contains 'original_git_state' -and $actualByPath[$path].PSObject.Properties.Name -contains 'original_git_state' -and $expectedByPath[$path].original_git_state -cne $actualByPath[$path].original_git_state){throw "$Label Git-state mismatch: $path"}
+        if($expectedByPath[$path].PSObject.Properties.Name -contains 'head_present' -and $actualByPath[$path].PSObject.Properties.Name -contains 'head_present' -and ($expectedByPath[$path].head_present -ne $actualByPath[$path].head_present -or $expectedByPath[$path].index_present -ne $actualByPath[$path].index_present)){throw "$Label HEAD/index membership mismatch: $path"}
     }
 }
 function Assert-DeletionMatch {
     param([object[]]$Expected,[object[]]$Actual,[string]$Label)
     $expectedMap=New-OrdinalRecordMap $Expected relative_path "$Label expected";$actualMap=New-OrdinalRecordMap $Actual relative_path "$Label actual"
     Assert-OrdinalBijection @($expectedMap.Keys) @($actualMap.Keys) "$Label paths"
-    foreach($path in $expectedMap.Keys){if($expectedMap[$path].original_git_state -cne 'tracked_deleted' -or $actualMap[$path].original_git_state -cne 'tracked_deleted' -or $expectedMap[$path].snapshot_present -ne $false -or $actualMap[$path].snapshot_present -ne $false){throw "$Label invalid deletion state: $path"}}
+    foreach($path in $expectedMap.Keys){if($expectedMap[$path].original_git_state -cne 'tracked_deleted' -or $actualMap[$path].original_git_state -cne 'tracked_deleted' -or $expectedMap[$path].snapshot_present -ne $false -or $actualMap[$path].snapshot_present -ne $false -or $expectedMap[$path].head_present -ne $true -or $actualMap[$path].head_present -ne $true -or $expectedMap[$path].index_present -ne $actualMap[$path].index_present){throw "$Label invalid deletion state: $path"}}
 }
 
 function New-RetainedSnapshot {
@@ -553,7 +565,7 @@ function New-RetainedSnapshot {
         tracked_deletion_count = $trackedDeletions.Count
         record_count = $sourceRecords.Count+$trackedDeletions.Count
         byte_count = ($sourceRecords | Measure-Object -Property byte_length -Sum).Sum
-        files = @($sourceRecords | Select-Object relative_path, byte_length, sha256, original_git_state, snapshot_present)
+        files = @($sourceRecords | Select-Object relative_path, byte_length, sha256, original_git_state, snapshot_present, head_present, index_present)
         tracked_deletions=@($trackedDeletions)
         audit=[pscustomobject]@{prefix=$AuditPrefix;expected_file_count=$ExpectedAuditFiles;expected_byte_count=$ExpectedAuditBytes;observed_saved_files=$auditRecords.Count;observed_tracked_deletions=$auditDeletions.Count;observed_saved_bytes=$auditBytes}
     }
@@ -571,7 +583,7 @@ function New-RetainedSnapshot {
             }
         })
     $sourceAfterCopy=Get-RetainedRecords $Worktree $RelativeSpecs $InventoryEntry
-    Assert-RecordMatch @($saved.files) @($sourceAfterCopy.files|Select-Object relative_path,byte_length,sha256,original_git_state,snapshot_present) "$Id source-after-copy"
+    Assert-RecordMatch @($saved.files) @($sourceAfterCopy.files|Select-Object relative_path,byte_length,sha256,original_git_state,snapshot_present,head_present,index_present) "$Id source-after-copy"
     Assert-DeletionMatch @($saved.tracked_deletions) @($sourceAfterCopy.tracked_deletions) "$Id tracked deletions after copy"
     Assert-RecordMatch @($saved.files) $destinationRecords "$Id destination"
     return [pscustomobject]@{ id=$Id; manifest=[IO.Path]::GetRelativePath($backupRoot, $snapshotManifestPath).Replace('\', '/'); file_count=$saved.file_count;tracked_deletion_count=$saved.tracked_deletion_count;record_count=$saved.record_count; byte_count=$saved.byte_count; verified=$true }
@@ -606,8 +618,12 @@ byte length, hash, and original Git state of every copied file. The allowed
 saved-file states are `ignored_retained`, `tracked_dirty`, `untracked`, and
 `tracked_clean`. A tracked deletion is a separate `tracked_deleted` record
 with `snapshot_present=false`; it has no fabricated snapshot bytes. State paths
-are ordinal and one-to-one. Both source and destination are re-enumerated after
-copying, and every saved destination still requires a SHA-256 match.
+are ordinal and one-to-one. Every state record also freezes `head_present` and
+`index_present`. An absent dirty retained path is `tracked_deleted` only when
+the exact frozen HEAD-tree set contains it; current-index membership may be
+true for an unstaged deletion or false for a staged deletion. An absent dirty
+path outside HEAD is rejected. Both source and destination are re-enumerated
+after copying, and every saved destination still requires a SHA-256 match.
 
 - [ ] **Step 2: Record only verified snapshot manifests in the Stage A manifest**
 
@@ -707,7 +723,7 @@ function Assert-SnapshotPredecessor {
     foreach ($entry in @($Value.worktrees)) {
         $spec = $countMap[$entry.id]
         if ($entry.tracked_count -ne $spec.tracked -or $entry.untracked_count -ne $spec.untracked -or $entry.ignored_count -ne $spec.ignored -or
-            $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.tracked_file_count -ne @($entry.tracked_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or
+            $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.head_tree_count -ne @($entry.head_tree_paths).Count -or $entry.index_file_count -ne @($entry.index_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or
             $entry.ignored_count -ne @($entry.ignored_paths).Count -or @($entry.ignored_classification).Count -ne $entry.ignored_count) { throw "$($entry.id) predecessor count mismatch" }
         if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$($entry.id) predecessor blockers are non-empty" }
         Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) predecessor classification"
@@ -724,8 +740,13 @@ function Assert-SnapshotPredecessor {
         if ($saved.id -cne $summary.id -or $saved.file_count -ne @($saved.files).Count -or $saved.tracked_deletion_count -ne @($saved.tracked_deletions).Count -or $saved.record_count -ne ($saved.file_count+$saved.tracked_deletion_count) -or $saved.file_count -ne $summary.file_count -or $saved.tracked_deletion_count -ne $summary.tracked_deletion_count -or $saved.record_count -ne $summary.record_count -or $saved.byte_count -ne $summary.byte_count -or $saved.byte_count -ne $savedBytes) { throw "$($summary.id) snapshot manifest count mismatch" }
         $fileMap=New-OrdinalRecordMap @($saved.files) relative_path "$($summary.id) snapshot files";$deletionMap=New-OrdinalRecordMap @($saved.tracked_deletions) relative_path "$($summary.id) tracked deletions"
         $retainedStatePaths=@($fileMap.Keys)+@($deletionMap.Keys);[void](New-OrdinalSet $retainedStatePaths "$($summary.id) retained state paths")
-        foreach($record in @($saved.files)){if($record.original_git_state -cnotin @('ignored_retained','tracked_dirty','untracked','tracked_clean') -or $record.snapshot_present -ne $true -or -not $record.sha256){throw "$($summary.id) invalid saved state: $($record.relative_path)"}}
-        foreach($record in @($saved.tracked_deletions)){if($record.original_git_state -cne 'tracked_deleted' -or $record.snapshot_present -ne $false){throw "$($summary.id) invalid tracked deletion: $($record.relative_path)"}}
+        foreach($record in @($saved.files)){
+            if($record.original_git_state -cnotin @('ignored_retained','tracked_dirty','untracked','tracked_clean') -or $record.snapshot_present -ne $true -or -not $record.sha256){throw "$($summary.id) invalid saved state: $($record.relative_path)"}
+            if($record.original_git_state -cin @('ignored_retained','untracked') -and ($record.head_present -ne $false -or $record.index_present -ne $false)){throw "$($summary.id) non-tracked state has HEAD/index membership"}
+            if($record.original_git_state -ceq 'tracked_dirty' -and -not($record.head_present -or $record.index_present)){throw "$($summary.id) tracked-dirty state lacks HEAD/index membership"}
+            if($record.original_git_state -ceq 'tracked_clean' -and ($record.head_present -ne $true -or $record.index_present -ne $true)){throw "$($summary.id) tracked-clean state lacks exact HEAD/index membership"}
+        }
+        foreach($record in @($saved.tracked_deletions)){if($record.original_git_state -cne 'tracked_deleted' -or $record.snapshot_present -ne $false -or $record.head_present -ne $true -or $record.PSObject.Properties.Name -cnotcontains 'index_present'){throw "$($summary.id) invalid tracked deletion: $($record.relative_path)"}}
     }
 }
 function Save-StageManifest {
@@ -846,7 +867,7 @@ Assert-OrdinalBijection @('premium-bank-app-portal', 'release-hardening-platform
 Assert-OrdinalBijection @('premium-bank-app-portal', 'release-hardening-platform', 'release-hardening-client') @($reloaded.stashes | ForEach-Object id) 'reloaded final stash IDs'
 Assert-OrdinalBijection @('release-hardening-platform', 'release-hardening-client') @($reloaded.retained_snapshots | ForEach-Object id) 'reloaded final snapshot IDs'
 foreach ($entry in @($reloaded.worktrees)) {
-    if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0 -or $entry.tracked_file_count -ne @($entry.tracked_file_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count -or @($entry.ignored_classification).Count -ne $entry.ignored_count) { throw "$($entry.id) reloaded final entry is incomplete" }
+    if (@($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0 -or $entry.head_tree_count -ne @($entry.head_tree_paths).Count -or $entry.index_file_count -ne @($entry.index_file_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count -or @($entry.ignored_classification).Count -ne $entry.ignored_count) { throw "$($entry.id) reloaded final entry is incomplete" }
     Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$($entry.id) reloaded final classification"
     foreach($classification in @($entry.ignored_classification|ForEach-Object classification)){if($classification -cnotin @('generated_disposable','retained_snapshotted')){throw "$($entry.id) reloaded unsafe classification"}}
     [void](New-OrdinalRecordMap @($entry.clean_preview_records) path "$($entry.id) reloaded clean preview")
@@ -1075,7 +1096,7 @@ foreach ($id in $staleMap.Keys) {
     if (-not [string]::Equals([IO.Path]::GetFullPath($entry.worktree), [IO.Path]::GetFullPath($spec.worktree), $comparison) -or
         -not [string]::Equals([IO.Path]::GetFullPath($entry.repo_root), [IO.Path]::GetFullPath($spec.repo_root), $comparison) -or
         $entry.branch -cne $spec.branch -or $entry.tracked_count -ne $spec.tracked -or $entry.untracked_count -ne $spec.untracked -or $entry.ignored_count -ne $spec.ignored -or
-        $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.tracked_file_count -ne @($entry.tracked_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count -or
+        $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.head_tree_count -ne @($entry.head_tree_paths).Count -or $entry.index_file_count -ne @($entry.index_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count -or
         @($entry.ignored_classification).Count -ne $entry.ignored_count -or @($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$id manifest shape mismatch" }
     Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$id classification"
     foreach ($classification in @($entry.ignored_classification | ForEach-Object classification)) {
@@ -1118,19 +1139,19 @@ foreach ($summary in @($manifest.retained_snapshots)) {
     $sourceMatches=@($staleMap.Values|Where-Object{[string]::Equals([IO.Path]::GetFullPath($_.worktree),[IO.Path]::GetFullPath($saved.source_worktree),$comparison)})
     if($sourceMatches.Count -ne 1){throw "$($summary.id) source worktree mapping mismatch"}
     $sourceSpec=$sourceMatches[0];$sourceEntry=$entryMap[$sourceSpec.id];$stashPathsForSource=$verifiedStashPathsById[$sourceSpec.id]
-    $dirtySet=New-OrdinalSet @($sourceEntry.tracked_paths) "$($summary.id) frozen dirty paths";$trackedSet=New-OrdinalSet @($sourceEntry.tracked_file_paths) "$($summary.id) frozen tracked files";$untrackedSet=New-OrdinalSet @($sourceEntry.untracked_paths) "$($summary.id) frozen untracked paths";$ignoredSet=New-OrdinalSet @($sourceEntry.ignored_paths) "$($summary.id) frozen ignored paths";$classMap=New-OrdinalRecordMap @($sourceEntry.ignored_classification) path "$($summary.id) ignored classes"
+    $dirtySet=New-OrdinalSet @($sourceEntry.tracked_paths) "$($summary.id) frozen dirty paths";$headSet=New-OrdinalSet @($sourceEntry.head_tree_paths) "$($summary.id) frozen HEAD tree";$indexSet=New-OrdinalSet @($sourceEntry.index_file_paths) "$($summary.id) frozen index";$untrackedSet=New-OrdinalSet @($sourceEntry.untracked_paths) "$($summary.id) frozen untracked paths";$ignoredSet=New-OrdinalSet @($sourceEntry.ignored_paths) "$($summary.id) frozen ignored paths";$classMap=New-OrdinalRecordMap @($sourceEntry.ignored_classification) path "$($summary.id) ignored classes"
     foreach($record in @($saved.files)){
         if($record.snapshot_present -ne $true -or -not $record.sha256){throw "$($summary.id) saved record lacks snapshot hash: $($record.relative_path)"}
         switch -CaseSensitive ($record.original_git_state) {
-            'ignored_retained' { if(-not $ignoredSet.Contains($record.relative_path)-or$trackedSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$classMap[$record.relative_path].classification -cne 'retained_snapshotted'-or$stashPathsForSource.Contains($record.relative_path)){throw "$($summary.id) conflicting ignored-retained recovery: $($record.relative_path)"} }
-            'tracked_dirty' { if(-not $trackedSet.Contains($record.relative_path)-or-not$dirtySet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)){throw "$($summary.id) tracked-dirty recovery lacks exact stash evidence: $($record.relative_path)"} }
-            'untracked' { if(-not $untrackedSet.Contains($record.relative_path)-or$trackedSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)){throw "$($summary.id) untracked recovery lacks exact stash evidence: $($record.relative_path)"} }
-            'tracked_clean' { if(-not $trackedSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or$stashPathsForSource.Contains($record.relative_path)){throw "$($summary.id) tracked-clean recovery conflicts with frozen HEAD: $($record.relative_path)"} }
+            'ignored_retained' { if(-not $ignoredSet.Contains($record.relative_path)-or$headSet.Contains($record.relative_path)-or$indexSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$classMap[$record.relative_path].classification -cne 'retained_snapshotted'-or$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$false-or$record.index_present-ne$false){throw "$($summary.id) conflicting ignored-retained recovery: $($record.relative_path)"} }
+            'tracked_dirty' { if(-not($headSet.Contains($record.relative_path)-or$indexSet.Contains($record.relative_path))-or-not$dirtySet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$headSet.Contains($record.relative_path)-or$record.index_present-ne$indexSet.Contains($record.relative_path)){throw "$($summary.id) tracked-dirty recovery lacks exact HEAD/index/stash evidence: $($record.relative_path)"} }
+            'untracked' { if(-not $untrackedSet.Contains($record.relative_path)-or$headSet.Contains($record.relative_path)-or$indexSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$false-or$record.index_present-ne$false){throw "$($summary.id) untracked recovery lacks exact stash evidence: $($record.relative_path)"} }
+            'tracked_clean' { if(-not $headSet.Contains($record.relative_path)-or-not$indexSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$true-or$record.index_present-ne$true){throw "$($summary.id) tracked-clean recovery conflicts with frozen HEAD/index: $($record.relative_path)"} }
             default { throw "$($summary.id) unknown retained Git state: $($record.original_git_state)" }
         }
     }
     foreach($record in @($saved.tracked_deletions)){
-        if($record.original_git_state -cne 'tracked_deleted'-or$record.snapshot_present -ne $false-or-not$trackedSet.Contains($record.relative_path)-or-not$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)){throw "$($summary.id) tracked-deleted recovery lacks exact stash deletion evidence: $($record.relative_path)"}
+        if($record.original_git_state -cne 'tracked_deleted'-or$record.snapshot_present -ne $false-or-not$headSet.Contains($record.relative_path)-or-not$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$true-or$record.index_present-ne$indexSet.Contains($record.relative_path)){throw "$($summary.id) tracked-deleted recovery lacks exact HEAD-tree/index/stash deletion evidence: $($record.relative_path)"}
     }
     Assert-RecordMatch @($saved.files) @(Get-RecordSet $snapshotRoot $snapshotManifestPath) "$($summary.id) snapshot contents"
     if ($Mode -ceq 'BeforeClean' -and $sourceSpec.id -ceq $EntryId) {
