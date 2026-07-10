@@ -1,161 +1,86 @@
 # Agent Context Map
 
-Last updated: 2026-07-03
+This file routes a task to the smallest useful context. It does not define product or release truth. Start with the [root contract](../../AGENTS.md), choose one row below, and use the [documentation registry](../README.md) only when a route needs another owner or evidence class.
 
-This map is an operator navigation layer for agents working in this workspace.
-It is not a product, release, design, or API source of truth. When this file and
-a canonical document disagree, update or follow the canonical document.
+## Authority By Question
 
-## Source-Of-Truth Ladder
+For task and workflow instructions, use this order:
 
-Use this order when building context:
+1. system and developer instructions;
+2. the user's request;
+3. root `AGENTS.md`;
+4. an explicit scoped contract named by the task or selected row;
+5. this router and the relevant process documentation.
 
-1. `AGENTS.md`, `DESIGN.md`, shared facts/copy/tokens, and the canonical docs
-   listed in `docs/README.md`.
-2. Current local code, tests, generated type contracts, and the active client
-   repo at `C:/Users/kiwun/Documents/ai/POKROV-app`.
-3. Current evidence files: release handoff JSON, audit artifacts, work-order
-   completion notes, smoke logs, and owner/operator attestations.
-4. Historical work orders, old specs, visual references, retained bridge
-   bundles, and archive summaries.
-5. External model critique or rewrites. Treat this as review input, never
-   authority.
+For intended product behavior, use this order:
 
-Do not promote historical notes, old screenshots, retained bridge material, or
-model output above canonical docs and current code.
+1. owner-approved shared contracts such as `shared/product-facts.json`, `shared/public-urls.json`, `shared/copy.ts`, and `shared/design-tokens.json`;
+2. canonical domain documents classified in `docs/README.md`;
+3. current code and tests;
+4. active work orders;
+5. targeted history;
+6. external critique, which remains advisory.
+
+For observed runtime state, use this order:
+
+1. the exact production database, provider, or control-plane state when authorized;
+2. current runtime, API, UI, device, and named-origin evidence for the exact environment;
+3. artifacts generated from that observation;
+4. older evidence.
+
+For a release claim, use this order:
+
+1. identify the exact commit, artifact, manifest, and environment candidate;
+2. inspect current gates for that candidate;
+3. run or label required manual, provider, device, signing, store, and origin checks;
+4. read the current release decision for that candidate;
+5. use history only to explain lineage.
 
 ## Lane Boundary
 
-| Lane | Path | Branch policy | Owns |
+| Lane | Working path | Promotion line | Owns |
 | --- | --- | --- | --- |
-| Root platform | `C:/Users/kiwun/Documents/ai/VPN` | `master -> origin/master` | backend, bots, webapp, marketing, shared facts/copy/tokens, infra, scripts, root docs |
-| Active client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main -> origin/main` | Android, Windows, client shell, client docs, client release handoff metadata |
+| Platform | `C:/Users/kiwun/Documents/ai/VPN` | `master` | `portal_bot/`, `webapp/`, `adminapp/`, `marketing/`, `shared/`, `infra/`, `scripts/`, platform tests and root docs |
+| Active client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main` | Android, Windows, shared client packages, client tests, client docs and client release metadata |
 
-Root docs may reference client truth, but new client behavior and active client
-docs land in `POKROV-app`. Retired `app-next`, bridge, Karing reopen, clean-room,
-old mockup, and old work-order material is archive/reference unless the owner
-explicitly reopens that lane.
+Client implementation and client docs land in `POKROV-app`. Platform APIs and root canonical owners land here. Retained bridge bundles, retired client summaries, older mockups, and closed work orders are reference material unless the owner explicitly reopens them.
 
-## Current Status Labels
+## Evidence Labels And Origins
 
-Keep these labels separate:
+- `PASS`: the named check passed for the exact candidate and environment.
+- `MANUAL_OWNER_TEST`: owner-controlled account, device, provider, signing, store, or live session is still required.
+- `OPERATOR_ATTESTED`: an operator statement exists without replacing it with raw retained evidence.
+- `SKIPPED_BY_OWNER` and `SKIPPED_BY_OPERATOR`: an explicit accepted skip, never a pass.
+- `BLOCKED_BY_ACCESS`: required access was unavailable.
+- `NOT_REQUESTED`: the check was outside the authorized scope.
 
-- `outside-store public beta GO as of 2026-05-15`: Android and Windows beta was
-  authorized with accepted skips.
-- `1.0.0-beta implementation/artifacts exist`: repo-side beta artifacts exist,
-  but this is not stable `1.0.0`.
-- `MANUAL_OWNER_TEST`: physical device, real Telegram user, payment dashboard,
-  signing identity, store access, or live account proof is required.
-- `OPERATOR_ATTESTED`: owner/operator reported evidence without raw retained
-  artifact.
-- `SKIPPED_BY_OWNER` or `SKIPPED_BY_OPERATOR`: known accepted skip, not a pass.
-- `BLOCKED_BY_ACCESS`: check could not run because required access was missing.
+Name evidence origins explicitly: `current-origin`, `brain-origin`, and `RU-origin`. One origin never proves another. Keep release labels candidate-specific and do not infer stable, store, signing, device, payment, or regional readiness from a different candidate or origin.
 
-Do not claim stable `1.0.0`, store availability, trusted Windows signing, raw
-Android physical-audit proof, production WARP maturity, or RU-origin readiness
-without current redacted evidence.
+## Task Router
 
-## Evidence Origin Model
+Commands are focused starting points. Run them from the path named in the cell, add narrower tests for the exact change, and do not run live mutation or deploy commands without authorization.
 
-Use explicit origin names in audits, release notes, and handoffs:
+| Task | Read first | Inspect | Verify | Docs impact |
+| --- | --- | --- | --- | --- |
+| Backend/API/bots | `docs/architecture/system-overview.md`<br>`docs/architecture/app-first-and-bonus-flows.md` | `portal_bot/api.py`<br>`portal_bot/bot.py`<br>`portal_bot/worker.py`<br>`portal_bot/models.py` | From platform root: `python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py -q` | `docs/architecture/system-overview.md`<br>`docs/architecture/app-first-and-bonus-flows.md`<br>`docs/architecture/api-contracts.md` |
+| Account/auth/email/payments | `docs/product/payment-and-access-key-contract.md`<br>`docs/architecture/payment-state-machine.md`<br>`docs/architecture/app-first-and-bonus-flows.md` | `portal_bot/web_auth_service.py`<br>`portal_bot/email_auth_service.py`<br>`portal_bot/email_delivery_service.py`<br>`portal_bot/payment_providers.py`<br>`portal_bot/api.py` | From platform root: `python -B -m pytest -p no:cacheprovider portal_bot/tests/test_email_auth.py tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py -q` | `docs/product/payment-and-access-key-contract.md`<br>`docs/architecture/payment-state-machine.md`<br>`docs/architecture/app-first-and-bonus-flows.md`<br>`docs/operations/payment-reconciliation.md` |
+| Web cabinet | `webapp/README.md`<br>`docs/architecture/app-first-and-bonus-flows.md` | `webapp/src/app/(dashboard)/`<br>`webapp/src/lib/api.ts`<br>`webapp/e2e/`<br>`portal_bot/api.py` | From `webapp/`: `npm.cmd run build`<br>`npm.cmd run lint`<br>`npm.cmd run test:e2e:cabinet` | `webapp/README.md`<br>`docs/architecture/app-first-and-bonus-flows.md`<br>`docs/user/portal-vpn-user-guide-ru.md` |
+| Standalone adminapp | `adminapp/README.md`<br>`docs/architecture/system-overview.md`<br>`docs/operations/monitoring-and-visibility.md` | `adminapp/src/`<br>`adminapp/e2e/`<br>`portal_bot/api.py`<br>`portal_bot/models.py` | From `adminapp/`: `npm.cmd run build`<br>`npm.cmd run lint`<br>`npm.cmd run test:e2e`<br>From platform root: `python -B -m pytest -p no:cacheprovider tests/test_admin_ops_api.py tests/test_admin_payments_api.py -q` | `adminapp/README.md`<br>`docs/architecture/system-overview.md`<br>`docs/operations/monitoring-and-visibility.md` |
+| Marketing/SEO/copy | `marketing/README.md`<br>`docs/product/portal-vpn-product.md`<br>`DESIGN.md` | `marketing/src/`<br>`shared/copy.ts`<br>`copy/catalog.ru.json`<br>`shared/product-facts.json`<br>`shared/public-urls.json` | From `marketing/`: `npm.cmd run build`<br>`npm.cmd run check:seo`<br>`npm.cmd run check:responsive`<br>From platform root: `python -B -m pytest -p no:cacheprovider tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q` | `docs/product/portal-vpn-product.md`<br>`marketing/README.md`<br>`docs/user/portal-vpn-user-guide-ru.md`<br>shared copy/facts owners |
+| Shared facts/design contracts | `DESIGN.md`<br>`docs/design/design-system-sync.md`<br>`docs/design/generated-assets-policy.md` | `shared/product-facts.json`<br>`shared/public-urls.json`<br>`shared/portal-config.ts`<br>`shared/design-tokens.json`<br>`shared/design-tokens.schema.json` | From platform root: `python -B -m pytest -p no:cacheprovider tests/test_shared_surface_facts.py tests/test_admin_design_guardrails.py -q`<br>Run affected frontend builds | `DESIGN.md`<br>`docs/design/design-system-sync.md`<br>`docs/design/generated-assets-policy.md`<br>affected canonical domain document |
+| Infrastructure/observability | `docs/operations/deployment-and-access.md`<br>`docs/operations/monitoring-and-visibility.md` | `scripts/collect_node_metrics.py`<br>`infra/portal-node-metrics.service`<br>`infra/portal-node-metrics.timer`<br>`portal_bot/panel_client.py` | From platform root: `python -B -m pytest -p no:cacheprovider tests/test_collect_node_metrics.py tests/test_collect_node_metrics_observability.py tests/test_panel_client_metrics.py tests/test_live_probe_scripts.py -q` | `docs/operations/deployment-and-access.md`<br>`docs/operations/monitoring-and-visibility.md`<br>candidate-specific evidence under `docs/audit-artifacts/` |
+| Scripts/release operations | `docs/developer/developer-guide.md`<br>`docs/developer/repository-map.md`<br>`docs/operations/publishing-and-signing-guide.md` | exact script under `scripts/`<br>`scripts/release_gate_check.py`<br>`scripts/release_orchestrator.py`<br>related files under `infra/` | From platform root: `python -B -m pytest -p no:cacheprovider tests/test_release_gate_check.py tests/test_release_orchestrator.py tests/test_check_script_manifest.py -q`<br>Run the changed script's dry-run or audit mode | `docs/developer/developer-guide.md`<br>`docs/developer/repository-map.md`<br>matching file under `docs/operations/`<br>exact candidate evidence |
+| Documentation/cleanup | `docs/README.md`<br>`docs/developer/agent-context-map.md`<br>`docs/developer/developer-guide.md` | `git status --short --branch`<br>`git diff --name-only`<br>`rg.exe -n "<term>" docs`<br>the canonical owner and conflicting copies | From platform root: `python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q`<br>`python -B scripts/agent_context_packet_audit.py --platform-context-root .`<br>`git diff --check` | `docs/README.md` for classification changes<br>`docs/developer/agent-context-map.md` for routes<br>the canonical owner before archive relabeling |
+| Active client repository | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md`<br>`C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md` | `C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/`<br>`C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/`<br>`C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/` | From the changed client package/app: `flutter analyze`<br>`flutter test`<br>Run the candidate-specific build or release preflight named by client docs | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/` first<br>root architecture/operations docs only when the platform contract changes |
+| Historical investigation | `docs/README.md`<br>`docs/archive/README.md` | `rg.exe -n "<term>" docs/archive docs/developer/work-orders`<br>`git log -- <path>`<br>`git show <sha>:<path>` | Re-run the focused check for any current conclusion<br>`git diff --check`<br>Run platform-context audit if registry/router changes | Update the current canonical owner when warranted<br>relabel `docs/archive/` or registry classification only when its historical role was wrong |
 
-- `current-origin check`: the workstation/session currently running the check.
-- `brain-origin check`: the control-plane host `82.21.114.104`.
-- `RU-origin check`: `mini` / `RFMINI` or a replacement external RU probe host.
+## Targeted History Route
 
-Never collapse these into a generic "reachable" claim. RU-origin readiness is a
-tracked dependency for public hosts, API, and delivery nodes.
+Use this sequence only when current owners and evidence do not answer the question:
 
-## Subsystem Map
+1. locate the class and owner in `docs/README.md`;
+2. search a narrow term with `rg.exe` in the relevant archive or work-order path;
+3. use `git log -- <path>` and `git show <sha>:<path>` for provenance;
+4. read only the targeted historical files surfaced by those commands.
 
-| Subsystem | Start with | Then inspect |
-| --- | --- | --- |
-| Backend/API/bots | `docs/architecture/system-overview.md`, `docs/architecture/app-first-and-bonus-flows.md`, `docs/product/portal-vpn-product.md` | `portal_bot/api.py`, `portal_bot/bot.py`, `portal_bot/helpbot.py`, service modules, migrations, focused tests |
-| Web/admin cabinet | `webapp/README.md`, app-first docs, shared facts/copy | `webapp/src/app/(dashboard)/`, `webapp/src/app/(admin)/admin/`, `webapp/src/lib/api.ts`, `webapp/e2e/`, backend API routes |
-| Marketing/public | product docs, design docs, shared facts/copy/URLs | `marketing/src/`, `shared/copy.ts`, `copy/catalog.ru.json`, `shared/product-facts.json`, `shared/public-urls.json` |
-| Client | `POKROV-app/docs/README.md`, cutover/release docs, app shell tests | `POKROV-app/packages/app_shell/`, `apps/android_shell/`, `apps/windows_shell/`, release artifacts and manifests |
-| Ops/release | deployment, monitoring, publishing/signing, release runbooks | `scripts/`, `infra/`, audit artifacts, release handoff JSON, probe reports |
-| Design/docs | `DESIGN.md`, design tokens/schema, generated asset policy | affected UI code, screenshots/captures, `docs/design/`, `docs/README.md`, repository map |
-
-## Read Routes By Task
-
-Backend:
-
-1. Read the root must-read docs from `AGENTS.md`.
-2. Inspect the concrete API/bot/service files before editing.
-3. Use targeted tests first. Broaden when changing shared contracts.
-4. Update product, architecture, operations, or user docs when behavior changes.
-
-Web/admin:
-
-1. Read root must-read docs plus `webapp/README.md`.
-2. Inspect admin/cabinet routes, `webapp/src/lib/api.ts`, and matching backend
-   endpoints.
-3. Run build and the focused Playwright suite when browser-visible flows change.
-
-Marketing:
-
-1. Read product, public wording, design, and shared copy/facts docs.
-2. Keep user-facing claims centralized in shared/catalog sources.
-3. Run SEO/responsive/build checks after public surface changes.
-
-Client:
-
-1. Work in `C:/Users/kiwun/Documents/ai/POKROV-app`.
-2. Read client docs before changing app shell, release handoff, or client copy.
-3. Run the lane's Flutter/test script; physical Android, signing, store, and real
-   account checks remain owner/manual gates unless access is present.
-
-Ops/release:
-
-1. Distinguish current-origin, brain-origin, and RU-origin evidence.
-2. Treat payment dashboard, deploy approval, signing, store, live Telegram user,
-   and RU probe access as gated resources.
-3. If blocked, record the exact gate label instead of inventing proof.
-
-Docs/design:
-
-1. Update canonical docs first.
-2. Link or relabel retained history; do not rewrite old evidence as current
-   product truth.
-3. Generated assets need prompt/reference, source master, dimensions, intended
-   surface, review note, and release-scope note before shipping.
-
-## Archive And Do-Not-Use Boundaries
-
-Use as archive/reference only unless explicitly reopened:
-
-- `docs/archive/client-lanes/**`
-- `docs/archive/plans/**`
-- `docs/archive/design-plans/**`
-- `docs/archive/superpowers-plans/**`
-- retired `app-next` bootstrap summaries
-- retained bridge bundles under `POKROV-app/artifacts/releases/bridge/`
-- Karing reopen / clean-room gate notes
-- old visual explorations, rendered route maps, reference-atlas material
-- `docs/superpowers/specs/**` unless promoted into a current work order or
-  canonical doc
-- old work-order execution files as product authority
-
-Safe pattern: read historical material to understand why, then resolve current
-truth through canonical docs, active code, and current tests.
-
-## Context-Budget Workflow
-
-Use the 250k context window as a budget, not a pantry:
-
-1. Start with `rg`, `rg --files`, `git status`, `git diff --stat`, and targeted
-   indexes.
-2. Read only the relevant canonical docs and local files for the task.
-3. Prefer small excerpts with line references over whole-file dumps.
-4. Spawn agents for independent domains only: canon/docs, backend, web/marketing,
-   client/release, ops/audit. Merge their findings locally.
-5. Use embeddings/vector DB later for repeated semantic retrieval across the
-   archive. Do not use it as the first authority or as a replacement for `rg`
-   plus canonical-doc reads.
-6. For expensive external model consults, create a compact packet and run
-   `python scripts/agent_context_packet_audit.py <packet.md>` first.
-
-Default answer to "how do we search this repo": `rg` first, targeted reading
-second, parallel read-only agents for independent domains third, embeddings once
-the stable canon/archive boundary is already documented.
+History explains why and never decides current action. Reconcile any useful finding through the current canonical owner, code, tests, and exact runtime evidence.

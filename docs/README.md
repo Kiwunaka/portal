@@ -1,202 +1,80 @@
-# POKROV Documentation Index
+# POKROV Documentation Registry
 
-Last updated: 2026-07-03
+This registry classifies important platform documents and the active client pointers. It is not a universal reading queue: choose one task route in the [agent context map](developer/agent-context-map.md), then read only the owners and evidence required by that route. The [root contract](../AGENTS.md) remains the universal repository instruction surface.
 
-This directory is split into two classes of material:
+| Class | Owner | Document | Review state |
+| --- | --- | --- | --- |
+| `CANONICAL` | product | `docs/product/portal-vpn-product.md` | `PENDING_WAVE_3` |
+| `ACTIVE_EXECUTION` | market-ready wave | `docs/developer/work-orders/2026-07-09-growth-megapass/` | `PENDING_WAVE_3` |
+| `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | archive | `docs/archive/` | `REVIEWED_NO_CHANGE` |
+| `OPERATOR_PLAYBOOK` | operator consults | `docs/developer/agent-playbooks/external-model-consults.md` | `PENDING_WAVE_2` |
+| `EXPERIMENTAL` | OpenAI helper | `docs/developer/openai-operator-assistants.md` | `PENDING_WAVE_2` |
+| `CANONICAL` | repository policy | `AGENTS.md` | `RECONCILED` |
+| `CANONICAL` | documentation ownership | `docs/README.md` | `RECONCILED` |
+| `CANONICAL` | task routing | `docs/developer/agent-context-map.md` | `RECONCILED` |
+| `CANONICAL` | product release scope | `docs/product/public-beta-prd.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | platform availability | `docs/product/platform-availability.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | platform architecture | `docs/architecture/system-overview.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | identity and bonus flows | `docs/architecture/app-first-and-bonus-flows.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | API contracts | `docs/architecture/api-contracts.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | payment state | `docs/architecture/payment-state-machine.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | support and feedback | `docs/architecture/support-feedback-flow.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | client delivery | `docs/architecture/client-downloads-flow.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | deployment and access | `docs/operations/deployment-and-access.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | monitoring and origins | `docs/operations/monitoring-and-visibility.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | client delivery operations | `docs/operations/client-delivery-update-content-plan.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | design contract | `DESIGN.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | design synchronization | `docs/design/design-system-sync.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | generated asset policy | `docs/design/generated-assets-policy.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | developer workflow | `docs/developer/developer-guide.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | repository structure | `docs/developer/repository-map.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | Russian user guidance | `docs/user/portal-vpn-user-guide-ru.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | compatibility guidance | `docs/user/compatibility-clients-guide-ru.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | active client docs | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md` | `PENDING_CLIENT_REVIEW` |
+| `CANONICAL` | active client readiness | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md` | `PENDING_CLIENT_REVIEW` |
+| `ACTIVE_EXECUTION` | work-order registry | `docs/developer/work-orders/README.md` | `PENDING_COLLISION_REVIEW` |
+| `ACTIVE_EXECUTION` | orchestration state | `docs/developer/orchestration/flow-state.md` | `PENDING_COLLISION_REVIEW` |
+| `EVIDENCE` | feature and test ledgers | `docs/developer/pokrov-*` | `PENDING_COLLISION_REVIEW` |
+| `EVIDENCE` | completed work orders | `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/` | `REVIEWED_NO_CHANGE` |
+| `EVIDENCE` | retained release work | `docs/developer/work-orders/2026-04-open-beta-v4/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | retired client lanes | `docs/archive/client-lanes/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | completed plans | `docs/archive/plans/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | completed design plans | `docs/archive/design-plans/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | completed implementation specs | `docs/archive/superpowers-plans/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | older specs | `docs/superpowers/specs/` | `PENDING_COLLISION_REVIEW` |
+| `HISTORICAL_REFERENCE` | visual reference atlas | `reference-atlas/` | `REVIEWED_NO_CHANGE` |
+| `OPERATOR_PLAYBOOK` | orchestration | `docs/developer/orchestration/orchestration-standard.md` | `PENDING_WAVE_2` |
+| `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `PENDING_WAVE_2` |
+| `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | public beta release | `docs/operations/public-beta-release-runbook.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | rollback | `docs/operations/rollback-runbook.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | payment reconciliation | `docs/operations/payment-reconciliation.md` | `PENDING_WAVE_3` |
+| `OPERATOR_PLAYBOOK` | provider payments | `docs/operations/lavatop-payment-operations.md` | `PENDING_WAVE_3` |
+| `OPERATOR_PLAYBOOK` | Android release audit | `docs/operations/android-release-audit.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | runtime download smoke | `docs/operations/runtime-app-download-smoke.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | RU-origin probe | `docs/operations/ru-origin-probe.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | release handoffs | `docs/operations/*-handoff.md` | `PENDING_COLLISION_REVIEW` |
+| `EXPERIMENTAL` | growth research | `docs/product/pokrov-growth-and-competitor-notes.md` | `PENDING_WAVE_3` |
+| `EXPERIMENTAL` | context-cost harnesses | `docs/developer/orchestration/context-cost-harnesses.md` | `PENDING_WAVE_2` |
 
-- living source-of-truth documentation
-- historical, audit, and forensic records
+## Classification Rules
 
-Client-lane rule:
+- `CANONICAL`: current intended product, architecture, design, user, or repository contract owned by the named domain.
+- `ACTIVE_EXECUTION`: a current work queue or orchestration record; it may implement canon but cannot redefine it alone.
+- `EVIDENCE`: observations, audits, ledgers, artifacts, and attestations tied to a candidate or run.
+- `HISTORICAL_REFERENCE`: retained material used to explain prior decisions or recover provenance.
+- `OPERATOR_PLAYBOOK`: procedures for controlled human or automated operations; current runtime evidence still decides whether a step passed.
+- `EXPERIMENTAL`: research or helper design that is not production authority.
 
-- `C:/Users/kiwun/Documents/ai/POKROV-app/docs/` is the only active client-doc canon
-- `docs/archive/client-lanes/` keeps the short historical summaries for retired client lanes
-- retained bridge bundle lineage now lives under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/`
+## Review States
 
-Legacy filename note:
+`RECONCILED` means the document was reconciled in the current context-containment slice. `REVIEWED_NO_CHANGE` means the retained collection was intentionally left unchanged. Every `PENDING_*` state records an unperformed or scoped future review, not a defect and not approval. `UNRESOLVED_OWNER_DECISION` is reserved for a real owner choice that cannot be inferred safely.
 
-- some canonical docs still live under legacy filenames like `portal-vpn-product.md`, `portal-vpn-user-guide-ru.md`, and `portal-vpn-v1-spec.md`
-- those paths are still current for the `POKROV` product; the filename is legacy, the content is not
-- legacy `POKROV VPN` labels in filenames or old identifiers do not authorize new direct-meaning `VPN` copy
+## Boundaries
 
-Use the role-based paths below first. If you need older context, go to the archive sections afterward.
+The platform lane lives in this repository. Active Android/Windows client truth lives only under `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`; client pointers above do not transfer ownership into the platform repository.
 
-Current-vs-history boundary:
-
-- canonical docs in the sections below define current product, platform, operations, design, and developer truth
-- `docs/developer/work-orders/**` is execution evidence; use wave indexes for context, not as product authority
-- `docs/superpowers/specs/**`, `reference-atlas/`, rendered route maps, and old visual mockups are retained planning/reference history unless a current design doc explicitly links them as active
-- `docs/archive/plans/`, `docs/archive/design-plans/`, and `docs/archive/superpowers-plans/` hold completed planning packets; do not use them as current work queues
-- do not delete retained historical trees during routine cleanup; relabel or index them when their status is unclear
-
-## Start Here As Agent
-
-1. [Root Agent Contract](C:/Users/kiwun/Documents/ai/VPN/AGENTS.md)
-2. [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
-3. [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
-4. [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
-5. [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
-6. [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
-7. [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
-8. [Agent Context Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
-
-## Start Here As Developer
-
-- [Developer Guide](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
-- [Repository Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
-- [Agent Context Map](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
-- [Orchestration Standard](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
-- [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
-- [App-First And Bonus Flows](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
-
-## Start Here As Operator
-
-- [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
-- [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
-- [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
-- [System Overview](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
-- [Product Overview](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
-
-## Start Here As User
-
-- [POKROV User Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
-- [Compatible Clients Manual Setup Guide (RU)](C:/Users/kiwun/Documents/ai/VPN/docs/user/compatibility-clients-guide-ru.md)
-
-## Start Here For New Client Lane
-
-- canonical client repo: `C:/Users/kiwun/Documents/ai/POKROV-app`
-- [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md)
-- [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
-
-## Current Active Plans
-
-- [Client Delivery, Update Check, And Dynamic Content Plan](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
-- [POKROV App Cutover Readiness](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md)
-- [POKROV App Final Beta Closure Except Manual Tests And Signing](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-final-beta-closure-except-manual-tests-signing.md)
-- [POKROV App Phase 6 Release Beta Handoff](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/2026-06-05-phase-6-release-beta-handoff.md)
-- [POKROV App WARP Runtime Proof Checklist](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/warp-runtime-proof-checklist.md)
-- [POKROV App Responsive Golden Capture Plan](C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/responsive-golden-capture-plan.md)
-
-Completed implementation plans and older design maps are retained as reference
-evidence, not quick-start authority. Deprecated Karing reopen / clean-room gate
-notes stay legacy unless the owner explicitly reopens that lane.
-
-## Recent Closure And Archive Reference
-
-- [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
-- [POKROV Full Audit 2026-07-02](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/pokrov-full-audit-2026-07-02.md)
-
-## Retired Client Summaries
-
-- [app-next Bootstrap Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/app-next-bootstrap-summary.md)
-- [Legacy Bridge Retirement Summary](C:/Users/kiwun/Documents/ai/VPN/docs/archive/client-lanes/legacy-bridge-retirement-summary.md)
-
-## Living Source Of Truth
-
-### Product
-
-- [docs/product/portal-vpn-product.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/portal-vpn-product.md)
-- [docs/product/public-beta-prd.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/public-beta-prd.md)
-- [docs/product/payment-and-access-key-contract.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/payment-and-access-key-contract.md)
-- [docs/product/platform-availability.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/platform-availability.md)
-- [docs/product/beta-known-limitations.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/beta-known-limitations.md)
-- [docs/product/pokrov-growth-and-competitor-notes.md](C:/Users/kiwun/Documents/ai/VPN/docs/product/pokrov-growth-and-competitor-notes.md)
-
-### Architecture
-
-- [docs/architecture/system-overview.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/system-overview.md)
-- [docs/architecture/app-first-and-bonus-flows.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/app-first-and-bonus-flows.md)
-- [docs/architecture/api-contracts.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/api-contracts.md)
-- [docs/architecture/payment-state-machine.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/payment-state-machine.md)
-- [docs/architecture/support-feedback-flow.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/support-feedback-flow.md)
-- [docs/architecture/client-downloads-flow.md](C:/Users/kiwun/Documents/ai/VPN/docs/architecture/client-downloads-flow.md)
-
-### Operations
-
-- [docs/operations/deployment-and-access.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
-- [docs/operations/monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
-- [docs/operations/publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
-- [docs/operations/client-delivery-update-content-plan.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/client-delivery-update-content-plan.md)
-- [docs/operations/public-beta-release-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
-- [docs/operations/telegram-bot-profile-growth.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/telegram-bot-profile-growth.md)
-- [docs/operations/2026-06-06-plans-decisions-closure-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
-- [docs/operations/lavatop-payment-operations.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md)
-- [docs/operations/payment-reconciliation.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/payment-reconciliation.md)
-- [docs/operations/android-release-audit.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-release-audit.md)
-- [docs/operations/runtime-app-download-smoke.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/runtime-app-download-smoke.md)
-- [docs/operations/ru-origin-probe.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe.md)
-- [docs/operations/rollback-runbook.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/rollback-runbook.md)
-
-### Design
-
-- [DESIGN.md](C:/Users/kiwun/Documents/ai/VPN/DESIGN.md)
-- [docs/design/design-system-sync.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/design-system-sync.md)
-- [docs/design/generated-assets-policy.md](C:/Users/kiwun/Documents/ai/VPN/docs/design/generated-assets-policy.md)
-
-### Launch
-
-- [docs/launch/open-source-client-rollout-plan.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/open-source-client-rollout-plan.md)
-- [docs/launch/open-beta-release-notes.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/open-beta-release-notes.md)
-- [docs/launch/telegram-announcement.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/telegram-announcement.md)
-- [docs/launch/support-macros.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/support-macros.md)
-- [docs/launch/known-issues.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/known-issues.md)
-- [docs/launch/post-release-monitoring.md](C:/Users/kiwun/Documents/ai/VPN/docs/launch/post-release-monitoring.md)
-
-### Developer
-
-- [docs/developer/developer-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/developer-guide.md)
-- [docs/developer/repository-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/repository-map.md)
-- [docs/developer/agent-context-map.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/agent-context-map.md)
-- [docs/developer/pokrov-canonical-feature-tracker.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.md)
-- [docs/developer/pokrov-canonical-feature-tracker.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-canonical-feature-tracker.csv)
-- [docs/developer/pokrov-story-test-evidence-audit.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-story-test-evidence-audit.csv)
-- [docs/developer/pokrov-defect-fix-retest-ledger.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-defect-fix-retest-ledger.csv)
-- [docs/developer/pokrov-defect-fix-retest-ledger.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-defect-fix-retest-ledger.md)
-- [docs/developer/pokrov-code-function-inventory.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-code-function-inventory.csv)
-- [docs/developer/pokrov-symbol-coverage-audit.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-symbol-coverage-audit.csv)
-- [docs/developer/pokrov-private-helper-coverage.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-private-helper-coverage.csv)
-- [docs/developer/pokrov-private-helper-coverage.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-private-helper-coverage.md)
-- [docs/developer/pokrov-coverage-policy-decision-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-coverage-policy-decision-guide.md)
-- [docs/developer/pokrov-owner-gated-scenarios.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-scenarios.md)
-- [docs/developer/pokrov-owner-gated-execution-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-execution-guide.md)
-- [docs/developer/pokrov-owner-gated-scenarios.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-scenarios.csv)
-- [docs/developer/pokrov-owner-gated-results.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-gated-results.csv)
-- [docs/developer/pokrov-owner-answer-sheet.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-owner-answer-sheet.md)
-- [docs/developer/pokrov-open-questions.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-open-questions.md)
-- [docs/developer/pokrov-open-questions.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/pokrov-open-questions.csv)
-- [docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md)
-- [docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv)
-- [docs/developer/orchestration/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/README.md)
-- [docs/developer/orchestration/orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
-- [docs/developer/orchestration/wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md)
-- [docs/developer/orchestration/flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
-- [docs/developer/orchestration/context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
-- [docs/developer/openai-operator-assistants.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/openai-operator-assistants.md)
-- [docs/developer/work-orders/README.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
-- [docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/INDEX.md)
-- [docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md)
-
-### User
-
-- [docs/user/portal-vpn-user-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/portal-vpn-user-guide-ru.md)
-- [docs/user/compatibility-clients-guide-ru.md](C:/Users/kiwun/Documents/ai/VPN/docs/user/compatibility-clients-guide-ru.md)
-
-### Client
-
-- active client canon: `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
-
-## Historical Records
-
-- [Archive Guide](C:/Users/kiwun/Documents/ai/VPN/docs/archive/README.md)
-- dated flat docs in `docs/archive/flat-docs/`
-- audit evidence in `docs/audit-artifacts/`
-- archived root guides in `docs/archive/root-guides/`
-- retired client summaries in `docs/archive/client-lanes/`
-- archived planning packets in `docs/archive/plans/`
-- archived design plans and boards in `docs/archive/design-plans/`
-- archived Superpowers plans in `docs/archive/superpowers-plans/`
-- work-order and rendered visual-audit evidence in `docs/developer/work-orders/`
-- older implementation specs in `docs/superpowers/specs/`
-- local design reference atlas in `reference-atlas/`
-
-If a historical file conflicts with a living source-of-truth doc, prefer the living doc and then relabel or archive the older note.
+Use `docs/developer/work-orders/**` as execution state or evidence according to the row above. Use Git and the archive only for targeted history. If historical material conflicts with a current canonical owner, history explains why; it never decides the current action.

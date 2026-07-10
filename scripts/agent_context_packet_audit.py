@@ -9,10 +9,28 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+
+ROOT_MAX_BYTES = 8192
+ROOT_MAX_LINES = 120
+ROUTER_MAX_BYTES = 12288
+ROUTER_MAX_LINES = 240
+
+DOCUMENT_CLASSES = (
+    "CANONICAL",
+    "ACTIVE_EXECUTION",
+    "EVIDENCE",
+    "HISTORICAL_REFERENCE",
+    "OPERATOR_PLAYBOOK",
+    "EXPERIMENTAL",
+)
+
+MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 BREAKPOINT_RE = re.compile(
     r"(CACHE[_ -]?BREAKPOINT|DYNAMIC[_ -]?SUFFIX|BEGIN[_ -]?DYNAMIC|<dynamic\b|BLOCK E: DYNAMIC)",
@@ -54,6 +72,129 @@ def estimate_tokens(text: str) -> int:
     if not text:
         return 0
     return max(1, round(len(text) / 4))
+
+
+def physical_line_count(text: str) -> int:
+    return len(text.splitlines())
+
+
+def parse_markdown_table(
+    text: str,
+    header: tuple[str, ...],
+) -> list[dict[str, str]]:
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if not line.startswith("|"):
+            continue
+        cells = tuple(cell.strip() for cell in line.strip("|").split("|"))
+        if cells != header:
+            continue
+        rows: list[dict[str, str]] = []
+        for row_line in lines[index + 2 :]:
+            if not row_line.startswith("|"):
+                break
+            values = tuple(cell.strip() for cell in row_line.strip("|").split("|"))
+            if len(values) != len(header):
+                break
+            rows.append(dict(zip(header, values, strict=True)))
+        return rows
+    return []
+
+
+def find_broken_local_markdown_links(
+    root: Path,
+    relative_paths: Iterable[str],
+) -> list[str]:
+    broken: list[str] = []
+    workspace_prefix = root.resolve().as_posix().rstrip("/") + "/"
+    for relative_path in relative_paths:
+        document = (root / relative_path).resolve()
+        text = document.read_text(encoding="utf-8")
+        for raw_target in MARKDOWN_LINK_RE.findall(text):
+            target = raw_target.strip().strip("<>").split("#", 1)[0]
+            if not target or target.startswith(("http://", "https://", "mailto:")):
+                continue
+            normalized = target.replace("\\", "/")
+            if normalized.startswith(workspace_prefix):
+                candidate = root / normalized.removeprefix(workspace_prefix)
+            elif re.match(r"^[A-Za-z]:/", normalized):
+                candidate = Path(normalized)
+            else:
+                candidate = document.parent / normalized
+            if not candidate.exists():
+                broken.append(f"{relative_path} -> {target}")
+    return sorted(set(broken))
+
+
+def tracked_agents_files(root: Path) -> list[str]:
+    completed = subprocess.run(
+        ["git", "ls-files", "--", "AGENTS.md", ":(glob)**/AGENTS.md"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return sorted(set(completed.stdout.splitlines()))
+
+
+def audit_platform_context(root: Path) -> list[str]:
+    errors: list[str] = []
+    agents_path = root / "AGENTS.md"
+    router_path = root / "docs" / "developer" / "agent-context-map.md"
+    registry_path = root / "docs" / "README.md"
+
+    agents_bytes = agents_path.read_bytes()
+    agents_text = agents_bytes.decode("utf-8")
+    router_bytes = router_path.read_bytes()
+    router_text = router_bytes.decode("utf-8")
+    registry_text = registry_path.read_text(encoding="utf-8")
+
+    if len(agents_bytes) > ROOT_MAX_BYTES:
+        errors.append(f"AGENTS.md exceeds {ROOT_MAX_BYTES} bytes")
+    if physical_line_count(agents_text) > ROOT_MAX_LINES:
+        errors.append(f"AGENTS.md exceeds {ROOT_MAX_LINES} lines")
+    if len(router_bytes) > ROUTER_MAX_BYTES:
+        errors.append(f"agent-context-map.md exceeds {ROUTER_MAX_BYTES} bytes")
+    if physical_line_count(router_text) > ROUTER_MAX_LINES:
+        errors.append(f"agent-context-map.md exceeds {ROUTER_MAX_LINES} lines")
+
+    for required in (
+        "docs/developer/agent-context-map.md",
+        "POKROV-app",
+        "secrets",
+        "archive",
+        "evidence",
+        "MANUAL_OWNER_TEST",
+        "git status",
+        "git diff",
+    ):
+        if required.casefold() not in agents_text.casefold():
+            errors.append(f"AGENTS.md missing required semantic anchor: {required}")
+
+    for forbidden in (
+        "Current Release Gate Snapshot",
+        "Must-Read Order",
+        "Preferred model routing",
+        "Copy rewrite prompt pattern",
+        "Active Plans Quick Access",
+    ):
+        if forbidden.casefold() in agents_text.casefold():
+            errors.append(f"AGENTS.md contains volatile section: {forbidden}")
+
+    if "| Task | Read first | Inspect | Verify | Docs impact |" not in router_text:
+        errors.append("agent-context-map.md lacks task router table")
+    if "| Class | Owner | Document | Review state |" not in registry_text:
+        errors.append("docs/README.md lacks registry table")
+    if tracked_agents_files(root) != ["AGENTS.md"]:
+        errors.append("tracked platform AGENTS.md set is not root-only")
+    errors.extend(
+        find_broken_local_markdown_links(
+            root,
+            ("AGENTS.md", "docs/README.md", "docs/developer/agent-context-map.md"),
+        )
+    )
+    return errors
 
 
 def find_breakpoint(lines: list[str]) -> int | None:
@@ -115,10 +256,29 @@ def print_text_report(results: list[AuditResult]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Audit prompt/context packets for prompt-cache friendly structure.")
-    parser.add_argument("files", nargs="+", type=Path, help="Prompt packet files to audit.")
+    parser.add_argument("files", nargs="*", type=Path, help="Prompt packet files to audit.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     parser.add_argument("--min-cacheable-tokens", type=int, default=1024, help="Warn below this stable-prefix token estimate.")
+    parser.add_argument(
+        "--platform-context-root",
+        type=Path,
+        help="Audit the platform AGENTS/router/registry contract.",
+    )
     args = parser.parse_args(argv)
+
+    if bool(args.files) == bool(args.platform_context_root):
+        parser.error("provide packet files or --platform-context-root, not both")
+
+    if args.platform_context_root:
+        errors = audit_platform_context(args.platform_context_root.resolve())
+        if args.json:
+            print(json.dumps({"errors": errors}, ensure_ascii=False, indent=2))
+        else:
+            status = "PASS" if not errors else "FAIL"
+            print(f"{status} platform-context")
+            for error in errors:
+                print(f"  {error}")
+        return 0 if not errors else 1
 
     results = [audit_file(path, args.min_cacheable_tokens) for path in args.files]
 
