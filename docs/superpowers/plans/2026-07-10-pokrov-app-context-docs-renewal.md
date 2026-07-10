@@ -288,6 +288,41 @@ if ($missingAtBaseline.Count -ne 0 -or $unexpectedAtBaseline.Count -ne 0) {
   throw "Task 1 baseline shape drifted. Missing existing: $($missingAtBaseline -join ', '); unexpectedly pre-existing: $($unexpectedAtBaseline -join ', ')"
 }
 
+function Read-GitBlobBytes {
+  param([string]$RepositoryRoot, [string]$Commit, [string]$RelativePath)
+  $start = [Diagnostics.ProcessStartInfo]::new()
+  $start.FileName = 'git'
+  $start.UseShellExecute = $false
+  $start.RedirectStandardOutput = $true
+  $start.RedirectStandardError = $true
+  [void]$start.ArgumentList.Add('-C')
+  [void]$start.ArgumentList.Add($RepositoryRoot)
+  [void]$start.ArgumentList.Add('cat-file')
+  [void]$start.ArgumentList.Add('blob')
+  [void]$start.ArgumentList.Add("${Commit}:$RelativePath")
+  $process = [Diagnostics.Process]::new()
+  $process.StartInfo = $start
+  if (-not $process.Start()) { throw "Cannot start git cat-file for $RelativePath" }
+  $memory = [IO.MemoryStream]::new()
+  try {
+    $process.StandardOutput.BaseStream.CopyTo($memory)
+    $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) { throw "git cat-file blob failed for ${RelativePath}: $stderr" }
+    return ,$memory.ToArray()
+  } finally {
+    $memory.Dispose()
+    $process.Dispose()
+  }
+}
+
+foreach ($path in $task1Existing) {
+  [byte[]]$baselineBytes = Read-GitBlobBytes $repoRoot $baseline $path
+  if ($baselineBytes -contains [byte]13) {
+    throw "$path baseline blob contains CR bytes; stop Task 1 for a separate EOL-normalization decision"
+  }
+}
+
 $tracked = @(& git diff --name-only --no-renames $baseline --)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot enumerate tracked Task 1 delta' }
 $untracked = @(& git ls-files --others --exclude-standard --)
@@ -335,7 +370,9 @@ git commit -m "docs: add thin client agent contract"
 Expected: tests pass, artifact diff is empty, all five Task 1 files are valid
 LF-only UTF-8, the Git-visible write set is exactly those five files, new files
 are allowed, and every pre-existing file has a real semantic delta against the
-frozen fork baseline. Pure CRLF-to-LF or mode-only churn fails before staging.
+frozen LF-only fork baseline. A CR byte in any raw baseline blob stops Task 1
+for a separate normalization decision, so both pure and semantic-plus-EOL
+normalization fail before staging.
 
 ### Task 2: Reconcile Current Client Canon
 
