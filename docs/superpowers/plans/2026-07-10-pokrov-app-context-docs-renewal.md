@@ -81,13 +81,21 @@ function Require-True {
   if (-not $Condition) { $errors.Add($Message) }
 }
 
+function Get-PhysicalLineCount {
+  param([AllowEmptyString()][string]$Text)
+  if ($Text.Length -eq 0) { return 0 }
+  $newlineCount = [regex]::Matches($Text, "\r\n|\n|\r").Count
+  $hasFinalNewline = $Text -match "(?:\r\n|\n|\r)$"
+  return $newlineCount + $(if ($hasFinalNewline) { 0 } else { 1 })
+}
+
 $agentsPath = Join-Path $root "AGENTS.md"
 Require-True (Test-Path -LiteralPath $agentsPath -PathType Leaf) "AGENTS.md is required"
 
 if (Test-Path -LiteralPath $agentsPath) {
   $agents = [IO.File]::ReadAllText($agentsPath)
   $bytes = [Text.Encoding]::UTF8.GetByteCount($agents)
-  $lines = ($agents -split "\r?\n").Count
+  $lines = Get-PhysicalLineCount $agents
   Require-True ($bytes -le 8192) "AGENTS.md exceeds 8192 UTF-8 bytes"
   Require-True ($lines -le 120) "AGENTS.md exceeds 120 physical lines"
 
@@ -121,7 +129,7 @@ if (Test-Path -LiteralPath $agentsPath) {
 
 $registry = [IO.File]::ReadAllText((Join-Path $root "docs\README.md"))
 $registryBytes = [Text.Encoding]::UTF8.GetByteCount($registry)
-$registryLines = ($registry -split "\r?\n").Count
+$registryLines = Get-PhysicalLineCount $registry
 Require-True ($registryBytes -le 12288) "docs/README.md exceeds 12288 UTF-8 bytes"
 Require-True ($registryLines -le 240) "docs/README.md exceeds 240 physical lines"
 foreach ($class in @(
@@ -138,8 +146,7 @@ Require-True ($registry.Contains("| Task | Read first | Inspect | Verify | Docs 
 Require-True ($registry.Contains("| Class | Review | Owner | Path |")) "docs/README.md lacks document registry"
 
 if ($errors.Count -gt 0) {
-  $errors | ForEach-Object { Write-Error $_ }
-  exit 1
+  throw "Client docs contract failed:`n$($errors -join "`n")"
 }
 
 Write-Host "Client docs contract OK." -ForegroundColor Green
@@ -231,12 +238,18 @@ Add these required files to `scripts/validate-seed.ps1`:
 ```
 
 Add both JSON seeds to the existing `$jsonFiles` collection. Before successful
-exit, call:
+completion, call the guard and use PowerShell's invocation status. A successful
+`.ps1` invocation does not set a meaningful native-process exit code, and the
+nested guard must not use `exit`:
 
 ```powershell
-& (Join-Path $root "test\docs-contract.ps1")
-if ($LASTEXITCODE -ne 0) {
-  exit $LASTEXITCODE
+try {
+  & (Join-Path $root "test\docs-contract.ps1")
+  if (-not $?) {
+    throw "Client docs contract returned an unsuccessful PowerShell status."
+  }
+} catch {
+  throw "Client docs contract failed during seed validation: $($_.Exception.Message)"
 }
 ```
 
@@ -249,11 +262,18 @@ powershell -ExecutionPolicy Bypass -File .\test\docs-contract.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\validate-seed.ps1
 git diff --check
 git diff --name-only -- artifacts/releases
+$task1Files = @('AGENTS.md', 'docs/README.md', 'test/docs-contract.ps1', 'scripts/validate-seed.ps1', 'test/README.md')
+foreach ($path in $task1Files) {
+  $text = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes((Join-Path $PWD $path)))
+  if ($text.Contains("`r")) { throw "$path contains CR bytes; Task 1 must preserve .editorconfig LF endings" }
+}
+git diff --numstat -- $task1Files
 git add AGENTS.md docs/README.md test/docs-contract.ps1 test/README.md scripts/validate-seed.ps1
 git commit -m "docs: add thin client agent contract"
 ```
 
-Expected: tests pass and artifact diff is empty.
+Expected: tests pass, artifact diff is empty, every Task 1 file remains LF,
+and the numstat review shows semantic edits rather than whole-file EOL churn.
 
 ### Task 2: Reconcile Current Client Canon
 
