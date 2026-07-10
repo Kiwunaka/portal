@@ -50,6 +50,31 @@ class CleanupInventoryTests(unittest.TestCase):
         self.assertNotIn("external/client-fork/app/out/__pycache__/", paths)
         self.assertNotIn("external/client-fork/app/windows/runner/__pycache__/", paths)
 
+    def test_adminapp_static_export_is_safe_generated_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "adminapp" / "out").mkdir(parents=True)
+            matches = self.module._walk_inventory(
+                root,
+                (self.module.CLASS_SAFE,),
+            )
+
+        match = next(item for item in matches if item.path == "adminapp/out/")
+        self.assertEqual(match.cleanup_class, self.module.CLASS_SAFE)
+
+    def test_content_video_workspace_is_never_traversed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".content-video-ad" / "__pycache__").mkdir(parents=True)
+            matches = self.module._walk_inventory(
+                root,
+                (self.module.CLASS_SAFE,),
+            )
+
+        self.assertFalse(
+            any(item.path.startswith(".content-video-ad/") for item in matches)
+        )
+
     def test_apply_deletes_valid_matches_and_rejects_unsafe_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

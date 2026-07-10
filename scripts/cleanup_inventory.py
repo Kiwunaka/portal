@@ -73,6 +73,7 @@ DIR_RULES: tuple[DirRule, ...] = (
         cleanup_class=CLASS_SAFE,
         reason="generated static export output",
         exact_paths=(
+            PurePosixPath("adminapp/out"),
             PurePosixPath("webapp/out"),
             PurePosixPath("webapp/dist"),
             PurePosixPath("marketing/out"),
@@ -116,6 +117,7 @@ FILE_RULES: tuple[FileRule, ...] = (
 
 
 PROTECTED_DIRS: tuple[PurePosixPath, ...] = (
+    PurePosixPath(".content-video-ad"),
     PurePosixPath(".git"),
     PurePosixPath("docs/audit-artifacts"),
     PurePosixPath("external/client-fork/app/out"),
