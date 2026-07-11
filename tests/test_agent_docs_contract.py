@@ -853,3 +853,51 @@ def test_external_model_playbook_is_optional_and_isolated() -> None:
         "Direct canonical reads and rg/Git remain the normal path.",
     ):
         assert required in old_helper
+
+
+def test_developer_entrypoints_match_current_repository_ownership() -> None:
+    developer = (
+        REPO_ROOT / "docs" / "developer" / "developer-guide.md"
+    ).read_text(encoding="utf-8")
+    repository = (
+        REPO_ROOT / "docs" / "developer" / "repository-map.md"
+    ).read_text(encoding="utf-8")
+    combined = developer + "\n" + repository
+
+    for required in (
+        "adminapp/",
+        "portal_bot/",
+        "tests/test_account_foundation.py",
+        "POKROV-app",
+        "docs/developer/agent-context-map.md",
+    ):
+        assert required in combined
+
+    for stale in (
+        "webapp owns the primary admin surface",
+        "mini is probe-only",
+        "0.x.x-beta",
+        "webapp/src/app/(dashboard)/admin/",
+        "OpenCode",
+        "Fireworks",
+        "CODY",
+    ):
+        assert stale.casefold() not in combined.casefold()
+
+
+def test_developer_guide_primary_admin_commands_include_build_and_e2e() -> None:
+    developer = (
+        REPO_ROOT / "docs" / "developer" / "developer-guide.md"
+    ).read_text(encoding="utf-8")
+    adminapp_block = re.search(
+        r"Push-Location adminapp\s+(.*?)\s+Pop-Location",
+        developer,
+        flags=re.DOTALL,
+    )
+    assert adminapp_block is not None
+    commands = {
+        line.strip()
+        for line in adminapp_block.group(1).splitlines()
+        if line.strip()
+    }
+    assert {"npm.cmd run build", "npm.cmd run test:e2e"} <= commands
