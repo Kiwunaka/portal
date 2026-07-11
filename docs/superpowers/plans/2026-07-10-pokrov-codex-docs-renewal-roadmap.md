@@ -8,6 +8,15 @@
 
 **Tech Stack:** Markdown, Python 3 standard library, pytest, Git worktrees, PowerShell Core, existing repository validation scripts, Flutter/Dart tooling already present in `POKROV-app`.
 
+## Execution Status — 2026-07-11
+
+- Platform containment is complete: root `AGENTS.md`, the task router, classified registry, guards, and official Codex alignment are committed on `codex/agent-context-refactor`.
+- Orchestration Slice A and the optional external-model playbook are complete. The playbook is opt-in, isolated from default routes, and introduces no dependency or service. Developer-guide/repository-map reconciliation still waits for the neighboring account-foundation slice.
+- Client Tasks 1–5 are complete on `codex/agent-context-refactor-client` through `3507d9f`; the separate local-scope clarification is `4b6124b`. Client docs, seeds, layout, Flutter suites, and Android Gradle validation passed; release artifacts and the release-handoff seed are unchanged. Review result is `PASS_WITH_MINOR`: the three renewal commits revert cleanly in reverse order, but the first two are not conflict-free when reverted individually from the final head because they share one guard file.
+- Platform canonical refresh is `BLOCKED` until the dirty `market-ready-cis-integration` account-foundation work is committed and this branch is replayed. Do not write product/API/operations canon from its uncommitted intermediate state.
+- Cleanup Stage A is complete: snapshots and three named stashes preserve the stale worktrees. Destructive cleanup is `DEFERRED`; no proof gate was pinned, no production cleanup command ran, and no ignored output, worktree, or branch was deleted.
+- Promotion, push, deploy, and manual release gates have not run. Preserve the two documentation branches and the active neighboring worktrees until an explicit reconciliation/promotion pass.
+
 ## Global Constraints
 
 - Platform instruction architecture is Codex-only.
