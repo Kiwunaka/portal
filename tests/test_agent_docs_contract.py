@@ -21,6 +21,31 @@ from scripts.agent_context_packet_audit import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ORCHESTRATION_ROOT = REPO_ROOT / "docs" / "developer" / "orchestration"
 WORK_ORDERS_ROOT = REPO_ROOT / "docs" / "developer" / "work-orders"
+GLOBAL_READ_PACK_CONTRACT_RE = re.compile(
+    r"(?:"
+    r"^##\s+REFERENCE DOCS\s*$|"
+    r"^#{2,6}\s+(?:global\s+)?must-read"
+    r"(?:\s+(?:pack|list|order|docs?|references?))?\s*$|"
+    r"^\s*(?:[-*]\s*)?(?:global\s+)?must-read"
+    r"(?:\s+(?:pack|list|order|docs?|references?))?\s*:\s*$"
+    r")",
+    flags=re.IGNORECASE | re.MULTILINE,
+)
+UNIVERSAL_FLOW_STATE_REQUIREMENT_RE = re.compile(
+    r"(?:"
+    r"\beach\s+active\s+`?\bWO\b`?"
+    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
+    r"\b(?:required|requires?|keep|keeps|has|must|should|needs?)\b"
+    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
+    r"`?\bFLOW(?:_|\s+)STATE\b`?|"
+    r"`?\bFLOW(?:_|\s+)STATE\b`?"
+    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
+    r"\b(?:required|mandatory|must|should|needs?)\b"
+    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
+    r"(?:for\s+)?each\s+active\s+`?\bWO\b`?"
+    r")",
+    flags=re.IGNORECASE,
+)
 
 
 def _without_markdown_decoration(value: str) -> str:
@@ -395,12 +420,12 @@ def test_roles_have_exact_roster_and_single_responsibility_boundaries() -> None:
             ("public claim", "public claims"),
         ),
     }
+    assert GLOBAL_READ_PACK_CONTRACT_RE.search("No global Must-Read pack.") is None
     for role_path in role_paths:
         maximum = 5120 if role_path.name == "orchestrator.md" else 4096
         text = role_path.read_text(encoding="utf-8")
         assert len(text.encode("utf-8")) <= maximum, role_path.name
-        assert "## REFERENCE DOCS" not in text
-        assert "Must-Read" not in text
+        assert GLOBAL_READ_PACK_CONTRACT_RE.search(text) is None
         _assert_concepts(text, *requirements[role_path.name])
 
 
@@ -524,8 +549,13 @@ def test_flow_state_uses_conditional_v2_schema_and_stop_contract() -> None:
     assert isinstance(counters, dict) and counters
     assert all(isinstance(value, int) and value >= 1 for value in counters.values())
 
-    normalized_flow = _normalized_prose(flow)
-    assert "each active wo" not in normalized_flow
+    assert UNIVERSAL_FLOW_STATE_REQUIREMENT_RE.search(
+        "FLOW_STATE is not required for each active WO."
+    ) is None
+    assert UNIVERSAL_FLOW_STATE_REQUIREMENT_RE.search(
+        "Each active WO should keep FLOW_STATE."
+    ) is not None
+    assert UNIVERSAL_FLOW_STATE_REQUIREMENT_RE.search(flow) is None
 
     paragraphs = re.split(r"\r?\n\s*\r?\n", flow)
     normalized_paragraphs = [_normalized_prose(paragraph) for paragraph in paragraphs]
