@@ -26,9 +26,9 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | payment state | `docs/architecture/payment-state-machine.md` | `RECONCILED` |
 | `CANONICAL` | support and feedback | `docs/architecture/support-feedback-flow.md` | `PENDING_WAVE_3` |
 | `CANONICAL` | client delivery | `docs/architecture/client-downloads-flow.md` | `PENDING_COLLISION_REVIEW` |
-| `CANONICAL` | deployment and access | `docs/operations/deployment-and-access.md` | `PENDING_COLLISION_REVIEW` |
-| `CANONICAL` | monitoring and origins | `docs/operations/monitoring-and-visibility.md` | `PENDING_COLLISION_REVIEW` |
-| `CANONICAL` | client delivery operations | `docs/operations/client-delivery-update-content-plan.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | deployment and access | `docs/operations/deployment-and-access.md` | `RECONCILED` |
+| `CANONICAL` | monitoring and origins | `docs/operations/monitoring-and-visibility.md` | `RECONCILED` |
+| `CANONICAL` | client delivery operations | `docs/operations/client-delivery-update-content-plan.md` | `RECONCILED` |
 | `CANONICAL` | design contract | `DESIGN.md` | `PENDING_WAVE_3` |
 | `CANONICAL` | design synchronization | `docs/design/design-system-sync.md` | `RECONCILED` |
 | `CANONICAL` | generated asset policy | `docs/design/generated-assets-policy.md` | `PENDING_WAVE_3` |
@@ -53,14 +53,19 @@ This registry classifies important platform documents and the active client poin
 | `OPERATOR_PLAYBOOK` | orchestration | `docs/developer/orchestration/orchestration-standard.md` | `PENDING_WAVE_2` |
 | `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `PENDING_WAVE_2` |
 | `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `RECONCILED` |
-| `OPERATOR_PLAYBOOK` | public beta release | `docs/operations/public-beta-release-runbook.md` | `PENDING_COLLISION_REVIEW` |
+| `ACTIVE_EXECUTION` | public beta release | `docs/operations/public-beta-release-runbook.md` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | Android production signing | `docs/operations/android-production-signing-handoff.md` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | Android physical-device audit | `docs/operations/android-physical-device-audit-handoff.md` | `REVIEWED_NO_CHANGE` |
+| `ACTIVE_EXECUTION` | RU-origin probe | `docs/operations/ru-origin-probe-handoff.md` | `REVIEWED_NO_CHANGE` |
+| `EVIDENCE` | release-link handoff record | `docs/operations/release-links-and-final-handoff.md` | `REVIEWED_NO_CHANGE` |
+| `EVIDENCE` | plans and decisions closure audit | `docs/operations/2026-06-06-plans-decisions-closure-audit.md` | `REVIEWED_NO_CHANGE` |
+| `EVIDENCE` | email delivery webhook handoff | `docs/operations/email-delivery-webhook-handoff.md` | `REVIEWED_NO_CHANGE` |
 | `OPERATOR_PLAYBOOK` | rollback | `docs/operations/rollback-runbook.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | payment reconciliation | `docs/operations/payment-reconciliation.md` | `PENDING_WAVE_3` |
 | `OPERATOR_PLAYBOOK` | provider payments | `docs/operations/lavatop-payment-operations.md` | `PENDING_WAVE_3` |
 | `OPERATOR_PLAYBOOK` | Android release audit | `docs/operations/android-release-audit.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | runtime download smoke | `docs/operations/runtime-app-download-smoke.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | RU-origin probe | `docs/operations/ru-origin-probe.md` | `PENDING_COLLISION_REVIEW` |
-| `OPERATOR_PLAYBOOK` | release handoffs | `docs/operations/*-handoff.md` | `PENDING_COLLISION_REVIEW` |
 | `HISTORICAL_REFERENCE` | growth and competitor research | `docs/product/pokrov-growth-and-competitor-notes.md` | `REVIEWED_NO_CHANGE` |
 | `EXPERIMENTAL` | context-cost harnesses | `docs/developer/orchestration/context-cost-harnesses.md` | `PENDING_WAVE_2` |
 

@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-08
+Last updated: 2026-07-12
 
 ## Document Status
 
@@ -19,11 +19,12 @@ Wave 0 now separates active client truth from retained client evidence:
 
 Release metadata now lives under the canonical client repo.
 
-- bridge-period metadata root: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`
-- post-cutover metadata root: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`
-- keep `release-links.env` in that versioned folder only as compatibility evidence when needed
-- keep generated manifests in `release-manifests/` under that same versioned folder
-- keep the stable root-orchestrator pointer at `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` when it is intentionally maintained
+- active metadata root: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
+- each candidate keeps `release-handoff.json`, checksums, manifests, and retained binaries in its versioned folder under that root
+- `C:/Users/kiwun/Documents/ai/POKROV-app/config/release-handoff.seed.json` points operators to the latest repo-backed release truth
+- `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` is retained rollback/archive evidence only
+- a bridge-era `release-links.env` is compatibility evidence, not the active metadata authority
+- keep the stable root-orchestrator pointer at `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` only when it is intentionally synchronized from the active versioned metadata
 
 ## Control Plane
 
@@ -99,8 +100,8 @@ These locations are intentionally preserved and must not be deleted during clean
 - `VPN NODE SSH KEYS/`
 - `secrets for merchant/`
 - `ops-local/`
-- `external/client-fork/app/windows/sign.pfx`
-- `external/client-fork/app/windows/sign.cer`
+- `external/client-fork/app/windows/sign.pfx` (retained rollback/archive signing material only)
+- `external/client-fork/app/windows/sign.cer` (retained rollback/archive signing material only)
 
 Rules:
 
@@ -180,8 +181,9 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 ### Release handoff sync
 
 - [remote_brain_apply_release_handoff.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_brain_apply_release_handoff.py)
-- canonical client-owned metadata home: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/`
-- standard operator input: versioned `release-links.env` under that metadata home
+- canonical client-owned metadata home: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
+- standard operator input: versioned `release-handoff.json` under that metadata home
+- bridge-era `release-links.env` is a compatibility fallback only
 - canonical stable metadata pointer when maintained: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
 - schema reference: [release_handoff_metadata.schema.json](C:/Users/kiwun/Documents/ai/VPN/scripts/release_handoff_metadata.schema.json)
 
@@ -201,18 +203,25 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 
 - [monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 
-## Operator Handoff Runbooks
+## Current Operator Procedures And Retained Evidence
 
-Use these when the release is blocked on one narrow operational step and the next person needs a simple checklist instead of the full guide:
+Active execution checklists:
 
 - [Android Production Signing Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
 - [Android Physical Device Audit Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
-- [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
-- [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 - [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
 - [Public Beta Release Runbook](C:/Users/kiwun/Documents/ai/VPN/docs/operations/public-beta-release-runbook.md)
+
+Current operator playbooks:
+
+- [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
 - [Runtime App Download Smoke](C:/Users/kiwun/Documents/ai/VPN/docs/operations/runtime-app-download-smoke.md)
 - [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md)
+
+Retained dated evidence, not current procedure authority:
+
+- [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
+- [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 
 ### Lava.top Checkout Enablement
 
@@ -362,7 +371,7 @@ Node shaping repo truth:
 - `scripts/remote_node_qdisc_smoke.py` runs one heavy egress flow plus parallel small HTTPS probes, records p95 latency / TTFB, and fails the gate if the heavy flow never materializes or starvation exceeds the configured thresholds
 - `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
 
-## Current Bridge-Period Local Build Matrix
+## Current POKROV-app Local Build Matrix
 
 Canonical repo-local build and packaging commands for this wave:
 
@@ -414,13 +423,19 @@ Still required before a stronger public promotion, new exact release candidate, 
 - live transactional sender readiness for public email registration or recovery mail must stay green; as of `2026-05-15`, a real verify-email delivery and public email registration flow were confirmed for beta, but reset and paid-key delivery should still be checked before broad launch language
 - final release handoff with published URLs, runtime sync, and redeployed static download surfaces for any new artifact or URL change
 
-Release handoff shortcuts:
+Current procedure links:
 
 - Android signing: [android-production-signing-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
 - Android physical-device audit: [android-physical-device-audit-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
-- email sender and webhook: [email-delivery-webhook-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
-- release URL sync: [release-links-and-final-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
+- artifact creation and candidate verification: [publishing-and-signing-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)
+- runtime URL sync: `Active Client Release Path` in this document
 - RU-origin evidence: [ru-origin-probe-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
+
+Retained email-delivery and prior release-link evidence remains available in
+[email-delivery-webhook-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
+and
+[release-links-and-final-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md),
+but neither dated file is the current procedure authority.
 
 ## Release Rule
 
@@ -643,21 +658,30 @@ Default release slug in this repo:
 
 - `pokrov`
 
+Current release boundary:
+
+- public distribution is the public GitHub prerelease handoff for the outside-store beta through the current cabinet/runtime contract
+- distributed version: `1.0.0-beta`
+- target candidate: `1.0.0-rc.1`
+- stable `1.0.0` is not proven
+- artifact creation, signing, and candidate publication are owned by [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md); this guide owns runtime application and deploy access
+
 Default artifact names:
 
-- `pokrov-android-universal.apk`
-- `pokrov-android-market.aab`
+- `pokrov-android-arm64-v8a.apk` = default Android APK
+- `pokrov-android-armeabi-v7a.apk` = legacy ARMv7 APK
+- `pokrov-android-market.aab` = market handoff only; no store availability claim
 - `pokrov-windows-setup-x64.exe`
 - `pokrov-windows-setup-x64.msix`
 - `pokrov-windows-portable-x64.zip`
 
 Current public download surfaces expose only:
 
-- Android `Play` / `APK` / mirror URL
-- Windows `EXE` / mirror URL
+- Android default ARM64 APK plus the explicitly labeled legacy ARMv7 variant
+- Windows `EXE`
 - install/docs fallback via `APP_DOCS_URL`
 
-Treat `AAB`, `MSIX`, and portable `ZIP` as release/store/operator artifacts unless a later runtime payload and public surface explicitly expose them.
+Treat `AAB`, `MSIX`, and portable `ZIP` as market/operator artifacts unless a later runtime payload and public surface explicitly expose them. Their existence does not prove store availability.
 
 Canonical local client verification commands:
 
@@ -693,24 +717,28 @@ Android release-block rule:
 - do not publish Android as a trusted, store, stable, or raw-audited release until the release-build audit proves that localhost proxy, local DNS, libbox command, Clash API, and equivalent control surfaces are either unavailable to other apps or protected to an acceptable standard
 - if that proof is missing, keep Android limited to the documented outside-store beta/owner-attested posture even if the app otherwise builds and signs correctly
 
-Release handoff after publishing artifacts:
+Release handoff after the publishing owner has verified the exact candidate:
+
+1. Select the versioned
+   `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/release-handoff.json`.
+2. Confirm its asset names, SHA-256 values, sizes, GitHub Releases URLs, and beta/manual-gate state against the retained bundle.
+3. Validate the runtime sync without remote writes:
 
 ```powershell
-pwsh external/client-fork/scripts/release_handoff.ps1 `
-  -AndroidApkUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-android-universal.apk" `
-  -WindowsExeUrl "https://github.com/<org>/<repo>/releases/download/<tag>/pokrov-windows-setup-x64.exe" `
-  -OutEnvPath "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env" `
-  -ManifestDir "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-manifests"
+python scripts/remote_brain_apply_release_handoff.py `
+  --brain-ip 82.21.114.104 `
+  --metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/release-handoff.json" `
+  --dry-run
 ```
 
-```powershell
-python external/client-fork/scripts/check_release_urls.py --env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
-```
+4. After review, rerun without `--dry-run` to apply the same metadata to the runtime environment.
 
 Then copy the resulting URLs into runtime env:
 
 - `APP_ANDROID_PLAY_URL`
 - `APP_ANDROID_APK_URL`
+- `APP_ANDROID_APK_ARM64_URL`
+- `APP_ANDROID_APK_ARMEABI_V7A_URL`
 - `APP_ANDROID_MIRROR_URL`
 - `APP_WINDOWS_EXE_URL`
 - `APP_WINDOWS_MIRROR_URL`
@@ -724,6 +752,10 @@ handoff builds:
 - `APP_ANDROID_MIN_SUPPORTED_VERSION`
 - `APP_ANDROID_SHA256`
 - `APP_ANDROID_SIZE_BYTES`
+- `APP_ANDROID_ARM64_SHA256`
+- `APP_ANDROID_ARM64_SIZE_BYTES`
+- `APP_ANDROID_ARMEABI_V7A_SHA256`
+- `APP_ANDROID_ARMEABI_V7A_SIZE_BYTES`
 - `APP_ANDROID_RELEASE_NOTES`
 - `APP_ANDROID_RELEASE_NOTES_URL`
 - `APP_ANDROID_PUBLISHED_AT`
@@ -744,7 +776,7 @@ Preferred automation path:
 ```powershell
 python scripts/remote_brain_apply_release_handoff.py `
   --brain-ip 82.21.114.104 `
-  --env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
+  --metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/release-handoff.json"
 ```
 
 Or as part of the main rollout:
@@ -752,14 +784,15 @@ Or as part of the main rollout:
 ```powershell
 python scripts/release_orchestrator.py `
   --brain-ip 82.21.114.104 `
-  --release-env-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/release-links.env"
+  --release-metadata-file "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/release-handoff.json"
 ```
 
 Distribution rule until store URLs are live:
 
 - GitHub release artifacts are the canonical Android and Windows binary source
 - runtime app, bot, and authenticated WebApp download surfaces must read from the same release handoff URLs
-- the versioned `release-links.env` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...` is the canonical metadata input for that sync
+- the versioned `release-handoff.json` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/` is the canonical metadata input for that sync
+- bridge-era `release-links.env` files remain compatibility evidence only
 - `remote_brain_apply_release_handoff.py` does not rebuild static exports by itself
 - if public Android or Windows URLs changed, rebuild and redeploy static marketing outputs so `NEXT_PUBLIC_APP_*` stays aligned with the same release handoff values
 

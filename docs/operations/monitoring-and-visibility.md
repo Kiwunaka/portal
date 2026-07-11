@@ -1,17 +1,27 @@
 # Monitoring And Visibility
 
-Last updated: 2026-07-08
+Last updated: 2026-07-12
 
 ## Document Status
 
 This file is living source of truth for hostname migration policy, external RU probe operations, and operator visibility into app, bot, device, and IP context.
 
-Quick handoff runbooks:
+Current procedure owners:
+
+- [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md) for artifact creation, signing, publication, and exact-candidate handoff verification
+- [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md) for runtime metadata application and deploy access
+- [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md) for the active external RU probe checklist
+- [Support Macros](C:/Users/kiwun/Documents/ai/VPN/docs/launch/support-macros.md) for user-facing incident wording
+
+Retained evidence, not current procedure authority:
 
 - [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
-- [RU Origin Probe Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/ru-origin-probe-handoff.md)
 - [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
-- [Support Macros](C:/Users/kiwun/Documents/ai/VPN/docs/launch/support-macros.md)
+
+Monitoring owns hostname, origin, probe, metrics, and operator-telemetry truth.
+It does not recreate release metadata or signing steps. Keep `current-origin`,
+`brain-origin`, and `RU-origin` as separate evidence lines; use the publishing
+and deployment owners above for candidate and runtime handoff procedures.
 
 ## Canonical Hostname Policy
 

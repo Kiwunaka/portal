@@ -1,6 +1,6 @@
 # Передача для Production-подписи Android
 
-Last updated: 2026-04-15
+Last updated: 2026-07-12
 
 ## Зачем нужен этот файл
 
@@ -50,8 +50,9 @@ python scripts/run_client_release_gate.py build --target android-aab
 4. Подложите production-секреты через согласованный локальный способ.
 5. Если до этого сборка делалась с fallback на debug keystore, пересоберите её заново уже с боевой подписью.
 6. Проверьте, что итоговые файлы соответствуют каноническим именам:
-   - `pokrov-android-universal.apk`
-   - `pokrov-android-market.aab`
+   - `pokrov-android-arm64-v8a.apk` = default Android APK
+   - `pokrov-android-armeabi-v7a.apk` = legacy ARMv7 APK
+   - `pokrov-android-market.aab` = market handoff only; no store availability claim
 7. Подготовьте артефакты к публикации:
    - `APK` для прямой раздачи
    - `AAB` для Google Play
@@ -94,5 +95,5 @@ Android всё ещё считается заблокированным, пок�
 ## Связанные инструкции
 
 - [Передача для проверки Android на реальном устройстве](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
-- [Передача по финальным ссылкам и релизному handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
+- [Retained evidence: прежний handoff по финальным ссылкам](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md) — не текущая инструкция и не действующий операционный источник истины
 - [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md)

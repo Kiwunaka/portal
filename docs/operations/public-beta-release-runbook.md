@@ -1,10 +1,25 @@
 # Public Beta Release Runbook
 
-Last updated: 2026-05-15
+Last updated: 2026-07-12
+
+Document class: `ACTIVE_EXECUTION`
+
+Scope: outside-store beta execution only. The distributed version is
+`1.0.0-beta`; `1.0.0-rc.1` is the target candidate. This runbook does not
+authorize stable `1.0.0`, store availability, trusted Windows signing, raw
+Android audit, or RU-origin readiness claims.
 
 ## Current Decision
 
 Public beta is GO for Android APK and Windows EXE outside app stores as of `2026-05-15`. This is not a `1.0.0` release, not an app-store release, and not a trusted Windows-signing claim.
+
+The distributed `1.0.0-beta` is a public GitHub prerelease in
+`Kiwunaka/pokrov`, not a stable or store release.
+
+The current direct Android handoff uses
+`pokrov-android-arm64-v8a.apk` by default and
+`pokrov-android-armeabi-v7a.apk` only for legacy ARMv7 devices. Market AAB
+handoff remains separate and does not imply store availability.
 
 ## Gate Order
 

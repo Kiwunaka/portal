@@ -980,3 +980,49 @@ def test_account_foundation_owners_preserve_dual_identity_truth() -> None:
             assert phrase.casefold() in text.casefold(), (
                 f"{relative_path} is missing account boundary: {phrase}"
             )
+
+
+def test_active_operations_use_current_client_release_path() -> None:
+    active_paths = (
+        "docs/operations/deployment-and-access.md",
+        "docs/operations/monitoring-and-visibility.md",
+        "docs/operations/publishing-and-signing-guide.md",
+        "docs/operations/client-delivery-update-content-plan.md",
+        "docs/operations/public-beta-release-runbook.md",
+        "docs/operations/android-production-signing-handoff.md",
+    )
+    combined = "\n".join(
+        (REPO_ROOT / path).read_text(encoding="utf-8")
+        for path in active_paths
+    )
+    assert "external/client-fork/scripts/release_handoff.ps1" not in combined
+    assert "external/client-fork/scripts/check_release_urls.py" not in combined
+    assert "pokrov-android-universal.apk" not in combined
+    assert "pokrov-android-arm64-v8a.apk" in combined
+    assert "pokrov-android-armeabi-v7a.apk" in combined
+    assert "POKROV-app/artifacts/releases/pokrov-app/" in combined
+    assert "stable 1.0.0 is not proven" in combined.casefold()
+
+
+def test_active_release_owners_name_public_github_prerelease() -> None:
+    owner_paths = (
+        "docs/operations/deployment-and-access.md",
+        "docs/operations/publishing-and-signing-guide.md",
+        "docs/operations/public-beta-release-runbook.md",
+    )
+    for relative_path in owner_paths:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        assert "public GitHub prerelease" in text, relative_path
+
+
+def test_publishing_keeps_release_link_handoff_as_evidence_only() -> None:
+    publishing = (
+        REPO_ROOT / "docs/operations/publishing-and-signing-guide.md"
+    ).read_text(encoding="utf-8")
+    runtime_wiring = publishing.split("## Runtime Wiring", 1)[1].split(
+        "## Public Mailboxes And PR Readiness", 1
+    )[0]
+    assert "release-links-and-final-handoff.md" in runtime_wiring
+    assert "Operator shortcut" not in runtime_wiring
+    assert "retained evidence" in runtime_wiring.casefold()
+    assert "not current procedure" in runtime_wiring.casefold()

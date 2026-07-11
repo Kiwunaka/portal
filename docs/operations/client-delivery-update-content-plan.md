@@ -1,28 +1,21 @@
 # Client Delivery, Update Check, And Dynamic Content Plan
 
-Last updated: 2026-07-05
+Last updated: 2026-07-12
 
 Status: active product/operations plan
 
-Implementation note:
+Current evidence boundary:
 
-- `2026-06-07`: backend contract work that does not require owner action is
-  implemented. `/api/client/apps` now returns prompt-mode update metadata, and
-  `/api/client/promo-slots` supports safe banner fields such as placement,
-  image URL, dismissibility, and scheduling. Client UI wiring, public GitHub
-  release-surface visibility, and manual install/connect smoke remain separate
-  gates.
-- `2026-06-07`: shared app shell update prompt is implemented. On startup and
-  resume, Android/Windows clients can call `/api/client/apps` with their current
-  version and open the returned GitHub Releases asset through the normal
-  platform handoff path when the backend returns `recommended` or `required`.
-- `2026-06-07`: owner created the public release-only repository
-  `Kiwunaka/pokrov`, and `v1.0.0-beta` assets were published there. Anonymous
-  range smoke returned `206` for Android APK, Windows setup EXE, Windows
-  portable ZIP, Windows manifest, and `SHA256SUMS.txt`.
-- `2026-06-07`: Android public download was switched from one universal APK to
-  split ARM APKs: `pokrov-android-arm64-v8a.apk` is the default app/API URL,
-  and `pokrov-android-armeabi-v7a.apk` is exposed as the legacy ARMv7 variant.
+- active release truth lives in
+  `C:/Users/kiwun/Documents/ai/POKROV-app/config/release-handoff.seed.json`
+  and versioned bundles under
+  `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
+- completed P0/P1/P4 release work is retained as evidence in
+  [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
+  and the
+  [Plans And Decisions Closure Audit](C:/Users/kiwun/Documents/ai/VPN/docs/operations/2026-06-06-plans-decisions-closure-audit.md)
+- those dated documents record completed work; they do not replace this
+  current runtime contract, the publishing owner, or exact-candidate metadata
 
 This plan records the current owner decision for how the Android and Windows
 client should be delivered, how the app should discover newer versions, and how
@@ -83,9 +76,9 @@ Current platform contract:
   returns prompt-mode update metadata for the requested platform
 - `config/release-handoff.seed.json` in `POKROV-app` is the repo-owned handoff
   seed for current binary metadata
-- unauthenticated GitHub release asset range smoke is the evidence required
-  before a URL is treated as public-user-ready; current `v1.0.0-beta` public
-  repo smoke is `PASS_PUBLIC_GITHUB_RELEASES_206`
+- unauthenticated GitHub release asset range smoke is required before a URL is
+  treated as public-user-ready; use the active seed/versioned metadata and the
+  retained evidence links above for the current candidate result
 
 ## Platform Roadmap Order
 
@@ -259,23 +252,9 @@ Forbidden until a deliberate product-policy change:
 
 ## Implementation Phases
 
-### P0: Release Surface And Metadata
-
-- choose the public GitHub Releases surface: complete, `Kiwunaka/pokrov`
-- upload current split APK/EXE/checksums there: complete for `v1.0.0-beta`
-- update release-handoff metadata and `/api/client/apps` runtime values:
-  complete; brain-local signed `/api/client/apps` smoke returns split APK
-  variants, hashes, sizes, Windows EXE, and docs URL
-- prove anonymous public download with unauthenticated range smoke: complete,
-  `206`
-
-### P1: App Update Prompt
-
-- send current app version/platform/channel from the client
-- return update policy and asset metadata from backend: implemented
-- show optional/recommended/required update UI: implemented for app shell
-- open APK or Windows installer through the platform-safe path: implemented via
-  existing download handoff
+Completed P0 release-surface work, P1 update-prompt work, and P4 release-ops
+work are recorded in the evidence links under `Current evidence boundary`.
+Do not replay their dated narratives as a current execution queue.
 
 ### P2: In-App Notices
 
@@ -292,12 +271,6 @@ Forbidden until a deliberate product-policy change:
 - render a muted, polished, dismissible app slot: existing rewards promo rows
   consume the extended model; first-screen home/global banner placement remains
   a UI taste decision for a later pass if needed
-
-### P4: Release Ops
-
-- verify public GitHub asset range smoke: complete for public release repo
-- verify `/api/client/apps` points to the same public assets
-- keep owner manual install/connect tests as the final local gate
 
 ## Remaining Manual Gates
 

@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 ## Document Status
 
@@ -10,24 +10,31 @@ This file is the canonical guide for `POKROV` client publishing, signing, store 
 
 Wave 0 separates active client truth from retained client evidence:
 
-- `POKROV-app/main` is the new client development target and is now bootstrapped locally at `C:/Users/kiwun/Documents/ai/POKROV-app`
+- `POKROV-app/main` is the active client development and release target at `C:/Users/kiwun/Documents/ai/POKROV-app`
 - retired bootstrap provenance is summarized in `docs/archive/client-lanes/app-next-bootstrap-summary.md`
 - retained bridge bundle lineage is archived under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/`
 - the verification and packaging commands below now describe the active `POKROV-app` lane, with archive notes called out explicitly when retained bridge evidence matters
 
 ## Release Metadata Home
 
-Use the canonical client repo as the metadata home for every release handoff:
+Use the canonical client repo as the metadata home for every active release handoff:
 
-- bridge-period metadata and mirrored bundles: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`
-- post-cutover metadata and direct next-client bundles: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`
+- active metadata root: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
+- versioned candidate bundle: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`
+- latest repo-backed seed: `C:/Users/kiwun/Documents/ai/POKROV-app/config/release-handoff.seed.json`
+- retained rollback/archive evidence: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/`
 
-Keep `release-handoff.json` plus any compatibility `release-links.env` and `release-manifests/` in that versioned folder.
+Keep the active `release-handoff.json`, checksums, manifests, and retained
+binaries together in the versioned candidate folder. A bridge-era
+`release-links.env` is compatibility evidence only.
 
-Focused release handoff runbooks:
+Current focused procedures:
 
 - [Android Production Signing Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-production-signing-handoff.md)
 - [Android Physical Device Audit Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/android-physical-device-audit-handoff.md)
+
+Retained dated evidence, not current publishing authority:
+
 - [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 
 ## Release Scope
@@ -50,13 +57,18 @@ Until store URLs are live, the canonical distribution source is:
 
 - GitHub Releases for Android and Windows binaries
 
+Current public distribution is the public GitHub prerelease `1.0.0-beta` in
+`Kiwunaka/pokrov`. `1.0.0-rc.1` is the target candidate, and stable 1.0.0 is not proven.
+This guide does not claim store availability or trusted Windows signing.
+
 All public download surfaces must be wired from the same release handoff values:
 
 - app
 - webapp
 - marketing site
 - Telegram bot
-- standard operator input: versioned `release-links.env` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...`
+- standard operator input: versioned `release-handoff.json` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
+- bridge-era `release-links.env` is a compatibility fallback only
 - optional stable root-orchestrator metadata pointer: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
 - schema reference for the JSON handoff: [release_handoff_metadata.schema.json](C:/Users/kiwun/Documents/ai/VPN/scripts/release_handoff_metadata.schema.json)
 
@@ -81,8 +93,9 @@ Current implementation note:
 
 Current canonical release artifacts:
 
-- `pokrov-android-universal.apk`
-- `pokrov-android-market.aab`
+- `pokrov-android-arm64-v8a.apk` = default Android APK
+- `pokrov-android-armeabi-v7a.apk` = legacy ARMv7 APK
+- `pokrov-android-market.aab` = market handoff only; no store availability claim
 - `pokrov-windows-setup-x64.exe`
 - `pokrov-windows-setup-x64.msix`
 - `pokrov-windows-portable-x64.zip`
@@ -91,7 +104,7 @@ Retention rule:
 
 - keep alpha, beta, release-candidate, and public-release artifacts inside the canonical repo-local artifact paths for the active release lane instead of treating desktop downloads or CI workspace leftovers as the only copy
 - retained bridge bundles must stay mirrored in `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/` as archive evidence; do not treat the retired bridge repo as the active artifact home
-- keep the matching `release-links.env` and generated `release-manifests/` beside that mirrored bridge bundle in the same versioned folder
+- keep bridge-era `release-links.env` and generated `release-manifests/` beside a mirrored bridge bundle only as compatibility evidence
 - keep active client-lane release truth in `POKROV-app` instead of splitting artifact truth across ad hoc local folders
 
 Current public-facing download buttons in shipped surfaces are limited to:
@@ -100,7 +113,7 @@ Current public-facing download buttons in shipped surfaces are limited to:
 - Windows `EXE` / mirror
 - install/docs fallback
 
-Treat `AAB`, `MSIX`, and portable `ZIP` as required release/store artifacts, not first-layer user download buttons, unless the runtime payload and public surfaces are expanded together.
+Treat `AAB`, `MSIX`, and portable `ZIP` as market/operator artifacts, not first-layer user download buttons, unless the runtime payload and public surfaces are expanded together. Their presence does not establish store availability.
 
 ## Public Versioning Policy
 
@@ -112,7 +125,7 @@ Current public user-facing version policy:
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
 - inherited upstream display strings such as `2.5.7 dev` must not remain visible on public user-facing surfaces
 
-## Bridge-Period Client Verification Commands
+## Current POKROV-app Client Verification Commands
 
 Run from the repository root:
 
@@ -163,8 +176,13 @@ Notes:
 4. Audit the release build for localhost listeners and local control surfaces before public publication.
 5. Sign the Android release with the production keystore; debug-keystore fallback is valid only for local smoke and never for public publication.
 6. Upload the `AAB` to Google Play when store publication is ready.
-7. Upload the universal `APK` to GitHub Releases for direct download.
-8. Run release handoff and sync the final URLs into runtime env.
+7. Upload `pokrov-android-arm64-v8a.apk` as the default direct download and
+   `pokrov-android-armeabi-v7a.apk` as the explicitly labeled legacy ARMv7
+   variant to GitHub Releases.
+8. Keep `pokrov-android-market.aab` as market handoff only until a real store
+   submission is approved; the bundle does not establish store availability.
+9. Write and verify the versioned `release-handoff.json`, then pass that exact
+   metadata file to the deployment owner for runtime sync.
 
 Artifact-location note:
 
@@ -291,15 +309,15 @@ This keeps the real public ship on Android and Windows while avoiding an acciden
 
 After every client release:
 
-1. publish GitHub release artifacts
-2. write or update the versioned metadata under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/...`
-3. run release handoff
-4. validate URLs with the release-link checker
-5. update runtime env for all Android and Windows download links from the versioned `release-links.env`
+1. publish the exact GitHub release candidate artifacts
+2. write or update its versioned metadata under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
+3. compare every public artifact name, SHA-256, size, version, URL, and beta/manual-gate state in `release-handoff.json` with the retained candidate bundle
+4. prove anonymous public access to both split APKs, the Windows EXE, and every additionally published handoff file with an unauthenticated range request
+5. pass that exact `release-handoff.json` to the runtime sync procedure in [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 6. verify the same links appear in app, bot, and authenticated WebApp surfaces
 7. rebuild and redeploy static marketing outputs if public download URLs changed
 
-Operator shortcut:
+Retained evidence reference, not current procedure:
 
 - [release-links-and-final-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 
@@ -348,9 +366,17 @@ Operational rule for this repo:
 
 Minimum publishing verification:
 
-- artifact names match canon
+- artifact names match canon: default `pokrov-android-arm64-v8a.apk`, legacy
+  `pokrov-android-armeabi-v7a.apk`, market-only
+  `pokrov-android-market.aab`, and the candidate Windows artifacts
+- the versioned `release-handoff.json` matches exact candidate hashes, sizes,
+  URLs, version, release channel, and manual gates
+- anonymous GitHub Releases range checks pass before runtime sync
 - Android and Windows builds install successfully
-- signatures are present on public artifacts
+- the recorded signing state matches the exact candidate metadata; production
+  Android signing and trusted Windows signing remain mandatory before those
+  stronger claims, while the current outside-store beta keeps its documented
+  accepted signing limitations
 - download links resolve from every runtime-driven public surface, and static marketing exports are rebuilt when URLs changed
 - store metadata matches current `POKROV` public naming policy, and Windows package identity or installer metadata does not leak legacy `POKROV VPN`, `Pokrov.Vpn`, or `hiddify` residue
 - Apple surfaces, if any, are clearly labeled as upcoming or waitlist-only
