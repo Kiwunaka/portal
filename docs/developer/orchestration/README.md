@@ -1,61 +1,44 @@
-# POKROV Orchestration Docs
+# POKROV Orchestration
 
-Last updated: 2026-05-23
+Last updated: 2026-07-11
 
-## Document Status
+This directory owns the Codex-native process for work that needs durable context, bounded execution, independent review, or release proof. It defines process, not product truth.
 
-This directory is the living source of truth for repo-native orchestration, work-order, and review-loop standards in the `POKROV` workspace.
+## Quick Start
 
-## Purpose
+Choose the smallest ceremony that controls the actual risk.
 
-Use this directory when a task needs more than one execution pass, more than one role, or more than one repository lane.
+| Ceremony | Trigger | Required artifacts |
+| --- | --- | --- |
+| `direct` | small, low-risk, single-pass work | focused validation and handoff |
+| `bounded_wo` | durable context, independent review, multiple bounded steps, or meaningful risk | compact WO; selected roles; conditional `FLOW_STATE` |
+| `release_wo` | release, deploy, payment, security, persistence, provider, device, or origin-sensitive work | full triggered proof blocks, release validator, candidate-specific evidence |
 
-This standard exists to keep multi-step work reliable in a workspace that now has:
+`direct` work does not require a work order or `FLOW_STATE`. For either WO ceremony:
 
-- one canonical platform lane `portal/master`
-- one canonical active client-development lane `POKROV-app/main`
-- one explicit bridge release-truth lane at `external/client-fork/app/` when release or hotfix evidence requires it
-- historical `app-next/` bootstrap material that may still be read as archive evidence but must not be treated as an active landing lane
-- mandatory docs-update rules
-- release-sensitive manual checks
-- evidence requirements that outlive a single chat
+1. Resolve the repository lane and exact write scope through the [task router](../agent-context-map.md).
+2. Run the collision gate against current worktrees before execution.
+3. Create one compact WO from the [authoring guide](wo-authoring-guide.md).
+4. Select only the roles needed for the risk.
+5. Add [FLOW_STATE](flow-state.md) only when its conditional trigger fires.
+6. Close against the acceptance oracle and structured evidence, not chat memory.
 
-Historical boundary:
+## Process Owners
 
-- orchestration files define process, not product behavior
-- completed wave folders, old specs, rendered visual audits, and mockup/reference assets are retained evidence until a deliberate archival task compresses them
-- current product decisions must be copied back into canonical docs before they are treated as source of truth
+- [orchestration-standard.md](orchestration-standard.md): ceremony, routing, lifecycle, role selection, review, and closure.
+- [wo-authoring-guide.md](wo-authoring-guide.md): compact WO contract and trigger-based proof blocks.
+- [flow-state.md](flow-state.md): conditional review-loop state and same-class stop mechanism.
+- [context-cost-harnesses.md](context-cost-harnesses.md): provider-neutral packet, redaction, telemetry, and audit rules.
+- [roles/](roles/): bounded role contracts selected by the orchestrator.
+- [templates/](templates/): WO, review, strategy, discovery, wave, and completion artifacts.
+- [work-orders/README.md](../work-orders/README.md): wave storage, continuity, and evidence boundary.
 
-## Directory Map
+## Context Rule
 
-- [orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
-  canonical process and lifecycle rules
-- [wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md)
-  work-order ceremony levels, proof blocks, evidence tiers, reviewability, and validation attribution
-- [flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
-  compact fix-cycle state, reviewer recheck semantics, and stop rules
-- [context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
-  cache-aware context packet rules, LLM telemetry schema, and prompt-cost harness guidance
-- [roles/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles)
-  paste-ready role contracts for orchestrator, executor, and reviewers
-- [templates/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates)
-  templates for wave indexes, work orders, discovery, strategy, review, and completion evidence
-- [work-orders README](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md)
-  naming and storage rules for live wave and WO artifacts
+There is no universal document pack or mandatory role chain. Each participant reads the assigned WO, the selected router row, and only the subsystem owners needed for that scope. Expand context when evidence exposes a real dependency.
 
-## How To Use
+## Authority Boundary
 
-1. Start from [orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md).
-2. Use [wo-authoring-guide.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/wo-authoring-guide.md) when drafting or reviewing a `WO` contract.
-3. Use [flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md) once a `WO` enters review or fix-cycle.
-4. Use [context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md) when a WO creates repeatable prompt packets, external-model consults, or prompt-heavy harnesses.
-5. Use [roles/orchestrator.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/roles/orchestrator.md) to launch or resume an orchestration session.
-6. Create or update a wave folder under [docs/developer/work-orders/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/README.md).
-7. Route active client work to `POKROV-app/main` by default, and call out any bridge-lane work as explicit release-truth or hotfix evidence.
-8. Drive each `WO` through the required review loop before closure.
+Canonical product, architecture, operations, design, and active client documents remain authoritative for intended behavior. Code, tests, and exact runtime evidence establish implementation and observed state. Work orders preserve execution context and evidence; they do not override those owners.
 
-## Scope Rule
-
-These files define the orchestration process.
-
-They do not replace the canonical product, architecture, operations, or client docs. Every work order must still route back to the correct source-of-truth documents for the behavior being changed, and historical `app-next/` notes remain reference material only.
+Completed or superseded work orders are immutable evidence. Correct them with an addendum or a superseding WO.

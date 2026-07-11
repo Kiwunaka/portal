@@ -1,165 +1,96 @@
-# POKROV Flow State
+# POKROV FLOW_STATE
 
-Last updated: 2026-05-23
+Last updated: 2026-07-11
 
-## Document Status
+`FLOW_STATE` is a conditional, compact routing ledger for review loops and durable handoffs. It is not a transcript, completion report, or default WO section.
 
-This file is living source of truth for compact orchestration state, fix-cycle stop rules, and reviewer handoff semantics.
+## Contract
 
-## Purpose
+| Contract | Value |
+| --- | --- |
+| Schema | `2` |
+| Applicability | `conditional` |
+| Same-class stop threshold | `3` |
 
-`FLOW_STATE` keeps a work order from drifting into endless same-executor fix loops.
+Conditional triggers: review | fix_cycle | blocked | partial | durable_handoff
 
-It is not a chat summary and not completion evidence. It is a compact process ledger that records only the facts needed to decide the next safe orchestration action.
+Do not create `FLOW_STATE` for direct work or a WO that has none of these triggers. Create it when the first trigger fires, update it after each relevant routing event, and remove nothing needed by the next owner.
 
-Use it when a `WO` enters review, fix-cycle, release validation, or any long-running handoff that may survive context compaction.
+## Vocabulary
 
-## Core Rule
+Allowed states: review | fix_cycle | redesign_required | blocked | partial | complete
 
-Repeated adjacent findings of the same class are a signal that the mechanism is not closed.
+Allowed next actions: execute | owned_finding_recheck | fresh_final_review | release_validation | problem_class_analysis | wait_for_access | close
 
-If the same issue class appears for the third time without a mechanism change, the orchestrator must stop ordinary fix routing and require a problem-class analysis before the executor continues.
+Finding status: open | fixed | accepted_risk | blocked
 
-This avoids cycles where each pass fixes one local case while the same underlying problem keeps reappearing elsewhere.
+## Schema
 
-## Required State
-
-Each active `WO` should keep a compact `FLOW_STATE` block in the work-order file once review starts.
-
-Minimum fields:
+Use one object in the active WO or durable handoff:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "wo_id": "WO-XXX",
-  "state": "draft | executing | review | fix-cycle | redesign-required | blocked | complete",
-  "ordinary_fix_cycles": 0,
-  "same_class_without_mechanism_change": {},
-  "findings": [],
-  "next_action": "continue | owned-finding-recheck | fresh-final-review | problem-class-analysis | pause-for-human | close",
+  "state": "review",
+  "cycle": 1,
+  "open_findings": [
+    {
+      "id": "Q1",
+      "owner": "spec",
+      "issue_class": "docs_impact_missing",
+      "status": "open",
+      "mechanism_changed": false,
+      "evidence_ref": "review-verdict.md#Q1"
+    }
+  ],
+  "same_class_without_mechanism_change": {
+    "docs_impact_missing": 1
+  },
+  "next_action": "owned_finding_recheck",
   "stop_reason": null
 }
 ```
 
-Finding shape:
+`cycle` increments when findings return for another executor pass. `open_findings` keeps findings needed for routing; remove a resolved item from that list only after its status and evidence remain preserved in the review record. `evidence_ref` points to the owned review or retained proof.
 
-```json
-{
-  "id": "Q1",
-  "source": "spec-reviewer | quality-reviewer | release-validator",
-  "cycle": 1,
-  "issue_class": "docs-impact-missing",
-  "surface": "docs/developer",
-  "summary": "The WO template does not capture docs-impact closure.",
-  "status": "open | fixed | accepted-risk | blocked",
-  "mechanism_changed": false,
-  "evidence": "path or command summary"
-}
-```
+## Update Rules
 
-## Issue Classes
+After each review or fix pass:
 
-Use a stable issue class when a reviewer files a finding. Add a new class only when none of these fit.
+1. record every finding with a stable `issue_class` and explicit owner;
+2. set the finding status and evidence reference;
+3. record whether the fix changed the mechanism that caused the class;
+4. update the same-class counter;
+5. select one allowed state and one allowed next action;
+6. record a stop reason when ordinary routing cannot continue.
 
-Recommended classes:
+The filing reviewer performs `owned_finding_recheck` only for their findings. Use `fresh_final_review` for an independent final pass when selected by the WO. Use `release_validation` only for the exact candidate and triggered release gates.
 
-- `acceptance-gap`
-- `docs-impact-missing`
-- `release-claim-drift`
-- `copy-policy-drift`
-- `source-of-truth-conflict`
-- `validation-gap`
-- `validation-attribution-gap`
-- `proof-boundary-gap`
-- `mechanism-adequacy-gap`
-- `reviewability-gap`
-- `context-cost-harness-gap`
-- `prompt-cache-regression`
-- `scope-creep`
-- `stale-evidence`
-- `wrong-lane-routing`
-- `permission-or-secret-risk`
-- `test-brittleness`
-- `implementation-quality`
-- `review-process-gap`
+## Same-Class Stop Mechanism
 
-## Review Loop Semantics
+The counter measures repeated findings in one issue class without a mechanism change.
 
-Use two review modes:
+- First occurrence: set the class counter to `1`.
+- Second occurrence without a mechanism change: set it to `2` and require the next pass to address the class mechanism.
+- Third occurrence without a mechanism change: stop ordinary fix routing, set state to `redesign_required`, set next action to `problem_class_analysis`, and record `stop_reason`.
+- A proven mechanism change starts a new count for later occurrences of that class; retain the prior review evidence.
 
-- `owned-finding recheck`
-  The same reviewer checks only the findings they previously filed. They should not broaden the review unless the fix clearly created new risk in the same touched area.
-- `fresh-final review`
-  A new fresh-context reviewer checks the final state after owned findings are closed.
-
-Default sequence:
-
-1. executor completes the WO pass
-2. spec reviewer checks contract compliance
-3. executor fixes exact spec findings if needed
-4. the same spec reviewer rechecks only owned findings
-5. quality reviewer checks implementation quality after spec findings are closed
-6. executor fixes exact quality findings if needed
-7. the same quality reviewer rechecks only owned findings
-8. a fresh-final reviewer checks the final state when the WO is non-trivial or risk-sensitive
-9. release validator runs when release-sensitive evidence is part of the WO
-
-## Stop Rules
-
-Stop ordinary same-executor fix routing when any condition is true:
-
-- `ordinary_fix_cycles >= 3` and unresolved findings remain
-- the same `issue_class` appears for the third time with `mechanism_changed=false`
-- a fix changes the WO write scope, repo lane, docs impact, release risk, or manual-check requirements
-- a reviewer finds a source-of-truth conflict that cannot be resolved inside the current WO
-- validation keeps failing for the same reason after two focused fix attempts
-- required external access, device access, deploy access, or origin evidence is unavailable
-
-When a stop rule fires, set:
-
-```json
-{
-  "state": "redesign-required",
-  "next_action": "problem-class-analysis",
-  "stop_reason": "same_issue_class_without_mechanism_change"
-}
-```
+Do not bypass the threshold by renaming an equivalent issue class, switching executors, or closing and reopening the finding.
 
 ## Problem-Class Analysis
 
-Before another executor pass, the orchestrator must record a short analysis in the WO:
+Before another executor pass, record:
 
-- repeated issue class
-- affected surfaces
-- why local fixes are not closing the class
-- mechanism that should close the class
-- acceptance criteria that must change
-- validator, test, lint, docs rule, or workflow guardrail to add
-- whether the WO should be split, rescoped, or escalated to the user
+- the repeated issue class and affected surfaces;
+- why local fixes did not close it;
+- the mechanism change needed;
+- revised acceptance and validation;
+- whether scope, lane, docs impact, or manual gates changed;
+- whether to split, rescope, accept a bounded risk, wait for access, or ask the user.
 
-After the analysis, the orchestrator may route a new executor pass only if the pass changes the mechanism or explicitly narrows the WO to a valid partial outcome.
+Execution resumes only after the contract and collision gate reflect any scope change. If no safe mechanism or required authority exists, use `blocked` with `wait_for_access`, or preserve a truthful `partial` outcome.
 
-## Compaction And Handoff
+## Completion
 
-`FLOW_STATE` must survive context compaction and role handoff.
-
-Preserve:
-
-- current `state`
-- `ordinary_fix_cycles`
-- open findings
-- issue-class counts
-- whether the last pass changed the mechanism
-- next action
-- stop reason
-
-Do not preserve:
-
-- long reviewer prose
-- duplicate command logs
-- stale exploration notes
-- hidden reasoning
-
-## Completion Rule
-
-A WO may not be marked `complete` while `FLOW_STATE.next_action` is `problem-class-analysis`, `pause-for-human`, or any open finding remains without an explicit `accepted-risk` note from the orchestrator.
+Use `complete` with `close` only when no finding remains open or blocked, accepted risks are explicit, required evidence exists, and no stop reason still requires action. Keep the final state as durable evidence; completed WOs are not rewritten into product canon.

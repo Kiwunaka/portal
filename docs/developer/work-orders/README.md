@@ -1,64 +1,64 @@
 # POKROV Work Orders
 
-Last updated: 2026-05-23
+Last updated: 2026-07-11
 
-## Document Status
+This directory stores durable execution state and retained execution evidence. It is not a product, architecture, operations, design, release, or active-client source of truth.
 
-This directory is the living execution area for active orchestration waves and the retained evidence archive for completed or superseded waves.
+## Classification
 
-## Purpose
+- Active WOs and their active wave index are `ACTIVE_EXECUTION`.
+- Completed or superseded WOs, closed indexes, reviews, and completion records are `EVIDENCE`.
 
-Use this area to store active and resumable execution artifacts that should survive chat boundaries.
+The classification controls retrieval: active artifacts may route current execution; evidence may explain what happened. Neither silently overrides canonical owners, current code/tests, or exact runtime evidence.
 
-Templates do not live here.
+## Naming And Layout
 
-Templates live under:
+Use one dated wave directory:
 
-- [docs/developer/orchestration/templates/](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates)
+```text
+docs/developer/work-orders/YYYY-MM-DD--wave-name/
+```
 
-## Active Waves
+Inside it, use:
 
-- [2026-06-27--repo-feature-story-audit](C:/Users/kiwun/Documents/ai/VPN/docs/developer/work-orders/2026-06-27--repo-feature-story-audit/INDEX.md) - active repo-wide feature/function inventory, user-story tracker, evidence audit, defect/fix/retest ledger, owner-gated scenario matrix, and completion audit.
+```text
+INDEX.md
+WO-001-short-title.md
+WO-002-short-title.md
+```
 
-## Naming
-
-Wave folders should use this format:
-
-- `YYYY-MM-DD--wave-name`
-
-Inside each wave folder:
-
-- `INDEX.md`
-- `WO-001-short-title.md`
-- `WO-002-short-title.md`
+Exactly one active `INDEX.md` exists per wave. It routes the queue, dependencies, current state, blockers, and next action. Export packets and audit reports use distinct filenames and cannot become a competing active index.
 
 ## Storage Rules
 
-- keep only living execution artifacts or intentionally retained historical evidence here
-- keep one `INDEX.md` per wave
-- keep one bounded outcome per `WO`
-- do not replace canonical product, architecture, operations, or active client docs with work-order notes
-- active client workflow truth lives in `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`
-- use `docs/archive/client-lanes/*` only as historical bootstrap or rollback evidence when a wave needs that provenance
-- link to evidence under `docs/audit-artifacts/` rather than copying raw logs into the WO
-- rendered journeys, mockups, and visual audit outputs are retained evidence/reference; they are not current UI authority unless `DESIGN.md` or `docs/design/**` says so
-- old wave folders should be indexed or marked historical instead of deleted during routine cleanup
+- Keep one bounded outcome per WO.
+- Link canonical owners and durable evidence; do not copy their full contents.
+- Keep raw logs, screenshots, manifests, and release proof in the canonical artifact/evidence location and reference them.
+- Keep platform and active-client lane evidence distinguishable when a wave spans repositories.
+- Preserve completed and superseded material; relabel unclear history instead of deleting it during routine cleanup.
+- Keep templates under [orchestration/templates](../orchestration/templates/), not in a live wave.
 
-## Continuity Rule
+## Evidence Boundary
 
-A new orchestrator should be able to resume from the wave folder alone:
+Completed evidence is not rewritten into product canon. If a completed WO contains a decision that should remain current, reconcile that decision through the canonical owner and link back to the WO as provenance.
 
-- understand the queue from `INDEX.md`
-- understand each WO from its contract and evidence
-- see what was verified
-- see which evidence source tiers were used and which checks were owned by the WO
-- see the MREP, proof boundaries, and review focus for medium/high-risk WOs
-- see LLM context/cost harness expectations when repeatable prompt packets or provider routes change
-- see what is still partial or blocked
-- see the compact `FLOW_STATE` for review loops, repeated issue classes, and next action
+Completed or superseded WOs are immutable. Use a dated addendum for a factual correction that preserves the original record. Use a superseding WO for new scope, changed acceptance, or a new decision.
 
-If a wave touches the platform lane, the active `POKROV-app` lane, and/or the bridge release lane, keep that evidence separated inside the relevant `WO` files instead of collapsing them into one generic client result.
+## Continuity Contract
 
-## Historical Material
+A new orchestrator must be able to resume active work from the wave folder without chat history. Preserve:
 
-Older flat orchestration and release logs under `docs/archive/flat-docs/` remain historical or supporting material unless canonical docs relink them as current.
+- goal and status;
+- exact write and no-touch scope;
+- authority anchors and acceptance oracle;
+- validation and structured evidence;
+- blockers, accepted risks, and next action;
+- documentation impact;
+- lane and promotion state;
+- triggered proof blocks and conditional `FLOW_STATE` when applicable.
+
+Do not preserve hidden reasoning, duplicate command logs, irrelevant exploration, secrets, private data, or raw provider payloads.
+
+## Closure
+
+When a WO closes, update the wave index classification and next action. Keep remaining manual or access-dependent gates explicit. A useful bounded result may be `partial`; missing authority or proof may be `blocked`. Do not relabel either as complete to make the wave look finished.

@@ -1,150 +1,117 @@
 # Agent Context And Cost Harnesses
 
-Last updated: 2026-05-23
+Last updated: 2026-07-11
 
-## Document Status
+This file owns provider-neutral rules for reusable context packets, redaction, usage telemetry, and cost/latency evaluation. It does not select models, vendors, operator tools, or prices.
 
-This file is the workspace standard for cache-aware agent prompts, external-model context packets, and LLM cost/latency harnesses.
+## Applicability
 
-Use it when a `WO`, review packet, design/copy consult, release-goal packet, or video-agent prompt sends substantial repeated context to an LLM.
+Use this harness when work creates or changes a reusable prompt, provider route, prompt-heavy batch or evaluation, external consult path, or production prompt system. Ordinary code, ordinary docs, and one-off manual drafting do not need an empty harness block.
 
-## Sources And Scope
+## Packet Shape
 
-This guidance is based on:
-
-- OpenAI Codex use cases: durable goals, teammate setup, production systems, review, and automation workflows.
-- OpenAI Prompt Caching guide: prompt caching starts at 1024+ prompt tokens, exposes `usage.prompt_tokens_details.cached_tokens`, and supports `prompt_cache_retention` on supported models.
-- The local prompt-caching playbook reviewed from `C:/Users/kiwun/Downloads/Telegram Desktop/prompt-caching-playbook`.
-
-The source-specific pricing numbers in external playbooks are useful for prioritization, not product canon. The local rule is: measure cache hit rate and token split in our own traces before treating a savings claim as proven.
-
-## What We Should Add To Agent Work
-
-### 1. Cache-Aware Context Packet Shape
-
-Every repeatable prompt packet should be assembled in this order:
+Keep stable, reusable content before run-specific content:
 
 ```text
 # STABLE PREFIX
-tool definitions or tool names
-role and output contract
-POKROV canon and safety rules
-stable repo/workflow rules
-stable examples or rubrics
+role and authority boundary
+output contract
+stable safety and canon excerpts
+stable tools, rubric, and examples
 
 # CACHE BREAKPOINT
 
 # DYNAMIC SUFFIX
-current task
-current date
-cwd, branch, git status
-latest user steering
-fresh file excerpts
-run id / trace id
-tool outputs
+current task and steering
+date, run id, and trace id
+cwd, branch, status, and candidate identity
+fresh file excerpts and tool output
 ```
 
-Do not put current date, request id, trace id, live `git status`, dirty-file lists, or current run state at the start of a reusable prompt. These values belong after the cache breakpoint.
+Preserve stable-prefix order. Sort generated tool or rubric lists deterministically. Do not place dates, identifiers, current status, dirty paths, fresh excerpts, or tool results before the cache breakpoint.
 
-### 2. Context Packet Harness
+## Static Packet Audit
 
-Before reusing or sharing a large prompt packet, run:
+Run the repository auditor before high-volume reuse or an expensive evaluation:
 
 ```powershell
 python scripts/agent_context_packet_audit.py <packet.md>
 ```
 
-The harness flags dynamic markers in the stable prefix and estimates whether the stable prefix is large enough to qualify for OpenAI prompt caching. It is deliberately conservative and does not call any provider.
+For the platform context itself:
 
-Use this harness for:
+```powershell
+python scripts/agent_context_packet_audit.py --platform-context-root .
+```
 
-- generated external-model review packets
-- copy/design critique packets sent through OpenCode
-- WO packets that include large canon excerpts
-- release-goal packets reused across multiple sessions
-- `.content-video-ad` research/script prompt packets when they become repeatable
+The auditor checks packet shape and dynamic markers. It makes no network call and does not prove remote cache behavior, answer quality, latency, or price.
 
-### 3. Telemetry Harness For Real LLM Calls
+## Redaction Boundary
 
-Any repo-owned production LLM integration should log a provider-neutral record:
+Packets, traces, and artifacts must not contain:
+
+- secrets, credentials, tokens, private keys, auth headers, or raw configuration stores;
+- raw customer data, personal email, session data, payment payloads, or private support conversations;
+- subscription URLs, connection material, unredacted provider payloads, or hidden reasoning;
+- broad repository dumps when targeted excerpts are enough.
+
+Use placeholders or irreversible hashes only when they are necessary for correlation. Hashes must be coarse enough to avoid reconstructing sensitive values. Review exported packets as data leaving the repository boundary even when the receiver is automated.
+
+## Provider-Neutral Telemetry
+
+Record comparable measurements without coupling the contract to one API:
 
 ```json
 {
-  "provider": "openai | anthropic | gemini | self_hosted | other",
-  "model": "model-id",
-  "prompt_tokens": 0,
+  "route_label": "redacted-stable-label",
+  "model_label": "opaque-versioned-label",
+  "request_count": 0,
+  "input_tokens": 0,
   "cache_read_tokens": 0,
   "cache_write_tokens": 0,
   "new_input_tokens": 0,
   "output_tokens": 0,
-  "cache_hit_rate": 0.0,
-  "ttft_ms": 0,
+  "cache_hit_rate": null,
+  "time_to_first_output_ms": null,
   "total_latency_ms": 0,
-  "system_prompt_hash": "12-char-prefix",
-  "tools_hash": "12-char-prefix",
-  "prompt_cache_key": "redacted-or-coarse-segment"
+  "stable_prefix_hash": "short-non-sensitive-hash",
+  "tools_hash": "short-non-sensitive-hash",
+  "result": "pass | fail | blocked"
 }
 ```
 
-For OpenAI Responses or Chat Completions, parse `usage.prompt_tokens_details.cached_tokens` when it is present. Requests below 1024 prompt tokens should be expected to report `cached_tokens=0`.
+Map available usage fields into this shape. Keep unsupported measurements `null`; never fabricate zeros for unavailable telemetry. Store aggregate or per-run measurements only when the retention policy permits them. Do not log raw prompts or responses merely to compute cost.
 
-Telemetry must never log raw prompts, secrets, auth headers, Telegram initData, private emails, payment payloads, or subscription URLs.
+`new_input_tokens` should be derived only when the source accounting is compatible. Document the formula and prevent negative values. A cache hit rate is meaningful only when the measured route exposes a compatible cache-read count.
 
-### 4. WO-Level Cost/Context Risk
+## Evaluation Contour
 
-Set the `LLM Context And Cost Harness` section in the WO to `Required: yes` when the work creates or changes:
+Before claiming an improvement, define:
 
-- an agent prompt or reusable context packet
-- an external-model consult path
-- a prompt-heavy batch process
-- an eval or review harness that repeats the same large context
-- provider routing for OpenAI, Anthropic, Gemini, OpenRouter, Fireworks, CODY, or self-hosted models
-- `.content-video-ad` scripts/prompts/model orchestration
+- baseline and candidate packet versions;
+- stable-prefix hash and change reason;
+- representative tasks and output oracle;
+- warm-up treatment and sample size;
+- token, cache, latency, quality, and failure measurements available;
+- attribution for route or access failures;
+- acceptable regression bounds and stop condition.
 
-Set `Required: no` for ordinary product code, docs-only edits, and one-off manual model consults where no repeatable LLM call path changes.
+Compare equivalent tasks and candidate settings. Report missing telemetry and variance. A lower token count does not prove better quality; a faster response does not prove correct output; a static audit does not prove cache use.
 
-### 5. Provider Routing Rules
+## WO Contract
 
-For cache-heavy workloads:
+When the authoring-guide trigger fires, the optional WO block records:
 
-- prefer stable direct-provider routes when cache telemetry matters
-- avoid switching model/provider mid-session unless a cold-cache reset is acceptable
-- keep tool definitions stable and versioned; reordering tools can invalidate the cached prefix
-- keep `prompt_cache_key` coarse enough to aggregate traffic, not per one-off request
-- use longer retention only when request gaps make it useful and the provider supports it
+- stable-prefix and dynamic-suffix contents;
+- redaction review and export boundary;
+- static audit command and result;
+- available telemetry mapping;
+- evaluation oracle and residual risk;
+- ownership of route-dependent failures;
+- retained aggregate evidence reference.
 
-OpenRouter and similar proxy routes can be fine for one-off critique, but cache-sensitive agent loops need explicit proof that cache stats and sticky routing work.
+Keep task-specific routing preferences outside this provider-neutral owner. Do not add a dependency, gateway, vector store, loader, or service merely to satisfy this documentation contract.
 
-## Codex Use-Case Mapping For POKROV
+## Completion
 
-The OpenAI Codex use-case page reinforces patterns we already want locally:
-
-| Codex pattern | POKROV implementation |
-| --- | --- |
-| Durable goal | `GOAL.md`, `FLOW_STATE`, and work-order completion evidence. |
-| Set up a teammate | `AGENTS.md`, canonical docs, and stable context packets. |
-| Production systems | WO proof boundaries, release gates, and exact repo-lane evidence. |
-| Review and repair loops | owned-finding rechecks, fresh-final reviews, and problem-class analysis. |
-| Automation | heartbeats/automations only when a real later check or feedback loop exists. |
-
-The missing piece was cost observability. That is why this file adds the packet linter and telemetry schema.
-
-## Anti-Patterns To Reject
-
-- Dynamic date/session/request ids before the cache breakpoint.
-- Rebuilding the whole prompt from unordered maps or unsorted tool arrays.
-- Adding live `git status` or file tree output to the stable system block.
-- Reformatting old conversation history on every turn.
-- Putting dynamic tool results into a cached prefix.
-- Sending large provider calls without cache usage telemetry.
-- Claiming cost improvement without before/after token and cache-hit evidence.
-
-## Completion Standard
-
-A prompt-heavy WO is not complete until it records:
-
-- stable prefix and dynamic suffix boundaries
-- the harness or telemetry used
-- cache hit evidence or a reason it is not measurable
-- expected residual cost risk
-- whether failures are attributable to this WO or to provider/proxy behavior
+The harness is complete when the reusable packet passes the applicable static audit, prohibited data is absent, measurements are honestly mapped, the quality oracle runs or is explicitly blocked, and the handoff states residual cost, latency, cache, and attribution limits.

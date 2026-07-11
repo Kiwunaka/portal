@@ -1,254 +1,118 @@
 # POKROV WO Authoring Guide
 
-Last updated: 2026-05-23
+Last updated: 2026-07-11
 
-## Document Status
+This guide owns the compact work-order contract and the conditions that expand it. The [orchestration standard](orchestration-standard.md) owns ceremony, routing, lifecycle, review, and closure.
 
-This file is the authoring guide for `POKROV` work orders.
+## When To Create A WO
 
-Use it together with:
+Use a WO for `bounded_wo` or `release_wo`. A direct task needs focused validation and handoff, not a placeholder WO.
 
-- [orchestration-standard.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/orchestration-standard.md)
-- [flow-state.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/flow-state.md)
-- [context-cost-harnesses.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/context-cost-harnesses.md)
-- [WO.template.md](C:/Users/kiwun/Documents/ai/VPN/docs/developer/orchestration/templates/WO.template.md)
+Create one WO for one bounded outcome. If two outcomes have different write owners, acceptance oracles, or promotion paths, split them. A WO is durable task memory, not a transcript and not product canon.
 
-The standard defines lifecycle and routing. This guide defines how to write a WO that an executor, reviewer, and validator can actually close without relying on chat memory.
+## Compact Contract
 
-## Wave Layout
+Start from [WO.template.md](templates/WO.template.md). The compact WO contains only:
 
-Live wave folders stay under:
+1. metadata;
+2. goal;
+3. non-goals;
+4. write scope;
+5. no-touch scope;
+6. authority anchors;
+7. acceptance oracle;
+8. docs impact;
+9. validation and evidence;
+10. status and handoff.
 
-```text
-docs/developer/work-orders/<YYYY-MM-DD--slug>/INDEX.md
-docs/developer/work-orders/<YYYY-MM-DD--slug>/WO-001-<slug>.md
-```
+Use exact paths in scope fields. Authority anchors should be the selected router row, canonical owners, current code/tests, and exact runtime evidence needed for this outcome. Do not paste a universal read pack.
 
-Use exactly one active `INDEX.md` per wave. If an external review packet needs a unique filename, create that as an export artifact, not as a competing active index.
+The acceptance oracle states what observation decides success. A plan, prose review, or file edit is not an oracle by itself. If no trustworthy oracle exists, keep the WO in discovery, strategy, `partial`, or `blocked` state.
 
-Wave folder names use:
+## Conditional Proof Blocks
 
-- `YYYY-MM-DD--kebab-case-slug`
-- exactly two hyphens between date and slug
-- date first, slug second
+Add a block only when its trigger applies. `release_wo` usually activates several blocks, but still omits irrelevant boilerplate.
 
-## Ceremony Levels
-
-Use a compact WO for low-risk, singleton, docs-only, mechanical, or narrow localized work where local correctness cannot differ from final system correctness.
-
-Use a full WO for medium or high-risk work, batch execution, shared contracts, generated artifacts, validation harnesses, runtime behavior, persistence, security, data integrity, API/UI hierarchy, release evidence, or origin-specific proof.
-
-A compact WO may omit detailed proof blocks only when it explicitly records:
-
-- low risk mode and reason
-- validation scope
-- MREP status or N/A reason
-- hard no-touch scope
-- acceptance criteria
-
-## Durable Thread Memory
-
-A WO is the durable memory of the workstream, not a transcript.
-
-Anything that must survive thread compaction, remote steering, role handoff, or delayed review belongs in a file:
-
-- the WO for scope, proof, status, and findings
-- the wave `INDEX.md` for routing and ordering
-- completion evidence for closure state
-- retained artifacts for screenshots, reports, generated files, or runtime proof
-
-If a later steering message changes scope, risk, validation, manual checks, repo lane, or acceptance, update the WO before continuing. Do not leave the new contract only in chat.
-
-## Goal And Oracle
-
-A strong WO goal needs a verification oracle.
-
-Bad shape:
-
-- implement the plan in this Markdown file
-
-Better shape:
-
-- implement the behavior, and prove it with the named tests, artifact inspection, runtime smoke, manual gate, or release report that decides correctness
-
-For medium/high-risk work, the oracle normally lives in:
-
-- `Minimal E2E Path (MREP)`
-- `Risk Proof Plan`
-- `Mechanism Adequacy`
-- `Validation Attribution`
-
-If no trustworthy oracle exists yet, the WO should be discovery, strategy, partial, or blocked instead of pretending implementation can close it.
-
-## Inspection Surface
-
-When the result is visual, generated, interactive, or operational, name where the reviewer should inspect it.
-
-Examples:
-
-- local browser target
-- static `index.html`
-- rendered screenshot or PDF
-- generated manifest or bundle
-- release-gate markdown report
-- admin/cabinet/browser page
-- device/runtime smoke output
-
-The inspection surface should be diffable, reviewable, or reproducible whenever possible. A screenshot without source, command, or environment context is weak evidence.
-
-## Long-Running Feedback Loops
-
-If a WO depends on later feedback, PR comments, deploy completion, provider access, device availability, or external-origin evidence, record:
-
-- cadence or next check
-- owner
-- stop condition
-- artifact or thread to update
-- what should happen when feedback arrives
-
-Use a heartbeat or automation when the current thread should wake up later and continue the loop. Do not model a recurring monitor as a one-time manual reminder unless the user explicitly wants that.
-
-## LLM Context And Cost Harness
-
-Set `Required: yes` when the WO changes a repeatable prompt, context packet, external-model consult path, provider route, prompt-heavy eval, or `.content-video-ad` model orchestration.
-
-When required, define:
-
-- stable prefix blocks
-- dynamic suffix blocks
-- cache/key/retention policy when a provider supports it
-- telemetry required, including cache read/new input/output token split when available
-- harness or eval command
-- anti-cache-miss controls
-- residual cost risk
-
-For reusable prompt packets, run:
-
-```powershell
-python scripts/agent_context_packet_audit.py <packet.md>
-```
-
-This is a static harness. It proves prompt-shape discipline, not provider cache behavior. Real provider behavior still needs usage telemetry such as OpenAI `cached_tokens`.
-
-## Evidence Source Tiers
-
-Use these tier labels when recording checks:
-
-| Tier | Meaning |
+| Optional block | Required when |
 | --- | --- |
-| `static_review` | Source, config, docs, or diff inspection only. |
-| `synthetic_test` | Unit or generated test built for this WO. |
-| `tracked_fixture` | A fixture, snapshot, sample, or corpus retained in the repo or evidence folder. |
-| `generated_artifact` | A built/exported artifact, report, screenshot, bundle, manifest, or derived file. |
-| `api_e2e` | End-to-end API flow through real route boundaries or smoke harness. |
-| `ui_behavior` | Browser, client, or interactive UI behavior check. |
-| `runtime_smoke` | Runtime service, local server, device, deployed host, or process-level smoke. |
-| `full_validation_epoch` | Whole gate pack or full release-style validation contour. |
-| `manual` | Human/operator/device/provider confirmation. |
-| `n/a` | Not applicable, with a short reason. |
+| MREP | a trustworthy end-to-end path exists and local correctness can diverge |
+| Risk proof | runtime, persistence, security, payment, release, generated-artifact, or origin risk exists |
+| Mechanism adequacy | weak textual proof could falsely close semantic/runtime acceptance |
+| Reviewability | an independent reviewer is selected |
+| Validation attribution | checks span WO, wave, integration, or pre-existing failures |
+| Manual gates | provider, device, signing, store, deploy, account, or origin access is required |
+| Promotion evidence | more than a throwaway local edit is intended to land |
+| Context/cost harness | reusable prompt, provider route, batch/eval, or prompt-heavy system changes |
 
-Do not let a broad acceptance criterion close on a weaker tier unless the WO narrows the criterion and records the residual risk.
+### MREP
 
-## Minimal E2E Path
+Record the entry point, expected result, smallest trustworthy end-to-end path, validation, evidence reference, and limitations. If no meaningful path exists, omit the block and explain that limitation in the oracle or handoff.
 
-Every medium/high-risk WO should state the minimal end-to-end path that proves the intended result at the smallest trustworthy boundary.
+### Risk Proof
 
-Required fields:
+Name the risk, authoritative boundary, positive and negative cases, required evidence scope, and closure owner. Do not substitute implementation steps for proof.
 
-- `Entry point`
-- `Expected`
-- `Validation`
-- `Evidence source tier`
-- `Notes`
+### Mechanism Adequacy
 
-If there is no meaningful MREP, write `n/a` and explain why. Do not leave the section blank.
+Classify acceptance as semantic, textual, mechanical, artifact-shape, runtime-behavior, or hybrid. State why the proof reaches the authoritative boundary and list blind spots. Text-only proof may close only a text-bounded claim.
 
-## Risk Proof Plan
+### Reviewability
 
-Set `Required: yes` when local correctness can differ from final system correctness.
+Name expected diff shape, risk lenses, proof boundaries, tricky invariants, required inspection surfaces, and relevant pre-existing debt. This lets the reviewer inspect the result instead of rediscovering the task.
 
-Common triggers:
+### Validation Attribution
 
-- validation harnesses or release gates
-- generated artifacts or static exports
-- shared contracts across platform and client lanes
-- runtime, persistence, payments, security, or data integrity
-- UI hierarchy where screenshot/build output can differ from source intent
-- origin-specific evidence such as `current-origin`, `brain-origin`, or `RU-origin`
-- manual/provider/device evidence required for closure
+Separate checks owned by this WO from wave integration and pre-existing or unrelated failures. Use the standard evidence `attribution` values for every recorded result.
 
-For low-risk docs, mechanical renames, formatting, or isolated read-only discovery, set `Required: no` with a short reason.
+### Manual Gates
 
-When required, define:
+Name the exact gate, owner, candidate, environment or origin, required access, evidence destination, and effect if unavailable. Use the standard manual labels. A skip or attestation is not a pass.
 
-- risk reason
-- authoritative boundary
-- closure cases
-- negative controls
-- evidence source tiers required
-- full validation owner
+### Promotion Evidence
 
-The plan should define proof boundaries, not implementation steps.
+Record repository lane, working branch/worktree, commit state, intended promotion state, and any integration owner. Do not infer promotion from a local branch name.
 
-## Mechanism Adequacy
+### Context/Cost Harness
 
-Set `Required: yes` when the WO is proof-heavy: guard, validator, analyzer, static policy, generated artifact, validation harness, release gate, or any semantic acceptance that can be falsely closed by one example.
+Define stable-prefix and dynamic-suffix boundaries, redaction, static packet audit, provider-neutral usage telemetry, evaluation contour, and residual cost or latency risk. Follow [context-cost-harnesses.md](context-cost-harnesses.md).
 
-When required, state:
+## Evidence Records
 
-- acceptance kind: `semantic`, `textual`, `mechanical`, `artifact-shape`, `runtime-behavior`, or `hybrid`
-- proposed proof mechanism
-- why the mechanism reaches the authoritative boundary
-- known blind spots
-- whether regex/text-only proof is allowed
+Use the structured evidence dimensions from the orchestration standard. One record describes one check at one target scope and freshness. Keep command summaries compact; put durable logs, screenshots, reports, or manifests in their canonical evidence location and link them.
 
-Semantic acceptance such as "X must not affect behavior, routing, ranking, validation, persistence, permissions, or output" cannot be closed by regex/text-only proof unless the WO narrows acceptance to literal text, artifact name, or path scope and records the remaining risk.
+Do not:
 
-## Reviewability
+- widen a local result to an exact candidate or deployed environment;
+- mix current and historical evidence;
+- hide WO-owned failures in a wave-level summary;
+- copy raw secrets, personal data, provider payloads, or connection material;
+- claim a manual gate was executed when it was not.
 
-Write the WO so a reviewer knows where to look before they start.
+## Scope And Steering Changes
 
-Required fields for full WOs:
+Update the WO before continuing when steering changes write scope, no-touch scope, lane, authority, acceptance, risk, documentation impact, validation, manual gates, or promotion intent. The orchestrator reruns the collision gate for changed write scope and selects any newly required proof block or role.
 
-- `Expected diff shape`
-- `Risk lenses`
-- `Proof boundaries`
-- `Known tricky invariants`
-- `Reviewer must inspect`
-- `Pre-existing issues that should be follow-up debt unless they block acceptance`
+## Review And Flow State
 
-This prevents generic review passes and keeps reviewer attention on the real risk zones.
+Independent reviewers use the normalized verdict, finding, and evidence interface from the standard. Add [FLOW_STATE](flow-state.md) only when review, a fix cycle, blocked or partial state, or durable handoff triggers it. Do not place an empty flow block in every WO.
 
-## Validation Attribution
+## Continuity And Handoff
 
-Validation must say what belongs to this WO and what belongs to the wider wave.
+A resumable WO preserves:
 
-Required fields for full WOs:
+- goal and current status;
+- exact write and no-touch scope;
+- authority anchors and acceptance oracle;
+- documentation impact;
+- validation and evidence with attribution;
+- blockers, accepted risks, and next action;
+- lane and promotion state;
+- any triggered proof blocks and conditional flow state.
 
-- `Checks owned by this WO`
-- `Evidence source tiers required`
-- `Failures likely attributable to this WO`
-- `Failures that are wave-level/integration`
+Keep exploration prose, hidden reasoning, duplicate command logs, and unrelated repository history out of the WO.
 
-This keeps two mistakes out of the process:
+## Immutability
 
-- treating an unrelated or pre-existing failure as proof the WO is bad
-- ignoring an owned failure by calling it "not my test"
+While active, update the WO as the durable execution contract. After status becomes `complete`, or the WO is superseded and retained as evidence, do not rewrite it to match later product truth.
 
-## Quality Bar
-
-Each WO must be self-contained enough for executor, reviewer, and validator to work without chat history.
-
-Medium/high-risk WOs need:
-
-- concrete evidence anchors
-- target files and symbols
-- MREP or explicit N/A
-- risk proof plan or explicit N/A
-- mechanism adequacy or explicit N/A
-- LLM context/cost harness or explicit N/A when prompts, model routing, or agent packets change
-- reviewability guidance
-- validation attribution
-- focused validation
-
-The WO plan is guidance, not a script. Put route, ordering constraints, and known traps in the WO, but leave local implementation mechanics to the executor when current code evidence supports a better route.
+Use a dated addendum for a factual correction that must preserve the original record. Use a superseding WO for new scope, changed acceptance, or a new decision. Current behavior still belongs in its canonical product, architecture, operations, design, or client owner.
