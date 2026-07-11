@@ -249,6 +249,7 @@ function Get-IgnoredClass {
 
     if ($path -cmatch '(^|/)(node_modules|\.next|out|\.dart_tool|build|__pycache__)(/|$)' -or
         $path -cmatch '(^|/)flutter/ephemeral(/|$)' -or
+        $path -cmatch '^apps/macos_shell/macos/Flutter/ephemeral(?:/|$)' -or
         $path -cmatch '^(\.pytest_cache|\.tmp)(/|$)' -or
         $path -cmatch '(^|/)portal_api_test_[^/]*\.db$' -or
         ($Id -cne 'release-hardening-client' -and $path -cin @('marketing/next-env.d.ts', 'webapp/next-env.d.ts')) -or
