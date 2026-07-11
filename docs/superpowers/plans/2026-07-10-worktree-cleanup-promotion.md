@@ -924,13 +924,16 @@ Run the program only as `python.exe -B`. Its command surface is exact:
 - `prove`: read-only, with `BeforeClean`, `AfterClean`,
   `BeforeStaleRemoval`, and `BeforeTemporaryRemoval` modes;
 - `execute-task5`: the sole fresh-run path allowed to invoke ignored cleanup;
-- `recover-task5`: the sole resumed-run cleanup path for an already-started
-  Task 5 run.
+- `recover-task5`: the sole recovery command for an interrupted pin epoch or an
+  already-started Task 5 run. Pin recovery is non-cleaning; cleanup recovery may
+  resume only the exact existing run.
 
 The argument contract is fixed: `pin` receives the manifest path and approved
-self hash; `prove` also receives one mode and entry ID; `execute-task5` and
-`recover-task5` also receive one run nonce. No command accepts a worktree path,
-Git argument, cleanup order, or executable override from the caller.
+self hash; `prove` also receives one mode and entry ID; `execute-task5` also
+receives one new run nonce. `recover-task5` receives the approved hash and uses
+no nonce for a detected pin epoch, or requires the exact existing nonce for a
+cleanup epoch. No command accepts a worktree path, Git argument, cleanup order,
+or executable override from the caller.
 
 The program must use only the Python standard library. It must reject an
 unexpected path, non-plain source, reparse source/root, wrong byte count,
@@ -938,6 +941,11 @@ unapproved self SHA-256, failed parser/import smoke, or non-stdlib import. Every
 command rehashes its own bytes and checks the manifest pin. Proof-only Git calls
 use `GIT_OPTIONAL_LOCKS=0`, NUL-delimited byte parsing where paths are returned,
 and never write a repository, index, worktree, stash, snapshot, or manifest.
+Every proof-only Git path—including the general inventory adapter—must drain
+stdout and stderr concurrently with bounded buffers, emit aggregate heartbeats
+at least every 30 seconds, stop on no-progress or output-limit breach, and avoid
+a blind total timeout while verified byte/process progress continues. It never
+prints path inventory or unbounded child output.
 
 The only auxiliary files are:
 
@@ -977,6 +985,14 @@ NaN/Infinity, booleans used as integers, floats used as integers, missing or
 extra properties, wrong exact types, malformed hashes/timestamps, duplicate
 IDs/paths, path escapes, and invalid state membership. Validate every declared
 snapshot record and audit field, not only aggregate counts.
+
+The raw snapshot manifests remain immutable and must match their exact byte and
+file-hash pins. A per-file record SHA is valid only as exactly 64 hexadecimal
+characters, in uppercase, lowercase, or mixed case. Canonicalize it in memory
+to lowercase before record-digest or payload-hash comparison; never rewrite the
+persisted bytes. Reject any non-hex character or wrong/mixed length. Live-format
+tests must traverse the comparison path for all `126` actual uppercase records,
+not only lowercase synthetic fixtures.
 
 Compute canonical SHA-256 over the immutable projection:
 
@@ -1019,6 +1035,23 @@ fsyncs the candidate before atomic `os.replace`, reloads the published bytes,
 and checks exact postconditions. An existing `proof_gate`, lock mismatch,
 candidate collision, or predecessor drift blocks pinning without mutation.
 
+The normal pre-pin shape is the raw predecessor alone. A recoverable pin epoch
+begins only when the permanent lock exists; its allowed durable shapes are raw
+predecessor plus lock, raw predecessor plus lock and one exact temp candidate,
+or the published `proof_gate` manifest plus lock and no temp. `recover-task5`
+detects this epoch before any runtime validation and never invokes cleanup.
+
+Validate the current raw predecessor with the predecessor schema, not the
+runtime schema. Define the sole `PIN` one-step relation as exact raw predecessor
+to exact `proof_gate` candidate. With a temp candidate, validate both raw files,
+the relation, approved source, lock, and live read-only seals before promoting
+or rejecting it; never overwrite the temp. With lock only, repeat read-only
+predecessor validation and deterministic candidate construction. After replace,
+reload the pinned manifest under the runtime schema and require the exact lock
+and no temp. Cover crashes after lock creation, after candidate fsync but before
+replace, and after replace, plus a wrong candidate; every recovery path is
+non-cleaning and fail-closed.
+
 - [ ] **Step 3: Keep proof cost mode-specific and recovery filter-aware**
 
 | Mode | Required payload proof |
@@ -1047,19 +1080,29 @@ lives in a strict nested object:
 PINNED (no cleanup_run)
   -> READY(ordinal=0, nonce, script_sha256)
   -> PREPROOF_VERIFIED(entry=1, evidence_digest)
+  -> CLEAN_ATTEMPT_ARMED(entry=1, armed_utc)
+  -> CLEAN_ATTEMPT_RECORDED(entry=1, outcome_digest)
   -> CLEAN_EXIT_VERIFIED(entry=1, exit=0, evidence_digest)
   -> READY(ordinal=1, receipt=1)
   -> PREPROOF_VERIFIED(entry=2, evidence_digest)
+  -> CLEAN_ATTEMPT_ARMED(entry=2, armed_utc)
+  -> CLEAN_ATTEMPT_RECORDED(entry=2, outcome_digest)
   -> CLEAN_EXIT_VERIFIED(entry=2, exit=0, evidence_digest)
   -> READY(ordinal=2, receipts=2)
   -> PREPROOF_VERIFIED(entry=3, evidence_digest)
+  -> CLEAN_ATTEMPT_ARMED(entry=3, armed_utc)
+  -> CLEAN_ATTEMPT_RECORDED(entry=3, outcome_digest)
   -> CLEAN_EXIT_VERIFIED(entry=3, exit=0, evidence_digest)
   -> COMPLETE(receipts=3) + CLEANED_VERIFIED
 ```
 
-Any observed failed, noisy, timed-out, partial, or ambiguous cleanup attempt
-transitions from the matching pre-proof to durable `BLOCKED`; `BLOCKED` has no
-outgoing automatic transition.
+Every possible child launch is preceded by durable `CLEAN_ATTEMPT_ARMED`.
+Within the uninterrupted lock-owning invocation, that marker permits exactly
+one native cleanup call; it never permits a cleanup call after recovery.
+Every returned native outcome then becomes durable `CLEAN_ATTEMPT_RECORDED`.
+Read-only post-attempt observation transitions the outcome to
+`CLEAN_EXIT_VERIFIED` or exact `BLOCKED`; neither state has an outgoing cleanup
+transition. `BLOCKED` has no outgoing automatic transition.
 
 The cleanup order and receipt-ID order are exact:
 
@@ -1080,23 +1123,43 @@ program must, without yielding a shell step:
 3. reload and strictly validate the published manifest;
 4. repeat the affected snapshot/live cryptographic proof and require the same
    digest;
-5. invoke the sole deletion subprocess as the fixed argument array
+5. atomically publish and reload `CLEAN_ATTEMPT_ARMED` before launching a child.
+   It preserves every PREPROOF identity, digest, count, and byte aggregate and
+   adds only the arm time; it contains no native outcome or post-live claim;
+6. only in that same uninterrupted lock-owning invocation, invoke the sole
+   deletion subprocess once as the fixed argument array
    `['git', '-C', <frozen-worktree>, 'clean', '-fdX']`, with `shell=False`;
-6. capture the native outcome and bounded stdout/stderr immediately;
-7. on exact success, atomically publish `CLEAN_EXIT_VERIFIED` before any
-   post-proof. It preserves the exact entry/ordinal, nonce, script and immutable
-   hashes, manifest-predecessor/pre-proof/stash digests and affected aggregates,
-   and adds native exit `0`, stdout digest, stderr length `0` plus the digest of
-   empty bytes, observed UTC time, and the post-attempt live aggregate;
-8. reload that durable marker, run `AfterClean`, and atomically append the exact
-   receipt and advance the ordinal.
+7. make the mutating adapter return one bounded native outcome for exit,
+   launch, timeout, stall, or output-limit termination; do not raise past the
+   point where the child may have run;
+8. with no fallible observation, injected yield, or shell step in between,
+   atomically publish `CLEAN_ATTEMPT_RECORDED`. It preserves every PREPROOF
+   and ARMED identity/digest/aggregate field, and adds the exact outcome kind,
+   integer native exit or explicit no-exit, bounded stdout/stderr lengths and
+   SHA-256 values, and observed UTC. It deliberately contains no fabricated
+   post-live fields;
+9. reload that marker and perform the read-only post-attempt live observation;
+10. only for native exit `0`, stderr length `0`, and the exact required live
+   result, atomically publish `CLEAN_EXIT_VERIFIED` with the observed live
+   counts/digest. Otherwise atomically publish exact `BLOCKED` with the native
+   outcome plus exact post-live tracked/untracked/ignored/preview counts and
+   digest; and
+11. from `CLEAN_EXIT_VERIFIED`, run `AfterClean`, append the bound receipt, and
+    advance the ordinal atomically.
 
-Observed nonzero exit, any stderr, timeout, or bounded-process failure after the
-attempt must instead atomically publish `cleanup_run.state=BLOCKED`. Its exact
-record binds entry/ordinal, nonce, script/immutable/pre-proof digests, outcome
-kind, native exit or explicit no-exit value, bounded stdout/stderr lengths and
-digests, observed UTC time, and post-attempt tracked/untracked/ignored/preview
-counts plus their aggregate digest. It never creates a receipt or retries.
+If post-attempt observation fails or stalls, keep
+`CLEAN_ATTEMPT_RECORDED` byte-for-byte durable. Emit only bounded aggregate
+error evidence when appropriate. Explicit recovery may retry that read-only
+observation, but must not clean, create a receipt, infer success, or mutate any
+other evidence until one exact observation permits the next state.
+
+If recovery finds `CLEAN_ATTEMPT_ARMED` without an exact recoverable
+`CLEAN_ATTEMPT_RECORDED` candidate, the native outcome is unknowable. It may run
+only bounded read-only observation and then publish exact `BLOCKED` with reason
+`UNKNOWN_NATIVE_OUTCOME_AFTER_ARM`, explicit no-exit, and observed post-live
+counts/digest. Observation failure leaves ARMED durable and emits only aggregate
+error evidence. It never relaunches cleanup, reaches `CLEAN_EXIT_VERIFIED`, or
+creates a receipt from ARMED.
 
 There is no raw shell cleanup command to copy. On receipt three, the same atomic
 write sets `cleanup_run.state=COMPLETE` and
@@ -1115,11 +1178,21 @@ identity fields remain bound to that record.
 - [ ] **Step 5: Fail closed across crashes and require explicit recovery**
 
 - `READY` plus the full original ignored set may begin a fresh pre-proof.
-- `PREPROOF_VERIFIED` plus the full original ignored set means deletion did not
-  complete; only `recover-task5` may repeat proof and deletion.
+- After exact temp-candidate recovery, `PREPROOF_VERIFIED` plus the full
+  original ignored set and no attempt candidate means no cleanup outcome became
+  durable; only `recover-task5` may repeat proof and deletion.
 - `PREPROOF_VERIFIED` plus zero ignored/preview without a durable matching
-  `CLEAN_EXIT_VERIFIED` marker is ambiguous and becomes `BLOCKED`; absence never
-  proves that this operator completed cleanup.
+  attempt marker is ambiguous and becomes exact `BLOCKED`; absence never proves
+  that this operator completed cleanup.
+- `CLEAN_ATTEMPT_ARMED` permits a native call only to the uninterrupted
+  invocation that published and reloaded it. Any recovery invocation has no
+  cleanup edge: it promotes an exact outcome candidate if present, or performs
+  read-only observation and fails closed as `UNKNOWN_NATIVE_OUTCOME_AFTER_ARM`.
+- `CLEAN_ATTEMPT_RECORDED` has no cleanup edge. Recovery may repeat only bounded
+  read-only post observation. A successful observation publishes
+  `CLEAN_EXIT_VERIFIED` only for the exact successful native/live result;
+  otherwise it publishes exact `BLOCKED`. Repeated observation failure leaves
+  the attempt marker unchanged.
 - `CLEAN_EXIT_VERIFIED` may run only `AfterClean` and publish the bound receipt.
   Recovery from this state must never issue a second cleanup call.
 - A partial ignored set, mixed preview, nonzero tracked/untracked state, changed
@@ -1132,6 +1205,16 @@ identity fields remain bound to that record.
   candidate bytes, their one-step state relation, and live state before either
   promotion or rejection. It never infers success merely from an empty tree and
   never retries automatically.
+
+Runtime candidate recovery accepts only exact one-step relations
+`PREPROOF_VERIFIED -> CLEAN_ATTEMPT_ARMED`,
+`CLEAN_ATTEMPT_ARMED -> CLEAN_ATTEMPT_RECORDED | BLOCKED`, and
+`CLEAN_ATTEMPT_RECORDED -> CLEAN_EXIT_VERIFIED | BLOCKED`, followed by the
+existing clean-exit-to-receipt relation. Crash fixtures cover arm publication,
+after spawn, during child execution, after child return, outcome-candidate
+fsync/replace/reload, observation, post-proof, and receipt boundaries. Fixtures
+after spawn must finish recovery with `CLEAN_CALLS=1`; a crash before spawn may
+remain at zero calls but never permits recovery to launch one.
 
 - [ ] **Step 6: Enforce the exact mutation and future-authority surface**
 
@@ -1177,6 +1260,15 @@ the authority baseline, and every later current digest must equal the prior
 receipt's after digest. The temporary chain also proves the stale-to-temporary
 bridge.
 
+Before accepting any future receipt, the gate must recompute the exact
+pre-removal proof for that target, pinned authority, and registry-before epoch;
+`pre_removal_proof_digest` must equal that recomputed digest. Stale
+`target_head`/branch/stash/snapshot fields must equal the frozen target identity
+derived from the exact registry and Stage A evidence. Temporary `target_head`
+must equal the dynamic target branch/ref identity in that exact registry epoch;
+`retained_head` must equal the applicable retained `master` or `main` ref used
+for the reachability proof. Hex shape alone never authenticates either HEAD.
+
 These optional authorities enable only the pinned gate's read-only
 `BeforeStaleRemoval` and `BeforeTemporaryRemoval` proofs. They do not authorize
 worktree or branch mutation: Tasks 6 and 8 still require their own reviewed
@@ -1195,10 +1287,14 @@ and path inventory output.
    missing/extra fields, duplicate IDs/paths, and malformed hashes.
 2. **Exact pin:** reject wrong predecessor bytes/hash, already-pinned state,
    immutable drift, wrong source path/hash, reparse roots/files, and temp
-   collision without mutation.
+   collision without mutation. Cover lock-only recovery, candidate
+   fsync/pre-replace crash, post-replace recovery, wrong candidate, the exact
+   predecessor-to-`proof_gate` `PIN` relation, and zero cleanup calls.
 3. **Snapshot authority:** reject either raw manifest pin mismatch, bad state or
    audit subset, missing/extra payload, size/hash drift, reparse/special files,
-   and path escape.
+   and path escape. Exercise all `126` actual uppercase record hashes through
+   in-memory canonicalization and payload comparison; reject non-hex and every
+   wrong or mixed-length case without changing persisted bytes.
 4. **Stash authority:** reject OID/predecessor/order/subject/message/path-set
    drift, missing commit/LFS object, bad LFS pointer, raw blob mismatch, and
    CRLF/LF recovery mismatch.
@@ -1213,22 +1309,29 @@ and path inventory output.
 8. **Mode scoping:** prove targeted Task 5 hashes, empty `AfterClean`, full
    per-target stale-removal hashes, dynamic docs HEADs, and reachability.
 9. **Adjacency/static:** prove one implementation, fixed argument arrays,
-   immediate exit checks, no shell wrapper, post-proof before return, and no
-   mutation reachable from `prove`.
+   durable arm before child launch, immediate outcome capture, durable outcome
+   before post observation, no shell wrapper, and no mutation reachable from
+   `prove`.
 10. **Crash injection:** cover both sides of PREPROOF, cleanup,
-    `CLEAN_EXIT_VERIFIED`, post-proof, durable `BLOCKED`, candidate replace,
-    receipts one/two, and final transition; every case must resume exactly or
-    block without a second cleanup.
+    `CLEAN_ATTEMPT_ARMED`, spawn, child execution/return,
+    `CLEAN_ATTEMPT_RECORDED`, observation, `CLEAN_EXIT_VERIFIED`, durable
+    `BLOCKED`, candidate replace, receipts one/two, and final transition. Prove
+    every exact one-step relation, repeated observation failure, zero recovery
+    cleanup calls from ARMED, and total `CLEAN_CALLS=1` after every spawn.
 11. **Isolated destructive fixture:** under a verified OS temp directory only,
     remove classified ignored generated/snapshotted-retained fixtures while
     preserving tracked, untracked, and out-of-root files.
 12. **Performance/heartbeat:** validate a synthetic `87,688`-record manifest,
-    bounded-memory hashes, aggregate progress, no-progress stop, and recorded
-    wall/CPU time.
+    bounded-memory hashes and inventories, aggregate progress, and no-progress
+    stop. Actual-child tests must cover continuing progress beyond the old
+    total cutoff, true stall, concurrent stderr pressure, and stdout/stderr
+    output limits for the general proof-only Git adapter.
 13. **Atomicity and future authority:** validate-before-replace, fsync/close,
     `os.replace`, exact reload, collision recovery, predecessor reconstruction,
     operator AST/stdlib pins, receipt-schema hashes, registry baselines, receipt
-    chains, and stale-to-temporary bridging.
+    chains, and stale-to-temporary bridging. Mutate every semantic field in both
+    future receipt chains—including proof digest, target/retained HEADs,
+    authority hashes, target/order, and registry links—and require rejection.
 
 - [ ] **Step 8: Separate build, review, pin, and execution authority**
 
@@ -1238,8 +1341,18 @@ gate at SHA-256
 and its `61,591`-byte test packet at SHA-256
 `43f3287c72f960b79648ba9af1a733087d2531fdc364e3567e4d668faaa2f4a6`
 remain historical `SOURCE_PASS` evidence for the previous contract, but are now
-`NOT_CONFORMING / DO_NOT_PIN`. Rebuild the source against this stricter state,
-outcome, and authority schema, then rerun fresh tests and independent review.
+`NOT_CONFORMING / DO_NOT_PIN`.
+
+The later frozen rebuild is also forbidden: source `161,158` bytes /
+`6d933d585ecd38c11428a81a7c81f99db074691afb0f26644d1c90adb423f855`
+and tests `97,107` bytes /
+`a7f8ce4e79d5092230816392a3cb20ebf5ff55c7840367a25a818b9979031f70`
+are `SOURCE_FAIL / DO_NOT_PIN`. The authoritative frozen review is SHA-256
+`116424abd5401a923466c9629a4ed231b6cf8239159659d3ceff1865d6691a3b`.
+Passing isolated tests do not override that verdict. Rebuild source and tests
+against this stricter pre-launch arm, outcome, pin-recovery, live-format,
+proof-binding, and streaming contract, then repeat fresh tests and independent
+frozen review.
 
 The handoff is fail-closed:
 
