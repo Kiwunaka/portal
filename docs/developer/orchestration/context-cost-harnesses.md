@@ -8,6 +8,10 @@ This file owns provider-neutral rules for reusable context packets, redaction, u
 
 Use this harness when work creates or changes a reusable prompt, provider route, prompt-heavy batch or evaluation, external consult path, or production prompt system. Ordinary code, ordinary docs, and one-off manual drafting do not need an empty harness block.
 
+Optional model selection, pricing, shell notes, and consult prompts live in the
+[external-model consult playbook](../agent-playbooks/external-model-consults.md).
+Open it only when the operator explicitly opts in.
+
 ## Packet Shape
 
 Keep stable, reusable content before run-specific content:

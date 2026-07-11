@@ -743,3 +743,113 @@ def test_flow_state_uses_conditional_v2_schema_and_stop_contract() -> None:
         '"next_action": "continue |',
     ):
         assert stale_flow_token not in flow
+
+
+def test_external_model_playbook_is_optional_and_isolated() -> None:
+    playbook = (
+        REPO_ROOT
+        / "docs"
+        / "developer"
+        / "agent-playbooks"
+        / "external-model-consults.md"
+    )
+    text = playbook.read_text(encoding="utf-8")
+    assert len(text.encode("utf-8")) <= 16384
+    for required in (
+        "OPERATOR_PLAYBOOK",
+        "opt-in",
+        "Codex",
+        "reverify",
+        "opencode.cmd",
+        "OpenRouter",
+        "SKILL PACKET",
+    ):
+        assert required.casefold() in text.casefold()
+
+    expected_model_ids = {
+        "openrouter/deepseek/deepseek-v4-pro",
+        "openrouter/z-ai/glm-5.1",
+        "openrouter/openai/gpt-5.5-pro",
+        "openrouter/moonshotai/kimi-k2.6",
+        "openrouter/moonshotai/kimi-k2.7-code",
+        "openrouter/xiaomi/mimo-v2.5-pro",
+        "openrouter/minimax/minimax-m2.7",
+        "openrouter/nvidia/nemotron-3-ultra-550b-a55b",
+    }
+    model_rows = _unique_markdown_table_rows(
+        text,
+        (
+            "Model ID",
+            "Availability",
+            "Context tokens",
+            "Input / 1M USD",
+            "Output / 1M USD",
+            "Role",
+            "Cost check",
+        ),
+        key_column="Model ID",
+    )
+    assert len(model_rows) == 8
+    assert {
+        _normalized_contract_cell(row["Model ID"]) for row in model_rows
+    } == expected_model_ids
+    assert all(row["Availability"] == "`AVAILABLE`" for row in model_rows)
+    assert all(row["Context tokens"].strip("`").isdigit() for row in model_rows)
+    assert all(row["Input / 1M USD"].startswith("`$") for row in model_rows)
+    assert all(row["Output / 1M USD"].startswith("`$") for row in model_rows)
+    assert all(
+        _normalized_contract_cell(row["Cost check"])
+        == "reverify before cost-sensitive use"
+        for row in model_rows
+    )
+    assert "Last verified: 2026-07-11" in text
+
+    harness = (ORCHESTRATION_ROOT / "context-cost-harnesses.md").read_text(
+        encoding="utf-8"
+    )
+    for forbidden in (
+        "openrouter/deepseek/deepseek-v4-pro",
+        "openrouter/openai/gpt-5.5-pro",
+        "opencode.cmd",
+        "$30 / $180",
+    ):
+        assert forbidden not in harness
+    assert harness.count("external-model-consults.md") == 1
+    for forbidden in (
+        "OpenRouter",
+        "OpenCode",
+        "DeepSeek",
+        "GPT-5.5",
+        "Kimi",
+        "GLM",
+        "MiniMax",
+        "MiMo",
+        "Nemotron",
+    ):
+        assert forbidden.casefold() not in harness.casefold()
+
+    root_contract = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    router = (
+        REPO_ROOT / "docs" / "developer" / "agent-context-map.md"
+    ).read_text(encoding="utf-8")
+    assert "openrouter/deepseek/deepseek-v4-pro" not in root_contract
+    assert "external-model-consults.md" not in router
+
+    support_source = (
+        REPO_ROOT / "scripts" / "pokrov_support_ai_kb_refresh.py"
+    ).read_text(encoding="utf-8")
+    assert "external-model-consults.md" not in support_source
+    docs_assistant_source = (
+        REPO_ROOT / "scripts" / "pokrov_ai_docs_assistant.py"
+    ).read_text(encoding="utf-8")
+    assert "external-model-consults.md" not in docs_assistant_source
+
+    old_helper = (
+        REPO_ROOT / "docs" / "developer" / "openai-operator-assistants.md"
+    ).read_text(encoding="utf-8")
+    for required in (
+        "Document class: `EXPERIMENTAL`",
+        "Not part of the default Codex task route.",
+        "Direct canonical reads and rg/Git remain the normal path.",
+    ):
+        assert required in old_helper

@@ -1,12 +1,17 @@
 # OpenAI Operator Assistants
 
-Last updated: 2026-05-28
+Last updated: 2026-07-11
+
+Document class: `EXPERIMENTAL`
+Not part of the default Codex task route.
+Direct canonical reads and rg/Git remain the normal path.
 
 ## Document Status
 
-This file is the local playbook for experimental, operator-facing OpenAI helpers.
-These helpers are not production runtime services and must stay read-only unless
-a separate work order explicitly promotes a bounded action path.
+This file describes experimental, operator-facing OpenAI helpers. It is not a
+default repository-navigation layer or external-model routing owner. These
+helpers are not production runtime services and must stay read-only unless a
+separate work order explicitly promotes a bounded action path.
 
 ## Why This Exists
 
