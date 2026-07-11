@@ -26,6 +26,7 @@ Legacy paths and identifiers may remain for compatibility. Their names do not ma
 
 ## Universal Safety
 
+- Integrity and safety checks are authorized only for the local POKROV repositories, owned runtime surfaces, and isolated fixtures named by the task. They are defensive validation; third-party systems, accounts, credentials, and data are out of scope.
 - Never print, commit, move, copy into artifacts, or expose secrets, tokens, credentials, private keys, raw connection material, customer data, or unredacted provider payloads.
 - Do not perform broad deletion, destructive Git operations, database resets, account deletion, production mutation, deploy, payment action, or external communication unless the task explicitly authorizes it and the required guard is satisfied.
 - Preserve evidence, audit artifacts, archive history, rollback material, and generated provenance. Relabel unclear history; do not erase it during routine cleanup.
