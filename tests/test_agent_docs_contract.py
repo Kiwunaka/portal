@@ -43,6 +43,65 @@ def _without_markdown_decoration(value: str) -> str:
     )
 
 
+def _normalized_contract_cell(value: str) -> str:
+    return " ".join(value.replace("`", "").split())
+
+
+def _unique_markdown_table_rows(
+    text: str,
+    header: tuple[str, ...],
+    *,
+    key_column: str,
+) -> list[dict[str, str]]:
+    assert key_column in header
+    lines = text.splitlines()
+    matching_tables: list[list[dict[str, str]]] = []
+    in_fence = False
+    for index, raw_line in enumerate(lines):
+        line = raw_line.strip()
+        if line.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if not line.startswith("|") or not line.endswith("|"):
+            continue
+        cells = tuple(cell.strip() for cell in line.strip("|").split("|"))
+        if cells != header:
+            continue
+
+        assert index + 1 < len(lines), f"missing separator for table {header!r}"
+        separator = lines[index + 1].strip()
+        assert separator.startswith("|") and separator.endswith("|")
+        separator_cells = tuple(
+            cell.strip() for cell in separator.strip("|").split("|")
+        )
+        assert len(separator_cells) == len(header)
+        assert all(
+            re.fullmatch(r":?-{3,}:?", cell) for cell in separator_cells
+        )
+
+        rows: list[dict[str, str]] = []
+        for raw_row in lines[index + 2 :]:
+            row_line = raw_row.strip()
+            if not row_line.startswith("|") or not row_line.endswith("|"):
+                break
+            values = tuple(
+                cell.strip() for cell in row_line.strip("|").split("|")
+            )
+            assert len(values) == len(header), (header, values)
+            rows.append(dict(zip(header, values, strict=True)))
+        matching_tables.append(rows)
+
+    assert len(matching_tables) == 1, (
+        f"expected one table with header {header!r}, found {len(matching_tables)}"
+    )
+    rows = matching_tables[0]
+    keys = [_normalized_contract_cell(row[key_column]) for row in rows]
+    assert len(keys) == len(set(keys)), f"duplicate {key_column} values: {keys!r}"
+    return rows
+
+
 def _declared_pipe_enum(text: str, label: str) -> set[str]:
     lines = text.splitlines()
     for index, raw_line in enumerate(lines):
@@ -230,26 +289,39 @@ def test_orchestration_uses_normalized_lifecycle_and_evidence_contract() -> None
         ORCHESTRATION_ROOT / "orchestration-standard.md"
     ).read_text(encoding="utf-8")
     quick_start = (ORCHESTRATION_ROOT / "README.md").read_text(encoding="utf-8")
-    for owner in (standard, quick_start):
-        for ceremony in ("direct", "bounded_wo", "release_wo"):
-            assert f"`{ceremony}`" in owner
-
-    ceremony_rows = parse_markdown_table(
-        standard,
-        ("Ceremony", "Trigger", "Required artifacts"),
-    )
-    assert {
-        row["Ceremony"].strip("` ")
-        for row in ceremony_rows
-    } == {"direct", "bounded_wo", "release_wo"}
-    bounded_wo = next(
-        row
-        for row in ceremony_rows
-        if row["Ceremony"].strip("` ") == "bounded_wo"
-    )
-    assert "conditional flow_state" in (
-        bounded_wo["Required artifacts"].replace("`", "").casefold()
-    )
+    expected_ceremony_contract = {
+        "direct": (
+            "small, low-risk, single-pass work",
+            "focused validation and handoff",
+        ),
+        "bounded_wo": (
+            "durable context, independent review, multiple bounded steps, or meaningful risk",
+            "compact WO; selected roles; conditional FLOW_STATE",
+        ),
+        "release_wo": (
+            "release, deploy, payment, security, persistence, provider, "
+            "device, or origin-sensitive work",
+            "full triggered proof blocks, release validator, candidate-specific evidence",
+        ),
+    }
+    for owner_name, owner in (
+        ("orchestration-standard.md", standard),
+        ("README.md", quick_start),
+    ):
+        ceremony_rows = _unique_markdown_table_rows(
+            owner,
+            ("Ceremony", "Trigger", "Required artifacts"),
+            key_column="Ceremony",
+        )
+        assert len(ceremony_rows) == 3, owner_name
+        ceremony_contract = {
+            _normalized_contract_cell(row["Ceremony"]): (
+                _normalized_contract_cell(row["Trigger"]),
+                _normalized_contract_cell(row["Required artifacts"]),
+            )
+            for row in ceremony_rows
+        }
+        assert ceremony_contract == expected_ceremony_contract, owner_name
 
     assert _declared_pipe_enum(standard, "WO status") == {
         "draft",
@@ -493,17 +565,23 @@ def test_default_wo_uses_only_compact_contract_headings() -> None:
 
 def test_flow_state_uses_conditional_v2_schema_and_stop_contract() -> None:
     flow = (ORCHESTRATION_ROOT / "flow-state.md").read_text(encoding="utf-8")
-    flow_contract_rows = parse_markdown_table(flow, ("Contract", "Value"))
+    flow_contract_rows = _unique_markdown_table_rows(
+        flow,
+        ("Contract", "Value"),
+        key_column="Contract",
+    )
+    assert len(flow_contract_rows) == 3
     flow_contract = {
-        row["Contract"].strip("` "): row["Value"].strip("` ")
+        _normalized_contract_cell(row["Contract"]): _normalized_contract_cell(
+            row["Value"]
+        )
         for row in flow_contract_rows
     }
-    assert flow_contract.get("Schema") == "2"
-    assert flow_contract.get("Applicability") == "conditional"
-    assert (
-        flow_contract.get("Same-class without mechanism-change stop threshold")
-        == "3"
-    )
+    assert flow_contract == {
+        "Schema": "2",
+        "Applicability": "conditional",
+        "Same-class stop threshold": "3",
+    }
 
     assert _declared_pipe_enum(flow, "Conditional triggers") == {
         "review",
