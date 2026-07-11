@@ -31,20 +31,25 @@ GLOBAL_READ_PACK_CONTRACT_RE = re.compile(
     r")",
     flags=re.IGNORECASE | re.MULTILINE,
 )
-UNIVERSAL_FLOW_STATE_REQUIREMENT_RE = re.compile(
-    r"(?:"
-    r"\beach\s+active\s+`?\bWO\b`?"
-    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
-    r"\b(?:required|requires?|keep|keeps|has|must|should|needs?)\b"
-    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
-    r"`?\bFLOW(?:_|\s+)STATE\b`?|"
-    r"`?\bFLOW(?:_|\s+)STATE\b`?"
-    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
-    r"\b(?:required|mandatory|must|should|needs?)\b"
-    r"(?:(?!\b(?:not|never|no)\b)[\s\S]){0,160}?"
-    r"(?:for\s+)?each\s+active\s+`?\bWO\b`?"
-    r")",
-    flags=re.IGNORECASE,
+UNIVERSAL_FLOW_STATE_REQUIREMENT_RES = (
+    re.compile(
+        r"\b(?:each|every|all)\s+active\s+`?\bWOs?\b`?\s+"
+        r"(?:"
+        r"(?:(?:must|should)\s+|(?:is\s+required|needs?)\s+to\s+)"
+        r"(?:keep|maintain|create|record|have)|"
+        r"(?:requires?|needs?|has|keeps?|maintains?|creates?|records?)"
+        r")"
+        r"(?:\s+(?:a|an|the))?"
+        r"(?:\s+(?:compact|conditional|durable|current|local|valid|explicit|own|shared)){0,2}"
+        r"\s+`?\bFLOW(?:_|\s+)STATE\b`?",
+        flags=re.IGNORECASE,
+    ),
+    re.compile(
+        r"`?\bFLOW(?:_|\s+)STATE\b`?\s+is\s+"
+        r"(?:required|mandatory|kept|maintained|created|recorded)\s+"
+        r"(?:for|by)\s+(?:each|every|all)\s+active\s+`?\bWOs?\b`?",
+        flags=re.IGNORECASE,
+    ),
 )
 
 
@@ -143,6 +148,13 @@ def _assert_concepts(text: str, *groups: tuple[str, ...]) -> None:
             f" {_normalized_prose(alternative)} " in normalized
             for alternative in alternatives
         ), alternatives
+
+
+def _has_universal_flow_state_requirement(text: str) -> bool:
+    return any(
+        pattern.search(text) is not None
+        for pattern in UNIVERSAL_FLOW_STATE_REQUIREMENT_RES
+    )
 
 
 def test_platform_root_contract_budget_and_semantics() -> None:
@@ -549,13 +561,23 @@ def test_flow_state_uses_conditional_v2_schema_and_stop_contract() -> None:
     assert isinstance(counters, dict) and counters
     assert all(isinstance(value, int) and value >= 1 for value in counters.values())
 
-    assert UNIVERSAL_FLOW_STATE_REQUIREMENT_RE.search(
-        "FLOW_STATE is not required for each active WO."
-    ) is None
-    assert UNIVERSAL_FLOW_STATE_REQUIREMENT_RE.search(
-        "Each active WO should keep FLOW_STATE."
-    ) is not None
-    assert UNIVERSAL_FLOW_STATE_REQUIREMENT_RE.search(flow) is None
+    universal_requirement_smoke_cases = (
+        ("Each active WO has a status. FLOW_STATE exists only for review...", False),
+        (
+            "Each active WO should record status. "
+            "FLOW_STATE exists only for review...",
+            False,
+        ),
+        ("Every active WO must keep FLOW_STATE.", True),
+        ("All active WOs require FLOW_STATE.", True),
+        ("FLOW_STATE is not required for each active WO.", False),
+        ("Each active WO should keep FLOW_STATE.", True),
+        ("Each active WO must maintain FLOW_STATE.", True),
+        ("FLOW_STATE is mandatory for all active WOs.", True),
+    )
+    for statement, expected in universal_requirement_smoke_cases:
+        assert _has_universal_flow_state_requirement(statement) is expected
+    assert not _has_universal_flow_state_requirement(flow)
 
     paragraphs = re.split(r"\r?\n\s*\r?\n", flow)
     normalized_paragraphs = [_normalized_prose(paragraph) for paragraph in paragraphs]
