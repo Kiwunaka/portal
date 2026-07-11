@@ -35,7 +35,7 @@ Preserve stable-prefix order. Sort generated tool or rubric lists deterministica
 Run the repository auditor before high-volume reuse or an expensive evaluation:
 
 ```powershell
-python scripts/agent_context_packet_audit.py <packet.md>
+python scripts/agent_context_packet_audit.py --min-cacheable-tokens 0 <packet.md>
 ```
 
 For the platform context itself:
@@ -44,7 +44,7 @@ For the platform context itself:
 python scripts/agent_context_packet_audit.py --platform-context-root .
 ```
 
-The auditor checks packet shape and dynamic markers. It makes no network call and does not prove remote cache behavior, answer quality, latency, or price.
+The zero threshold keeps this provider-neutral invocation limited to packet shape and dynamic markers; it prevents the auditor's built-in provider-specific cache-eligibility warning from becoming process policy. Any provider threshold belongs in opt-in operator guidance and must be reverified before use. The auditor makes no network call and does not prove remote cache behavior, answer quality, latency, or price.
 
 ## Redaction Boundary
 
@@ -65,22 +65,22 @@ Record comparable measurements without coupling the contract to one API:
 {
   "route_label": "redacted-stable-label",
   "model_label": "opaque-versioned-label",
-  "request_count": 0,
-  "input_tokens": 0,
-  "cache_read_tokens": 0,
-  "cache_write_tokens": 0,
-  "new_input_tokens": 0,
-  "output_tokens": 0,
+  "request_count": null,
+  "input_tokens": null,
+  "cache_read_tokens": null,
+  "cache_write_tokens": null,
+  "new_input_tokens": null,
+  "output_tokens": null,
   "cache_hit_rate": null,
   "time_to_first_output_ms": null,
-  "total_latency_ms": 0,
+  "total_latency_ms": null,
   "stable_prefix_hash": "short-non-sensitive-hash",
   "tools_hash": "short-non-sensitive-hash",
   "result": "pass | fail | blocked"
 }
 ```
 
-Map available usage fields into this shape. Keep unsupported measurements `null`; never fabricate zeros for unavailable telemetry. Store aggregate or per-run measurements only when the retention policy permits them. Do not log raw prompts or responses merely to compute cost.
+Map available usage fields into this shape. The template uses `null` for every unavailable counter or latency. Replace it only with a measured non-negative value; a true measured zero is valid, but zero must never stand in for missing telemetry. Store aggregate or per-run measurements only when the retention policy permits them. Do not log raw prompts or responses merely to compute cost.
 
 `new_input_tokens` should be derived only when the source accounting is compatible. Document the formula and prevent negative values. A cache hit rate is meaningful only when the measured route exposes a compatible cache-read count.
 

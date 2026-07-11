@@ -13,11 +13,13 @@ The classification controls retrieval: active artifacts may route current execut
 
 ## Naming And Layout
 
-Use one dated wave directory:
+For wave directories created after `2026-07-11`, use:
 
 ```text
 docs/developer/work-orders/YYYY-MM-DD--wave-name/
 ```
+
+This naming rule is forward-only. Every wave path already present at the cutoff is grandfathered, including `2026-07-09-growth-megapass` and other legacy single-dash names. Do not rename active or evidence directories to enforce the new format; their existing paths and links remain authoritative identifiers for those records.
 
 Inside it, use:
 

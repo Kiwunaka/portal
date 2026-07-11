@@ -27,7 +27,7 @@ Start from [WO.template.md](templates/WO.template.md). The compact WO contains o
 
 Use exact paths in scope fields. Authority anchors should be the selected router row, canonical owners, current code/tests, and exact runtime evidence needed for this outcome. Do not paste a universal read pack.
 
-The acceptance oracle states what observation decides success. A plan, prose review, or file edit is not an oracle by itself. If no trustworthy oracle exists, keep the WO in discovery, strategy, `partial`, or `blocked` state.
+The acceptance oracle states what observation decides success. A plan, prose review, or file edit is not an oracle by itself. If no trustworthy oracle exists, route discovery or strategy as an activity and keep a new WO `draft`; do not advance it to `ready` or `active`. After execution has begun, missing proof is represented only by a normalized `partial` or `blocked` status, as appropriate.
 
 ## Conditional Proof Blocks
 

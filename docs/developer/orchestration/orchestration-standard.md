@@ -108,7 +108,7 @@ attribution: wo_owned | wave_integration | pre_existing | unrelated | blocked_by
 
 `result` records the observed outcome without widening its claim. `reference` points to a reproducible command summary or retained artifact. `notes` state limitations, candidate identity, environment, or why a dimension is `n/a`.
 
-Manual evidence may additionally use `MANUAL_OWNER_TEST`, `OPERATOR_ATTESTED`, `SKIPPED_BY_OWNER`, `SKIPPED_BY_OPERATOR`, `NOT_REQUESTED`, or `BLOCKED_BY_ACCESS`. These labels never become `PASS` by inference.
+For manual evidence, `MANUAL_OWNER_TEST`, `OPERATOR_ATTESTED`, `SKIPPED_BY_OWNER`, `SKIPPED_BY_OPERATOR`, `NOT_REQUESTED`, and `BLOCKED_BY_ACCESS` are allowed values of the existing `result` field. They are not a ninth field, and none becomes `PASS` by inference.
 
 Evidence rules:
 
