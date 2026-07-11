@@ -30,6 +30,18 @@ class ReleaseGateCheckTests(unittest.TestCase):
         self.assertIn("Client security smoke", names)
         self.assertIn("Client Flutter tests", names)
 
+    def test_account_foundation_is_in_release_pytest_matrix(self) -> None:
+        self.assertIn("tests/test_account_foundation.py", self.module.RELEASE_PYTEST_ARGS)
+
+    def test_account_foundation_compatibility_suites_are_in_release_pytest_matrix(self) -> None:
+        for suite in (
+            "portal_bot/tests/test_app_first_service.py",
+            "portal_bot/tests/test_email_auth.py",
+            "tests/test_bot_paywall.py",
+        ):
+            with self.subTest(suite=suite):
+                self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)
+
     def test_client_security_smoke_gate_is_included_in_quick_gate_set(self) -> None:
         gates = self.module._quick_gates()
 

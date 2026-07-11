@@ -1678,6 +1678,12 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertTrue(str(body["user"]["subscription_url"]).startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
         manual_tg_id = int(body["user"]["tg_id"])
         self.assertLess(manual_tg_id, 0)
+        session = self.api.SessionLocal()
+        try:
+            manual_user = session.query(self.api.User).filter_by(tg_id=manual_tg_id).one()
+            self.assertTrue(manual_user.account_id)
+        finally:
+            session.close()
 
         extend = self.client.post(
             f"/api/admin/users/{manual_tg_id}/manual/extend",

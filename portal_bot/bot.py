@@ -738,6 +738,9 @@ def _naive_utc(dt: datetime | None) -> datetime | None:
 #               DATABASE
 # ==========================================
 from db import SessionLocal, init_db
+from account_foundation_service import (
+    ensure_user_account_foundation,
+)
 from models import (
     Achievement,
     AdminAudit,
@@ -1121,6 +1124,7 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
         # Generate sub_token if not exists
         if not existing.sub_token:
             existing.sub_token = generate_sub_token()
+        ensure_user_account_foundation(session, existing, now=_utcnow())
         session.commit()
         session.close()
         return existing
@@ -1144,6 +1148,7 @@ def create_user(tg_id: int, user_uuid: str, email: str, sub_type: str, days: int
     if _is_freemium_sub_type(sub_type):
         mark_user_became_free(user)
     session.add(user)
+    ensure_user_account_foundation(session, user, now=_utcnow())
     session.commit()
     session.close()
     return user
@@ -1165,8 +1170,10 @@ def sync_telegram_identity(tg_id: int, username: str | None) -> bool:
                 row.linked_telegram_username = normalized
                 changed = True
 
-        if changed:
-            session.commit()
+        projection_user = user or (linked_rows[0] if linked_rows else None)
+        if projection_user is not None:
+            ensure_user_account_foundation(session, projection_user, now=_utcnow())
+        session.commit()
         return changed
     except Exception:
         session.rollback()
@@ -1365,6 +1372,7 @@ def set_tos_accepted(tg_id: int) -> bool:
         session.add(user)
     else:
         user.tos_accepted = True
+    ensure_user_account_foundation(session, user, now=_utcnow())
     session.commit()
     session.close()
     return True
@@ -1404,7 +1412,9 @@ def ensure_pending_user(tg_id: int, username: str | None = None) -> tuple[User, 
         if user:
             if username and not user.username:
                 user.username = username
-                session.commit()
+            ensure_user_account_foundation(session, user, now=_utcnow())
+            session.commit()
+            session.refresh(user)
             return user, False
 
         user = User(
@@ -1419,7 +1429,9 @@ def ensure_pending_user(tg_id: int, username: str | None = None) -> tuple[User, 
             sub_token=generate_sub_token(),
         )
         session.add(user)
+        ensure_user_account_foundation(session, user, now=_utcnow())
         session.commit()
+        session.refresh(user)
         return user, True
     finally:
         session.close()
@@ -1809,9 +1821,12 @@ def _bind_app_account_to_telegram(
     telegram_username: str | None,
     start_code: str,
 ) -> str:
-    if int(account_tg_id) <= 0 or int(telegram_id) <= 0:
+    if (
+        int(account_tg_id) <= 0
+        or int(telegram_id) <= 0
+        or int(account_tg_id) == int(telegram_id)
+    ):
         return "invalid"
-
     raw_code = str(start_code or "").strip().lower()
     session = Session()
     try:
@@ -1819,13 +1834,36 @@ def _bind_app_account_to_telegram(
             session.query(StartLink)
             .filter(func.lower(StartLink.code) == raw_code)
             .filter(StartLink.is_active == True)
+            .with_for_update()
             .first()
         )
         if not row:
             return "expired"
-        user = session.query(User).filter(User.tg_id == int(account_tg_id)).first()
-        if not user:
+        locked_users = (
+            session.query(User)
+            .filter(User.tg_id.in_([int(account_tg_id), int(telegram_id)]))
+            .order_by(User.tg_id.asc())
+            .with_for_update()
+            .all()
+        )
+        user = next((item for item in locked_users if int(item.tg_id) == int(account_tg_id)), None)
+        telegram_user = next(
+            (item for item in locked_users if int(item.tg_id) == int(telegram_id)),
+            None,
+        )
+        if not user or telegram_user is None:
             return "not_found"
+        incoming_to_account = (
+            session.query(User.tg_id)
+            .filter(User.linked_telegram_id == int(account_tg_id))
+            .filter(User.tg_id != int(account_tg_id))
+            .first()
+        )
+        telegram_user_linked_id = int(
+            getattr(telegram_user, "linked_telegram_id", 0) or 0
+        )
+        if incoming_to_account is not None or telegram_user_linked_id > 0:
+            return "transitive_link_not_supported"
         other = (
             session.query(User)
             .filter(User.linked_telegram_id == int(telegram_id))
@@ -1844,6 +1882,8 @@ def _bind_app_account_to_telegram(
         user.linked_telegram_linked_at = now
         row.is_active = False
         row.updated_at = now
+        session.flush()
+        ensure_user_account_foundation(session, user, now=now)
         session.commit()
         return "linked" if linked_id != int(telegram_id) else "already_linked"
     except Exception:
@@ -2624,6 +2664,7 @@ def create_manual_user_record(*, display_name: str, days: int, created_by_admin:
             display_name=(display_name or "").strip()[:100] or email,
         )
         session.add(user)
+        ensure_user_account_foundation(session, user, now=now)
         session.commit()
         session.refresh(user)
         return user
@@ -3678,6 +3719,10 @@ async def cmd_start(message: Message):
             "account_linked_elsewhere": (
                 "⚠️ Этот аккаунт POKROV уже привязан к другому Telegram.\n\n"
                 "Если нужно переназначить привязку, напишите в поддержку."
+            ),
+            "transitive_link_not_supported": (
+                "⚠️ Эта ссылка затрагивает уже связанную учётную запись.\n\n"
+                "Автоматически объединять цепочку небезопасно. Напишите в поддержку."
             ),
             "not_found": (
                 "⚠️ Не удалось найти аккаунт POKROV для этой ссылки.\n\n"
@@ -10726,6 +10771,7 @@ async def admin_gift(message: Message, bot: Bot):
         if db_user:
             db_user.sub_type = "PAID"
             db_user.total_gb = 0
+            ensure_user_account_foundation(session, db_user, now=_utcnow())
             session.commit()
         session.close()
     else:
@@ -10755,6 +10801,7 @@ async def admin_gift(message: Message, bot: Bot):
             sub_token=sub_token
         )
         session.add(new_user)
+        ensure_user_account_foundation(session, new_user, now=_utcnow())
         session.commit()
         session.close()
     

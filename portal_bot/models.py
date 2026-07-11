@@ -28,6 +28,7 @@ class User(Base):
     __tablename__ = "users"
 
     tg_id = Column(BigInteger, primary_key=True)
+    account_id = Column(String(36), index=True, nullable=True)
     username = Column(String(100), nullable=True)
     uuid = Column(String(36), unique=True)
     email = Column(String(100))
@@ -86,6 +87,194 @@ class User(Base):
     linked_telegram_id = Column(BigInteger, index=True, nullable=True)
     linked_telegram_username = Column(String(100), nullable=True)
     linked_telegram_linked_at = Column(DateTime, nullable=True)
+
+
+class Account(Base):
+    __tablename__ = "accounts"
+
+    id = Column(String(36), primary_key=True)
+    status = Column(String(24), default="active", index=True, nullable=False)
+    created_source = Column(String(32), default="legacy_backfill", nullable=False)
+    merged_into_account_id = Column(String(36), index=True, nullable=True)
+    auth_epoch = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class AccountIdentity(Base):
+    __tablename__ = "account_identities"
+    __table_args__ = (
+        UniqueConstraint(
+            "kind",
+            "provider",
+            "subject_norm",
+            name="uq_account_identity_subject",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    kind = Column(String(32), index=True, nullable=False)
+    provider = Column(String(32), nullable=False)
+    subject_norm = Column(String(255), nullable=False)
+    verified_at = Column(DateTime, nullable=True)
+    disabled_at = Column(DateTime, nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class AccountDevice(Base):
+    __tablename__ = "account_devices"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    install_id = Column(String(128), unique=True, index=True, nullable=False)
+    label = Column(String(120), nullable=True)
+    platform = Column(String(32), nullable=True)
+    os_version = Column(String(64), nullable=True)
+    app_version = Column(String(32), nullable=True)
+    locale = Column(String(32), nullable=True)
+    time_zone = Column(String(64), nullable=True)
+    route_mode = Column(String(32), nullable=True)
+    selected_apps_json = Column(Text, nullable=True)
+    requires_elevated_privileges = Column(Boolean, nullable=True)
+    state = Column(String(24), default="active", index=True, nullable=False)
+    credential_version = Column(Integer, default=1, nullable=False)
+    first_seen_at = Column(DateTime, default=_utcnow, nullable=False)
+    last_seen_at = Column(DateTime, default=_utcnow, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+    revoke_reason = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    device_id = Column(String(36), index=True, nullable=True)
+    refresh_family_id = Column(String(36), index=True, nullable=False)
+    refresh_token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    scope = Column(String(64), nullable=False)
+    auth_origin = Column(String(32), index=True, nullable=False)
+    access_expires_at = Column(DateTime, nullable=False)
+    refresh_expires_at = Column(DateTime, nullable=False)
+    fresh_auth_at = Column(DateTime, nullable=True)
+    last_used_at = Column(DateTime, nullable=True)
+    replaced_by_session_id = Column(String(36), index=True, nullable=True)
+    reuse_detected_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    revoke_reason = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class RecoveryCode(Base):
+    __tablename__ = "recovery_codes"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    code_hmac = Column(String(64), unique=True, index=True, nullable=False)
+    code_hint = Column(String(24), nullable=False)
+    status = Column(String(24), default="active", index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    replaced_by_code_id = Column(String(36), nullable=True)
+
+
+class EntitlementGrant(Base):
+    __tablename__ = "entitlement_grants"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    legacy_tg_id = Column(BigInteger, index=True, nullable=True)
+    idempotency_key = Column(String(160), unique=True, index=True, nullable=False)
+    source = Column(String(40), index=True, nullable=False)
+    status = Column(String(24), index=True, nullable=False)
+    grant_kind = Column(String(32), nullable=False)
+    plan_code = Column(String(32), nullable=True)
+    starts_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=True)
+    provider = Column(String(32), nullable=True)
+    external_order_id = Column(String(160), nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    reversed_at = Column(DateTime, nullable=True)
+    reversal_reason = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class AntiAbuseEvent(Base):
+    __tablename__ = "antiabuse_events"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=True)
+    device_id = Column(String(36), index=True, nullable=True)
+    session_id = Column(String(36), index=True, nullable=True)
+    event_kind = Column(String(40), index=True, nullable=False)
+    source = Column(String(32), index=True, nullable=False)
+    occurred_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+    install_hmac = Column(String(64), nullable=True)
+    raw_ip = Column(String(64), nullable=True)
+    raw_ip_expires_at = Column(DateTime, index=True, nullable=True)
+    ip_full_hmac = Column(String(64), index=True, nullable=True)
+    ip_prefix_hmac = Column(String(64), index=True, nullable=True)
+    hmac_version = Column(Integer, nullable=True)
+    risk_score = Column(Float, default=0.0, nullable=False)
+    reasons_json = Column(Text, nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class AntiAbuseCase(Base):
+    __tablename__ = "antiabuse_cases"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=True)
+    status = Column(String(24), default="open", index=True, nullable=False)
+    severity = Column(String(16), default="watch", index=True, nullable=False)
+    reason_code = Column(String(64), index=True, nullable=False)
+    risk_score = Column(Float, default=0.0, nullable=False)
+    hard_lock = Column(Boolean, default=False, nullable=False)
+    opened_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+    assigned_operator_tg_id = Column(BigInteger, nullable=True)
+    details_json = Column(Text, nullable=True)
+
+
+class AntiAbuseAction(Base):
+    __tablename__ = "antiabuse_actions"
+
+    id = Column(String(36), primary_key=True)
+    case_id = Column(String(36), index=True, nullable=False)
+    account_id = Column(String(36), index=True, nullable=True)
+    action_kind = Column(String(40), index=True, nullable=False)
+    actor_kind = Column(String(24), nullable=False)
+    actor_tg_id = Column(BigInteger, nullable=True)
+    reason = Column(String(255), nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class AccountMergeReview(Base):
+    __tablename__ = "account_merge_reviews"
+
+    id = Column(String(36), primary_key=True)
+    fingerprint = Column(String(64), unique=True, index=True, nullable=False)
+    account_id = Column(String(36), index=True, nullable=True)
+    conflicting_account_id = Column(String(36), index=True, nullable=True)
+    reason_code = Column(String(64), index=True, nullable=False)
+    status = Column(String(24), default="open", index=True, nullable=False)
+    subject_hint = Column(String(255), nullable=True)
+    details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
 
 
 class WebEmailIdentity(Base):

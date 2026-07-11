@@ -23,6 +23,7 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
 
 
 _POSTGRES_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+POSTGRES_SCHEMA_BOOTSTRAP_LOCK = "pokrov_schema_bootstrap"
 
 
 def _postgres_ident(value: str) -> str:
@@ -1020,6 +1021,7 @@ def run_migrations(engine: Engine) -> None:
         # users table: add columns if missing
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")).fetchone():
             wanted_cols = [
+                ("account_id", "VARCHAR(36)"),
                 ("referral_code", "VARCHAR(10)"),
                 ("first_purchase_done", "BOOLEAN DEFAULT 0"),
                 ("sub_token", "VARCHAR(64)"),
@@ -1112,6 +1114,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_achievements_tg_id ON achievements(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_tg_id ON user_nodes(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_user_nodes_node_id ON user_nodes(node_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_account_id ON users(account_id);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_promo_usage_tg_code ON promo_usage(tg_id, promo_code);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
@@ -2107,7 +2110,11 @@ def _run_postgres_migrations(engine: Engine) -> None:
     `create_all()` already creates tables; here we only ensure additive columns/indexes.
     """
     with engine.begin() as conn:
-        conn.execute(text("SELECT pg_advisory_xact_lock(hashtext('pokrov_schema_migrations'));"))
+        conn.execute(
+            text(
+                f"SELECT pg_advisory_xact_lock(hashtext('{POSTGRES_SCHEMA_BOOTSTRAP_LOCK}'));"
+            )
+        )
         code_limit = _postgres_varchar_limit(conn, "gift_cards", "code")
         if code_limit is not None and code_limit < 32:
             conn.execute(text("ALTER TABLE gift_cards ALTER COLUMN code TYPE VARCHAR(32);"))
@@ -2141,6 +2148,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_created_at ON feedback_entries(created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_review_id ON feedback_entries(review_id);"))
         _postgres_add_column_if_missing(conn, "users", "referral_code", "VARCHAR(10)")
+        _postgres_add_column_if_missing(conn, "users", "account_id", "VARCHAR(36)")
         _postgres_add_column_if_missing(conn, "users", "first_purchase_done", "BOOLEAN DEFAULT FALSE")
         _postgres_add_column_if_missing(conn, "users", "sub_token", "VARCHAR(64)")
         _postgres_add_column_if_missing(conn, "users", "streak_months", "INTEGER DEFAULT 0")
@@ -2181,6 +2189,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "users", "linked_telegram_linked_at", "TIMESTAMP")
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_app_install_id ON users(app_install_id) WHERE app_install_id IS NOT NULL;"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_users_linked_telegram_id ON users(linked_telegram_id) WHERE linked_telegram_id IS NOT NULL;"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_account_id ON users(account_id);"))
         _postgres_add_column_if_missing(conn, "nodes", "accepting_new_clients", "BOOLEAN DEFAULT TRUE")
         _postgres_add_column_if_missing(conn, "nodes", "is_draining", "BOOLEAN DEFAULT FALSE")
         _postgres_add_column_if_missing(conn, "nodes", "active_clients", "INTEGER DEFAULT 0")

@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import func
 
+from account_foundation_service import ensure_user_account_foundation
 from config import env_bool, env_int
 from email_delivery_service import deliver_auth_message as deliver_email_auth_message
 from free_cycle_service import mark_user_became_free
@@ -243,6 +244,8 @@ def register_email_identity(
         session.add(identity)
         session.flush()
 
+    ensure_user_account_foundation(session, user, now=now)
+
     _invalidate_unused_tokens(session, identity_id=int(identity.id), token_kind=EMAIL_TOKEN_KIND_VERIFY)
     raw_token = _issue_one_time_token(
         session,
@@ -278,6 +281,9 @@ def verify_email_identity(session, *, token: str) -> WebEmailIdentity:
     identity.verified_at = now
     identity.updated_at = now
     token_row.used_at = now
+    user = session.query(User).filter(User.tg_id == int(identity.linked_tg_id)).first()
+    if user is not None:
+        ensure_user_account_foundation(session, user, now=now)
     return identity
 
 

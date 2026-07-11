@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 from fastapi import HTTPException
 
+from account_foundation_service import ensure_user_account_foundation
 from free_cycle_service import mark_user_became_free
 from models import StartLink, User
 from network_rollout import resolved_client_policy
@@ -256,7 +257,6 @@ def upsert_app_trial_user(
         )
         mark_user_became_free(user, now=now)
         s.add(user)
-        s.flush()
         created = True
     else:
         user.is_app_user = True
@@ -287,8 +287,8 @@ def upsert_app_trial_user(
             user.route_selected_apps_json = "[]"
         if getattr(user, "route_requires_elevated_privileges", None) is None:
             user.route_requires_elevated_privileges = _default_route_requires_elevated_privileges(user)
-        s.flush()
 
+    ensure_user_account_foundation(s, user, now=now)
     return user, created
 
 

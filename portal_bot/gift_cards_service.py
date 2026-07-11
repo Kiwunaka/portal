@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import db
+from account_foundation_service import ensure_user_account_foundation
 from models import GiftCard, User
 from shared_surface_facts import get_tariff_catalog
 
@@ -182,6 +183,7 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
             user.current_plan_code = str(card_info.get("plan_code") or "").strip().lower()
         if not user.sub_token:
             user.sub_token = _generate_sub_token()
+        ensure_user_account_foundation(s, user, now=now)
 
         updated = (
             s.query(GiftCard)

@@ -111,6 +111,14 @@ def test_upsert_app_trial_user_uses_canonical_trial_days(monkeypatch, tmp_path):
         assert user.app_device_name == "Surface Laptop"
         assert user.app_last_ip == "203.0.113.10"
         assert user.expiry_at == now + timedelta(days=5)
+        assert user.account_id
+
+        from models import AccountDevice, EntitlementGrant
+
+        device = session.query(AccountDevice).filter_by(install_id="install-123").one()
+        assert device.account_id == user.account_id
+        assert device.label == "Surface Laptop"
+        assert session.query(EntitlementGrant).filter_by(account_id=user.account_id).count() == 1
 
         updated_payload = SimpleNamespace(
             install_id="install-123",
@@ -136,8 +144,85 @@ def test_upsert_app_trial_user_uses_canonical_trial_days(monkeypatch, tmp_path):
         assert updated_user.app_version == "1.0.1"
         assert updated_user.app_last_ip == "203.0.113.11"
         assert updated_user.expiry_at == now + timedelta(days=5)
+        session.refresh(device)
+        assert device.label == "Surface Laptop 2"
+        assert session.query(EntitlementGrant).filter_by(account_id=user.account_id).count() == 1
     finally:
         session.close()
+
+
+def test_upsert_app_trial_user_defers_create_and_update_flush_until_projection_locks(
+    monkeypatch,
+    tmp_path,
+):
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.orm import sessionmaker
+
+    import account_foundation_service as account_foundation_module
+    import app_first_service as service
+    from models import Base
+
+    engine = create_engine(f"sqlite:///{(tmp_path / 'app-first-lock-order.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    events: list[tuple[str, str] | tuple[str]] = []
+
+    def _capture_flush(*_args) -> None:
+        events.append(("flush",))
+
+    def _capture_lock(_session, lock_key: str, *, shared: bool = False) -> None:
+        events.append(("lock", str(lock_key)))
+
+    event.listen(session, "before_flush", _capture_flush)
+    monkeypatch.setattr(
+        account_foundation_module,
+        "_acquire_postgres_advisory_lock",
+        _capture_lock,
+    )
+    now = datetime(2026, 4, 13, tzinfo=timezone.utc).replace(tzinfo=None)
+    payload = SimpleNamespace(
+        install_id="install-lock-order",
+        device_name="Lock order device",
+        platform="windows",
+        os_version="11",
+        app_version="1.0.0",
+        locale="ru",
+        time_zone="Europe/Moscow",
+    )
+
+    try:
+        user, created = service.upsert_app_trial_user(
+            s=session,
+            payload=payload,
+            now=now,
+            trial_days=5,
+        )
+        assert created is True
+        assert events[:2] == [
+            ("lock", f"pokrov_account_foundation_user:{int(user.tg_id)}"),
+            ("lock", "pokrov_account_foundation_backfill"),
+        ]
+        assert ("flush",) in events
+        session.commit()
+
+        events.clear()
+        updated_payload = SimpleNamespace(**{**payload.__dict__, "device_name": "Updated lock order device"})
+        updated_user, created = service.upsert_app_trial_user(
+            s=session,
+            payload=updated_payload,
+            now=now + timedelta(minutes=1),
+            trial_days=5,
+        )
+        assert created is False
+        assert events[:2] == [
+            ("lock", f"pokrov_account_foundation_user:{int(updated_user.tg_id)}"),
+            ("lock", "pokrov_account_foundation_backfill"),
+        ]
+        assert ("flush",) in events
+    finally:
+        session.rollback()
+        session.close()
+        engine.dispose()
 
 
 def test_build_start_trial_response_parts_preserves_public_shape(monkeypatch, tmp_path):

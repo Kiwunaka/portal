@@ -132,6 +132,20 @@ class BotPaywallTests(unittest.TestCase):
         try:
             user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
             self.assertIsNotNone(user)
+            self.assertTrue(user.account_id)
+            from models import AccountIdentity
+
+            identity = (
+                session.query(AccountIdentity)
+                .filter_by(
+                    account_id=str(user.account_id),
+                    kind="telegram",
+                    provider="telegram",
+                    subject_norm="1001",
+                )
+                .one()
+            )
+            self.assertIsNotNone(identity)
             user.sub_token = "token_1001_secure"
             session.commit()
         finally:
@@ -238,8 +252,27 @@ class BotPaywallTests(unittest.TestCase):
         finally:
             session.close()
 
-        changed = self.bot_module.sync_telegram_identity(1001, "fresh_name")
+        account_foundation_module = importlib.import_module("account_foundation_service")
+        lock_calls: list[tuple[str, bool]] = []
+
+        def _record_lock(_session, lock_key: str, *, shared: bool = False) -> None:
+            lock_calls.append((str(lock_key), bool(shared)))
+
+        with patch.object(
+            account_foundation_module,
+            "_acquire_postgres_advisory_lock",
+            side_effect=_record_lock,
+        ):
+            changed = self.bot_module.sync_telegram_identity(1001, "fresh_name")
         self.assertTrue(changed)
+        self.assertEqual(
+            lock_calls,
+            [
+                ("pokrov_account_foundation_user:1001", False),
+                ("pokrov_account_foundation_user:9000000000100", False),
+                ("pokrov_account_foundation_backfill", False),
+            ],
+        )
 
         session = self.bot_module.Session()
         try:
@@ -612,6 +645,249 @@ class BotPaywallTests(unittest.TestCase):
             self.assertIsNotNone(card)
             self.assertEqual(str(user.current_plan_code or ""), "start_99")
             self.assertEqual(int(card.redeemed_by or 0), 1001)
+        finally:
+            session.close()
+
+    def test_direct_gift_recipient_receives_canonical_account(self) -> None:
+        code = "POKROV-DIRECT-GIFT-ACCOUNT"
+        recipient_tg_id = 31001
+        session = self.bot_module.Session()
+        try:
+            session.add(self.bot_module.GiftCard(code=code, card_type="standard", created_by=2002))
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            async def login(self):
+                return True
+
+            async def get_existing_client(self, _tg_id):
+                return None
+
+            async def add_client(self, *_args, **_kwargs):
+                return True
+
+            async def close(self):
+                return None
+
+        with patch("control_panel.ControlPanel", _Panel):
+            result = asyncio.run(
+                self.bot_module.redeem_gift_card_service(
+                    code=code,
+                    recipient_tg_id=recipient_tg_id,
+                    require_tos=False,
+                )
+            )
+
+        self.assertTrue(result["ok"], result)
+        session = self.bot_module.Session()
+        try:
+            recipient = session.query(self.bot_module.User).filter_by(tg_id=recipient_tg_id).one()
+            self.assertTrue(recipient.account_id)
+        finally:
+            session.close()
+
+    def test_app_link_bind_merges_canonical_accounts_before_returning(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="telegram_owner")
+        app_tg_id = 9_000_000_000_102
+        start_code = "app_link_account_merge_102"
+        session = self.bot_module.Session()
+        try:
+            app_user = self.bot_module.User(
+                tg_id=app_tg_id,
+                username="app_000102",
+                uuid=str(uuid.uuid4()),
+                email=f"APP_{app_tg_id}",
+                sub_type="FREE",
+                current_plan_code="trial",
+                is_active=True,
+                is_app_user=True,
+                app_install_id="install-bind-merge-102",
+                sub_token="linked_token_102",
+            )
+            session.add(app_user)
+            self.bot_module.ensure_user_account_foundation(session, app_user)
+            session.add(
+                self.bot_module.StartLink(
+                    code=start_code,
+                    target_action=f"link_account:{app_tg_id}",
+                    is_active=True,
+                )
+            )
+            session.commit()
+            telegram_user = session.query(self.bot_module.User).filter_by(tg_id=1001).one()
+            session.refresh(app_user)
+            self.assertNotEqual(str(telegram_user.account_id), str(app_user.account_id))
+        finally:
+            session.close()
+
+        account_foundation_module = importlib.import_module("account_foundation_service")
+        lock_calls: list[tuple[str, bool]] = []
+
+        def _record_lock(_session, lock_key: str, *, shared: bool = False) -> None:
+            lock_calls.append((str(lock_key), bool(shared)))
+
+        with patch.object(
+            account_foundation_module,
+            "_acquire_postgres_advisory_lock",
+            side_effect=_record_lock,
+        ):
+            result = self.bot_module._bind_app_account_to_telegram(
+                account_tg_id=app_tg_id,
+                telegram_id=1001,
+                telegram_username="telegram_owner",
+                start_code=start_code,
+            )
+
+        self.assertEqual(result, "linked")
+        self.assertEqual(
+            lock_calls,
+            [
+                ("pokrov_account_foundation_user:1001", False),
+                (f"pokrov_account_foundation_user:{app_tg_id}", False),
+                ("pokrov_account_foundation_backfill", False),
+            ],
+        )
+        session = self.bot_module.Session()
+        try:
+            telegram_user = session.query(self.bot_module.User).filter_by(tg_id=1001).one()
+            app_user = session.query(self.bot_module.User).filter_by(tg_id=app_tg_id).one()
+            link = session.query(self.bot_module.StartLink).filter_by(code=start_code).one()
+            self.assertEqual(str(app_user.account_id), str(telegram_user.account_id))
+            self.assertEqual(app_user.linked_telegram_id, 1001)
+            self.assertFalse(link.is_active)
+        finally:
+            session.close()
+
+        self.bot_module.ensure_pending_user(2002, username="replay_attempt")
+        replay = self.bot_module._bind_app_account_to_telegram(
+            account_tg_id=app_tg_id,
+            telegram_id=2002,
+            telegram_username="replay_attempt",
+            start_code=start_code,
+        )
+        self.assertEqual(replay, "expired")
+        session = self.bot_module.Session()
+        try:
+            app_user = session.query(self.bot_module.User).filter_by(tg_id=app_tg_id).one()
+            self.assertEqual(app_user.linked_telegram_id, 1001)
+        finally:
+            session.close()
+
+    def test_app_link_bind_requires_both_user_endpoints_and_keeps_link_unused(self) -> None:
+        app_tg_id = 9_000_000_000_103
+        missing_telegram_id = 1003
+        start_code = "app_link_missing_telegram_103"
+        session = self.bot_module.Session()
+        try:
+            app_user = self.bot_module.User(
+                tg_id=app_tg_id,
+                username="app_000103",
+                uuid=str(uuid.uuid4()),
+                email=f"APP_{app_tg_id}",
+                sub_type="FREE",
+                current_plan_code="trial",
+                is_active=True,
+                is_app_user=True,
+                app_install_id="install-bind-missing-telegram-103",
+                sub_token="linked_token_103",
+            )
+            session.add(app_user)
+            self.bot_module.ensure_user_account_foundation(session, app_user)
+            session.add(
+                self.bot_module.StartLink(
+                    code=start_code,
+                    target_action=f"link_account:{app_tg_id}",
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        result = self.bot_module._bind_app_account_to_telegram(
+            account_tg_id=app_tg_id,
+            telegram_id=missing_telegram_id,
+            telegram_username="missing_owner",
+            start_code=start_code,
+        )
+
+        self.assertEqual(result, "not_found")
+        session = self.bot_module.Session()
+        try:
+            app_user = session.query(self.bot_module.User).filter_by(tg_id=app_tg_id).one()
+            link = session.query(self.bot_module.StartLink).filter_by(code=start_code).one()
+            self.assertIsNone(app_user.linked_telegram_id)
+            self.assertTrue(link.is_active)
+        finally:
+            session.close()
+
+    def test_manual_bot_user_receives_canonical_account_immediately(self) -> None:
+        user = self.bot_module.create_manual_user_record(
+            display_name="Offline owner",
+            days=30,
+            created_by_admin=9999,
+        )
+
+        self.assertTrue(user.account_id)
+        session = self.bot_module.Session()
+        try:
+            stored = session.query(self.bot_module.User).filter_by(tg_id=int(user.tg_id)).one()
+            self.assertEqual(str(stored.account_id), str(user.account_id))
+        finally:
+            session.close()
+
+    def test_app_link_bind_rejects_transitive_account_chain(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="first_telegram")
+        self.bot_module.ensure_pending_user(2002, username="second_telegram")
+        app_tg_id = 9_000_000_000_701
+        start_code = "app_link_transitive_rejected_701"
+        session = self.bot_module.Session()
+        try:
+            first_app = self.bot_module.User(
+                tg_id=app_tg_id,
+                username="app_000701",
+                uuid=str(uuid.uuid4()),
+                email=f"APP_{app_tg_id}",
+                sub_type="FREE",
+                current_plan_code="trial",
+                is_active=True,
+                is_app_user=True,
+                app_install_id="install-transitive-701",
+                linked_telegram_id=1001,
+                linked_telegram_linked_at=self.bot_module._utcnow(),
+                sub_token="linked_token_701",
+            )
+            session.add(first_app)
+            self.bot_module.ensure_user_account_foundation(session, first_app)
+            session.add(
+                self.bot_module.StartLink(
+                    code=start_code,
+                    target_action="link_account:1001",
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        result = self.bot_module._bind_app_account_to_telegram(
+            account_tg_id=1001,
+            telegram_id=2002,
+            telegram_username="second_telegram",
+            start_code=start_code,
+        )
+
+        self.assertEqual(result, "transitive_link_not_supported")
+        session = self.bot_module.Session()
+        try:
+            first_telegram = session.query(self.bot_module.User).filter_by(tg_id=1001).one()
+            second_telegram = session.query(self.bot_module.User).filter_by(tg_id=2002).one()
+            link = session.query(self.bot_module.StartLink).filter_by(code=start_code).one()
+            self.assertIsNone(first_telegram.linked_telegram_id)
+            self.assertNotEqual(str(first_telegram.account_id), str(second_telegram.account_id))
+            self.assertTrue(link.is_active)
         finally:
             session.close()
 

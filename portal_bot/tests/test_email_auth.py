@@ -407,6 +407,19 @@ def test_email_register_from_app_session_links_to_app_account(monkeypatch, tmp_p
         identity = db.query(api.WebEmailIdentity).filter_by(email_norm="app-linked@pokrov.test").first()
         assert identity is not None
         assert int(identity.linked_tg_id) == app_account_id
+        from models import AccountIdentity
+
+        canonical_email = (
+            db.query(AccountIdentity)
+            .filter_by(
+                account_id=str(user.account_id),
+                kind="email",
+                provider="email",
+                subject_norm="app-linked@pokrov.test",
+            )
+            .one()
+        )
+        assert canonical_email.verified_at is not None
     finally:
         db.close()
 
@@ -476,6 +489,8 @@ def test_telegram_session_shows_email_from_linked_email_account(monkeypatch, tmp
     api._ensure_user_row_for_login(tg_id=777001, username="linked_owner")
     db = api.SessionLocal()
     try:
+        telegram_user = db.query(api.User).filter(api.User.tg_id == 777001).one()
+        assert telegram_user.account_id
         user = db.query(api.User).filter(api.User.tg_id == account_id).first()
         assert user is not None
         user.linked_telegram_id = 777001

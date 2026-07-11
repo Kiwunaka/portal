@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-07-08
+Last updated: 2026-07-10
 
 ## Document Status
 
@@ -31,6 +31,68 @@ Client-canon note:
 - this document describes the active contract that `POKROV-app/main` must implement
 - any retired bootstrap or rollback docs that still describe older surfaces are reference-only and must not override this contract
 
+## Current Canonical Account Foundation
+
+Deployment status: this additive foundation is repo-implemented on
+`codex/market-ready-cis-integration` but is not deployed. The live platform
+continues to use legacy auth, entitlement, payment, support, bonus,
+`users.tg_id` and stateless-bearer behavior until the manual predeploy gates
+below are complete.
+
+- `accounts.id` is the additive immutable UUID account root.
+- `users.account_id` maps current legacy user rows into that root while
+  `users.tg_id` remains the live compatibility key for bot, panel, payment and
+  current public API responses.
+- first app trial, email registration/verification and Telegram first-touch
+  synchronize typed identities, a real `account_devices` row and a
+  non-authoritative legacy entitlement snapshot in the same transaction.
+- existing rows are backfilled once per database behind the
+  `migration.account_foundation.v1` completion marker. Later app, email and
+  Telegram writes synchronize only the affected account component. Explicit
+  `linked_telegram_id` edges merge app and direct-Telegram rows without deleting
+  payment, support or access history; ambiguous identity ownership creates an
+  operator review row. Arrival order is deterministic: if an app row points to
+  a Telegram ID before the direct Telegram row exists, the later direct row
+  converges through that explicit reverse edge.
+- PostgreSQL transaction advisory locks serialize the one-time projection and
+  runtime projection: ordinary writes share the global projection lock and
+  account merges take it exclusively. The real Telegram bind also locks its
+  one-time `start_links` row and both user rows, then commits the link and the
+  canonical-account merge atomically before it reports success.
+- all paths use one deadlock-safe order: lock affected `users` rows in numeric
+  order, acquire deterministic per-user advisory locks, then acquire the shared
+  or exclusive global projection lock. Startup coordination uses a separate
+  advisory key and never holds the projection lock while waiting on user rows.
+  A transaction chooses the final global mode once and never upgrades a shared
+  projection lock to exclusive.
+- for existing legacy chains, component membership is discovered without row
+  locks first, the complete ID set is locked by one numeric `FOR UPDATE` query,
+  and the closure is rechecked before any global lock is taken.
+- bot linking accepts only a direct app-account to Telegram pair. If either
+  endpoint already participates in another link direction, the bot leaves the
+  one-time link unused and sends the case to support instead of building a
+  transitive `A -> B -> C` identity chain.
+- the additive `auth_sessions`, `recovery_codes`, `entitlement_grants` and
+  antiabuse tables are schema foundation only at this stage. Current access
+  truth still comes from legacy user/payment state until the dedicated ledger
+  and session cutovers land.
+- PostgreSQL schema creation and additive migrations use the same
+  `pokrov_schema_bootstrap` transaction advisory lock, preventing their
+  separate transactions from overlapping during concurrent first startup.
+
+Predeploy account-foundation gates:
+
+- `MANUAL_OWNER_TEST`: PostgreSQL rehearsal on a redacted production snapshot
+  with a retained backfill report, row counts and merge-review counts.
+- `MANUAL_OWNER_TEST`: real two-connection PostgreSQL concurrency proof for
+  projection, Telegram bind and concurrent first startup; local SQL-order tests
+  do not claim live deadlock proof.
+- `MANUAL_OWNER_TEST`: owner approval of backup, restore and code/data rollback
+  steps before any production migration or deploy.
+- `MANUAL_OWNER_TEST`: before/after preservation checks for public auth,
+  entitlement, payments, support, bonus, `users.tg_id` compatibility and the
+  current stateless bearer.
+
 ## App-First Trial Flow
 
 1. client creates and persists `install_id`
@@ -38,9 +100,10 @@ Client-canon note:
 3. user taps `Try free`
 4. client calls `POST /api/client/session/start-trial`
 5. backend creates:
-   - app account
-   - device record
-   - app session
+   - legacy app-user compatibility row
+   - canonical UUID account projection
+   - real device registry row
+   - current compatibility bearer session
 6. backend returns:
    - `session` payload with canonical session fields
    - `client_policy` payload with routing, DNS, transport, and recovery defaults
@@ -163,10 +226,15 @@ Smart-connect contract:
 
 Important concepts:
 
-- `install_id` is the stable client-side identifier
+- `install_id` is a stable client-side identifier, not a reusable credential
 - device context supports diagnostics and abuse control
-- app session token is used for subsequent app API calls
+- the current stateless app bearer is used for subsequent app API calls until
+  rotating device-bound sessions replace it
 - Telegram is optional and not required for account creation
+
+Do not infer from the presence of the `auth_sessions` table that refresh-token
+rotation, reuse detection, revoke or recovery exchange are already public. The
+current beta client still depends on the legacy bearer response shape.
 
 ## Preferred Device Identity Inputs
 

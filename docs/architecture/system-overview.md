@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-08
+Last updated: 2026-07-10
 
 ## Document Status
 
@@ -48,6 +48,9 @@ Reference-lane note:
   FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, public reviews, and admin APIs.
 - `portal_bot/app_first_service.py`
   Bounded app-first/session helper used by the API for trial bootstrap, session payload shaping, and Telegram link start context.
+- `portal_bot/account_foundation_service.py`
+  Additive canonical-account projection and idempotent legacy backfill for
+  accounts, typed identities, devices and legacy entitlement snapshots.
 - `portal_bot/web_auth_service.py`
   Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
@@ -202,6 +205,69 @@ Production source of truth:
   - `shared/design-tokens.json`
 - active client-repo truth from `POKROV-app/main`
 
+Account ownership transition:
+
+- deployment status: the additive account foundation is repo-implemented on
+  `codex/market-ready-cis-integration` but is not deployed. Production remains
+  on the legacy auth, entitlement, payment, support, bonus, `users.tg_id` and
+  stateless-bearer paths until the predeploy gates below are approved.
+
+- `accounts.id` is the new immutable UUID ownership root; `users.account_id`
+  is an additive legacy projection and may point multiple legacy user rows at
+  the same account after an explicit app-to-Telegram link.
+- `users.tg_id` remains the compatibility adapter for current bot, panel,
+  payment and public API behavior. Existing response fields that call the
+  numeric value `account_id` have not switched to the UUID yet.
+- the first startup backfill uses deterministic UUIDv5 values, preserves legacy
+  rows, creates typed identity/device projections and one non-authoritative
+  `legacy_snapshot` entitlement grant per legacy user, then records the
+  `migration.account_foundation.v1` completion marker. Later service starts use
+  the indexed `users.account_id IS NULL` repair check and do not perform a full
+  rescan unless a missed legacy write actually needs repair.
+- PostgreSQL `Base.metadata.create_all` and additive migrations both take the
+  same `pokrov_schema_bootstrap` transaction advisory lock. They still run in
+  separate transactions, but concurrent API/bot/worker first starts cannot run
+  schema creation and DDL migration at the same time.
+- only explicit `linked_telegram_id` edges auto-merge legacy users. Conflicting
+  typed identities remain unchanged and create `account_merge_reviews` rows.
+  A direct Telegram row that arrives after an app row already points to it
+  converges through that explicit reverse edge instead of creating a second
+  account and conflict review.
+- ordinary runtime projection takes a shared PostgreSQL global lock plus a
+  per-user transaction lock; full backfill and account merges take the global
+  lock exclusively. Explicit Telegram link merge is limited to that connected
+  account component, and the bot locks the consumed link plus both user rows.
+  Each transaction chooses its final global mode once; shared-to-exclusive
+  upgrades are forbidden.
+  Restrictive account state and the highest `auth_epoch` survive absorption.
+- lock acquisition order is `users` rows by numeric ID, deterministic per-user
+  advisory locks, then the global projection lock. A separate startup advisory
+  lock serializes marker repair without creating a row/global lock inversion.
+- new Telegram binds reject transitive identity chains before taking the global
+  projection lock. Existing malformed chains remain migration/review data; the
+  public bot does not extend them. Runtime migration discovers an existing full
+  component first, locks all member rows in one numeric query, then verifies the
+  closure before projection.
+- `auth_sessions`, `recovery_codes`, `entitlement_grants` and antiabuse ledger
+  tables exist as foundation schema. Rotating refresh, recovery exchange,
+  entitlement-authority cutover and automated antiabuse actions are not live
+  merely because those tables exist.
+
+Predeploy account-foundation gates:
+
+- `MANUAL_OWNER_TEST`: run a PostgreSQL rehearsal against a redacted production
+  snapshot and retain the backfill report, row counts and review counts.
+- `MANUAL_OWNER_TEST`: prove the row/per-user/global lock order and no-upgrade
+  behavior with two real PostgreSQL connections under concurrent projection,
+  bind and first-start scenarios; local contract tests are not live concurrency
+  proof.
+- `MANUAL_OWNER_TEST`: approve the rollback position before migration or
+  deployment, including backup/restore evidence and the decision not to drop
+  additive account tables during code rollback.
+- `MANUAL_OWNER_TEST`: verify preservation of public auth, entitlement,
+  payments, support, bonus behavior, `users.tg_id` compatibility and the
+  current stateless bearer before and after the rehearsal.
+
 Not source of truth:
 
 - local SQLite files
@@ -238,9 +304,16 @@ Operational shaping rule:
 
 1. client generates `install_id`
 2. user taps `Try free`
-3. backend creates app account, device record, and app session
-4. backend returns canonical `session`, `client_policy`, `access`, and `provisioning` payloads plus a real subscription source
+3. backend creates the legacy app user and synchronizes its canonical account,
+   device and legacy entitlement projections
+4. backend issues the current compatibility bearer and returns `session`,
+   `client_policy`, `access`, and `provisioning` payloads plus a real
+   subscription source
 5. client imports and activates the profile
+
+Current compatibility limit: the bearer returned by `start-trial` is still the
+legacy stateless web-session family. It is not yet a row in `auth_sessions` and
+must not be described as rotating or device-bound before the session cutover.
 
 App-first contract note:
 

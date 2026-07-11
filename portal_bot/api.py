@@ -179,6 +179,7 @@ from email_auth_service import (
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
 import app_first_service
 import channel_bonus_service
+from account_foundation_service import ensure_user_account_foundation
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
 from observer_service import (
     OBSERVER_PUSH_MAX_AGE_SECONDS,
@@ -2957,7 +2958,8 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
             normalized = str(username or "").strip()[:100] or None
             if username is not None and user.username != normalized:
                 user.username = normalized
-                s.commit()
+            ensure_user_account_foundation(s, user, now=_utcnow())
+            s.commit()
             return
 
         now = _utcnow()
@@ -2980,6 +2982,7 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
         )
         mark_user_became_free(row, now=now)
         s.add(row)
+        ensure_user_account_foundation(s, row, now=now)
         s.commit()
     except Exception:
         s.rollback()
@@ -12917,6 +12920,7 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
             display_name=payload.display_name.strip(),
         )
         s.add(user)
+        ensure_user_account_foundation(s, user, now=now)
         s.commit()
         s.refresh(user)
         created = {

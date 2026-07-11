@@ -221,6 +221,7 @@ The expanded runtime KB expects `SUPPORT_AI_MAX_CONTEXT_CHARS=32000` or higher s
 Run focused tests:
 
 ```powershell
+python -m pytest tests/test_account_foundation.py -q
 python -m pytest portal_bot/tests/test_app_first_api.py -q
 python -m pytest tests/test_portal_api.py -q
 python -m pytest tests/test_worker_retention.py -q
