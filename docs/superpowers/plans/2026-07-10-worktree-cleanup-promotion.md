@@ -4,9 +4,9 @@
 
 **Goal:** Preserve every unique tracked, untracked, and retained ignored file; remove stale worktrees and merged local branches; then promote the verified platform and client documentation lines without force operations.
 
-**Architecture:** Stage A inventories, snapshots retained ignored state, and creates reversible named stashes before docs that overlap stale worktrees. Stage B removes only exhaustively classified ignored generated output. Stage C removes clean worktrees without `--force`. Stage D promotes platform `master` and client `main` only after all checks pass.
+**Architecture:** Stage A inventories, snapshots retained ignored state, and creates reversible named stashes before docs that overlap stale worktrees. Stage B uses one pinned, resumable Python proof/operator to remove only exhaustively classified ignored output. Stage C remains blocked until separately reviewed removal operators can remove clean worktrees without `--force`. Stage D promotes platform `master` and client `main` only after all checks pass.
 
-**Tech Stack:** Git worktrees/stash, PowerShell Core, Windows filesystem path validation, SHA-256 file hashes, existing platform/client test commands.
+**Tech Stack:** Git worktrees/stash, Python standard library for destructive proof/operator code, PowerShell Core for earlier non-gate steps, Windows path validation, SHA-256, existing platform/client test commands.
 
 ## Global Constraints
 
@@ -895,441 +895,346 @@ already-created stash for recovery; never weaken the gate to continue.
 ### Task 5: Remove Only Classified Ignored Generated Output
 
 **Files:**
-- Create locally: `C:/Users/kiwun/Documents/ai/worktree-snapshots/2026-07-10-docs-renewal/cleanup-proof-gate.ps1`
-- Delete locally: only paths classified `generated_disposable`
-- Delete locally after snapshot verification: retained ignored roots already
-  copied in Task 3
+
+- Build locally only after this tracked amendment:
+  `C:/Users/kiwun/Documents/ai/worktree-snapshots/2026-07-10-docs-renewal/cleanup-proof-gate.py`
+- Create while pinning: `cleanup-proof-gate.lock`
+- Use transiently: `manifest.json.task5.tmp`
+- Delete locally: only the three frozen stale worktrees' exhaustively classified
+  ignored paths, after the applicable retained records have passed live and
+  saved cryptographic proof
 
 **Interfaces:**
-- Consumes: exhaustive classification, snapshot, and readable stash
-- Produces: clean removable stale worktree
 
-- [ ] **Step 1: Create the single read-only destruction proof gate**
+- Consumes: the exact approved Stage A manifest, two pinned snapshot manifests,
+  three direct stashes, exhaustive classification, and exact worktree registries
+- Produces: three resumable cleanup receipts and `CLEANED_VERIFIED`
+- Does not authorize: stale-worktree removal, branch deletion, temporary
+  worktree removal, promotion, or any Task 6/8 mutation
 
-Save the following exact source as the local ignored file
-`cleanup-proof-gate.ps1` named above. This is the only proof implementation
-used before clean and worktree removal. It reads and hashes evidence but never
-changes a repository, worktree, stash, snapshot, or manifest.
+The former PowerShell gate and external clean loop are rejected. Build one
+standalone Python-standard-library program at the fixed path above. Do not add a
+wrapper, second runner, package, service, database, vector index, or cache.
 
-The gate never compares all retained live files after stash. It compares live
-path/length/SHA-256 only for `ignored_retained`, because those bytes are not in
-the stash and must still exist unchanged before cleanup. `tracked_dirty` and
-`untracked` require the snapshot hash plus exact direct-stash OID, subject, and
-path membership. `tracked_clean` requires the frozen branch/HEAD and snapshot.
-`tracked_deleted` requires an absent pre-stash source record plus exact deletion
-path membership in the direct stash. The post-clean removal proof consumes the
-receipt from that immediately preceding live ignored-retained proof.
+- [ ] **Step 1: Implement one pinned program and four CLI commands**
 
-```powershell
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory)][string]$ManifestPath,
-    [Parameter(Mandatory)][string]$EntryId,
-    [Parameter(Mandatory)][ValidateSet('BeforeClean','AfterClean','BeforeStaleRemoval','BeforeTemporaryRemoval')][string]$Mode
-)
-$ErrorActionPreference = 'Stop'
-$comparison = [StringComparison]::OrdinalIgnoreCase
+Run the program only as `python.exe -B`. Its command surface is exact:
 
-function New-OrdinalSet {
-    param([object[]]$Values, [string]$Label)
-    $set = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($value in @($Values)) {
-        if ($value -isnot [string] -or $value.Length -eq 0 -or -not $set.Add($value)) { throw "$Label has an invalid or duplicate value: $value" }
-    }
-    return ,$set
-}
-function Assert-OrdinalBijection {
-    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
-    $expectedSet = New-OrdinalSet $Expected "$Label expected"
-    $actualSet = New-OrdinalSet $Actual "$Label actual"
-    if ($expectedSet.Count -ne $actualSet.Count -or -not $expectedSet.SetEquals($actualSet)) { throw "$Label mismatch" }
-}
-function New-OrdinalRecordMap {
-    param([object[]]$Records, [string]$KeyProperty, [string]$Label)
-    $map = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
-    foreach ($record in @($Records)) {
-        $key = $record.$KeyProperty
-        if ($key -isnot [string] -or $key.Length -eq 0 -or $map.ContainsKey($key)) { throw "$Label has an invalid or duplicate key: $key" }
-        $map.Add($key, $record)
-    }
-    return ,$map
-}
-function Invoke-GitLines {
-    param([string]$Repo, [string[]]$GitArgs)
-    $lines = @(& git -c core.quotepath=false -C $Repo @GitArgs)
-    $exitCode = $LASTEXITCODE
-    if ($exitCode -ne 0) { throw "git failed in ${Repo} ($exitCode): $($GitArgs -join ' ')" }
-    return @($lines)
-}
-function Invoke-GitPathSet {
-    param([string]$Repo, [string[]]$GitArgs, [string]$Label)
-    $lines = @(Invoke-GitLines $Repo $GitArgs)
-    $set = New-OrdinalSet @($lines | Where-Object { $_ -ne '' } | ForEach-Object { $_.Replace('\', '/') }) $Label
-    return @($set)
-}
-function Assert-PlainTree {
-    param([string]$Root, [string]$Label)
-    $item = Get-Item -Force -LiteralPath $Root
-    if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "$Label root is not a plain directory" }
-    $reparse = @(Get-ChildItem -Force -Recurse -LiteralPath $Root | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint })
-    if ($reparse.Count -ne 0) { throw "$Label contains a reparse point" }
-}
-function Get-RecordSet {
-    param([string]$Root, [string]$ExcludedFullName)
-    $records = [Collections.Generic.List[object]]::new()
-    foreach ($file in @(Get-ChildItem -Force -File -Recurse -LiteralPath $Root)) {
-        if ($ExcludedFullName -and [string]::Equals($file.FullName, $ExcludedFullName, $comparison)) { continue }
-        $records.Add([pscustomobject]@{
-            relative_path = [IO.Path]::GetRelativePath($Root, $file.FullName).Replace('\', '/')
-            byte_length = $file.Length
-            sha256 = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
-        })
-    }
-    return @($records)
-}
-function Get-LiveIgnoredRetainedRecords {
-    param([string]$Worktree, [object[]]$SavedRecords)
-    $root = [IO.Path]::GetFullPath($Worktree)
-    $records = foreach ($saved in @($SavedRecords|Where-Object original_git_state -CEQ 'ignored_retained')) {
-        $source=[IO.Path]::GetFullPath((Join-Path $root $saved.relative_path))
-        if(-not $source.StartsWith($root+[IO.Path]::DirectorySeparatorChar,$comparison)-or-not(Test-Path -LiteralPath $source -PathType Leaf)){throw "Ignored retained source escaped or is missing: $($saved.relative_path)"}
-        $file=Get-Item -Force -LiteralPath $source
-        if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw "Ignored retained source is a reparse point: $($saved.relative_path)"}
-        [pscustomobject]@{relative_path=$saved.relative_path;byte_length=$file.Length;sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash;original_git_state='ignored_retained';snapshot_present=$true}
-    }
-    return @($records)
-}
-function Assert-RecordMatch {
-    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
-    $expectedMap = New-OrdinalRecordMap $Expected relative_path "$Label expected"
-    $actualMap = New-OrdinalRecordMap $Actual relative_path "$Label actual"
-    Assert-OrdinalBijection @($expectedMap.Keys) @($actualMap.Keys) "$Label paths"
-    foreach ($path in $expectedMap.Keys) {
-        if ($expectedMap[$path].byte_length -ne $actualMap[$path].byte_length -or [string]$expectedMap[$path].sha256 -cne [string]$actualMap[$path].sha256) { throw "$Label length/hash mismatch: $path" }
-        if($expectedMap[$path].PSObject.Properties.Name -contains 'original_git_state' -and $actualMap[$path].PSObject.Properties.Name -contains 'original_git_state' -and $expectedMap[$path].original_git_state -cne $actualMap[$path].original_git_state){throw "$Label Git-state mismatch: $path"}
-    }
-}
-function Get-LivePreviewRecords {
-    param([object]$Entry)
-    $classMap = New-OrdinalRecordMap @($Entry.ignored_classification) path "$($Entry.id) classifications"
-    $covered = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    $previewPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    $records = [Collections.Generic.List[object]]::new()
-    foreach ($line in @(Invoke-GitLines $Entry.worktree @('clean','-ndX'))) {
-        if (-not $line.StartsWith('Would remove ', [StringComparison]::Ordinal)) { throw "$($Entry.id) unparseable clean preview: $line" }
-        $candidate = $line.Substring(13).Replace('\', '/').TrimEnd('/')
-        if ($candidate.Length -eq 0 -or $candidate.Contains('"') -or $candidate.Contains("`r") -or $candidate.Contains("`n") -or -not $previewPaths.Add($candidate)) { throw "$($Entry.id) unsafe/duplicate preview path: $candidate" }
-        $matches = @($Entry.ignored_paths | Where-Object { $_ -ceq $candidate -or $_.StartsWith($candidate + '/', [StringComparison]::Ordinal) })
-        if ($matches.Count -eq 0) { throw "$($Entry.id) preview path has no authorized leaf: $candidate" }
-        $classes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-        foreach ($path in $matches) {
-            if (-not $covered.Add($path)) { throw "$($Entry.id) overlapping preview coverage: $path" }
-            [void]$classes.Add([string]$classMap[$path].classification)
-        }
-        if ($classes.Count -ne 1) { throw "$($Entry.id) preview mixes generated and retained data: $candidate" }
-        $target = [IO.Path]::GetFullPath((Join-Path $Entry.worktree $candidate))
-        if (-not $target.StartsWith([IO.Path]::GetFullPath($Entry.worktree) + [IO.Path]::DirectorySeparatorChar, $comparison)) { throw "$($Entry.id) preview escaped worktree" }
-        if (Test-Path -LiteralPath $target) {
-            $targetItem = Get-Item -Force -LiteralPath $target
-            if ($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "$($Entry.id) preview target is a reparse point: $candidate" }
-            if ($targetItem.PSIsContainer) { Assert-PlainTree $target "$($Entry.id) preview $candidate" }
-        }
-        $records.Add([pscustomobject]@{ path=$candidate; classification=@($classes)[0] })
-    }
-    Assert-OrdinalBijection @($Entry.ignored_paths) @($covered) "$($Entry.id) preview coverage"
-    return @($records)
-}
-function Assert-PreviewRecordMatch {
-    param([object[]]$Expected, [object[]]$Actual, [string]$Label)
-    $expectedMap = New-OrdinalRecordMap $Expected path "$Label expected"
-    $actualMap = New-OrdinalRecordMap $Actual path "$Label actual"
-    Assert-OrdinalBijection @($expectedMap.Keys) @($actualMap.Keys) "$Label paths"
-    foreach ($path in $expectedMap.Keys) {
-        if ([string]$expectedMap[$path].classification -cne [string]$actualMap[$path].classification) { throw "$Label classification mismatch: $path" }
-    }
-}
-function Assert-RegisteredWorktree {
-    param([object]$Spec)
-    $records = [Collections.Generic.List[object]]::new(); $current = $null
-    foreach ($line in @(Invoke-GitLines $Spec.repo_root @('worktree','list','--porcelain'))) {
-        if ($line.StartsWith('worktree ', [StringComparison]::Ordinal)) {
-            if ($null -ne $current) { $records.Add($current) }
-            $current = [pscustomobject]@{ path=$line.Substring(9); head=$null; branch=$null }
-        } elseif ($null -ne $current -and $line.StartsWith('HEAD ', [StringComparison]::Ordinal)) { $current.head=$line.Substring(5) }
-        elseif ($null -ne $current -and $line.StartsWith('branch ', [StringComparison]::Ordinal)) { $current.branch=$line.Substring(7) }
-    }
-    if ($null -ne $current) { $records.Add($current) }
-    $matches = @($records | Where-Object { [string]::Equals([IO.Path]::GetFullPath($_.path), [IO.Path]::GetFullPath($Spec.worktree), $comparison) })
-    if ($matches.Count -ne 1 -or $matches[0].head -cne $Spec.head -or $matches[0].branch -cne "refs/heads/$($Spec.branch)") { throw "$($Spec.id) worktree registration mismatch" }
-}
+- `pin`: one-shot evidence pin; never deletes data;
+- `prove`: read-only, with `BeforeClean`, `AfterClean`,
+  `BeforeStaleRemoval`, and `BeforeTemporaryRemoval` modes;
+- `execute-task5`: the sole fresh-run path allowed to invoke ignored cleanup;
+- `recover-task5`: the sole resumed-run cleanup path for an already-started
+  Task 5 run.
 
-$manifestFullPath = [IO.Path]::GetFullPath($ManifestPath)
-$backupRoot = Split-Path -Parent $manifestFullPath
-$manifest = [IO.File]::ReadAllText($manifestFullPath) | ConvertFrom-Json
-$expectedState = if ($Mode -cin @('BeforeClean','AfterClean')) { 'STAGE_A_VERIFIED' } else { 'CLEANED_VERIFIED' }
-if ($manifest.schema_version -ne 2 -or $manifest.stage_a_state -cne $expectedState -or @($manifest.audit_drift).Count -ne 0) { throw "Manifest is not in exact $expectedState state" }
-if ($manifest.audit_expectations.platform_ops_local.file_count -ne 2 -or $manifest.audit_expectations.platform_ops_local.byte_count -ne 2052 -or
-    $manifest.audit_expectations.client_artifacts.file_count -ne 114 -or $manifest.audit_expectations.client_artifacts.byte_count -ne 2016578139) { throw 'Manifest retained audit expectations mismatch' }
-if ($manifest.proof_gate.path -cne 'cleanup-proof-gate.ps1') { throw 'Manifest proof-gate path mismatch' }
-$selfPath = [IO.Path]::GetFullPath($PSCommandPath)
-if (-not [string]::Equals($selfPath, [IO.Path]::GetFullPath((Join-Path $backupRoot $manifest.proof_gate.path)), $comparison)) { throw 'Running an unregistered proof gate' }
-if ((Get-Item -Force -LiteralPath $selfPath).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Proof gate is a reparse point' }
-if ((Get-FileHash -LiteralPath $selfPath -Algorithm SHA256).Hash -cne $manifest.proof_gate.sha256) { throw 'Proof-gate hash mismatch' }
+The argument contract is fixed: `pin` receives the manifest path and approved
+self hash; `prove` also receives one mode and entry ID; `execute-task5` and
+`recover-task5` also receive one run nonce. No command accepts a worktree path,
+Git argument, cleanup order, or executable override from the caller.
 
-$staleSpecs = @(
-    [pscustomobject]@{ id='premium-bank-app-portal'; worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\premium-bank-app-portal'; repo_root='C:\Users\kiwun\Documents\ai\VPN'; branch='codex/premium-bank-app-portal'; tracked=30; untracked=2; ignored=45423; retained_branch='master' },
-    [pscustomobject]@{ id='release-hardening-platform'; worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\release-hardening-platform'; repo_root='C:\Users\kiwun\Documents\ai\VPN'; branch='codex/release-hardening-platform'; tracked=91; untracked=117; ignored=42122; retained_branch='master' },
-    [pscustomobject]@{ id='release-hardening-client'; worktree='C:\Users\kiwun\.config\superpowers\worktrees\POKROV-app\release-hardening-client'; repo_root='C:\Users\kiwun\Documents\ai\POKROV-app'; branch='codex/release-hardening-client'; tracked=26; untracked=27; ignored=143; retained_branch='main' }
-)
-$temporarySpecs = @(
-    [pscustomobject]@{ id='agent-context-refactor-platform'; worktree='C:\Users\kiwun\Documents\ai\VPN\.worktrees\agent-context-refactor'; repo_root='C:\Users\kiwun\Documents\ai\VPN'; branch='codex/agent-context-refactor'; retained_branch='master'; head=$null },
-    [pscustomobject]@{ id='agent-context-refactor-client'; worktree='C:\Users\kiwun\Documents\ai\POKROV-app\.worktrees\agent-context-refactor-client'; repo_root='C:\Users\kiwun\Documents\ai\POKROV-app'; branch='codex/agent-context-refactor-client'; retained_branch='main'; head=$null }
-)
-$staleMap = New-OrdinalRecordMap $staleSpecs id 'expected stale worktrees'
-$entryMap = New-OrdinalRecordMap @($manifest.worktrees) id 'manifest worktrees'
-Assert-OrdinalBijection @($staleMap.Keys) @($entryMap.Keys) 'manifest worktree IDs'
-if ($expectedState -ceq 'CLEANED_VERIFIED') {
-    Assert-OrdinalBijection @($staleMap.Keys) @($manifest.cleanup_receipts | ForEach-Object id) 'cleanup receipt IDs'
-    foreach($receipt in @($manifest.cleanup_receipts)){if($receipt.ignored_count -ne 0 -or $receipt.preview_count -ne 0 -or $receipt.preclean_ignored_retained_verified -ne $true){throw "$($receipt.id) cleanup receipt is not complete recovery proof"}}
-}
-foreach ($id in $staleMap.Keys) {
-    $spec = $staleMap[$id]; $entry = $entryMap[$id]
-    if (-not [string]::Equals([IO.Path]::GetFullPath($entry.worktree), [IO.Path]::GetFullPath($spec.worktree), $comparison) -or
-        -not [string]::Equals([IO.Path]::GetFullPath($entry.repo_root), [IO.Path]::GetFullPath($spec.repo_root), $comparison) -or
-        $entry.branch -cne $spec.branch -or $entry.tracked_count -ne $spec.tracked -or $entry.untracked_count -ne $spec.untracked -or $entry.ignored_count -ne $spec.ignored -or
-        $entry.tracked_count -ne @($entry.tracked_paths).Count -or $entry.head_tree_count -ne @($entry.head_tree_paths).Count -or $entry.index_file_count -ne @($entry.index_file_paths).Count -or $entry.untracked_count -ne @($entry.untracked_paths).Count -or $entry.ignored_count -ne @($entry.ignored_paths).Count -or
-        @($entry.ignored_classification).Count -ne $entry.ignored_count -or @($entry.high_risk_paths).Count -ne 0 -or @($entry.unknown_paths).Count -ne 0) { throw "$id manifest shape mismatch" }
-    Assert-OrdinalBijection @($entry.ignored_paths) @($entry.ignored_classification | ForEach-Object path) "$id classification"
-    foreach ($classification in @($entry.ignored_classification | ForEach-Object classification)) {
-        if ($classification -cnotin @('generated_disposable','retained_snapshotted')) { throw "$id unsafe classification" }
-    }
-    [void](New-OrdinalRecordMap @($entry.clean_preview_records) path "$id frozen preview")
-}
-Assert-OrdinalBijection @('release-hardening-platform','release-hardening-client') @($manifest.retained_snapshots | ForEach-Object id) 'snapshot IDs'
-Assert-OrdinalBijection @($staleMap.Keys) @($manifest.stashes | ForEach-Object id) 'stash IDs'
-$stashMap = New-OrdinalRecordMap @($manifest.stashes) id 'stash records'
-$stashOidSets = [Collections.Generic.Dictionary[string,Collections.Generic.HashSet[string]]]::new([StringComparer]::Ordinal)
-foreach ($repoRoot in @('C:\Users\kiwun\Documents\ai\VPN','C:\Users\kiwun\Documents\ai\POKROV-app')) {
-    $oidSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($oid in @(Invoke-GitLines $repoRoot @('stash','list','--format=%H'))) { [void]$oidSet.Add($oid) }
-    $stashOidSets.Add($repoRoot, $oidSet)
-}
-$verifiedStashPathsById=[Collections.Generic.Dictionary[string,Collections.Generic.HashSet[string]]]::new([StringComparer]::Ordinal)
-foreach ($id in $staleMap.Keys) {
-    $spec=$staleMap[$id]; $entry=$entryMap[$id]; $stash=$stashMap[$id]
-    [void](Invoke-GitLines $spec.repo_root @('cat-file','-e',"$($stash.oid)^{commit}"))
-    if (-not $stashOidSets[$spec.repo_root].Contains([string]$stash.oid)) { throw "$id direct stash OID is no longer in refs/stash history" }
-    $subject=@(Invoke-GitLines $spec.repo_root @('show','-s','--format=%s',[string]$stash.oid))
-    if ($subject.Count -ne 1 -or $subject[0] -cne $stash.subject -or $stash.subject -cne "On $($entry.branch): $($stash.message)") { throw "$id stash subject mismatch" }
-    $stashPaths=@(Invoke-GitPathSet $spec.repo_root @('stash','show','--include-untracked','--name-only','--no-renames',[string]$stash.oid) "$id stash paths")
-    $expectedStashPaths = New-OrdinalSet @(@($entry.tracked_paths) + @($entry.untracked_paths)) "$id expected stash paths"
-    Assert-OrdinalBijection @($expectedStashPaths) $stashPaths "$id stash contents"
-    if ($stash.path_count -ne $expectedStashPaths.Count) { throw "$id stash count mismatch" }
-    $verifiedStashPathsById.Add($id,$expectedStashPaths)
-}
-foreach ($summary in @($manifest.retained_snapshots)) {
-    $snapshotManifestPath=[IO.Path]::GetFullPath((Join-Path $backupRoot $summary.manifest))
-    if (-not $snapshotManifestPath.StartsWith($backupRoot + [IO.Path]::DirectorySeparatorChar,$comparison)) { throw "$($summary.id) snapshot manifest escaped backup root" }
-    $snapshotRoot=Split-Path -Parent $snapshotManifestPath
-    Assert-PlainTree $snapshotRoot "$($summary.id) snapshot"
-    $saved=[IO.File]::ReadAllText($snapshotManifestPath) | ConvertFrom-Json
-    $savedBytes=(@($saved.files)|Measure-Object -Property byte_length -Sum).Sum
-    if ($saved.id -cne $summary.id -or $saved.file_count -ne @($saved.files).Count -or $saved.tracked_deletion_count -ne @($saved.tracked_deletions).Count -or $saved.record_count -ne ($saved.file_count+$saved.tracked_deletion_count) -or $saved.file_count -ne $summary.file_count -or $saved.tracked_deletion_count -ne $summary.tracked_deletion_count -or $saved.record_count -ne $summary.record_count -or $saved.byte_count -ne $summary.byte_count -or $saved.byte_count -ne $savedBytes) { throw "$($summary.id) snapshot manifest shape mismatch" }
-    $fileMap=New-OrdinalRecordMap @($saved.files) relative_path "$($summary.id) saved records";$deletionMap=New-OrdinalRecordMap @($saved.tracked_deletions) relative_path "$($summary.id) tracked deletions"
-    $statePaths=@($fileMap.Keys)+@($deletionMap.Keys);[void](New-OrdinalSet $statePaths "$($summary.id) retained state mapping")
-    $sourceMatches=@($staleMap.Values|Where-Object{[string]::Equals([IO.Path]::GetFullPath($_.worktree),[IO.Path]::GetFullPath($saved.source_worktree),$comparison)})
-    if($sourceMatches.Count -ne 1){throw "$($summary.id) source worktree mapping mismatch"}
-    $sourceSpec=$sourceMatches[0];$sourceEntry=$entryMap[$sourceSpec.id];$stashPathsForSource=$verifiedStashPathsById[$sourceSpec.id]
-    $dirtySet=New-OrdinalSet @($sourceEntry.tracked_paths) "$($summary.id) frozen dirty paths";$headSet=New-OrdinalSet @($sourceEntry.head_tree_paths) "$($summary.id) frozen HEAD tree";$indexSet=New-OrdinalSet @($sourceEntry.index_file_paths) "$($summary.id) frozen index";$untrackedSet=New-OrdinalSet @($sourceEntry.untracked_paths) "$($summary.id) frozen untracked paths";$ignoredSet=New-OrdinalSet @($sourceEntry.ignored_paths) "$($summary.id) frozen ignored paths";$classMap=New-OrdinalRecordMap @($sourceEntry.ignored_classification) path "$($summary.id) ignored classes"
-    foreach($record in @($saved.files)){
-        if($record.snapshot_present -ne $true -or -not $record.sha256){throw "$($summary.id) saved record lacks snapshot hash: $($record.relative_path)"}
-        switch -CaseSensitive ($record.original_git_state) {
-            'ignored_retained' { if(-not $ignoredSet.Contains($record.relative_path)-or$headSet.Contains($record.relative_path)-or$indexSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$classMap[$record.relative_path].classification -cne 'retained_snapshotted'-or$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$false-or$record.index_present-ne$false){throw "$($summary.id) conflicting ignored-retained recovery: $($record.relative_path)"} }
-            'tracked_dirty' { if(-not($headSet.Contains($record.relative_path)-or$indexSet.Contains($record.relative_path))-or-not$dirtySet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$headSet.Contains($record.relative_path)-or$record.index_present-ne$indexSet.Contains($record.relative_path)){throw "$($summary.id) tracked-dirty recovery lacks exact HEAD/index/stash evidence: $($record.relative_path)"} }
-            'untracked' { if(-not $untrackedSet.Contains($record.relative_path)-or$headSet.Contains($record.relative_path)-or$indexSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$false-or$record.index_present-ne$false){throw "$($summary.id) untracked recovery lacks exact stash evidence: $($record.relative_path)"} }
-            'tracked_clean' { if(-not $headSet.Contains($record.relative_path)-or-not$indexSet.Contains($record.relative_path)-or$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$true-or$record.index_present-ne$true){throw "$($summary.id) tracked-clean recovery conflicts with frozen HEAD/index: $($record.relative_path)"} }
-            default { throw "$($summary.id) unknown retained Git state: $($record.original_git_state)" }
-        }
-    }
-    foreach($record in @($saved.tracked_deletions)){
-        if($record.original_git_state -cne 'tracked_deleted'-or$record.snapshot_present -ne $false-or-not$headSet.Contains($record.relative_path)-or-not$dirtySet.Contains($record.relative_path)-or$untrackedSet.Contains($record.relative_path)-or$ignoredSet.Contains($record.relative_path)-or-not$stashPathsForSource.Contains($record.relative_path)-or$record.head_present-ne$true-or$record.index_present-ne$indexSet.Contains($record.relative_path)){throw "$($summary.id) tracked-deleted recovery lacks exact HEAD-tree/index/stash deletion evidence: $($record.relative_path)"}
-    }
-    Assert-RecordMatch @($saved.files) @(Get-RecordSet $snapshotRoot $snapshotManifestPath) "$($summary.id) snapshot contents"
-    if ($Mode -ceq 'BeforeClean' -and $sourceSpec.id -ceq $EntryId) {
-        $ignoredExpected=@($saved.files|Where-Object original_git_state -CEQ 'ignored_retained')
-        Assert-RecordMatch $ignoredExpected @(Get-LiveIgnoredRetainedRecords $saved.source_worktree @($saved.files)) "$($summary.id) live ignored_retained only"
-    }
-    if($Mode -ceq 'BeforeStaleRemoval' -and $sourceSpec.id -ceq $EntryId){
-        $ignoredExpected=@($saved.files|Where-Object original_git_state -CEQ 'ignored_retained')
-        $liveIgnoredCount=@($ignoredExpected|Where-Object{Test-Path -LiteralPath (Join-Path $saved.source_worktree $_.relative_path) -PathType Leaf}).Count
-        if($liveIgnoredCount -eq $ignoredExpected.Count){
-            Assert-RecordMatch $ignoredExpected @(Get-LiveIgnoredRetainedRecords $saved.source_worktree @($saved.files)) "$($summary.id) removal live ignored_retained only"
-        }elseif($liveIgnoredCount -eq 0){
-            $receipt=@($manifest.cleanup_receipts|Where-Object id -CEQ $EntryId)
-            if($receipt.Count -ne 1 -or $receipt[0].preclean_ignored_retained_verified -ne $true){throw "$($summary.id) missing pre-clean ignored-retained proof receipt"}
-        }else{throw "$($summary.id) partial ignored-retained live tree before removal"}
-    }
-}
+The program must use only the Python standard library. It must reject an
+unexpected path, non-plain source, reparse source/root, wrong byte count,
+unapproved self SHA-256, failed parser/import smoke, or non-stdlib import. Every
+command rehashes its own bytes and checks the manifest pin. Proof-only Git calls
+use `GIT_OPTIONAL_LOCKS=0`, NUL-delimited byte parsing where paths are returned,
+and never write a repository, index, worktree, stash, snapshot, or manifest.
 
-if ($Mode -ceq 'BeforeTemporaryRemoval') {
-    $temporaryMap=New-OrdinalRecordMap $temporarySpecs id 'expected temporary worktrees'
-    if (-not $temporaryMap.ContainsKey($EntryId)) { throw "Unexpected temporary worktree ID: $EntryId" }
-    $spec=$temporaryMap[$EntryId]
-    $head=@(Invoke-GitLines $spec.repo_root @('rev-parse','--verify',"$($spec.branch)^{commit}"))
-    if ($head.Count -ne 1) { throw "$EntryId branch HEAD is ambiguous" }
-    $spec.head=$head[0]
-    Assert-RegisteredWorktree $spec
-    $currentBranch=@(Invoke-GitLines $spec.worktree @('branch','--show-current'))
-    $currentHead=@(Invoke-GitLines $spec.worktree @('rev-parse','HEAD'))
-    if($currentBranch.Count -ne 1 -or $currentBranch[0] -cne $spec.branch -or $currentHead.Count -ne 1 -or $currentHead[0] -cne $spec.head){throw "$EntryId current branch/HEAD mismatch"}
-    [void](Invoke-GitLines $spec.repo_root @('merge-base','--is-ancestor',$spec.branch,$spec.retained_branch))
-    $tracked=@(Invoke-GitPathSet $spec.worktree @('diff','HEAD','--name-only','--no-renames') "$EntryId tracked")
-    $untracked=@(Invoke-GitPathSet $spec.worktree @('ls-files','--others','--exclude-standard') "$EntryId untracked")
-    $ignored=@(Invoke-GitPathSet $spec.worktree @('ls-files','--others','--ignored','--exclude-standard') "$EntryId ignored")
-    $preview=@(Invoke-GitLines $spec.worktree @('clean','-ndX'))
-    if ($tracked.Count -ne 0 -or $untracked.Count -ne 0 -or $ignored.Count -ne 0 -or $preview.Count -ne 0) { throw "$EntryId temporary worktree is not fully clean" }
-    $rootItem=Get-Item -Force -LiteralPath $spec.worktree
-    if (-not $rootItem.PSIsContainer -or ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "$EntryId temporary worktree root is unsafe" }
-    Write-Output "PROOF_OK $Mode $EntryId"
-    return
-}
+The only auxiliary files are:
 
-if (-not $staleMap.ContainsKey($EntryId)) { throw "Unexpected stale worktree ID: $EntryId" }
-$spec=$staleMap[$EntryId]; $entry=$entryMap[$EntryId]; $spec | Add-Member -NotePropertyName head -NotePropertyValue $entry.head
-Assert-RegisteredWorktree $spec
-$branch=@(Invoke-GitLines $entry.worktree @('branch','--show-current')); $head=@(Invoke-GitLines $entry.worktree @('rev-parse','HEAD'))
-if ($branch.Count -ne 1 -or $branch[0] -cne $entry.branch -or $head.Count -ne 1 -or $head[0] -cne $entry.head) { throw "$EntryId branch/HEAD drift" }
-$tracked=@(Invoke-GitPathSet $entry.worktree @('diff','HEAD','--name-only','--no-renames') "$EntryId current tracked")
-$untracked=@(Invoke-GitPathSet $entry.worktree @('ls-files','--others','--exclude-standard') "$EntryId current untracked")
-if ($tracked.Count -ne 0 -or $untracked.Count -ne 0) { throw "$EntryId has tracked/untracked changes" }
-$ignored=@(Invoke-GitPathSet $entry.worktree @('ls-files','--others','--ignored','--exclude-standard') "$EntryId current ignored")
-if ($Mode -ceq 'BeforeClean') {
-    Assert-OrdinalBijection @($entry.ignored_paths) $ignored "$EntryId live ignored"
-    Assert-PreviewRecordMatch @($entry.clean_preview_records) @(Get-LivePreviewRecords $entry) "$EntryId live preview"
-} else {
-    if ($ignored.Count -ne 0 -or @(Invoke-GitLines $entry.worktree @('clean','-ndX')).Count -ne 0) { throw "$EntryId ignored/preview state is not empty after clean" }
-}
-if ($Mode -ceq 'BeforeStaleRemoval') {
-    Assert-OrdinalBijection @($staleMap.Keys) @($manifest.cleanup_receipts | ForEach-Object id) 'cleanup receipt IDs'
-    [void](Invoke-GitLines $spec.repo_root @('merge-base','--is-ancestor',$spec.branch,$spec.retained_branch))
-}
-$rootItem=Get-Item -Force -LiteralPath $entry.worktree
-if (-not $rootItem.PSIsContainer -or ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "$EntryId worktree root is unsafe" }
-Write-Output "PROOF_OK $Mode $EntryId"
+- `cleanup-proof-gate.lock`: a fixed one-byte, plain, non-reparse file created
+  by `pin` and held with `msvcrt` for the full execute/recover session;
+- `manifest.json.task5.tmp`: an absent-at-entry/exit atomic candidate that is
+  never overwritten. Its presence requires `recover-task5`.
+
+- [ ] **Step 2: Pin the exact approved evidence, not a Stage A-shaped substitute**
+
+`pin` must accept only this raw predecessor:
+
+- manifest bytes: `21,147,426`;
+- manifest SHA-256:
+  `99eef04c5e3cd82afa4251c689c83f47b3cd08e0177f4769fb71a9b9d5001cb0`;
+- schema/state: `2 / STAGE_A_VERIFIED`;
+- worktrees/snapshots/stashes/cleanup receipts/audit drift: `3 / 2 / 3 / 0 / 0`;
+- ignored paths: `87,688` = `87,624 generated_disposable` +
+  `64 retained_snapshotted`, with `0 unknown` and `0 high-risk`;
+- clean-preview partitions: `11 / 316 / 25`;
+- direct-stash path sets, in cleanup order: `32 / 208 / 53`;
+- retained payload: `126` files / `2,016,644,392` bytes.
+
+It must also pin the two persisted snapshot manifests by raw bytes and SHA-256:
+
+| Snapshot ID | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `release-hardening-platform` | 1,291 | `3c4bcf28d15e2f859fc58c10e35c16e3bc23d66aa3e5c81014a4099ce5c08079` |
+| `release-hardening-client` | 46,246 | `6e132375b675ec5b31610a76857555017cecc72ae2957e61ed1725a69ebf0776` |
+
+The client pin includes the exact `62` `ignored_retained` records /
+`312,937,647` bytes threatened by Task 5. The remaining client snapshot records
+stay outside the deletion targets.
+
+All manifest and snapshot loads are strict JSON loads. Reject duplicate keys,
+NaN/Infinity, booleans used as integers, floats used as integers, missing or
+extra properties, wrong exact types, malformed hashes/timestamps, duplicate
+IDs/paths, path escapes, and invalid state membership. Validate every declared
+snapshot record and audit field, not only aggregate counts.
+
+Compute canonical SHA-256 over the immutable projection:
+
+```text
+schema_version
+created_utc
+audit_expectations
+audit_drift
+worktrees
+retained_snapshots
+stashes
 ```
 
-- [ ] **Step 2: Pin the proof gate before any destructive call**
+The reviewed script hard-codes the expected digest and recomputes it on every
+invocation. The mutable manifest may repeat the value but is never its
+authority. Mutable fields are limited to `cleanup_run`, `cleanup_receipts`, and
+the final `stage_a_state` transition.
 
-Run after saving the exact script. A changed gate cannot authorize cleanup:
+Stash authority is the exact ordered direct chain for
+`premium-bank-app-portal`, `release-hardening-platform`, and
+`release-hardening-client`. Prove each approved OID, predecessor, order,
+message/subject, path-set digest and membership, commit readability, raw blob
+recovery, and local LFS-object availability. Never apply, pop, drop, rewrite,
+fetch, or materialize a stash through filters.
 
-```powershell
-$ErrorActionPreference='Stop'
-$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
-$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
-$manifest=[IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
-if ($manifest.stage_a_state -cne 'STAGE_A_VERIFIED' -or @($manifest.audit_drift).Count -ne 0 -or $manifest.PSObject.Properties.Name -contains 'proof_gate') { throw 'Proof gate can only be pinned once from exact STAGE_A_VERIFIED state' }
-$proofItem=Get-Item -Force -LiteralPath $proofGatePath
-if ($proofItem.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Proof gate is a reparse point' }
-$manifest | Add-Member -NotePropertyName proof_gate -NotePropertyValue ([pscustomobject]@{ path='cleanup-proof-gate.ps1'; sha256=(Get-FileHash -LiteralPath $proofGatePath -Algorithm SHA256).Hash })
-$temporary="$manifestPath.tmp"
-if (Test-Path -LiteralPath $temporary) { throw 'Manifest temp collision' }
-[IO.File]::WriteAllText($temporary,($manifest|ConvertTo-Json -Depth 14),[Text.UTF8Encoding]::new($false))
-[IO.File]::Move($temporary,$manifestPath,$true)
+Registry authority is an exact bijection of five platform and four client
+path/branch identities. The three stale path/branch/HEAD records stay frozen to
+Stage A. Every non-stale root, docs/control, and active integration record must
+have `registry HEAD == current branch ref` at each proof epoch. Reject a
+missing, extra, replaced, detached, duplicate, unknown-key, or ref-mismatched
+entry. Do not freeze a docs commit SHA in the script.
+
+After complete validation, `pin` adds one exact `proof_gate` record containing
+the fixed path, script bytes/hash, predecessor bytes/hash, immutable-evidence
+hash, both snapshot-manifest pins, cleanup order, and pin time. It validates and
+fsyncs the candidate before atomic `os.replace`, reloads the published bytes,
+and checks exact postconditions. An existing `proof_gate`, lock mismatch,
+candidate collision, or predecessor drift blocks pinning without mutation.
+
+- [ ] **Step 3: Keep proof cost mode-specific and recovery filter-aware**
+
+| Mode | Required payload proof |
+| --- | --- |
+| `BeforeClean` | Validate all immutable evidence, stashes, classification, and registries; hash only the target's saved `ignored_retained` files and live peers. |
+| `AfterClean` | Require zero tracked, untracked, ignored, and preview paths; rehash only the target's affected saved snapshot records. |
+| `BeforeStaleRemoval` | Require `CLEANED_VERIFIED`, exact receipts and reachability, a fully empty target, the exact target stash, the deterministic pre-removal profile where earlier targets are absent and the current/later targets remain exactly once, and a full hash of that target's retained snapshot. |
+| `BeforeTemporaryRemoval` | Require `CLEANED_VERIFIED`, exact earlier removal receipts/profile, a clean target, dynamic branch-ref/registry agreement, retained-line reachability, and retained recovery proof. |
+
+Recovery checks must distinguish Git's raw object bytes from checked-out bytes.
+Verify raw stash blobs directly, validate LFS pointer syntax plus the exact local
+object hash/length, and prove CRLF-to-LF recovery without invoking checkout
+filters or fetching data. Missing local recovery material blocks the mode.
+
+Hash in bounded chunks. Emit aggregate-only counters at least every 30 seconds;
+never print paths or contents. Stop after ten minutes with no CPU, I/O, or
+progress change. Do not impose the old blind wall-time cutoff while verified
+hash progress continues.
+
+- [ ] **Step 4: Make cleanup one locked, durable state machine**
+
+The top-level state remains `STAGE_A_VERIFIED` until the last receipt. Progress
+lives in a strict nested object:
+
+```text
+PINNED (no cleanup_run)
+  -> READY(ordinal=0, nonce, script_sha256)
+  -> PREPROOF_VERIFIED(entry=1, evidence_digest)
+  -> READY(ordinal=1, receipt=1)
+  -> PREPROOF_VERIFIED(entry=2, evidence_digest)
+  -> READY(ordinal=2, receipts=2)
+  -> PREPROOF_VERIFIED(entry=3, evidence_digest)
+  -> COMPLETE(receipts=3) + CLEANED_VERIFIED
 ```
 
-- [ ] **Step 3: Prove, clean, and prove again without separating the calls**
+The cleanup order and receipt-ID order are exact:
 
-Run this whole block. Do not copy a `git clean -fdX` line without its adjacent
-proof calls and immediate exit check:
+1. `premium-bank-app-portal`
+2. `release-hardening-platform`
+3. `release-hardening-client`
 
-```powershell
-$ErrorActionPreference='Stop'
-$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
-$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
-$ids=@('premium-bank-app-portal','release-hardening-platform','release-hardening-client')
-foreach($id in $ids){
-    $manifest=[IO.File]::ReadAllText($manifestPath)|ConvertFrom-Json
-    $entry=@($manifest.worktrees|Where-Object id -CEQ $id)
-    if($entry.Count -ne 1){throw "$id manifest entry mismatch"}
-    & $proofGatePath -ManifestPath $manifestPath -EntryId $id -Mode BeforeClean
-    if(-not $?){throw "$id pre-clean proof failed"}
-    & git -C $entry[0].worktree clean -fdX
-    $cleanExit=$LASTEXITCODE
-    if($cleanExit -ne 0){throw "$id git clean failed ($cleanExit)"}
-    & $proofGatePath -ManifestPath $manifestPath -EntryId $id -Mode AfterClean
-    if(-not $?){throw "$id post-clean proof failed"}
+A new run requires an independently supplied nonce and the approved script
+SHA-256. Once started, only that nonce and hash may resume. For each entry the
+program must, without yielding a shell step:
 
-    $manifest=[IO.File]::ReadAllText($manifestPath)|ConvertFrom-Json
-    $receiptIds=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach($receipt in @($manifest.cleanup_receipts)){if(-not $receiptIds.Add([string]$receipt.id)){throw 'Duplicate cleanup receipt ID'}}
-    if(-not $receiptIds.Add($id)){throw "$id already has a cleanup receipt"}
-    $manifest.cleanup_receipts=@($manifest.cleanup_receipts)+@([pscustomobject]@{id=$id;verified_utc=[DateTime]::UtcNow.ToString('o');ignored_count=0;preview_count=0;preclean_ignored_retained_verified=$true})
-    $temporary="$manifestPath.tmp"; if(Test-Path -LiteralPath $temporary){throw 'Manifest temp collision'}
-    [IO.File]::WriteAllText($temporary,($manifest|ConvertTo-Json -Depth 14),[Text.UTF8Encoding]::new($false));[IO.File]::Move($temporary,$manifestPath,$true)
-}
-$manifest=[IO.File]::ReadAllText($manifestPath)|ConvertFrom-Json
-$receiptSet=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-foreach($receipt in @($manifest.cleanup_receipts)){if(-not $receiptSet.Add([string]$receipt.id)){throw 'Duplicate cleanup receipt ID'}}
-$expected=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal);foreach($id in $ids){[void]$expected.Add($id)}
-if($manifest.stage_a_state -cne 'STAGE_A_VERIFIED' -or -not $expected.SetEquals($receiptSet)){throw 'All three post-clean proofs are required'}
-$manifest.stage_a_state='CLEANED_VERIFIED'
-$temporary="$manifestPath.tmp";if(Test-Path -LiteralPath $temporary){throw 'Manifest temp collision'}
-[IO.File]::WriteAllText($temporary,($manifest|ConvertTo-Json -Depth 14),[Text.UTF8Encoding]::new($false));[IO.File]::Move($temporary,$manifestPath,$true)
-```
+1. perform the full target `BeforeClean` proof and compute one aggregate
+   evidence digest;
+2. atomically publish `PREPROOF_VERIFIED` with entry/ordinal, nonce, self hash,
+   immutable digest, exact SHA-256 of the manifest bytes immediately preceding
+   PREPROOF, stash digest, ignored/preview counts, affected
+   snapshot/live counts and bytes, and the pre-proof digest;
+3. reload and strictly validate the published manifest;
+4. repeat the affected snapshot/live cryptographic proof and require the same
+   digest;
+5. invoke the sole deletion subprocess as the fixed argument array
+   `['git', '-C', <frozen-worktree>, 'clean', '-fdX']`, with `shell=False`;
+6. capture and check the native exit code immediately;
+7. run `AfterClean` before returning control; and
+8. atomically append the exact receipt and advance the ordinal.
 
-Expected: each clean is authorized by a fresh live proof, exits 0, and is
-followed immediately by an ignored-empty proof. The manifest reaches
-`CLEANED_VERIFIED` only after three distinct post-clean receipts.
+There is no raw shell cleanup command to copy. On receipt three, the same atomic
+write sets `cleanup_run.state=COMPLETE` and
+`stage_a_state=CLEANED_VERIFIED`. Either field without the three-record ordinal
+bijection is invalid.
+
+Each receipt records at least its ID/ordinal, nonce, script SHA-256,
+immutable-evidence and pre-proof digests, direct-stash OID/evidence digest,
+affected snapshot-manifest SHA-256, affected saved/live counts and bytes,
+pre-clean ignored/preview counts, `preclean_ignored_retained_verified=true`,
+clean exit code `0`, zero post-clean tracked/untracked/ignored/preview counts,
+and pre/post UTC timestamps.
+
+- [ ] **Step 5: Fail closed across crashes and require explicit recovery**
+
+- `READY` plus the full original ignored set may begin a fresh pre-proof.
+- `PREPROOF_VERIFIED` plus the full original ignored set means deletion did not
+  complete; only `recover-task5` may repeat proof and deletion.
+- `PREPROOF_VERIFIED` plus zero ignored/preview may run only strict post-proof
+  and publish the receipt from the matching durable pre-proof record.
+- A partial ignored set, mixed preview, nonzero tracked/untracked state, changed
+  immutable core, snapshot, stash, registry, or nonzero cleanup exit is
+  `BLOCKED`. Preserve all evidence and require independent review.
+- Existing valid receipts are re-proved and skipped, never duplicated. A
+  completed run is read-only and refuses a second execution.
+- A temp candidate is never overwritten. Recovery validates current and
+  candidate bytes, their one-step state relation, and live state before either
+  promotion or rejection. It never infers success merely from an empty tree and
+  never retries automatically.
+
+- [ ] **Step 6: Enforce the exact mutation surface**
+
+Before pinning, a reviewed builder may create only the fixed gate source. `pin`
+may create the fixed lock and atomically add `proof_gate` to the manifest.
+`execute-task5`/`recover-task5` may atomically update only `cleanup_run`, the
+three receipts, the final state, and exactly the three authorized ignored trees.
+
+Forbidden mutations include tracked/untracked deletion; stash creation,
+apply/pop/drop, or ref rewrite; snapshot or snapshot-manifest changes; repo
+config, index, HEAD, branch, worktree registration, active worktree, or
+`.content-video-ad` changes; force operations; recursive OS deletion;
+`shell=True`; dynamic command strings; cleanup outside the three frozen roots;
+and path inventory output.
+
+- [ ] **Step 7: Pass the 13-part test matrix before pinning**
+
+1. **Strict JSON:** reject duplicate keys/constants, bool/float integers,
+   missing/extra fields, duplicate IDs/paths, and malformed hashes.
+2. **Exact pin:** reject wrong predecessor bytes/hash, already-pinned state,
+   immutable drift, wrong source path/hash, reparse roots/files, and temp
+   collision without mutation.
+3. **Snapshot authority:** reject either raw manifest pin mismatch, bad state or
+   audit subset, missing/extra payload, size/hash drift, reparse/special files,
+   and path escape.
+4. **Stash authority:** reject OID/predecessor/order/subject/message/path-set
+   drift, missing commit/LFS object, bad LFS pointer, raw blob mismatch, and
+   CRLF/LF recovery mismatch.
+5. **Classification:** pass an exact `87,688`-record fixture; reject a
+   missing/extra leaf, unknown/high-risk class, overlapping or mixed preview,
+   unparseable preview, and new ignored leaf.
+6. **Git state:** reject branch/HEAD/index/tracked/untracked drift, unsafe root,
+   registration mismatch, and nonzero Git exit.
+7. **Registry:** pass exact `5 / 4`; reject missing/replaced/extra/detached
+   entries, a fifth client entry, stale HEAD drift, and dynamic ref mismatch;
+   pass a legitimate docs advance whose registry HEAD equals its branch ref.
+8. **Mode scoping:** prove targeted Task 5 hashes, empty `AfterClean`, full
+   per-target stale-removal hashes, dynamic docs HEADs, and reachability.
+9. **Adjacency/static:** prove one implementation, fixed argument arrays,
+   immediate exit checks, no shell wrapper, post-proof before return, and no
+   mutation reachable from `prove`.
+10. **Crash injection:** cover both sides of PREPROOF, cleanup, post-proof,
+    candidate replace, receipts one/two, and final transition; every case must
+    resume exactly or block without a second cleanup.
+11. **Isolated destructive fixture:** under a verified OS temp directory only,
+    remove classified ignored generated/snapshotted-retained fixtures while
+    preserving tracked, untracked, and out-of-root files.
+12. **Performance/heartbeat:** validate a synthetic `87,688`-record manifest,
+    bounded-memory hashes, aggregate progress, no-progress stop, and recorded
+    wall/CPU time.
+13. **Atomicity:** validate-before-replace, fsync/close, `os.replace`, exact
+    reload, collision handling, and pre/post-replace recovery fixtures.
+
+- [ ] **Step 8: Separate build, review, pin, and execution authority**
+
+The handoff is fail-closed:
+
+1. a builder creates only the fixed source and runs all isolated tests;
+2. a fresh static reviewer approves the exact source bytes/SHA-256, stdlib-only
+   imports, mutation reachability, and all 13 test results, and proves the live
+   manifest, snapshots, stashes, registries, and worktrees did not change;
+3. a separate pin operator receives that exact hash and invokes `pin` once;
+4. an independent post-pin review proves the exact `proof_gate`, lock, immutable
+   digest, unchanged evidence, and no `cleanup_run` or receipts;
+5. only then may a separate Task 5 operator receive a new nonce plus the same
+   approved hash and invoke `execute-task5` once;
+6. any interrupted run goes to a separate `recover-task5` review/handoff; and
+7. a final independent review must prove three exact receipts,
+   `cleanup_run.state=COMPLETE`, `CLEANED_VERIFIED`, preserved snapshots/stashes,
+   exact registries, and no unauthorized mutation.
+
+Pinning is not cleanup authorization. Task 5 completion is not Task 6 or Task 8
+authorization.
 
 ### Task 6: Remove Stale Worktrees And Merged Branches
 
+**Status: `BLOCKED_AS_WRITTEN`.** The removed inline PowerShell proof/removal
+and branch-deletion blocks are not executable authority.
+
 **Files:**
-- Git worktree metadata only
+
+- Git worktree/branch metadata only, after a separate reviewed operator exists
+- Append-only stale-removal receipts in the local evidence manifest
 
 **Interfaces:**
-- Consumes: clean worktree, readable stash, verified ignored snapshot
-- Produces: removed stale worktree and retained branch history
 
-- [ ] **Step 1: Prove and remove each stale worktree without force**
+- Consumes: `CLEANED_VERIFIED`, three exact Task 5 receipts, the pinned Python
+  `BeforeStaleRemoval` mode, readable stashes, full target snapshots, and exact
+  ordinal registry profiles
+- Produces: three non-forced worktree-removal receipts, then three normal
+  merged-branch deletion receipts
 
-The reusable gate checks `CLEANED_VERIFIED`, exact cleanup receipts, current
-branch/HEAD, reachability, empty tracked/untracked/ignored/preview state, and
-all recovery evidence immediately before each removal:
+- [ ] **Step 1: Build and review a separate stale-removal operator**
 
-```powershell
-$ErrorActionPreference='Stop'
-$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
-$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
-$removals=@(
-    [pscustomobject]@{id='premium-bank-app-portal';repo='C:\Users\kiwun\Documents\ai\VPN';worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\premium-bank-app-portal'},
-    [pscustomobject]@{id='release-hardening-platform';repo='C:\Users\kiwun\Documents\ai\VPN';worktree='C:\Users\kiwun\.config\superpowers\worktrees\VPN\release-hardening-platform'},
-    [pscustomobject]@{id='release-hardening-client';repo='C:\Users\kiwun\Documents\ai\POKROV-app';worktree='C:\Users\kiwun\.config\superpowers\worktrees\POKROV-app\release-hardening-client'}
-)
-foreach($removal in $removals){
-    & $proofGatePath -ManifestPath $manifestPath -EntryId $removal.id -Mode BeforeStaleRemoval
-    if(-not $?){throw "$($removal.id) pre-removal proof failed"}
-    & git -C $removal.repo worktree remove $removal.worktree
-    $removeExit=$LASTEXITCODE
-    if($removeExit -ne 0){throw "$($removal.id) worktree removal failed ($removeExit)"}
-}
-```
+Task 5 deliberately provides proof but no removal authority. Before Task 6,
+write a separate tracked plan amendment and build one single-purpose operator.
+A fresh reviewer must approve its exact bytes/hash, fixtures, lock/nonce and
+crash journal, mutation surface, and deterministic registry transitions.
 
-Expected: all commands succeed without `--force`.
+The fixed worktree order and IDs remain:
 
-- [ ] **Step 2: Delete only the merged local branches**
+1. `premium-bank-app-portal`
+2. `release-hardening-platform`
+3. `release-hardening-client`
 
-Run:
+For each ID, the operator must durably record pre-removal proof, call the pinned
+Python gate's `prove` command in `BeforeStaleRemoval` mode, and—without yielding
+control—perform exactly one fixed-argument, non-forced Git worktree removal. It
+then proves the expected registry absence and atomically appends an ordinal
+removal receipt. The proof must cover exact cleanup receipts, target
+branch/HEAD, reachability, empty tracked/untracked/ignored/preview state, the
+exact direct stash, the full target snapshot hash, and a registry profile where
+earlier fixed-order targets are absent while the current and later targets
+remain exactly once. Post-removal absence belongs only to the operator's
+verified receipt.
 
-```powershell
-& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/premium-bank-app-portal
-if($LASTEXITCODE -ne 0){throw 'premium branch deletion failed'}
-& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/release-hardening-platform
-if($LASTEXITCODE -ne 0){throw 'platform release branch deletion failed'}
-& git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' branch -d codex/release-hardening-client
-if($LASTEXITCODE -ne 0){throw 'client release branch deletion failed'}
-```
+No inline removal command, `--force`, shell wrapper, automatic retry, or
+inference from an absent directory is allowed. A partial registry transition,
+candidate collision, changed proof evidence, or interrupted removal blocks for
+explicit independently reviewed recovery.
 
-Expected: normal `-d` deletion succeeds; named stashes remain readable.
+- [ ] **Step 2: Delete only proved merged branches through that operator**
+
+Only after all three worktree-removal receipts exist may the reviewed operator
+consider the corresponding local branches. It must re-prove each exact branch
+tip is reachable from the retained branch, use normal non-forced branch deletion
+only, verify absence, and append a branch-removal receipt. Named stashes and
+both snapshots remain readable and unchanged.
+
+Task 6 stays blocked until its operator and exact execution handoff receive an
+independent review. Nothing pinned or executed in Task 5 authorizes this task.
 
 ### Task 7: Promote Platform And Client Documentation
 
@@ -1401,51 +1306,76 @@ do not force push.
 
 ### Task 8: Remove Temporary Docs Worktrees
 
+**Status: `BLOCKED_AS_WRITTEN`.** The removed inline PowerShell proof,
+worktree-removal, reachability, and branch-deletion block is not executable
+authority.
+
 **Files:**
-- Git worktree metadata only
+
+- Git worktree/branch metadata only, after promotion and a separately reviewed
+  removal operator exist
+- Append-only temporary-removal receipts in the local evidence manifest
 
 **Interfaces:**
-- Consumes: commits reachable from retained platform/client branches
-- Produces: requested steady state
 
-- [ ] **Step 1: Remove temporary clean worktrees and branches**
+- Consumes: completed Task 7 promotion, `CLEANED_VERIFIED`, exact Task 6
+  removal receipts/profile, the pinned Python `BeforeTemporaryRemoval` mode,
+  clean docs worktrees, dynamic branch refs, and retained-line reachability
+- Produces: the requested steady state with recoverable evidence
 
-Run without `--force`:
+- [ ] **Step 1: Build and review a separate temporary-removal operator**
 
-```powershell
-$ErrorActionPreference='Stop'
-$manifestPath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\manifest.json'
-$proofGatePath='C:\Users\kiwun\Documents\ai\worktree-snapshots\2026-07-10-docs-renewal\cleanup-proof-gate.ps1'
+Task 5 supplies the shared read-only proof mode but does not authorize Task 8.
+After Task 7 is independently green, write a separate tracked plan amendment
+and build one single-purpose operator. A fresh reviewer must approve its exact
+bytes/hash, fixed IDs/order, tests, lock/nonce and crash journal, expected
+registry profiles, branch-reachability policy, receipt schema, and mutation
+surface before any execution handoff.
 
-& $proofGatePath -ManifestPath $manifestPath -EntryId 'agent-context-refactor-platform' -Mode BeforeTemporaryRemoval
-if(-not $?){throw 'platform docs worktree proof failed'}
-& git -C 'C:\Users\kiwun\Documents\ai\VPN' worktree remove 'C:\Users\kiwun\Documents\ai\VPN\.worktrees\agent-context-refactor'
-if($LASTEXITCODE -ne 0){throw 'platform docs worktree removal failed'}
-& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/agent-context-refactor
-if($LASTEXITCODE -ne 0){throw 'platform docs branch deletion failed'}
-& git -C 'C:\Users\kiwun\Documents\ai\VPN' merge-base --is-ancestor codex/product-audit-closure master
-if($LASTEXITCODE -ne 0){throw 'product-audit branch is not reachable from master'}
-& git -C 'C:\Users\kiwun\Documents\ai\VPN' branch -d codex/product-audit-closure
-if($LASTEXITCODE -ne 0){throw 'product-audit branch deletion failed'}
+The operator must handle these proof identities in order:
 
-& $proofGatePath -ManifestPath $manifestPath -EntryId 'agent-context-refactor-client' -Mode BeforeTemporaryRemoval
-if(-not $?){throw 'client docs worktree proof failed'}
-& git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' worktree remove 'C:\Users\kiwun\Documents\ai\POKROV-app\.worktrees\agent-context-refactor-client'
-if($LASTEXITCODE -ne 0){throw 'client docs worktree removal failed'}
-& git -C 'C:\Users\kiwun\Documents\ai\POKROV-app' branch -d codex/agent-context-refactor-client
-if($LASTEXITCODE -ne 0){throw 'client docs branch deletion failed'}
-```
+1. `agent-context-refactor-platform`
+2. `agent-context-refactor-client`
 
-Expected steady state:
+For each identity, it must durably record pre-removal proof, call the pinned
+Python gate's `prove` command in `BeforeTemporaryRemoval` mode and—without
+yielding control—perform exactly one fixed-argument, non-forced Git worktree
+removal. It then proves the exact registry absence and atomically appends an
+ordinal temporary-worktree receipt.
 
-- platform root on `master`;
-- client root on `main`;
-- active market-ready worktrees retained until their own tasks finish;
-- stale and documentation worktrees removed;
-- all local snapshots and named stashes still recoverable.
+The adjacent proof must require a clean target, dynamic
+`registry HEAD == current branch ref`, exact earlier stale-removal receipts and
+registry profile, reachability from the retained platform `master` or client
+`main`, and retained recovery evidence. It must resolve docs HEADs at proof time;
+no current docs commit SHA may be frozen in the operator.
 
-List remaining local branches in both repos. Do not delete any additional branch
-without the same reachability and active-task ownership checks.
+- [ ] **Step 2: Remove only independently proved reachable branches**
+
+After the matching worktree receipt, the operator may use only normal
+non-forced branch deletion for `codex/agent-context-refactor` and
+`codex/agent-context-refactor-client`. The platform
+`codex/product-audit-closure` branch requires its own immediate ancestor proof
+against `master`. Every successful absence check gets a branch-removal receipt.
+
+No raw removal/deletion command, `--force`, shell wrapper, automatic retry, or
+inference from absence is permitted. A partial transition, candidate collision,
+changed promotion/ref, failed proof, or interrupted removal blocks for explicit
+independently reviewed recovery.
+
+- [ ] **Step 3: Verify the steady state and preserve recovery evidence**
+
+The final independent review must prove:
+
+- platform root is on `master` and client root is on `main`;
+- both active market-ready worktrees remain registered until their own tasks
+  finish;
+- stale and docs worktrees/branches are absent only where exact receipts exist;
+- snapshots, named stashes, proof-gate bytes, and all recovery receipts remain
+  readable and unchanged; and
+- no additional local branch was deleted.
+
+Task 8 remains blocked until its separate operator, static review, and execution
+handoff are complete.
 
 ### Task 9: Contract The Local Content-Video Instruction Chain
 
