@@ -31,26 +31,6 @@ GLOBAL_READ_PACK_CONTRACT_RE = re.compile(
     r")",
     flags=re.IGNORECASE | re.MULTILINE,
 )
-UNIVERSAL_FLOW_STATE_REQUIREMENT_RES = (
-    re.compile(
-        r"\b(?:each|every|all)\s+active\s+`?\bWOs?\b`?\s+"
-        r"(?:"
-        r"(?:(?:must|should)\s+|(?:is\s+required|needs?)\s+to\s+)"
-        r"(?:keep|maintain|create|record|have)|"
-        r"(?:requires?|needs?|has|keeps?|maintains?|creates?|records?)"
-        r")"
-        r"(?:\s+(?:a|an|the))?"
-        r"(?:\s+(?:compact|conditional|durable|current|local|valid|explicit|own|shared)){0,2}"
-        r"\s+`?\bFLOW(?:_|\s+)STATE\b`?",
-        flags=re.IGNORECASE,
-    ),
-    re.compile(
-        r"`?\bFLOW(?:_|\s+)STATE\b`?\s+is\s+"
-        r"(?:required|mandatory|kept|maintained|created|recorded)\s+"
-        r"(?:for|by)\s+(?:each|every|all)\s+active\s+`?\bWOs?\b`?",
-        flags=re.IGNORECASE,
-    ),
-)
 
 
 def _without_markdown_decoration(value: str) -> str:
@@ -148,13 +128,6 @@ def _assert_concepts(text: str, *groups: tuple[str, ...]) -> None:
             f" {_normalized_prose(alternative)} " in normalized
             for alternative in alternatives
         ), alternatives
-
-
-def _has_universal_flow_state_requirement(text: str) -> bool:
-    return any(
-        pattern.search(text) is not None
-        for pattern in UNIVERSAL_FLOW_STATE_REQUIREMENT_RES
-    )
 
 
 def test_platform_root_contract_budget_and_semantics() -> None:
@@ -260,6 +233,23 @@ def test_orchestration_uses_normalized_lifecycle_and_evidence_contract() -> None
     for owner in (standard, quick_start):
         for ceremony in ("direct", "bounded_wo", "release_wo"):
             assert f"`{ceremony}`" in owner
+
+    ceremony_rows = parse_markdown_table(
+        standard,
+        ("Ceremony", "Trigger", "Required artifacts"),
+    )
+    assert {
+        row["Ceremony"].strip("` ")
+        for row in ceremony_rows
+    } == {"direct", "bounded_wo", "release_wo"}
+    bounded_wo = next(
+        row
+        for row in ceremony_rows
+        if row["Ceremony"].strip("` ") == "bounded_wo"
+    )
+    assert "conditional flow_state" in (
+        bounded_wo["Required artifacts"].replace("`", "").casefold()
+    )
 
     assert _declared_pipe_enum(standard, "WO status") == {
         "draft",
@@ -503,6 +493,25 @@ def test_default_wo_uses_only_compact_contract_headings() -> None:
 
 def test_flow_state_uses_conditional_v2_schema_and_stop_contract() -> None:
     flow = (ORCHESTRATION_ROOT / "flow-state.md").read_text(encoding="utf-8")
+    flow_contract_rows = parse_markdown_table(flow, ("Contract", "Value"))
+    flow_contract = {
+        row["Contract"].strip("` "): row["Value"].strip("` ")
+        for row in flow_contract_rows
+    }
+    assert flow_contract.get("Schema") == "2"
+    assert flow_contract.get("Applicability") == "conditional"
+    assert (
+        flow_contract.get("Same-class without mechanism-change stop threshold")
+        == "3"
+    )
+
+    assert _declared_pipe_enum(flow, "Conditional triggers") == {
+        "review",
+        "fix_cycle",
+        "blocked",
+        "partial",
+        "durable_handoff",
+    }
     allowed_states = {
         "review",
         "fix_cycle",
@@ -561,55 +570,10 @@ def test_flow_state_uses_conditional_v2_schema_and_stop_contract() -> None:
     assert isinstance(counters, dict) and counters
     assert all(isinstance(value, int) and value >= 1 for value in counters.values())
 
-    universal_requirement_smoke_cases = (
-        ("Each active WO has a status. FLOW_STATE exists only for review...", False),
-        (
-            "Each active WO should record status. "
-            "FLOW_STATE exists only for review...",
-            False,
-        ),
-        ("Every active WO must keep FLOW_STATE.", True),
-        ("All active WOs require FLOW_STATE.", True),
-        ("FLOW_STATE is not required for each active WO.", False),
-        ("Each active WO should keep FLOW_STATE.", True),
-        ("Each active WO must maintain FLOW_STATE.", True),
-        ("FLOW_STATE is mandatory for all active WOs.", True),
-    )
-    for statement, expected in universal_requirement_smoke_cases:
-        assert _has_universal_flow_state_requirement(statement) is expected
-    assert not _has_universal_flow_state_requirement(flow)
-
-    paragraphs = re.split(r"\r?\n\s*\r?\n", flow)
-    normalized_paragraphs = [_normalized_prose(paragraph) for paragraph in paragraphs]
-    assert any(
-        all(
-            trigger in paragraph
-            for trigger in (
-                "flow state",
-                "only",
-                "review",
-                "fix cycle",
-                "blocked",
-                "partial",
-                "durable handoff",
-            )
-        )
-        for paragraph in normalized_paragraphs
-    )
-    assert any(
-        ("third" in paragraph or " 3 " in f" {paragraph} ")
-        and all(
-            term in paragraph
-            for term in (
-                "same",
-                "class",
-                "without",
-                "mechanism",
-                "change",
-                "stop",
-                "ordinary",
-                "routing",
-            )
-        )
-        for paragraph in normalized_paragraphs
-    )
+    for stale_flow_token in (
+        '"version": 1',
+        '"ordinary_fix_cycles"',
+        '"state": "draft | executing',
+        '"next_action": "continue |',
+    ):
+        assert stale_flow_token not in flow
