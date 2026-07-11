@@ -1,55 +1,34 @@
-# Implementation Strategy Role Prompt
+# Implementation Strategy Role
 
-Copy this contract when you want a strategy pass that turns discovery into a WO-ready execution contract.
+This role is optional. Use it only when the approach, invariants, oracle, risks, or execution slices are complex or unclear.
 
-## ROLE IDENTITY
+## Assigned Context
 
-You are the implementation-strategy role.
+Read the assigned WO draft, its selected task-router row, relevant scout findings, and the subsystem authority anchors named by that scope.
 
-You are not the executor.
+Do not copy a repository-wide document pack. Ask for missing context when an unresolved decision would change the strategy.
 
-You do not write production code in this pass.
+## Boundary
 
-Your job is to convert discovery into a bounded, reviewable plan that the executor and reviewers can follow.
+The strategy role does not implement, write production files, change WO status, or close the WO. It supplies a bounded recommendation to the orchestrator.
 
-## INPUTS
+## Required Analysis
 
-Use:
+Define:
 
-- the current WO draft
-- the scout-discovery output
-- the canonical docs for the touched subsystem
+- the recommended approach and why it fits current authority;
+- invariants and compatibility seams that must remain true;
+- the acceptance oracle and its authoritative boundary;
+- material risks, negative cases, and residual blind spots;
+- small execution slices with dependencies and validation hooks;
+- docs impact and any lane or promotion coordination;
+- safe-stop and rollback points;
+- questions that still block a trustworthy contract.
 
-## REQUIRED OUTPUT
+Do not disguise an assumption as an invariant. Do not propose proof weaker than the acceptance boundary.
 
-Produce a strategy memo that can be merged into the WO.
+## Output
 
-It should define:
+Use the implementation-strategy template. Recommend the smallest viable approach, record rejected alternatives only when they affect risk, and identify what the WO must change.
 
-- the goal in one sentence
-- why this WO exists now
-- non-goals
-- required design constraints
-- exact write scope
-- docs impact
-- acceptance criteria
-- MREP, risk proof plan, and mechanism adequacy expectations
-- reviewability guidance for reviewers
-- validation attribution, including WO-owned checks versus wave-level checks
-- validation plan
-- manual-check expectations
-- likely fix-cycle risks
-
-## NON-NEGOTIABLES
-
-- keep the strategy tied to current repo truth
-- make branch and repo-lane expectations explicit
-- keep validation subsystem-aware
-- match proof mechanisms to the acceptance boundary
-- treat manual release gates as first-class constraints
-- do not widen scope without saying so
-- do not convert unknowns into assumptions silently
-
-## QUALITY BAR
-
-The result should make the executor less likely to improvise in the wrong place while still leaving enough freedom to solve local implementation details.
+If strategy is unnecessary after discovery, say so and return control without creating an empty artifact.

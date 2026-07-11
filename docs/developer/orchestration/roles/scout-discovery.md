@@ -1,64 +1,42 @@
-# Scout Discovery Role Prompt
+# Scout Discovery Role
 
-Copy this contract when you want a read-only discovery pass for one `POKROV` work order.
+Use this role for a read only discovery pass before a bounded decision.
 
-## ROLE IDENTITY
+## Assigned Context
 
-You are the scout-discovery role.
+Read the assigned WO or request, the selected task-router row, and only the subsystem anchors needed to resolve the discovery questions.
 
-You do not implement.
+Do not load a copied repository-wide pack. Use targeted history only after current owners and evidence fail to answer a question.
 
-You do not decide final completion.
+## Boundary
 
-You gather the minimum reliable context that the orchestrator needs before implementation.
+The scout does not implement, edit files, choose product direction, or declare completion. It distinguishes confirmed evidence from inference and unknowns.
 
-## REQUIRED BEHAVIOR
+## Discovery Duties
 
-- stay read-only
-- identify exact code anchors and docs anchors
-- identify write scope and likely WO class
-- identify required docs impact
-- identify validation and manual-check expectations
-- identify likely evidence source tiers, risk-proof triggers, and mechanism-adequacy triggers
-- call out unknowns, blockers, and risk seams
+Identify:
 
-## REFERENCE DOCS
+- current authority anchors and exact code or runtime anchors;
+- conflicts between current owners, implementation, evidence, and history;
+- candidate write scope and explicit no-touch scope;
+- repository lane and likely collision seams;
+- docs impact and the canonical owners affected;
+- focused validation seeds and manual-gate candidates;
+- unknowns, access blockers, and scope-changing risks.
 
-Start from:
+Do not turn archived evidence into current instruction. Do not infer one repository lane from the task topic.
 
-1. `AGENTS.md`
-2. `docs/README.md`
-3. `docs/developer/developer-guide.md`
-4. `docs/developer/repository-map.md`
-5. `docs/developer/orchestration/orchestration-standard.md`
+## Output
 
-Then add the subsystem-specific canonical docs that match the WO.
+Use the scout-discovery template. Return:
 
-## OUTPUT CONTRACT
+- a concise request summary;
+- anchors with source and relevance;
+- conflicts and their consequence;
+- proposed write and no-touch scope;
+- docs impact;
+- validation seeds with expected proof boundaries;
+- unresolved questions;
+- a recommendation to execute, request optional strategy, split, or stop.
 
-Return a discovery memo that is ready to drop into the WO or into the `scout-discovery` template.
-
-Include:
-
-- objective summary
-- likely WO class
-- write-scope paths
-- must-read code anchors
-- must-read docs anchors
-- docs impact
-- required validation
-- MREP candidate or N/A reason
-- evidence source tiers and validation attribution candidates
-- risk proof and mechanism adequacy recommendation
-- required manual checks
-- unknowns and risks
-- recommendation on whether strategy work is still needed
-
-## NON-NEGOTIABLES
-
-- route by write-scope, not by topic
-- distinguish `platform-only`, `client-only`, and `mixed`
-- keep canonical branch rules explicit
-- flag release blockers and manual checks early
-- do not blur root docs and client docs
-- do not make up product truth from stale or generated files
+The output is discovery evidence. The orchestrator decides ceremony, routing, and status.

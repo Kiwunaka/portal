@@ -1,85 +1,62 @@
 # Completion Evidence
 
 WO: `WO-XXX-short-title`
-Date: `YYYY-MM-DD`
 Prepared by: `<orchestrator>`
+Date: `<timestamp>`
 
-## What I checked
+Use this artifact for the orchestrator's closure or truthful partial handoff. It does not replace canonical product or release owners.
 
-- item
+## Outcome
 
-## What I found
+- Goal result: `<observable outcome>`
+- Final WO status: `complete | partial | blocked`
+- Docs impact: `<owners updated or confirmed unchanged>`
+- Remaining scope: `<none, explicit remainder, or blocker>`
 
-- item
+## Changes
 
-## What I changed
+- `<path or behavior changed>`
+- `<path or behavior changed>`
 
-- item
+## Evidence Records
 
-## How I verified
+Repeat one record per check:
 
-- automated checks:
-- manual checks:
-- evidence artifacts:
-- MREP:
-- evidence source tiers:
-- validation attribution:
-- risk proof closure:
-- mechanism adequacy:
-- durable memory updated:
+- name: `<stable check name>`
+- source: `static_review | synthetic_test | tracked_fixture | generated_artifact | api_e2e | ui_behavior | runtime_smoke | full_validation_epoch | manual | n/a`
+- target_scope: `local | exact_candidate | deployed_environment | provider | physical_device | current_origin | brain_origin | ru_origin`
+- freshness: `current_candidate | current_environment | retained_current | historical_stale`
+- attribution: `wo_owned | wave_integration | pre_existing | unrelated | blocked_by_access`
+- result: `<observed result or truthful manual label>`
+- reference: `<command summary or retained artifact>`
+- notes: `<limitations, candidate, environment, or n/a reason>`
 
-## What remains / risk
+## Review And Flow
 
-- item
+- Review verdict references: `<spec, quality, release, or not selected>`
+- Open findings: `<none or ids with status and owner>`
+- Accepted risks: `<none or owner and consequence>`
+- Final `FLOW_STATE` v2 reference: `<reference or not triggered>`
+- Next action: `execute | owned_finding_recheck | fresh_final_review | release_validation | problem_class_analysis | wait_for_access | close`
 
-## FLOW_STATE Closure
+Use `close` only when no finding or stop reason still requires action.
 
-- final state: `complete | partial | blocked`
-- open findings: `none | accepted-risk | blocked`
-- repeated issue classes: `<none or summary>`
-- final next action: `close | follow-up-wo | pause-for-human`
-- problem-class analysis required: `yes | no`
+## Git And Promotion
 
-## Deploy Status
+| Repository lane | Working branch | Commit | Push state | Integration or promotion state |
+| --- | --- | --- | --- | --- |
+| `<platform or active_client>` | `<branch>` | `<sha>` | `<state>` | `<state and owner>` |
 
-- deploy requested: `yes | no`
-- deploy performed: `yes | no`
-- post-deploy verify:
-- rollback-safe state:
+Deploy state: `<performed, not requested, blocked, or pending>`
 
-## Git Evidence
+## Release Boundary
 
-### Platform Lane
+Complete this section only when release-facing work triggered it.
 
-- repo: `portal`
-- branch:
-- commit(s):
-- pushed:
-- compare or PR:
-
-### Client Dev Lane
-
-- repo: `POKROV-app`
-- branch:
-- commit(s):
-- pushed:
-- compare or PR:
-
-### Archive Evidence
-
-- archive path or version:
-- why it mattered:
-- updated:
-- notes:
-
-## Release Metadata Home
-
-- bundle or metadata root:
-- `release-links.env` path:
-- manifest directory:
-
-## Origin Checks
-
-- current-origin check:
-- brain-origin check:
-- RU-origin check:
+- Exact candidate: `<commit, artifact, manifest, version, environment>`
+- Current gates: `<gate references and results>`
+- Manual gates: `<MANUAL_OWNER_TEST, OPERATOR_ATTESTED, SKIPPED_BY_OWNER, SKIPPED_BY_OPERATOR, NOT_REQUESTED, or BLOCKED_BY_ACCESS>`
+- Origin evidence: `<current_origin, brain_origin, ru_origin kept separate>`
+- Rollback-safe state: `<verified condition and reference>`
+- Public claims allowed: `<claims directly supported by current evidence>`
+- Public claims forbidden: `<claims not supported by current evidence>`

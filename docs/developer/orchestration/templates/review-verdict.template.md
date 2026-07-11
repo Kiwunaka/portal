@@ -1,54 +1,32 @@
 # Review Verdict
 
 WO: `WO-XXX-short-title`
-Review role: `spec-reviewer | quality-reviewer | release-validator`
-Date: `YYYY-MM-DD`
+Reviewer role: `spec_reviewer | quality_reviewer | release_validator`
+Review mode: `full | owned_finding_recheck`
+Date: `<timestamp>`
 
-## Verdict
+Use this interface for every reviewer. Repeat `finding` and `evidence` blocks as needed. Use an empty findings list for a pass.
 
-- status: `clean_pass | partial | fail | blocked`
-- summary:
+```text
+verdict: pass | changes_required | blocked
 
-## WO Review Focus
+finding:
+  id: <stable id>
+  issue_class: <stable class>
+  severity: <critical | important | minor>
+  reference: <exact path, line, artifact, or gate>
+  required_change: <smallest change that closes the issue>
+  status: open | fixed | accepted_risk | blocked
 
-- Expected diff shape checked: `yes | no | n/a`
-- Risk lenses checked:
-- Proof boundaries checked:
-- Review surface inspected:
-- Reviewer-must-inspect items checked:
+evidence:
+  source: static_review | synthetic_test | tracked_fixture | generated_artifact | api_e2e | ui_behavior | runtime_smoke | full_validation_epoch | manual | n/a
+  target_scope: local | exact_candidate | deployed_environment | provider | physical_device | current_origin | brain_origin | ru_origin
+  freshness: current_candidate | current_environment | retained_current | historical_stale
+  attribution: wo_owned | wave_integration | pre_existing | unrelated | blocked_by_access
+  result: <observed result or truthful manual label>
+  reference: <reproducible summary or retained artifact>
 
-## Findings
+next_action: execute | owned_finding_recheck | fresh_final_review | release_validation | problem_class_analysis | wait_for_access | close
+```
 
-| ID | Issue class | Surface | Severity | Finding | Mechanism-level? |
-| --- | --- | --- | --- | --- | --- |
-| `R1` | `<issue_class>` | `<path or subsystem>` | `P0 | P1 | P2 | P3` | `<finding with exact reference>` | `yes | no | unknown` |
-
-## Required Fixes
-
-- fix
-- fix
-
-## FLOW_STATE Update
-
-- New findings added: `<ids>`
-- Same issue class seen before: `yes | no | unknown`
-- Mechanism change required: `yes | no | unknown`
-- Suggested next action: `owned-finding-recheck | fresh-final-review | problem-class-analysis | pause-for-human | close`
-
-## Proof Boundary Check
-
-- MREP status: `satisfied | partial | blocked | n/a`
-- Risk proof plan status: `satisfied | weak | blocked | n/a`
-- Mechanism adequacy status: `adequate | weak | blocked | n/a`
-- Validation attribution respected: `yes | no | unclear`
-
-## Evidence Checked
-
-| Evidence | Source tier | Attribution | Notes |
-| --- | --- | --- | --- |
-| `<file, command, artifact, or manual check>` | `static_review | synthetic_test | tracked_fixture | generated_artifact | api_e2e | ui_behavior | runtime_smoke | full_validation_epoch | manual | n/a` | `owned-by-this-WO | wave-level | pre-existing | unrelated | unknown` | `<notes>` |
-
-## Re-Review Gate
-
-- exact conditions for owned-finding recheck:
-- exact conditions for fresh-final review:
+Do not hide a skip, attestation, stale artifact, unrelated failure, or access blocker inside a passing summary. Explain scope and limitations in the result or reference.

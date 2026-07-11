@@ -1,158 +1,65 @@
-# Scout Discovery - <topic-or-wo-seed>
+# Scout Discovery
 
-> Read-only discovery artifact.
-> Scout gathers current truth, routing signals, and validation seeds.
-> Scout does not implement, widen scope, or declare completion.
+This is a read only discovery artifact. It records targeted anchors, conflicts, scope, docs impact, and validation seeds.
 
-## Discovery Snapshot
-
-| Field | Value |
-| --- | --- |
-| Topic | `<short request title>` |
-| Requested by | `<user / orchestrator / wave>` |
-| Discovery owner | `<scout role or name>` |
-| Status | `draft | in-progress | ready-for-wo | blocked` |
-| Candidate WO class | `platform-only | client-only | mixed | unknown` |
-| Candidate primary repo lane | `portal/master | POKROV-app/main | archive evidence only | unknown` |
-| Candidate secondary repo lane | `<blank if not mixed>` |
-| Timestamp | `<timestamp>` |
+Request or WO: `<identifier>`
+Scout: `<owner>`
+Date: `<timestamp>`
 
 ## Request Summary
 
-- Requested outcome: `<what the user or wave seems to want>`
-- Why now: `<why this request exists now>`
-- Known constraints: `<constraints already stated>`
+- Requested outcome: `<outcome>`
+- Known constraints: `<constraints>`
+- Candidate ceremony: `direct | bounded_wo | release_wo`
+- Candidate repository lane: `platform | active_client | mixed | unknown`
 
-## Must-Read Pack Reviewed
+## Assigned Context
 
-- [ ] `AGENTS.md`
-- [ ] `docs/README.md`
-- [ ] `docs/product/portal-vpn-product.md`
-- [ ] `docs/architecture/system-overview.md`
-- [ ] `docs/architecture/app-first-and-bonus-flows.md`
-- [ ] `docs/operations/deployment-and-access.md`
-- [ ] `docs/operations/monitoring-and-visibility.md`
-- [ ] `docs/developer/developer-guide.md`
-- [ ] `docs/developer/repository-map.md`
-- [ ] Active new-client docs pack, if candidate scope touches `POKROV-app`
-- [ ] Archive client-lane summaries only if historical bootstrap or rollback evidence matters
-
-## Current Truth Summary
-
-### Confirmed current behavior
-
-- `<grounded behavior from code or canonical docs>`
-- `<grounded behavior from code or canonical docs>`
-
-### Source-of-truth anchors
-
-- `<shared file, canonical doc, or runtime authority>`
-- `<shared file, canonical doc, or runtime authority>`
-
-### Conflicts or stale material noticed
-
-- `<old flat doc, archive, or implementation mismatch>`
-- `<unknown or leave blank>`
-
-## Repo Boundary And Write-Scope Candidate
-
-| Question | Answer |
-| --- | --- |
-| Which files or directories look in scope | `<paths>` |
-| Which repo lane owns those paths | `<platform / client / mixed>` |
-| Why this is not another lane | `<reason>` |
-| Does `shared/*` make this mixed | `yes | no | maybe` |
-| Confidence in classification | `high | medium | low` |
-
-## Current Code Anchors (Must Read)
-
-Copy only the anchors that should later appear in the WO.
-
-| Path | Why it matters | Read status | Notes |
-| --- | --- | --- | --- |
-| `<exact path>` | `<why it is central to the work>` | `done` | `<notes>` |
-| `<exact path>` | `<why it is central to the work>` | `done` | `<notes>` |
-
-## Docs Impact Candidate
-
-| Doc path | Why it may need an update | Likely required |
+| Anchor | What it establishes | Freshness or authority |
 | --- | --- | --- |
-| `docs/product/portal-vpn-product.md` | `<reason>` | `yes | no | maybe` |
-| `docs/architecture/system-overview.md` | `<reason>` | `yes | no | maybe` |
-| `docs/architecture/app-first-and-bonus-flows.md` | `<reason>` | `yes | no | maybe` |
-| `docs/operations/deployment-and-access.md` | `<reason>` | `yes | no | maybe` |
-| `docs/operations/monitoring-and-visibility.md` | `<reason>` | `yes | no | maybe` |
-| `docs/developer/developer-guide.md` | `<reason>` | `yes | no | maybe` |
-| `docs/developer/repository-map.md` | `<reason>` | `yes | no | maybe` |
-| `docs/user/portal-vpn-user-guide-ru.md` | `<reason>` | `yes | no | maybe` |
-| `C:/Users/kiwun/Documents/ai/POKROV-app/docs/...` | `<reason>` | `yes | no | maybe` |
-| `docs/archive/client-lanes/...` | `<reason>` | `yes | no | maybe` |
+| `<selected task-router row>` | `<routing and docs impact>` | `<current>` |
+| `<subsystem owner>` | `<intended behavior>` | `<classification>` |
+| `<code, test, or runtime evidence>` | `<implemented or observed state>` | `<freshness>` |
 
-## Observed Gaps, Risks, Or Reasons For Work
+Do not list a repository-wide document pack. Add only anchors used by this discovery.
 
-- `<bug, missing contract, unclear behavior, or release risk>`
-- `<user pain, operator pain, or truth mismatch>`
-- `<what could regress if this is handled loosely>`
+## Conflicts And Unknowns
 
-## Constraints And Invariants
+| Item | Evidence | Consequence | Needs owner decision |
+| --- | --- | --- | --- |
+| `<conflict or unknown>` | `<reference>` | `<scope, oracle, or risk effect>` | `<yes or no>` |
 
-- `<non-negotiable from AGENTS.md or canonical docs>`
-- `<never-touch, source-of-truth, hostname, node-pool, or release rule>`
-- `<repo boundary or documentation landing rule>`
+Distinguish current-owner conflicts from archived or historical explanation.
+
+## Scope Candidate
+
+- Write scope: `<exact paths>`
+- No-touch scope: `<exact paths, lanes, data, or concurrent owners>`
+- Collision seams: `<worktrees or paths to check>`
+- Lane rationale: `<why this lane owns the writes>`
+
+## Docs Impact
+
+| Canonical owner | Expected impact | Reason |
+| --- | --- | --- |
+| `<exact path>` | `<change, no change, or unknown>` | `<reason>` |
 
 ## Validation Seeds
 
-List only the checks that are likely needed if this becomes a WO.
+| Candidate check | Target scope | Oracle reached | Limitation or manual gate |
+| --- | --- | --- | --- |
+| `<focused check>` | `<scope>` | `<yes, no, or partial>` | `<limitation>` |
 
-| Surface | Candidate check | Why it matters |
-| --- | --- | --- |
-| `backend` | `<pytest or lifecycle smoke>` | `<reason>` |
-| `webapp` | `<build, admin smoke, Playwright>` | `<reason>` |
-| `marketing` | `<build, links, visual smoke>` | `<reason>` |
-| `infra` | `<node readiness, metrics freshness, origin matrix>` | `<reason>` |
-| `client` | `<client security smoke, release gate suite, localhost audit>` | `<reason>` |
-| `release` | `<release_gate_check.py or release_orchestrator.py --gates-only>` | `<reason>` |
+## Risks
 
-## Recommended WO Seed
+- `<risk and authoritative boundary>`
+- `<access, release, data, security, or integration risk>`
 
-### Goal seed
+## Recommendation
 
-`<one-sentence candidate goal>`
+- Next step: `<execute, request optional strategy, split, ask owner, or stop>`
+- Proposed acceptance oracle: `<observation>`
+- Required proof blocks or reviewers: `<only those triggered>`
+- Blocking context: `<none or exact missing decision/evidence>`
 
-### Why-this-exists seed
-
-`<one paragraph that can feed directly into the WO>`
-
-### Non-goals seed
-
-- `<explicitly not part of this WO>`
-- `<explicitly not part of this WO>`
-
-### Write-scope seed
-
-- Allowed write paths: `<paths>`
-- Explicitly out of scope: `<paths>`
-
-### Acceptance seeds
-
-- `<candidate acceptance criterion>`
-- `<candidate acceptance criterion>`
-
-## Questions That Still Need Strategy
-
-- `<question that blocks a clean WO>`
-- `<question that affects design or repo classification>`
-
-## Recommended Next Step
-
-- `create WO directly`
-- `write implementation strategy first`
-- `split into multiple WOs`
-- `stop because the request is outside current truth or scope`
-
-## Handoff To Orchestrator
-
-- Suggested WO title: `<WO-xxx title seed>`
-- Suggested WO class: `<platform-only | client-only | mixed>`
-- Suggested first executor lane: `<platform / client>`
-- Suggested reviewer focus: `<spec, quality, release>`
+The orchestrator owns ceremony, role routing, status, and closure.
