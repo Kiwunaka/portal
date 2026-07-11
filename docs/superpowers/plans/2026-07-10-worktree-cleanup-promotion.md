@@ -992,8 +992,11 @@ stashes
 
 The reviewed script hard-codes the expected digest and recomputes it on every
 invocation. The mutable manifest may repeat the value but is never its
-authority. Mutable fields are limited to `cleanup_run`, `cleanup_receipts`, and
-the final `stage_a_state` transition.
+authority. Mutable governance is limited to `cleanup_run`, `cleanup_receipts`,
+the final `stage_a_state` transition, and later authority-bound removal receipt
+collections. Optional `future_authorities` records may exist only inside a
+`COMPLETE` `cleanup_run`; none of these mutable fields widens or changes the
+immutable projection.
 
 Stash authority is the exact ordered direct chain for
 `premium-bank-app-portal`, `release-hardening-platform`, and
@@ -1044,12 +1047,19 @@ lives in a strict nested object:
 PINNED (no cleanup_run)
   -> READY(ordinal=0, nonce, script_sha256)
   -> PREPROOF_VERIFIED(entry=1, evidence_digest)
+  -> CLEAN_EXIT_VERIFIED(entry=1, exit=0, evidence_digest)
   -> READY(ordinal=1, receipt=1)
   -> PREPROOF_VERIFIED(entry=2, evidence_digest)
+  -> CLEAN_EXIT_VERIFIED(entry=2, exit=0, evidence_digest)
   -> READY(ordinal=2, receipts=2)
   -> PREPROOF_VERIFIED(entry=3, evidence_digest)
+  -> CLEAN_EXIT_VERIFIED(entry=3, exit=0, evidence_digest)
   -> COMPLETE(receipts=3) + CLEANED_VERIFIED
 ```
+
+Any observed failed, noisy, timed-out, partial, or ambiguous cleanup attempt
+transitions from the matching pre-proof to durable `BLOCKED`; `BLOCKED` has no
+outgoing automatic transition.
 
 The cleanup order and receipt-ID order are exact:
 
@@ -1072,9 +1082,21 @@ program must, without yielding a shell step:
    digest;
 5. invoke the sole deletion subprocess as the fixed argument array
    `['git', '-C', <frozen-worktree>, 'clean', '-fdX']`, with `shell=False`;
-6. capture and check the native exit code immediately;
-7. run `AfterClean` before returning control; and
-8. atomically append the exact receipt and advance the ordinal.
+6. capture the native outcome and bounded stdout/stderr immediately;
+7. on exact success, atomically publish `CLEAN_EXIT_VERIFIED` before any
+   post-proof. It preserves the exact entry/ordinal, nonce, script and immutable
+   hashes, manifest-predecessor/pre-proof/stash digests and affected aggregates,
+   and adds native exit `0`, stdout digest, stderr length `0` plus the digest of
+   empty bytes, observed UTC time, and the post-attempt live aggregate;
+8. reload that durable marker, run `AfterClean`, and atomically append the exact
+   receipt and advance the ordinal.
+
+Observed nonzero exit, any stderr, timeout, or bounded-process failure after the
+attempt must instead atomically publish `cleanup_run.state=BLOCKED`. Its exact
+record binds entry/ordinal, nonce, script/immutable/pre-proof digests, outcome
+kind, native exit or explicit no-exit value, bounded stdout/stderr lengths and
+digests, observed UTC time, and post-attempt tracked/untracked/ignored/preview
+counts plus their aggregate digest. It never creates a receipt or retries.
 
 There is no raw shell cleanup command to copy. On receipt three, the same atomic
 write sets `cleanup_run.state=COMPLETE` and
@@ -1086,18 +1108,24 @@ immutable-evidence and pre-proof digests, direct-stash OID/evidence digest,
 affected snapshot-manifest SHA-256, affected saved/live counts and bytes,
 pre-clean ignored/preview counts, `preclean_ignored_retained_verified=true`,
 clean exit code `0`, zero post-clean tracked/untracked/ignored/preview counts,
-and pre/post UTC timestamps.
+and pre/post UTC timestamps. It is valid only when derived from the exact
+durable `CLEAN_EXIT_VERIFIED` record and all shared pre-proof, output, and
+identity fields remain bound to that record.
 
 - [ ] **Step 5: Fail closed across crashes and require explicit recovery**
 
 - `READY` plus the full original ignored set may begin a fresh pre-proof.
 - `PREPROOF_VERIFIED` plus the full original ignored set means deletion did not
   complete; only `recover-task5` may repeat proof and deletion.
-- `PREPROOF_VERIFIED` plus zero ignored/preview may run only strict post-proof
-  and publish the receipt from the matching durable pre-proof record.
+- `PREPROOF_VERIFIED` plus zero ignored/preview without a durable matching
+  `CLEAN_EXIT_VERIFIED` marker is ambiguous and becomes `BLOCKED`; absence never
+  proves that this operator completed cleanup.
+- `CLEAN_EXIT_VERIFIED` may run only `AfterClean` and publish the bound receipt.
+  Recovery from this state must never issue a second cleanup call.
 - A partial ignored set, mixed preview, nonzero tracked/untracked state, changed
-  immutable core, snapshot, stash, registry, or nonzero cleanup exit is
-  `BLOCKED`. Preserve all evidence and require independent review.
+  immutable core, snapshot, stash, registry, or failed/noisy/timed-out cleanup
+  attempt is durably `BLOCKED`. Preserve all evidence and require independent
+  review; never append a receipt or retry automatically.
 - Existing valid receipts are re-proved and skipped, never duplicated. A
   completed run is read-only and refuses a second execution.
 - A temp candidate is never overwritten. Recovery validates current and
@@ -1105,12 +1133,54 @@ and pre/post UTC timestamps.
   promotion or rejection. It never infers success merely from an empty tree and
   never retries automatically.
 
-- [ ] **Step 6: Enforce the exact mutation surface**
+- [ ] **Step 6: Enforce the exact mutation and future-authority surface**
 
 Before pinning, a reviewed builder may create only the fixed gate source. `pin`
 may create the fixed lock and atomically add `proof_gate` to the manifest.
 `execute-task5`/`recover-task5` may atomically update only `cleanup_run`, the
 three receipts, the final state, and exactly the three authorized ignored trees.
+
+Only after `cleanup_run.state=COMPLETE` and `CLEANED_VERIFIED`, the manifest may
+gain up to two ordered `cleanup_run.future_authorities`: `stale-removal`, then
+`temporary-removal`. Each exact scoped record pins the fixed operator path,
+byte count and SHA-256; gate SHA-256; reconstructed predecessor-manifest
+SHA-256; receipt-schema SHA-256; fixed target order; authorization time;
+`prior_registry_digest`; and `registry_baseline_digest`. The gate must rehash,
+parse, and standard-library-audit the pinned operator on every applicable prove.
+
+| Authority | Fixed operator path | Receipt-schema SHA-256 |
+| --- | --- | --- |
+| `stale-removal` | snapshot root `stale-removal-operator.py` | `ac0cf646977e9f664aec9eeea2f6f06257b2b4af7e82c7028856c3de16c7b155` |
+| `temporary-removal` | snapshot root `temporary-removal-operator.py` | `5af25cadbc6131c6c9b48c0e20cb07d756ed503b2cf2ae358080efded1a877af` |
+
+Reconstruct the stale-authority predecessor by removing the complete authority
+list and both future receipt collections. Reconstruct the temporary-authority
+predecessor by retaining the exact stale authority and stale receipts while
+removing only the temporary authority and receipts. Canonically serialize each
+result and require its pinned predecessor SHA-256. A missing authority,
+shape-only record, source-only operator, extra property, mismatched
+source/schema/gate hash, or unreconstructable predecessor blocks the proof mode.
+
+The stale authority starts from the pinned `CLEANED_VERIFIED` exact `5 / 4`
+registry baseline and uses the exact 64-zero `prior_registry_digest` sentinel.
+The temporary authority may appear only after all stale receipts; its
+`prior_registry_digest` must equal the final stale `registry_after_digest`,
+while its `registry_baseline_digest` pins the independently reviewed post-Task-7
+live registry.
+
+The exact stale and temporary receipt schemas bind nonce, operator/gate and
+immutable hashes, target identity and ordinal order, pre-removal proof, native
+result, and observed time. The authority baseline is the chain's `before`; each
+receipt binds the current live registry as `registry_before_digest` and the
+verified result as `registry_after_digest`. The first current digest must equal
+the authority baseline, and every later current digest must equal the prior
+receipt's after digest. The temporary chain also proves the stale-to-temporary
+bridge.
+
+These optional authorities enable only the pinned gate's read-only
+`BeforeStaleRemoval` and `BeforeTemporaryRemoval` proofs. They do not authorize
+worktree or branch mutation: Tasks 6 and 8 still require their own reviewed
+operator, nonce, lock/crash journal, and execution handoff.
 
 Forbidden mutations include tracked/untracked deletion; stash creation,
 apply/pop/drop, or ref rewrite; snapshot or snapshot-manifest changes; repo
@@ -1145,19 +1215,31 @@ and path inventory output.
 9. **Adjacency/static:** prove one implementation, fixed argument arrays,
    immediate exit checks, no shell wrapper, post-proof before return, and no
    mutation reachable from `prove`.
-10. **Crash injection:** cover both sides of PREPROOF, cleanup, post-proof,
-    candidate replace, receipts one/two, and final transition; every case must
-    resume exactly or block without a second cleanup.
+10. **Crash injection:** cover both sides of PREPROOF, cleanup,
+    `CLEAN_EXIT_VERIFIED`, post-proof, durable `BLOCKED`, candidate replace,
+    receipts one/two, and final transition; every case must resume exactly or
+    block without a second cleanup.
 11. **Isolated destructive fixture:** under a verified OS temp directory only,
     remove classified ignored generated/snapshotted-retained fixtures while
     preserving tracked, untracked, and out-of-root files.
 12. **Performance/heartbeat:** validate a synthetic `87,688`-record manifest,
     bounded-memory hashes, aggregate progress, no-progress stop, and recorded
     wall/CPU time.
-13. **Atomicity:** validate-before-replace, fsync/close, `os.replace`, exact
-    reload, collision handling, and pre/post-replace recovery fixtures.
+13. **Atomicity and future authority:** validate-before-replace, fsync/close,
+    `os.replace`, exact reload, collision recovery, predecessor reconstruction,
+    operator AST/stdlib pins, receipt-schema hashes, registry baselines, receipt
+    chains, and stale-to-temporary bridging.
 
 - [ ] **Step 8: Separate build, review, pin, and execution authority**
+
+This amendment supersedes the earlier frozen build verdict. The `141,919`-byte
+gate at SHA-256
+`d398baa455a2fced7276912266c6785f74795138832755c7a75090af23ba960e`
+and its `61,591`-byte test packet at SHA-256
+`43f3287c72f960b79648ba9af1a733087d2531fdc364e3567e4d668faaa2f4a6`
+remain historical `SOURCE_PASS` evidence for the previous contract, but are now
+`NOT_CONFORMING / DO_NOT_PIN`. Rebuild the source against this stricter state,
+outcome, and authority schema, then rerun fresh tests and independent review.
 
 The handoff is fail-closed:
 
@@ -1190,9 +1272,9 @@ and branch-deletion blocks are not executable authority.
 
 **Interfaces:**
 
-- Consumes: `CLEANED_VERIFIED`, three exact Task 5 receipts, the pinned Python
-  `BeforeStaleRemoval` mode, readable stashes, full target snapshots, and exact
-  ordinal registry profiles
+- Consumes: `CLEANED_VERIFIED`, three exact Task 5 receipts, the exact pinned
+  stale `future_authorities` record, the Python `BeforeStaleRemoval` mode,
+  readable stashes, full target snapshots, and exact ordinal registry profiles
 - Produces: three non-forced worktree-removal receipts, then three normal
   merged-branch deletion receipts
 
@@ -1319,8 +1401,9 @@ authority.
 **Interfaces:**
 
 - Consumes: completed Task 7 promotion, `CLEANED_VERIFIED`, exact Task 6
-  removal receipts/profile, the pinned Python `BeforeTemporaryRemoval` mode,
-  clean docs worktrees, dynamic branch refs, and retained-line reachability
+  removal receipts/profile, the exact pinned temporary `future_authorities`
+  record, the Python `BeforeTemporaryRemoval` mode, clean docs worktrees,
+  dynamic branch refs, and retained-line reachability
 - Produces: the requested steady state with recoverable evidence
 
 - [ ] **Step 1: Build and review a separate temporary-removal operator**
