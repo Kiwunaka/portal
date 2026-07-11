@@ -30,6 +30,12 @@ Before execution:
 
 Run the collision gate again whenever write scope changes. Reclassify the ceremony, roles, proof blocks, documentation impact, and validation when new scope changes risk. Never stretch a WO silently.
 
+## Parallel Codex Work
+
+Delegate only bounded work with an explicit return contract. Prefer parallel subagents for independent read-heavy exploration, focused tests, triage, and summarization so raw intermediate output stays out of the main task.
+
+Parallel writes require disjoint exact write scopes and a collision gate before execution and integration. The orchestrator retains status, integration, review routing, and closure; subagents do not create a mandatory role chain or self-promote their results.
+
 ## Lifecycle Vocabulary
 
 WO status: draft | ready | active | review | fix_cycle | blocked | partial | complete
