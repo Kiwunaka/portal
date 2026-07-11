@@ -1,10 +1,71 @@
 from pathlib import Path
 import json
+import os
 import re
+import subprocess
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POKROV_APP_ROOT = ROOT.parent / "POKROV-app"
+CLIENT_REPO_MARKERS = (
+    "README.md",
+    "melos.yaml",
+    "config/product-contract.seed.json",
+    "config/release-handoff.seed.json",
+    "docs/README.md",
+)
+
+
+def _validated_client_repo(candidate: Path, *, source: str) -> Path:
+    resolved = candidate.expanduser().resolve()
+    assert resolved.is_dir(), f"POKROV-app {source} repository is absent at {resolved}"
+    missing = [
+        marker for marker in CLIENT_REPO_MARKERS
+        if not (resolved / marker).exists()
+    ]
+    assert not missing, (
+        f"POKROV-app {source} repository at {resolved} is missing markers: "
+        + ", ".join(missing)
+    )
+    return resolved
+
+
+def _resolve_pokrov_app_repo(platform_checkout: Path = ROOT) -> Path:
+    if "POKROV_APP_REPO" in os.environ:
+        override = os.environ["POKROV_APP_REPO"]
+        assert override.strip(), (
+            "POKROV_APP_REPO must be a non-blank path when present"
+        )
+        return _validated_client_repo(
+            Path(override),
+            source="override",
+        )
+
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, (
+        "cannot resolve the platform common Git directory from "
+        f"{platform_checkout.resolve()}: {completed.stderr.strip()}"
+    )
+    common_git_dir = Path(completed.stdout.strip()).resolve()
+    assert common_git_dir.name == ".git" and (common_git_dir / "HEAD").exists(), (
+        f"unexpected platform common Git directory: {common_git_dir}"
+    )
+    platform_repo_root = common_git_dir.parent
+    sibling = platform_repo_root.parent / "POKROV-app"
+    assert sibling.is_dir(), (
+        f"POKROV-app sibling repository is absent at {sibling.resolve()}"
+    )
+    return _validated_client_repo(sibling, source="sibling")
+
+
+POKROV_APP_ROOT = _resolve_pokrov_app_repo()
 LEGACY_PUBLIC_MARKERS = (
     "portal-privacy.online",
     "kiwunaka.space",
@@ -84,9 +145,9 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
     app_readme = _read_pokrov_app("docs/README.md")
     app_cutover = _read_pokrov_app("docs/operations/cutover-readiness.md")
 
-    assert "canonical client repo: `C:/Users/kiwun/Documents/ai/POKROV-app`" in docs_index
-    assert "app-next Bootstrap Summary" in docs_index
-    assert "Legacy Bridge Retirement Summary" in docs_index
+    assert "Active Android/Windows client truth lives only under `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`" in docs_index
+    assert "| `CANONICAL` | active client docs | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md` |" in docs_index
+    assert "| `HISTORICAL_REFERENCE` | retired client lanes | `docs/archive/client-lanes/` |" in docs_index
     assert "`POKROV-app/main` is the only active client development and client-doc truth" in system_overview
     assert "`app-next/` is the retired bootstrap-source archive/reference workspace" in system_overview
     assert "`external/client-fork/app/` is the retired rollback/archive client reference workspace" in system_overview
@@ -154,3 +215,94 @@ def test_runtime_bot_defaults_use_new_pokrov_identities() -> None:
     assert "https://t.me/pokrov_vpnbot?start=ref_mock" in webapp_e2e_text
     assert 'or "pokrov_vpnbot"' in config_text
     assert "https://t.me/pokrov_vpn" in config_text
+
+
+def _write_client_repo_markers(root: Path) -> None:
+    for relative_path in (
+        "README.md",
+        "melos.yaml",
+        "config/product-contract.seed.json",
+        "config/release-handoff.seed.json",
+        "docs/README.md",
+    ):
+        path = root / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("test marker\n", encoding="utf-8")
+
+
+def test_pokrov_app_repo_override_is_absolute_validated_and_skips_git(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client_root = tmp_path / "client" / "POKROV-app"
+    _write_client_repo_markers(client_root)
+    override = client_root.parent / "unused" / ".." / client_root.name
+    monkeypatch.setenv("POKROV_APP_REPO", str(override))
+
+    def fail_git(*args: object, **kwargs: object) -> object:
+        raise AssertionError("git must not run when POKROV_APP_REPO is present")
+
+    monkeypatch.setattr(subprocess, "run", fail_git)
+    assert _resolve_pokrov_app_repo(ROOT) == client_root.resolve()
+
+
+@pytest.mark.parametrize("override", ["", " ", "\t"])
+def test_pokrov_app_repo_present_blank_override_is_rejected_before_path_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    override: str,
+) -> None:
+    valid_cwd = tmp_path / "cwd-with-client-markers"
+    _write_client_repo_markers(valid_cwd)
+    monkeypatch.chdir(valid_cwd)
+    monkeypatch.setenv("POKROV_APP_REPO", override)
+
+    def fail_git(*args: object, **kwargs: object) -> object:
+        raise AssertionError("present POKROV_APP_REPO must not fall back to Git")
+
+    monkeypatch.setattr(subprocess, "run", fail_git)
+    with pytest.raises(
+        AssertionError,
+        match=r"POKROV_APP_REPO must be a non-blank path when present",
+    ):
+        _resolve_pokrov_app_repo(ROOT)
+
+
+def test_pokrov_app_repo_resolves_from_root_and_linked_worktree(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("POKROV_APP_REPO", raising=False)
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    platform_root = Path(completed.stdout.strip()).resolve().parent
+    expected = (platform_root.parent / "POKROV-app").resolve()
+
+    assert _resolve_pokrov_app_repo(platform_root) == expected
+    assert _resolve_pokrov_app_repo(ROOT) == expected
+
+
+def test_pokrov_app_repo_missing_sibling_has_useful_assertion(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("POKROV_APP_REPO", raising=False)
+    platform_root = tmp_path / "workspace" / "VPN"
+    platform_root.mkdir(parents=True)
+    subprocess.run(
+        ["git", "init", "--quiet"],
+        cwd=platform_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    with pytest.raises(
+        AssertionError,
+        match=r"POKROV-app sibling repository is absent.*POKROV-app",
+    ):
+        _resolve_pokrov_app_repo(platform_root)
