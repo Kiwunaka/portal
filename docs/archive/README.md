@@ -1,6 +1,6 @@
 # Historical Notes And Archive
 
-Last updated: 2026-07-03
+Last updated: 2026-07-12
 
 ## Purpose
 
@@ -36,7 +36,23 @@ Archived root-level guides currently stored here:
 
 ## How To Use Older Docs
 
-- use them to understand historical decisions and earlier incidents
-- do not use them as the only basis for changing current production logic
-- if a historical file conflicts with canonical docs, prefer the canonical docs
-- if a historical file is still valuable, keep it clearly labeled as historical rather than editing it into the live canon
+Use this retrieval order:
+
+1. Start with the current [documentation registry](../README.md) and its
+   canonical domain owners.
+2. Use `rg` and `rg --files` to locate exact terms and paths.
+3. Use targeted Git log, search, and blame queries when current files do not
+   explain the provenance.
+4. Read only the relevant archive, work-order, audit, or spec history.
+5. Let archive material explain why a decision was made, but never let it
+   decide the current action when a canonical owner exists.
+
+No index, dependency, database, service, MCP, GraphRAG, or embeddings layer is
+part of the current historical-retrieval architecture.
+
+A separate future benchmark may evaluate a local generated and ignored SQLite
+FTS/BM25 index with repository, subsystem, class, date, `superseded_by`,
+work-order, and release metadata. Embeddings may be evaluated only after a
+fixed historical-query benchmark proves material misses in lexical search.
+This task neither creates nor authorizes that benchmark or any index; either
+requires a separate owner-approved plan.

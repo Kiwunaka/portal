@@ -9,15 +9,15 @@ This registry classifies important platform documents and the active client poin
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |
-| `HISTORICAL_REFERENCE` | archive | `docs/archive/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | archive | `docs/archive/` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | operator consults | `docs/developer/agent-playbooks/external-model-consults.md` | `PENDING_WAVE_2` |
 | `EXPERIMENTAL` | OpenAI helper | `docs/developer/openai-operator-assistants.md` | `PENDING_WAVE_2` |
 | `CANONICAL` | repository policy | `AGENTS.md` | `RECONCILED` |
 | `CANONICAL` | documentation ownership | `docs/README.md` | `RECONCILED` |
 | `CANONICAL` | task routing | `docs/developer/agent-context-map.md` | `RECONCILED` |
-| `CANONICAL` | product release scope | `docs/product/public-beta-prd.md` | `PENDING_COLLISION_REVIEW` |
+| `EVIDENCE` | 2026-05-15 beta decision baseline | `docs/product/public-beta-prd.md` | `REVIEWED_NO_CHANGE` |
 | `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `RECONCILED` |
-| `CANONICAL` | platform availability | `docs/product/platform-availability.md` | `PENDING_COLLISION_REVIEW` |
+| `HISTORICAL_REFERENCE` | dated platform availability snapshot | `docs/archive/flat-docs/platform-availability-2026-05-26.md` | `REVIEWED_NO_CHANGE` |
 | `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `RECONCILED` |
 | `CANONICAL` | launch known issues | `docs/launch/known-issues.md` | `RECONCILED` |
 | `CANONICAL` | platform architecture | `docs/architecture/system-overview.md` | `PENDING_WAVE_3` |
@@ -61,7 +61,7 @@ This registry classifies important platform documents and the active client poin
 | `OPERATOR_PLAYBOOK` | runtime download smoke | `docs/operations/runtime-app-download-smoke.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | RU-origin probe | `docs/operations/ru-origin-probe.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | release handoffs | `docs/operations/*-handoff.md` | `PENDING_COLLISION_REVIEW` |
-| `HISTORICAL_REFERENCE` | growth and competitor research | `docs/product/pokrov-growth-and-competitor-notes.md` | `UNRESOLVED_OWNER_DECISION` |
+| `HISTORICAL_REFERENCE` | growth and competitor research | `docs/product/pokrov-growth-and-competitor-notes.md` | `REVIEWED_NO_CHANGE` |
 | `EXPERIMENTAL` | context-cost harnesses | `docs/developer/orchestration/context-cost-harnesses.md` | `PENDING_WAVE_2` |
 
 ## Classification Rules

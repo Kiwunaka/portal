@@ -1,8 +1,9 @@
 # API Contracts
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
-This page captures release-critical API contract expectations for Open Beta v4.
+This page is a concise router to the current domain owners. It is not a
+complete endpoint inventory.
 
 ## Account Ownership Boundary
 
@@ -11,21 +12,20 @@ The public numeric `account_id`, stateless bearer flow, payment fulfillment, and
 Production deployment of account foundation is not proven.
 Rotating sessions, recovery exchange, payment ownership cutover, and entitlement-ledger authority are not implemented current truth and must not be claimed.
 
-## Client Apps
+## Domain Owners
 
-`GET /api/client/apps` must return only approved runtime links. Empty Android or Windows URLs mean the corresponding public download is not available and must be presented as gated/support-routed.
-
-## Payment Providers
-
-`GET /api/payments/providers` must expose provider availability and enough unavailable-state detail for checkout to avoid presenting blocked payment paths as live.
-
-## Support
-
-Support ticket APIs must avoid exposing private attachments or session data in public logs. Attachment privacy remains a beta hardening item.
-
-## Admin
-
-Admin APIs must keep payment, download, node, ticket, and user states
-audit-friendly. `adminapp` is the primary operator surface;
-`webapp/src/app/(admin)/admin/` is the parity fallback, and Telegram admin
-remains fallback-only.
+- Identity, account linking, username sync, and bonus flows:
+  [App-First And Bonus Flows](app-first-and-bonus-flows.md).
+- Payment lifecycle and entitlement transitions:
+  [Payment State Machine](payment-state-machine.md); product-facing purchase,
+  activation-key, and access rules live in
+  [Payment And Access Key Contract](../product/payment-and-access-key-contract.md).
+- Approved client binaries, runtime links, and update metadata:
+  [Client Downloads Flow](client-downloads-flow.md).
+- Support tickets, attachments, feedback, and moderation:
+  [Support And Feedback Flow](support-feedback-flow.md).
+- Backend and admin responsibility boundaries:
+  [System Overview](system-overview.md). `adminapp` remains the primary operator
+  surface, the web admin is a parity fallback, and Telegram admin is fallback-only.
+- Active Android and Windows client contracts:
+  [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md).

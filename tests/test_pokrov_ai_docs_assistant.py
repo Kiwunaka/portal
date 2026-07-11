@@ -24,12 +24,46 @@ def test_inventory_uses_allowlisted_canonical_sources_only() -> None:
 
     assert "AGENTS.md" in paths
     assert "docs/product/portal-vpn-product.md" in paths
-    assert "docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md" in paths
+    assert "docs/product/beta-known-limitations.md" in paths
+    assert "docs/launch/known-issues.md" in paths
+    assert {
+        "docs/product/platform-availability.md",
+        "docs/product/public-beta-prd.md",
+        "docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md",
+        "docs/launch/open-beta-release-notes.md",
+    }.isdisjoint(paths)
     assert "portal_bot/.env" not in paths
     assert not any(path.startswith("ops-local/") for path in paths)
     assert not any("VPN NODE SSH KEYS" in path for path in paths)
     assert inventory["source_count"] == len(paths)
     assert inventory["total_bytes"] > 0
+
+
+def test_every_default_source_path_resolves() -> None:
+    module = _load_module()
+    assert all(
+        (module.REPO_ROOT / relative_path).exists()
+        for relative_path in module.DEFAULT_SOURCE_PATHS
+    )
+
+
+def test_default_sources_keep_current_owners_and_exclude_dated_evidence() -> None:
+    module = _load_module()
+    paths = set(module.DEFAULT_SOURCE_PATHS)
+
+    assert {
+        "docs/product/portal-vpn-product.md",
+        "docs/product/beta-known-limitations.md",
+        "docs/launch/known-issues.md",
+    } <= paths
+    assert paths.isdisjoint(
+        {
+            "docs/product/platform-availability.md",
+            "docs/product/public-beta-prd.md",
+            "docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md",
+            "docs/launch/open-beta-release-notes.md",
+        }
+    )
 
 
 def test_inventory_rejects_out_of_repo_and_secret_paths() -> None:
@@ -57,5 +91,15 @@ def test_openai_instructions_preserve_release_and_secret_boundaries() -> None:
 
     assert "Never ask for, print, infer, or preserve secrets" in instructions
     assert "RU-origin readiness" in instructions
-    assert "direct-meaning public" in instructions
     assert "indexed POKROV canon" in instructions
+    for required in (
+        "SEO/search-intent",
+        "VPN",
+        "ВПН",
+        "Hidden text",
+        "cloaking",
+        "keyword stuffing",
+        "unsupported release, payment, or store claims",
+    ):
+        assert required in instructions
+    assert "direct-meaning public" not in instructions

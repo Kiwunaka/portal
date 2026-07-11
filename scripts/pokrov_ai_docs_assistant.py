@@ -27,9 +27,7 @@ DEFAULT_SOURCE_PATHS = (
     "DESIGN.md",
     "docs/README.md",
     "docs/product/portal-vpn-product.md",
-    "docs/product/public-beta-prd.md",
     "docs/product/payment-and-access-key-contract.md",
-    "docs/product/platform-availability.md",
     "docs/product/beta-known-limitations.md",
     "docs/architecture/system-overview.md",
     "docs/architecture/app-first-and-bonus-flows.md",
@@ -54,8 +52,6 @@ DEFAULT_SOURCE_PATHS = (
     "docs/developer/orchestration/flow-state.md",
     "docs/developer/orchestration/context-cost-harnesses.md",
     "docs/developer/work-orders/README.md",
-    "docs/developer/work-orders/2026-04-open-beta-v4/13-launch-decision.md",
-    "docs/launch/open-beta-release-notes.md",
     "docs/launch/support-macros.md",
     "docs/launch/known-issues.md",
     "docs/launch/post-release-monitoring.md",
@@ -97,9 +93,10 @@ Hard rules:
   raw user identifiers.
 - Do not propose deploy, payment, SSH, grant, revoke, refund, or user-changing
   actions as already performed. You may suggest a manual operator check.
-- Keep public wording aligned with POKROV canon: avoid direct-meaning public
-  product wording around "VPN"; legacy "POKROV VPN" is allowed only as a
-  compatibility identifier.
+- Visible `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent
+  surfaces when it is useful to users and tied to the real POKROV app flow.
+  Hidden text, cloaking, keyword stuffing, unsupported “best” claims, and
+  unsupported release, payment, or store claims remain forbidden.
 - Do not claim store availability, stable 1.0.0, trusted Windows signing, raw
   Android physical-audit proof, or RU-origin readiness unless the indexed canon
   contains current redacted evidence.

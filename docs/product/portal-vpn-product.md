@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 ## Document Status
 
@@ -94,6 +94,7 @@ Rotating sessions, recovery exchange, payment ownership cutover, and entitlement
 - `Windows` stays in scope for the public `v1` ship when its normal gates are green; the current outside-store beta remains unsigned and must keep unknown-publisher warning copy visible
 - `Android` public beta promotion uses the operator-approved physical-device audit plus the APK/EXE outside-store handoff; store publishing, raw physical audit proof, and stronger Android safety claims remain separate later gates
 - runtime `/api/client/apps` verification and GitHub Releases APK/EXE handoff are green for the beta; a real-user Telegram WebApp opening remains a manual owner test, not a local agent blocker
+- marketing and cabinet availability copy may describe the Android and Windows outside-store beta only alongside current limitations, official-source guidance, and support routing
 - repo/static/client green gates do not by themselves prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks; the 2026-05-15 pack includes current-origin and brain-origin evidence, while RU-origin remains an accepted skip
 - emulator or adb-only audit runs are valid preflight for adb wiring and timing, but the public beta handoff must retain physical release-build audit evidence for Android
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface

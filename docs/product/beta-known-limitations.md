@@ -1,6 +1,6 @@
 # Beta Known Limitations
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 Structured source: `shared/beta-known-limitations.json`
 
@@ -11,6 +11,8 @@ contract. Keep it aligned with `docs/launch/known-issues.md`.
 
 - `outside_store_beta`: Android APK and Windows EXE are outside-store beta
   artifacts distributed through the official cabinet and GitHub Releases path.
+  Availability copy must keep current limitations, official-source guidance,
+  and support routing visible.
   Do not imply Google Play, Microsoft Store, WinGet, Apple, stable, or broad
   public-store availability.
 - `runtime_download_recheck`: runtime download links were verified for the
