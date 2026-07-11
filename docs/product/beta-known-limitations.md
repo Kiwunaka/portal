@@ -1,12 +1,11 @@
 # Beta Known Limitations
 
-Last updated: 2026-06-07
+Last updated: 2026-07-10
 
 Structured source: `shared/beta-known-limitations.json`
 
 This page is the product-facing mirror of the outside-store beta limitation
-contract. Keep it aligned with `docs/launch/known-issues.md` and
-`docs/launch/open-beta-release-notes.md`.
+contract. Keep it aligned with `docs/launch/known-issues.md`.
 
 ## Current Limitations
 
@@ -21,9 +20,11 @@ contract. Keep it aligned with `docs/launch/known-issues.md` and
 - `windows_unsigned`: Windows beta may remain unsigned and may show Microsoft
   Defender SmartScreen or unknown-publisher warnings. Do not claim trusted
   Windows signing, SmartScreen reputation, Microsoft Store, or WinGet readiness.
-- `downloads_limited`: downloads may be unavailable for accounts outside the
-  approved beta access path. Anonymous public download proof is not available
-  while the release repository remains private.
+- `downloads_limited`: published beta binaries are publicly reachable through
+  the official cabinet and GitHub Releases, but every new candidate still
+  requires exact URL and runtime handoff verification. Do not claim store
+  availability or a newly published candidate without current unauthenticated
+  URL, `/api/client/apps`, and manual install/connect evidence.
 - `payment_beta`: paid checkout is Lava.top-only for the current public beta.
   Production refund, chargeback, reconciliation, and fulfillment-ledger
   evidence remains follow-up before stronger payment claims.

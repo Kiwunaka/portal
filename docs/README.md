@@ -4,9 +4,11 @@ This registry classifies important platform documents and the active client poin
 
 | Class | Owner | Document | Review state |
 | --- | --- | --- | --- |
-| `CANONICAL` | product | `docs/product/portal-vpn-product.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | product | `docs/product/portal-vpn-product.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | market-ready wave | `docs/developer/work-orders/2026-07-09-growth-megapass/` | `PENDING_WAVE_3` |
+| `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
+| `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | archive | `docs/archive/` | `REVIEWED_NO_CHANGE` |
 | `OPERATOR_PLAYBOOK` | operator consults | `docs/developer/agent-playbooks/external-model-consults.md` | `PENDING_WAVE_2` |
 | `EXPERIMENTAL` | OpenAI helper | `docs/developer/openai-operator-assistants.md` | `PENDING_WAVE_2` |
@@ -14,24 +16,25 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | documentation ownership | `docs/README.md` | `RECONCILED` |
 | `CANONICAL` | task routing | `docs/developer/agent-context-map.md` | `RECONCILED` |
 | `CANONICAL` | product release scope | `docs/product/public-beta-prd.md` | `PENDING_COLLISION_REVIEW` |
-| `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `RECONCILED` |
 | `CANONICAL` | platform availability | `docs/product/platform-availability.md` | `PENDING_COLLISION_REVIEW` |
-| `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `RECONCILED` |
+| `CANONICAL` | launch known issues | `docs/launch/known-issues.md` | `RECONCILED` |
 | `CANONICAL` | platform architecture | `docs/architecture/system-overview.md` | `PENDING_WAVE_3` |
 | `CANONICAL` | identity and bonus flows | `docs/architecture/app-first-and-bonus-flows.md` | `PENDING_WAVE_3` |
-| `CANONICAL` | API contracts | `docs/architecture/api-contracts.md` | `PENDING_WAVE_3` |
-| `CANONICAL` | payment state | `docs/architecture/payment-state-machine.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | API contracts | `docs/architecture/api-contracts.md` | `RECONCILED` |
+| `CANONICAL` | payment state | `docs/architecture/payment-state-machine.md` | `RECONCILED` |
 | `CANONICAL` | support and feedback | `docs/architecture/support-feedback-flow.md` | `PENDING_WAVE_3` |
 | `CANONICAL` | client delivery | `docs/architecture/client-downloads-flow.md` | `PENDING_COLLISION_REVIEW` |
 | `CANONICAL` | deployment and access | `docs/operations/deployment-and-access.md` | `PENDING_COLLISION_REVIEW` |
 | `CANONICAL` | monitoring and origins | `docs/operations/monitoring-and-visibility.md` | `PENDING_COLLISION_REVIEW` |
 | `CANONICAL` | client delivery operations | `docs/operations/client-delivery-update-content-plan.md` | `PENDING_COLLISION_REVIEW` |
 | `CANONICAL` | design contract | `DESIGN.md` | `PENDING_WAVE_3` |
-| `CANONICAL` | design synchronization | `docs/design/design-system-sync.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | design synchronization | `docs/design/design-system-sync.md` | `RECONCILED` |
 | `CANONICAL` | generated asset policy | `docs/design/generated-assets-policy.md` | `PENDING_WAVE_3` |
 | `CANONICAL` | developer workflow | `docs/developer/developer-guide.md` | `PENDING_COLLISION_REVIEW` |
 | `CANONICAL` | repository structure | `docs/developer/repository-map.md` | `PENDING_COLLISION_REVIEW` |
-| `CANONICAL` | Russian user guidance | `docs/user/portal-vpn-user-guide-ru.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | Russian user guidance | `docs/user/portal-vpn-user-guide-ru.md` | `RECONCILED` |
 | `CANONICAL` | compatibility guidance | `docs/user/compatibility-clients-guide-ru.md` | `PENDING_WAVE_3` |
 | `CANONICAL` | active client docs | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md` | `PENDING_CLIENT_REVIEW` |
 | `CANONICAL` | active client readiness | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md` | `PENDING_CLIENT_REVIEW` |
@@ -46,9 +49,10 @@ This registry classifies important platform documents and the active client poin
 | `HISTORICAL_REFERENCE` | completed implementation specs | `docs/archive/superpowers-plans/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | older specs | `docs/superpowers/specs/` | `PENDING_COLLISION_REVIEW` |
 | `HISTORICAL_REFERENCE` | visual reference atlas | `reference-atlas/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | Atlas Glass design research | `docs/design/atlas-glass/` | `REVIEWED_NO_CHANGE` |
 | `OPERATOR_PLAYBOOK` | orchestration | `docs/developer/orchestration/orchestration-standard.md` | `PENDING_WAVE_2` |
 | `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `PENDING_WAVE_2` |
-| `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | public beta release | `docs/operations/public-beta-release-runbook.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | rollback | `docs/operations/rollback-runbook.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | payment reconciliation | `docs/operations/payment-reconciliation.md` | `PENDING_WAVE_3` |
@@ -57,7 +61,7 @@ This registry classifies important platform documents and the active client poin
 | `OPERATOR_PLAYBOOK` | runtime download smoke | `docs/operations/runtime-app-download-smoke.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | RU-origin probe | `docs/operations/ru-origin-probe.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | release handoffs | `docs/operations/*-handoff.md` | `PENDING_COLLISION_REVIEW` |
-| `EXPERIMENTAL` | growth research | `docs/product/pokrov-growth-and-competitor-notes.md` | `PENDING_WAVE_3` |
+| `HISTORICAL_REFERENCE` | growth and competitor research | `docs/product/pokrov-growth-and-competitor-notes.md` | `UNRESOLVED_OWNER_DECISION` |
 | `EXPERIMENTAL` | context-cost harnesses | `docs/developer/orchestration/context-cost-harnesses.md` | `PENDING_WAVE_2` |
 
 ## Classification Rules

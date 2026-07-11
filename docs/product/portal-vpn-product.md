@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-07-05
+Last updated: 2026-07-10
 
 ## Document Status
 
@@ -44,7 +44,7 @@ The current program is locked around these target product decisions:
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
 - public delivery scope for this wave remains `Android + Windows`; Linux packaging and Apple hosts may remain in engineering lanes but are not part of public promise or release acceptance
 - commercial flow becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default site, webapp, and bot UX and exposed only for explicit recovery or manual-request paths
-- `marketing` is the only public acquisition, pricing, and paywall surface, and its default public path is `trial -> install -> first connection`; checkout remains an honest continuation after product check or explicit plan intent. `webapp` is session-aware continuation, support, redeem, renewal continuation, and admin only
+- `marketing` is the only public acquisition, pricing, and paywall surface, and its default public path is `trial -> install -> first connection`; checkout remains an honest continuation after product check or explicit plan intent. `webapp` is session-aware continuation, support, redeem, and renewal continuation; `adminapp` is the primary operator surface, with the legacy web admin retained only as a parity fallback
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
 - visible user-facing cabinet IA becomes `Главная / Доступ / Помощь / Аккаунт`, backed by `/dashboard/`, `/subscription/`, `/support/`, and `/settings/`; `devices`, `statistics`, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects are task/detail routes rather than parallel public-entry surfaces
 - app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
@@ -58,6 +58,13 @@ Client-canon note:
 - this document treats only `POKROV-app/main` as the active client lane
 - any surviving `app-next/` or legacy-fork references elsewhere are archival or rollback-only and must not override product truth
 
+## Current Account Foundation Boundary
+
+The repository now implements additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
+The public numeric `account_id`, stateless bearer flow, payment fulfillment, and entitlement authority remain on the legacy-compatible path.
+Production deployment of account foundation is not proven.
+Rotating sessions, recovery exchange, payment ownership cutover, and entitlement-ledger authority are not implemented current truth and must not be claimed.
+
 ## Locked Product Rules
 
 - primary UX: `consumer-first`
@@ -70,7 +77,9 @@ Client-canon note:
 - `xray` role: advanced compatibility fallback only
 - free trial: `5 days`
 - Telegram reward: `+10 days`
-- public user-facing client version line: `0.x.x-beta`
+- current distributed beta: `1.0.0-beta`
+- target candidate: `1.0.0-rc.1`
+- stable `1.0.0`: unproven
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
 - public routing mode set: `All except RU`, `Full tunnel`, and `Selected apps`
@@ -134,10 +143,10 @@ Legacy `/config-options`, `/about`, and `/logs` may remain as compatibility redi
 Quick Connect rule:
 
 - `Auto-select` remains the default daily path.
-- premium app-managed profiles expose a backend-built smart shortlist of up to `5` eligible non-free nodes
+- premium app-managed profiles expose a backend-built smart shortlist of up to `8` eligible non-free nodes
 - free-tier access still resolves only to the dedicated `NL-free` node
 - the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT` (default `85`), and transport-incompatible nodes before the client measures latency
-- the client combines real device RTT with backend CPU and health penalties and keeps the previous node when the improvement stays below the `15%` stickiness threshold
+- the client combines real device RTT with backend CPU and health penalties and keeps the previous node when the improvement stays below the `20%` stickiness threshold
 - incident-promoted `ru_bridge_relay` profiles may use `mini` as a first-hop bridge to non-US POKROV delivery nodes; this is an emergency reachability contour, not a normal RU delivery node or a public RU-readiness claim
 - public client screens must not expose raw hostnames, ports, public IP, raw connection links, sniffing terms, JSON/profile editors, or local-control surfaces in the normal consumer path
 
@@ -175,7 +184,8 @@ Current public role:
 
 ### WebApp
 
-`webapp/` is the continuation surface for known users, session continuation, and operator work.
+`webapp/` is the continuation surface for known users and session continuation,
+with a retained parity fallback for operator work.
 
 Current cabinet role:
 
@@ -189,12 +199,13 @@ Current cabinet role:
 - `/devices/`, `/statistics/`, `/downloads/`, `/redeem/`, `/subscription/checkout/`, `/support/thread/`, and `/support/legal/` remain deep-linkable task/detail routes inside that compact cabinet model
 - task routes currently include cabinet entry, hosted-checkout continuation, redeem, downloads, and support threads
 - `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
-- `webapp` is also the primary admin operator surface
+- standalone `adminapp` is the primary operator surface;
+  `webapp/src/app/(admin)/admin/` is the parity fallback
 - site, cabinet, and admin must keep obvious navigation back to each other so no surface becomes a dead end
 - consumer cabinet screens should show safe summaries such as `connect.pokrov.space` and route categories while keeping raw personal links, public IP, and node internals hidden on screen
 - consumer cabinet screens must not expose raw subscription edit, regenerate, or share actions in the first-layer UI
 - authenticated support in the cabinet should continue as a real ticket thread with uploads, not as decorative form state or a fake live-chat promise
-- the primary admin information architecture is grouped as `People`, `Access`, `Payments`, `Network`, `Diagnostics`, `Messaging`, and `Feedback`
+- the primary `adminapp` information architecture is grouped as `People`, `Access`, `Payments`, `Network`, `Diagnostics`, `Messaging`, and `Feedback`
 
 ### Telegram
 

@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-05-26
+Last updated: 2026-07-10
 
 ## Document Status
 
@@ -106,8 +106,9 @@ Treat `AAB`, `MSIX`, and portable `ZIP` as required release/store artifacts, not
 
 Current public user-facing version policy:
 
-- the app, cabinet, marketing download surfaces, and release notes should present one beta line: `0.x.x-beta`
-- Android `versionName`, Windows display version, cabinet download badges, and public changelog copy should stay aligned to that beta line
+- the distributed beta line is `1.0.0-beta`
+- `1.0.0-rc.1` is the target candidate; stable `1.0.0` remains unproven
+- Android `versionName`, Windows display version, cabinet download badges, and public changelog copy should stay aligned to the distributed beta line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
 - inherited upstream display strings such as `2.5.7 dev` must not remain visible on public user-facing surfaces
 

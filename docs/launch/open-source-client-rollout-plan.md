@@ -1,6 +1,6 @@
 # Open Source Client Rollout Plan
 
-Last updated: 2026-06-05
+Last updated: 2026-07-10
 
 ## Document Status
 
@@ -275,7 +275,8 @@ Acceptable models:
 Required for every public binary:
 
 - canonical filename
-- version label on the `0.x.x-beta` line until stable release is approved
+- version label `1.0.0-beta` until a newer candidate is evidence-backed;
+  stable `1.0.0` remains unproven
 - SHA-256 checksum
 - install note
 - beta warning where signing or store trust is not complete

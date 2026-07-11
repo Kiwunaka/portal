@@ -1,6 +1,6 @@
 # Payment State Machine
 
-Last updated: 2026-05-21
+Last updated: 2026-07-10
 
 | State | Meaning | Access effect |
 | --- | --- | --- |
@@ -14,7 +14,17 @@ Last updated: 2026-05-21
 | `chargeback` | Dispute found by reconciliation. | no new access; review |
 | `manual_review` | Ambiguous auth, amount, currency, account, or payload. | none |
 
-Open Beta v4 must not enable public paid checkout until tests and provider evidence prove these transitions for the active provider path.
+Lava.top paid checkout is enabled for the current outside-store beta on the
+retained evidence-backed path. Stable payment maturity remains unproven until
+refund, chargeback, reconciliation, and fulfillment-ledger evidence is current
+for the exact candidate.
+
+## Account Ownership Boundary
+
+The repository now implements additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
+The public numeric `account_id`, stateless bearer flow, payment fulfillment, and entitlement authority remain on the legacy-compatible path.
+Production deployment of account foundation is not proven.
+Rotating sessions, recovery exchange, payment ownership cutover, and entitlement-ledger authority are not implemented current truth and must not be claimed.
 
 ## Lava.top Normalization
 

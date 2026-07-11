@@ -901,3 +901,82 @@ def test_developer_guide_primary_admin_commands_include_build_and_e2e() -> None:
         if line.strip()
     }
     assert {"npm.cmd run build", "npm.cmd run test:e2e"} <= commands
+
+
+def test_active_platform_canon_has_no_known_stale_claims() -> None:
+    active_paths = (
+        "docs/product/portal-vpn-product.md",
+        "docs/product/beta-known-limitations.md",
+        "docs/architecture/api-contracts.md",
+        "docs/architecture/payment-state-machine.md",
+        "docs/operations/publishing-and-signing-guide.md",
+        "docs/design/design-system-sync.md",
+        "docs/launch/known-issues.md",
+        "docs/launch/open-source-client-rollout-plan.md",
+        "docs/user/portal-vpn-user-guide-ru.md",
+    )
+    combined = "\n".join(
+        (REPO_ROOT / path).read_text(encoding="utf-8")
+        for path in active_paths
+    )
+    for stale in (
+        "webapp is also the primary admin operator surface",
+        "web admin is the primary operator surface",
+        "0.x.x-beta",
+        "avoids direct public `VPN` wording",
+        "release repository remains private",
+        "up to `5` eligible non-free nodes",
+        "`15%` stickiness threshold",
+        "must not enable public paid checkout",
+    ):
+        assert stale.casefold() not in combined.casefold()
+
+    product = (
+        REPO_ROOT / "docs" / "product" / "portal-vpn-product.md"
+    ).read_text(encoding="utf-8")
+    assert "up to `8`" in product
+    assert "`20%` stickiness" in product
+    assert "`adminapp`" in product
+
+
+def test_beta_limitations_use_public_release_truth() -> None:
+    import json
+
+    payload = json.loads(
+        (REPO_ROOT / "shared" / "beta-known-limitations.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    serialized = json.dumps(payload, ensure_ascii=False)
+    assert "release repository remains private" not in serialized
+    assert "GitHub Releases" in serialized
+    assert set(payload["source_docs"]) == {
+        "docs/product/beta-known-limitations.md",
+        "docs/launch/known-issues.md",
+    }
+
+
+def test_account_foundation_owners_preserve_dual_identity_truth() -> None:
+    owner_paths = (
+        "docs/product/portal-vpn-product.md",
+        "docs/product/payment-and-access-key-contract.md",
+        "docs/architecture/api-contracts.md",
+        "docs/architecture/payment-state-machine.md",
+    )
+    required = (
+        "UUID `accounts.id`",
+        "`users.account_id` is a nullable projection",
+        "public numeric `account_id`",
+        "stateless bearer",
+        "Production deployment of account foundation is not proven",
+        "Rotating sessions",
+        "recovery exchange",
+        "entitlement-ledger authority",
+        "must not be claimed",
+    )
+    for relative_path in owner_paths:
+        text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+        for phrase in required:
+            assert phrase.casefold() in text.casefold(), (
+                f"{relative_path} is missing account boundary: {phrase}"
+            )

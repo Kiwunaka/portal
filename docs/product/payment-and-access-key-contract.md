@@ -1,10 +1,17 @@
 # Payment And Access-Key Contract
 
-Last updated: 2026-07-05
+Last updated: 2026-07-10
 
 ## Current Rule
 
 Paid checkout can be presented as live for the evidence-backed Lava.top public beta path. It must not be presented as a fully mature production payment system until refund/chargeback reconciliation has a separate current runbook and evidence.
+
+## Account Ownership Boundary
+
+The repository now implements additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
+The public numeric `account_id`, stateless bearer flow, payment fulfillment, and entitlement authority remain on the legacy-compatible path.
+Production deployment of account foundation is not proven.
+Rotating sessions, recovery exchange, payment ownership cutover, and entitlement-ledger authority are not implemented current truth and must not be claimed.
 
 ## Target Contract
 

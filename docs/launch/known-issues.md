@@ -1,12 +1,11 @@
 # Known Issues
 
-Last updated: 2026-06-07
+Last updated: 2026-07-10
 
 Structured source: `shared/beta-known-limitations.json`
 
 This launch-facing page mirrors `docs/product/beta-known-limitations.md` so
-release notes, support handoffs, and public copy stay inside the same beta
-claim boundary.
+support handoffs and public copy stay inside the same beta claim boundary.
 
 ## Current Issues
 
@@ -18,8 +17,11 @@ claim boundary.
   artifact, URL, or release-candidate announcement.
 - `windows_unsigned`: Windows beta may remain unsigned and may show Microsoft
   Defender SmartScreen or unknown-publisher warnings.
-- `downloads_limited`: downloads may be unavailable for accounts outside the
-  approved beta access path.
+- `downloads_limited`: published beta binaries are publicly reachable through
+  the official cabinet and GitHub Releases, but every new candidate still
+  requires exact URL and runtime handoff verification. Do not claim store
+  availability or a newly published candidate without current unauthenticated
+  URL, `/api/client/apps`, and manual install/connect evidence.
 - `payment_beta`: paid checkout is Lava.top-only for the current public beta;
   production refund, chargeback, reconciliation, and fulfillment-ledger
   evidence remains follow-up before stronger payment claims.

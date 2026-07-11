@@ -17,9 +17,20 @@ EXPECTED_IDS = {
     "apple_readiness_only",
 }
 
+EXPECTED_LIVE_MIRRORS = {
+    "docs/product/beta-known-limitations.md",
+    "docs/launch/known-issues.md",
+}
+
 
 def _contract() -> dict:
     return json.loads(CONTRACT.read_text(encoding="utf-8"))
+
+
+def _live_mirror_paths(payload: dict) -> tuple[Path, ...]:
+    source_docs = payload["source_docs"]
+    assert set(source_docs) == EXPECTED_LIVE_MIRRORS
+    return tuple(ROOT / relative_path for relative_path in source_docs)
 
 
 def test_beta_known_limitations_contract_has_required_ids() -> None:
@@ -42,12 +53,9 @@ def test_beta_known_limitations_contract_has_required_ids() -> None:
         assert item["operator_note"]
 
 
-def test_beta_known_limitations_are_mirrored_in_docs() -> None:
-    doc_paths = [
-        ROOT / "docs" / "product" / "beta-known-limitations.md",
-        ROOT / "docs" / "launch" / "known-issues.md",
-        ROOT / "docs" / "launch" / "open-beta-release-notes.md",
-    ]
+def test_beta_known_limitations_are_mirrored_in_live_source_docs() -> None:
+    payload = _contract()
+    doc_paths = _live_mirror_paths(payload)
 
     missing: list[str] = []
     for path in doc_paths:
@@ -62,14 +70,10 @@ def test_beta_known_limitations_are_mirrored_in_docs() -> None:
 
 
 def test_beta_known_limitations_preserve_claim_boundaries() -> None:
+    payload = _contract()
     combined = "\n".join(
         path.read_text(encoding="utf-8")
-        for path in [
-            CONTRACT,
-            ROOT / "docs" / "product" / "beta-known-limitations.md",
-            ROOT / "docs" / "launch" / "known-issues.md",
-            ROOT / "docs" / "launch" / "open-beta-release-notes.md",
-        ]
+        for path in (CONTRACT, *_live_mirror_paths(payload))
     )
 
     required_boundary_phrases = [

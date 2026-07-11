@@ -1,6 +1,6 @@
 # Design System Sync
 
-Last updated: 2026-07-05
+Last updated: 2026-07-10
 
 `DESIGN.md` is the root design contract for this repository. `shared/design-tokens.json` is the machine-readable token source for marketing, cabinet, admin, and release-support UI.
 
@@ -43,7 +43,10 @@ Last updated: 2026-07-05
 ## Review Checklist
 
 - Token changes include schema-compatible JSON.
-- Public copy uses `POKROV` as the product line and avoids direct public `VPN` wording.
+- Public copy uses `POKROV` as the product line. Visible `VPN` / `ВПН`
+  wording is allowed on approved SEO/search-intent surfaces; hidden text,
+  cloaking, stuffing, unsupported “best”, store, stable, signing, device-audit,
+  and RU-origin claims remain forbidden.
 - Any new generated image includes source prompt, dimensions, intended use, and review note.
 - Screenshots used for launch or store work are fresh and match the current beta limitations.
 - Reduced-motion, keyboard focus, text integrity, and light/dark screenshots are part of frontend Definition of Done when visible surfaces change.
