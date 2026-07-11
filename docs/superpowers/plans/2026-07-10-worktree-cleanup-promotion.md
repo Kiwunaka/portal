@@ -1223,18 +1223,83 @@ may create the fixed lock and atomically add `proof_gate` to the manifest.
 `execute-task5`/`recover-task5` may atomically update only `cleanup_run`, the
 three receipts, the final state, and exactly the three authorized ignored trees.
 
+After the final Task 5 receipt and before any future operator exists, a fresh
+independent final review must pin the exact completed manifest bytes plus two
+domain-separated digests:
+
+- `completed_task5_receipt_set_sha256` hashes the exact ordered JSON array of
+  all three cleanup receipts, including every property and no wrapper object;
+- `completed_task5_seal_sha256` hashes one exact outer JSON object whose only
+  keys are `immutable_stage_a`, `proof_gate`, `stage_a_state`, `cleanup_run`,
+  `cleanup_receipts`, and `completed_task5_receipt_set_sha256`.
+
+The outer values are exact: `immutable_stage_a` is the object containing only
+`schema_version`, `created_utc`, `audit_expectations`, `audit_drift`,
+`worktrees`, `retained_snapshots`, and `stashes`; `proof_gate` is the full strict
+object; `stage_a_state` is literal `CLEANED_VERIFIED`; `cleanup_run` contains
+only `state=COMPLETE`, `ordinal=3`, `nonce`, `script_sha256`, and
+`completed_utc`; `cleanup_receipts` is the same exact three-object ordered array;
+and the receipt-set value is the lowercase 64-hex digest defined above. Extra,
+missing, renamed, or normalized properties reject the projection.
+
+For both values, canonical serialization is exactly Python-equivalent
+`ensure_ascii=False`, `allow_nan=False`, `sort_keys=True`, and
+`separators=(",", ":")`, encoded as UTF-8 with no BOM or trailing newline;
+array order is preserved.
+Prefix the receipt-set bytes with
+`POKROV_TASK5_RECEIPT_SET_V1` plus one NUL byte, and the completed-seal bytes
+with `POKROV_TASK5_COMPLETED_SEAL_V1` plus one NUL byte before SHA-256. Later
+seal recomputation removes only the exact path
+`cleanup_run.future_authorities` and the exact optional top-level properties
+`stale_removal_receipts` and `temporary_removal_receipts`. It strips nothing
+else and must recover the byte-equivalent six-key completed Task 5 projection.
+
+That final review runs while all three cleaned worktrees and their branches
+still exist. It records the exact completed manifest hash, both digests, gate
+hash, and review time in the tracked, owner-approved future-operator plan
+handoff. Neither digest stored only in the mutable manifest is authority.
+
 Only after `cleanup_run.state=COMPLETE` and `CLEANED_VERIFIED`, the manifest may
 gain up to two ordered `cleanup_run.future_authorities`: `stale-removal`, then
 `temporary-removal`. Each exact scoped record pins the fixed operator path,
-byte count and SHA-256; gate SHA-256; reconstructed predecessor-manifest
-SHA-256; receipt-schema SHA-256; fixed target order; authorization time;
-`prior_registry_digest`; and `registry_baseline_digest`. The gate must rehash,
-parse, and standard-library-audit the pinned operator on every applicable prove.
+reviewed Git source commit as `operator_source_commit`, byte count and SHA-256;
+gate SHA-256; reconstructed
+predecessor-manifest SHA-256; `completed_task5_seal_sha256`;
+`completed_task5_receipt_set_sha256`; receipt-schema SHA-256; fixed target
+order; authorization time; `prior_registry_digest`; and
+`registry_baseline_digest`. These two completed-Task-5 properties are mandatory
+additions to the exact future-authority schema, not values hidden inside another
+self-hash.
 
-| Authority | Fixed operator path | Receipt-schema SHA-256 |
+| Authority | Fixed reviewed source | Receipt schema |
 | --- | --- | --- |
-| `stale-removal` | snapshot root `stale-removal-operator.py` | `ac0cf646977e9f664aec9eeea2f6f06257b2b4af7e82c7028856c3de16c7b155` |
-| `temporary-removal` | snapshot root `temporary-removal-operator.py` | `5af25cadbc6131c6c9b48c0e20cb07d756ed503b2cf2ae358080efded1a877af` |
+| `stale-removal` | tracked platform `scripts/stale_removal_operator.py` | add both completed-Task-5 digests; freeze a new exact schema SHA during review |
+| `temporary-removal` | tracked platform `scripts/temporary_removal_operator.py` | add both completed-Task-5 digests; freeze a new exact schema SHA during review |
+
+The old receipt-schema hashes `ac0cf646...b155` and `5af25cad...7af` are
+superseded and must not be reused. Each separately reviewed operator source must
+contain exactly one top-level literal string assignment for each frozen name:
+
+- `RECONSTRUCTED_PREDECESSOR_MANIFEST_SHA256`;
+- `COMPLETED_TASK5_SEAL_SHA256`;
+- `COMPLETED_TASK5_RECEIPT_SET_SHA256`;
+- `GATE_SCRIPT_SHA256`.
+
+The gate's AST audit accepts only direct module-level `NAME = "literal"`
+assignments of the exact expected length and alphabet. It rejects a missing or
+duplicate name, annotation/computation/import/environment lookup, reassignment
+in any scope, multiple targets, and ambiguous extra definitions. On every
+future proof, the gate rehashes and re-parses the source before and after proof,
+then requires these literals to equal the authority fields, reconstructed
+predecessor, pinned gate, and current recomputed completed Task 5 digests.
+
+An authority record and mutable source are not a trust root by themselves. The
+source must be an exact blob in a separately reviewed tracked commit named by
+the authority and pinned by the Task 6/8 handoff. The gate verifies that blob,
+the working bytes, source hash, literals, and retained-line ancestry all agree
+and that no later commit changes the file. Coordinated replacement of source,
+authority, or reviewed commit/ref is outside the authorized epoch and blocks;
+the plan makes no success claim under that broader repository-compromise model.
 
 Reconstruct the stale-authority predecessor by removing the complete authority
 list and both future receipt collections. Reconstruct the temporary-authority
@@ -1268,6 +1333,61 @@ derived from the exact registry and Stage A evidence. Temporary `target_head`
 must equal the dynamic target branch/ref identity in that exact registry epoch;
 `retained_head` must equal the applicable retained `master` or `main` ref used
 for the reachability proof. Hex shape alone never authenticates either HEAD.
+
+Both future receipt schemas add exact
+`completed_task5_seal_sha256` and
+`completed_task5_receipt_set_sha256` properties. Every stale and temporary
+receipt must equal its operator literals and authority. The first stale receipt
+also binds the aggregate result of the mandatory completed-Task-5 re-proof in
+its recomputed `pre_removal_proof_digest`; later receipts inherit that anchor
+through the exact predecessor and registry/receipt chain.
+
+Create the stale authority only after the independent final review has pinned
+the exact completed manifest and both Task 5 digests, while all three cleaned
+worktrees and branches still exist. The first `BeforeStaleRemoval` proof, before
+any removal, must re-prove all three Task 5 receipts in order:
+
+1. reconstruct every exact state-machine predecessor, ordinal, nonce, and
+   predecessor-manifest digest from the immutable Stage A projection,
+   `proof_gate`, and prior receipt prefix;
+2. recompute the exact pre-proof/evidence, stash, saved/affected, and post-live
+   digests from pinned snapshots, direct stashes, classification, and frozen
+   identities; reconstruct the ARMED/ATTEMPT/CLEAN_EXIT-to-receipt bindings and
+   require every native-outcome field/digest to equal the independently sealed
+   completed-manifest value rather than claiming to recreate discarded output;
+3. verify all three live worktrees are registered at their frozen branches/HEADs
+   and remain fully empty of tracked, untracked, ignored, and preview state; and
+4. compare every property of each receipt, the receipt-set digest, and the
+   completed seal to the independently reviewed source literals.
+
+Any mismatch blocks before the first removal receipt. After a stale worktree is
+removed, later proofs no longer pretend to reproduce its live state: they
+authenticate the unchanged exact cleanup receipt set through the independently
+source-pinned completed seal and the already anchored stale predecessor/receipt
+chain. Missing worktrees may change only the expected registry profile; they
+never weaken Task 5 receipt authenticity.
+
+The temporary operator independently pins its exact reconstructed predecessor
+and the same completed Task 5 seal/receipt-set literals. Its predecessor must
+contain the fully anchored stale authority and receipt chain. Every
+`BeforeTemporaryRemoval` proof validates those literals and chains before using
+the post-Task-7 registry. Branch deletion remains after all corresponding
+worktree receipt proofs, and the tracked operator blobs, reviewed commits, and
+semantic receipt history remain readable afterwards.
+
+Future proof holds the permanent gate lock for a stable epoch, rechecks raw
+manifest bytes, tracked source blob/working hash/literals, reviewed commit/ref,
+and registry digest before and after proof, and rejects any TOCTOU drift. An
+authority candidate may be appended only from the already reviewed source
+literals; crash recovery validates its exact predecessor relation and never
+constructs a seal from the candidate's own authority value.
+
+The construction is non-circular: the completed seal exists before any future
+source; the stale predecessor exists before stale authority insertion; the
+first stale proof runs while all receipt evidence is live; and the temporary
+predecessor contains the already source-anchored stale chain. The only external
+trust root added is the owner-approved tracked source commit/handoff, not a
+value recomputed from the mutable manifest.
 
 These optional authorities enable only the pinned gate's read-only
 `BeforeStaleRemoval` and `BeforeTemporaryRemoval` proofs. They do not authorize
@@ -1307,7 +1427,10 @@ and path inventory output.
    entries, a fifth client entry, stale HEAD drift, and dynamic ref mismatch;
    pass a legitimate docs advance whose registry HEAD equals its branch ref.
 8. **Mode scoping:** prove targeted Task 5 hashes, empty `AfterClean`, full
-   per-target stale-removal hashes, dynamic docs HEADs, and reachability.
+   per-target stale-removal hashes, dynamic docs HEADs, and reachability. The
+   first stale profile must re-prove all three exact Task 5 receipts while every
+   worktree exists; later stale and temporary profiles must use the same anchored
+   completed seal without requiring removed live paths.
 9. **Adjacency/static:** prove one implementation, fixed argument arrays,
    durable arm before child launch, immediate outcome capture, durable outcome
    before post observation, no shell wrapper, and no mutation reachable from
@@ -1326,33 +1449,33 @@ and path inventory output.
     stop. Actual-child tests must cover continuing progress beyond the old
     total cutoff, true stall, concurrent stderr pressure, and stdout/stderr
     output limits for the general proof-only Git adapter.
-13. **Atomicity and future authority:** validate-before-replace, fsync/close,
-    `os.replace`, exact reload, collision recovery, predecessor reconstruction,
-    operator AST/stdlib pins, receipt-schema hashes, registry baselines, receipt
-    chains, and stale-to-temporary bridging. Mutate every semantic field in both
-    future receipt chains—including proof digest, target/retained HEADs,
-    authority hashes, target/order, and registry links—and require rejection.
+13. **Atomicity and future trust anchor:** validate canonical domain-separated
+    receipt-set/completed-seal vectors, source-commit/blob ancestry, exact source
+    literals, authority schema, predecessor reconstruction, registry chains, and
+    stale-to-temporary bridging. Reject missing/duplicate/computed literals and
+    mutate every property of every Task 5 cleanup receipt in turn—even when the
+    attacker recomputes the future-authority predecessor, completed values in
+    the manifest, future receipt self-digests, and registry chain. Cover first,
+    middle, and final stale profiles; pre-first and later temporary profiles; a
+    legitimate dynamic docs advance before temporary authoring; drift after
+    pinning; source/manifest/registry TOCTOU; and authority append crash epochs.
+    Every forged case must fail against the unchanged reviewed source literals.
 
 - [ ] **Step 8: Separate build, review, pin, and execution authority**
 
-This amendment supersedes the earlier frozen build verdict. The `141,919`-byte
-gate at SHA-256
-`d398baa455a2fced7276912266c6785f74795138832755c7a75090af23ba960e`
-and its `61,591`-byte test packet at SHA-256
-`43f3287c72f960b79648ba9af1a733087d2531fdc364e3567e4d668faaa2f4a6`
-remain historical `SOURCE_PASS` evidence for the previous contract, but are now
-`NOT_CONFORMING / DO_NOT_PIN`.
+Every prior generation and its associated tests/reports is historical
+`DO_NOT_PIN / DO_NOT_EXECUTE` evidence:
 
-The later frozen rebuild is also forbidden: source `161,158` bytes /
-`6d933d585ecd38c11428a81a7c81f99db074691afb0f26644d1c90adb423f855`
-and tests `97,107` bytes /
-`a7f8ce4e79d5092230816392a3cb20ebf5ff55c7840367a25a818b9979031f70`
-are `SOURCE_FAIL / DO_NOT_PIN`. The authoritative frozen review is SHA-256
-`116424abd5401a923466c9629a4ed231b6cf8239159659d3ceff1865d6691a3b`.
-Passing isolated tests do not override that verdict. Rebuild source and tests
-against this stricter pre-launch arm, outcome, pin-recovery, live-format,
-proof-binding, and streaming contract, then repeat fresh tests and independent
-frozen review.
+| Generation | Source | Tests | Build report | Independent review |
+| --- | --- | --- | --- | --- |
+| historical | `141,919 / d398baa455a2fced7276912266c6785f74795138832755c7a75090af23ba960e` | `61,591 / 43f3287c72f960b79648ba9af1a733087d2531fdc364e3567e4d668faaa2f4a6` | `5,361 / d55cad03db309d79cadcf9ed60b2ab5e1f49f389db59d18a74246f6b4bcaf06a` | historical `SOURCE_PASS`, now `NOT_CONFORMING` |
+| R0 | `161,158 / 6d933d585ecd38c11428a81a7c81f99db074691afb0f26644d1c90adb423f855` | `97,107 / a7f8ce4e79d5092230816392a3cb20ebf5ff55c7840367a25a818b9979031f70` | `16,452 / 8241ae1bd4ef8cce7d21c2ac006e1eb610baba2fa9338767986887c2ad33c405` | `8,263 / 116424abd5401a923466c9629a4ed231b6cf8239159659d3ceff1865d6691a3b` — `SOURCE_FAIL` |
+| R1 | `194,884 / 3235b8e5e45d6da2d6fcca568764a326b5612771dd9a1dbb490dfe421291b89e` | `153,676 / fcf46cc0107e33342c512258619435cb267dd023aaf32123f65327e93c105336` | `13,603 / 585e554f8688c1a39192d63359ce350e2fbdf34cbbc28b899dd6b6ea214fbec8` | `9,099 / 8d55c54db44140cec22c58aca1b3b97d0963b8cd8835d5cebfd7a4d9e64c2459` — `SOURCE_FAIL` |
+| R2 | `203,249 / a21093998cd7739d74bd717dcac5ddb03a41238497f4f7f7a729709b4c651bd4` | `175,498 / 9d0ee68a14ee3c46aa3b363b910beca0df2bfaa610d5b479b42c42f6edb79b08` | `9,183 / 0ee288ab2c80e40f5c7dda46a556ede6cdf9f51c5a06a89417e52d183b2fdb66` | `10,551 / 1a5e82998ecab006e0024770d5dac14449ac2c6126957825a0a55a2062160ed4` — `SOURCE_FAIL` |
+
+Passing isolated tests do not override any row. Build the next source and tests
+only from this new tracked commit, then commission a new independent root review
+of exact frozen bytes before any pin handoff.
 
 The handoff is fail-closed:
 
@@ -1368,7 +1491,13 @@ The handoff is fail-closed:
 6. any interrupted run goes to a separate `recover-task5` review/handoff; and
 7. a final independent review must prove three exact receipts,
    `cleanup_run.state=COMPLETE`, `CLEANED_VERIFIED`, preserved snapshots/stashes,
-   exact registries, and no unauthorized mutation.
+   exact registries, and no unauthorized mutation, then compute and pin the
+   completed manifest, receipt-set digest, and completed Task 5 seal while all
+   three cleaned worktrees/branches remain available.
+
+No future operator may be authored before step 7. Its own tracked source commit,
+literal pins, authority candidate, first live re-proof, and execution handoff
+are separate reviewed epochs.
 
 Pinning is not cleanup authorization. Task 5 completion is not Task 6 or Task 8
 authorization.
@@ -1380,14 +1509,18 @@ and branch-deletion blocks are not executable authority.
 
 **Files:**
 
+- Create only under a later reviewed plan: tracked
+  `scripts/stale_removal_operator.py` with the four frozen literal pins
 - Git worktree/branch metadata only, after a separate reviewed operator exists
 - Append-only stale-removal receipts in the local evidence manifest
 
 **Interfaces:**
 
 - Consumes: `CLEANED_VERIFIED`, three exact Task 5 receipts, the exact pinned
-  stale `future_authorities` record, the Python `BeforeStaleRemoval` mode,
-  readable stashes, full target snapshots, and exact ordinal registry profiles
+  completed Task 5 seal/receipt-set review, reviewed tracked source
+  commit/literals, stale `future_authorities` record, the Python
+  `BeforeStaleRemoval` mode, readable stashes, full target snapshots, and exact
+  ordinal registry profiles
 - Produces: three non-forced worktree-removal receipts, then three normal
   merged-branch deletion receipts
 
@@ -1396,7 +1529,10 @@ and branch-deletion blocks are not executable authority.
 Task 5 deliberately provides proof but no removal authority. Before Task 6,
 write a separate tracked plan amendment and build one single-purpose operator.
 A fresh reviewer must approve its exact bytes/hash, fixtures, lock/nonce and
-crash journal, mutation surface, and deterministic registry transitions.
+crash journal, four literal pins, tracked source commit, completed Task 5 seal,
+mutation surface, and deterministic registry transitions. Authority creation
+must consume those reviewed literals; it cannot derive or rewrite them from the
+manifest it is about to mutate.
 
 The fixed worktree order and IDs remain:
 
@@ -1414,6 +1550,10 @@ exact direct stash, the full target snapshot hash, and a registry profile where
 earlier fixed-order targets are absent while the current and later targets
 remain exactly once. Post-removal absence belongs only to the operator's
 verified receipt.
+
+Before the first ID, that prove must complete the all-three-receipt live re-proof
+and match the independently pinned completed seal. No first removal call is
+authorized until that exact proof result is bound into the first receipt epoch.
 
 No inline removal command, `--force`, shell wrapper, automatic retry, or
 inference from an absent directory is allowed. A partial registry transition,
@@ -1507,6 +1647,8 @@ authority.
 
 **Files:**
 
+- Create only under a later reviewed plan: tracked
+  `scripts/temporary_removal_operator.py` with the four frozen literal pins
 - Git worktree/branch metadata only, after promotion and a separately reviewed
   removal operator exist
 - Append-only temporary-removal receipts in the local evidence manifest
@@ -1514,9 +1656,10 @@ authority.
 **Interfaces:**
 
 - Consumes: completed Task 7 promotion, `CLEANED_VERIFIED`, exact Task 6
-  removal receipts/profile, the exact pinned temporary `future_authorities`
-  record, the Python `BeforeTemporaryRemoval` mode, clean docs worktrees,
-  dynamic branch refs, and retained-line reachability
+  removal receipts/profile, the same independently pinned completed Task 5
+  seal/receipt-set, reviewed tracked source commit/literals, the exact pinned
+  temporary `future_authorities` record, the Python `BeforeTemporaryRemoval`
+  mode, clean docs worktrees, dynamic branch refs, and retained-line reachability
 - Produces: the requested steady state with recoverable evidence
 
 - [ ] **Step 1: Build and review a separate temporary-removal operator**
@@ -1525,8 +1668,11 @@ Task 5 supplies the shared read-only proof mode but does not authorize Task 8.
 After Task 7 is independently green, write a separate tracked plan amendment
 and build one single-purpose operator. A fresh reviewer must approve its exact
 bytes/hash, fixed IDs/order, tests, lock/nonce and crash journal, expected
-registry profiles, branch-reachability policy, receipt schema, and mutation
-surface before any execution handoff.
+registry profiles, branch-reachability policy, four literal pins, tracked source
+commit, unchanged completed Task 5 seal, receipt schema, and mutation surface
+before any execution handoff. The temporary source must pin its post-Task-7
+predecessor independently; it may not regenerate the completed seal from its
+authority candidate.
 
 The operator must handle these proof identities in order:
 
