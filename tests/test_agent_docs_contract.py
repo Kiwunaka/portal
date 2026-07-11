@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 from scripts.agent_context_packet_audit import (
     DOCUMENT_CLASSES,
     ROOT_MAX_BYTES,
@@ -47,6 +49,25 @@ def _normalized_contract_cell(value: str) -> str:
     return " ".join(value.replace("`", "").split())
 
 
+def _opening_markdown_fence(line: str) -> tuple[str, int] | None:
+    match = re.fullmatch(r" {0,3}(`{3,}|~{3,})(.*)", line)
+    if match is None:
+        return None
+    marker_run, info = match.groups()
+    marker = marker_run[0]
+    if marker == "`" and "`" in info:
+        return None
+    return marker, len(marker_run)
+
+
+def _is_markdown_fence_close(line: str, fence: tuple[str, int]) -> bool:
+    marker, minimum_length = fence
+    return re.fullmatch(
+        rf" {{0,3}}{re.escape(marker)}{{{minimum_length},}}[ \t]*",
+        line,
+    ) is not None
+
+
 def _unique_markdown_table_rows(
     text: str,
     header: tuple[str, ...],
@@ -56,14 +77,18 @@ def _unique_markdown_table_rows(
     assert key_column in header
     lines = text.splitlines()
     matching_tables: list[list[dict[str, str]]] = []
-    in_fence = False
+    fence: tuple[str, int] | None = None
     for index, raw_line in enumerate(lines):
+        if fence is not None:
+            if _is_markdown_fence_close(raw_line, fence):
+                fence = None
+            continue
+        opening_fence = _opening_markdown_fence(raw_line)
+        if opening_fence is not None:
+            fence = opening_fence
+            continue
+
         line = raw_line.strip()
-        if line.startswith(("```", "~~~")):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
         if not line.startswith("|") or not line.endswith("|"):
             continue
         cells = tuple(cell.strip() for cell in line.strip("|").split("|"))
@@ -100,6 +125,69 @@ def _unique_markdown_table_rows(
     keys = [_normalized_contract_cell(row[key_column]) for row in rows]
     assert len(keys) == len(set(keys)), f"duplicate {key_column} values: {keys!r}"
     return rows
+
+
+def test_unique_markdown_table_rows_handles_fences_and_rejects_ambiguity() -> None:
+    assert _opening_markdown_fence("   ````python") == ("`", 4)
+    assert _opening_markdown_fence("    ```python") is None
+    assert not _is_markdown_fence_close("```", ("`", 4))
+    assert not _is_markdown_fence_close("~~~~", ("`", 4))
+    assert _is_markdown_fence_close("  ````` \t", ("`", 4))
+
+    header = "| Contract | Value |\n| --- | --- |"
+    ignored_duplicate = (
+        f"{header}\n"
+        "| Schema | `1` |\n"
+        "| `Schema` | `2` |"
+    )
+    real_table = (
+        f"{header}\n"
+        "| Schema | `2` |\n"
+        "| Applicability | `conditional` |"
+    )
+    outer_four_with_inner_three = (
+        "````markdown\n"
+        f"{ignored_duplicate}\n"
+        "```\n"
+        f"{ignored_duplicate}\n"
+        "````"
+    )
+    backticks_with_literal_tildes = (
+        "```text\n"
+        "~~~\n"
+        f"{ignored_duplicate}\n"
+        "~~~\n"
+        "```"
+    )
+    standard_fenced_duplicate = f"~~~markdown\n{ignored_duplicate}\n~~~"
+    rows = _unique_markdown_table_rows(
+        "\n\n".join(
+            (
+                outer_four_with_inner_three,
+                backticks_with_literal_tildes,
+                standard_fenced_duplicate,
+                real_table,
+            )
+        ),
+        ("Contract", "Value"),
+        key_column="Contract",
+    )
+    assert [row["Contract"] for row in rows] == ["Schema", "Applicability"]
+
+    with pytest.raises(AssertionError, match="expected one table"):
+        _unique_markdown_table_rows(
+            f"{real_table}\n\n{real_table}",
+            ("Contract", "Value"),
+            key_column="Contract",
+        )
+    with pytest.raises(AssertionError, match="duplicate Contract values"):
+        _unique_markdown_table_rows(
+            ignored_duplicate,
+            ("Contract", "Value"),
+            key_column="Contract",
+        )
+
+    assert _opening_markdown_fence("```invalid`info") is None
 
 
 def _declared_pipe_enum(text: str, label: str) -> set[str]:
