@@ -82,9 +82,12 @@ below are complete.
   prefix HMAC at 90 days. A dedicated early-sweep worker drains covered ledger
   and legacy raw-IP fields before sleeping. This candidate behavior is not
   deployed
-- `entitlement_grants` remains schema foundation only; production access truth
-  still comes from legacy user/payment/session state until the guarded cutover
-  lands
+- `entitlement_grants` now carries the repository-candidate premium-trial
+  reservation and activation authority. `connection_evidence` is append-only,
+  account-owned server evidence keyed uniquely without subscription URLs,
+  bearer tokens, provider secrets, source IPs, or traffic payloads. Existing
+  legacy snapshot grants remain unchanged as compatibility fallback. This
+  candidate is not deployed
 - PostgreSQL schema creation and additive migrations use the same
   `pokrov_schema_bootstrap` transaction advisory lock, preventing their
   separate transactions from overlapping during concurrent first startup.
@@ -122,10 +125,12 @@ Predeploy account-foundation gates:
    - canonical UUID account projection
    - real device registry row
    - current compatibility bearer session
+   - one account/device trial reservation expiring after `7 days`
 6. backend returns:
    - `session` payload with canonical session fields
    - `client_policy` payload with routing, DNS, transport, and recovery defaults
-   - `access` payload with enforced `5-day` trial state
+   - `access` payload with `reserved` or `active` trial state plus reservation
+     and activation timestamps
    - `provisioning` payload with explicit readiness state
    - experience payload
 7. client silently imports the profile
@@ -135,6 +140,27 @@ Predeploy account-foundation gates:
 Contract rule:
 
 - caller-controlled `trial_days` is no longer part of the canonical client contract; the backend always enforces the fixed `5-day` trial from shared truth
+- the provisional credential remains usable during the `7-day` reservation,
+  but `activated_at` and the effective expiry are written exactly once only
+  from authenticated internal observer evidence; expiry is
+  `first_valid_evidence_at + 5 days`
+- `/api/connect/confirm`, `clicked_connect`, `connected_ok`, and other
+  client-authored events remain diagnostics only and cannot activate access
+- replayed observer batches/evidence return idempotently without moving expiry;
+  an unactivated stale reservation projects to `free_monthly` while paid and
+  unrelated active grants or current paid/bonus `User` projections remain
+  untouched
+- canonical-account merge keeps exactly one trial authority: active beats
+  reserved, then expired, reversed, superseded, and unknown states; the earliest
+  status-specific effective timestamp and grant ID break ties. Every other
+  `source=premium_trial` row leaves the unique-index source set and is retained
+  as `premium_trial_superseded` audit history with prior status/reversal and
+  winner provenance; rerunning the merge is idempotent
+- observer evidence timestamps and evidence keys use canonical UTC. The stable
+  key uses owned node plus immutable resolved legacy user identity, not mutable
+  canonical account ID, so post-merge/different-batch replay remains one row
+- panel provisioning stays retryable and outside the irreversible ledger
+  decision; panel failure does not create connection evidence
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
 
 Current `client_policy` contract:
@@ -584,7 +610,8 @@ Current backend-derived access states exposed to WebApp and admin surfaces:
 
 Rules:
 
-- app-first trial starts with `5 days` of premium-grade access
+- app-first trial reserves premium-grade access for `7 days`; its `5-day`
+  consumption clock starts at the first valid internal observer observation
 - channel claim extends that premium window by `+10 days`
 - once premium expires, auto-downgrade must set `current_plan_code=free_monthly`, not `trial`
 - `free_monthly` keeps `5 GB / 30 days` with device limit `1`

@@ -366,6 +366,8 @@ Operational rule:
 - disabled nodes and control-plane rows must stay visible in capacity payloads when useful, but must not create `node_capacity:*` active alerts merely because their disabled state is intentional
 - node metrics collection must parse both 3x-ui `settings` response shapes, JSON string and object/dict, before deriving `provisioned_clients_count`
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
+- `PORTAL_OBSERVER_SOURCE_TIMEZONE` is required on observer nodes whose Xray log timestamps are naive; use `UTC`, `Z`, or a strict fixed offset such as `+03:00` or `-04:00`. IANA names and missing, ambiguous, invalid, or out-of-bounds values are fail-closed: affected lines increment `parse_error_count` and create no connection evidence.
+- observer batches must carry only canonical UTC `Z` `occurred_at` values. After collector configuration or timezone changes, manually compare one retained source line with the resulting UTC evidence and exact `activated_at + 5 days` expiry on the same deployed candidate; timer health alone is not this proof.
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
 - newly enabled delivery nodes must be verified with subscription output plus provisioned-key evidence from panel/runtime; database `user_nodes` mappings alone do not prove the clients exist on the 3x-ui inbound, and panel `active_clients` must be labeled as configured/provisioned clients rather than online users

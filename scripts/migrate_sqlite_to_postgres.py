@@ -36,7 +36,8 @@ TABLE_DEPENDENCIES: dict[str, set[str]] = {
     "account_devices": {"accounts"},
     "auth_sessions": {"accounts", "account_devices"},
     "recovery_codes": {"accounts"},
-    "entitlement_grants": {"accounts"},
+    "connection_evidence": {"accounts", "account_devices", "nodes"},
+    "entitlement_grants": {"accounts", "connection_evidence"},
     "antiabuse_events": {"accounts", "account_devices", "auth_sessions"},
     "antiabuse_cases": {"accounts"},
     "antiabuse_actions": {"antiabuse_cases"},
@@ -61,6 +62,13 @@ TABLE_DEPENDENCIES: dict[str, set[str]] = {
     "reward_claims": {"users"},
     "family_slots": {"users"},
 }
+
+ECONOMY_INVARIANT_RELATIONS = (
+    ("connection_evidence", "account_id", "accounts", "id"),
+    ("connection_evidence", "device_id", "account_devices", "id"),
+    ("connection_evidence", "node_id", "nodes", "id"),
+    ("entitlement_grants", "activation_evidence_id", "connection_evidence", "id"),
+)
 
 POSTPROCESS_MUTABLE_TABLES = {
     "accounts",
@@ -544,7 +552,7 @@ def run_invariant_checks(connection: Connection, metadata: MetaData) -> list[dic
             }
         )
 
-    relations = (
+    relations = ECONOMY_INVARIANT_RELATIONS + (
         ("users", "account_id", "accounts", "id"),
         ("account_identities", "account_id", "accounts", "id"),
         ("account_devices", "account_id", "accounts", "id"),

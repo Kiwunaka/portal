@@ -69,6 +69,11 @@ Client-canon note:
 - default runtime core: `sing-box`
 - `xray` role: advanced compatibility fallback only
 - free trial: `5 days`
+- first account/device reserves that trial for `7 days`; the credential works
+  during reservation, but the `5-day` clock starts only from authenticated
+  internal node/control-plane connection evidence
+- client connect confirmation, `clicked_connect`, `connected_ok`, and funnel
+  telemetry never activate the trial
 - Telegram reward: `+10 days`
 - public user-facing client version line: `0.x.x-beta`
 - Russian is a first-class user language

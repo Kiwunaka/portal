@@ -395,6 +395,8 @@ Transport policy rule:
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
 - capacity-aware app routing uses `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
 - subscription rendering dynamically orders nodes while `SUBSCRIPTION_DYNAMIC_ORDERING=true`; `SUBSCRIPTION_EXCLUDE_HARD_REJECT=false` is the default so paid/trial subscriptions keep fallback countries even when a node is penalized by low `health_score`; `true` is an emergency opt-in that can temporarily hide explicitly hard-rejected nodes without deleting metrics or keys
+- observer-lite deployments whose Xray access log emits naive timestamps must set `PORTAL_OBSERVER_SOURCE_TIMEZONE` (or pass `--source-timezone`) to `UTC`, `Z`, or a strict fixed offset such as `+03:00` or `-04:00`; IANA names, absent settings, and invalid or out-of-bounds offsets make each affected line a counted parse error and no observation is sent for that line
+- offset-aware observer timestamps are converted to canonical UTC `Z` before batching; the collector never interprets a naive timestamp as server-local time or UTC implicitly
 - core rollout/rollback flags are `CAPACITY_AWARE_NODE_SELECTION`, `SUBSCRIPTION_DYNAMIC_ORDERING`, `SUBSCRIPTION_EXCLUDE_HARD_REJECT`, `KEY_PRESSURE_SCORING`, `KEY_PRESSURE_FAIR_USE_ROUTING`, `APP_NODES_SELECT_ENDPOINT`, `XRAY_METRICS_COLLECTOR`, `NODE_AGENT_METRICS`, and `USERNODE_MAPPING_AS_CANDIDATE_LIMIT`
 - as of `2026-06-29`, rolling maintenance updated non-current delivery nodes `free`, `it`, `nl`, `pl`, and `us` to 3x-ui `3.4.1` with bundled Xray `26.6.22`; each node has a root-only backup under `/root/pokrov-xui-backups/*-v3.4.1`, while `de` was intentionally left untouched because it was the operator's active connection node during the rollout
 - 3x-ui `3.x` requires CSRF for session-authenticated unsafe panel API requests; `PanelClient` must fetch `/csrf-token`, send `X-CSRF-Token` on panel POSTs, and keep an unsafe cookie jar for IP-based panel hosts such as `de`
@@ -613,6 +615,7 @@ At minimum, verify:
 - `tc -s qdisc` on the shaped interface
 - `scripts/remote_node_qdisc_smoke.py` results for heavy-flow saturation and small-probe latency
 - when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
+- observer-lite promotion requires a manual exact-candidate proof that a retained Xray log timestamp and its configured source zone produce the expected UTC `Z` observation, trial activation at that UTC instant, and expiry exactly `5 days` later; also prove that a naive fixture with the setting removed is skipped and increments batch `parse_error_count`
 - after any REALITY target rotation, verify the node inbound `dest/serverNames`, the `brain` `nodes.reality_sni` row, and `python scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104` in the same handoff
 
 Release gate rule:

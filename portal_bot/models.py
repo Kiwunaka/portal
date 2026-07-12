@@ -199,6 +199,11 @@ class EntitlementGrant(Base):
     plan_code = Column(String(32), nullable=True)
     starts_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, index=True, nullable=True)
+    reserved_at = Column(DateTime, nullable=True)
+    reservation_expires_at = Column(DateTime, index=True, nullable=True)
+    activated_at = Column(DateTime, nullable=True)
+    duration_days = Column(Integer, nullable=True)
+    activation_evidence_id = Column(String(36), index=True, nullable=True)
     provider = Column(String(32), nullable=True)
     external_order_id = Column(String(160), nullable=True)
     metadata_json = Column(Text, nullable=True)
@@ -206,6 +211,19 @@ class EntitlementGrant(Base):
     reversal_reason = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ConnectionEvidence(Base):
+    __tablename__ = "connection_evidence"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    device_id = Column(String(36), index=True, nullable=True)
+    node_id = Column(Integer, index=True, nullable=False)
+    evidence_kind = Column(String(40), index=True, nullable=False)
+    observed_at = Column(DateTime, index=True, nullable=False)
+    evidence_key = Column(String(160), unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class AntiAbuseEvent(Base):

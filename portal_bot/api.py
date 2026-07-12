@@ -47,6 +47,7 @@ from db import SessionLocal, init_db
 from models import (
     AccessKey,
     AccountDevice,
+    ConnectionEvidence,
     Achievement,
     AdminAudit,
     AppSetting,
@@ -54,6 +55,7 @@ from models import (
     AntiAbuseEvent,
     CampaignSend,
     Event,
+    EntitlementGrant,
     ExternalOrder,
     ExternalPaymentEvent,
     FamilySlot,
@@ -72,6 +74,7 @@ from models import (
     NodePoolMembership,
     NodeProvisioningJob,
     NodeRuntimeMetric,
+    ObserverBatch,
     ObserverUserState,
     OpsAlert,
     PlanCatalog,
@@ -185,6 +188,7 @@ from email_auth_service import (
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
 from account_security_errors import AccountRecoveryError, EmailOtpError
 from antiabuse_privacy_service import record_antiabuse_event
+from economy_service import read_trial_projection
 from account_recovery_service import (
     complete_access_reissue,
     exchange_recovery_code,
@@ -200,6 +204,8 @@ from observer_service import (
     build_admin_observer_block,
     get_observer_state_map,
     ingest_observer_batch,
+    is_observer_batch_unique_conflict,
+    observer_batch_replay_response,
     observer_stale_after_seconds,
 )
 from network_rollout import (
@@ -350,8 +356,8 @@ REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
 CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("bonus_days", 10) or 10)))
-APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", int(_TRIAL_FACTS.get("trial_days", 5) or 5)))
-APP_TRIAL_MAX_DAYS = APP_TRIAL_DEFAULT_DAYS
+APP_TRIAL_DEFAULT_DAYS = 5
+APP_TRIAL_MAX_DAYS = 5
 WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
@@ -6008,6 +6014,7 @@ async def api_internal_observer_batches(
         raise HTTPException(status_code=401, detail="Observer push timestamp is invalid")
 
     s = SessionLocal()
+    node_id: int | None = None
     try:
         node = _verify_observer_push(
             s=s,
@@ -6016,6 +6023,7 @@ async def api_internal_observer_batches(
             signature=x_portal_signature,
             raw_body=raw_body,
         )
+        node_id = int(node.id)
         result = ingest_observer_batch(
             s=s,
             node=node,
@@ -6030,6 +6038,18 @@ async def api_internal_observer_batches(
     except HTTPException:
         s.rollback()
         raise
+    except IntegrityError as exc:
+        s.rollback()
+        if node_id is not None and is_observer_batch_unique_conflict(exc):
+            existing = (
+                s.query(ObserverBatch)
+                .filter(ObserverBatch.node_id == node_id, ObserverBatch.batch_id == payload.batch_id)
+                .first()
+            )
+            if existing is not None:
+                return observer_batch_replay_response(existing)
+        logger.exception("observer batch integrity failure node=%s", str(x_portal_node or "").strip().lower())
+        raise HTTPException(status_code=500, detail="Observer batch ingest failed")
     except Exception:
         s.rollback()
         logger.exception("observer batch ingest failed node=%s", str(x_portal_node or "").strip().lower())
@@ -6761,6 +6781,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     session_now = _utcnow()
     client_ip = _request_client_ip(request)
     trial_event_id = ""
+    trial_projection: dict[str, Any] | None = None
     s = SessionLocal()
     try:
         install_id = str(payload.install_id or "").strip()[:128]
@@ -6812,6 +6833,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
             install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
             carrier=_request_carrier_header(request.headers.get("X-Portal-Carrier")),
         )
+        trial_projection = read_trial_projection(s, account_id=str(user.account_id), now=session_now)
     except HTTPException:
         s.rollback()
         raise
@@ -6862,6 +6884,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         trial_days=APP_TRIAL_DEFAULT_DAYS,
         channel_bonus_days=CHANNEL_PREMIUM_DAYS,
         client_policy=client_policy,
+        trial_projection=trial_projection,
     )
     payload_s = SessionLocal()
     try:

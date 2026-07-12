@@ -71,6 +71,84 @@ def _postgres_varchar_limit(conn, table: str, column: str) -> int | None:
         return None
 
 
+def _ensure_economy_domain_sqlite(conn) -> None:
+    if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='entitlement_grants';")).fetchone():
+        for column, ddl in (
+            ("reserved_at", "DATETIME"),
+            ("reservation_expires_at", "DATETIME"),
+            ("activated_at", "DATETIME"),
+            ("duration_days", "INTEGER"),
+            ("activation_evidence_id", "VARCHAR(36)"),
+        ):
+            if not _sqlite_column_exists(conn, "entitlement_grants", column):
+                conn.execute(text(f"ALTER TABLE entitlement_grants ADD COLUMN {column} {ddl};"))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS connection_evidence (
+              id VARCHAR(36) PRIMARY KEY,
+              account_id VARCHAR(36) NOT NULL,
+              device_id VARCHAR(36),
+              node_id INTEGER NOT NULL,
+              evidence_kind VARCHAR(40) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              evidence_key VARCHAR(160) NOT NULL,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    for sql in (
+        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_reservation_expires_at ON entitlement_grants(reservation_expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_activation_evidence_id ON entitlement_grants(activation_evidence_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_entitlement_grants_premium_trial_account ON entitlement_grants(account_id) WHERE source = 'premium_trial';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_connection_evidence_key ON connection_evidence(evidence_key);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_account_id ON connection_evidence(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_node_id ON connection_evidence(node_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_observed_at ON connection_evidence(observed_at);",
+    ):
+        conn.execute(text(sql))
+
+
+def _ensure_economy_domain_postgres(conn) -> None:
+    for column, ddl in (
+        ("reserved_at", "TIMESTAMP"),
+        ("reservation_expires_at", "TIMESTAMP"),
+        ("activated_at", "TIMESTAMP"),
+        ("duration_days", "INTEGER"),
+        ("activation_evidence_id", "VARCHAR(36)"),
+    ):
+        _postgres_add_column_if_missing(conn, "entitlement_grants", column, ddl)
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS connection_evidence (
+              id VARCHAR(36) PRIMARY KEY,
+              account_id VARCHAR(36) NOT NULL,
+              device_id VARCHAR(36),
+              node_id INTEGER NOT NULL,
+              evidence_kind VARCHAR(40) NOT NULL,
+              observed_at TIMESTAMP NOT NULL,
+              evidence_key VARCHAR(160) NOT NULL,
+              created_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    for sql in (
+        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_reservation_expires_at ON entitlement_grants(reservation_expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_activation_evidence_id ON entitlement_grants(activation_evidence_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_entitlement_grants_premium_trial_account ON entitlement_grants(account_id) WHERE source = 'premium_trial';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_connection_evidence_key ON connection_evidence(evidence_key);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_account_id ON connection_evidence(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_node_id ON connection_evidence(node_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_observed_at ON connection_evidence(observed_at);",
+    ):
+        conn.execute(text(sql))
+
+
 def _postgres_add_column_if_missing(conn, table: str, column: str, ddl: str) -> bool:
     if _postgres_column_exists(conn, table, column):
         return False
@@ -1454,6 +1532,7 @@ def run_migrations(engine: Engine) -> None:
 
         _ensure_capacity_domain_sqlite(conn)
         _ensure_admin_ops_domain_sqlite(conn)
+        _ensure_economy_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -2288,6 +2367,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
 
         _ensure_capacity_domain_postgres(conn)
         _ensure_admin_ops_domain_postgres(conn)
+        _ensure_economy_domain_postgres(conn)
 
         conn.execute(
             text(

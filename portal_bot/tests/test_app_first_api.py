@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import importlib
+import hashlib
+import hmac
+import json
 import sys
+import time
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -215,6 +219,10 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
     assert payload["session"]["token"] == payload["session_token"]
     assert payload["session"]["account_id"] == payload["account_id"]
     assert payload["access"]["trial_days"] == 5
+    assert payload["access"]["trial_state"] == "reserved"
+    assert payload["access"]["reserved_at"]
+    assert payload["access"]["reservation_expires_at"]
+    assert payload["access"]["activated_at"] is None
     assert payload["access"]["subscription_url"] == payload["subscription_url"]
     assert payload["client_policy"]["routing_mode_default"] == "all_except_ru"
     assert payload["client_policy"]["transport_profile"] == "legacy_reality_fallback"
@@ -234,8 +242,126 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
         assert user is not None
         assert user.expiry_at is not None
         remaining = user.expiry_at - api._utcnow()
-        assert remaining >= timedelta(days=4)
-        assert remaining <= timedelta(days=6)
+        assert remaining >= timedelta(days=6)
+        assert remaining <= timedelta(days=8)
+    finally:
+        db.close()
+
+
+def test_start_trial_ignores_environment_trial_day_override(monkeypatch, tmp_path):
+    monkeypatch.setenv("APP_TRIAL_DEFAULT_DAYS", "19")
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    response = client.post(
+        "/api/client/session/start-trial",
+        json={"install_id": "install-fixed-five-days", "device_name": "Pixel", "platform": "android"},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert api.APP_TRIAL_DEFAULT_DAYS == 5
+    assert api.APP_TRIAL_MAX_DAYS == 5
+    assert body["access"]["trial_days"] == 5
+    db = api.SessionLocal()
+    try:
+        grant = db.query(api.EntitlementGrant).filter_by(
+            account_id=body["canonical_account_id"],
+            source="premium_trial",
+        ).one()
+        assert grant.duration_days == 5
+    finally:
+        db.close()
+
+
+def test_signed_observer_evidence_activates_once_while_client_telemetry_cannot(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    start = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-observer-activation",
+            "device_name": "Pixel",
+            "platform": "android",
+        },
+    )
+    assert start.status_code == 200, start.text
+    body = start.json()
+    token_headers = {"Authorization": f"Bearer {body['access_token']}"}
+
+    confirm = client.post("/api/connect/confirm", headers=token_headers)
+    telemetry = client.post(
+        "/api/events",
+        headers=token_headers,
+        json={"event_name": "clicked_connect", "source": "client"},
+    )
+    assert confirm.status_code == 200
+    assert telemetry.status_code == 200
+
+    db = api.SessionLocal()
+    try:
+        grant = db.query(api.EntitlementGrant).filter_by(account_id=body["canonical_account_id"], source="premium_trial").one()
+        assert grant.status == "reserved"
+        assert grant.activated_at is None
+        observed_at = grant.reserved_at + timedelta(hours=2)
+        assert db.query(api.ConnectionEvidence).count() == 0
+        node = api.Node(
+            code="trial-node",
+            name="Trial node",
+            host="trial-node.pokrov.test",
+            vless_port=443,
+            panel_base_url="https://trial-node.pokrov.test:8444",
+            panel_path="/panel/",
+            panel_user="observer",
+            panel_pass="not-returned",
+            inbound_id=31,
+            enabled=True,
+            observer_push_secret="observer-signing-secret",
+        )
+        db.add(node)
+        db.commit()
+    finally:
+        db.close()
+
+    observer_body = json.dumps(
+        {
+            "batch_id": "trial-batch-001",
+            "observations": [
+                {
+                    "occurred_at": observed_at.isoformat(),
+                    "client_tg_id": int(body["account_id"]),
+                    "source_ip": "198.51.100.10",
+                }
+            ],
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+    timestamp = int(time.time())
+    canonical = f"trial-node\n{timestamp}\n{observer_body.decode('utf-8')}".encode("utf-8")
+    signature = hmac.new(b"observer-signing-secret", canonical, hashlib.sha256).hexdigest()
+    observer_headers = {
+        "Content-Type": "application/json",
+        "X-Portal-Node": "trial-node",
+        "X-Portal-Timestamp": str(timestamp),
+        "X-Portal-Signature": signature,
+    }
+    first = client.post("/api/internal/observer/batches", content=observer_body, headers=observer_headers)
+    replay = client.post("/api/internal/observer/batches", content=observer_body, headers=observer_headers)
+
+    assert first.status_code == 200, first.text
+    assert replay.status_code == 200, replay.text
+    assert first.json()["activated_trial_count"] == 1
+    assert replay.json()["activated_trial_count"] == 0
+    assert "subscription_url" not in json.dumps(first.json())
+    assert "observer-signing-secret" not in json.dumps(first.json())
+
+    db = api.SessionLocal()
+    try:
+        grant = db.query(api.EntitlementGrant).filter_by(account_id=body["canonical_account_id"], source="premium_trial").one()
+        assert grant.status == "active"
+        assert grant.activated_at == observed_at
+        assert grant.expires_at == observed_at + timedelta(days=5)
+        assert db.query(api.ConnectionEvidence).count() == 1
     finally:
         db.close()
 

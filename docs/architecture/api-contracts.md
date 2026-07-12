@@ -24,6 +24,12 @@ in the active work order are complete.
   `X-POKROV-Auth-Error: device_recovery_required`. A client that still has its
   refresh credential must call the refresh endpoint; a client that lost it
   must use the recovery contract below.
+- The first account/device creates one idempotent `7-day` premium-trial
+  reservation. `access.trial_state` distinguishes `reserved` and `active`;
+  `reserved_at`, `reservation_expires_at`, and `activated_at` expose lifecycle
+  timestamps. The compatibility credential remains available during
+  reservation, while `access.trial_days` remains exactly `5`; environment
+  configuration cannot override that public authority.
 - `POST /api/client/session/refresh` rotates the refresh token once. The raw
   refresh token is returned only in the response; the database stores its
   SHA-256 digest. The refresh-family expiry is absolute and is not extended by
@@ -138,6 +144,41 @@ TTL after the final issuance before routing app access back to the old revision.
   a release-blocking incident, not a database TTL. Hard account lock changes
   require an explicit operator identity and reason and create an
   `antiabuse_actions` audit row.
+
+### Trial Connection Evidence
+
+- Signed `POST /api/internal/observer/batches` observations resolved to a
+  canonical account are the activation source. Each accepted observation adds
+  append-only `connection_evidence` with account, optional device, node,
+  evidence kind, observed timestamp, and a unique stable evidence key.
+- Offset-aware observation timestamps are converted to naive UTC before
+  evidence storage, activation, expiry calculation, and key derivation. `Z`,
+  positive offsets, and negative offsets representing the same instant produce
+  the same canonical timestamp.
+- Evidence key v2 is derived from the owned node, immutable resolved legacy user
+  identity, evidence kind, and canonical UTC observation timestamp. It excludes
+  mutable canonical account IDs, so replay after account merge and in another
+  batch converges to the existing row.
+- Evidence rows never contain a raw subscription URL, bearer token, provider
+  secret, source IP, or traffic payload. Existing observer response fields stay
+  compatible; `activated_trial_count` is additive and reports only newly
+  activated reservations.
+- Activation is row-locked on PostgreSQL where available and guarded by unique
+  trial/evidence keys. Replay returns `activated_trial_count=0` and cannot move
+  `activated_at` or `expires_at`; effective expiry is exactly the first valid
+  observation timestamp plus `5 days`. The counter comes from the locked
+  activation transition result, never from a pre-read of grant state.
+- A concurrent insert conflict on the observer batch unique key rolls back the
+  losing transaction and returns the committed winner as a replay response.
+  Other integrity failures still fail the request.
+- `POST /api/connect/confirm`, `/api/events`, `clicked_connect`,
+  `connected_ok`, funnel events, and other client-authored telemetry are never
+  activation evidence.
+- The worker expires unactivated reservations after `7 days` and updates only
+  the legacy compatibility projection to `free_monthly` when no paid or
+  unrelated active grant or current `User` projection survives. This projection
+  guard remains required while payment and bonus paths have not all cut over to
+  grants. Panel synchronization remains retryable and cannot fabricate evidence.
 
 ## Payment Providers
 

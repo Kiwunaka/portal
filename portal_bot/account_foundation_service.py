@@ -20,6 +20,7 @@ from models import (
     AntiAbuseCase,
     AntiAbuseEvent,
     AuthSession,
+    ConnectionEvidence,
     EntitlementGrant,
     RecoveryCode,
     User,
@@ -202,6 +203,71 @@ def _merge_duplicate_identity_state(
     target.updated_at = now
 
 
+def _trial_merge_rank(grant: EntitlementGrant) -> tuple[int, datetime, str]:
+    status = str(grant.status or "").strip().lower()
+    priority = {
+        "active": 0,
+        "reserved": 1,
+        "expired": 2,
+        "reversed": 3,
+        "superseded": 4,
+    }.get(status, 5)
+    effective_at = {
+        "active": grant.activated_at or grant.starts_at,
+        "reserved": grant.reserved_at,
+        "expired": grant.activated_at or grant.starts_at or grant.expires_at,
+        "reversed": grant.reversed_at or grant.activated_at or grant.starts_at,
+        "superseded": grant.reversed_at or grant.activated_at or grant.starts_at,
+    }.get(status) or grant.created_at or datetime.max
+    return priority, effective_at, str(grant.id)
+
+
+def _reconcile_account_trial_grants(
+    session: Session,
+    *,
+    source_account_id: str,
+    target_account_id: str,
+    now: datetime,
+) -> None:
+    trials = (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.account_id.in_([source_account_id, target_account_id]),
+            EntitlementGrant.source == "premium_trial",
+        )
+        .order_by(EntitlementGrant.id.asc())
+        .with_for_update()
+        .all()
+    )
+    if len(trials) <= 1:
+        return
+    winner = min(trials, key=_trial_merge_rank)
+    for duplicate in trials:
+        if duplicate.id == winner.id:
+            continue
+        try:
+            metadata = json.loads(str(duplicate.metadata_json or "{}"))
+            if not isinstance(metadata, dict):
+                metadata = {}
+        except Exception:
+            metadata = {}
+        metadata["account_merge"] = {
+            "superseded_by_grant_id": str(winner.id),
+            "source_account_id": str(source_account_id),
+            "target_account_id": str(target_account_id),
+            "previous_status": str(duplicate.status or ""),
+            "previous_reversal_reason": str(duplicate.reversal_reason or "") or None,
+            "previous_reversed_at": duplicate.reversed_at.isoformat() if duplicate.reversed_at else None,
+        }
+        duplicate.source = "premium_trial_superseded"
+        duplicate.status = "superseded"
+        duplicate.reversed_at = duplicate.reversed_at or now
+        duplicate.reversal_reason = "account_merge_duplicate"
+        duplicate.metadata_json = _json(metadata)
+        duplicate.updated_at = now
+    session.flush()
+
+
 def _move_account_owned_rows(
     session: Session,
     *,
@@ -209,6 +275,12 @@ def _move_account_owned_rows(
     target_account_id: str,
     now: datetime,
 ) -> None:
+    _reconcile_account_trial_grants(
+        session,
+        source_account_id=source_account_id,
+        target_account_id=target_account_id,
+        now=now,
+    )
     identities = session.query(AccountIdentity).filter_by(account_id=source_account_id).all()
     for identity in identities:
         duplicate = (
@@ -231,6 +303,7 @@ def _move_account_owned_rows(
         AccountDevice,
         AuthSession,
         RecoveryCode,
+        ConnectionEvidence,
         EntitlementGrant,
         AntiAbuseEvent,
         AntiAbuseCase,

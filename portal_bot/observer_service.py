@@ -7,8 +7,10 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import String, func
+from sqlalchemy.exc import IntegrityError
 
 from models import (
+    AccountDevice,
     Node,
     ObserverBatch,
     ObserverDailyObservation,
@@ -16,6 +18,11 @@ from models import (
     ObserverWindowObservation,
     User,
     UserNode,
+)
+from economy_service import (
+    activate_reserved_trial,
+    observer_evidence_key,
+    record_connection_evidence,
 )
 
 
@@ -42,6 +49,32 @@ def _window_bucket(dt: datetime) -> datetime:
 
 def _json_dump(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def observer_batch_replay_response(batch: ObserverBatch) -> dict[str, Any]:
+    updated = json.loads(str(batch.updated_tg_ids_json or "[]") or "[]")
+    return {
+        "accepted_count": 0,
+        "deduped_count": int(batch.observation_count or 0),
+        "unmatched_count": int(batch.unmatched_count or 0),
+        "updated_tg_ids": sorted({int(value) for value in updated}),
+        "activated_trial_count": 0,
+    }
+
+
+def is_observer_batch_unique_conflict(exc: IntegrityError) -> bool:
+    diag = getattr(getattr(exc, "orig", None), "diag", None)
+    if str(getattr(diag, "constraint_name", "") or "") == "uq_observer_batches_node_batch":
+        return True
+    detail = " ".join(
+        str(value or "")
+        for value in (getattr(exc, "statement", None), getattr(exc, "orig", None), exc)
+    ).lower()
+    return "observer_batches" in detail and (
+        "uq_observer_batches_node_batch" in detail
+        or ("unique" in detail and "node_id" in detail and "batch_id" in detail)
+        or "insert observer_batches" in detail
+    )
 
 
 def observer_stale_after_seconds() -> int:
@@ -72,7 +105,7 @@ def parse_observer_datetime(value: str | None) -> datetime:
         raise ValueError("occurred_at is required")
     dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
     if dt.tzinfo is not None:
-        dt = dt.astimezone(tz=None).replace(tzinfo=None)
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt.replace(microsecond=0)
 
 
@@ -406,18 +439,13 @@ def ingest_observer_batch(
         .first()
     )
     if existing:
-        updated = json.loads(str(existing.updated_tg_ids_json or "[]") or "[]")
-        return {
-            "accepted_count": 0,
-            "deduped_count": int(existing.observation_count or 0),
-            "unmatched_count": int(existing.unmatched_count or 0),
-            "updated_tg_ids": sorted({int(v) for v in updated}),
-        }
+        return observer_batch_replay_response(existing)
 
     accepted_count = 0
     unmatched_count = 0
     parse_error_count = max(0, int(collector_parse_error_count or 0))
     touched_tg_ids: set[int] = set()
+    activated_trial_count = 0
 
     for item in list(observations or []):
         try:
@@ -465,6 +493,34 @@ def ingest_observer_batch(
             seen_at=seen_at,
             counts_for_suspicion=bool(normalized["counts_for_suspicion"]),
         )
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        if account_id:
+            device_id = None
+            install_id = str(getattr(user, "app_install_id", "") or "").strip()
+            if install_id:
+                device_row = (
+                    s.query(AccountDevice.id)
+                    .filter(AccountDevice.account_id == account_id, AccountDevice.install_id == install_id)
+                    .first()
+                )
+                device_id = str(device_row[0]) if device_row else None
+            stable_key = observer_evidence_key(
+                identity_key=f"legacy-user:{int(user.tg_id)}",
+                node_id=int(node.id),
+                observed_at=seen_at,
+            )
+            evidence = record_connection_evidence(
+                s,
+                account_id=account_id,
+                device_id=device_id,
+                node_id=int(node.id),
+                evidence_kind="observer_connection",
+                observed_at=seen_at,
+                evidence_key=stable_key,
+            )
+            activation = activate_reserved_trial(s, account_id=account_id, evidence=evidence)
+            if activation.activated_now:
+                activated_trial_count += 1
 
     for tg_id in sorted(touched_tg_ids):
         recompute_user_observer_state(s=s, tg_id=int(tg_id), now=current_now)
@@ -494,6 +550,7 @@ def ingest_observer_batch(
         "deduped_count": 0,
         "unmatched_count": int(unmatched_count),
         "updated_tg_ids": sorted(touched_tg_ids),
+        "activated_trial_count": int(activated_trial_count),
     }
 
 

@@ -19,6 +19,7 @@ from account_foundation_service import (  # noqa: E402
     ACCOUNT_FOUNDATION_BACKFILL_KEY,
     _acquire_postgres_advisory_lock,
     _merge_duplicate_identity_state,
+    _move_account_owned_rows,
     backfill_account_foundation,
     ensure_user_account_foundation,
     run_account_foundation_backfill_once,
@@ -136,6 +137,188 @@ def test_account_foundation_models_cover_release_contract() -> None:
         "ip_prefix_hmac",
         "hmac_version",
     } <= set(tables["antiabuse_events"].c.keys())
+
+
+def _trial_grant(
+    *,
+    grant_id: str,
+    account_id: str,
+    status: str,
+    now: datetime,
+    activated_at: datetime | None = None,
+) -> EntitlementGrant:
+    effective_activation = activated_at
+    if status == "expired" and effective_activation is None:
+        effective_activation = now - timedelta(days=10)
+    return EntitlementGrant(
+        id=grant_id,
+        account_id=account_id,
+        idempotency_key=f"trial:{grant_id}",
+        source="premium_trial",
+        status=status,
+        grant_kind="premium_trial",
+        plan_code="trial",
+        reserved_at=now,
+        reservation_expires_at=now + timedelta(days=7),
+        activated_at=effective_activation,
+        starts_at=effective_activation,
+        expires_at=effective_activation + timedelta(days=5) if effective_activation else None,
+        duration_days=5,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def test_account_merge_reconciles_duplicate_trial_authority_and_is_rerunnable(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="target-account", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="source-account", status="active", created_source="test", created_at=now, updated_at=now)
+    target_reserved = _trial_grant(grant_id="target-reserved", account_id=target.id, status="reserved", now=now)
+    source_active = _trial_grant(
+        grant_id="source-active",
+        account_id=source.id,
+        status="active",
+        now=now + timedelta(hours=1),
+        activated_at=now + timedelta(hours=2),
+    )
+    session.add_all([target, source, target_reserved, source_active])
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=3),
+    )
+    session.flush()
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=4),
+    )
+    session.flush()
+
+    canonical = session.query(EntitlementGrant).filter_by(account_id=target.id, source="premium_trial").all()
+    assert [grant.id for grant in canonical] == ["source-active"]
+    session.refresh(target_reserved)
+    assert target_reserved.status == "superseded"
+    assert target_reserved.source == "premium_trial_superseded"
+    assert target_reserved.reversed_at == now + timedelta(hours=3)
+    assert target_reserved.reversal_reason == "account_merge_duplicate"
+    assert "source-active" in str(target_reserved.metadata_json)
+
+    second_target = Account(id="target-active-account", status="active", created_source="test", created_at=now, updated_at=now)
+    second_source = Account(id="source-reserved-account", status="active", created_source="test", created_at=now, updated_at=now)
+    target_active = _trial_grant(
+        grant_id="target-active",
+        account_id=second_target.id,
+        status="active",
+        now=now,
+        activated_at=now + timedelta(minutes=30),
+    )
+    source_reserved = _trial_grant(
+        grant_id="source-reserved",
+        account_id=second_source.id,
+        status="reserved",
+        now=now + timedelta(hours=1),
+    )
+    session.add_all([second_target, second_source, target_active, source_reserved])
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=second_source.id,
+        target_account_id=second_target.id,
+        now=now + timedelta(hours=2),
+    )
+    session.flush()
+
+    canonical = session.query(EntitlementGrant).filter_by(
+        account_id=second_target.id,
+        source="premium_trial",
+    ).all()
+    assert [grant.id for grant in canonical] == ["target-active"]
+    session.refresh(source_reserved)
+    assert source_reserved.status == "superseded"
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_reconciles_every_trial_status_in_unique_source_set(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    scenarios = (
+        ("active-expired", "active", "expired", "active-expired-target"),
+        ("reserved-expired", "reserved", "expired", "reserved-expired-target"),
+        ("expired-expired", "expired", "expired", "expired-expired-target"),
+        ("reversed-superseded", "reversed", "superseded", "reversed-superseded-target"),
+    )
+
+    for index, (label, target_status, source_status, expected_winner) in enumerate(scenarios):
+        target_account_id = f"{label}-target-account"
+        source_account_id = f"{label}-source-account"
+        target = Account(
+            id=target_account_id,
+            status="active",
+            created_source="test",
+            created_at=now,
+            updated_at=now,
+        )
+        source = Account(
+            id=source_account_id,
+            status="active",
+            created_source="test",
+            created_at=now,
+            updated_at=now,
+        )
+        target_grant = _trial_grant(
+            grant_id=f"{label}-target",
+            account_id=target_account_id,
+            status=target_status,
+            now=now + timedelta(hours=index),
+            activated_at=now - timedelta(days=10) if target_status in {"active", "expired"} else None,
+        )
+        source_grant = _trial_grant(
+            grant_id=f"{label}-source",
+            account_id=source_account_id,
+            status=source_status,
+            now=now + timedelta(hours=index + 1),
+            activated_at=now - timedelta(days=9) if source_status == "expired" else None,
+        )
+        session.add_all([target, source, target_grant, source_grant])
+        session.flush()
+
+        _move_account_owned_rows(
+            session,
+            source_account_id=source_account_id,
+            target_account_id=target_account_id,
+            now=now + timedelta(days=1),
+        )
+        session.flush()
+        _move_account_owned_rows(
+            session,
+            source_account_id=source_account_id,
+            target_account_id=target_account_id,
+            now=now + timedelta(days=2),
+        )
+        session.flush()
+
+        canonical = session.query(EntitlementGrant).filter_by(
+            account_id=target_account_id,
+            source="premium_trial",
+        ).all()
+        assert [grant.id for grant in canonical] == [expected_winner]
+        loser = source_grant if expected_winner == target_grant.id else target_grant
+        session.refresh(loser)
+        assert loser.source == "premium_trial_superseded"
+        assert loser.status == "superseded"
+        assert loser.reversal_reason == "account_merge_duplicate"
+        assert expected_winner in str(loser.metadata_json)
+
+    session.close()
+    engine.dispose()
 
 
 def test_backfill_is_idempotent_and_merges_explicit_telegram_link(tmp_path: Path) -> None:

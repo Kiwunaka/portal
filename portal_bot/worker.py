@@ -22,6 +22,7 @@ from control_panel import ControlPanel
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
 from events_service import track_event
+from economy_service import expire_stale_trial_reservations
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
 from models import (
     CampaignSend,
@@ -1160,6 +1161,22 @@ async def observer_retention_job() -> None:
         await asyncio.sleep(21600)
 
 
+async def trial_reservation_expiry_job() -> None:
+    while True:
+        session = SessionLocal()
+        try:
+            result = expire_stale_trial_reservations(session, now=_utcnow())
+            session.commit()
+            if int(result.get("expired", 0)) > 0:
+                logger.info("trial_reservation_expiry result=%s", result)
+        except Exception:
+            session.rollback()
+            logger.exception("trial_reservation_expiry_job failed")
+        finally:
+            session.close()
+        await asyncio.sleep(600)
+
+
 async def antiabuse_retention_job() -> None:
     while True:
         try:
@@ -1265,6 +1282,7 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("channel_bonus_guard", channel_bonus_guard_job)),
         asyncio.create_task(_supervise_job("free_cycle_reset", free_cycle_reset_job)),
         asyncio.create_task(_supervise_job("observer_retention", observer_retention_job)),
+        asyncio.create_task(_supervise_job("trial_reservation_expiry", trial_reservation_expiry_job)),
         asyncio.create_task(_supervise_job("antiabuse_retention", antiabuse_retention_job)),
         asyncio.create_task(_supervise_job("telemetry_retention", telemetry_retention_job)),
         asyncio.create_task(_supervise_job("referral_bonus_queue", referral_bonus_queue_job)),
