@@ -283,11 +283,24 @@ Account ownership transition:
   cutover and automated antiabuse decisions are not live. A hard lock can be
   written through the antiabuse service only with an explicit operator ID and
   reason; no automatic rule may hard-lock an account.
+- `scripts/migrate_sqlite_to_postgres.py rehearse` now provides a fail-closed
+  synthetic rehearsal path: SQLite backup API plus `quick_check`, confirmed
+  reviewed source-count manifest, disposable `_rehearsal` target,
+  schema/bootstrap migrations, streaming copy, account backfill, critical
+  orphan checks, explicit-ID sequence synchronization and a sanitized atomic
+  JSON report. Reset, copy, backfill and invariants share one target data
+  transaction. Sequences sync once after explicit copy so generated backfill
+  inserts cannot collide, then again after commit; PostgreSQL sequence state is
+  never described as rollback evidence. Rerun compares both report and streamed
+  target-content digests. This local contract is not a redacted-production
+  rehearsal or restore proof.
 
 Predeploy account-foundation gates:
 
 - `MANUAL_OWNER_TEST`: run a PostgreSQL rehearsal against a redacted production
-  snapshot and retain the backfill report, row counts and review counts.
+  snapshot and retain the sanitized report, row counts, review counts, sequence
+  states and an approved backup/restore result. Synthetic SQLite-to-SQLite
+  evidence does not satisfy this gate.
 - `MANUAL_OWNER_TEST`: prove the row/per-user/global lock order and no-upgrade
   behavior with two real PostgreSQL connections under concurrent projection,
   bind and first-start scenarios; local contract tests are not live concurrency

@@ -88,11 +88,20 @@ below are complete.
 - PostgreSQL schema creation and additive migrations use the same
   `pokrov_schema_bootstrap` transaction advisory lock, preventing their
   separate transactions from overlapping during concurrent first startup.
+- The repository migration rehearsal uses a consistent SQLite backup,
+  reviewed source-count manifest, disposable `_rehearsal` PostgreSQL target
+  confirmation, streaming table copy, direct account projection, critical
+  orphan/null invariants, pre-backfill and post-commit sequence synchronization,
+  and sanitized report/content digests. The reset/copy/backfill/invariant data
+  phase is transactional; schema preparation and sequence state are reported
+  separately rather than described as rollback-safe.
 
 Predeploy account-foundation gates:
 
 - `MANUAL_OWNER_TEST`: PostgreSQL rehearsal on a redacted production snapshot
-  with a retained backfill report, row counts and merge-review counts.
+  with a retained sanitized report, row counts, merge-review counts, sequence
+  states and approved backup/restore evidence. Local synthetic fixtures are not
+  production proof.
 - `MANUAL_OWNER_TEST`: real two-connection PostgreSQL concurrency proof for
   projection, Telegram bind and concurrent first startup; local SQL-order tests
   do not claim live deadlock proof.

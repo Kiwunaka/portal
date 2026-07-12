@@ -182,6 +182,65 @@ The retention windows are an operational SLO, not a PostgreSQL TTL. Worker
 outage or persistent backlog can exceed them and blocks a production readiness
 claim until the backlog is drained and monitoring is restored.
 
+### SQLite to PostgreSQL rehearsal
+
+The guarded rehearsal entrypoint is:
+
+```powershell
+python scripts/migrate_sqlite_to_postgres.py inventory `
+  --sqlite-path .tmp\migration\source.db `
+  --output .tmp\migration\source-counts.json
+
+# Review every table count before continuing.
+python scripts/migrate_sqlite_to_postgres.py rehearse `
+  --sqlite-path .tmp\migration\source.db `
+  --snapshot-path .tmp\migration\source.snapshot.db `
+  --source-manifest .tmp\migration\source-counts.json `
+  --postgres-url-env REHEARSAL_POSTGRES_URL `
+  --confirm-target portal_rehearsal `
+  --reset-target `
+  --rerun-check `
+  --report .tmp\migration\rehearsal-report.json
+```
+
+Set `REHEARSAL_POSTGRES_URL` outside git and command-line arguments. The target
+database name must exactly match `--confirm-target` and end in `_rehearsal`.
+The command refuses to overwrite an existing snapshot. Both source and snapshot
+may contain customer data and must stay outside git, docs, chat and ordinary
+artifacts.
+
+`inventory` is read-only and writes counts only. It is not automatic approval:
+an operator must review the manifest against expected production totals. The
+snapshot must contain required core tables and exactly match every manifest
+table/count before any target reset begins.
+
+The command:
+
+- snapshots SQLite through `sqlite3.Connection.backup()` and runs
+  `PRAGMA quick_check`;
+- creates/migrates the disposable target under the canonical schema lock;
+- resets, streams, backfills and validates target data in one transaction;
+- synchronizes owned integer sequences after explicit copy and before backfill,
+  then records final sequence state after the successful data commit;
+- optionally repeats the replace and compares normalized report plus streamed
+  target-content digests;
+- writes an atomic JSON report containing names, hashes, counts and statuses,
+  never URLs, passwords or row values.
+
+Unexpected database/runtime failures expose only a generic error class in the
+report and terminal. SQL `DETAIL` and bound parameters are never copied into
+rehearsal evidence.
+
+`backup_restore.status=AVAILABLE_NOT_RUN` is still not restore proof. If local
+`pg_dump`/`pg_restore` are absent, the report says
+`SKIPPED_TOOL_UNAVAILABLE`. A real redacted snapshot, source quiescence,
+PostgreSQL credentials, backup/restore execution and cutover approval remain
+manual owner gates.
+
+The older no-subcommand copier remains compatibility-only for existing operator
+automation. Do not use `--truncate-target` as rehearsal evidence. The remote
+production cutover script is not hardened or executed by this slice.
+
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
