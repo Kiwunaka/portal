@@ -100,6 +100,77 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(self.worker._normalize_channel_membership_reason("not_member"), "not_member")
         self.assertEqual(self.worker._normalize_channel_membership_reason("telegram_http_error"), "telegram_http_error")
 
+    def test_channel_guard_uses_linked_identity_grace_and_rejoin_cancellation(self) -> None:
+        from economy_service import grant_channel_bonus
+        from models import Account, EntitlementGrant, User
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            account = Account(
+                id=str(uuid.uuid4()),
+                status="active",
+                created_source="app_first",
+                created_at=now,
+                updated_at=now,
+            )
+            user = User(
+                tg_id=9_000_000_007_001,
+                account_id=account.id,
+                username="guard-app-user",
+                uuid=str(uuid.uuid4()),
+                email="guard-app@example.test",
+                sub_type="FREE",
+                current_plan_code="trial",
+                expiry_at=now + timedelta(days=5),
+                is_active=True,
+                tos_accepted=True,
+                is_app_user=True,
+                linked_telegram_id=7001,
+                created_at=now,
+            )
+            s.add_all([account, user])
+            s.flush()
+            grant_channel_bonus(
+                s,
+                account_id=account.id,
+                legacy_tg_id=user.tg_id,
+                telegram_id=7001,
+                now=now,
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        checked: list[int] = []
+
+        async def not_member(_channel: str, telegram_id: int):
+            checked.append(telegram_id)
+            return False, "left"
+
+        async def member(_channel: str, telegram_id: int):
+            checked.append(telegram_id)
+            return True, "member"
+
+        first = asyncio.run(self.worker.channel_bonus_guard_once(is_channel_member=not_member, now=now))
+        second = asyncio.run(
+            self.worker.channel_bonus_guard_once(
+                is_channel_member=member,
+                now=now + timedelta(hours=23),
+            )
+        )
+
+        self.assertEqual(first["grace_started"], 1)
+        self.assertEqual(first["reversed"], 0)
+        self.assertEqual(second["grace_cancelled"], 1)
+        self.assertEqual(checked, [7001, 7001])
+        s = self.db.SessionLocal()
+        try:
+            grant = s.query(EntitlementGrant).filter_by(source="telegram_channel").one()
+            self.assertEqual(grant.status, "active")
+        finally:
+            s.close()
+
     def test_get_chat_member_maps_chat_not_found_from_non_200_response(self) -> None:
         class _FakeResponse:
             status = 400
@@ -156,7 +227,7 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(reason, "telegram_timeout")
 
     def test_referral_queue_does_not_double_increment_already_counted_referral(self) -> None:
-        from models import Event, ReferralBonusQueue, User
+        from models import Event, ReferralBonusQueue, ReferralRelationship, User
 
         now = self.worker._utcnow()
         s = self.db.SessionLocal()
@@ -203,13 +274,225 @@ class WorkerRetentionTests(unittest.TestCase):
             s.close()
 
         out = self.worker._process_referral_bonus_queue(limit=10)
-        self.assertEqual(int(out.get("rewarded") or 0), 1)
+        self.assertEqual(int(out.get("rewarded") or 0), 0)
+        self.assertEqual(int(out.get("migrated") or 0), 1)
 
         s = self.db.SessionLocal()
         try:
             referrer = s.query(User).filter_by(tg_id=2001).first()
+            referred = s.query(User).filter_by(tg_id=2002).one()
+            legacy = s.query(ReferralBonusQueue).filter_by(order_id="order-2002").one()
+            relationship = (
+                s.query(ReferralRelationship)
+                .filter_by(referred_account_id=str(referred.account_id))
+                .one()
+            )
             self.assertIsNotNone(referrer)
             self.assertEqual(int(referrer.referral_count or 0), 1)
+            self.assertEqual(legacy.status, "superseded_account")
+            self.assertEqual(relationship.referrer_account_id, referrer.account_id)
+            self.assertEqual(relationship.first_payment_at, legacy.queued_at)
+            self.assertEqual(relationship.hold_until, legacy.queued_at + timedelta(hours=72))
+            self.assertEqual(relationship.status, "holding")
+        finally:
+            s.close()
+
+    def test_referral_queue_keeps_missing_identity_row_pending_for_retry(self) -> None:
+        from models import ReferralBonusQueue
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            s.add(
+                ReferralBonusQueue(
+                    order_id="missing-user-order",
+                    referrer_tg_id=2991,
+                    referred_tg_id=2992,
+                    queued_at=now - timedelta(hours=10),
+                    ready_at=now - timedelta(hours=1),
+                    status="pending",
+                    meta='{"source":"legacy_payment_callback"}',
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        first = self.worker._process_referral_bonus_queue(limit=10)
+        second = self.worker._process_referral_bonus_queue(limit=10)
+
+        self.assertEqual(int(first.get("retryable") or 0), 1)
+        self.assertEqual(int(second.get("retryable") or 0), 0)
+        s = self.db.SessionLocal()
+        try:
+            row = s.query(ReferralBonusQueue).filter_by(order_id="missing-user-order").one()
+            self.assertEqual(row.status, "pending")
+            self.assertIsNone(row.processed_at)
+            self.assertGreater(row.ready_at, now)
+            self.assertIn('"account_migration_retry"', str(row.meta))
+        finally:
+            s.close()
+
+    def test_referral_queue_retry_rows_do_not_starve_newer_valid_payment(self) -> None:
+        from models import ReferralBonusQueue, User
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            s.add_all(
+                [
+                    ReferralBonusQueue(
+                        order_id=f"conflict-{index}",
+                        referrer_tg_id=3100 + index,
+                        referred_tg_id=3200 + index,
+                        queued_at=now - timedelta(hours=80),
+                        ready_at=now - timedelta(hours=1),
+                        status="pending",
+                        meta=(
+                            '{"account_migration_retry":{"attempts":"broken"}}'
+                            if index == 0
+                            else None
+                        ),
+                    )
+                    for index in range(2)
+                ]
+            )
+            s.add_all(
+                [
+                    User(
+                        tg_id=tg_id,
+                        username=f"valid_{tg_id}",
+                        uuid=str(uuid.uuid4()),
+                        email=f"valid_{tg_id}",
+                        sub_type="PAID",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=30),
+                        tos_accepted=True,
+                    )
+                    for tg_id in (3301, 3302)
+                ]
+            )
+            s.add(
+                ReferralBonusQueue(
+                    order_id="valid-after-conflicts",
+                    referrer_tg_id=3301,
+                    referred_tg_id=3302,
+                    queued_at=now - timedelta(hours=80),
+                    ready_at=now - timedelta(hours=1),
+                    status="pending",
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        first = self.worker._process_referral_bonus_queue(limit=2)
+        second = self.worker._process_referral_bonus_queue(limit=2)
+
+        self.assertEqual(first["retryable"], 2)
+        self.assertEqual(second["migrated"], 1)
+        s = self.db.SessionLocal()
+        try:
+            valid = s.query(ReferralBonusQueue).filter_by(order_id="valid-after-conflicts").one()
+            conflicts = s.query(ReferralBonusQueue).filter(ReferralBonusQueue.order_id.like("conflict-%")).all()
+            self.assertEqual(valid.status, "superseded_account")
+            self.assertTrue(all(row.status == "pending" for row in conflicts))
+        finally:
+            s.close()
+
+    def test_referral_worker_uses_normalized_hold_and_ignores_ux_activity_authority(self) -> None:
+        from economy_service import create_referral_relationship, queue_first_payment_referrer_reward
+        from models import Account, EntitlementGrant, Event, ReferralBonusQueue, ReferralRelationship, User
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            referrer_account = Account(
+                id=str(uuid.uuid4()),
+                status="active",
+                created_source="test",
+                created_at=now,
+                updated_at=now,
+            )
+            referred_account = Account(
+                id=str(uuid.uuid4()),
+                status="active",
+                created_source="test",
+                created_at=now,
+                updated_at=now,
+            )
+            referrer = User(
+                tg_id=2101,
+                account_id=referrer_account.id,
+                username="normalized-referrer",
+                uuid=str(uuid.uuid4()),
+                email="normalized-referrer@example.test",
+                sub_type="PAID",
+                current_plan_code="1_month",
+                is_active=True,
+                expiry_at=now + timedelta(days=20),
+                tos_accepted=True,
+            )
+            referred = User(
+                tg_id=2102,
+                account_id=referred_account.id,
+                username="normalized-referred",
+                uuid=str(uuid.uuid4()),
+                email="normalized-referred@example.test",
+                sub_type="PAID",
+                current_plan_code="1_month",
+                is_active=True,
+                expiry_at=now + timedelta(days=30),
+                tos_accepted=True,
+                first_purchase_done=True,
+            )
+            s.add_all([referrer_account, referred_account, referrer, referred])
+            s.flush()
+            relationship = create_referral_relationship(
+                s,
+                referred_account_id=referred_account.id,
+                referrer_account_id=referrer_account.id,
+                source="test",
+                now=now - timedelta(hours=80),
+            )
+            queue_first_payment_referrer_reward(
+                s,
+                referred_account_id=referred_account.id,
+                payment_key="payment:normalized-2102",
+                paid_at=now - timedelta(hours=73),
+            )
+            s.add(Event(tg_id=2102, event_name="clicked_connect", source="client", created_at=now))
+            s.add(
+                ReferralBonusQueue(
+                    order_id="legacy-normalized-2102",
+                    referrer_tg_id=2101,
+                    referred_tg_id=2102,
+                    queued_at=now - timedelta(hours=80),
+                    ready_at=now - timedelta(hours=1),
+                    status="pending",
+                    meta='{"source":"legacy"}',
+                )
+            )
+            s.commit()
+            relationship_id = str(relationship.id)
+        finally:
+            s.close()
+
+        first = self.worker._process_referral_bonus_queue(limit=10)
+        replay = self.worker._process_referral_bonus_queue(limit=10)
+
+        self.assertEqual(first["rewarded"], 1)
+        self.assertEqual(replay["rewarded"], 0)
+        s = self.db.SessionLocal()
+        try:
+            legacy = s.query(ReferralBonusQueue).filter_by(order_id="legacy-normalized-2102").one()
+            relationship = s.query(ReferralRelationship).filter_by(id=relationship_id).one()
+            self.assertEqual(legacy.status, "superseded_account")
+            self.assertEqual(relationship.status, "rewarded")
+            self.assertEqual(relationship.first_payment_at, legacy.queued_at)
+            self.assertEqual(relationship.hold_until, legacy.queued_at + timedelta(hours=72))
+            self.assertTrue(str(relationship.first_payment_key).startswith("payment:legacy-referral:"))
+            self.assertEqual(s.query(EntitlementGrant).filter_by(source="referral_referrer").count(), 1)
         finally:
             s.close()
 
@@ -242,6 +525,108 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertFalse(out)
         self.assertTrue(fake.rollback_called)
         self.assertTrue(fake.closed)
+
+    def test_referral_worker_rebuilds_paid_to_bonus_then_free_policy(self) -> None:
+        from models import AccessKey, Account, EntitlementGrant, User
+
+        now = self.worker._utcnow()
+        s = self.db.SessionLocal()
+        try:
+            account = Account(
+                id=str(uuid.uuid4()),
+                status="active",
+                created_source="test",
+                created_at=now - timedelta(days=30),
+                updated_at=now,
+            )
+            user = User(
+                tg_id=2199,
+                account_id=account.id,
+                username="worker-projection",
+                uuid=str(uuid.uuid4()),
+                email="worker-projection@example.test",
+                sub_type="PAID",
+                current_plan_code="1_month",
+                is_active=True,
+                expiry_at=now + timedelta(days=4),
+                first_purchase_done=True,
+            )
+            paid = EntitlementGrant(
+                id=str(uuid.uuid4()),
+                account_id=account.id,
+                legacy_tg_id=user.tg_id,
+                idempotency_key="worker-paid-boundary",
+                source="provider_payment",
+                status="active",
+                grant_kind="paid_access",
+                plan_code="1_month",
+                starts_at=now - timedelta(days=30),
+                expires_at=now - timedelta(seconds=1),
+                activated_at=now - timedelta(days=30),
+                duration_days=30,
+                provider="lavatop",
+                external_order_id="worker-paid-boundary",
+                created_at=now - timedelta(days=30),
+                updated_at=now,
+            )
+            bonus = EntitlementGrant(
+                id=str(uuid.uuid4()),
+                account_id=account.id,
+                legacy_tg_id=user.tg_id,
+                idempotency_key="worker-bonus-boundary",
+                source="referral_friend",
+                status="active",
+                grant_kind="premium_bonus",
+                plan_code="referral_friend",
+                starts_at=now - timedelta(seconds=1),
+                expires_at=now + timedelta(days=4),
+                activated_at=now - timedelta(seconds=1),
+                duration_days=5,
+                provider="internal_economy",
+                created_at=now - timedelta(seconds=1),
+                updated_at=now,
+            )
+            key = AccessKey(
+                tg_id=user.tg_id,
+                key_uuid=str(uuid.uuid4()),
+                panel_email="worker-projection@example.test",
+                node_code="NL-free",
+                pool_code="premium_pool",
+                state="active",
+                source="test",
+                is_primary=True,
+                created_at=now,
+                updated_at=now,
+            )
+            s.add_all([account, user, paid, bonus, key])
+            s.commit()
+        finally:
+            s.close()
+
+        self.worker._process_referral_bonus_queue(limit=1)
+        s = self.db.SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=2199).one()
+            key = s.query(AccessKey).filter_by(tg_id=2199).one()
+            bonus = s.query(EntitlementGrant).filter_by(idempotency_key="worker-bonus-boundary").one()
+            self.assertEqual(user.sub_type, "BONUS")
+            self.assertEqual(user.current_plan_code, "referral_friend")
+            self.assertEqual(key.pool_code, "premium_pool")
+            bonus.expires_at = self.worker._utcnow() - timedelta(seconds=1)
+            s.commit()
+        finally:
+            s.close()
+
+        self.worker._process_referral_bonus_queue(limit=1)
+        s = self.db.SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=2199).one()
+            key = s.query(AccessKey).filter_by(tg_id=2199).one()
+            self.assertEqual(user.sub_type, "FREE")
+            self.assertEqual(user.current_plan_code, "free_monthly")
+            self.assertEqual(key.pool_code, "free_pool")
+        finally:
+            s.close()
 
     def test_observer_retention_job_runs_cleanup_and_commits(self) -> None:
         cleanup_calls: list[int] = []

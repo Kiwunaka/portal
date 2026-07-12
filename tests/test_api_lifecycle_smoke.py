@@ -274,7 +274,7 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         self.assertTrue(gift_code)
 
         from db import SessionLocal
-        from models import Event, ExternalOrder, ExternalPaymentEvent, ReferralBonusQueue, User
+        from models import Event, ExternalOrder, ExternalPaymentEvent, ReferralBonusQueue, ReferralRelationship, User
 
         s = SessionLocal()
         try:
@@ -402,11 +402,15 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             self.assertIsNotNone(order_row)
             self.assertEqual(str(order_row.status or ""), "paid")
             self.assertEqual(len(payment_events), 1)
-            self.assertIsNotNone(bonus_queue)
+            self.assertIsNone(bonus_queue)
             self.assertEqual(len(bonus_events), 4)
             self.assertIsNotNone(referred_user)
             self.assertTrue(bool(referred_user.first_purchase_done))
             self.assertIsNotNone(referrer)
             self.assertEqual(int(referrer.referral_count or 0), 1)
+            relationship = s.query(ReferralRelationship).filter_by(referred_account_id=referred_user.account_id).one()
+            self.assertEqual(relationship.referrer_account_id, referrer.account_id)
+            self.assertEqual(relationship.status, "holding")
+            self.assertEqual(relationship.hold_until - relationship.first_payment_at, timedelta(hours=72))
         finally:
             s.close()

@@ -174,7 +174,10 @@ class ControlPanel:
             try:
                 c = await self._clients[n.code].find_client_by_tgid(tg_id)
                 if c:
-                    return c
+                    owned = dict(c)
+                    owned["_node_code"] = str(getattr(n, "code", "") or "")
+                    owned["_node_id"] = int(getattr(n, "id", 0) or 0)
+                    return owned
             except Exception:
                 continue
         return None

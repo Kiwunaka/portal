@@ -38,6 +38,8 @@ TABLE_DEPENDENCIES: dict[str, set[str]] = {
     "recovery_codes": {"accounts"},
     "connection_evidence": {"accounts", "account_devices", "nodes"},
     "entitlement_grants": {"accounts", "connection_evidence"},
+    "referral_relationships": {"accounts", "connection_evidence", "entitlement_grants"},
+    "referral_transitions": {"referral_relationships", "accounts"},
     "antiabuse_events": {"accounts", "account_devices", "auth_sessions"},
     "antiabuse_cases": {"accounts"},
     "antiabuse_actions": {"antiabuse_cases"},
@@ -68,6 +70,12 @@ ECONOMY_INVARIANT_RELATIONS = (
     ("connection_evidence", "device_id", "account_devices", "id"),
     ("connection_evidence", "node_id", "nodes", "id"),
     ("entitlement_grants", "activation_evidence_id", "connection_evidence", "id"),
+    ("referral_relationships", "referred_account_id", "accounts", "id"),
+    ("referral_relationships", "referrer_account_id", "accounts", "id"),
+    ("referral_relationships", "friend_evidence_id", "connection_evidence", "id"),
+    ("referral_relationships", "friend_grant_id", "entitlement_grants", "id"),
+    ("referral_relationships", "referrer_grant_id", "entitlement_grants", "id"),
+    ("referral_transitions", "relationship_id", "referral_relationships", "id"),
 )
 
 POSTPROCESS_MUTABLE_TABLES = {
@@ -75,6 +83,8 @@ POSTPROCESS_MUTABLE_TABLES = {
     "account_identities",
     "account_devices",
     "entitlement_grants",
+    "referral_relationships",
+    "referral_transitions",
     "account_merge_reviews",
     "app_settings",
 }

@@ -226,6 +226,42 @@ class ConnectionEvidence(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class ReferralRelationship(Base):
+    __tablename__ = "referral_relationships"
+
+    id = Column(String(36), primary_key=True)
+    referred_account_id = Column(String(36), unique=True, index=True, nullable=False)
+    referrer_account_id = Column(String(36), index=True, nullable=False)
+    source = Column(String(32), nullable=False)
+    status = Column(String(24), default="linked", index=True, nullable=False)
+    review_status = Column(String(24), default="clear", index=True, nullable=False)
+    friend_evidence_id = Column(String(36), index=True, nullable=True)
+    friend_grant_id = Column(String(36), nullable=True)
+    friend_granted_at = Column(DateTime, nullable=True)
+    first_payment_key = Column(String(160), unique=True, index=True, nullable=True)
+    first_payment_at = Column(DateTime, nullable=True)
+    hold_until = Column(DateTime, index=True, nullable=True)
+    referrer_grant_id = Column(String(36), nullable=True)
+    referrer_granted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ReferralTransition(Base):
+    __tablename__ = "referral_transitions"
+
+    id = Column(String(36), primary_key=True)
+    relationship_id = Column(String(36), index=True, nullable=False)
+    referred_account_id = Column(String(36), index=True, nullable=False)
+    referrer_account_id = Column(String(36), index=True, nullable=False)
+    transition_key = Column(String(160), unique=True, index=True, nullable=False)
+    transition_kind = Column(String(40), index=True, nullable=False)
+    status = Column(String(24), nullable=False)
+    occurred_at = Column(DateTime, index=True, nullable=False)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class AntiAbuseEvent(Base):
     __tablename__ = "antiabuse_events"
 

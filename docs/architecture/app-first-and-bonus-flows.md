@@ -562,8 +562,29 @@ Contract rule:
 3. `POST /api/channel/subscriber/check` is read-only and must never grant points or mark campaign state
 4. the real reward path calls `POST /api/bonuses/channel/claim`
 5. backend checks membership for the linked Telegram account
-6. if membership is valid, backend grants `+10 days`
+6. if membership is valid, backend grants a new account-owned `+5 days` once
 7. if not linked or not eligible, backend returns the correct reason
+
+Existing issued `+10 days` channel grants are grandfathered. Membership loss
+starts `24 hours` of grace; rejoin cancels grace. A due reversal marks only the
+channel grant reversed, then deterministically rebuilds the account projection
+from the remaining typed trial, bonus, provider-payment, and compatibility
+grants. Consumed channel time remains historical, every purchased interval and
+unrelated grant keeps its full remaining duration, and access stays continuous.
+Paid, free, trial/referral, session, and device state are not revoked.
+When a legacy snapshot contains that issued channel interval, backfill records
+the component provenance and splits the snapshot at the channel interval start;
+the same channel time therefore cannot survive reversal through the aggregate
+compatibility baseline.
+
+Premium addition and rebuild classify contributions explicitly. Typed
+`paid_access`, `premium_trial`, and `premium_bonus` intervals extend the premium
+cursor. A compatibility `legacy_snapshot` contributes only when its persisted
+`sub_type`/plan metadata classifies it as `PAID`, `TRIAL`, or `BONUS`; it is a
+single aggregate baseline rather than another acquisition grant. `FREE`
+snapshots and free-cycle resets are tracked only as free fallback, never delay a
+payment/bonus start, never count toward the `15 day` cap, and never select
+`premium_pool`.
 
 ## Bonus Summary, Referral, And Promo Flow
 
@@ -575,6 +596,63 @@ Contract rule:
   safe Telegram referral link, bonus days, and current points tier for the
   app-first account. The app may expose copy/share/open actions for that link;
   referral anti-abuse, bonus granting, and campaign tuning remain backend-owned.
+- one referred account has at most one account-owned referrer; self-referral and
+  cycles are rejected while legacy `User.referrer_id` remains a projection
+- friend `+5 days` releases once from canonical server `ConnectionEvidence`,
+  never from `clicked_connect`, `connected_ok`, or another client event
+- referrer `+15 days` is queued only by the referred account's first successful
+  payment and releases once after a full `72 hour` hold; gifts and renewals do
+  not qualify
+- pending legacy referral queue rows are migrated idempotently into the same
+  canonical relationship and first-payment hold using their original queued
+  payment time. A row is marked `superseded_account` only after migration;
+  missing or conflicting identities stay pending with bounded retry backoff so
+  an old conflict cannot starve newer valid payments
+- provider/order creates one durable account-owned payment grant while the
+  canonical account row and normalized relationship are locked; app and bot
+  projections read the same fact, and `User.first_purchase_done` is compatibility
+  output rather than authority
+- account-foundation backfill creates payment authority only from corroborated
+  successful provider orders or Telegram platform payment attempts with
+  per-order fulfillment evidence. A paid XTR attempt without that evidence becomes a
+  stable `legacy_stars_payment_marker` in `manual_review`, remains repairable,
+  and cannot silently claim that projection was applied. A historical
+  `first_purchase_done` flag without that evidence becomes a stable
+  `legacy_first_purchase_marker` in `manual_review` and cannot block the next
+  genuine first payment
+- Telegram platform payment confirmation and fulfillment are separate states. `PayAttempt`
+  may be `paid` before the account grant exists; every replay resumes the stable
+  XTR provider/order grant until its projection is durably applied, then
+  retries panel provisioning. The processed marker is authoritative only when
+  that applied grant exists, and provisioning never rewrites premium expiry
+- after panel create or replay, the owned panel row is read back and its
+  validated UUID, panel email, and `subId` become the exact local credential.
+  `User`, primary `AccessKey`, applicable `UserNode`, and grant provisioning
+  evidence commit atomically before the processed marker. A legacy panel lane
+  with no positive database node ID is identified by its validated owned
+  `node_code`: it persists the exact `AccessKey` and grant evidence without
+  fabricating `UserNode(node_id=0)`. Missing both node identities or conflicting
+  key provenance keeps fulfillment retryable, and no pre-generated token is
+  exposed as success
+- backfilled provider facts retain whether legacy fulfillment already applied
+  their projection. An explicit fulfilled order, or an old paid record
+  corroborated by a legacy paid projection, replays without adding duration;
+  pending fulfillment remains unapplied and a later valid callback extends once
+- account payment facts are normalized after backfill and merge so exactly the
+  globally earliest successful `(paid_at, provider/order)` fact is first. Only
+  that fact owns the referral hold; later facts are rewritten non-first, while
+  already terminal reward/review state is preserved
+- referral account merges preserve the strongest relationship fields and
+  review state. Duplicate/self/cycle losers remain terminal `superseded`
+  relationship rows under their original account IDs, with provenance
+  transitions; active graph traversal ignores them and transition FK/orphan
+  invariants remain valid on rerun
+- account merge keeps one effective semantic `referral_friend` and
+  `referral_referrer` grant per canonical reward, repairs relationship pointers,
+  and retains duplicate grants as audit-visible `superseded` rows
+- before first payment, trial + Telegram + friend grants are capped at `15 days`
+- the Telegram channel gate applies only when a genuinely new lead requests the
+  trial; payment, renewal, recovery, and support remain ungated
 - `GET /api/bonuses/history` returns an app-safe, compact recent bonus ledger
   built from current platform truth: Telegram channel claim, opening campaign
   mark, promo usage, and feature-flagged wheel/calendar reward claims. It must
@@ -612,7 +690,7 @@ Rules:
 
 - app-first trial reserves premium-grade access for `7 days`; its `5-day`
   consumption clock starts at the first valid internal observer observation
-- channel claim extends that premium window by `+10 days`
+- a new channel claim adds `+5 days`; already-issued `+10 days` grants remain grandfathered
 - once premium expires, auto-downgrade must set `current_plan_code=free_monthly`, not `trial`
 - `free_monthly` keeps `5 GB / 30 days` with device limit `1`
 - after the `5 GB` quota is exhausted, UI and policy should treat the account as `free_soft_mode` until the next free-cycle reset

@@ -22,11 +22,20 @@ from control_panel import ControlPanel
 from copy_catalog import get_copy_text
 from db import SessionLocal, init_db
 from events_service import track_event
-from economy_service import expire_stale_trial_reservations
+from economy_service import (
+    begin_channel_loss_grace,
+    cancel_channel_loss_grace,
+    expire_stale_trial_reservations,
+    migrate_pending_legacy_referral_queue,
+    rebuild_due_entitlement_projections,
+    release_due_referrer_rewards,
+    reverse_due_channel_grants,
+)
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
 from models import (
     CampaignSend,
     Event,
+    EntitlementGrant,
     ExternalOrder,
     ExternalPaymentEvent,
     FunnelEvent,
@@ -34,7 +43,6 @@ from models import (
     NodeHealthSample,
     OpsAlert,
     PayAttempt,
-    ReferralBonusQueue,
     RenderedSubscriptionSnapshot,
     SubscriptionFetchEvent,
     Template,
@@ -492,74 +500,24 @@ def _key_history_log(
 def _process_referral_bonus_queue(*, limit: int = 100) -> dict[str, int]:
     now = _utcnow()
     s = SessionLocal()
-    processed = 0
-    rewarded = 0
-    waiting = 0
-    rejected = 0
     try:
-        rows = (
-            s.query(ReferralBonusQueue)
-            .filter(ReferralBonusQueue.status == "pending", ReferralBonusQueue.ready_at <= now)
-            .order_by(ReferralBonusQueue.id.asc())
-            .limit(max(1, min(int(limit), 1000)))
-            .all()
-        )
-        for row in rows:
-            processed += 1
-            referred = s.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
-            referrer = s.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
-            if not referred or not referrer:
-                row.status = "rejected_missing_user"
-                row.processed_at = now
-                rejected += 1
-                continue
-            has_activity = (
-                s.query(Event.id)
-                .filter(
-                    Event.tg_id == int(referred.tg_id),
-                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
-                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
-                )
-                .first()
-                is not None
-            )
-            age_hours = max(0, int((now - (row.queued_at or now)).total_seconds() // 3600))
-            if not has_activity:
-                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
-                    row.status = "rejected_no_activity"
-                    row.processed_at = now
-                    rejected += 1
-                else:
-                    row.ready_at = now + timedelta(hours=6)
-                    waiting += 1
-                continue
-            ref_sub = str(referrer.sub_type or "").upper().strip()
-            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
-            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
-                row.status = "rejected_referrer_inactive"
-                row.processed_at = now
-                rejected += 1
-                continue
-            row_meta = {}
-            try:
-                parsed_meta = json.loads(getattr(row, "meta", None) or "{}")
-                if isinstance(parsed_meta, dict):
-                    row_meta = parsed_meta
-            except Exception:
-                row_meta = {}
-            if not bool(row_meta.get("counted")):
-                referrer.referral_count = int(referrer.referral_count or 0) + 1
-            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
-            referrer.is_active = True
-            row.status = "rewarded"
-            row.processed_at = now
-            rewarded += 1
+        migration = migrate_pending_legacy_referral_queue(s, now=now, limit=limit)
+        release = release_due_referrer_rewards(s, now=now)
+        rebuild_due_entitlement_projections(s, now=now)
         s.commit()
+        return {
+            "processed": int(migration["migrated"]),
+            "migrated": int(migration["migrated"]),
+            "retryable": int(migration["retryable"]),
+            "rewarded": int(release["released"]),
+            "waiting": int(release["waiting"]),
+            "rejected": int(release["rejected"]),
+        }
     except Exception:
         s.rollback()
+        return {"processed": 0, "migrated": 0, "retryable": 0, "rewarded": 0, "waiting": 0, "rejected": 0}
     finally:
         s.close()
-    return {"processed": processed, "rewarded": rewarded, "waiting": waiting, "rejected": rejected}
 
 
 async def referral_bonus_queue_job() -> None:
@@ -1049,93 +1007,93 @@ async def admin_ops_alert_refresh_job() -> None:
 
 
 async def channel_bonus_guard_job() -> None:
-    last_verify_error_alert_at: datetime | None = None
     while True:
-        channel = (PUBLIC_CHANNEL or "").lstrip("@").strip()
-        if not channel:
-            await asyncio.sleep(900)
-            continue
-
-        now = _utcnow()
-        s = SessionLocal()
         try:
-            rows = (
-                s.query(User)
-                .filter(User.tg_id > 0)
-                .filter(User.channel_bonus_active == True)
-                .filter(or_(User.channel_bonus_expires_at.is_(None), User.channel_bonus_expires_at > now))
-                .all()
-            )
-        finally:
-            s.close()
-
-        for u in rows:
-            is_member, reason = await _telegram_get_chat_member(channel, int(u.tg_id))
-            normalized_reason = _normalize_channel_membership_reason(reason)
-            logger.info(
-                "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
-                int(u.tg_id),
-                reason,
-                normalized_reason,
-                "skip_member" if is_member else "evaluate_non_member",
-            )
-            if is_member:
-                continue
-            if normalized_reason != "not_member":
-                # Do not revoke on transient Telegram/API errors to avoid accidental mass downgrades.
-                logger.warning(
-                    "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
-                    int(u.tg_id),
-                    reason,
-                    normalized_reason,
-                    "skip_transient",
-                )
-                now_alert = _utcnow()
-                if (
-                    int(Settings.ADMIN_ID or 0) > 0
-                    and (last_verify_error_alert_at is None or (now_alert - last_verify_error_alert_at).total_seconds() >= 3600)
-                ):
-                    await _telegram_send_message(
-                        chat_id=int(Settings.ADMIN_ID),
-                        text=(
-                            "⚠️ Проверка подписки на канал работает нестабильно.\n"
-                            f"Причина: `{normalized_reason}` (raw: `{reason}`).\n"
-                            "Откат бонусов временно пропущен."
-                        ),
-                    )
-                    last_verify_error_alert_at = now_alert
-                continue
-            switched = await _switch_user_to_free(tg_id=int(u.tg_id))
-            if switched:
-                logger.info(
-                    "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
-                    int(u.tg_id),
-                    reason,
-                    normalized_reason,
-                    "revoke_bonus",
-                )
-                await _telegram_send_message(
-                    chat_id=int(u.tg_id),
-                    text=(
-                        "ℹ️ Бонусный доступ отключён: подписка на канал не подтверждена.\n\n"
-                        "Подпишитесь на канал, чтобы участвовать в бонусах."
-                    ),
-                )
-                track_event(
-                    tg_id=int(u.tg_id),
-                    event_name="expired",
-                    source="worker",
-                    meta={"flow": "channel_bonus_guard", "reason": normalized_reason, "raw_reason": reason},
-                )
-            else:
-                logger.warning(
-                    "channel_bonus_guard user_id=%s raw_status=%s normalized_reason=%s action=%s",
-                    int(u.tg_id),
-                    reason,
-                    normalized_reason,
-                    "revoke_failed",
-                )
+            result = await channel_bonus_guard_once()
+            if any(int(result.get(key, 0)) for key in ("grace_started", "grace_cancelled", "reversed")):
+                logger.info("channel_bonus_guard result=%s", result)
+        except Exception:
+            logger.exception("channel_bonus_guard failed")
         await asyncio.sleep(900)
+
+
+def _channel_grant_telegram_id(session, grant: EntitlementGrant) -> int:
+    try:
+        metadata = json.loads(str(grant.metadata_json or "{}"))
+    except (TypeError, ValueError):
+        metadata = {}
+    telegram_id = int(metadata.get("telegram_id") or 0) if isinstance(metadata, dict) else 0
+    if telegram_id > 0:
+        return telegram_id
+    users = session.query(User).filter(User.account_id == str(grant.account_id)).order_by(User.tg_id.asc()).all()
+    for user in users:
+        linked = int(user.linked_telegram_id or 0)
+        if linked > 0:
+            return linked
+    for user in users:
+        direct = int(user.tg_id or 0)
+        if 0 < direct < 8_000_000_000_000:
+            return direct
+    return 0
+
+
+async def channel_bonus_guard_once(
+    *,
+    is_channel_member=_telegram_get_chat_member,
+    now: datetime | None = None,
+) -> dict[str, int]:
+    current_now = (now or _utcnow()).replace(microsecond=0)
+    channel = (PUBLIC_CHANNEL or "").lstrip("@").strip()
+    if not channel:
+        return {"checked": 0, "grace_started": 0, "grace_cancelled": 0, "reversed": 0, "transient": 0}
+    session = SessionLocal()
+    checked = 0
+    grace_started = 0
+    grace_cancelled = 0
+    transient = 0
+    try:
+        grants = (
+            session.query(EntitlementGrant)
+            .filter(
+                EntitlementGrant.source.in_(["telegram_channel", "telegram_channel_grandfathered"]),
+                EntitlementGrant.status.in_(["active", "grace"]),
+                EntitlementGrant.reversed_at.is_(None),
+            )
+            .order_by(EntitlementGrant.created_at.asc())
+            .all()
+        )
+        for grant in grants:
+            telegram_id = _channel_grant_telegram_id(session, grant)
+            if telegram_id <= 0:
+                transient += 1
+                continue
+            checked += 1
+            member, reason = await is_channel_member(channel, telegram_id)
+            normalized = _normalize_channel_membership_reason(reason)
+            if member:
+                if cancel_channel_loss_grace(session, account_id=str(grant.account_id), now=current_now):
+                    grace_cancelled += 1
+            elif normalized == "not_member":
+                was_active = str(grant.status) == "active"
+                begin_channel_loss_grace(session, account_id=str(grant.account_id), now=current_now)
+                if was_active:
+                    grace_started += 1
+            else:
+                transient += 1
+        reversal = reverse_due_channel_grants(session, now=current_now)
+        session.commit()
+        return {
+            "checked": checked,
+            "grace_started": grace_started,
+            "grace_cancelled": grace_cancelled,
+            "reversed": int(reversal["reversed"]),
+            "transient": transient,
+        }
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 async def free_cycle_reset_job() -> None:

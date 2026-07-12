@@ -335,11 +335,11 @@ FRIEND_GIFT_ENABLED = _env_bool("FRIEND_GIFT_ENABLED", default=True)
 RUB_CHECKOUT_ENABLED = _env_bool("RUB_CHECKOUT_ENABLED", default=False)
 PAID_CHECKOUT_LAUNCH_APPROVED = _env_bool("PAID_CHECKOUT_LAUNCH_APPROVED", default=False)
 TELEGRAM_STARS_CHECKOUT_ENABLED = _env_bool("TELEGRAM_STARS_CHECKOUT_ENABLED", default=False)
-FRIEND_GIFT_DAYS = max(1, int(os.getenv("FRIEND_GIFT_DAYS", "3")))
+FRIEND_GIFT_DAYS = 5
 FRIEND_GIFT_CAMPAIGN_KEY = (
     (os.getenv("FRIEND_GIFT_CAMPAIGN_KEY") or f"friend_gift_{FRIEND_GIFT_DAYS}d").strip()[:64]
 )
-CHANNEL_PREMIUM_DAYS = max(1, int(os.getenv("CHANNEL_PREMIUM_DAYS", "10")))
+CHANNEL_PREMIUM_DAYS = 5
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
     "a": "💳 Продлить или начать",
@@ -738,14 +738,18 @@ def _naive_utc(dt: datetime | None) -> datetime | None:
 #               DATABASE
 # ==========================================
 from db import SessionLocal, init_db
+import channel_bonus_service
+from economy_service import create_referral_relationship, record_successful_payment_grant
 from account_foundation_service import (
     ensure_user_account_foundation,
 )
 from models import (
     Achievement,
+    AccessKey,
     AdminAudit,
     AppSetting,
     CampaignSend,
+    EntitlementGrant,
     Event,
     FamilySlot,
     GiftCard,
@@ -755,6 +759,7 @@ from models import (
     PointsLedger,
     PromoCode,
     PromoUsage,
+    ReferralRelationship,
     Review,
     StartLink,
     SupportTicket,
@@ -867,6 +872,212 @@ def _mark_stars_payment_processed(*, payment_fingerprint: str, invoice_payload: 
         logger.warning("stars payment dedupe marker failed key=%s tg_id=%s", key, tg_id)
     finally:
         s.close()
+
+
+def _stars_entitlement_projection_applied(payment_fingerprint: str) -> bool:
+    order_id = str(payment_fingerprint or "").strip()
+    if not order_id:
+        return False
+    s = Session()
+    try:
+        grant = (
+            s.query(EntitlementGrant)
+            .filter(
+                EntitlementGrant.source == "provider_payment",
+                EntitlementGrant.provider == "stars",
+                EntitlementGrant.external_order_id == order_id,
+                EntitlementGrant.status.in_(["active", "expired"]),
+            )
+            .first()
+        )
+        if grant is None or str(grant.grant_kind or "") != "paid_access":
+            return False
+        try:
+            metadata = json.loads(str(grant.metadata_json or "{}"))
+        except (TypeError, ValueError):
+            return False
+        return isinstance(metadata, dict) and bool(metadata.get("projection_already_applied"))
+    finally:
+        s.close()
+
+
+def _stars_fulfillment_retry_keyboard(payment_grant_id: str) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    grant_id = str(payment_grant_id or "").strip()
+    if grant_id:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="🔄 Повторить выдачу доступа",
+                    callback_data=f"retry_stars:{grant_id}",
+                )
+            ]
+        )
+    rows.extend(
+        [
+            [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def _send_stars_fulfillment_retry(message: Message, *, payment_grant_id: str) -> None:
+    await message.answer(
+        "❌ Не получилось обновить доступ. Оплата сохранена — нажмите «Повторить выдачу доступа».",
+        reply_markup=_stars_fulfillment_retry_keyboard(payment_grant_id),
+    )
+
+
+def _validated_owned_panel_client(*, tg_id: int, panel_client: dict | None) -> dict[str, object]:
+    client = dict(panel_client or {})
+    client_uuid = str(client.get("id") or "").strip()
+    panel_email = str(client.get("email") or "").strip()
+    sub_id = str(client.get("subId") or "").strip()
+    panel_tg_id = str(client.get("tgId") or "").strip()
+    node_code = str(client.get("_node_code") or "").strip()
+    try:
+        normalized_uuid = str(uuid.UUID(client_uuid))
+    except (TypeError, ValueError, AttributeError):
+        raise ValueError("panel client UUID is missing or invalid")
+    if panel_tg_id and panel_tg_id != str(int(tg_id)):
+        raise ValueError("panel client ownership mismatch")
+    if not panel_email or len(panel_email) > 100 or any(ch in panel_email for ch in "\r\n\x00"):
+        raise ValueError("panel email is missing or invalid")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{16,64}", sub_id):
+        raise ValueError("panel subId is missing or invalid")
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,32}", node_code):
+        raise ValueError("panel node provenance is missing or invalid")
+    try:
+        node_id = int(client.get("_node_id") or 0)
+    except (TypeError, ValueError):
+        node_id = 0
+    return {
+        "client_uuid": normalized_uuid,
+        "panel_email": panel_email,
+        "sub_id": sub_id,
+        "node_code": node_code,
+        "node_id": node_id,
+    }
+
+
+def _reconcile_owned_panel_client(
+    *,
+    tg_id: int,
+    panel_client: dict | None,
+    provider_order_id: str,
+) -> dict[str, object]:
+    credential = _validated_owned_panel_client(tg_id=int(tg_id), panel_client=panel_client)
+    now = _utcnow().replace(microsecond=0)
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).with_for_update().one()
+        grant = (
+            session.query(EntitlementGrant)
+            .filter_by(provider="stars", external_order_id=str(provider_order_id))
+            .with_for_update()
+            .one()
+        )
+        try:
+            grant_metadata = json.loads(str(grant.metadata_json or "{}"))
+        except (TypeError, ValueError):
+            grant_metadata = {}
+        if (
+            str(grant.grant_kind or "") != "paid_access"
+            or not isinstance(grant_metadata, dict)
+            or not bool(grant_metadata.get("projection_already_applied"))
+        ):
+            raise ValueError("Stars entitlement projection is not applied")
+
+        user.uuid = str(credential["client_uuid"])
+        user.email = str(credential["panel_email"])
+        user.sub_token = str(credential["sub_id"])
+
+        access_key = (
+            session.query(AccessKey)
+            .filter_by(tg_id=int(tg_id), node_code=str(credential["node_code"]))
+            .with_for_update()
+            .one_or_none()
+        )
+        if access_key is None:
+            access_key = (
+                session.query(AccessKey)
+                .filter_by(tg_id=int(tg_id), key_uuid=str(credential["client_uuid"]))
+                .with_for_update()
+                .one_or_none()
+            )
+            if (
+                access_key is not None
+                and access_key.node_code
+                and str(access_key.node_code) != str(credential["node_code"])
+            ):
+                raise ValueError("panel client node provenance mismatch")
+        if access_key is None:
+            access_key = AccessKey(
+                tg_id=int(tg_id),
+                key_uuid=str(credential["client_uuid"]),
+                panel_email=str(credential["panel_email"]),
+                node_code=str(credential["node_code"]),
+                pool_code="premium_pool",
+                state="active",
+                source="stars_panel_reconcile",
+                is_primary=True,
+                provisioned_at=now,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(access_key)
+        else:
+            access_key.key_uuid = str(credential["client_uuid"])
+            access_key.panel_email = str(credential["panel_email"])
+            access_key.node_code = str(credential["node_code"])
+            access_key.pool_code = "premium_pool"
+            access_key.state = "active"
+            access_key.is_primary = True
+            access_key.provisioned_at = access_key.provisioned_at or now
+            access_key.updated_at = now
+
+        if int(credential["node_id"]) > 0:
+            user_node = (
+                session.query(UserNode)
+                .filter_by(tg_id=int(tg_id), node_id=int(credential["node_id"]))
+                .with_for_update()
+                .one_or_none()
+            )
+            if user_node is None:
+                session.add(
+                    UserNode(
+                        tg_id=int(tg_id),
+                        node_id=int(credential["node_id"]),
+                        client_uuid=str(credential["client_uuid"]),
+                        panel_email=str(credential["panel_email"]),
+                        created_at=now,
+                    )
+                )
+            else:
+                user_node.client_uuid = str(credential["client_uuid"])
+                user_node.panel_email = str(credential["panel_email"])
+
+        grant_metadata["panel_credentials_reconciled"] = True
+        grant_metadata["panel_credentials_reconciled_at"] = now.isoformat()
+        grant_metadata["panel_node_code"] = str(credential["node_code"])
+        grant_metadata["panel_node_evidence"] = (
+            "user_node" if int(credential["node_id"]) > 0 else "legacy_access_key"
+        )
+        grant.metadata_json = json.dumps(
+            grant_metadata,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        grant.updated_at = now
+        session.commit()
+        return credential
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 # Achievement definitions: id -> {name, description, reward_days, condition}
 ACHIEVEMENTS = {
@@ -1226,19 +1437,39 @@ def get_user_by_referral_code(code: str) -> Optional[int]:
     return tg_id
 
 def set_referrer(tg_id: int, referrer_id: int) -> bool:
-    """Set referrer for a user (only if not already set)"""
+    """Project one canonical account referral relationship into legacy user fields."""
     if tg_id == referrer_id:
-        return False  # Can't refer yourself
+        return False
     session = Session()
-    user = session.query(User).filter_by(tg_id=tg_id).first()
-    referrer = session.query(User).filter_by(tg_id=referrer_id).first()
-    if user and not user.referrer_id and referrer:
+    try:
+        user = session.query(User).filter_by(tg_id=tg_id).first()
+        referrer = session.query(User).filter_by(tg_id=referrer_id).first()
+        if not user or not referrer:
+            return False
+        ensure_user_account_foundation(session, user, now=_utcnow())
+        ensure_user_account_foundation(session, referrer, now=_utcnow())
+        session.flush()
+        existing = session.query(ReferralRelationship).filter_by(referred_account_id=str(user.account_id)).first()
+        if existing is not None:
+            if str(existing.referrer_account_id) == str(referrer.account_id):
+                user.referrer_id = int(referrer_id)
+                session.commit()
+            return False
+        create_referral_relationship(
+            session,
+            referred_account_id=str(user.account_id),
+            referrer_account_id=str(referrer.account_id),
+            source="bot_code",
+            now=_utcnow(),
+        )
         user.referrer_id = referrer_id
         session.commit()
-        session.close()
         return True
-    session.close()
-    return False
+    except ValueError:
+        session.rollback()
+        return False
+    finally:
+        session.close()
 
 def set_referrer_by_code(tg_id: int, referral_code: str) -> bool:
     """Link user to their referrer by referral code"""
@@ -1618,37 +1849,21 @@ async def _try_activate_friend_gift_bonus(
 
     if _is_paid_active_user(user):
         return False, "already_paid_active"
-    if _campaign_claimed(tg_id=tg_id, campaign_key=FRIEND_GIFT_CAMPAIGN_KEY):
-        return False, "already_claimed"
-
-    promo_tariff = {
-        "name": f"🎁 Подарок от друга ({FRIEND_GIFT_DAYS} дня)",
-        "stars": 0,
-        "days": int(FRIEND_GIFT_DAYS),
-        "gb": 0,
-        "subId": "FRIEND_GIFT",
-        "sub_type": "BONUS",
-    }
-    await create_subscription(message, tg_id, promo_tariff, bot)
-    set_referrer_by_code(tg_id, ref_code)
-    if not _mark_campaign_claim_once(tg_id=tg_id, campaign_key=FRIEND_GIFT_CAMPAIGN_KEY):
-        logger.warning(
-            "friend gift activated without campaign mark tg_id=%s campaign_key=%s",
-            int(tg_id),
-            FRIEND_GIFT_CAMPAIGN_KEY,
-        )
+    linked_now = set_referrer_by_code(tg_id, ref_code)
+    if not linked_now:
+        return False, "already_linked"
 
     track_event(
         tg_id=int(tg_id),
-        event_name="promo_friend_gift_activated",
+        event_name="promo_friend_referral_linked",
         source="bot",
         meta={
             "campaign_key": FRIEND_GIFT_CAMPAIGN_KEY,
             "referral_code": ref_code,
-            "days": int(FRIEND_GIFT_DAYS),
+            "days_pending_server_evidence": 5,
         },
     )
-    return True, "activated"
+    return True, "linked_waiting_evidence"
 
 
 def _channel_name_for_url() -> str:
@@ -1943,13 +2158,39 @@ def _channel_bonus_ineligible_reason(*, tg_id: int, user: User | None) -> str | 
         return "Бонус за канал уже был активирован для этого аккаунта."
     if _campaign_claimed(tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY):
         return "Для этого аккаунта уже активирован промо-бонус по ссылке."
-    if _is_paid_active_user(user):
-        return "У вас уже активен премиум-доступ."
     return None
 
 
 def _channel_bonus_eligible(*, tg_id: int, user: User | None) -> bool:
     return _channel_bonus_ineligible_reason(tg_id=tg_id, user=user) is None
+
+
+def _channel_acquisition_gate_blocks(*, user: User | None, action: str, is_member: bool) -> bool:
+    if bool(is_member):
+        return False
+    action_key = str(action or "").strip().lower()
+    if action_key not in {"acquisition", "trial"}:
+        return False
+    if user is None:
+        return True
+    is_genuinely_new = (
+        not bool(user.first_purchase_done)
+        and not bool(user.trial_used)
+        and user.channel_bonus_claimed_at is None
+        and str(user.sub_type or "").strip().upper() in {"", "FREE", "PENDING"}
+    )
+    return bool(is_genuinely_new)
+
+
+def _channel_acquisition_gate_keyboard(retry_callback_data: str) -> InlineKeyboardMarkup:
+    channel_name = _channel_name_for_url()
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Подписаться на канал", url=f"https://t.me/{channel_name}")],
+            [InlineKeyboardButton(text="✅ Проверить подписку", callback_data=str(retry_callback_data))],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        ]
+    )
 
 
 def _channel_bonus_keyboard(next_action: str) -> InlineKeyboardMarkup:
@@ -1999,34 +2240,27 @@ async def _activate_channel_bonus(
     if not check_tos_accepted(tg_id):
         return False, "tos_required"
 
-    user = get_user(tg_id)
-    if not _channel_bonus_eligible(tg_id=tg_id, user=user):
-        return False, "not_eligible"
-
-    if not await check_subscription(tg_id, bot):
-        return False, "not_subscribed"
-
-    bonus_tariff = {
-        "name": f"🎁 Бонус за канал ({CHANNEL_PREMIUM_DAYS} дней)",
-        "stars": 0,
-        "days": int(CHANNEL_PREMIUM_DAYS),
-        "gb": 0,
-        "subId": "CHANNEL_BONUS",
-        "sub_type": "BONUS",
-    }
-    await create_subscription(message, tg_id, bonus_tariff, bot)
-
-    now = _utcnow()
     session = Session()
     try:
         db_user = session.query(User).filter_by(tg_id=int(tg_id)).first()
         if not db_user:
             return False, "user_not_found"
-        db_user.channel_bonus_claimed_at = db_user.channel_bonus_claimed_at or now
-        db_user.channel_bonus_active = True
-        db_user.channel_bonus_expires_at = db_user.expiry_at
-        db_user.channel_bonus_revoked_at = None
-        session.commit()
+
+        async def _bot_membership(_channel: str, telegram_id: int) -> tuple[bool, str]:
+            is_member = await check_subscription(int(telegram_id), bot)
+            return bool(is_member), "member" if is_member else "not_member"
+
+        result = await channel_bonus_service.claim_channel_bonus(
+            s=session,
+            user=db_user,
+            tg_id=int(tg_id),
+            public_channel=PUBLIC_CHANNEL,
+            bonus_days=CHANNEL_PREMIUM_DAYS,
+            opening_bonus_campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY,
+            subscriber_campaign_key="channel_subscriber_v2",
+            points_expiry_days=max(1, int(os.getenv("POINTS_EXPIRY_DAYS", "90"))),
+            is_channel_member=_bot_membership,
+        )
     except Exception:
         session.rollback()
         return False, "db_error"
@@ -2039,7 +2273,7 @@ async def _activate_channel_bonus(
         source="bot",
         meta={"days": int(CHANNEL_PREMIUM_DAYS), "channel": f"@{_channel_name_for_url()}"},
     )
-    return True, "activated"
+    return True, "already_claimed" if bool(result.get("already_claimed")) else "activated"
 
 
 # ==========================================
@@ -3830,13 +4064,13 @@ async def cmd_start(message: Message):
             )
             if activated:
                 await message.answer(
-                    f"🎁 Подарок активирован: +{FRIEND_GIFT_DAYS} дня доступа.",
+                    f"🎁 Приглашение принято. +{FRIEND_GIFT_DAYS} дней добавятся после первого подтверждённого подключения.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
                 return
-            if reason == "already_claimed":
+            if reason == "already_linked":
                 await message.answer(
-                    "🎁 Этот подарок уже был активирован для вашего аккаунта.\n\n"
+                    "🎁 Приглашение уже привязано к вашему аккаунту. Бонус ждёт первого подтверждённого подключения.\n\n"
                     "Открываю главное меню.",
                     reply_markup=main_keyboard(tg_id),
                 )
@@ -8752,14 +8986,16 @@ async def _activate_trial_tariff(
     tariff = TARIFFS["trial"]
 
     is_subscribed = await check_subscription(tg_id, bot)
-    if not is_subscribed:
+    if _channel_acquisition_gate_blocks(user=user, action="trial", is_member=is_subscribed):
         channel_name = _channel_name_for_url()
         await callback.message.answer(
-            "🎁 *5 дней бесплатно можно включить уже сейчас.*\n\n"
-            "Если подпишетесь на канал, потом сможете забрать ещё бонусные дни.\n"
-            f"Канал: https://t.me/{channel_name}",
+            "📢 *Бесплатный старт доступен новым участникам канала.*\n\n"
+            f"Подпишитесь на https://t.me/{channel_name}, затем нажмите «Проверить подписку».",
+            reply_markup=_channel_acquisition_gate_keyboard(retry_callback_data),
             parse_mode=ParseMode.MARKDOWN,
         )
+        await callback.answer("Сначала подтвердите подписку", show_alert=False)
+        return
 
     now = _utcnow()
     current_sub = _normalize_sub_type(user.sub_type if user else "")
@@ -9357,8 +9593,10 @@ async def payment_success(message: Message, bot: Bot):
         payload,
     )
     if payment_fingerprint and _stars_payment_already_processed(payment_fingerprint):
-        logger.info("payment_success duplicate ignored payload=%s fp=%s", payload, payment_fingerprint)
-        return
+        if not payload.startswith("portal_") or _stars_entitlement_projection_applied(payment_fingerprint):
+            logger.info("payment_success duplicate ignored payload=%s fp=%s", payload, payment_fingerprint)
+            return
+        logger.warning("payment_success resuming incomplete Stars fulfillment payload=%s", payload)
 
     # Handle gift card purchase
     if payload.startswith("giftcard_"):
@@ -9444,17 +9682,8 @@ async def payment_success(message: Message, bot: Bot):
             return
 
         tariff = TARIFFS.get(tariff_key)
-        
+
         if tariff:
-            attempt = get_attempt_by_payload(invoice_payload=payload)
-            if attempt and str(getattr(attempt, "status", "") or "").strip().lower() == "paid":
-                logger.info("payment_success duplicate portal payload=%s attempt_id=%s", payload, getattr(attempt, "id", None))
-                _mark_stars_payment_processed(
-                    payment_fingerprint=payment_fingerprint,
-                    invoice_payload=payload,
-                    tg_id=tg_id,
-                )
-                return
             logger.info("payment_success portal parsed: tg_id=%s tariff_key=%s stars=%s", tg_id, tariff_key, tariff.get("stars"))
             mark_paid(attempt_id=attempt_id, invoice_payload=payload)
             if points_used > 0:
@@ -9472,7 +9701,17 @@ async def payment_success(message: Message, bot: Bot):
                 },
             )
             await message.answer(bot_text("bot.payment.success"), parse_mode=ParseMode.MARKDOWN)
-            await create_subscription(message, tg_id, tariff, bot, paid_amount_stars=int(payment.total_amount), pay_attempt_id=attempt_id)
+            fulfilled = await create_subscription(
+                message,
+                tg_id,
+                tariff,
+                bot,
+                paid_amount_stars=int(payment.total_amount),
+                pay_attempt_id=attempt_id,
+                provider_order_id=str(getattr(payment, "telegram_payment_charge_id", "") or payment_fingerprint),
+            )
+            if not fulfilled:
+                return
             _mark_stars_payment_processed(
                 payment_fingerprint=payment_fingerprint,
                 invoice_payload=payload,
@@ -9546,14 +9785,17 @@ async def payment_success(message: Message, bot: Bot):
                 },
             )
             await message.answer(bot_text("bot.payment.success"), parse_mode=ParseMode.MARKDOWN)
-            await create_subscription(
+            fulfilled = await create_subscription(
                 message,
                 int(payer_tg_id),
                 tariff,
                 bot,
                 paid_amount_stars=int(payment.total_amount),
                 pay_attempt_id=int(fallback_attempt.id),
+                provider_order_id=str(getattr(payment, "telegram_payment_charge_id", "") or payment_fingerprint),
             )
+            if not fulfilled:
+                return
             _mark_stars_payment_processed(
                 payment_fingerprint=payment_fingerprint,
                 invoice_payload=payload,
@@ -9570,6 +9812,66 @@ async def payment_success(message: Message, bot: Bot):
     )
     await message.answer("✅ Оплата получена. Откройте POKROV и нажмите «Подключить». Если доступ не обновился, напишите в поддержку.")
 
+
+@router.callback_query(F.data.startswith("retry_stars:"))
+async def retry_stars_fulfillment(callback: CallbackQuery, bot: Bot) -> None:
+    grant_id = str(callback.data or "").replace("retry_stars:", "", 1).strip()
+    if not grant_id:
+        await callback.answer("Не удалось найти оплату", show_alert=True)
+        return
+
+    session = Session()
+    try:
+        grant = session.query(EntitlementGrant).filter_by(id=grant_id).one_or_none()
+        if (
+            grant is None
+            or int(grant.legacy_tg_id or 0) != int(callback.from_user.id)
+            or str(grant.provider or "").lower() != "stars"
+            or str(grant.grant_kind or "") != "paid_access"
+            or str(grant.status or "").lower() not in {"active", "grace"}
+            or not str(grant.external_order_id or "").strip()
+        ):
+            await callback.answer("Эта оплата недоступна для повторной выдачи", show_alert=True)
+            return
+        external_order_id = str(grant.external_order_id)
+        plan_code = str(grant.plan_code or "").strip().lower()
+        duration_days = int(grant.duration_days or 0)
+    finally:
+        session.close()
+
+    if _stars_payment_already_processed(external_order_id):
+        await callback.answer("Доступ уже выдан", show_alert=False)
+        return
+    tariff = next(
+        (
+            value
+            for value in TARIFFS.values()
+            if int(value.get("stars") or 0) > 0
+            and str(value.get("subId") or "").strip().lower() == plan_code
+            and int(value.get("days") or 0) == duration_days
+        ),
+        None,
+    )
+    if tariff is None:
+        await callback.answer("Тариф не найден — напишите в поддержку", show_alert=True)
+        return
+
+    await callback.answer("Повторяю выдачу доступа…", show_alert=False)
+    fulfilled = await create_subscription(
+        callback.message,
+        int(callback.from_user.id),
+        tariff,
+        bot,
+        provider_order_id=external_order_id,
+    )
+    if not fulfilled:
+        return
+    _mark_stars_payment_processed(
+        payment_fingerprint=external_order_id,
+        invoice_payload=f"retry_grant:{grant_id}",
+        tg_id=int(callback.from_user.id),
+    )
+
 async def create_subscription(
     message: Message,
     tg_id: int,
@@ -9577,43 +9879,129 @@ async def create_subscription(
     bot: Bot,
     paid_amount_stars: int | None = None,
     pay_attempt_id: int | None = None,
+    provider_order_id: str | None = None,
 ):
     """Create or extend subscription"""
-    user = get_user(tg_id)
-    panel_client = await panel.get_existing_client(tg_id)
-    
     # Check if this is a PAID purchase (for referral bonus)
     is_paid_purchase = tariff["stars"] > 0
-    
+    first_paid_purchase = False
+    referral_tg_id = 0
+    stable_order_id = ""
+    payment_grant_id = ""
+
+    # Account entitlement is the durable fulfillment authority. Persist it before
+    # retryable panel/provisioning work so a provider-confirmed payment cannot be lost.
+    if is_paid_purchase:
+        ensure_pending_user(int(tg_id))
+        session = Session()
+        try:
+            db_user = session.query(User).filter_by(tg_id=int(tg_id)).one()
+            ensure_user_account_foundation(session, db_user, now=_utcnow())
+            session.flush()
+            referral_tg_id = int(db_user.referrer_id or 0)
+            if referral_tg_id > 0:
+                referrer = session.query(User).filter_by(tg_id=referral_tg_id).one_or_none()
+                if referrer is not None:
+                    ensure_user_account_foundation(session, referrer, now=_utcnow())
+                    session.flush()
+                    create_referral_relationship(
+                        session,
+                        referred_account_id=str(db_user.account_id),
+                        referrer_account_id=str(referrer.account_id),
+                        source="legacy_referrer_projection",
+                        now=_utcnow(),
+                    )
+            stable_order_id = str(provider_order_id or f"pay-attempt:{int(pay_attempt_id or 0)}:{int(tg_id)}")
+            payment_result = record_successful_payment_grant(
+                session,
+                account_id=str(db_user.account_id),
+                legacy_tg_id=int(tg_id),
+                provider="stars",
+                order_id=stable_order_id,
+                plan_code=str(tariff.get("subId") or tariff.get("sub_type") or "stars_paid").lower(),
+                duration_days=int(tariff["days"]),
+                paid_at=_utcnow(),
+            )
+            payment_grant_id = str(payment_result.grant.id)
+            first_paid_purchase = bool(payment_result.is_first_payment)
+            try:
+                grant_metadata = json.loads(str(payment_result.grant.metadata_json or "{}"))
+            except (TypeError, ValueError):
+                grant_metadata = {}
+            if not isinstance(grant_metadata, dict):
+                grant_metadata = {}
+            if not bool(grant_metadata.get("stars_amount_recorded")):
+                db_user.stars_paid = int(db_user.stars_paid or 0) + int(tariff["stars"] or 0)
+                grant_metadata["stars_amount_recorded"] = True
+                grant_metadata["stars_amount"] = int(tariff["stars"] or 0)
+                payment_result.grant.metadata_json = json.dumps(
+                    grant_metadata,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            db_user.pending_discount_pct = None
+            db_user.pending_discount_code = None
+            db_user.pending_discount_set_at = None
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    user = get_user(tg_id)
+    try:
+        panel_client = await panel.get_existing_client(tg_id)
+    except Exception:
+        if is_paid_purchase:
+            await _send_stars_fulfillment_retry(message, payment_grant_id=payment_grant_id)
+            return False
+        raise
+
     if panel_client:
+        if is_paid_purchase:
+            try:
+                _reconcile_owned_panel_client(
+                    tg_id=int(tg_id),
+                    panel_client=panel_client,
+                    provider_order_id=stable_order_id,
+                )
+            except Exception:
+                await _send_stars_fulfillment_retry(message, payment_grant_id=payment_grant_id)
+                return False
         # User exists in panel - update DB and add traffic
         client_uuid = panel_client.get("id")
         if user:
-            old_sub = _normalize_sub_type(user.sub_type)
-            new_sub = _normalize_sub_type(tariff.get("sub_type") or tariff.get("subId"))
-            # Freemium -> PAID must start from "now", not from legacy long expiry.
-            if _is_freemium_sub_type(old_sub) and new_sub == "PAID":
-                reset_user_expiry_from_now(tg_id, tariff["days"], tariff["stars"])
-            else:
+            if not is_paid_purchase:
                 extend_user(tg_id, tariff["days"], tariff["stars"])
-            # Keep current plan label in DB for status/admin.
-            session = Session()
-            db_user = session.query(User).filter_by(tg_id=tg_id).first()
-            if db_user:
-                db_user.sub_type = tariff.get("sub_type") or db_user.sub_type
-                if not str(db_user.sub_token or "").strip():
-                    db_user.sub_token = generate_sub_token()
-                    logger.info("generated missing sub_token for existing user tg_id=%s", int(tg_id))
-                if _is_freemium_sub_type(db_user.sub_type):
-                    mark_user_became_free(db_user)
-                session.commit()
-            session.close()
+                # Keep current plan label in DB for non-payment flows.
+                session = Session()
+                db_user = session.query(User).filter_by(tg_id=tg_id).first()
+                if db_user:
+                    db_user.sub_type = tariff.get("sub_type") or db_user.sub_type
+                    if not str(db_user.sub_token or "").strip():
+                        db_user.sub_token = generate_sub_token()
+                        logger.info("generated missing sub_token for existing user tg_id=%s", int(tg_id))
+                    if _is_freemium_sub_type(db_user.sub_type):
+                        mark_user_became_free(db_user)
+                    session.commit()
+                session.close()
         else:
             create_user(tg_id, panel_client.get("id"), panel_client.get("email"), 
                        tariff.get("sub_type") or tariff["subId"], tariff["days"], tariff["gb"], tariff["stars"])
         
-        # Add traffic to existing client
-        await panel.update_client_traffic(tg_id, tariff["gb"])
+        # Add traffic to existing client. A false result is a retryable panel failure.
+        try:
+            traffic_updated = bool(await panel.update_client_traffic(tg_id, tariff["gb"]))
+        except Exception:
+            traffic_updated = False
+        if not traffic_updated:
+            if is_paid_purchase:
+                await _send_stars_fulfillment_retry(message, payment_grant_id=payment_grant_id)
+            else:
+                await message.answer("❌ Не получилось обновить доступ. Попробуйте ещё раз или напишите в поддержку.")
+            return False
     else:
         # Create new in panel
         user_uuid = str(uuid.uuid4())
@@ -9624,63 +10012,63 @@ async def create_subscription(
         
         # 3x-ui "subId" in this project is the per-user subscription token, not the tariff.
         # The 3rd argument here is our internal plan marker to decide which nodes to provision.
-        success = await panel.add_client(user_uuid, email, tariff.get("sub_type") or tariff["subId"], tariff["gb"], tg_id, sub_token)
+        try:
+            success = await panel.add_client(user_uuid, email, tariff.get("sub_type") or tariff["subId"], tariff["gb"], tg_id, sub_token)
+        except Exception:
+            success = False
         
         if not success:
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
-                [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
-            ])
-            await message.answer("❌ Не получилось включить доступ.\n\nНажмите кнопку ниже, и поддержка подскажет, что делать дальше.", reply_markup=kb)
-            return
-        
-        # Create user in DB with the generated sub_token
-        new_user = create_user(tg_id, user_uuid, email, tariff.get("sub_type") or tariff["subId"], tariff["days"], tariff["gb"], tariff["stars"])
-        # Update sub_token (create_user generates its own, but we need the one sent to panel)
-        session = Session()
-        db_user = session.query(User).filter_by(tg_id=tg_id).first()
-        if db_user:
-            db_user.sub_token = sub_token
-            session.commit()
-        session.close()
+            if is_paid_purchase:
+                await _send_stars_fulfillment_retry(message, payment_grant_id=payment_grant_id)
+            else:
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="💬 Написать в поддержку", url=f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new")],
+                    [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
+                ])
+                await message.answer("❌ Не получилось включить доступ.\n\nНажмите кнопку ниже, и поддержка подскажет, что делать дальше.", reply_markup=kb)
+            return False
+
+        if is_paid_purchase:
+            try:
+                created_panel_client = await panel.get_existing_client(tg_id)
+                _reconcile_owned_panel_client(
+                    tg_id=int(tg_id),
+                    panel_client=created_panel_client,
+                    provider_order_id=stable_order_id,
+                )
+            except Exception:
+                await _send_stars_fulfillment_retry(message, payment_grant_id=payment_grant_id)
+                return False
+        else:
+            create_user(
+                tg_id,
+                user_uuid,
+                email,
+                tariff.get("sub_type") or tariff["subId"],
+                tariff["days"],
+                tariff["gb"],
+                tariff["stars"],
+            )
+            # create_user generates a token; keep the one provisioned in panel.
+            session = Session()
+            db_user = session.query(User).filter_by(tg_id=tg_id).first()
+            if db_user:
+                db_user.sub_token = sub_token
+                session.commit()
+            session.close()
     
     # Keep legacy trial flag only for actual TRIAL plans (not used by default).
     sub_type = (tariff.get("sub_type") or "").upper()
     if tariff["stars"] == 0 and sub_type.startswith("TRIAL"):
         mark_trial_used(tg_id)
     
-    # 🎁 Award referral bonus days for every paid purchase
-    if is_paid_purchase:
-        # Mark that user has used their 20% discount
-        mark_first_purchase_done(tg_id)
-        clear_pending_discount(tg_id)
-        
-        user = get_user(tg_id)
-        if user and user.referrer_id:
-            try:
-                bonus_success = await award_referral_bonus(user.referrer_id, REFERRAL_BONUS_DAYS)
-                if bonus_success:
-                    if paid_amount_stars and int(paid_amount_stars) > 0:
-                        award_referral_points(
-                            tg_id=int(user.referrer_id),
-                            paid_stars=int(paid_amount_stars),
-                            ref_tg_id=int(tg_id),
-                            pay_attempt_id=pay_attempt_id,
-                        )
-                    # Notify referrer about bonus
-                    try:
-                        await bot.send_message(
-                            user.referrer_id,
-                            "🎁 *Бонус!*\n\n"
-                            "Ваш друг пополнил подписку!\n"
-                            f"Вам начислено *+{REFERRAL_BONUS_DAYS} дней*!\n\n"
-                            "_Спасибо, что рекомендуете наш сервис!_",
-                            parse_mode=ParseMode.MARKDOWN
-                        )
-                    except:
-                        pass  # Referrer may have blocked bot
-            except Exception as e:
-                print(f"Referral bonus error: {e}")
+    if is_paid_purchase and first_paid_purchase and referral_tg_id > 0 and paid_amount_stars and int(paid_amount_stars) > 0:
+        award_referral_points(
+            tg_id=referral_tg_id,
+            paid_stars=int(paid_amount_stars),
+            ref_tg_id=int(tg_id),
+            pay_attempt_id=pay_attempt_id,
+        )
     
     # 🔥 Update streak and bonus only for paid purchases.
     if is_paid_purchase:
@@ -9722,6 +10110,7 @@ async def create_subscription(
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
+    return True
 
 
 # ==========================================
@@ -10804,28 +11193,6 @@ async def admin_gift(message: Message, bot: Bot):
         ensure_user_account_foundation(session, new_user, now=_utcnow())
         session.commit()
         session.close()
-    
-    # 🎁 Referral bonus (gift counts as purchase)
-    mark_first_purchase_done(gift_tg_id)
-    user = get_user(gift_tg_id)
-    if user and user.referrer_id:
-        try:
-            bonus_success = await award_referral_bonus(user.referrer_id, REFERRAL_BONUS_DAYS)
-            if bonus_success:
-                # Notify referrer about bonus
-                try:
-                    await bot.send_message(
-                        user.referrer_id,
-                        "🎁 *Бонус!*\n\n"
-                        "Ваш друг получил подписку!\n"
-                        f"Вам начислено *+{REFERRAL_BONUS_DAYS} дней*!\n\n"
-                        "_Спасибо, что рекомендуете наш сервис!_",
-                        parse_mode=ParseMode.MARKDOWN
-                    )
-                except:
-                    pass
-        except Exception as e:
-            print(f"Referral bonus error: {e}")
     
     await message.answer(
         f"✅ Подарок отправлен!\n\n👤 ID: `{gift_tg_id}`\n📦 Тариф: {name}\n📅 Дней: {days}",

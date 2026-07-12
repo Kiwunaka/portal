@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Awaitable, Callable
 
 import aiohttp
 from fastapi import HTTPException
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 import db
 from config import Settings
 from control_panel import ControlPanel
+from economy_service import CHANNEL_GRANT_DAYS, GRANDFATHERED_CHANNEL_GRANT_DAYS, grant_channel_bonus
 from events_service import track_event
-from models import CampaignSend, User
+from models import CampaignSend, EntitlementGrant, User
 from points_service import award_points
 
 
@@ -150,7 +152,7 @@ async def build_channel_subscriber_check_response(
             "link_required": True,
             "claim_required": False,
             "already_claimed": bool(already_claimed),
-            "bonus_days": int(bonus_days),
+            "bonus_days": CHANNEL_GRANT_DAYS,
         }
 
     is_member, reason = await is_channel_member(channel_username, membership_tg_id)
@@ -164,7 +166,7 @@ async def build_channel_subscriber_check_response(
             "link_required": False,
             "claim_required": False,
             "already_claimed": bool(already_claimed),
-            "bonus_days": int(bonus_days),
+            "bonus_days": CHANNEL_GRANT_DAYS,
         }
 
     return {
@@ -176,8 +178,22 @@ async def build_channel_subscriber_check_response(
         "link_required": False,
         "claim_required": not already_claimed,
         "already_claimed": bool(already_claimed),
-        "bonus_days": int(bonus_days),
+        "bonus_days": CHANNEL_GRANT_DAYS,
     }
+
+
+def _channel_grant_for_account(session, *, account_id: str) -> EntitlementGrant | None:
+    if not str(account_id or "").strip():
+        return None
+    return (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.account_id == str(account_id),
+            EntitlementGrant.source.in_(["telegram_channel", "telegram_channel_grandfathered"]),
+        )
+        .order_by(EntitlementGrant.created_at.asc())
+        .first()
+    )
 
 
 async def claim_channel_bonus(
@@ -206,6 +222,24 @@ async def claim_channel_bonus(
     if (user.sub_type or "").upper() == "MANUAL":
         _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "manual_account"})
         raise HTTPException(status_code=400, detail="Bonus is disabled for manual accounts")
+    account_id = str(user.account_id or "").strip()
+    existing_grant = _channel_grant_for_account(s, account_id=account_id)
+    if existing_grant is not None:
+        days = int(existing_grant.duration_days or CHANNEL_GRANT_DAYS)
+        _track_bonus_event(
+            tg_id=tg_id,
+            event_name="promo_channel_already_claimed",
+            meta={"days": days, "claimed_at": _safe_iso(existing_grant.activated_at)},
+        )
+        return {
+            "ok": True,
+            "already_claimed": True,
+            "premium_days": days,
+            "claimed_at": _safe_iso(existing_grant.activated_at or user.channel_bonus_claimed_at),
+            "expiry_at": _safe_iso(user.expiry_at),
+            "sub_type": user.sub_type,
+            "channel": channel_username,
+        }
     if _has_campaign_mark(s, tg_id=tg_id, campaign_key=opening_bonus_campaign_key):
         _track_bonus_event(
             tg_id=tg_id,
@@ -220,25 +254,17 @@ async def claim_channel_bonus(
         _track_bonus_event(
             tg_id=tg_id,
             event_name="promo_channel_already_claimed",
-            meta={"days": int(bonus_days), "claimed_at": _safe_iso(user.channel_bonus_claimed_at)},
+            meta={"days": GRANDFATHERED_CHANNEL_GRANT_DAYS, "claimed_at": _safe_iso(user.channel_bonus_claimed_at)},
         )
         return {
             "ok": True,
             "already_claimed": True,
-            "premium_days": int(bonus_days),
+            "premium_days": GRANDFATHERED_CHANNEL_GRANT_DAYS,
             "claimed_at": _safe_iso(user.channel_bonus_claimed_at),
             "expiry_at": _safe_iso(user.expiry_at),
             "sub_type": user.sub_type,
             "channel": channel_username,
         }
-    if (user.sub_type or "").upper() not in {"FREE", "BONUS", "TRIAL"}:
-        _track_bonus_event(
-            tg_id=tg_id,
-            event_name="promo_channel_denied",
-            meta={"reason": "not_start_mode", "sub_type": str(user.sub_type or "")},
-        )
-        raise HTTPException(status_code=400, detail="Бонус доступен только в стартовом режиме")
-
     membership_tg_id = _membership_check_tg_id(user)
     if membership_tg_id <= 0:
         _track_bonus_event(
@@ -264,24 +290,37 @@ async def claim_channel_bonus(
         raise HTTPException(status_code=502, detail=f"Не удалось проверить подписку: {reason}")
 
     now = _utcnow()
-    days = max(1, int(bonus_days))
-    old_sub = (user.sub_type or "").upper()
+    if not account_id:
+        from account_foundation_service import ensure_user_account_foundation
+
+        ensure_user_account_foundation(s, user, now=now)
+        s.flush()
+        account_id = str(user.account_id or "").strip()
+    days = CHANNEL_GRANT_DAYS
     points_granted = 0
     sync_ok = False
-
-    if old_sub in {"FREE", "BONUS", "TRIAL"}:
-        user.expiry_at = now + timedelta(days=days)
-    else:
-        cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = cur + timedelta(days=days)
-
-    user.sub_type = "BONUS"
-    user.current_plan_code = "channel_bonus"
-    user.is_active = True
-    user.channel_bonus_claimed_at = now
-    user.channel_bonus_active = True
-    user.channel_bonus_expires_at = user.expiry_at
-    user.channel_bonus_revoked_at = None
+    try:
+        with s.begin_nested():
+            grant_channel_bonus(
+                s,
+                account_id=account_id,
+                legacy_tg_id=int(tg_id),
+                telegram_id=membership_tg_id,
+                now=now,
+            )
+    except IntegrityError:
+        canonical = _channel_grant_for_account(s, account_id=account_id)
+        if canonical is None:
+            raise
+        return {
+            "ok": True,
+            "already_claimed": True,
+            "premium_days": int(canonical.duration_days or CHANNEL_GRANT_DAYS),
+            "claimed_at": _safe_iso(canonical.activated_at),
+            "expiry_at": _safe_iso(canonical.expires_at),
+            "sub_type": user.sub_type,
+            "channel": channel_username,
+        }
     first_channel_mark = _mark_campaign_once(
         s,
         tg_id=tg_id,

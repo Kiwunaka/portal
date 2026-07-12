@@ -98,6 +98,48 @@ def _ensure_economy_domain_sqlite(conn) -> None:
             """
         )
     )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_relationships (
+              id VARCHAR(36) PRIMARY KEY,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              source VARCHAR(32) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              review_status VARCHAR(24) NOT NULL DEFAULT 'clear',
+              friend_evidence_id VARCHAR(36),
+              friend_grant_id VARCHAR(36),
+              friend_granted_at DATETIME,
+              first_payment_key VARCHAR(160),
+              first_payment_at DATETIME,
+              hold_until DATETIME,
+              referrer_grant_id VARCHAR(36),
+              referrer_granted_at DATETIME,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_transitions (
+              id VARCHAR(36) PRIMARY KEY,
+              relationship_id VARCHAR(36) NOT NULL,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              transition_key VARCHAR(160) NOT NULL,
+              transition_kind VARCHAR(40) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              occurred_at DATETIME NOT NULL,
+              metadata_json TEXT,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
     for sql in (
         "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_reservation_expires_at ON entitlement_grants(reservation_expires_at);",
         "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_activation_evidence_id ON entitlement_grants(activation_evidence_id);",
@@ -107,6 +149,12 @@ def _ensure_economy_domain_sqlite(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_node_id ON connection_evidence(node_id);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_observed_at ON connection_evidence(observed_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_referred_account ON referral_relationships(referred_account_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_first_payment ON referral_relationships(first_payment_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_referrer_account ON referral_relationships(referrer_account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_hold_until ON referral_relationships(hold_until);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_transition_key ON referral_transitions(transition_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_transition_relationship ON referral_transitions(relationship_id);",
     ):
         conn.execute(text(sql))
 
@@ -136,6 +184,48 @@ def _ensure_economy_domain_postgres(conn) -> None:
             """
         )
     )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_relationships (
+              id VARCHAR(36) PRIMARY KEY,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              source VARCHAR(32) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              review_status VARCHAR(24) NOT NULL DEFAULT 'clear',
+              friend_evidence_id VARCHAR(36),
+              friend_grant_id VARCHAR(36),
+              friend_granted_at TIMESTAMP,
+              first_payment_key VARCHAR(160),
+              first_payment_at TIMESTAMP,
+              hold_until TIMESTAMP,
+              referrer_grant_id VARCHAR(36),
+              referrer_granted_at TIMESTAMP,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_transitions (
+              id VARCHAR(36) PRIMARY KEY,
+              relationship_id VARCHAR(36) NOT NULL,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              transition_key VARCHAR(160) NOT NULL,
+              transition_kind VARCHAR(40) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              occurred_at TIMESTAMP NOT NULL,
+              metadata_json TEXT,
+              created_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
     for sql in (
         "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_reservation_expires_at ON entitlement_grants(reservation_expires_at);",
         "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_activation_evidence_id ON entitlement_grants(activation_evidence_id);",
@@ -145,6 +235,12 @@ def _ensure_economy_domain_postgres(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_node_id ON connection_evidence(node_id);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_observed_at ON connection_evidence(observed_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_referred_account ON referral_relationships(referred_account_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_first_payment ON referral_relationships(first_payment_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_referrer_account ON referral_relationships(referrer_account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_hold_until ON referral_relationships(hold_until);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_transition_key ON referral_transitions(transition_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_transition_relationship ON referral_transitions(relationship_id);",
     ):
         conn.execute(text(sql))
 

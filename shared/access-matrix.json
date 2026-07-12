@@ -23,7 +23,9 @@
     },
     "telegram": {
       "role": "continuation_recovery_link",
-      "bonus_days": 10
+      "bonus_days": 5,
+      "grandfathered_bonus_days": 10,
+      "membership_grace_hours": 24
     }
   },
   "free_tier": {

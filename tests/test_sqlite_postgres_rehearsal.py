@@ -625,3 +625,51 @@ def test_safe_error_message_never_copies_database_parameters() -> None:
     assert "private@example.test" not in message
     assert "token_hash" not in message
     assert "abc" not in message
+
+
+def test_terminal_referral_relationship_keeps_transition_orphan_invariant_green(tmp_path: Path) -> None:
+    module = _load_script()
+    metadata = MetaData()
+    accounts = Table("accounts", metadata, Column("id", String(36), primary_key=True))
+    relationships = Table(
+        "referral_relationships",
+        metadata,
+        Column("id", String(36), primary_key=True),
+        Column("referred_account_id", String(36)),
+        Column("referrer_account_id", String(36)),
+    )
+    transitions = Table(
+        "referral_transitions",
+        metadata,
+        Column("id", String(36), primary_key=True),
+        Column("relationship_id", String(36)),
+        Column("referred_account_id", String(36)),
+        Column("referrer_account_id", String(36)),
+    )
+    engine = create_engine(f"sqlite:///{(tmp_path / 'terminal-referral-invariant.db').as_posix()}")
+    metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(accounts.insert(), [{"id": "source"}, {"id": "referrer"}])
+        connection.execute(
+            relationships.insert(),
+            [{"id": "retained-terminal", "referred_account_id": "source", "referrer_account_id": "referrer"}],
+        )
+        connection.execute(
+            transitions.insert(),
+            [{
+                "id": "retained-transition",
+                "relationship_id": "retained-terminal",
+                "referred_account_id": "source",
+                "referrer_account_id": "referrer",
+            }],
+        )
+        checks = module.run_invariant_checks(connection, metadata)
+
+    relationship_check = next(
+        check for check in checks if check["name"] == "referral_transitions.relationship_id->referral_relationships.id"
+    )
+    assert relationship_check == {
+        "name": "referral_transitions.relationship_id->referral_relationships.id",
+        "status": "PASS",
+        "violations": 0,
+    }

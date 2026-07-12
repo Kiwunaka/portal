@@ -41,10 +41,12 @@ def _load_api(monkeypatch, tmp_path: Path):
 
     for name in [
         "api",
+        "account_foundation_service",
         "antiabuse_privacy_service",
         "auth_session_service",
         "config",
         "db",
+        "economy_service",
         "migrations",
         "models",
         "web_auth_service",
@@ -52,6 +54,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "nodes_repo",
         "tickets_repo",
         "events_service",
+        "channel_bonus_service",
         "offers_service",
         "pay_attempts_service",
         "points_service",
@@ -1301,7 +1304,7 @@ def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monke
     payload = claim_response.json()
     assert payload["ok"] is True
     assert payload["already_claimed"] is False
-    assert payload["premium_days"] == 10
+    assert payload["premium_days"] == 5
 
     user_response = client.get(
         f"/api/user/{account_id}",
@@ -1360,7 +1363,7 @@ def test_channel_subscriber_check_is_read_only_for_linked_app_account(monkeypatc
     assert payload["subscriber"] is True
     assert payload["reason"] == "member"
     assert payload["claim_required"] is True
-    assert payload["bonus_days"] == 10
+    assert payload["bonus_days"] == 5
     assert payload["points_granted"] == 0
     assert payload["campaign_marked"] is False
 

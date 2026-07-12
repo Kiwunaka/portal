@@ -22,6 +22,10 @@ from models import (
     AuthSession,
     ConnectionEvidence,
     EntitlementGrant,
+    ExternalOrder,
+    PayAttempt,
+    ReferralRelationship,
+    ReferralTransition,
     RecoveryCode,
     User,
     WebEmailIdentity,
@@ -268,6 +272,674 @@ def _reconcile_account_trial_grants(
     session.flush()
 
 
+def _grant_is_effective(grant: EntitlementGrant) -> bool:
+    return str(grant.status or "").lower() in {"active", "grace"} and grant.reversed_at is None
+
+
+def _channel_merge_rank(grant: EntitlementGrant) -> tuple[int, int, int, datetime, str]:
+    return (
+        1 if _grant_is_effective(grant) else 0,
+        1 if str(grant.source) == "telegram_channel_grandfathered" else 0,
+        int(grant.duration_days or 0),
+        grant.expires_at or datetime.min,
+        str(grant.id),
+    )
+
+
+def _reconcile_account_channel_grants(
+    session: Session,
+    *,
+    source_account_id: str,
+    target_account_id: str,
+    now: datetime,
+) -> None:
+    authority_sources = ("telegram_channel", "telegram_channel_grandfathered")
+    rows = (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.account_id.in_([source_account_id, target_account_id]),
+            EntitlementGrant.source.in_(authority_sources),
+        )
+        .order_by(EntitlementGrant.created_at.asc(), EntitlementGrant.id.asc())
+        .with_for_update()
+        .all()
+    )
+    if not rows:
+        return
+    winner = max(rows, key=_channel_merge_rank)
+    winner.account_id = target_account_id
+    for duplicate in rows:
+        if duplicate.id == winner.id:
+            continue
+        metadata = {}
+        try:
+            parsed = json.loads(duplicate.metadata_json or "{}")
+            if isinstance(parsed, dict):
+                metadata = parsed
+        except Exception:
+            metadata = {}
+        metadata["account_merge"] = {
+            "previous_source": str(duplicate.source),
+            "winner_grant_id": str(winner.id),
+        }
+        duplicate.source = "telegram_channel_superseded"
+        duplicate.status = "superseded"
+        duplicate.reversed_at = duplicate.reversed_at or now
+        duplicate.reversal_reason = "account_merge_duplicate"
+        duplicate.metadata_json = _json(metadata)
+        duplicate.updated_at = now
+    session.flush()
+
+
+def _reward_merge_rank(grant: EntitlementGrant) -> tuple[int, datetime, int, datetime, str]:
+    return (
+        1 if _grant_is_effective(grant) else 0,
+        grant.expires_at or datetime.min,
+        int(grant.duration_days or 0),
+        grant.updated_at or grant.created_at or datetime.min,
+        str(grant.id),
+    )
+
+
+def _supersede_referral_grant(
+    grant: EntitlementGrant,
+    *,
+    winner: EntitlementGrant,
+    superseded_source: str,
+    now: datetime,
+) -> None:
+    try:
+        metadata = json.loads(str(grant.metadata_json or "{}"))
+        if not isinstance(metadata, dict):
+            metadata = {}
+    except (TypeError, ValueError):
+        metadata = {}
+    metadata["account_merge"] = {
+        "winner_grant_id": str(winner.id),
+        "previous_idempotency_key": str(grant.idempotency_key),
+        "previous_source": str(grant.source),
+        "previous_status": str(grant.status),
+    }
+    grant.idempotency_key = f"referral-merge-superseded:v1:{grant.id}"[:160]
+    grant.source = superseded_source
+    grant.status = "superseded"
+    grant.reversed_at = grant.reversed_at or now
+    grant.reversal_reason = "account_merge_duplicate"
+    grant.metadata_json = _json(metadata)
+    grant.updated_at = now
+
+
+def _dedupe_referral_grant_candidates(
+    session: Session,
+    *,
+    candidates: list[EntitlementGrant],
+    canonical_key: str,
+    canonical_account_id: str | None,
+    superseded_source: str,
+    now: datetime,
+) -> EntitlementGrant | None:
+    unique = {str(row.id): row for row in candidates}
+    if not unique:
+        return None
+    winner = max(unique.values(), key=_reward_merge_rank)
+    for row in unique.values():
+        if row.id != winner.id:
+            _supersede_referral_grant(
+                row,
+                winner=winner,
+                superseded_source=superseded_source,
+                now=now,
+            )
+    session.flush()
+    winner.idempotency_key = canonical_key[:160]
+    if canonical_account_id is not None:
+        winner.account_id = canonical_account_id
+    winner.updated_at = now
+    session.flush()
+    return winner
+
+
+def _reconcile_semantic_referral_grants(
+    session: Session,
+    *,
+    canonical: ReferralRelationship,
+    duplicate: ReferralRelationship,
+    source_account_id: str,
+    target_account_id: str,
+    same_referrer: bool,
+    now: datetime,
+) -> None:
+    friend_pointer_ids = {
+        str(value)
+        for value in (canonical.friend_grant_id, duplicate.friend_grant_id)
+        if value
+    }
+    friend_rows = (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.account_id.in_([source_account_id, target_account_id]),
+            EntitlementGrant.source == "referral_friend",
+        )
+        .with_for_update()
+        .all()
+    )
+    if friend_pointer_ids:
+        friend_rows.extend(
+            session.query(EntitlementGrant)
+            .filter(
+                EntitlementGrant.id.in_(sorted(friend_pointer_ids)),
+                EntitlementGrant.source == "referral_friend",
+            )
+            .with_for_update()
+            .all()
+        )
+    friend_winner = _dedupe_referral_grant_candidates(
+        session,
+        candidates=friend_rows,
+        canonical_key=f"referral-friend:v1:{target_account_id}",
+        canonical_account_id=target_account_id,
+        superseded_source="referral_friend_superseded",
+        now=now,
+    )
+    if friend_winner is not None:
+        canonical.friend_grant_id = str(friend_winner.id)
+        duplicate.friend_grant_id = str(friend_winner.id)
+
+    if not same_referrer:
+        session.flush()
+        return
+    referrer_pointer_ids = {
+        str(value)
+        for value in (canonical.referrer_grant_id, duplicate.referrer_grant_id)
+        if value
+    }
+    referrer_rows: list[EntitlementGrant] = []
+    if referrer_pointer_ids:
+        referrer_rows.extend(
+            session.query(EntitlementGrant)
+            .filter(
+                EntitlementGrant.id.in_(sorted(referrer_pointer_ids)),
+                EntitlementGrant.source == "referral_referrer",
+            )
+            .with_for_update()
+            .all()
+        )
+    referrer_rows.extend(
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.source == "referral_referrer",
+            EntitlementGrant.idempotency_key.in_(
+                [
+                    f"referral-referrer:v1:{source_account_id}",
+                    f"referral-referrer:v1:{target_account_id}",
+                ]
+            ),
+        )
+        .with_for_update()
+        .all()
+    )
+    referrer_winner = _dedupe_referral_grant_candidates(
+        session,
+        candidates=referrer_rows,
+        canonical_key=f"referral-referrer:v1:{target_account_id}",
+        canonical_account_id=str(canonical.referrer_account_id),
+        superseded_source="referral_referrer_superseded",
+        now=now,
+    )
+    if referrer_winner is not None:
+        canonical.referrer_grant_id = str(referrer_winner.id)
+        duplicate.referrer_grant_id = str(referrer_winner.id)
+        from economy_service import rebuild_account_entitlement_projection
+
+        rebuild_account_entitlement_projection(
+            session,
+            account_id=str(canonical.referrer_account_id),
+            now=now,
+        )
+    session.flush()
+
+
+_REFERRAL_STATUS_RANK = {"rejected": 0, "linked": 1, "holding": 2, "rewarded": 3}
+_REFERRAL_REVIEW_RANK = {"clear": 0, "wait": 1, "reject": 2}
+_TRANSITION_STATUS_RANK = {"superseded": 0, "linked": 1, "holding": 2, "released": 3, "rejected": 3}
+
+
+def _relationship_rank(row: ReferralRelationship) -> tuple[int, int, datetime, str]:
+    return (
+        _REFERRAL_STATUS_RANK.get(str(row.status or "").lower(), -1),
+        sum(
+            value is not None
+            for value in (
+                row.friend_evidence_id,
+                row.friend_grant_id,
+                row.first_payment_key,
+                row.referrer_grant_id,
+            )
+        ),
+        row.updated_at or row.created_at or datetime.min,
+        str(row.id),
+    )
+
+
+def _transition_metadata(row: ReferralTransition) -> dict[str, object]:
+    try:
+        value = json.loads(str(row.metadata_json or "{}"))
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _supersede_transition(
+    row: ReferralTransition,
+    *,
+    target_account_id: str,
+    winner_id: str | None,
+    now: datetime,
+) -> None:
+    metadata = _transition_metadata(row)
+    metadata["account_merge"] = {
+        "previous_key": str(row.transition_key),
+        "previous_status": str(row.status),
+        "superseded_by_transition_id": winner_id,
+    }
+    row.transition_key = f"referral-merge-superseded:v1:{target_account_id}:{row.id}"[:160]
+    row.status = "superseded"
+    row.metadata_json = _json(metadata)
+
+
+def _reconcile_transition_keys(
+    session: Session,
+    *,
+    relationship: ReferralRelationship,
+    source_account_id: str,
+    target_account_id: str,
+    now: datetime,
+) -> None:
+    rows = (
+        session.query(ReferralTransition)
+        .filter_by(relationship_id=str(relationship.id))
+        .order_by(ReferralTransition.occurred_at.asc(), ReferralTransition.id.asc())
+        .with_for_update()
+        .all()
+    )
+    groups: dict[str, list[ReferralTransition]] = {}
+    for row in rows:
+        row.referred_account_id = target_account_id
+        row.referrer_account_id = str(relationship.referrer_account_id)
+        desired = str(row.transition_key).replace(source_account_id, target_account_id)
+        groups.setdefault(desired, []).append(row)
+    for desired, candidates in groups.items():
+        winner = max(
+            candidates,
+            key=lambda row: (
+                _TRANSITION_STATUS_RANK.get(str(row.status or "").lower(), -1),
+                row.occurred_at or datetime.min,
+                str(row.id),
+            ),
+        )
+        for row in candidates:
+            if row.id != winner.id:
+                _supersede_transition(
+                    row,
+                    target_account_id=target_account_id,
+                    winner_id=str(winner.id),
+                    now=now,
+                )
+        session.flush()
+        winner.transition_key = desired[:160]
+    session.flush()
+
+
+def _merge_same_referrer_fields(target: ReferralRelationship, source: ReferralRelationship, *, now: datetime) -> None:
+    for field in ("friend_evidence_id", "friend_grant_id", "referrer_grant_id"):
+        if getattr(target, field) is None and getattr(source, field) is not None:
+            setattr(target, field, getattr(source, field))
+    for field in ("friend_granted_at", "referrer_granted_at"):
+        values = [value for value in (getattr(target, field), getattr(source, field)) if value is not None]
+        setattr(target, field, max(values) if values else None)
+    payment_rows = [row for row in (target, source) if row.first_payment_key and row.first_payment_at]
+    if payment_rows:
+        first = min(payment_rows, key=lambda row: (row.first_payment_at, str(row.first_payment_key)))
+        target.first_payment_key = first.first_payment_key
+        target.first_payment_at = first.first_payment_at
+        holds = [row.hold_until for row in payment_rows if row.hold_until is not None]
+        target.hold_until = max(holds) if holds else None
+    target.status = max((target, source), key=_relationship_rank).status
+    target.review_status = max(
+        (str(target.review_status or "clear"), str(source.review_status or "clear")),
+        key=lambda value: _REFERRAL_REVIEW_RANK.get(value.lower(), -1),
+    )
+    target.updated_at = max(value for value in (target.updated_at, source.updated_at, now) if value is not None)
+
+
+def _relationship_snapshot(row: ReferralRelationship, *, payment: tuple[object, object, object] | None = None) -> dict[str, object]:
+    payment_key, payment_at, hold_until = payment or (
+        row.first_payment_key,
+        row.first_payment_at,
+        row.hold_until,
+    )
+    return {
+        "relationship_id": str(row.id),
+        "referred_account_id": str(row.referred_account_id),
+        "referrer_account_id": str(row.referrer_account_id),
+        "source": str(row.source),
+        "status": str(row.status),
+        "review_status": str(row.review_status),
+        "friend_evidence_id": row.friend_evidence_id,
+        "friend_grant_id": row.friend_grant_id,
+        "friend_granted_at": friend_at.isoformat() if (friend_at := row.friend_granted_at) else None,
+        "first_payment_key": payment_key,
+        "first_payment_at": payment_at.isoformat() if isinstance(payment_at, datetime) else None,
+        "hold_until": hold_until.isoformat() if isinstance(hold_until, datetime) else None,
+        "referrer_grant_id": row.referrer_grant_id,
+        "referrer_granted_at": reward_at.isoformat() if (reward_at := row.referrer_granted_at) else None,
+    }
+
+
+def _record_relationship_merge_snapshot(
+    session: Session,
+    *,
+    canonical: ReferralRelationship,
+    superseded: ReferralRelationship,
+    superseded_payment: tuple[object, object, object],
+    target_before: dict[str, object],
+    source_before: dict[str, object],
+    target_account_id: str,
+    now: datetime,
+) -> None:
+    key = f"referral-merge-snapshot:v1:{target_account_id}:{superseded.id}"[:160]
+    if session.query(ReferralTransition.id).filter_by(transition_key=key).first():
+        return
+    session.add(
+        ReferralTransition(
+            id=str(uuid.uuid4()),
+            relationship_id=str(superseded.id),
+            referred_account_id=str(superseded.referred_account_id),
+            referrer_account_id=str(superseded.referrer_account_id),
+            transition_key=key,
+            transition_kind="relationship_merge_superseded",
+            status="superseded",
+            occurred_at=now,
+            metadata_json=_json(
+                {
+                    "canonical": _relationship_snapshot(canonical),
+                    "superseded": _relationship_snapshot(superseded, payment=superseded_payment),
+                    "target_before": target_before,
+                    "source_before": source_before,
+                }
+            ),
+            created_at=now,
+        )
+    )
+
+
+def _reconcile_referral_relationships(
+    session: Session,
+    *,
+    source_account_id: str,
+    target_account_id: str,
+    now: datetime,
+) -> None:
+    source = (
+        session.query(ReferralRelationship)
+        .filter_by(referred_account_id=source_account_id)
+        .with_for_update()
+        .first()
+    )
+    target = (
+        session.query(ReferralRelationship)
+        .filter_by(referred_account_id=target_account_id)
+        .with_for_update()
+        .first()
+    )
+    if source is None:
+        return
+    if str(source.status or "").lower() in {"superseded", "rejected"}:
+        return
+    if target is None:
+        source.referred_account_id = target_account_id
+        source.updated_at = now
+        _reconcile_transition_keys(
+            session,
+            relationship=source,
+            source_account_id=source_account_id,
+            target_account_id=target_account_id,
+            now=now,
+        )
+        return
+
+    source_payment = (source.first_payment_key, source.first_payment_at, source.hold_until)
+    target_before = _relationship_snapshot(target)
+    source_before = _relationship_snapshot(source, payment=source_payment)
+    if source.first_payment_key:
+        source.first_payment_key = None
+        source.first_payment_at = None
+        source.hold_until = None
+        session.flush()
+    if str(source.referrer_account_id) == str(target.referrer_account_id):
+        _merge_same_referrer_fields(target, source, now=now)
+        payment_rows = [
+            value
+            for value in (
+                (target.first_payment_key, target.first_payment_at, target.hold_until),
+                source_payment,
+            )
+            if value[0] and value[1]
+        ]
+        if payment_rows:
+            payment_key, payment_at, _hold = min(payment_rows, key=lambda value: (value[1], str(value[0])))
+            target.first_payment_key = payment_key
+            target.first_payment_at = payment_at
+            holds = [value[2] for value in payment_rows if value[2] is not None]
+            target.hold_until = max(holds) if holds else None
+        _reconcile_semantic_referral_grants(
+            session,
+            canonical=target,
+            duplicate=source,
+            source_account_id=source_account_id,
+            target_account_id=target_account_id,
+            same_referrer=True,
+            now=now,
+        )
+        _record_relationship_merge_snapshot(
+            session,
+            canonical=target,
+            superseded=source,
+            superseded_payment=source_payment,
+            target_before=target_before,
+            source_before=source_before,
+            target_account_id=target_account_id,
+            now=now,
+        )
+    else:
+        winner = max((target, source), key=_relationship_rank)
+        if winner.id == source.id:
+            for field in (
+                "referrer_account_id",
+                "source",
+                "status",
+                "review_status",
+                "friend_evidence_id",
+                "friend_grant_id",
+                "friend_granted_at",
+                "first_payment_key",
+                "first_payment_at",
+                "hold_until",
+                "referrer_grant_id",
+                "referrer_granted_at",
+            ):
+                setattr(target, field, getattr(source, field))
+            target.first_payment_key = source_payment[0]
+            target.first_payment_at = source_payment[1]
+            target.hold_until = source_payment[2]
+        target.review_status = max(
+            (str(target.review_status or "clear"), str(source.review_status or "clear"), "wait"),
+            key=lambda value: _REFERRAL_REVIEW_RANK.get(value.lower(), -1),
+        )
+        _reconcile_semantic_referral_grants(
+            session,
+            canonical=target,
+            duplicate=source,
+            source_account_id=source_account_id,
+            target_account_id=target_account_id,
+            same_referrer=False,
+            now=now,
+        )
+        _record_relationship_merge_snapshot(
+            session,
+            canonical=target,
+            superseded=source,
+            superseded_payment=source_payment,
+            target_before=target_before,
+            source_before=source_before,
+            target_account_id=target_account_id,
+            now=now,
+        )
+        _create_review(
+            session,
+            _Counter(users_seen=0),
+            reason_code="referral_merge_conflict",
+            subject_hint=f"referral:{source_account_id}",
+            account_id=target_account_id,
+            conflicting_account_id=source_account_id,
+            details={
+                "target_referrer_account_id": str(target.referrer_account_id),
+                "source_referrer_account_id": str(source.referrer_account_id),
+                "winner_relationship_id": str(winner.id),
+            },
+            now=now,
+        )
+    _supersede_relationship(session, source, reason="account_merge_duplicate", now=now)
+    session.flush()
+
+
+def _supersede_relationship(session: Session, row: ReferralRelationship, *, reason: str, now: datetime) -> None:
+    row.status = "superseded"
+    row.review_status = "review"
+    row.updated_at = now
+    key = f"referral-relationship-superseded:v1:{row.id}:{reason}"[:160]
+    if session.query(ReferralTransition.id).filter_by(transition_key=key).first() is None:
+        session.add(
+            ReferralTransition(
+                id=str(uuid.uuid4()),
+                relationship_id=str(row.id),
+                referred_account_id=str(row.referred_account_id),
+                referrer_account_id=str(row.referrer_account_id),
+                transition_key=key,
+                transition_kind="relationship_superseded",
+                status="superseded",
+                occurred_at=now,
+                metadata_json=_json({"reason": reason}),
+                created_at=now,
+            )
+        )
+    session.flush()
+
+
+def _sanitize_referral_graph(session: Session, *, now: datetime) -> None:
+    while True:
+        rows = (
+            session.query(ReferralRelationship)
+            .filter(~ReferralRelationship.status.in_(["superseded", "rejected"]))
+            .order_by(ReferralRelationship.id.asc())
+            .with_for_update()
+            .all()
+        )
+        self_rows = [row for row in rows if str(row.referred_account_id) == str(row.referrer_account_id)]
+        if self_rows:
+            for row in self_rows:
+                _supersede_relationship(session, row, reason="account_merge_self_referral", now=now)
+            continue
+        by_referred = {str(row.referred_account_id): row for row in rows}
+        cycle: list[ReferralRelationship] | None = None
+        for start in sorted(by_referred):
+            path: list[str] = []
+            positions: dict[str, int] = {}
+            cursor = start
+            while cursor in by_referred:
+                if cursor in positions:
+                    cycle = [by_referred[key] for key in path[positions[cursor] :]]
+                    break
+                positions[cursor] = len(path)
+                path.append(cursor)
+                cursor = str(by_referred[cursor].referrer_account_id)
+            if cycle:
+                break
+        if not cycle:
+            return
+        loser = min(cycle, key=_relationship_rank)
+        _supersede_relationship(session, loser, reason="account_merge_cycle", now=now)
+
+
+def _rewrite_referrer_edges_for_merge(
+    session: Session,
+    *,
+    source_account_id: str,
+    target_account_id: str,
+    now: datetime,
+) -> None:
+    rows = (
+        session.query(ReferralRelationship)
+        .filter(
+            ReferralRelationship.referrer_account_id == source_account_id,
+            ~ReferralRelationship.status.in_(["superseded", "rejected"]),
+        )
+        .order_by(ReferralRelationship.id.asc())
+        .with_for_update()
+        .all()
+    )
+    for row in rows:
+        referred_id = str(row.referred_account_id)
+        if referred_id == target_account_id:
+            _supersede_relationship(session, row, reason="account_merge_self_referral", now=now)
+            continue
+        cursor = target_account_id
+        visited: set[str] = set()
+        creates_cycle = False
+        while cursor and cursor not in visited:
+            if cursor == referred_id:
+                creates_cycle = True
+                break
+            visited.add(cursor)
+            parent = (
+                session.query(ReferralRelationship)
+                .filter(
+                    ReferralRelationship.referred_account_id == cursor,
+                    ReferralRelationship.id != row.id,
+                    ~ReferralRelationship.status.in_(["superseded", "rejected"]),
+                )
+                .first()
+            )
+            cursor = str(parent.referrer_account_id) if parent is not None else ""
+        if creates_cycle:
+            _supersede_relationship(session, row, reason="account_merge_cycle", now=now)
+            continue
+        old_referrer = str(row.referrer_account_id)
+        row.referrer_account_id = target_account_id
+        row.updated_at = now
+        session.query(ReferralTransition).filter_by(relationship_id=str(row.id)).update(
+            {ReferralTransition.referrer_account_id: target_account_id},
+            synchronize_session=False,
+        )
+        key = f"referral-referrer-merged:v1:{row.id}:{source_account_id}:{target_account_id}"[:160]
+        if session.query(ReferralTransition.id).filter_by(transition_key=key).first() is None:
+            session.add(
+                ReferralTransition(
+                    id=str(uuid.uuid4()),
+                    relationship_id=str(row.id),
+                    referred_account_id=referred_id,
+                    referrer_account_id=target_account_id,
+                    transition_key=key,
+                    transition_kind="referrer_account_merged",
+                    status=str(row.status),
+                    occurred_at=now,
+                    metadata_json=_json({"previous_referrer_account_id": old_referrer}),
+                    created_at=now,
+                )
+            )
+        session.flush()
+
+
 def _move_account_owned_rows(
     session: Session,
     *,
@@ -276,6 +948,18 @@ def _move_account_owned_rows(
     now: datetime,
 ) -> None:
     _reconcile_account_trial_grants(
+        session,
+        source_account_id=source_account_id,
+        target_account_id=target_account_id,
+        now=now,
+    )
+    _reconcile_account_channel_grants(
+        session,
+        source_account_id=source_account_id,
+        target_account_id=target_account_id,
+        now=now,
+    )
+    _reconcile_referral_relationships(
         session,
         source_account_id=source_account_id,
         target_account_id=target_account_id,
@@ -313,6 +997,18 @@ def _move_account_owned_rows(
             {model.account_id: target_account_id},
             synchronize_session=False,
         )
+
+    _rewrite_referrer_edges_for_merge(
+        session,
+        source_account_id=source_account_id,
+        target_account_id=target_account_id,
+        now=now,
+    )
+    session.flush()
+    _sanitize_referral_graph(session, now=now)
+    from economy_service import normalize_account_payment_history
+
+    normalize_account_payment_history(session, account_id=target_account_id, now=now)
 
 
 def _ensure_identity(
@@ -424,36 +1120,318 @@ def _ensure_legacy_grant(
     now: datetime,
 ) -> None:
     idempotency_key = f"legacy-user:{int(user.tg_id)}:snapshot-v1"
+    snapshot_metadata: dict[str, object] = {
+        "first_purchase_done": bool(user.first_purchase_done),
+        "sub_type": _clean(user.sub_type),
+        "trial_used": bool(user.trial_used),
+    }
+    if user.channel_bonus_claimed_at is not None:
+        snapshot_metadata["projection_components"] = {
+            "telegram_channel_grandfathered": {
+                "claimed_at": user.channel_bonus_claimed_at.isoformat(),
+                "expires_at": user.channel_bonus_expires_at.isoformat() if user.channel_bonus_expires_at else None,
+                "active": bool(user.channel_bonus_active),
+                "revoked_at": user.channel_bonus_revoked_at.isoformat() if user.channel_bonus_revoked_at else None,
+            }
+        }
     existing = session.query(EntitlementGrant).filter_by(idempotency_key=idempotency_key).first()
     if existing is not None:
         existing.account_id = account_id
-        return
-    plan_code = _clean(user.current_plan_code) or _clean(user.sub_type).lower() or "legacy"
-    session.add(
-        EntitlementGrant(
-            id=_grant_id_for_user(int(user.tg_id)),
-            account_id=account_id,
-            legacy_tg_id=int(user.tg_id),
-            idempotency_key=idempotency_key,
-            source="legacy_snapshot",
-            status="active" if bool(user.is_active) else "inactive",
-            grant_kind="access_snapshot",
-            plan_code=plan_code,
-            starts_at=user.created_at,
-            expires_at=user.expiry_at,
-            provider="legacy_user",
-            metadata_json=_json(
-                {
-                    "first_purchase_done": bool(user.first_purchase_done),
-                    "sub_type": _clean(user.sub_type),
-                    "trial_used": bool(user.trial_used),
-                }
-            ),
-            created_at=now,
-            updated_at=now,
+        try:
+            existing_metadata = json.loads(str(existing.metadata_json or "{}"))
+            if not isinstance(existing_metadata, dict):
+                existing_metadata = {}
+        except (TypeError, ValueError):
+            existing_metadata = {}
+        for key, value in snapshot_metadata.items():
+            if key != "projection_components":
+                existing_metadata[key] = value
+        incoming_components = snapshot_metadata.get("projection_components")
+        if isinstance(incoming_components, dict):
+            stored_components = existing_metadata.get("projection_components")
+            if not isinstance(stored_components, dict):
+                stored_components = {}
+            for component_key, component_value in incoming_components.items():
+                stored_component = stored_components.get(component_key)
+                if isinstance(stored_component, dict) and isinstance(component_value, dict):
+                    stored_component.update(component_value)
+                    stored_components[component_key] = stored_component
+                else:
+                    stored_components[component_key] = component_value
+            existing_metadata["projection_components"] = stored_components
+        existing.metadata_json = _json(existing_metadata)
+        existing.updated_at = now
+    else:
+        plan_code = _clean(user.current_plan_code) or _clean(user.sub_type).lower() or "legacy"
+        session.add(
+            EntitlementGrant(
+                id=_grant_id_for_user(int(user.tg_id)),
+                account_id=account_id,
+                legacy_tg_id=int(user.tg_id),
+                idempotency_key=idempotency_key,
+                source="legacy_snapshot",
+                status="active" if bool(user.is_active) else "inactive",
+                grant_kind="access_snapshot",
+                plan_code=plan_code,
+                starts_at=user.created_at,
+                expires_at=user.expiry_at,
+                provider="legacy_user",
+                metadata_json=_json(snapshot_metadata),
+                created_at=now,
+                updated_at=now,
+            )
         )
+        counter.grants_created += 1
+    _ensure_legacy_payment_authority(session, counter, user=user, account_id=account_id, now=now)
+
+
+def _historical_payment_key(provider: str, order_id: str) -> str:
+    digest = hashlib.sha256(str(order_id).encode("utf-8")).hexdigest()
+    return f"provider-payment:v1:{str(provider).strip().lower()}:{digest}"
+
+
+def _corroborated_account_payments(
+    session: Session,
+    *,
+    account_id: str,
+    now: datetime,
+) -> list[dict[str, object]]:
+    tg_ids = [int(row[0]) for row in session.query(User.tg_id).filter(User.account_id == account_id).all()]
+    if not tg_ids:
+        return []
+    legacy_paid_projection = bool(
+        session.query(User.tg_id)
+        .filter(User.account_id == account_id, User.sub_type == "PAID")
+        .first()
     )
-    counter.grants_created += 1
+    payments: list[dict[str, object]] = []
+    external_rows = (
+        session.query(ExternalOrder)
+        .filter(
+            ExternalOrder.tg_id.in_(tg_ids),
+            ExternalOrder.status == "paid",
+            ExternalOrder.order_id.isnot(None),
+            ExternalOrder.provider.isnot(None),
+        )
+        .all()
+    )
+    for row in external_rows:
+        provider = _clean(row.provider).lower()
+        order_id = _clean(row.order_id)
+        if provider and order_id:
+            fulfilled_status = ""
+            try:
+                metadata = json.loads(str(row.meta_json or "{}"))
+                fulfillment = metadata.get("fulfillment", {}) if isinstance(metadata, dict) else {}
+                if isinstance(fulfillment, dict):
+                    fulfilled_status = _clean(fulfillment.get("status")).lower()
+            except (TypeError, ValueError):
+                pass
+            paid_at = row.paid_at or row.created_at
+            if fulfilled_status:
+                projection_already_applied = fulfilled_status in {"account_extended", "applied", "fulfilled"}
+            else:
+                projection_already_applied = bool(
+                    legacy_paid_projection and paid_at is not None and paid_at < now
+                )
+            payments.append(
+                {
+                    "provider": provider,
+                    "order_id": order_id,
+                    "plan_code": _clean(row.plan_code) or "historical_paid",
+                    "paid_at": paid_at,
+                    "legacy_tg_id": int(row.tg_id) if row.tg_id is not None else None,
+                    "record_type": "external_order",
+                    "projection_already_applied": projection_already_applied,
+                }
+            )
+    return sorted(
+        payments,
+        key=lambda row: (
+            row.get("paid_at") or datetime.max,
+            str(row.get("provider") or ""),
+            str(row.get("order_id") or ""),
+        ),
+    )
+
+
+def _ensure_ambiguous_stars_payment_markers(
+    session: Session,
+    counter: _Counter,
+    *,
+    account_id: str,
+    now: datetime,
+) -> None:
+    tg_ids = [int(row[0]) for row in session.query(User.tg_id).filter(User.account_id == account_id).all()]
+    if not tg_ids:
+        return
+    rows = (
+        session.query(PayAttempt)
+        .filter(
+            PayAttempt.tg_id.in_(tg_ids),
+            PayAttempt.status == "paid",
+            PayAttempt.amount_stars > 0,
+            PayAttempt.paid_at.isnot(None),
+        )
+        .all()
+    )
+    for row in rows:
+        key = f"legacy-stars-payment-marker:v1:{int(row.id)}"
+        marker = session.query(EntitlementGrant).filter_by(idempotency_key=key).first()
+        if marker is None:
+            marker = EntitlementGrant(
+                id=str(uuid.uuid5(GRANT_NAMESPACE, key)),
+                account_id=account_id,
+                legacy_tg_id=int(row.tg_id),
+                idempotency_key=key,
+                source="legacy_stars_payment_marker",
+                status="manual_review",
+                grant_kind="audit_marker",
+                plan_code=_clean(row.plan_code) or "stars_paid",
+                activated_at=row.paid_at,
+                duration_days=0,
+                provider="stars",
+                external_order_id=_clean(row.invoice_payload) or f"pay-attempt:{int(row.id)}",
+                metadata_json=_json(
+                    {
+                        "payment_confirmed": True,
+                        "projection_already_applied": False,
+                        "review_reason": "missing_per_order_fulfillment_evidence",
+                    }
+                ),
+                created_at=row.paid_at or now,
+                updated_at=now,
+            )
+            session.add(marker)
+            counter.grants_created += 1
+        else:
+            marker.account_id = account_id
+            marker.updated_at = now
+
+
+def _ensure_legacy_payment_authority(
+    session: Session,
+    counter: _Counter,
+    *,
+    user: User,
+    account_id: str,
+    now: datetime,
+) -> None:
+    _ensure_ambiguous_stars_payment_markers(session, counter, account_id=account_id, now=now)
+    unsafe_key = f"provider-payment-legacy:v1:{account_id}"
+    unsafe = session.query(EntitlementGrant).filter_by(idempotency_key=unsafe_key).first()
+    if unsafe is not None:
+        unsafe.source = "legacy_first_purchase_marker"
+        unsafe.status = "manual_review"
+        unsafe.grant_kind = "audit_marker"
+        unsafe.provider = "legacy_flag"
+        unsafe.metadata_json = _json({"corroborated": False, "migrated_from_unsafe_fact": True})
+        unsafe.updated_at = now
+
+    corroborated = _corroborated_account_payments(session, account_id=account_id, now=now)
+    if corroborated:
+        for index, payment in enumerate(corroborated):
+            provider = str(payment["provider"])
+            order_id = str(payment["order_id"])
+            key = _historical_payment_key(provider, order_id)
+            fact = session.query(EntitlementGrant).filter_by(idempotency_key=key).first()
+            if fact is None:
+                fact = EntitlementGrant(
+                    id=str(uuid.uuid5(GRANT_NAMESPACE, key)),
+                    account_id=account_id,
+                    legacy_tg_id=payment.get("legacy_tg_id"),
+                    idempotency_key=key,
+                    source="provider_payment",
+                    status="recorded",
+                    grant_kind="payment_fact",
+                    plan_code=str(payment.get("plan_code") or "historical_paid")[:32],
+                    activated_at=payment.get("paid_at") or now,
+                    duration_days=0,
+                    provider=provider[:32],
+                    external_order_id=order_id[:160],
+                    metadata_json=_json(
+                        {
+                            "is_first_payment": index == 0,
+                            "backfilled": True,
+                            "corroborated": True,
+                            "record_type": payment.get("record_type"),
+                            "projection_already_applied": bool(payment.get("projection_already_applied")),
+                        }
+                    ),
+                    created_at=payment.get("paid_at") or now,
+                    updated_at=now,
+                )
+                session.add(fact)
+                counter.grants_created += 1
+            else:
+                fact.account_id = account_id
+                try:
+                    metadata = json.loads(str(fact.metadata_json or "{}"))
+                except (TypeError, ValueError):
+                    metadata = {}
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                if str(fact.grant_kind or "") == "paid_access":
+                    metadata["projection_already_applied"] = True
+                elif payment.get("projection_already_applied"):
+                    metadata["projection_already_applied"] = True
+                fact.metadata_json = _json(metadata)
+        from economy_service import normalize_account_payment_history
+
+        normalize_account_payment_history(session, account_id=account_id, now=now)
+        return
+
+    if not bool(user.first_purchase_done):
+        return
+    marker_key = f"legacy-first-purchase-marker:v1:{int(user.tg_id)}"
+    marker = session.query(EntitlementGrant).filter_by(idempotency_key=marker_key).first()
+    if marker is None:
+        session.add(
+            EntitlementGrant(
+                id=str(uuid.uuid5(GRANT_NAMESPACE, marker_key)),
+                account_id=account_id,
+                legacy_tg_id=int(user.tg_id),
+                idempotency_key=marker_key,
+                source="legacy_first_purchase_marker",
+                status="manual_review",
+                grant_kind="audit_marker",
+                plan_code=_clean(user.current_plan_code) or "legacy_flag",
+                activated_at=user.created_at or now,
+                duration_days=0,
+                provider="legacy_flag",
+                metadata_json=_json({"corroborated": False, "first_purchase_done": True}),
+                created_at=user.created_at or now,
+                updated_at=now,
+            )
+        )
+        counter.grants_created += 1
+    else:
+        marker.account_id = account_id
+        marker.updated_at = now
+
+
+def _ensure_grandfathered_channel_grant(
+    session: Session,
+    counter: _Counter,
+    *,
+    user: User,
+    now: datetime,
+) -> None:
+    if user.channel_bonus_claimed_at is None or not user.account_id:
+        return
+    from economy_service import backfill_grandfathered_channel_grant
+
+    before = (
+        session.query(EntitlementGrant.id)
+        .filter(
+            EntitlementGrant.account_id == str(user.account_id),
+            EntitlementGrant.source.in_(["telegram_channel", "telegram_channel_grandfathered"]),
+        )
+        .first()
+    )
+    grant = backfill_grandfathered_channel_grant(session, user=user, now=now)
+    if before is None and grant is not None:
+        counter.grants_created += 1
 
 
 def _load_account_component_users(
@@ -609,6 +1587,7 @@ def ensure_user_account_foundation(
         )
     _ensure_device(session, counter, user=user, account_id=account_id, now=effective_now)
     _ensure_legacy_grant(session, counter, user=user, account_id=account_id, now=effective_now)
+    _ensure_grandfathered_channel_grant(session, counter, user=user, now=effective_now)
 
     for email_identity in (
         session.query(WebEmailIdentity)
@@ -778,6 +1757,7 @@ def backfill_account_foundation(
             )
         _ensure_device(session, counter, user=user, account_id=account_id, now=effective_now)
         _ensure_legacy_grant(session, counter, user=user, account_id=account_id, now=effective_now)
+        _ensure_grandfathered_channel_grant(session, counter, user=user, now=effective_now)
 
     email_identities_query = session.query(WebEmailIdentity)
     if legacy_tg_ids is not None:

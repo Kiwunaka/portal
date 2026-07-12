@@ -47,6 +47,16 @@ class ReleaseGateCheckTests(unittest.TestCase):
             with self.subTest(suite=suite):
                 self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)
 
+    def test_economy_bonus_referral_suites_are_in_release_pytest_matrix(self) -> None:
+        for suite in (
+            "portal_bot/tests/test_economy_bonus_referral_service.py",
+            "portal_bot/tests/test_economy_trial_service.py",
+            "portal_bot/tests/test_channel_bonus_service.py",
+            "tests/test_api_payments_callbacks.py",
+        ):
+            with self.subTest(suite=suite):
+                self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)
+
     def test_client_security_smoke_gate_is_included_in_quick_gate_set(self) -> None:
         gates = self.module._quick_gates()
 

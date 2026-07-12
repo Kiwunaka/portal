@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import uuid
+import importlib
 import importlib.util
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -18,7 +19,10 @@ NOW = datetime(2026, 7, 12, 9, 0, 0)
 
 
 def _session(tmp_path: Path):
+    import economy_service
     from models import Base
+
+    importlib.reload(economy_service)
 
     engine = create_engine(f"sqlite:///{(tmp_path / 'economy.db').as_posix()}")
     Base.metadata.create_all(engine)
@@ -302,3 +306,55 @@ def test_worker_schedules_stale_trial_reservation_sweep() -> None:
 
     assert "expire_stale_trial_reservations" in worker_source
     assert '_supervise_job("trial_reservation_expiry", trial_reservation_expiry_job)' in worker_source
+
+
+def test_sqlite_postgres_and_rehearsal_include_referral_authority(tmp_path: Path) -> None:
+    import migrations
+
+    sqlite_engine = create_engine(f"sqlite:///{(tmp_path / 'referral-legacy.db').as_posix()}")
+    with sqlite_engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE entitlement_grants ("
+                "id VARCHAR(36) PRIMARY KEY, account_id VARCHAR(36) NOT NULL, "
+                "idempotency_key VARCHAR(160) NOT NULL, source VARCHAR(40) NOT NULL, "
+                "status VARCHAR(24) NOT NULL)"
+            )
+        )
+        migrations._ensure_economy_domain_sqlite(conn)
+    inspector = inspect(sqlite_engine)
+    assert inspector.has_table("referral_relationships")
+    assert inspector.has_table("referral_transitions")
+    assert {"referred_account_id", "referrer_account_id", "hold_until", "first_payment_key"} <= {
+        column["name"] for column in inspector.get_columns("referral_relationships")
+    }
+
+    class _Result:
+        def scalar(self):
+            return False
+
+    class _Conn:
+        def __init__(self):
+            self.sql: list[str] = []
+
+        def execute(self, statement, _params=None):
+            self.sql.append(str(statement))
+            return _Result()
+
+    conn = _Conn()
+    migrations._ensure_economy_domain_postgres(conn)
+    postgres_sql = "\n".join(conn.sql)
+    assert "CREATE TABLE IF NOT EXISTS referral_relationships" in postgres_sql
+    assert "CREATE TABLE IF NOT EXISTS referral_transitions" in postgres_sql
+    assert "uq_referral_relationship_referred_account" in postgres_sql
+    assert "uq_referral_transition_key" in postgres_sql
+
+    script_path = PORTAL_BOT_DIR.parent / "scripts" / "migrate_sqlite_to_postgres.py"
+    spec = importlib.util.spec_from_file_location("referral_rehearsal_contract", script_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.TABLE_DEPENDENCIES["referral_relationships"] == {"accounts", "connection_evidence", "entitlement_grants"}
+    assert module.TABLE_DEPENDENCIES["referral_transitions"] == {"referral_relationships", "accounts"}
+    assert ("referral_relationships", "referred_account_id", "accounts", "id") in module.ECONOMY_INVARIANT_RELATIONS
+    sqlite_engine.dispose()

@@ -421,7 +421,8 @@ Architecture rule:
 4. app or web surfaces may call read-only subscriber status check
 5. reward grant still happens only on the explicit claim API
 6. backend validates membership in `@pokrov_vpn`
-7. backend grants `+10 days` when eligible
+7. backend grants a new account-owned `+5 days` once when eligible; issued legacy `+10 days` grants remain grandfathered
+8. membership loss opens `24 hours` of grace, and a due reversal removes only the unused channel interval
 
 ### Checkout Continuation Flow
 

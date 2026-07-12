@@ -548,12 +548,12 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         r = client.post("/api/payments/freekassa/notify", params=payload)
         self.assertEqual(r.status_code, 400, r.text)
 
-    def test_freekassa_notify_awards_referrer_bonus_on_first_paid_purchase(self) -> None:
+    def test_admin_plan_key_then_real_payment_still_starts_first_referral_hold(self) -> None:
         client = TestClient(self.api.app)
 
         from datetime import datetime, timedelta
         from db import SessionLocal
-        from models import PointsLedger, ReferralBonusQueue, User
+        from models import PointsLedger, ReferralBonusQueue, ReferralRelationship, ReferralTransition, User
 
         s = SessionLocal()
         try:
@@ -571,8 +571,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     referral_count=0,
                 )
             )
-            s.add(
-                User(
+            invited_expiry = datetime.utcnow() + timedelta(days=5)
+            invited = User(
                     tg_id=2003,
                     username="invited",
                     uuid=str(uuid.uuid4()),
@@ -582,8 +582,15 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tos_accepted=True,
                     referrer_id=2002,
                     first_purchase_done=False,
+                    expiry_at=invited_expiry,
                 )
+            self.api._apply_access_key_to_user(
+                user=invited,
+                meta={"kind": "plan", "days": 30, "plan_code": "1_month"},
+                now=datetime.utcnow(),
             )
+            self.assertFalse(bool(invited.first_purchase_done))
+            s.add(invited)
             s.commit()
         finally:
             s.close()
@@ -609,20 +616,14 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         r = client.post("/api/payments/freekassa/notify", params=payload)
         self.assertEqual(r.status_code, 200, r.text)
         self.assertEqual(r.text.strip(), "YES")
+        replay_response = client.post("/api/payments/freekassa/notify", params=payload)
+        self.assertEqual(replay_response.status_code, 200, replay_response.text)
 
         s = SessionLocal()
         try:
             invited = s.query(User).filter(User.tg_id == 2003).first()
             referrer = s.query(User).filter(User.tg_id == 2002).first()
-            queued = (
-                s.query(ReferralBonusQueue)
-                .filter(
-                    ReferralBonusQueue.order_id == order_id,
-                    ReferralBonusQueue.referrer_tg_id == 2002,
-                    ReferralBonusQueue.referred_tg_id == 2003,
-                )
-                .first()
-            )
+            relationship = s.query(ReferralRelationship).filter_by(referred_account_id=invited.account_id).one_or_none()
             points_rows = (
                 s.query(PointsLedger)
                 .filter(PointsLedger.tg_id == 2002, PointsLedger.reason.like("referral_earned%"), PointsLedger.ref_tg_id == 2003)
@@ -630,10 +631,19 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             )
             self.assertIsNotNone(invited)
             self.assertIsNotNone(referrer)
-            self.assertIsNotNone(queued)
+            self.assertIsNotNone(relationship)
+            self.assertEqual(relationship.referrer_account_id, referrer.account_id)
+            self.assertEqual(relationship.status, "holding")
+            self.assertEqual(relationship.hold_until - relationship.first_payment_at, timedelta(hours=72))
+            self.assertEqual(s.query(ReferralBonusQueue).filter_by(order_id=order_id).count(), 0)
+            self.assertEqual(
+                s.query(ReferralTransition).filter_by(transition_kind="first_payment_held").count(),
+                1,
+            )
             self.assertEqual(len(points_rows), 1)
             self.assertGreater(int(points_rows[0].delta_points or 0), 0)
             self.assertTrue(bool(invited.first_purchase_done))
+            self.assertGreaterEqual(invited.expiry_at, invited_expiry + timedelta(days=30))
             self.assertEqual(int(referrer.referral_count or 0), 1)
             self.assertTrue(bool(referrer.expiry_at and referrer.expiry_at < datetime.utcnow() + timedelta(days=30)))
         finally:
@@ -921,6 +931,32 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertIsNone(s.query(PromoUsage).filter(PromoUsage.promo_code == "WELCOME20").first())
         finally:
             s.close()
+
+    def test_admin_gift_does_not_consume_first_successful_payment_authority(self) -> None:
+        from datetime import datetime
+        from models import User
+
+        user = User(
+            tg_id=2010,
+            sub_type="FREE",
+            current_plan_code="free_monthly",
+            expiry_at=datetime(2026, 7, 20),
+            is_active=True,
+            first_purchase_done=False,
+        )
+        self.api._apply_access_key_to_user(
+            user=user,
+            meta={"kind": "legacy_gift", "days": 30, "plan_code": "1_month"},
+            now=datetime(2026, 7, 12),
+        )
+        self.assertFalse(bool(user.first_purchase_done))
+
+        self.api._apply_access_key_to_user(
+            user=user,
+            meta={"kind": "plan", "days": 30, "plan_code": "1_month"},
+            now=datetime(2026, 7, 12),
+        )
+        self.assertFalse(bool(user.first_purchase_done))
 
     def test_start99_public_order_ignores_referral_and_pending_discounts(self) -> None:
         client = TestClient(self.api.app)
@@ -1312,7 +1348,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
-    def test_start99_public_order_blocks_after_first_purchase_flag(self) -> None:
+    def test_start99_public_order_blocks_after_actual_paid_order(self) -> None:
         client = TestClient(self.api.app)
 
         from db import SessionLocal
@@ -1320,8 +1356,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         s = SessionLocal()
         try:
-            s.add(
-                User(
+            user = User(
                     tg_id=4455,
                     username="start99_used",
                     uuid=str(uuid.uuid4()),
@@ -1331,6 +1366,19 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     first_purchase_done=True,
                     tos_accepted=True,
                 )
+            s.add_all(
+                [
+                    user,
+                    ExternalOrder(
+                        order_id="start99-prior-paid-order",
+                        tg_id=4455,
+                        provider="lavatop",
+                        plan_code="1_month",
+                        status="paid",
+                        amount=249,
+                        currency="RUB",
+                    ),
+                ]
             )
             s.commit()
         finally:
@@ -1362,8 +1410,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         s = SessionLocal()
         try:
-            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4455).first()
-            self.assertIsNone(row)
+            rows = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4455).all()
+            self.assertEqual([row.order_id for row in rows], ["start99-prior-paid-order"])
         finally:
             s.close()
 

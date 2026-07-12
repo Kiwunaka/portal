@@ -86,7 +86,7 @@ Draft:
 
 ### `telegram_bonus_missing` / `Бонус`
 
-Use when Telegram `+10 days` did not apply.
+Use when the new Telegram `+5 days` reward did not apply. Already-issued `+10 days` rewards remain grandfathered.
 
 Draft:
 

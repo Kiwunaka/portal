@@ -27,12 +27,18 @@ Public checkout must keep paid purchase CTAs disabled or degraded for any provid
 Current fulfillment contract:
 
 - authenticated cabinet and bot payments extend the linked account after a valid paid callback; bot payments are ticket-bound to Telegram and do not require buyer email;
+- paid extension starts from the later of callback time or the end of legitimate typed premium contributions and classified legacy `PAID`/`TRIAL`/`BONUS` remainder; legacy/free-cycle `FREE` expiry is a separate fallback and is ignored by the premium cursor;
+- fulfilled historical provider facts carry projection-applied provenance, so callback replay cannot append their duration; pending facts still apply exactly once, and merge/backfill leaves only the globally earliest provider payment marked first;
+- Telegram Stars `PayAttempt.status=paid` confirms payment but is not fulfillment authority: the bot must durably apply the matching account grant before retryable panel provisioning, and may treat a replay as complete only when both its processed marker and applied provider-payment grant exist;
+- ambiguous historical paid Stars attempts without per-order fulfillment evidence remain manual-review markers and do not suppress callback repair or claim aggregate paid expiry as proof for that attempt;
+- after Telegram platform panel creation or replay, subscription/profile credential fields must come from a validated owned panel read-back; local `User`, `AccessKey`, applicable `UserNode`, and provisioning evidence commit before completion. A validated owned legacy `node_code` may identify a lane without a database node ID and must not produce `UserNode(node_id=0)`; missing all node identity or conflicting node provenance remains retryable rather than exposing a different generated token;
+- only the referred account's first successful payment may start its account-owned referrer reward hold; release is replay-safe after a full `72 hours`, while admin gifts and renewals are non-authoritative;
 - after a paid bot callback, the user receives a Telegram handoff that prefers the POKROV app/cabinet and also includes the single `connect.pokrov.space` subscription link for beta-stage manual import;
 - the authenticated cabinet may show the same `connect.pokrov.space` subscription link and QR after access is active, so beta users can connect manually while native apps are still gated;
 - anonymous public checkout requires buyer email and issues one access key through email delivery after a valid paid callback;
 - app redemption uses the unified `POST /api/redeem` facade for paid access keys, legacy gift-card codes, and promo codes; paid checkout keys still remain a payment fulfillment artifact, while gift/promo codes remain non-payment bonus or campaign artifacts;
 - every active, non-hidden RUB plan with positive `amount_rub` may be exposed in hosted checkout after the provider gate; Lava.top receives the backend-calculated final dynamic amount and the selected `sbp` or `card` payment method;
-- `start_99` is a one-time user plan: backend order creation must reject it before provider invoice creation when `User.first_purchase_done=true` or when the user already has any successful paid Lava.top order;
+- `start_99` is a one-time account plan: backend order creation must reject it before provider invoice creation when durable account payment history or an actual successful provider order already exists; admin-issued plan/gift/promo keys and compatibility flags alone do not consume it;
 - `start_99` must keep its configured amount and must not stack referral, promo, or pending-discount reductions; those discount mechanics are reserved for standard paid plans when backend eligibility allows them;
 - amount, currency, plan, provider auth, local order binding, replay idempotency, and failed/cancelled events are mandatory gate checks before access changes;
 - access keys must not be returned in public payment API responses or URLs after payment.

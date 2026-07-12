@@ -84,6 +84,7 @@ from models import (
     ProviderTrafficQuota,
     ProviderTrafficQuotaAudit,
     ReferralBonusQueue,
+    ReferralRelationship,
     RenderedSubscriptionSnapshot,
     Review,
     RewardClaim,
@@ -188,7 +189,14 @@ from email_auth_service import (
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
 from account_security_errors import AccountRecoveryError, EmailOtpError
 from antiabuse_privacy_service import record_antiabuse_event
-from economy_service import read_trial_projection
+from economy_service import (
+    create_referral_relationship,
+    migrate_pending_legacy_referral_queue,
+    queue_first_payment_referrer_reward,
+    read_trial_projection,
+    record_successful_payment_grant,
+    release_due_referrer_rewards,
+)
 from account_recovery_service import (
     complete_access_reissue,
     exchange_recovery_code,
@@ -355,7 +363,7 @@ BOT_USERNAME = (os.getenv("BOT_USERNAME") or _shared_telegram_username("bot_user
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
-CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("bonus_days", 10) or 10)))
+CHANNEL_PREMIUM_DAYS = 5
 APP_TRIAL_DEFAULT_DAYS = 5
 APP_TRIAL_MAX_DAYS = 5
 WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
@@ -1886,13 +1894,24 @@ def _resolve_plan_config(*, s, code: str) -> dict[str, Any] | None:
     return None
 
 
-def _has_paid_lavatop_order(*, s, tg_id: int) -> bool:
-    if int(tg_id or 0) <= 0:
+def _has_successful_provider_payment(*, s, user: User) -> bool:
+    account_id = str(getattr(user, "account_id", "") or "").strip()
+    if account_id and (
+        s.query(EntitlementGrant.id)
+        .filter(
+            EntitlementGrant.account_id == account_id,
+            EntitlementGrant.source == "provider_payment",
+            EntitlementGrant.status.in_(["active", "recorded", "expired"]),
+        )
+        .first()
+    ):
+        return True
+    tg_id = int(getattr(user, "tg_id", 0) or 0)
+    if tg_id <= 0:
         return False
     row = (
         s.query(ExternalOrder.id)
         .filter(ExternalOrder.tg_id == int(tg_id))
-        .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "lavatop")
         .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
         .first()
     )
@@ -1902,8 +1921,7 @@ def _has_paid_lavatop_order(*, s, tg_id: int) -> bool:
 def _ensure_start99_available_for_user(*, s, user: User | None, plan_code: str) -> None:
     if (plan_code or "").strip().lower() != "start_99" or not user:
         return
-    tg_id = int(getattr(user, "tg_id", 0) or 0)
-    if bool(getattr(user, "first_purchase_done", False)) or _has_paid_lavatop_order(s=s, tg_id=tg_id):
+    if _has_successful_provider_payment(s=s, user=user):
         raise HTTPException(status_code=409, detail="start_99 is available only once per user")
 
 
@@ -2034,8 +2052,6 @@ def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime
     user.expiry_at = current_expiry + timedelta(days=days)
     user.sub_type = "PAID"
     user.is_active = True
-    user.first_purchase_done = True
-
     plan_code = str(meta.get("plan_code") or "").strip().lower()
     if plan_code:
         user.current_plan_code = plan_code
@@ -4414,32 +4430,43 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
 
         now = _utcnow()
         old_sub = (user.sub_type or "").upper().strip()
-        first_paid_purchase = not bool(getattr(user, "first_purchase_done", False))
         referrer_id = int(getattr(user, "referrer_id", 0) or 0)
+        new_referral_relationship = False
         plan_amount_stars = int(plan_cfg.get("amount_stars") or API_PLAN_PRICES.get(plan_code) or 0)
-        if old_sub == "FREE":
-            start_from = now
-        else:
-            start_from = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = start_from + timedelta(days=days)
-        user.sub_type = "PAID"
-        user.current_plan_code = plan_code
-        user.is_active = True
-        user.first_purchase_done = True
+        ensure_user_account_foundation(s, user, now=now)
+        s.flush()
+        if referrer_id > 0:
+            referrer = s.query(User).filter(User.tg_id == referrer_id).one_or_none()
+            if referrer is not None:
+                ensure_user_account_foundation(s, referrer, now=now)
+                s.flush()
+                existing_relationship = s.query(ReferralRelationship.id).filter_by(
+                    referred_account_id=str(user.account_id)
+                ).first()
+                create_referral_relationship(
+                    s,
+                    referred_account_id=str(user.account_id),
+                    referrer_account_id=str(referrer.account_id),
+                    source="legacy_referrer_projection",
+                    now=now,
+                )
+                new_referral_relationship = existing_relationship is None
+        payment_result = record_successful_payment_grant(
+            s,
+            account_id=str(user.account_id),
+            legacy_tg_id=int(user.tg_id),
+            provider=str(provider),
+            order_id=str(order_id),
+            plan_code=plan_code,
+            duration_days=days,
+            paid_at=now,
+        )
+        first_paid_purchase = bool(payment_result.is_first_payment)
+        if first_paid_purchase and new_referral_relationship and referrer_id > 0:
+            referrer.referral_count = int(referrer.referral_count or 0) + 1
         user.pending_discount_pct = None
         user.pending_discount_code = None
         user.pending_discount_set_at = None
-
-        # Anti-fraud referral flow:
-        # queue inviter reward and release it after the confirmation window + activity signal.
-        if first_paid_purchase and referrer_id > 0:
-            _queue_referral_bonus(
-                s=s,
-                order_id=str(order_id or f"{provider}:{int(tg_id)}:{int(now.timestamp())}"),
-                referrer_tg_id=int(referrer_id),
-                referred_tg_id=int(tg_id),
-                now=now,
-            )
 
         if ext_order:
             ext_order.status = "paid"
@@ -5614,105 +5641,52 @@ def _queue_referral_bonus(
 ) -> bool:
     if int(referrer_tg_id) <= 0 or int(referred_tg_id) <= 0 or not str(order_id or "").strip():
         return False
-    exists = (
-        s.query(ReferralBonusQueue.id)
-        .filter(
-            ReferralBonusQueue.order_id == str(order_id),
-            ReferralBonusQueue.referrer_tg_id == int(referrer_tg_id),
-            ReferralBonusQueue.referred_tg_id == int(referred_tg_id),
-        )
-        .first()
-    )
-    if exists:
-        return True
     referrer = s.query(User).filter(User.tg_id == int(referrer_tg_id)).first()
-    if referrer:
-        # Backward-compatible behavior: referral count is visible right after
-        # successful first paid purchase, while bonus days are deferred by anti-fraud queue.
-        referrer.referral_count = int(referrer.referral_count or 0) + 1
-    ready_at = now + timedelta(hours=int(REFERRAL_ANTIFRAUD_HOURS))
-    s.add(
-        ReferralBonusQueue(
-            order_id=str(order_id),
-            referrer_tg_id=int(referrer_tg_id),
-            referred_tg_id=int(referred_tg_id),
-            queued_at=now,
-            ready_at=ready_at,
-            status="pending",
-            meta=json.dumps({"source": "payment_callback", "counted": True}, ensure_ascii=False, separators=(",", ":")),
-        )
+    referred = s.query(User).filter(User.tg_id == int(referred_tg_id)).first()
+    if referrer is None or referred is None:
+        return False
+    ensure_user_account_foundation(s, referrer, now=now)
+    ensure_user_account_foundation(s, referred, now=now)
+    s.flush()
+    relationship = create_referral_relationship(
+        s,
+        referred_account_id=str(referred.account_id),
+        referrer_account_id=str(referrer.account_id),
+        source="legacy_referrer_projection",
+        now=now,
     )
+    was_queued = bool(relationship.first_payment_key)
+    queue_first_payment_referrer_reward(
+        s,
+        referred_account_id=str(referred.account_id),
+        payment_key=f"payment:{str(order_id)}",
+        paid_at=now,
+    )
+    if not was_queued:
+        referrer.referral_count = int(referrer.referral_count or 0) + 1
     return True
 
 
 def _process_referral_bonus_queue(*, limit: int = 100, force_without_activity: bool = False) -> dict[str, int]:
     now = _utcnow()
     s = SessionLocal()
-    processed = 0
-    rewarded = 0
-    waiting = 0
-    rejected = 0
     try:
-        rows = (
-            s.query(ReferralBonusQueue)
-            .filter(ReferralBonusQueue.status == "pending", ReferralBonusQueue.ready_at <= now)
-            .order_by(ReferralBonusQueue.id.asc())
-            .limit(max(1, min(int(limit), 1000)))
-            .all()
-        )
-        for row in rows:
-            processed += 1
-            referred = s.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
-            referrer = s.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
-            if not referred or not referrer:
-                row.status = "rejected_missing_user"
-                row.processed_at = now
-                rejected += 1
-                continue
-
-            has_activity = (
-                s.query(Event.id)
-                .filter(
-                    Event.tg_id == int(referred.tg_id),
-                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
-                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
-                )
-                .first()
-                is not None
-            )
-            age_hours = max(0, int((now - (row.queued_at or now)).total_seconds() // 3600))
-            if (not has_activity) and (not force_without_activity):
-                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
-                    row.status = "rejected_no_activity"
-                    row.processed_at = now
-                    rejected += 1
-                else:
-                    row.ready_at = now + timedelta(hours=6)
-                    waiting += 1
-                continue
-
-            ref_sub = str(referrer.sub_type or "").upper().strip()
-            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
-            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
-                row.status = "rejected_referrer_inactive"
-                row.processed_at = now
-                rejected += 1
-                continue
-
-            row_meta = _json_obj(getattr(row, "meta", None))
-            if not bool(row_meta.get("counted")):
-                referrer.referral_count = int(referrer.referral_count or 0) + 1
-            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
-            referrer.is_active = True
-            row.status = "rewarded"
-            row.processed_at = now
-            rewarded += 1
+        migration = migrate_pending_legacy_referral_queue(s, now=now, limit=limit)
+        release = release_due_referrer_rewards(s, now=now)
         s.commit()
+        return {
+            "processed": int(migration["migrated"]),
+            "migrated": int(migration["migrated"]),
+            "retryable": int(migration["retryable"]),
+            "rewarded": int(release["released"]),
+            "waiting": int(release["waiting"]),
+            "rejected": int(release["rejected"]),
+        }
     except Exception:
         s.rollback()
+        return {"processed": 0, "migrated": 0, "retryable": 0, "rewarded": 0, "waiting": 0, "rejected": 0}
     finally:
         s.close()
-    return {"processed": processed, "rewarded": rewarded, "waiting": waiting, "rejected": rejected}
 
 
 _diag_rate_limit: dict[int, float] = {}
@@ -9434,7 +9408,7 @@ async def _rub_create_order_internal(
             discount_allowed
             and user
             and getattr(user, "referrer_id", None)
-            and not bool(getattr(user, "first_purchase_done", False))
+            and not _has_successful_provider_payment(s=s, user=user)
         )
         working_amount = int(base_amount)
         if referral_discount_eligible and working_amount > 0:
@@ -13759,7 +13733,7 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
             total_gb=0,
             trial_used=False,
             tos_accepted=True,
-            first_purchase_done=True,
+            first_purchase_done=False,
             sub_token=_generate_sub_token(),
             is_manual=True,
             created_by_admin=actor,

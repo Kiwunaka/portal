@@ -74,7 +74,7 @@ Client-canon note:
   internal node/control-plane connection evidence
 - client connect confirmation, `clicked_connect`, `connected_ok`, and funnel
   telemetry never activate the trial
-- Telegram reward: `+10 days`
+- Telegram reward: `+5 days` for new account-owned grants; already-issued `+10 days` grants are grandfathered
 - public user-facing client version line: `0.x.x-beta`
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
@@ -229,7 +229,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 
 - calm, direct, and premium without fake urgency, countdown theater, or exaggerated rescue language
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
-- lead cards and above-the-fold proof with concrete user-checkable hooks: `5 days`, `no card for trial`, `Android + Windows`, `+10 days for Telegram`, `up to 5 devices in paid plans`, `cabinet`, and `support`
+- lead cards and above-the-fold proof with concrete user-checkable hooks: `5 days`, `no card for trial`, `Android + Windows`, `+5 days for Telegram`, `up to 5 devices in paid plans`, `cabinet`, and `support`
 - avoid mood-first public phrases such as `спокойный маршрут`, `легкий путь`, `понятный сценарий`, or similar filler when a real product fact, action, limit, or status can be shown instead
 - marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
 - email continuation copy may be live when the delivery path is ready, and must degrade honestly if delivery readiness fails
@@ -287,7 +287,9 @@ Product wording rule:
 
 ### Telegram Reward
 
-- reward value: `+10 days`
+- new reward value: `+5 days`, once per canonical account
+- already-issued `+10 days` channel rewards remain grandfathered and are never shortened or reissued
+- leaving the channel starts a `24 hour` grace period; rejoining cancels grace, and expiry removes only the unused channel interval
 - the app-first account must first link Telegram
 - reward validation then checks membership in the configured public channel
 - active public channel: `@pokrov_vpn`
@@ -295,6 +297,10 @@ Product wording rule:
 
 ### Promo And Referral Bonuses
 
+- a referred friend receives `+5 days` once, only from canonical server `ConnectionEvidence`
+- the referrer receives `+15 days` once after the referred account's first successful payment and a full `72 hour` hold
+- client events, admin gifts, and later renewals cannot release these day grants
+- before first successful payment, trial + Telegram + friend grants are capped at exactly `15 premium days` per canonical account
 - app-first bonus summary, referral summary, and promo-code redemption are backend-owned API contracts
 - the app may redeem promo codes through the unified code entry or the bonus promo endpoint
 - the app may show referral code, safe Telegram referral link, and copy/share/open actions from the referral summary contract; referral anti-abuse and bonus granting stay backend-owned

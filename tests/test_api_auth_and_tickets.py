@@ -93,6 +93,14 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             importlib.reload(sys.modules["points_service"])
         if "gift_cards_service" in sys.modules:
             importlib.reload(sys.modules["gift_cards_service"])
+        if "account_foundation_service" in sys.modules:
+            importlib.reload(sys.modules["account_foundation_service"])
+        if "economy_service" in sys.modules:
+            importlib.reload(sys.modules["economy_service"])
+        if "events_service" in sys.modules:
+            importlib.reload(sys.modules["events_service"])
+        if "channel_bonus_service" in sys.modules:
+            importlib.reload(sys.modules["channel_bonus_service"])
         if "api" in sys.modules:
             importlib.reload(sys.modules["api"])
         self.api = importlib.import_module("api")
@@ -1520,13 +1528,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         body = r.json()
         self.assertTrue(body["ok"])
         self.assertFalse(body["already_claimed"])
-        self.assertEqual(body["premium_days"], 10)
+        self.assertEqual(body["premium_days"], 5)
         self.assertEqual(body["sub_type"], "BONUS")
         self.assertTrue(body["sync_ok"])
         activated_events = self._event_rows("promo_channel_activated")
         self.assertEqual(len(activated_events), 1)
         self.assertEqual(activated_events[0]["source"], "webapp")
-        self.assertEqual(int(activated_events[0]["meta"].get("days") or 0), 10)
+        self.assertEqual(int(activated_events[0]["meta"].get("days") or 0), 5)
         self.assertTrue(bool(activated_events[0]["meta"].get("sync_ok")))
 
         # Second claim should be idempotent.
