@@ -1187,6 +1187,14 @@ $canonStart = git rev-parse "$task1aCommit^"
 if ($LASTEXITCODE -ne 0 -or -not $canonStart) {
   throw 'Canon baseline resolution failed'
 }
+$orchestrationCommit = git rev-list -1 --grep='^docs: reduce developer entrypoints to current ownership$' HEAD
+if ($LASTEXITCODE -ne 0 -or -not $orchestrationCommit) {
+  throw 'Reviewed orchestration commit lookup failed'
+}
+& git merge-base --is-ancestor $task1aCommit $orchestrationCommit
+if ($LASTEXITCODE -ne 0) {
+  throw 'Task 1A is not an ancestor of the reviewed orchestration commit'
+}
 
 $protectedPaths = @(
   'docs/audit-artifacts',
@@ -1211,6 +1219,20 @@ $moveOnlyPaths = @(
   'docs/archive/flat-docs/platform-availability-2026-05-26.md'
 )
 $workingTreeProtected = $protectedPaths + $moveOnlyPaths
+$expectedReviewedProtectedDelta = 'docs/developer/work-orders/2026-07-09-growth-megapass/INDEX.md'
+$reviewedProtectedDelta = @(
+  & git diff --name-only "$canonStart..$orchestrationCommit" -- @protectedPaths
+)
+if ($LASTEXITCODE -ne 0) {
+  throw "reviewed protected delta check failed with exit $LASTEXITCODE"
+}
+if (
+  $reviewedProtectedDelta.Count -ne 1 -or
+  $reviewedProtectedDelta[0] -ne $expectedReviewedProtectedDelta
+) {
+  throw 'reviewed protected delta is not the exact growth-megapass INDEX path'
+}
+$protectedRangeStart = $orchestrationCommit
 
 & git diff --quiet -- @workingTreeProtected
 if ($LASTEXITCODE -ne 0) {
@@ -1227,7 +1249,7 @@ if ($LASTEXITCODE -ne 0) {
 if ($untracked.Count -ne 0) {
   throw "protected untracked check found $($untracked.Count) path(s)"
 }
-& git diff --quiet "$canonStart..HEAD" -- @protectedPaths
+& git diff --quiet "$protectedRangeStart..HEAD" -- @protectedPaths
 if ($LASTEXITCODE -ne 0) {
   throw "protected committed-range check failed with exit $LASTEXITCODE"
 }
@@ -1246,8 +1268,10 @@ if ($sourceBlob -ne $archiveBlob) {
 }
 ```
 
-Expected: every Git command exits `0`; protected tracked-unstaged, staged,
-untracked, and committed-range checks are empty; the move-only source/archive
-blob IDs are identical. No protected file contents are read or printed. The
-account-foundation continuity file was already landed before Task 1A and is
-therefore part of `$canonStart`, not an allowed exception in this range.
+Expected: every Git command exits `0`; the reviewed pre-baseline protected
+delta is exactly the growth-megapass `INDEX.md`; protected tracked-unstaged,
+staged, untracked, and post-baseline committed-range checks are empty; the
+move-only source/archive blob IDs are identical. No protected file contents
+are read or printed. The account-foundation continuity file was already landed
+before Task 1A and is therefore part of `$canonStart`, not an allowed exception
+in this range.

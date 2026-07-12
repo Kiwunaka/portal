@@ -151,10 +151,25 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
     assert "`POKROV-app/main` is the only active client development and client-doc truth" in system_overview
     assert "`app-next/` is the retired bootstrap-source archive/reference workspace" in system_overview
     assert "`external/client-fork/app/` is the retired rollback/archive client reference workspace" in system_overview
-    assert "`POKROV-app/main` is the new client development truth for this rework" in developer_guide
-    assert "new client docs belong in `POKROV-app/docs/*`" in developer_guide
-    assert "`POKROV-app/main` is the policy label for the new client development lane" in repository_map
-    assert "live new client repo checkout: `C:/Users/kiwun/Documents/ai/POKROV-app`" in repository_map
+    assert (
+        "Active Android and Windows code, client documentation, and release artifacts\n"
+        "  live in the sibling C:/Users/kiwun/Documents/ai/POKROV-app repository.\n"
+        "  POKROV-app/main is the client promotion line."
+    ) in developer_guide
+    assert (
+        "Client behavior changes also update\n"
+        "C:/Users/kiwun/Documents/ai/POKROV-app/docs/. Do not rewrite archived client\n"
+        "summaries unless their archive label or retained evidence changes."
+    ) in developer_guide
+    assert (
+        "C:/Users/kiwun/Documents/ai/POKROV-app is the active Android/Windows\n"
+        "  repository. Code, client docs, and current artifacts promote through\n"
+        "  POKROV-app/main."
+    ) in repository_map
+    assert (
+        "| Active client contracts | "
+        "C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md |"
+    ) in repository_map
     assert "This repo now carries new client product-direction work and is the only active client development and release-metadata canon." in repo_readme
     assert "`app-next/` inside the platform repo is now transition/reference material rather than the canonical git lane" in repo_readme
     assert "`app-next/docs/` in the platform repo now remains transition/reference material instead of the canonical client-doc lane" in app_readme
