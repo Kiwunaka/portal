@@ -72,10 +72,11 @@ below are complete.
   endpoint already participates in another link direction, the bot leaves the
   one-time link unused and sends the case to support instead of building a
   transitive `A -> B -> C` identity chain.
-- the additive `auth_sessions`, `recovery_codes`, `entitlement_grants` and
-  antiabuse tables are schema foundation only at this stage. Current access
-  truth still comes from legacy user/payment state until the dedicated ledger
-  and session cutovers land.
+- the additive `auth_sessions` table now has repository-candidate rotating
+  device-session behavior, but it is not deployed. `recovery_codes`,
+  `entitlement_grants` and antiabuse tables remain schema foundation only.
+  Production access truth still comes from legacy user/payment/session state
+  until the guarded cutovers land.
 - PostgreSQL schema creation and additive migrations use the same
   `pokrov_schema_bootstrap` transaction advisory lock, preventing their
   separate transactions from overlapping during concurrent first startup.
@@ -228,13 +229,44 @@ Important concepts:
 
 - `install_id` is a stable client-side identifier, not a reusable credential
 - device context supports diagnostics and abuse control
-- the current stateless app bearer is used for subsequent app API calls until
-  rotating device-bound sessions replace it
+- the repository candidate issues a short-lived device-bound access token plus
+  one-time rotating refresh credential from first app bootstrap
+- signed tokens carrying `session_id` are checked against `auth_sessions`, the
+  canonical account `auth_epoch`, and the real device `credential_version` on
+  every authenticated request
+- browser, Telegram, email and retained compatibility bearers without
+  `session_id` continue through the existing stateless verifier until their
+  separate cutover
 - Telegram is optional and not required for account creation
 
-Do not infer from the presence of the `auth_sessions` table that refresh-token
-rotation, reuse detection, revoke or recovery exchange are already public. The
-current beta client still depends on the legacy bearer response shape.
+The rotating-session code is implemented on the integration branch but is not
+deployed. The current production beta still depends on the legacy bearer
+behavior. OTP and one-time recovery exchange are not part of this slice, so the
+candidate must not be deployed until updated clients persist refresh tokens and
+the recovery path is ready.
+
+Repository session rules:
+
+- first `POST /api/client/session/start-trial` returns the existing
+  `session_token` field plus `access_token`, one-time `refresh_token`, expiry
+  fields, `session_id`, `refresh_family_id`, canonical account UUID and real
+  device UUID
+- later calls for the same `install_id` return
+  `409 device_recovery_required`; `install_id` is never accepted as proof of
+  possession, and the history guard runs before device metadata writes or panel
+  synchronization
+- `POST /api/client/session/refresh` consumes one refresh token and returns the
+  next pair without extending the absolute family expiry
+- refresh reuse revokes the whole family and returns
+  `401 refresh_reuse_detected`
+- `POST /api/client/session/revoke` revokes the current family but leaves the
+  device registered
+- app-derived cabinet handoff and cabinet-session tokens retain source
+  session/device/epoch binding and are invalidated with that source family
+- `GET /api/client/devices` reads the real registry; `DELETE` requires fresh
+  auth, increments device credential version and revokes every bound session
+- raw refresh credentials are never written to the database or logs; only a
+  SHA-256 digest of a high-entropy token is retained
 
 ## Preferred Device Identity Inputs
 
@@ -272,11 +304,16 @@ Visibility rule:
 - device and IP context should be used for diagnosis and abuse control, not as a public-facing marketing message
 - install-scoped latency samples, carrier labels, and platform labels are operator-visible diagnostics for route quality and must not surface as raw telemetry in normal consumer UI
 
-## Live App-First Endpoints
+## Repository App-First Endpoints
 
-Current live backend contract:
+Current repository backend contract. Deployment status must be checked
+separately:
 
 - `POST /api/client/session/start-trial`
+- `POST /api/client/session/refresh`
+- `POST /api/client/session/revoke`
+- `GET /api/client/devices`
+- `DELETE /api/client/devices/{device_id}`
 - `GET /api/client/profile/managed`
 - `POST /api/client/nodes/latency-samples`
 - `GET /api/client/warp/status`
@@ -340,7 +377,8 @@ App/bot/cabinet parity smoke:
 Beta rate-limit contract:
 
 - externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, unified redeem, app-cabinet handoff token/exchange, support ticket create/upload/download, payment callbacks, subscription fetches, events, and unsafe admin actions apply backend-owned per-minute throttles
-- `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; retries for an existing `install_id` remain idempotent and should continue to return the existing app-first account
+- `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; a repeated existing `install_id` bypasses fresh-origin throttling but returns `409 device_recovery_required` instead of another credential
+- `POST /api/client/session/refresh` uses a small bucket keyed by a truncated SHA-256 refresh fingerprint plus a separate high IP ceiling for CGNAT/random-token abuse; raw refresh material never enters rate-limit identity or logs
 - throttled requests return HTTP `429` with a `Retry-After` header and structured detail containing `code=rate_limited`, `scope`, and `retry_after_seconds`
 - rate-limit counters store hashed fingerprints in durable `security_rate_limit_buckets` with an in-memory dev/test fallback and can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables
 

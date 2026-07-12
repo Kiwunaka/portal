@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PYTEST_BASETEMP_ROOT = REPO_ROOT / ".tmp" / "pytest-basetemp"
 RELEASE_PYTEST_ARGS = [
     "tests/test_account_foundation.py",
+    "tests/test_auth_sessions.py",
     "portal_bot/tests/test_app_first_service.py",
     "portal_bot/tests/test_app_first_api.py",
     "portal_bot/tests/test_email_auth.py",

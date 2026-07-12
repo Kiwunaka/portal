@@ -360,6 +360,13 @@ def create_web_session_token(
     email: str | None = None,
     ttl_seconds: int | None = None,
     purpose: str | None = None,
+    account_id: str | None = None,
+    session_id: str | None = None,
+    device_id: str | None = None,
+    auth_epoch: int | None = None,
+    device_credential_version: int | None = None,
+    scope: str | None = None,
+    token_id: str | None = None,
 ) -> str:
     now = int(time.time())
     ttl = int(SESSION_TTL_SECONDS)
@@ -375,6 +382,15 @@ def create_web_session_token(
         "auth_origin": (auth_origin or "").strip() or None,
         "email": (email or "").strip().lower() or None,
         "purpose": (purpose or "").strip() or None,
+        "account_id": (account_id or "").strip() or None,
+        "session_id": (session_id or "").strip() or None,
+        "device_id": (device_id or "").strip() or None,
+        "auth_epoch": int(auth_epoch) if auth_epoch is not None else None,
+        "device_credential_version": (
+            int(device_credential_version) if device_credential_version is not None else None
+        ),
+        "scope": (scope or "").strip() or None,
+        "token_id": (token_id or "").strip() or None,
         "iat": now,
         "exp": now + ttl,
     }
@@ -415,6 +431,13 @@ def inspect_web_session_token(token: str) -> tuple[dict[str, Any] | None, str | 
         "auth_origin": payload.get("auth_origin"),
         "email": payload.get("email"),
         "purpose": payload.get("purpose"),
+        "account_id": payload.get("account_id"),
+        "session_id": payload.get("session_id"),
+        "device_id": payload.get("device_id"),
+        "auth_epoch": payload.get("auth_epoch"),
+        "device_credential_version": payload.get("device_credential_version"),
+        "scope": payload.get("scope"),
+        "token_id": payload.get("token_id"),
     }, None
 
 

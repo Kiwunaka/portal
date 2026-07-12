@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 ## Document Status
 
@@ -51,6 +51,9 @@ Reference-lane note:
 - `portal_bot/account_foundation_service.py`
   Additive canonical-account projection and idempotent legacy backfill for
   accounts, typed identities, devices and legacy entitlement snapshots.
+- `portal_bot/auth_session_service.py`
+  Device-bound access/refresh issuance, one-time rotation, refresh-family reuse
+  detection, persisted logout, fresh-auth device revoke and access validation.
 - `portal_bot/web_auth_service.py`
   Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
@@ -207,10 +210,11 @@ Production source of truth:
 
 Account ownership transition:
 
-- deployment status: the additive account foundation is repo-implemented on
-  `codex/market-ready-cis-integration` but is not deployed. Production remains
-  on the legacy auth, entitlement, payment, support, bonus, `users.tg_id` and
-  stateless-bearer paths until the predeploy gates below are approved.
+- deployment status: the additive account foundation and rotating app-session
+  slice are repo-implemented on `codex/market-ready-cis-integration` but are not
+  deployed. Production remains on the legacy auth, entitlement, payment,
+  support, bonus, `users.tg_id` and stateless app-bearer paths until the
+  predeploy gates below are approved.
 
 - `accounts.id` is the new immutable UUID ownership root; `users.account_id`
   is an additive legacy projection and may point multiple legacy user rows at
@@ -248,10 +252,13 @@ Account ownership transition:
   public bot does not extend them. Runtime migration discovers an existing full
   component first, locks all member rows in one numeric query, then verifies the
   closure before projection.
-- `auth_sessions`, `recovery_codes`, `entitlement_grants` and antiabuse ledger
-  tables exist as foundation schema. Rotating refresh, recovery exchange,
-  entitlement-authority cutover and automated antiabuse actions are not live
-  merely because those tables exist.
+- `auth_sessions` now has repository behavior for short-lived device-bound
+  access tokens, absolute-expiry rotating refresh families, reuse detection,
+  persisted logout and fresh-auth device revoke. Raw refresh credentials are
+  not stored. This behavior is not deployed and is not production proof.
+- `recovery_codes`, `entitlement_grants` and antiabuse ledger tables remain
+  foundation schema. OTP/recovery exchange, entitlement-authority cutover and
+  automated antiabuse actions are not live merely because those tables exist.
 
 Predeploy account-foundation gates:
 
@@ -267,6 +274,12 @@ Predeploy account-foundation gates:
 - `MANUAL_OWNER_TEST`: verify preservation of public auth, entitlement,
   payments, support, bonus behavior, `users.tg_id` compatibility and the
   current stateless bearer before and after the rehearsal.
+- `MANUAL_OWNER_TEST`: update Android and Windows secure storage to retain the
+  one-time refresh token, rotate it atomically and fall back to recovery rather
+  than repeating bootstrap.
+- `MANUAL_OWNER_TEST`: do not deploy the repeated-bootstrap guard until email
+  OTP and one-time recovery exchange are complete and exact-client reinstall,
+  lost-credential, logout and device-revoke paths pass.
 
 Not source of truth:
 
@@ -306,14 +319,16 @@ Operational shaping rule:
 2. user taps `Try free`
 3. backend creates the legacy app user and synchronizes its canonical account,
    device and legacy entitlement projections
-4. backend issues the current compatibility bearer and returns `session`,
-   `client_policy`, `access`, and `provisioning` payloads plus a real
-   subscription source
+4. repository candidate creates the first `auth_sessions` row and returns the
+   compatibility `session_token` field plus a short-lived `access_token`,
+   one-time `refresh_token`, `session`, `client_policy`, `access`, and
+   `provisioning` payloads plus a real subscription source
 5. client imports and activates the profile
 
-Current compatibility limit: the bearer returned by `start-trial` is still the
-legacy stateless web-session family. It is not yet a row in `auth_sessions` and
-must not be described as rotating or device-bound before the session cutover.
+Deployment limit: production still returns the legacy stateless app bearer.
+The rotating candidate must not be promoted before client secure-storage and
+OTP/recovery gates are green because repeated bootstrap deliberately returns
+`device_recovery_required` once a device has session history.
 
 App-first contract note:
 

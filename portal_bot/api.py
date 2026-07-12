@@ -46,9 +46,11 @@ from config import Settings, env_bool, env_int
 from db import SessionLocal, init_db
 from models import (
     AccessKey,
+    AccountDevice,
     Achievement,
     AdminAudit,
     AppSetting,
+    AuthSession,
     CampaignSend,
     Event,
     ExternalOrder,
@@ -178,6 +180,7 @@ from email_auth_service import (
 )
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
 import app_first_service
+import auth_session_service
 import channel_bonus_service
 from account_foundation_service import ensure_user_account_foundation
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
@@ -903,6 +906,10 @@ class AppStartTrialIn(BaseModel):
     app_version: str | None = Field(default=None, max_length=32)
     locale: str | None = Field(default=None, max_length=32)
     time_zone: str | None = Field(default=None, max_length=64)
+
+
+class AppSessionRefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=32, max_length=512)
 
 
 class AccessKeyRedeemIn(BaseModel):
@@ -2535,6 +2542,35 @@ def _auth_http_exception(*, detail: str, code: str, status_code: int = 401) -> H
     return HTTPException(status_code=status_code, detail=detail, headers={"X-POKROV-Auth-Error": code})
 
 
+def _auth_session_http_exception(exc: auth_session_service.AuthSessionError) -> HTTPException:
+    status_by_code = {
+        "device_recovery_required": 409,
+        "fresh_auth_required": 409,
+        "device_not_found": 404,
+        "session_not_configured": 500,
+    }
+    detail_by_code = {
+        "device_recovery_required": "Устройство уже зарегистрировано. Обновите сессию или восстановите доступ.",
+        "fresh_auth_required": "Для отзыва устройства подтвердите вход ещё раз.",
+        "device_not_found": "Устройство не найдено.",
+        "refresh_token_invalid": "Refresh-токен не подтвердился.",
+        "refresh_reuse_detected": "Refresh-токен уже использован. Все сессии этой семьи отозваны.",
+        "refresh_expired": "Refresh-сессия истекла. Восстановите доступ.",
+        "session_revoked": "Сессия отозвана.",
+        "access_expired": "Access-сессия истекла.",
+        "device_revoked": "Устройство отозвано.",
+        "device_credential_changed": "Учётные данные устройства изменились.",
+        "session_epoch_changed": "Сессии аккаунта были обновлены. Войдите снова.",
+        "session_not_configured": "Сервис сессий не настроен.",
+    }
+    code = str(exc.code or "session_invalid")
+    return _auth_http_exception(
+        detail=detail_by_code.get(code, "Не удалось подтвердить сессию устройства."),
+        code=code,
+        status_code=int(status_by_code.get(code, 401)),
+    )
+
+
 def _optional_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any] | None:
     init_data = (x_telegram_init_data or "").strip()
     web_token = _extract_web_session_token(request)
@@ -2546,6 +2582,18 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
                     detail="Этот короткий переход нужно обменять в кабинете перед использованием.",
                     code="web_session_exchange_required",
                 )
+            if str(payload.get("session_id") or "").strip():
+                auth_session = SessionLocal()
+                try:
+                    payload = auth_session_service.validate_access_session(
+                        auth_session,
+                        payload=payload,
+                        now=_utcnow(),
+                    )
+                except auth_session_service.AuthSessionError as exc:
+                    raise _auth_session_http_exception(exc) from exc
+                finally:
+                    auth_session.close()
             return payload
         if init_data:
             user_data = _verify_telegram_data(init_data)
@@ -2795,6 +2843,8 @@ def _enforce_durable_rate_limit(scope: str, fingerprint: str, *, limit: int, win
 
 _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "start_trial": 12,
+    "session_refresh": 10,
+    "session_refresh_ip": 600,
     "access_key_status": 60,
     "access_key_redeem": 20,
     "unified_redeem": 20,
@@ -6348,16 +6398,28 @@ async def admin_auth_session(request: Request, x_telegram_init_data: str = Heade
 @app.post("/api/client/session/start-trial")
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
     client_policy: dict[str, Any] | None = None
+    session_now = _utcnow()
     s = SessionLocal()
     try:
         install_id = str(payload.install_id or "").strip()[:128]
+        existing_device = s.query(AccountDevice.id).filter(AccountDevice.install_id == install_id).first()
+        if existing_device is not None:
+            session_history = (
+                s.query(AuthSession.id)
+                .filter(AuthSession.device_id == str(existing_device.id))
+                .first()
+            )
+            if session_history is not None:
+                raise _auth_session_http_exception(
+                    auth_session_service.AuthSessionError("device_recovery_required")
+                )
         existing_app_account = s.query(User.tg_id).filter(User.app_install_id == install_id).first()
         if not existing_app_account:
             _enforce_beta_rate_limit("start_trial", request)
         user, created = app_first_service.upsert_app_trial_user(
             s=s,
             payload=payload,
-            now=_utcnow(),
+            now=session_now,
             trial_days=APP_TRIAL_DEFAULT_DAYS,
             request_client_ip=_request_client_ip(request),
         )
@@ -6377,15 +6439,6 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         raise
     finally:
         s.close()
-
-    session_token = create_web_session_token(
-        tg_id=int(user.tg_id),
-        username=str(user.username or "").strip() or None,
-        auth_type="app",
-        auth_origin="app",
-    )
-    if not session_token:
-        raise HTTPException(status_code=500, detail="App session is not configured")
 
     sync_ok = False
     panel = ControlPanel()
@@ -6421,7 +6474,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
 
     start_trial_parts = app_first_service.build_start_trial_response_parts(
         user=user,
-        session_token=session_token,
+        session_token="",
         now=_utcnow(),
         sync_ok=bool(sync_ok),
         build_access_policy=_build_access_policy,
@@ -6442,24 +6495,140 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     finally:
         payload_s.close()
 
+    credential_now = _utcnow()
+    session_s = SessionLocal()
+    try:
+        session_user = session_s.query(User).filter(User.tg_id == int(user.tg_id)).first()
+        if session_user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        issued_session = auth_session_service.issue_device_session(
+            session_s,
+            user=session_user,
+            install_id=install_id,
+            now=credential_now,
+        )
+        session_contract = issued_session.response_payload(now=credential_now)
+        start_trial_parts["session"].update(session_contract)
+        response_payload = {
+            "ok": True,
+            "created": bool(created),
+            "session_token": issued_session.access_token,
+            "access_token": issued_session.access_token,
+            "refresh_token": issued_session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_contract["expires_in"],
+            "refresh_expires_in": session_contract["refresh_expires_in"],
+            "canonical_account_id": issued_session.account_id,
+            "account_id": str(int(user.tg_id)),
+            "subscription_url": start_trial_parts["subscription_url"],
+            "sync_ok": bool(sync_ok),
+            "session": start_trial_parts["session"],
+            "client_policy": start_trial_parts["client_policy"],
+            "access": start_trial_parts["access"],
+            "linked_identities": linked_identities,
+            "free_caps": _free_caps_payload(user=user, access_policy=start_trial_parts["access"]),
+            "redeem_eligibility": _redeem_eligibility_payload(
+                user=user,
+                access_policy=start_trial_parts["access"],
+            ),
+            "promo_slots": promo_slots,
+            "hidden_transport_matrix": _hidden_transport_matrix_payload(
+                nodes=payload_nodes,
+                client_policy=client_policy,
+            ),
+            "location_matrix": _location_matrix_payload(
+                user=user,
+                nodes=payload_nodes,
+                client_policy=client_policy,
+            ),
+            "provisioning": start_trial_parts["provisioning"],
+        }
+        session_s.commit()
+    except HTTPException:
+        session_s.rollback()
+        raise
+    except auth_session_service.AuthSessionError as exc:
+        session_s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        session_s.rollback()
+        raise
+    finally:
+        session_s.close()
+    return response_payload
+
+
+@app.post("/api/client/session/refresh")
+async def client_session_refresh(payload: AppSessionRefreshIn, request: Request) -> dict[str, Any]:
+    refresh_fingerprint = hashlib.sha256(payload.refresh_token.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("session_refresh_ip", request)
+    _enforce_beta_rate_limit(
+        "session_refresh",
+        request,
+        identity=f"refresh_sha256:{refresh_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        issued = auth_session_service.rotate_device_session(
+            s,
+            refresh_token=payload.refresh_token,
+            now=now,
+        )
+        s.commit()
+    except auth_session_service.AuthSessionError as exc:
+        if exc.security_state_changed:
+            s.commit()
+        else:
+            s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+    session_payload = issued.response_payload(now=now)
     return {
         "ok": True,
-        "created": bool(created),
-        "session_token": session_token,
-        "account_id": str(int(user.tg_id)),
-        "subscription_url": start_trial_parts["subscription_url"],
-        "sync_ok": bool(sync_ok),
-        "session": start_trial_parts["session"],
-        "client_policy": start_trial_parts["client_policy"],
-        "access": start_trial_parts["access"],
-        "linked_identities": linked_identities,
-        "free_caps": _free_caps_payload(user=user, access_policy=start_trial_parts["access"]),
-        "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=start_trial_parts["access"]),
-        "promo_slots": promo_slots,
-        "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=payload_nodes, client_policy=client_policy),
-        "location_matrix": _location_matrix_payload(user=user, nodes=payload_nodes, client_policy=client_policy),
-        "provisioning": start_trial_parts["provisioning"],
+        **session_payload,
+        "session": dict(session_payload),
     }
+
+
+@app.post("/api/client/session/revoke")
+async def client_session_revoke(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Эта совместимая сессия не поддерживает серверный отзыв.",
+            code="session_not_persisted",
+            status_code=409,
+        )
+
+    s = SessionLocal()
+    try:
+        auth_session_service.revoke_session(
+            s,
+            account_id=account_id,
+            session_id=session_id,
+            now=_utcnow(),
+        )
+        s.commit()
+    except auth_session_service.AuthSessionError as exc:
+        s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    return {"ok": True, "session_id": session_id, "revoked": True}
 
 
 def _route_policy_payload(user: User | None) -> dict[str, Any]:
@@ -7119,22 +7288,57 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
 
 @app.get("/api/client/devices")
 async def client_devices(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
         rows = []
-        for item in _build_app_device_rows(user):
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        current_registry_id = str(auth_user.get("device_id") or "").strip()
+        devices = (
+            s.query(AccountDevice)
+            .filter(AccountDevice.account_id == account_id)
+            .order_by(AccountDevice.created_at.asc(), AccountDevice.id.asc())
+            .all()
+            if account_id
+            else []
+        )
+        for device in devices:
+            active = str(device.state or "").strip().lower() == "active" and device.revoked_at is None
             rows.append(
                 {
-                    "id": str(item.get("id") or ""),
-                    "label": str(item.get("name") or "Current device"),
-                    "platform": str(item.get("platform") or "device"),
-                    "osVersion": item.get("os_version"),
-                    "appVersion": item.get("app_version"),
-                    "lastSeen": item.get("last_seen_at"),
-                    "current": bool(item.get("is_current")),
-                    "active": bool(item.get("is_active")),
+                    "id": str(device.install_id),
+                    "registryId": str(device.id),
+                    "label": _normalize_app_device_name(device.label),
+                    "platform": str(device.platform or "device"),
+                    "osVersion": str(device.os_version or "").strip() or None,
+                    "appVersion": str(device.app_version or "").strip() or None,
+                    "lastSeen": _safe_iso(device.last_seen_at),
+                    "current": bool(
+                        str(device.id) == current_registry_id
+                        if current_registry_id
+                        else str(device.install_id) == str(getattr(user, "app_install_id", "") or "")
+                    ),
+                    "active": active,
+                    "state": str(device.state or "active"),
+                    "revokedAt": _safe_iso(device.revoked_at),
                 }
             )
+        if not rows:
+            for item in _build_app_device_rows(user):
+                rows.append(
+                    {
+                        "id": str(item.get("id") or ""),
+                        "registryId": None,
+                        "label": str(item.get("name") or "Current device"),
+                        "platform": str(item.get("platform") or "device"),
+                        "osVersion": item.get("os_version"),
+                        "appVersion": item.get("app_version"),
+                        "lastSeen": item.get("last_seen_at"),
+                        "current": bool(item.get("is_current")),
+                        "active": bool(item.get("is_active")),
+                        "state": "legacy",
+                        "revokedAt": None,
+                    }
+                )
         return {"items": rows, "limit": _plan_device_limit(user)}
     finally:
         s.close()
@@ -7142,18 +7346,52 @@ async def client_devices(request: Request, x_telegram_init_data: str = Header(de
 
 @app.delete("/api/client/devices/{device_id}")
 async def client_device_revoke(device_id: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        current = str(getattr(user, "app_install_id", "") or "").strip()
         target = str(device_id or "").strip()
         if not target:
             raise HTTPException(status_code=404, detail="Device not found")
-        if target == current:
+        account_id = str(auth_user.get("account_id") or getattr(user, "account_id", "") or "").strip()
+        actor_session_id = str(auth_user.get("session_id") or "").strip()
+        device = (
+            s.query(AccountDevice)
+            .filter(
+                AccountDevice.account_id == account_id,
+                or_(AccountDevice.id == target, AccountDevice.install_id == target),
+            )
+            .first()
+            if account_id
+            else None
+        )
+        if device is None:
+            raise HTTPException(status_code=404, detail="Device not found")
+        if not actor_session_id:
             raise HTTPException(
                 status_code=409,
                 detail={"code": "cannot_revoke_current_device", "message": "Current device cannot revoke itself."},
             )
-        raise HTTPException(status_code=404, detail="Device not found")
+        try:
+            revoked = auth_session_service.revoke_device(
+                s,
+                account_id=account_id,
+                device_id=str(device.id),
+                actor_session_id=actor_session_id,
+                now=_utcnow(),
+            )
+            s.commit()
+        except auth_session_service.AuthSessionError as exc:
+            s.rollback()
+            raise _auth_session_http_exception(exc) from exc
+        return {
+            "ok": True,
+            "device": {
+                "id": str(revoked.install_id),
+                "registryId": str(revoked.id),
+                "active": False,
+                "state": str(revoked.state or "revoked"),
+                "revokedAt": _safe_iso(revoked.revoked_at),
+            },
+        }
     finally:
         s.close()
 
@@ -11473,6 +11711,13 @@ async def client_cabinet_token(
         email=str(auth_user.get("email") or "").strip() or None,
         ttl_seconds=CABINET_HANDOFF_TTL_SECONDS,
         purpose="cabinet_handoff",
+        account_id=str(auth_user.get("account_id") or "").strip() or None,
+        session_id=str(auth_user.get("session_id") or "").strip() or None,
+        device_id=str(auth_user.get("device_id") or "").strip() or None,
+        auth_epoch=auth_user.get("auth_epoch"),
+        device_credential_version=auth_user.get("device_credential_version"),
+        scope=str(auth_user.get("scope") or "").strip() or None,
+        token_id=secrets.token_urlsafe(16),
     )
     if not handoff_token:
         raise HTTPException(status_code=500, detail="Cabinet handoff session is not configured")
@@ -11578,6 +11823,15 @@ async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, reque
                     "message": "Cabinet handoff token has expired.",
                 },
             )
+        if str(handoff_auth_user.get("session_id") or "").strip():
+            try:
+                auth_session_service.validate_access_session(
+                    s,
+                    payload=handoff_auth_user,
+                    now=now,
+                )
+            except auth_session_service.AuthSessionError as exc:
+                raise _auth_session_http_exception(exc) from exc
         session_token = create_web_session_token(
             tg_id=int(handoff_auth_user.get("id") or 0),
             username=str(handoff_auth_user.get("username") or "").strip() or None,
@@ -11585,6 +11839,16 @@ async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, reque
             auth_origin="app_cabinet_handoff",
             email=str(handoff_auth_user.get("email") or "").strip() or None,
             purpose="cabinet_session",
+            account_id=str(handoff_auth_user.get("account_id") or "").strip() or None,
+            session_id=str(handoff_auth_user.get("session_id") or "").strip() or None,
+            device_id=str(handoff_auth_user.get("device_id") or "").strip() or None,
+            auth_epoch=handoff_auth_user.get("auth_epoch"),
+            device_credential_version=handoff_auth_user.get("device_credential_version"),
+            scope=(
+                "cabinet_session"
+                if str(handoff_auth_user.get("session_id") or "").strip()
+                else None
+            ),
         )
         if not session_token:
             raise HTTPException(status_code=500, detail="Cabinet session is not configured")
