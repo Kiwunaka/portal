@@ -170,9 +170,18 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
         "| Active client contracts | "
         "C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md |"
     ) in repository_map
-    assert "This repo now carries new client product-direction work and is the only active client development and release-metadata canon." in repo_readme
-    assert "`app-next/` inside the platform repo is now transition/reference material rather than the canonical git lane" in repo_readme
-    assert "`app-next/docs/` in the platform repo now remains transition/reference material instead of the canonical client-doc lane" in app_readme
+    assert "Canonical client repository for POKROV on Android and Windows." in repo_readme
+    assert (
+        "`POKROV-app/main` is the active client-development\n"
+        "and client-documentation line; retained bridge bundles are archive evidence."
+    ) in repo_readme
+    assert (
+        "`POKROV-app/main` owns client implementation and client release-readiness."
+    ) in app_readme
+    assert (
+        "Use history to answer why. Never let archive, completed plans, generated "
+        "references, or old decisions determine what to implement now."
+    ) in app_readme
     assert "public cutover approval: `outside-store beta only`" in app_cutover
     assert "public Android release approval: `outside-store beta with operator attestation`" in app_cutover
     assert "public Windows release approval: `outside-store unsigned beta only`" in app_cutover
