@@ -9,7 +9,7 @@ This registry classifies important platform documents and the active client poin
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |
-| `OPERATOR_PLAYBOOK` | operator consults | `docs/developer/agent-playbooks/external-model-consults.md` | `PENDING_WAVE_2` |
+| `OPERATOR_PLAYBOOK` | operator consults | `docs/developer/agent-playbooks/external-model-consults.md` | `RECONCILED` |
 | `EXPERIMENTAL` | OpenAI helper | `docs/developer/openai-operator-assistants.md` | `PENDING_WAVE_2` |
 | `CANONICAL` | repository policy | `AGENTS.md` | `RECONCILED` |
 | `CANONICAL` | documentation ownership | `docs/README.md` | `RECONCILED` |
@@ -28,17 +28,17 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | deployment and access | `docs/operations/deployment-and-access.md` | `RECONCILED` |
 | `CANONICAL` | monitoring and origins | `docs/operations/monitoring-and-visibility.md` | `RECONCILED` |
 | `CANONICAL` | client delivery operations | `docs/operations/client-delivery-update-content-plan.md` | `RECONCILED` |
-| `CANONICAL` | design contract | `DESIGN.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | design contract | `DESIGN.md` | `RECONCILED` |
 | `CANONICAL` | design synchronization | `docs/design/design-system-sync.md` | `RECONCILED` |
-| `CANONICAL` | generated asset policy | `docs/design/generated-assets-policy.md` | `PENDING_WAVE_3` |
-| `CANONICAL` | developer workflow | `docs/developer/developer-guide.md` | `PENDING_COLLISION_REVIEW` |
-| `CANONICAL` | repository structure | `docs/developer/repository-map.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | generated asset policy | `docs/design/generated-assets-policy.md` | `RECONCILED` |
+| `CANONICAL` | developer workflow | `docs/developer/developer-guide.md` | `RECONCILED` |
+| `CANONICAL` | repository structure | `docs/developer/repository-map.md` | `RECONCILED` |
 | `CANONICAL` | Russian user guidance | `docs/user/portal-vpn-user-guide-ru.md` | `RECONCILED` |
 | `CANONICAL` | compatibility guidance | `docs/user/compatibility-clients-guide-ru.md` | `PENDING_WAVE_3` |
 | `CANONICAL` | active client docs | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md` | `PENDING_CLIENT_REVIEW` |
 | `CANONICAL` | active client readiness | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md` | `PENDING_CLIENT_REVIEW` |
-| `ACTIVE_EXECUTION` | work-order registry | `docs/developer/work-orders/README.md` | `PENDING_COLLISION_REVIEW` |
-| `ACTIVE_EXECUTION` | orchestration state | `docs/developer/orchestration/flow-state.md` | `PENDING_COLLISION_REVIEW` |
+| `ACTIVE_EXECUTION` | work-order registry | `docs/developer/work-orders/README.md` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | orchestration state | `docs/developer/orchestration/flow-state.md` | `RECONCILED` |
 | `EVIDENCE` | feature and test ledgers | `docs/developer/pokrov-*` | `PENDING_COLLISION_REVIEW` |
 | `EVIDENCE` | completed work orders | `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | retained release work | `docs/developer/work-orders/2026-04-open-beta-v4/` | `REVIEWED_NO_CHANGE` |
@@ -54,8 +54,8 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | primary operator surface | `adminapp/README.md` | `RECONCILED` |
 | `CANONICAL` | cabinet and retained admin parity fallback | `webapp/README.md` | `RECONCILED` |
 | `CANONICAL` | acquisition, SEO, and public copy surface | `marketing/README.md` | `RECONCILED` |
-| `OPERATOR_PLAYBOOK` | orchestration | `docs/developer/orchestration/orchestration-standard.md` | `PENDING_WAVE_2` |
-| `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `PENDING_WAVE_2` |
+| `OPERATOR_PLAYBOOK` | orchestration | `docs/developer/orchestration/orchestration-standard.md` | `RECONCILED` |
+| `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | public beta release | `docs/operations/public-beta-release-runbook.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | Android production signing | `docs/operations/android-production-signing-handoff.md` | `RECONCILED` |
@@ -71,7 +71,7 @@ This registry classifies important platform documents and the active client poin
 | `OPERATOR_PLAYBOOK` | runtime download smoke | `docs/operations/runtime-app-download-smoke.md` | `PENDING_COLLISION_REVIEW` |
 | `OPERATOR_PLAYBOOK` | RU-origin probe | `docs/operations/ru-origin-probe.md` | `PENDING_COLLISION_REVIEW` |
 | `HISTORICAL_REFERENCE` | growth and competitor research | `docs/product/pokrov-growth-and-competitor-notes.md` | `REVIEWED_NO_CHANGE` |
-| `EXPERIMENTAL` | context-cost harnesses | `docs/developer/orchestration/context-cost-harnesses.md` | `PENDING_WAVE_2` |
+| `EXPERIMENTAL` | context-cost harnesses | `docs/developer/orchestration/context-cost-harnesses.md` | `RECONCILED` |
 
 ## Classification Rules
 

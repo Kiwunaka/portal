@@ -38,7 +38,12 @@ Do not use generated assets that:
 
 ## Evidence Location
 
-Store release asset review notes under:
+Store each new repo-side generated-asset evidence packet under:
 
-- `docs/developer/work-orders/2026-04-open-beta-v4/evidence/screenshots/`
-- client-side release evidence under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/`
+- `docs/design/generated/<YYYY-MM-DD>-<packet>/`
+
+Keep prompt/reference, source master, derived outputs, review note, and release-scope note together in that packet.
+
+An active WO may link to its packet; never append new evidence to a completed WO.
+
+Keep client release evidence authority in the client repository only where the active client release guide requires it.

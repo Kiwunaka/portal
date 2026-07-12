@@ -334,6 +334,26 @@ def test_registry_classifies_every_listed_document() -> None:
         }
         for row in rows
     )
+    expected_reconciled = {
+        "docs/developer/agent-playbooks/external-model-consults.md": "RECONCILED",
+        "DESIGN.md": "RECONCILED",
+        "docs/design/generated-assets-policy.md": "RECONCILED",
+        "docs/developer/developer-guide.md": "RECONCILED",
+        "docs/developer/repository-map.md": "RECONCILED",
+        "docs/developer/work-orders/README.md": "RECONCILED",
+        "docs/developer/orchestration/flow-state.md": "RECONCILED",
+        "docs/developer/orchestration/orchestration-standard.md": "RECONCILED",
+        "docs/developer/orchestration/wo-authoring-guide.md": "RECONCILED",
+        "docs/developer/orchestration/context-cost-harnesses.md": "RECONCILED",
+    }
+    review_state_by_document = {
+        row["Document"].strip("`"): row["Review state"].strip("`")
+        for row in rows
+    }
+    assert {
+        document: review_state_by_document.get(document)
+        for document in expected_reconciled
+    } == expected_reconciled
     assert "Start Here As Agent" not in text
 
 
@@ -600,6 +620,24 @@ def test_reviewer_interface_uses_normalized_fields_and_verdicts() -> None:
         "changes_required",
         "blocked",
     }
+    evidence_fields = (
+        "name",
+        "source",
+        "target_scope",
+        "freshness",
+        "attribution",
+        "result",
+        "reference",
+        "notes",
+    )
+    evidence_block = template.split("\nevidence:\n", 1)[1].split(
+        "\n\nnext_action:", 1
+    )[0]
+    assert re.findall(
+        r"^  ([a-z][a-z0-9_]*):",
+        evidence_block,
+        flags=re.MULTILINE,
+    ) == list(evidence_fields)
     for field in (
         "finding",
         "id",
@@ -609,11 +647,7 @@ def test_reviewer_interface_uses_normalized_fields_and_verdicts() -> None:
         "required_change",
         "status",
         "evidence",
-        "source",
-        "target_scope",
-        "freshness",
-        "attribution",
-        "result",
+        *evidence_fields,
         "next_action",
     ):
         assert re.search(rf"(?<![a-z0-9_]){field}(?![a-z0-9_])", template.casefold())
@@ -1047,6 +1081,26 @@ def test_design_and_surface_docs_have_current_owners() -> None:
     assert "avoids direct public `VPN` wording" not in sync
     assert "SEO/search-intent" in generated_policy
     assert "legacy public `VPN` product wording outside unavoidable" not in generated_policy
+    assert (
+        "docs/developer/work-orders/2026-04-open-beta-v4/evidence/screenshots/"
+        not in generated_policy
+    )
+    assert "docs/design/generated/<YYYY-MM-DD>-<packet>/" in generated_policy
+    assert (
+        "Keep prompt/reference, source master, derived outputs, review note, "
+        "and release-scope note together in that packet."
+        in generated_policy
+    )
+    assert (
+        "An active WO may link to its packet; never append new evidence to a "
+        "completed WO."
+        in generated_policy
+    )
+    assert (
+        "Keep client release evidence authority in the client repository only "
+        "where the active client release guide requires it."
+        in generated_policy
+    )
     assert "primary operator" in admin.casefold()
     assert "parity fallback" in web.casefold()
     assert "acquisition" in marketing.casefold()
