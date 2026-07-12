@@ -5425,9 +5425,9 @@ async def show_gift_cards(callback: CallbackQuery):
     
     await callback.message.edit_text(
         "🎁 *Подарочные карты*\n\n"
-        "Купи карту → получи код → отправь другу!\n"
+        "Купите карту → получите код → отправьте другу!\n"
         "Друг активирует код в меню «Дополнительно» → «Активировать подарок»\n\n"
-        "Выбери карту:",
+        "Выберите карту:",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -5471,7 +5471,7 @@ async def redeem_command(message: Message, bot: Bot):
             "📥 *Активация подарочной карты*\n\n"
             "Использование: `/redeem POKROV-XXXX-XXXX`\n\n"
             "_Старые коды `SWAZ-...` тоже работают._\n\n"
-            "_Введи код карты, которую тебе подарили_",
+            "_Введите код карты, которую вам подарили_",
             parse_mode=ParseMode.MARKDOWN
         )
         return
@@ -5482,8 +5482,8 @@ async def redeem_command(message: Message, bot: Bot):
     # Check TOS first
     if not check_tos_accepted(tg_id):
         await message.answer(
-            "⚠️ Сначала прими условия использования.\n"
-            "Нажми /start и прими оферту."
+            "⚠️ Сначала примите условия использования.\n"
+            "Нажмите /start и примите оферту."
         )
         return
     
@@ -5913,10 +5913,10 @@ async def handle_text_input(message: Message):
         pending_redeem_codes.discard(tg_id)
         code = (message.text or "").strip().upper()
         if not code:
-            await message.answer("❌ Код пустой. Нажми «🎁 Активировать подарок» и попробуй снова.")
+            await message.answer("❌ Код пустой. Нажмите «🎁 Активировать подарок» и попробуйте снова.")
             return
         if not check_tos_accepted(tg_id):
-            await message.answer("⚠️ Сначала прими условия. Нажми /start и подтверди оферту.")
+            await message.answer("⚠️ Сначала примите условия. Нажмите /start и подтвердите оферту.")
             return
         success, result_msg = await redeem_gift_card(code, tg_id, message.bot)
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -5933,7 +5933,7 @@ async def handle_text_input(message: Message):
         pending_promo_codes.discard(tg_id)
         code = (message.text or "").strip().upper()
         if not code:
-            await message.answer("❌ Код пустой. Нажми «🎟️ Ввести промокод» и попробуй снова.")
+            await message.answer("❌ Код пустой. Нажмите «🎟️ Ввести промокод» и попробуйте снова.")
             return
         ok, result = activate_promo_code_for_user(tg_id, code)
         kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -6707,10 +6707,10 @@ async def ticket_new(callback: CallbackQuery):
         ticket = get_user_active_ticket(session, tg_id)
         if ticket:
             await callback.message.edit_text(
-                f"У тебя уже есть активный обращение #{ticket.id}.",
+                f"У вас уже есть активное обращение #{ticket.id}.",
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
-                        [InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")],
+                        [InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"ticket_view_{ticket.id}")],
                         [InlineKeyboardButton(text="📂 Мои обращения", callback_data="ticket_my")],
                         [InlineKeyboardButton(text="◀️ Назад", callback_data="support")],
                     ]
