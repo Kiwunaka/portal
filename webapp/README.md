@@ -1,14 +1,14 @@
 # POKROV WebApp
 
-Last updated: 2026-07-06
+Last updated: 2026-07-12
 
 ## Document Status
 
-This file is the local authority for `webapp/` and the browser cabinet surface at `https://app.pokrov.space/`.
+Document class: CANONICAL. This file is the local authority for `webapp/`, the browser cabinet, and its retained admin parity fallback at `https://app.pokrov.space/`.
 
 ## Purpose
 
-`webapp/` is the continuation-first cabinet surface for:
+`webapp/` owns the continuation-first cabinet plus the retained admin parity fallback. The cabinet serves:
 
 - browser entry and web-login continuation from app handoff, Telegram, and email when the runtime email delivery gate is fully ready
 - personal cabinet flows with visible IA `Главная`, `Доступ`, `Помощь`, and `Аккаунт`

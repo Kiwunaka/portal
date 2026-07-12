@@ -1,14 +1,16 @@
 # POKROV Marketing
 
-Last updated: 2026-06-07
+Last updated: 2026-07-12
 
 ## Document Status
 
-This file is the local authority for `marketing/`, the public site at
-`https://pokrov.space/`, and public acquisition/SEO/checkout entry pages.
+Document class: CANONICAL. This file is the local authority for `marketing/`,
+the public site at `https://pokrov.space/`, and the acquisition, SEO, public
+copy, and checkout-entry surfaces.
 
-The browser cabinet and admin surface live in `webapp/` at
-`https://app.pokrov.space/`.
+The browser cabinet lives in `webapp/` at `https://app.pokrov.space/`. The
+primary operator surface lives in `adminapp/` at `https://admin.pokrov.space/`;
+the old webapp admin routes are a retained parity fallback only.
 
 ## Current Surface Map
 
@@ -41,10 +43,11 @@ Public marketing should not:
   Android audit proof, production WARP proof, or RU-origin readiness;
 - duplicate the same product story across many card-grid sections.
 
-## Active Density Plan
+## Retained Density Guidance
 
-The active public-site density plan is
-`docs/design/2026-06-06-web-admin-site-density-plan.md`.
+The completed public-site density plan is retained guidance, not current
+authority:
+`docs/archive/design-plans/2026-06-06-web-admin-site-density-plan.md`.
 
 Current priority:
 

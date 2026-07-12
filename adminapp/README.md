@@ -1,10 +1,14 @@
 # POKROV AdminApp
 
-Last updated: 2026-07-08
+Last updated: 2026-07-12
+
+## Document Status
+
+Document class: CANONICAL. This file is the local authority for the primary operator surface in `adminapp/`.
 
 ## Purpose
 
-`adminapp/` is the dedicated Next.js operator app for `https://admin.pokrov.space/`.
+`adminapp/` is the dedicated Next.js primary operator app for `https://admin.pokrov.space/`.
 
 It owns the new admin surface for:
 

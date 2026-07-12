@@ -1026,3 +1026,48 @@ def test_publishing_keeps_release_link_handoff_as_evidence_only() -> None:
     assert "Operator shortcut" not in runtime_wiring
     assert "retained evidence" in runtime_wiring.casefold()
     assert "not current procedure" in runtime_wiring.casefold()
+
+
+def test_design_and_surface_docs_have_current_owners() -> None:
+    design = (REPO_ROOT / "DESIGN.md").read_text(encoding="utf-8")
+    sync = (
+        REPO_ROOT / "docs" / "design" / "design-system-sync.md"
+    ).read_text(encoding="utf-8")
+    generated_policy = (
+        REPO_ROOT / "docs" / "design" / "generated-assets-policy.md"
+    ).read_text(encoding="utf-8")
+    admin = (REPO_ROOT / "adminapp" / "README.md").read_text(encoding="utf-8")
+    web = (REPO_ROOT / "webapp" / "README.md").read_text(encoding="utf-8")
+    marketing = (REPO_ROOT / "marketing" / "README.md").read_text(encoding="utf-8")
+
+    assert "Document class: CANONICAL" in design
+    assert "retained history" in design.casefold()
+    assert "SEO/search-intent" in design
+    assert "SEO/search-intent" in sync
+    assert "avoids direct public `VPN` wording" not in sync
+    assert "SEO/search-intent" in generated_policy
+    assert "legacy public `VPN` product wording outside unavoidable" not in generated_policy
+    assert "primary operator" in admin.casefold()
+    assert "parity fallback" in web.casefold()
+    assert "acquisition" in marketing.casefold()
+    assert "docs/archive/design-plans/2026-06-06-web-admin-site-density-plan.md" in marketing
+    assert "docs/design/2026-06-06-web-admin-site-density-plan.md" not in marketing
+
+
+def test_surface_readme_repo_doc_pointers_resolve() -> None:
+    import re
+
+    for source_path in (
+        "adminapp/README.md",
+        "webapp/README.md",
+        "marketing/README.md",
+    ):
+        text = (REPO_ROOT / source_path).read_text(encoding="utf-8")
+        pointers = re.findall(
+            r"`((?:docs|shared)/[^`\s]+(?:\.md|\.json))`",
+            text,
+        )
+        for pointer in pointers:
+            assert (REPO_ROOT / pointer).exists(), (
+                f"{source_path} points to missing repository file {pointer}"
+            )

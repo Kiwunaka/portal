@@ -9,7 +9,6 @@ This registry classifies important platform documents and the active client poin
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |
-| `HISTORICAL_REFERENCE` | archive | `docs/archive/` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | operator consults | `docs/developer/agent-playbooks/external-model-consults.md` | `PENDING_WAVE_2` |
 | `EXPERIMENTAL` | OpenAI helper | `docs/developer/openai-operator-assistants.md` | `PENDING_WAVE_2` |
 | `CANONICAL` | repository policy | `AGENTS.md` | `RECONCILED` |
@@ -17,7 +16,7 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | task routing | `docs/developer/agent-context-map.md` | `RECONCILED` |
 | `EVIDENCE` | 2026-05-15 beta decision baseline | `docs/product/public-beta-prd.md` | `REVIEWED_NO_CHANGE` |
 | `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `RECONCILED` |
-| `HISTORICAL_REFERENCE` | dated platform availability snapshot | `docs/archive/flat-docs/platform-availability-2026-05-26.md` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | dated platform availability snapshot | `docs/archive/flat-docs/platform-availability-2026-05-26.md` | `RECONCILED` |
 | `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `RECONCILED` |
 | `CANONICAL` | launch known issues | `docs/launch/known-issues.md` | `RECONCILED` |
 | `CANONICAL` | platform architecture | `docs/architecture/system-overview.md` | `PENDING_WAVE_3` |
@@ -50,13 +49,18 @@ This registry classifies important platform documents and the active client poin
 | `HISTORICAL_REFERENCE` | older specs | `docs/superpowers/specs/` | `PENDING_COLLISION_REVIEW` |
 | `HISTORICAL_REFERENCE` | visual reference atlas | `reference-atlas/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | Atlas Glass design research | `docs/design/atlas-glass/` | `REVIEWED_NO_CHANGE` |
+| `EVIDENCE` | generated design artifacts | `docs/design/generated/` | `REVIEWED_NO_CHANGE` |
+| `EVIDENCE` | retained design assets | `docs/design/assets/` | `REVIEWED_NO_CHANGE` |
+| `CANONICAL` | primary operator surface | `adminapp/README.md` | `RECONCILED` |
+| `CANONICAL` | cabinet and retained admin parity fallback | `webapp/README.md` | `RECONCILED` |
+| `CANONICAL` | acquisition, SEO, and public copy surface | `marketing/README.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | orchestration | `docs/developer/orchestration/orchestration-standard.md` | `PENDING_WAVE_2` |
 | `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `PENDING_WAVE_2` |
 | `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | public beta release | `docs/operations/public-beta-release-runbook.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | Android production signing | `docs/operations/android-production-signing-handoff.md` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | Android physical-device audit | `docs/operations/android-physical-device-audit-handoff.md` | `REVIEWED_NO_CHANGE` |
-| `ACTIVE_EXECUTION` | RU-origin probe | `docs/operations/ru-origin-probe-handoff.md` | `REVIEWED_NO_CHANGE` |
+| `ACTIVE_EXECUTION` | Android physical-device audit | `docs/operations/android-physical-device-audit-handoff.md` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | RU-origin probe | `docs/operations/ru-origin-probe-handoff.md` | `RECONCILED` |
 | `EVIDENCE` | release-link handoff record | `docs/operations/release-links-and-final-handoff.md` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | plans and decisions closure audit | `docs/operations/2026-06-06-plans-decisions-closure-audit.md` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | email delivery webhook handoff | `docs/operations/email-delivery-webhook-handoff.md` | `REVIEWED_NO_CHANGE` |

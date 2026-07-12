@@ -1,15 +1,17 @@
 # POKROV Design System
 
-Last updated: 2026-07-04
+Last updated: 2026-07-12
 
-This file is the root design contract for public, cabinet, admin, and release-support surfaces in this repository.
+Document class: CANONICAL
+
+This file is the sole current design owner and root design contract for public, cabinet, admin, and release-support surfaces in this repository.
 
 ## Source Of Truth
 
 - Canonical tokens: `shared/design-tokens.json` (theme `pokrov-clear`, version `2026-07-redesign-w01`)
 - Token schema: `shared/design-tokens.schema.json`
 - Token TypeScript adapter: `shared/design-tokens.ts`
-- Redesign spec: `docs/superpowers/specs/2026-07-04-design-foundation-redesign-design.md`
+- Retained history: `docs/superpowers/specs/2026-07-04-design-foundation-redesign-design.md` is a historical redesign spec, not current authority.
 - Product facts and public URLs remain in `shared/product-facts.json`, `shared/public-urls.json`, and `shared/portal-config.ts`.
 - Active client design docs live in `C:/Users/kiwun/Documents/ai/POKROV-app/DESIGN.md` and `C:/Users/kiwun/Documents/ai/POKROV-app/docs/design/DESIGN.md`.
 
@@ -57,13 +59,20 @@ Text roles: `text` (`#16181d`, 17.8:1) for primary, `text_soft` (`#5e6772`, 5.7:
 
 Avoid:
 
-- hidden, cloaked, or stuffed `VPN` wording in public copy (visible SEO/search-intent `VPN` wording on dedicated surfaces is owner-approved per `AGENTS.md`);
 - legacy subtitle lockups as visible public branding;
 - decorative visual noise that competes with account, payment, or safety state: stacked gradients, grain/noise overlays, and glass blur on content planes are retired;
 - inflated or unverifiable claims (user counters, pseudo-tech superlatives); honest, checkable facts are a deliberate brand wedge in this market;
 - unsupported public safety claims for Android, Windows, paid checkout, or downloads.
 
 Deprecated (keep tokens for compatibility, no new usage): `sage`, `gold_soft`, legacy `-dark`-suffixed variables, card `inner_edge` / `inner_edge_dark` (both now `none`).
+
+## Public Wording Boundary
+
+Visible `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent
+surfaces when it is useful to users and tied to the real POKROV app flow.
+Hidden text, cloaking, keyword stuffing, unsupported “best” claims, and
+unsupported release, payment, store, signing, device-audit, or RU-origin
+claims remain forbidden.
 
 ## Control Canon (iOS-style, 2026-07 redesign)
 
@@ -100,6 +109,6 @@ Generated images, icons, screenshots, app-store graphics, and social preview der
 - source asset or approved master reference;
 - final dimensions and file path;
 - reviewer/date note;
-- explicit statement that the asset does not contain legacy public `VPN` wording unless it is an unavoidable compatibility label.
+- explicit statement that any visible `VPN` / `ВПН` wording follows the scoped SEO/search-intent boundary above.
 
 Do not ship generated release assets from scratch without checking them against the current brand master and token palette.

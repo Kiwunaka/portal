@@ -1,8 +1,10 @@
 # Design System Sync
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
-`DESIGN.md` is the root design contract for this repository. `shared/design-tokens.json` is the machine-readable token source for marketing, cabinet, admin, and release-support UI.
+Document class: CANONICAL current sync checklist
+
+This is the current sync checklist. `DESIGN.md` remains the sole current design owner and root design contract for this repository. `shared/design-tokens.json` is the machine-readable token source for marketing, cabinet, admin, and release-support UI.
 
 ## Required Sync Points
 
@@ -43,10 +45,11 @@ Last updated: 2026-07-10
 ## Review Checklist
 
 - Token changes include schema-compatible JSON.
-- Public copy uses `POKROV` as the product line. Visible `VPN` / `ВПН`
-  wording is allowed on approved SEO/search-intent surfaces; hidden text,
-  cloaking, stuffing, unsupported “best”, store, stable, signing, device-audit,
-  and RU-origin claims remain forbidden.
+- Public copy uses `POKROV` as the product line. Visible `VPN` / `ВПН` wording
+  is allowed on dedicated SEO/search-intent surfaces when it is useful to users
+  and tied to the real POKROV app flow. Hidden text, cloaking, keyword stuffing,
+  unsupported “best” claims, and unsupported release, payment, store, signing,
+  device-audit, or RU-origin claims remain forbidden.
 - Any new generated image includes source prompt, dimensions, intended use, and review note.
 - Screenshots used for launch or store work are fresh and match the current beta limitations.
 - Reduced-motion, keyboard focus, text integrity, and light/dark screenshots are part of frontend Definition of Done when visible surfaces change.

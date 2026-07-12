@@ -1,8 +1,18 @@
 # Generated Assets Policy
 
-Last updated: 2026-04-26
+Last updated: 2026-07-12
+
+Document class: CANONICAL
 
 Generated assets are allowed for POKROV only when they are traceable, reviewed, and truthful for the release scope.
+
+## Public Wording Boundary
+
+Visible `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent
+surfaces when it is useful to users and tied to the real POKROV app flow.
+Hidden text, cloaking, keyword stuffing, unsupported “best” claims, and
+unsupported release, payment, store, signing, device-audit, or RU-origin
+claims remain forbidden.
 
 ## Required Metadata
 
@@ -23,7 +33,7 @@ Do not use generated assets that:
 
 - show Android or Windows availability that is not supported by release evidence;
 - imply store approval before store metadata and approval gates are green;
-- include legacy public `VPN` product wording outside unavoidable compatibility labels;
+- use visible `VPN` / `ВПН` wording outside the scoped boundary above;
 - obscure UI state needed to understand checkout, downloads, or support limitations.
 
 ## Evidence Location
