@@ -31,7 +31,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse
 
 import aiohttp
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
@@ -170,8 +170,11 @@ from email_auth_service import (
     InvalidEmailTokenError,
     authenticate_email_identity,
     build_debug_payload as build_email_auth_debug_payload,
+    consume_login_otp,
     deliver_auth_message,
+    email_login_otp_configured,
     get_verified_identity_for_user,
+    issue_login_otp,
     register_email_identity,
     start_password_reset,
     validate_email_input,
@@ -179,6 +182,12 @@ from email_auth_service import (
     finish_password_reset,
 )
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
+from account_security_errors import AccountRecoveryError, EmailOtpError
+from account_recovery_service import (
+    complete_access_reissue,
+    exchange_recovery_code,
+    rotate_recovery_code,
+)
 import app_first_service
 import auth_session_service
 import channel_bonus_service
@@ -889,6 +898,22 @@ class EmailLoginIn(BaseModel):
     password: str = Field(min_length=8, max_length=200)
 
 
+class EmailOtpStartIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+
+
+class EmailOtpFinishIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+    code: str = Field(min_length=6, max_length=6)
+    install_id: str | None = Field(default=None, min_length=8, max_length=128)
+    device_name: str | None = Field(default=None, max_length=120)
+    platform: str | None = Field(default=None, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+
+
 class EmailRecoveryStartIn(BaseModel):
     email: str = Field(min_length=5, max_length=200)
 
@@ -910,6 +935,21 @@ class AppStartTrialIn(BaseModel):
 
 class AppSessionRefreshIn(BaseModel):
     refresh_token: str = Field(min_length=32, max_length=512)
+
+
+class RecoveryCodeExchangeIn(BaseModel):
+    code: str = Field(min_length=18, max_length=32)
+    install_id: str = Field(min_length=8, max_length=128)
+    device_name: str = Field(min_length=2, max_length=120)
+    platform: str = Field(min_length=2, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+
+
+class AccessReissueIn(BaseModel):
+    mode: str = Field(min_length=3, max_length=32)
 
 
 class AccessKeyRedeemIn(BaseModel):
@@ -2571,6 +2611,64 @@ def _auth_session_http_exception(exc: auth_session_service.AuthSessionError) -> 
     )
 
 
+def _account_recovery_http_exception(exc: AccountRecoveryError) -> HTTPException:
+    status_by_code = {
+        "email_otp_invalid": 401,
+        "email_otp_expired": 401,
+        "email_otp_not_configured": 503,
+        "fresh_auth_required": 409,
+        "device_identity_conflict": 409,
+        "device_limit_reached": 409,
+        "recovery_code_invalid": 401,
+        "recovery_session_invalid": 401,
+        "recovery_not_configured": 503,
+        "account_unavailable": 409,
+        "reissue_mode_invalid": 400,
+    }
+    detail_by_code = {
+        "email_otp_invalid": "Код не подтвердился или уже использован.",
+        "email_otp_expired": "Код истёк. Запросите новый.",
+        "email_otp_not_configured": "Email OTP пока не настроен.",
+        "fresh_auth_required": "Сначала подтвердите вход одноразовым кодом.",
+        "device_identity_conflict": "Это устройство уже связано с другим аккаунтом.",
+        "device_limit_reached": "Достигнут лимит устройств. Отзовите старое устройство или используйте lockdown.",
+        "recovery_code_invalid": "Код восстановления не подтвердился или уже использован.",
+        "recovery_session_invalid": "Recovery-сессия истекла или уже использована.",
+        "recovery_not_configured": "Контур восстановления пока не настроен.",
+        "account_unavailable": "Аккаунт недоступен для восстановления.",
+        "reissue_mode_invalid": "Неизвестный режим перевыпуска доступа.",
+    }
+    code = str(exc.code or "account_recovery_failed")
+    return _auth_http_exception(
+        detail=detail_by_code.get(code, "Не удалось подтвердить восстановление доступа."),
+        code=code,
+        status_code=int(status_by_code.get(code, 401)),
+    )
+
+
+def _recovery_scope_request_allowed(request: Request | None) -> bool:
+    if request is None:
+        return False
+    method = str(getattr(request, "method", "") or "").upper()
+    path = str(getattr(getattr(request, "url", None), "path", "") or "")
+    exact = {
+        ("GET", "/api/auth/session"),
+        ("POST", "/api/client/access/reissue"),
+        ("POST", "/api/client/session/revoke"),
+        ("GET", "/api/client/devices"),
+        ("POST", "/api/client/support/assistant"),
+    }
+    if (method, path) in exact:
+        return True
+    if method == "DELETE" and path.startswith("/api/client/devices/"):
+        return True
+    if path == "/api/tickets" and method in {"GET", "POST"}:
+        return True
+    if path.startswith("/api/tickets/") and method in {"GET", "POST"}:
+        return True
+    return False
+
+
 def _optional_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any] | None:
     init_data = (x_telegram_init_data or "").strip()
     web_token = _extract_web_session_token(request)
@@ -2594,6 +2692,12 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
                     raise _auth_session_http_exception(exc) from exc
                 finally:
                     auth_session.close()
+                if str(payload.get("scope") or "").strip() == "recovery" and not _recovery_scope_request_allowed(request):
+                    raise _auth_http_exception(
+                        detail="Recovery-сессия не открывает этот раздел. Сначала перевыпустите доступ.",
+                        code="recovery_scope_forbidden",
+                        status_code=403,
+                    )
             return payload
         if init_data:
             user_data = _verify_telegram_data(init_data)
@@ -2852,6 +2956,16 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "cabinet_handoff_exchange": 30,
     "telegram_auth": 30,
     "email_auth": 20,
+    "email_otp_start": 5,
+    "email_otp_start_ip": 20,
+    "email_otp_finish": 8,
+    "email_otp_finish_ip": 30,
+    "email_otp_finish_install": 8,
+    "recovery_exchange": 5,
+    "recovery_exchange_ip": 30,
+    "recovery_exchange_install": 5,
+    "recovery_rotate": 5,
+    "access_reissue": 5,
     "ticket_create": 20,
     "ticket_upload": 30,
     "ticket_attachment_download": 120,
@@ -3353,7 +3467,13 @@ def _auth_actor_tg_id(auth_user: dict[str, Any] | None) -> int:
         s.close()
 
 
+def _auth_user_is_recovery_scope(auth_user: dict[str, Any] | None) -> bool:
+    return str((auth_user or {}).get("scope") or "").strip() == "recovery"
+
+
 def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User | None) -> bool:
+    if _auth_user_is_recovery_scope(auth_user):
+        return False
     candidates = [
         int((auth_user or {}).get("id") or 0),
         _auth_actor_tg_id(auth_user),
@@ -3365,6 +3485,12 @@ def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User
 
 def _require_admin(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
     user_data = _require_auth_user(x_telegram_init_data, request=request)
+    if _auth_user_is_recovery_scope(user_data):
+        raise _auth_http_exception(
+            detail="Recovery-сессия не даёт административных прав.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
     account_id = int(user_data.get("id", 0))
     actor_id = _auth_actor_tg_id(user_data)
     if not _is_admin_tg(actor_id):
@@ -6082,7 +6208,16 @@ async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn, response: Res
 
 @app.get("/api/auth/email/status")
 async def auth_email_status() -> dict[str, Any]:
-    return email_delivery_runtime_status()
+    status = dict(email_delivery_runtime_status())
+    otp_configured = email_login_otp_configured()
+    status["otp_configured"] = bool(otp_configured)
+    if not otp_configured:
+        blocked = list(status.get("blocked_reasons") or [])
+        if "otp_secret_missing" not in blocked:
+            blocked.append("otp_secret_missing")
+        status["blocked_reasons"] = blocked
+        status["enabled"] = False
+    return status
 
 
 @app.post("/api/auth/email/register")
@@ -6209,11 +6344,224 @@ async def auth_email_login(payload: EmailLoginIn, request: Request, response: Re
         return {
             "ok": True,
             "token": token,
+            "auth_method": "password_compatibility",
             "token_transport": "cookie_and_legacy_bearer",
             "expires_in": int(SESSION_TTL_SECONDS),
             "user": {
                 "id": int(user.tg_id),
                 "username": str(user.username or "").strip() or None,
+                "email": str(identity.email),
+            },
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+async def _deliver_login_otp_background(
+    *,
+    email: str,
+    code: str,
+    linked_tg_id: int,
+) -> None:
+    try:
+        await deliver_auth_message(
+            kind="login_otp",
+            email=email,
+            token=code,
+            linked_tg_id=linked_tg_id,
+        )
+    except Exception:
+        logger.exception("email OTP background delivery failed")
+
+
+@app.post("/api/auth/email/otp/start")
+async def auth_email_otp_start(
+    payload: EmailOtpStartIn,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    _require_email_public_ready()
+    if not email_login_otp_configured():
+        raise _account_recovery_http_exception(EmailOtpError("email_otp_not_configured"))
+    try:
+        email_norm = validate_email_input(payload.email)
+    except InvalidEmailInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    email_fingerprint = hashlib.sha256(email_norm.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("email_otp_start_ip", request)
+    _enforce_beta_rate_limit("email_otp_start", request, identity=f"email_sha256:{email_fingerprint}")
+
+    s = SessionLocal()
+    try:
+        identity, code = issue_login_otp(s, email=email_norm, now=_utcnow())
+        s.commit()
+        if identity is not None and code is not None:
+            background_tasks.add_task(
+                _deliver_login_otp_background,
+                email=str(identity.email),
+                code=code,
+                linked_tg_id=int(identity.linked_tg_id or 0),
+            )
+        return {
+            "ok": True,
+            "otp_requested": True,
+            "expires_in": 300,
+            "delivery": {"status": "accepted", "kind": "login_otp"},
+        }
+    except (InvalidEmailInputError, EmailOtpError) as exc:
+        s.rollback()
+        if isinstance(exc, EmailOtpError):
+            raise _account_recovery_http_exception(exc) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/auth/email/otp/finish")
+async def auth_email_otp_finish(
+    payload: EmailOtpFinishIn,
+    request: Request,
+    response: Response,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    if not email_login_otp_configured():
+        raise _account_recovery_http_exception(EmailOtpError("email_otp_not_configured"))
+    email_fingerprint = hashlib.sha256(str(payload.email or "").strip().lower().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("email_otp_finish_ip", request)
+    _enforce_beta_rate_limit("email_otp_finish", request, identity=f"email_sha256:{email_fingerprint}")
+    if payload.install_id:
+        install_fingerprint = hashlib.sha256(str(payload.install_id).strip().encode("utf-8")).hexdigest()[:32]
+        _enforce_beta_rate_limit(
+            "email_otp_finish_install",
+            request,
+            identity=f"install_sha256:{install_fingerprint}",
+        )
+    try:
+        current_auth = _optional_auth_user(x_telegram_init_data, request=request)
+    except HTTPException:
+        current_auth = None
+
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        try:
+            identity = consume_login_otp(
+                s,
+                email=payload.email,
+                code=payload.code,
+                now=now,
+            )
+        except (InvalidEmailInputError, EmailOtpError) as exc:
+            raise _account_recovery_http_exception(
+                exc if isinstance(exc, EmailOtpError) else EmailOtpError("email_otp_invalid")
+            ) from exc
+        user = s.query(User).filter(User.tg_id == int(identity.linked_tg_id)).first()
+        if user is None:
+            raise HTTPException(status_code=409, detail="Linked account is missing")
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        if not account_id:
+            raise HTTPException(status_code=409, detail="Canonical account is missing")
+
+        issued_session = None
+        fresh_auth_until = None
+        install_id = str(payload.install_id or "").strip()
+        if install_id:
+            existing_device = s.query(AccountDevice).filter(AccountDevice.install_id == install_id).first()
+            active_devices = (
+                s.query(func.count(AccountDevice.id))
+                .filter(
+                    AccountDevice.account_id == account_id,
+                    AccountDevice.state == "active",
+                    AccountDevice.revoked_at.is_(None),
+                )
+                .scalar()
+                or 0
+            )
+            if existing_device is None and int(active_devices) >= int(_plan_device_limit(user)):
+                raise _account_recovery_http_exception(AccountRecoveryError("device_limit_reached"))
+            try:
+                issued_session = auth_session_service.issue_authenticated_device_session(
+                    s,
+                    account_id=account_id,
+                    install_id=install_id,
+                    device_name=str(payload.device_name or "Authenticated device"),
+                    platform=str(payload.platform or "device"),
+                    os_version=payload.os_version,
+                    app_version=payload.app_version,
+                    locale=payload.locale,
+                    time_zone=payload.time_zone,
+                    scope="client",
+                    auth_origin="email_otp",
+                    now=now,
+                )
+            except auth_session_service.AuthSessionError as exc:
+                raise _auth_session_http_exception(exc) from exc
+            fresh_auth_until = now + timedelta(seconds=auth_session_service.APP_FRESH_AUTH_MAX_AGE_SECONDS)
+        else:
+            current_session_id = str((current_auth or {}).get("session_id") or "").strip()
+            current_account_id = str((current_auth or {}).get("account_id") or "").strip()
+            if current_session_id and current_account_id == account_id:
+                try:
+                    auth_session_service.mark_session_fresh(
+                        s,
+                        account_id=account_id,
+                        session_id=current_session_id,
+                        now=now,
+                    )
+                except auth_session_service.AuthSessionError as exc:
+                    raise _auth_session_http_exception(exc) from exc
+                fresh_auth_until = now + timedelta(seconds=auth_session_service.APP_FRESH_AUTH_MAX_AGE_SECONDS)
+
+        if issued_session is not None:
+            session_payload = issued_session.response_payload(now=now)
+            session_payload["scope"] = "client"
+            s.commit()
+            return {
+                "ok": True,
+                "auth_method": "email_otp",
+                "token": issued_session.access_token,
+                "access_token": issued_session.access_token,
+                "refresh_token": issued_session.refresh_token,
+                "token_transport": "bearer",
+                "fresh_auth_until": _safe_iso(fresh_auth_until),
+                "session": session_payload,
+                "user": {
+                    "id": int(user.tg_id),
+                    "account_id": account_id,
+                    "email": str(identity.email),
+                },
+            }
+
+        token = create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or "").strip() or None,
+            auth_type="email",
+            auth_origin="email_otp",
+            email=str(identity.email),
+        )
+        if not token:
+            raise HTTPException(status_code=500, detail="Web session is not configured")
+        s.commit()
+        _set_web_session_cookie(response, token)
+        return {
+            "ok": True,
+            "auth_method": "email_otp",
+            "token": token,
+            "token_transport": "cookie_and_legacy_bearer",
+            "expires_in": int(SESSION_TTL_SECONDS),
+            "fresh_auth_until": _safe_iso(fresh_auth_until),
+            "user": {
+                "id": int(user.tg_id),
+                "account_id": account_id,
                 "email": str(identity.email),
             },
         }
@@ -6629,6 +6977,172 @@ async def client_session_revoke(
     finally:
         s.close()
     return {"ok": True, "session_id": session_id, "revoked": True}
+
+
+@app.post("/api/client/recovery-code/rotate")
+async def client_recovery_code_rotate(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Эта совместимая сессия не поддерживает recovery-коды.",
+            code="session_not_persisted",
+            status_code=409,
+        )
+    session_fingerprint = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "recovery_rotate",
+        request,
+        identity=f"session_sha256:{session_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        issued = rotate_recovery_code(
+            s,
+            account_id=account_id,
+            actor_session_id=session_id,
+            now=now,
+        )
+        s.commit()
+        return {
+            "ok": True,
+            "recovery_code": issued.code,
+            "code_hint": issued.code_hint,
+            "version": int(issued.version),
+            "shown_once": True,
+        }
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/client/recovery/exchange")
+async def client_recovery_exchange(
+    payload: RecoveryCodeExchangeIn,
+    request: Request,
+) -> dict[str, Any]:
+    code_fingerprint = hashlib.sha256(str(payload.code or "").strip().upper().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("recovery_exchange_ip", request)
+    _enforce_beta_rate_limit(
+        "recovery_exchange",
+        request,
+        identity=f"code_sha256:{code_fingerprint}",
+    )
+    install_fingerprint = hashlib.sha256(str(payload.install_id).strip().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "recovery_exchange_install",
+        request,
+        identity=f"install_sha256:{install_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        exchange = exchange_recovery_code(
+            s,
+            code=payload.code,
+            install_id=payload.install_id,
+            device_name=payload.device_name,
+            platform=payload.platform,
+            os_version=payload.os_version,
+            app_version=payload.app_version,
+            locale=payload.locale,
+            time_zone=payload.time_zone,
+            now=now,
+        )
+        session_payload = exchange.session.response_payload(now=now)
+        session_payload["scope"] = "recovery"
+        response_payload = {
+            "ok": True,
+            "access_token": exchange.session.access_token,
+            "refresh_token": exchange.session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_payload["expires_in"],
+            "refresh_expires_in": session_payload["refresh_expires_in"],
+            "session": session_payload,
+            "allowed_actions": ["status", "support", "reissue", "device_revoke"],
+        }
+        s.commit()
+        return response_payload
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/client/access/reissue")
+async def client_access_reissue(
+    payload: AccessReissueIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Нужна ограниченная recovery-сессия.",
+            code="recovery_session_invalid",
+            status_code=401,
+        )
+    session_fingerprint = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "access_reissue",
+        request,
+        identity=f"session_sha256:{session_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(auth_user.get("id") or 0)).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        result = complete_access_reissue(
+            s,
+            account_id=account_id,
+            recovery_session_id=session_id,
+            mode=payload.mode,
+            device_limit=_plan_device_limit(user),
+            now=now,
+        )
+        session_payload = result.session.response_payload(now=now)
+        session_payload["scope"] = "client"
+        response_payload = {
+            "ok": True,
+            "mode": result.mode,
+            "access_token": result.session.access_token,
+            "refresh_token": result.session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_payload["expires_in"],
+            "refresh_expires_in": session_payload["refresh_expires_in"],
+            "session": session_payload,
+            "provisioning_status": result.provisioning_status,
+            "queued_key_rotations": len(result.provisioning_job_ids),
+            "revoked_devices": int(result.revoked_devices),
+        }
+        s.commit()
+        return response_payload
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
 
 
 def _route_policy_payload(user: User | None) -> dict[str, Any]:
@@ -11996,6 +12510,7 @@ async def download_ticket_attachment(
 ) -> FileResponse:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
+    admin_actor = bool(_is_admin_tg(actor) and not _auth_user_is_recovery_scope(auth_user))
     clean_name = Path(str(stored_name or "")).name
     if clean_name != stored_name or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", clean_name):
         raise HTTPException(status_code=404, detail="Attachment not found")
@@ -12005,7 +12520,7 @@ async def download_ticket_attachment(
         row = s.query(SupportAttachment).filter(SupportAttachment.stored_name == clean_name).first()
         if not row:
             raise HTTPException(status_code=404, detail="Attachment not found")
-        if not (_is_admin_tg(actor) or int(row.owner_tg_id) == actor):
+        if not (admin_actor or int(row.owner_tg_id) == actor):
             _record_security_event(
                 "support_attachment_denied",
                 scope="ticket_attachment_download",
@@ -12080,12 +12595,13 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
 async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
+    admin_actor = bool(_is_admin_tg(actor) and not _auth_user_is_recovery_scope(auth_user))
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, ticket_id)
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (_is_admin_tg(actor) or int(ticket.user_tg_id) == actor):
+        if not (admin_actor or int(ticket.user_tg_id) == actor):
             raise HTTPException(status_code=403, detail="Access denied")
         msgs = list_ticket_messages(s, ticket.id, limit=100)
         return {"ticket": _ticket_row(ticket, msgs)}
@@ -12097,14 +12613,15 @@ async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str
 async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
+    admin_actor = bool(_is_admin_tg(actor) and not _auth_user_is_recovery_scope(auth_user))
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, ticket_id)
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (_is_admin_tg(actor) or int(ticket.user_tg_id) == actor):
+        if not (admin_actor or int(ticket.user_tg_id) == actor):
             raise HTTPException(status_code=403, detail="Access denied")
-        role = "admin" if _is_admin_tg(actor) else "user"
+        role = "admin" if admin_actor else "user"
         add_ticket_message(
             s,
             ticket_id=ticket.id,

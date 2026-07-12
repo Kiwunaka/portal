@@ -72,11 +72,12 @@ below are complete.
   endpoint already participates in another link direction, the bot leaves the
   one-time link unused and sends the case to support instead of building a
   transitive `A -> B -> C` identity chain.
-- the additive `auth_sessions` table now has repository-candidate rotating
-  device-session behavior, but it is not deployed. `recovery_codes`,
-  `entitlement_grants` and antiabuse tables remain schema foundation only.
-  Production access truth still comes from legacy user/payment/session state
-  until the guarded cutovers land.
+- the additive `auth_sessions` and `recovery_codes` tables now have
+  repository-candidate rotating device-session, email OTP, one-time recovery
+  exchange, limited-scope and reissue behavior, but none of it is deployed
+- `entitlement_grants` and antiabuse tables remain schema foundation only;
+  production access truth still comes from legacy user/payment/session state
+  until the guarded cutovers land
 - PostgreSQL schema creation and additive migrations use the same
   `pokrov_schema_bootstrap` transaction advisory lock, preventing their
   separate transactions from overlapping during concurrent first startup.
@@ -239,11 +240,11 @@ Important concepts:
   separate cutover
 - Telegram is optional and not required for account creation
 
-The rotating-session code is implemented on the integration branch but is not
-deployed. The current production beta still depends on the legacy bearer
-behavior. OTP and one-time recovery exchange are not part of this slice, so the
-candidate must not be deployed until updated clients persist refresh tokens and
-the recovery path is ready.
+The rotating-session and recovery code is implemented on the integration
+branch but is not deployed. The current production beta still depends on the
+legacy bearer behavior. The candidate must not be deployed until updated
+clients persist refresh tokens atomically and exact Android/Windows recovery,
+reinstall and revoke paths pass.
 
 Repository session rules:
 
@@ -267,6 +268,22 @@ Repository session rules:
   auth, increments device credential version and revokes every bound session
 - raw refresh credentials are never written to the database or logs; only a
   SHA-256 digest of a high-entropy token is retained
+- `POST /api/auth/email/otp/start` returns an enumeration-resistant generic
+  response and sends a six-digit code with an exact five-minute lifetime only
+  for a verified identity
+- `POST /api/auth/email/otp/finish` consumes that code once, can freshen the
+  current bound session, and can issue a replacement device session when
+  device policy permits it
+- `POST /api/client/recovery-code/rotate` requires recent fresh auth, revokes
+  prior active codes and returns `PKR-XXXX-XXXX-XXXX` once; only versioned HMAC
+  and a masked hint are stored
+- `POST /api/client/recovery/exchange` consumes the code once and creates a
+  15-minute `recovery` session. Server-side scope enforcement blocks normal
+  subscription, managed-profile and networking APIs before reissue
+- `POST /api/client/access/reissue` accepts `vpn_credentials` or
+  `account_lockdown`; both rotate subscription material and request managed-key
+  rotation, while lockdown also increments account epoch and revokes other
+  devices/sessions. Paid entitlement dates are not changed
 
 ## Preferred Device Identity Inputs
 

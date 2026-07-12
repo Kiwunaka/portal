@@ -587,3 +587,170 @@ def test_email_register_rejects_duplicate_verified_identity(monkeypatch, tmp_pat
     )
 
     assert duplicate.status_code == 409, duplicate.text
+
+
+def test_email_otp_login_is_generic_single_use_and_password_remains_compatibility(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
+    client = TestClient(api.app)
+
+    register = client.post(
+        "/api/auth/email/register",
+        json={"email": "otp-owner@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert register.status_code == 200, register.text
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, verify.text
+
+    unknown = client.post("/api/auth/email/otp/start", json={"email": "missing@pokrov.test"})
+    assert unknown.status_code == 200, unknown.text
+    assert unknown.json()["otp_requested"] is True
+    assert "identity" not in unknown.json()
+
+    start = client.post("/api/auth/email/otp/start", json={"email": "OTP-OWNER@pokrov.test"})
+    assert start.status_code == 200, start.text
+    assert start.json()["otp_requested"] is True
+    assert start.json() == unknown.json()
+    code = str(captured["login_otp"])
+    assert len(code) == 6 and code.isdigit()
+
+    finish = client.post(
+        "/api/auth/email/otp/finish",
+        json={"email": "otp-owner@pokrov.test", "code": code},
+    )
+    assert finish.status_code == 200, finish.text
+    assert finish.json()["token"]
+    assert finish.json()["auth_method"] == "email_otp"
+
+    replay = client.post(
+        "/api/auth/email/otp/finish",
+        json={"email": "otp-owner@pokrov.test", "code": code},
+    )
+    assert replay.status_code == 401, replay.text
+    assert replay.headers["X-POKROV-Auth-Error"] == "email_otp_invalid"
+
+    compatibility = client.post(
+        "/api/auth/email/login",
+        json={"email": "otp-owner@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert compatibility.status_code == 200, compatibility.text
+    assert compatibility.json()["auth_method"] == "password_compatibility"
+
+
+def test_email_otp_fresh_auth_recovery_exchange_and_vpn_reissue(monkeypatch, tmp_path):
+    monkeypatch.setenv("ADMIN_ID", "9000000000000")
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    _install_fake_panel(monkeypatch, api)
+    captured = _capture_auth_delivery(monkeypatch, api)
+    client = TestClient(api.app)
+
+    start = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-recovery-original",
+            "device_name": "Original phone",
+            "platform": "android",
+            "app_version": "1.0.0-rc.1",
+        },
+    )
+    assert start.status_code == 200, start.text
+    access_token = str(start.json()["access_token"])
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    register = client.post(
+        "/api/auth/email/register",
+        headers=headers,
+        json={"email": "recover-app@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert register.status_code == 200, register.text
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, verify.text
+
+    otp_start = client.post("/api/auth/email/otp/start", json={"email": "recover-app@pokrov.test"})
+    assert otp_start.status_code == 200, otp_start.text
+    otp_finish = client.post(
+        "/api/auth/email/otp/finish",
+        headers=headers,
+        json={"email": "recover-app@pokrov.test", "code": str(captured["login_otp"])},
+    )
+    assert otp_finish.status_code == 200, otp_finish.text
+    assert otp_finish.json()["fresh_auth_until"]
+
+    rotate = client.post("/api/client/recovery-code/rotate", headers=headers)
+    assert rotate.status_code == 200, rotate.text
+    recovery_code = str(rotate.json()["recovery_code"])
+    assert recovery_code.startswith("PKR-")
+
+    exchange = client.post(
+        "/api/client/recovery/exchange",
+        json={
+            "code": recovery_code,
+            "install_id": "install-recovery-new-device",
+            "device_name": "New PC",
+            "platform": "windows",
+            "os_version": "11",
+            "app_version": "1.0.0-rc.1",
+        },
+    )
+    assert exchange.status_code == 200, exchange.text
+    exchange_body = exchange.json()
+    assert exchange_body["session"]["scope"] == "recovery"
+    assert exchange_body["allowed_actions"] == ["status", "support", "reissue", "device_revoke"]
+    assert "subscription_url" not in exchange_body
+
+    recovery_headers = {"Authorization": f"Bearer {exchange_body['access_token']}"}
+    db = api.SessionLocal()
+    try:
+        foreign_ticket = api.SupportTicket(
+            user_tg_id=123456,
+            status="open",
+            subject="Foreign ticket",
+            created_at=api._utcnow(),
+            updated_at=api._utcnow(),
+        )
+        db.add(foreign_ticket)
+        db.commit()
+        foreign_ticket_id = int(foreign_ticket.id)
+    finally:
+        db.close()
+
+    forbidden_foreign_ticket = client.get(f"/api/tickets/{foreign_ticket_id}", headers=recovery_headers)
+    assert forbidden_foreign_ticket.status_code == 403, forbidden_foreign_ticket.text
+
+    forbidden_subscription = client.get("/api/client/subscription", headers=recovery_headers)
+    assert forbidden_subscription.status_code == 403, forbidden_subscription.text
+    assert forbidden_subscription.headers["X-POKROV-Auth-Error"] == "recovery_scope_forbidden"
+
+    forbidden_email_link = client.post(
+        "/api/auth/email/register",
+        headers=recovery_headers,
+        json={"email": "takeover@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert forbidden_email_link.status_code == 403, forbidden_email_link.text
+    assert forbidden_email_link.headers["X-POKROV-Auth-Error"] == "recovery_scope_forbidden"
+
+    over_limit = client.post(
+        "/api/client/access/reissue",
+        headers=recovery_headers,
+        json={"mode": "vpn_credentials"},
+    )
+    assert over_limit.status_code == 409, over_limit.text
+    assert over_limit.headers["X-POKROV-Auth-Error"] == "device_limit_reached"
+
+    reissue = client.post(
+        "/api/client/access/reissue",
+        headers=recovery_headers,
+        json={"mode": "account_lockdown"},
+    )
+    assert reissue.status_code == 200, reissue.text
+    reissue_body = reissue.json()
+    assert reissue_body["mode"] == "account_lockdown"
+    assert reissue_body["session"]["scope"] == "client"
+    assert reissue_body["access_token"] != exchange_body["access_token"]
+
+    replay = client.post(
+        "/api/client/access/reissue",
+        headers=recovery_headers,
+        json={"mode": "vpn_credentials"},
+    )
+    assert replay.status_code == 401, replay.text

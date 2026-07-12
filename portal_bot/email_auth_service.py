@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import func
 
+from account_security_errors import EmailOtpError
 from account_foundation_service import ensure_user_account_foundation
 from config import env_bool, env_int
 from email_delivery_service import deliver_auth_message as deliver_email_auth_message
@@ -22,6 +23,7 @@ EMAIL_AUTH_DEBUG_ECHO = env_bool("EMAIL_AUTH_DEBUG_ECHO", default=False)
 EMAIL_AUTH_PASSWORD_MIN_LENGTH = max(8, env_int("EMAIL_AUTH_PASSWORD_MIN_LENGTH", 10))
 EMAIL_AUTH_VERIFY_TTL_SECONDS = max(300, env_int("EMAIL_AUTH_VERIFY_TTL_SECONDS", 3600))
 EMAIL_AUTH_RESET_TTL_SECONDS = max(300, env_int("EMAIL_AUTH_RESET_TTL_SECONDS", 1800))
+EMAIL_AUTH_LOGIN_OTP_TTL_SECONDS = 300
 EMAIL_AUTH_PASSWORD_HASH_ITERATIONS = max(100_000, env_int("EMAIL_AUTH_PASSWORD_HASH_ITERATIONS", 600_000))
 WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
@@ -29,6 +31,7 @@ FREE_ACCOUNT_LIFETIME_DAYS = max(3650, env_int("AUTO_FREE_DAYS", 3650))
 
 EMAIL_TOKEN_KIND_VERIFY = "verify"
 EMAIL_TOKEN_KIND_RESET = "reset"
+EMAIL_TOKEN_KIND_LOGIN_OTP = "login_otp"
 
 _EMAIL_RE = re.compile(r"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$", re.IGNORECASE)
 
@@ -63,6 +66,10 @@ def _token_secret() -> str:
         or str(os.getenv("WEBAPP_SESSION_SECRET") or "").strip()
         or str(os.getenv("BOT_TOKEN") or "").strip()
     )
+
+
+def email_login_otp_configured() -> bool:
+    return bool(_token_secret())
 
 
 def _hash_token(raw_token: str) -> str:
@@ -197,6 +204,104 @@ def _issue_one_time_token(session, *, identity_id: int, token_kind: str, ttl_sec
     session.add(token)
     session.flush()
     return raw_token
+
+
+def _login_otp_hash(*, identity_id: int, code: str) -> str:
+    secret = _token_secret()
+    if not secret:
+        raise EmailOtpError("email_otp_not_configured")
+    payload = f"email-login-otp:{int(identity_id)}:{str(code or '').strip()}"
+    return hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def issue_login_otp(
+    session,
+    *,
+    email: str,
+    now: datetime | None = None,
+) -> tuple[WebEmailIdentity | None, str | None]:
+    email_norm = validate_email_input(email)
+    identity = (
+        session.query(WebEmailIdentity)
+        .filter(
+            WebEmailIdentity.email_norm == email_norm,
+            WebEmailIdentity.is_verified == True,
+        )
+        .first()
+    )
+    if identity is None:
+        return None, None
+
+    effective_now = now or _utcnow()
+    _invalidate_unused_tokens(
+        session,
+        identity_id=int(identity.id),
+        token_kind=EMAIL_TOKEN_KIND_LOGIN_OTP,
+    )
+    for _ in range(20):
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        token_hash = _login_otp_hash(identity_id=int(identity.id), code=code)
+        if session.query(WebEmailToken.id).filter(WebEmailToken.token_hash == token_hash).first():
+            continue
+        session.add(
+            WebEmailToken(
+                identity_id=int(identity.id),
+                token_kind=EMAIL_TOKEN_KIND_LOGIN_OTP,
+                token_hash=token_hash,
+                expires_at=effective_now + timedelta(seconds=EMAIL_AUTH_LOGIN_OTP_TTL_SECONDS),
+                created_at=effective_now,
+            )
+        )
+        session.flush()
+        return identity, code
+    raise EmailOtpError("email_otp_generation_failed")
+
+
+def consume_login_otp(
+    session,
+    *,
+    email: str,
+    code: str,
+    now: datetime | None = None,
+) -> WebEmailIdentity:
+    email_norm = validate_email_input(email)
+    normalized_code = str(code or "").strip()
+    if len(normalized_code) != 6 or not normalized_code.isdigit():
+        raise EmailOtpError("email_otp_invalid")
+
+    identity = (
+        session.query(WebEmailIdentity)
+        .filter(
+            WebEmailIdentity.email_norm == email_norm,
+            WebEmailIdentity.is_verified == True,
+        )
+        .first()
+    )
+    if identity is None:
+        raise EmailOtpError("email_otp_invalid")
+
+    effective_now = now or _utcnow()
+    token = (
+        session.query(WebEmailToken)
+        .filter(
+            WebEmailToken.identity_id == int(identity.id),
+            WebEmailToken.token_kind == EMAIL_TOKEN_KIND_LOGIN_OTP,
+            WebEmailToken.token_hash
+            == _login_otp_hash(identity_id=int(identity.id), code=normalized_code),
+        )
+        .with_for_update()
+        .first()
+    )
+    if token is None or token.used_at is not None:
+        raise EmailOtpError("email_otp_invalid")
+    if token.expires_at <= effective_now:
+        raise EmailOtpError("email_otp_expired")
+
+    token.used_at = effective_now
+    identity.last_login_at = effective_now
+    identity.updated_at = effective_now
+    session.flush()
+    return identity
 
 
 def register_email_identity(

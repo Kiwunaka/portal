@@ -54,6 +54,12 @@ Reference-lane note:
 - `portal_bot/auth_session_service.py`
   Device-bound access/refresh issuance, one-time rotation, refresh-family reuse
   detection, persisted logout, fresh-auth device revoke and access validation.
+- `portal_bot/account_recovery_service.py`
+  HMAC-only one-time recovery codes, limited recovery sessions, controlled
+  access reissue and account lockdown orchestration.
+- `portal_bot/email_auth_service.py`
+  Verified email identity, five-minute six-digit OTP and retained password
+  compatibility during the migration window.
 - `portal_bot/web_auth_service.py`
   Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
@@ -256,9 +262,15 @@ Account ownership transition:
   access tokens, absolute-expiry rotating refresh families, reuse detection,
   persisted logout and fresh-auth device revoke. Raw refresh credentials are
   not stored. This behavior is not deployed and is not production proof.
-- `recovery_codes`, `entitlement_grants` and antiabuse ledger tables remain
-  foundation schema. OTP/recovery exchange, entitlement-authority cutover and
-  automated antiabuse actions are not live merely because those tables exist.
+- `recovery_codes` now has repository behavior for one-time HMAC-only codes,
+  15-minute limited recovery sessions, email-OTP fresh auth, recovery-code
+  rotation and controlled `vpn_credentials | account_lockdown` reissue.
+  Recovery scope is server-enforced and cannot read normal subscription or
+  managed-profile material before reissue. This behavior is not deployed and
+  is not production proof.
+- `entitlement_grants` and antiabuse ledger tables remain foundation schema.
+  Entitlement-authority cutover, IP-retention workers and automated antiabuse
+  actions are not live merely because those tables exist.
 
 Predeploy account-foundation gates:
 
@@ -277,9 +289,10 @@ Predeploy account-foundation gates:
 - `MANUAL_OWNER_TEST`: update Android and Windows secure storage to retain the
   one-time refresh token, rotate it atomically and fall back to recovery rather
   than repeating bootstrap.
-- `MANUAL_OWNER_TEST`: do not deploy the repeated-bootstrap guard until email
-  OTP and one-time recovery exchange are complete and exact-client reinstall,
-  lost-credential, logout and device-revoke paths pass.
+- `MANUAL_OWNER_TEST`: the repository email-OTP and one-time recovery exchange
+  do not authorize deploy by themselves. Exact Android/Windows reinstall,
+  lost-credential, atomic refresh persistence, logout, recovery, reissue and
+  device-revoke paths must pass before the repeated-bootstrap guard is enabled.
 
 Not source of truth:
 
@@ -326,9 +339,10 @@ Operational shaping rule:
 5. client imports and activates the profile
 
 Deployment limit: production still returns the legacy stateless app bearer.
-The rotating candidate must not be promoted before client secure-storage and
-OTP/recovery gates are green because repeated bootstrap deliberately returns
-`device_recovery_required` once a device has session history.
+The rotating/recovery candidate must not be promoted before client secure
+storage and exact-client recovery gates are green because repeated bootstrap
+deliberately returns `device_recovery_required` once a device has session
+history.
 
 App-first contract note:
 
@@ -354,6 +368,11 @@ Route-mode continuation note:
 
 Architecture rule:
 
+- additive email auth uses a six-digit OTP valid for five minutes; password
+  login remains an explicitly labelled compatibility path until the guarded
+  90-day cutover window is configured and completed
+- email OTP can mark an existing bound device session as freshly authenticated
+  or issue a new bound session when device policy permits it
 - additive email auth is a live continuation lane only while sender identity, delivery configuration, and delivery confirmation are green
 - app handoff, Telegram, and email are the active browser-continuation entry families today when their readiness checks are green
 - email must land in the same cabinet session and linked-identity model rather than becoming a separate account track

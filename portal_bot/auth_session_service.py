@@ -127,6 +127,13 @@ def _device_user(session: Session, *, account_id: str, install_id: str) -> User:
         .first()
     )
     if user is None:
+        user = (
+            session.query(User)
+            .filter(User.account_id == str(account_id))
+            .order_by(User.tg_id.asc())
+            .first()
+        )
+    if user is None:
         raise AuthSessionError("device_identity_missing")
     return user
 
@@ -147,7 +154,10 @@ def _mint_session(
 ) -> IssuedDeviceSession:
     session_id = str(uuid.uuid4())
     refresh_token = _new_refresh_token()
-    access_expires_at = now + timedelta(seconds=max(300, int(access_ttl_seconds)))
+    access_expires_at = min(
+        now + timedelta(seconds=max(300, int(access_ttl_seconds))),
+        refresh_expires_at,
+    )
     access_token = create_web_session_token(
         tg_id=int(user.tg_id),
         username=str(user.username or "").strip() or None,
@@ -241,6 +251,98 @@ def issue_device_session(
     )
 
 
+def issue_authenticated_device_session(
+    session: Session,
+    *,
+    account_id: str,
+    install_id: str,
+    device_name: str,
+    platform: str,
+    now: datetime,
+    os_version: str | None = None,
+    app_version: str | None = None,
+    locale: str | None = None,
+    time_zone: str | None = None,
+    scope: str = "client",
+    auth_origin: str = "email_otp",
+    access_ttl_seconds: int = APP_ACCESS_TOKEN_TTL_SECONDS,
+    refresh_ttl_seconds: int = APP_REFRESH_TOKEN_TTL_SECONDS,
+) -> IssuedDeviceSession:
+    normalized_install_id = str(install_id or "").strip()[:128]
+    if not normalized_install_id:
+        raise AuthSessionError("device_not_found")
+
+    account = _active_account(session, str(account_id), lock=True)
+    device = (
+        session.query(AccountDevice)
+        .filter(AccountDevice.install_id == normalized_install_id)
+        .with_for_update()
+        .first()
+    )
+    if device is not None and str(device.account_id) != str(account.id):
+        raise AuthSessionError("device_identity_conflict")
+
+    target_state = "recovery" if str(scope or "").strip() == "recovery" else "active"
+    if device is None:
+        device = AccountDevice(
+            id=str(uuid.uuid4()),
+            account_id=str(account.id),
+            install_id=normalized_install_id,
+            label=str(device_name or "Recovered device").strip()[:120] or "Recovered device",
+            platform=str(platform or "device").strip()[:32] or "device",
+            os_version=str(os_version or "").strip()[:64] or None,
+            app_version=str(app_version or "").strip()[:32] or None,
+            locale=str(locale or "").strip()[:32] or None,
+            time_zone=str(time_zone or "").strip()[:64] or None,
+            state=target_state,
+            credential_version=1,
+            first_seen_at=now,
+            last_seen_at=now,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(device)
+        session.flush()
+    else:
+        prior_sessions = (
+            session.query(AuthSession)
+            .filter(AuthSession.device_id == str(device.id))
+            .with_for_update()
+            .all()
+        )
+        for row in prior_sessions:
+            if row.revoked_at is None:
+                row.revoked_at = now
+                row.revoke_reason = "fresh_auth_replaced"
+        device.credential_version = int(device.credential_version or 1) + 1
+        device.state = target_state
+        device.revoked_at = None
+        device.revoke_reason = None
+        device.label = str(device_name or device.label or "Recovered device").strip()[:120]
+        device.platform = str(platform or device.platform or "device").strip()[:32]
+        device.os_version = str(os_version or device.os_version or "").strip()[:64] or None
+        device.app_version = str(app_version or device.app_version or "").strip()[:32] or None
+        device.locale = str(locale or device.locale or "").strip()[:32] or None
+        device.time_zone = str(time_zone or device.time_zone or "").strip()[:64] or None
+        device.last_seen_at = now
+        device.updated_at = now
+
+    user = _device_user(session, account_id=str(account.id), install_id=normalized_install_id)
+    return _mint_session(
+        session,
+        user=user,
+        account=account,
+        device=device,
+        now=now,
+        access_ttl_seconds=max(300, int(access_ttl_seconds)),
+        refresh_expires_at=now + timedelta(seconds=max(300, int(refresh_ttl_seconds))),
+        refresh_family_id=str(uuid.uuid4()),
+        scope=str(scope or "client")[:64],
+        auth_origin=str(auth_origin or "email_otp")[:32],
+        fresh_auth_at=now,
+    )
+
+
 def _revoke_refresh_family(session: Session, *, row: AuthSession, now: datetime) -> None:
     family = (
         session.query(AuthSession)
@@ -305,7 +407,10 @@ def rotate_device_session(
         row.revoke_reason = "refresh_expired"
         session.flush()
         raise AuthSessionError("refresh_expired", security_state_changed=True)
-    if str(device.state or "").strip().lower() != "active" or device.revoked_at is not None:
+    allowed_device_states = {"active"}
+    if str(row.scope or "") == "recovery":
+        allowed_device_states.add("recovery")
+    if str(device.state or "").strip().lower() not in allowed_device_states or device.revoked_at is not None:
         raise AuthSessionError("device_revoked")
     user = _device_user(session, account_id=str(account.id), install_id=str(device.install_id))
     replacement = _mint_session(
@@ -369,7 +474,18 @@ def validate_access_session(
     account = _active_account(session, account_id)
     if _required_int_claim(payload, "auth_epoch") != int(account.auth_epoch or 0):
         raise AuthSessionError("session_epoch_changed")
-    device = _active_device(session, account_id=account_id, device_id=device_id)
+    recovery_scope = token_scope == "recovery"
+    device = _active_device(
+        session,
+        account_id=account_id,
+        device_id=device_id,
+        require_active=not recovery_scope,
+    )
+    if recovery_scope and (
+        str(device.state or "").strip().lower() not in {"active", "recovery"}
+        or device.revoked_at is not None
+    ):
+        raise AuthSessionError("device_revoked")
     if _required_int_claim(payload, "device_credential_version") != int(device.credential_version or 1):
         raise AuthSessionError("device_credential_changed")
     tg_id = _required_int_claim(payload, "id")
@@ -455,3 +571,160 @@ def revoke_device(
             row.revoke_reason = "device_revoked"
     session.flush()
     return device
+
+
+def require_fresh_session(
+    session: Session,
+    *,
+    account_id: str,
+    session_id: str,
+    now: datetime,
+    allowed_scopes: set[str] | None = None,
+    fresh_auth_max_age_seconds: int = APP_FRESH_AUTH_MAX_AGE_SECONDS,
+) -> AuthSession:
+    account = _active_account(session, str(account_id), lock=True)
+    row = (
+        session.query(AuthSession)
+        .filter(AuthSession.id == str(session_id), AuthSession.account_id == str(account.id))
+        .with_for_update()
+        .first()
+    )
+    if row is None or row.revoked_at is not None or row.access_expires_at <= now:
+        raise AuthSessionError("session_revoked")
+    scopes = {str(item).strip() for item in (allowed_scopes or {"client", "recovery"}) if str(item).strip()}
+    if str(row.scope or "") not in scopes:
+        raise AuthSessionError("session_scope_changed")
+    fresh_after = now - timedelta(seconds=max(60, int(fresh_auth_max_age_seconds)))
+    if row.fresh_auth_at is None or row.fresh_auth_at < fresh_after:
+        raise AuthSessionError("fresh_auth_required")
+    return row
+
+
+def mark_session_fresh(
+    session: Session,
+    *,
+    account_id: str,
+    session_id: str,
+    now: datetime,
+) -> AuthSession:
+    account = _active_account(session, str(account_id), lock=True)
+    row = (
+        session.query(AuthSession)
+        .filter(AuthSession.id == str(session_id), AuthSession.account_id == str(account.id))
+        .with_for_update()
+        .first()
+    )
+    if row is None or row.revoked_at is not None or row.access_expires_at <= now:
+        raise AuthSessionError("session_revoked")
+    if str(row.scope or "") not in {"client", "recovery"}:
+        raise AuthSessionError("session_scope_changed")
+    row.fresh_auth_at = now
+    row.last_used_at = now
+    session.flush()
+    return row
+
+
+def promote_recovery_session(
+    session: Session,
+    *,
+    account_id: str,
+    recovery_session_id: str,
+    lockdown: bool,
+    now: datetime,
+) -> tuple[IssuedDeviceSession, int]:
+    account = _active_account(session, str(account_id), lock=True)
+    discovered = (
+        session.query(AuthSession.device_id)
+        .filter(
+            AuthSession.id == str(recovery_session_id),
+            AuthSession.account_id == str(account.id),
+        )
+        .first()
+    )
+    if discovered is None or not str(discovered.device_id or ""):
+        raise AuthSessionError("recovery_session_invalid")
+    device = _active_device(
+        session,
+        account_id=str(account.id),
+        device_id=str(discovered.device_id),
+        lock=True,
+        require_active=False,
+    )
+    if str(device.state or "").strip().lower() not in {"active", "recovery"} or device.revoked_at is not None:
+        raise AuthSessionError("device_revoked")
+    recovery = (
+        session.query(AuthSession)
+        .filter(
+            AuthSession.id == str(recovery_session_id),
+            AuthSession.account_id == str(account.id),
+            AuthSession.device_id == str(device.id),
+        )
+        .with_for_update()
+        .first()
+    )
+    if (
+        recovery is None
+        or recovery.revoked_at is not None
+        or recovery.access_expires_at <= now
+        or str(recovery.scope or "") != "recovery"
+    ):
+        raise AuthSessionError("recovery_session_invalid")
+    if recovery.fresh_auth_at is None:
+        raise AuthSessionError("fresh_auth_required")
+
+    revoked_devices = 0
+    if lockdown:
+        other_devices = (
+            session.query(AccountDevice)
+            .filter(
+                AccountDevice.account_id == str(account.id),
+                AccountDevice.id != str(device.id),
+            )
+            .with_for_update()
+            .all()
+        )
+        for other in other_devices:
+            if str(other.state or "").strip().lower() != "revoked" or other.revoked_at is None:
+                other.state = "revoked"
+                other.revoked_at = now
+                other.revoke_reason = "account_lockdown"
+                other.credential_version = int(other.credential_version or 1) + 1
+                other.updated_at = now
+                revoked_devices += 1
+        account.auth_epoch = int(account.auth_epoch or 0) + 1
+        account.updated_at = now
+
+    device.state = "active"
+    device.revoked_at = None
+    device.revoke_reason = None
+    device.last_seen_at = now
+    device.updated_at = now
+
+    session_rows = (
+        session.query(AuthSession)
+        .filter(AuthSession.account_id == str(account.id))
+        .with_for_update()
+        .all()
+    )
+    for row in session_rows:
+        same_family = str(row.refresh_family_id) == str(recovery.refresh_family_id)
+        if (lockdown or same_family) and row.revoked_at is None:
+            row.revoked_at = now
+            row.revoke_reason = "account_lockdown" if lockdown else "recovery_reissued"
+
+    user = _device_user(session, account_id=str(account.id), install_id=str(device.install_id))
+    issued = _mint_session(
+        session,
+        user=user,
+        account=account,
+        device=device,
+        now=now,
+        access_ttl_seconds=APP_ACCESS_TOKEN_TTL_SECONDS,
+        refresh_expires_at=now + timedelta(seconds=APP_REFRESH_TOKEN_TTL_SECONDS),
+        refresh_family_id=str(uuid.uuid4()),
+        scope="client",
+        auth_origin="recovery_reissue",
+        fresh_auth_at=now,
+    )
+    session.flush()
+    return issued, revoked_devices

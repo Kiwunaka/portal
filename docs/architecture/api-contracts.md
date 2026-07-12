@@ -23,7 +23,7 @@ in the active work order are complete.
   credential. It returns HTTP `409` and
   `X-POKROV-Auth-Error: device_recovery_required`. A client that still has its
   refresh credential must call the refresh endpoint; a client that lost it
-  must use recovery once that follow-up slice is enabled.
+  must use the recovery contract below.
 - `POST /api/client/session/refresh` rotates the refresh token once. The raw
   refresh token is returned only in the response; the database stores its
   SHA-256 digest. The refresh-family expiry is absolute and is not extended by
@@ -40,10 +40,9 @@ in the active work order are complete.
 - `DELETE /api/client/devices/{device_id}` accepts either identifier, requires a
   recent `fresh_auth_at`, increments `credential_version`, marks the device
   revoked and revokes all sessions bound to that device.
-- Bootstrap possession is not fresh authentication. Until the OTP/recovery
-  slice can set `fresh_auth_at`, public device revoke intentionally returns
-  `409 fresh_auth_required`; tests may seed that timestamp only to prove the
-  post-auth revoke primitive.
+- Bootstrap possession is not fresh authentication. Email OTP or a one-time
+  recovery exchange can set `fresh_auth_at`; otherwise device revoke returns
+  `409 fresh_auth_required`.
 - App cabinet handoff and the exchanged cabinet bearer inherit the source
   session/account/device/epoch/credential claims. They remain invalid after
   source-family logout, reuse detection or device revoke instead of becoming a
@@ -68,6 +67,45 @@ revision accepts signed access tokens without checking database revoke state.
 Old instances must be drained before new session issuance. Rollback must first
 stop bootstrap/refresh issuance and wait at least the configured maximum access
 TTL after the final issuance before routing app access back to the old revision.
+
+### Email OTP And Recovery
+
+- `POST /api/auth/email/otp/start` accepts an email address and always returns
+  the same generic accepted shape for syntactically valid known and unknown
+  addresses. A verified identity receives a six-digit code valid for exactly
+  five minutes. The code is never returned in API JSON.
+- `POST /api/auth/email/otp/finish` consumes the email/code pair once. Without
+  device metadata it issues the compatibility browser session and, when the
+  request carries a matching persisted device session, marks it freshly
+  authenticated. With device metadata it returns a new bound access/refresh
+  pair subject to the device limit.
+- Password login remains under `/api/auth/email/login` only as a labelled
+  compatibility path. Its response carries
+  `auth_method=password_compatibility`; the deployment owner must configure and
+  execute the approved 90-day sunset separately.
+- `POST /api/client/recovery-code/rotate` requires a persisted client session
+  with recent fresh auth. It revokes previous active codes and returns one
+  `PKR-XXXX-XXXX-XXXX` code exactly once. The database stores only a versioned
+  HMAC and masked four-character hint.
+- `POST /api/client/recovery/exchange` consumes an active code once, registers
+  or reauthenticates the supplied device, and returns a device-bound
+  `scope=recovery` session whose access and refresh expiry are both 15 minutes.
+- Recovery scope is checked on every authenticated request. It can reach only
+  account status, support tickets, device list/revoke, logout and audited
+  reissue. It cannot link a new identity, create payment ownership, read
+  subscription URLs or managed profiles, or access normal client networking
+  surfaces before reissue.
+- `POST /api/client/access/reissue` accepts `vpn_credentials` or
+  `account_lockdown` exactly once per recovery session. Both rotate public
+  subscription material and enqueue managed-key rotation. Lockdown additionally
+  increments `accounts.auth_epoch`, revokes other devices and invalidates other
+  sessions. Entitlement and paid expiry are preserved.
+- `vpn_credentials` cannot promote the recovery device while the active-device
+  count exceeds the tariff limit. The user must revoke an old device or choose
+  `account_lockdown`, which leaves only the recovered device active.
+- A queued provider-key rotation is not proof that node credentials have
+  changed. Clients and operators must treat `provisioning_status=pending` as
+  incomplete until the provisioning worker records completion.
 
 ## Payment Providers
 
