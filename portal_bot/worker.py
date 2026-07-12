@@ -45,6 +45,7 @@ from offers_service import create_offer, expire_stale_offers, get_active_offer
 from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 from admin_ops_service import refresh_ops_alerts_for_current_state
+from antiabuse_privacy_service import drain_antiabuse_retention
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,15 @@ PAY_ATTEMPT_RETENTION_DAYS = max(1, int(os.getenv("PAY_ATTEMPT_RETENTION_DAYS", 
 EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS = max(1, int(os.getenv("EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS", "180")))
 SUBSCRIPTION_EVENT_RETENTION_DAYS = max(1, int(os.getenv("SUBSCRIPTION_EVENT_RETENTION_DAYS", "90")))
 TELEMETRY_RETENTION_INTERVAL_SECONDS = max(3600, int(os.getenv("TELEMETRY_RETENTION_INTERVAL_SECONDS", "21600")))
+ANTIABUSE_RETENTION_BATCH_LIMIT = max(1, min(10_000, int(os.getenv("ANTIABUSE_RETENTION_BATCH_LIMIT", "1000"))))
+ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN = max(
+    1,
+    min(100, int(os.getenv("ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN", "20"))),
+)
+ANTIABUSE_RETENTION_INTERVAL_SECONDS = max(
+    60,
+    min(900, int(os.getenv("ANTIABUSE_RETENTION_INTERVAL_SECONDS", "300"))),
+)
 ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS = max(60, int(os.getenv("ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS", "300")))
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
@@ -1150,6 +1160,27 @@ async def observer_retention_job() -> None:
         await asyncio.sleep(21600)
 
 
+async def antiabuse_retention_job() -> None:
+    while True:
+        try:
+            report = await asyncio.to_thread(
+                drain_antiabuse_retention,
+                SessionLocal,
+                now=_utcnow(),
+                batch_limit=ANTIABUSE_RETENTION_BATCH_LIMIT,
+                max_batches=ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN,
+            )
+            if int(report.get("changed_batches", 0) or 0) > 0:
+                logger.info("antiabuse_retention report=%s", report)
+            if any(int(value or 0) > 0 for value in dict(report.get("remaining") or {}).values()):
+                logger.warning("antiabuse_retention backlog_remaining=%s", report.get("remaining"))
+                await asyncio.sleep(1)
+                continue
+        except Exception:
+            logger.exception("antiabuse_retention_job failed")
+        await asyncio.sleep(ANTIABUSE_RETENTION_INTERVAL_SECONDS)
+
+
 def _delete_older_than(session, model, column, cutoff: datetime) -> int:
     return int(
         session.query(model)
@@ -1234,6 +1265,7 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("channel_bonus_guard", channel_bonus_guard_job)),
         asyncio.create_task(_supervise_job("free_cycle_reset", free_cycle_reset_job)),
         asyncio.create_task(_supervise_job("observer_retention", observer_retention_job)),
+        asyncio.create_task(_supervise_job("antiabuse_retention", antiabuse_retention_job)),
         asyncio.create_task(_supervise_job("telemetry_retention", telemetry_retention_job)),
         asyncio.create_task(_supervise_job("referral_bonus_queue", referral_bonus_queue_job)),
         asyncio.create_task(_supervise_job("key_limits_watchdog", key_limits_watchdog_job)),

@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-08
+Last updated: 2026-07-12
 
 ## Document Status
 
@@ -142,6 +142,45 @@ Observer-lite canary install:
 ```powershell
 python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-code pl --run-now
 ```
+
+### Antiabuse retention incident and rollback
+
+`portal-worker` owns the frequent antiabuse privacy sweep. Its interval is
+clamped to 60-900 seconds. Cleanup runs outside the shared asyncio event loop;
+one chunk is capped by `ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN`, and remaining
+backlog schedules another chunk after one second. Every database batch commits
+separately.
+
+Read-only backlog inspection:
+
+```powershell
+python scripts/cleanup_antiabuse_retention.py
+```
+
+Explicit one-shot drain:
+
+```powershell
+python scripts/cleanup_antiabuse_retention.py --apply
+```
+
+The command reads `DATABASE_URL` through normal backend configuration but never
+prints it. Its JSON output contains counts only. Do not pass a database URL on
+the command line, and do not treat a dry run as cleanup evidence.
+
+Before a rollback to code without `antiabuse_retention_job`:
+
+- retain a dry-run and applied count report with no secrets or row contents;
+- verify `after` is all zero;
+- install an equivalent scheduled cleanup in the rollback revision before
+  stopping the new worker;
+- keep antiabuse/security/user audit rows and null only the overdue sensitive
+  fields;
+- treat stopped worker or post-drain non-zero backlog as an incident, not a
+  successful rollback.
+
+The retention windows are an operational SLO, not a PostgreSQL TTL. Worker
+outage or persistent backlog can exceed them and blocks a production readiness
+claim until the backlog is drained and monitoring is restored.
 
 ### Static sites deploy
 

@@ -51,6 +51,7 @@ from models import (
     AdminAudit,
     AppSetting,
     AuthSession,
+    AntiAbuseEvent,
     CampaignSend,
     Event,
     ExternalOrder,
@@ -183,6 +184,7 @@ from email_auth_service import (
 )
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
 from account_security_errors import AccountRecoveryError, EmailOtpError
+from antiabuse_privacy_service import record_antiabuse_event
 from account_recovery_service import (
     complete_access_reissue,
     exchange_recovery_code,
@@ -2838,6 +2840,7 @@ def _record_security_event(
             safe_meta[key_text] = str(value)[:240] if value is not None else None
     s = SessionLocal()
     try:
+        occurred_at = _utcnow()
         s.add(
             SecurityEvent(
                 event_type=str(event_type or "").strip()[:64] or "security_event",
@@ -2847,8 +2850,17 @@ def _record_security_event(
                 subject=str(subject or "").strip()[:160] or None,
                 reason=str(reason or "").strip()[:160] or None,
                 meta_json=json.dumps(safe_meta, ensure_ascii=False, separators=(",", ":"))[:2000] if safe_meta else None,
-                created_at=_utcnow(),
+                created_at=occurred_at,
             )
+        )
+        record_antiabuse_event(
+            s,
+            event_kind=event_type,
+            source="api_security",
+            occurred_at=occurred_at,
+            raw_ip=client_ip,
+            reasons=[reason] if reason else None,
+            metadata={"scope": scope, **safe_meta},
         )
         s.commit()
     except Exception:
@@ -6747,6 +6759,8 @@ async def admin_auth_session(request: Request, x_telegram_init_data: str = Heade
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
     client_policy: dict[str, Any] | None = None
     session_now = _utcnow()
+    client_ip = _request_client_ip(request)
+    trial_event_id = ""
     s = SessionLocal()
     try:
         install_id = str(payload.install_id or "").strip()[:128]
@@ -6769,8 +6783,27 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
             payload=payload,
             now=session_now,
             trial_days=APP_TRIAL_DEFAULT_DAYS,
-            request_client_ip=_request_client_ip(request),
+            request_client_ip=client_ip,
         )
+        account_device = s.query(AccountDevice).filter(AccountDevice.install_id == install_id).one()
+        trial_event = record_antiabuse_event(
+            s,
+            event_kind="trial_reserved" if created else "trial_session_issued",
+            source="client_api",
+            occurred_at=session_now,
+            account_id=str(getattr(user, "account_id", "") or "") or None,
+            device_id=str(account_device.id),
+            install_id=install_id,
+            raw_ip=client_ip,
+            reasons=["first_install"] if created else ["legacy_install_session"],
+            metadata={
+                "platform": payload.platform,
+                "app_version": payload.app_version,
+                "os_major": str(payload.os_version or "").split(".", 1)[0],
+                "device_label": payload.device_name,
+            },
+        )
+        trial_event_id = str(trial_event.id)
         s.commit()
         s.refresh(user)
         client_policy = app_first_service.build_client_policy(
@@ -6855,6 +6888,15 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
             install_id=install_id,
             now=credential_now,
         )
+        trial_event = (
+            session_s.query(AntiAbuseEvent)
+            .filter(AntiAbuseEvent.id == trial_event_id)
+            .with_for_update()
+            .one()
+        )
+        trial_event.account_id = issued_session.account_id
+        trial_event.device_id = issued_session.device_id
+        trial_event.session_id = issued_session.session_id
         session_contract = issued_session.response_payload(now=credential_now)
         start_trial_parts["session"].update(session_contract)
         response_payload = {

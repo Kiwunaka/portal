@@ -268,9 +268,21 @@ Account ownership transition:
   Recovery scope is server-enforced and cannot read normal subscription or
   managed-profile material before reissue. This behavior is not deployed and
   is not production proof.
-- `entitlement_grants` and antiabuse ledger tables remain foundation schema.
-  Entitlement-authority cutover, IP-retention workers and automated antiabuse
-  actions are not live merely because those tables exist.
+- `antiabuse_events` now has repository behavior for trial-start and API
+  security signals. Valid client IPs are normalized; code caps the raw-IP
+  deadline at 72 hours, full-IP HMAC at seven days and IPv4 `/24` or IPv6 `/64`
+  HMAC at 90 days. A dedicated worker makes fields eligible one hour early,
+  runs bounded PostgreSQL `SKIP LOCKED` chunks outside the asyncio event loop
+  and retries after one second while backlog remains. It also clears covered
+  legacy `security_events.client_ip` and
+  `users.app_last_ip` fields without deleting their audit rows. This behavior
+  is not deployed and worker availability is not production proof. These are
+  operational deadlines, not an in-database TTL: worker outage or persistent
+  backlog is a release-blocking incident.
+- `entitlement_grants` remains foundation schema. Entitlement-authority
+  cutover and automated antiabuse decisions are not live. A hard lock can be
+  written through the antiabuse service only with an explicit operator ID and
+  reason; no automatic rule may hard-lock an account.
 
 Predeploy account-foundation gates:
 
@@ -293,6 +305,13 @@ Predeploy account-foundation gates:
   do not authorize deploy by themselves. Exact Android/Windows reinstall,
   lost-credential, atomic refresh persistence, logout, recovery, reissue and
   device-revoke paths must pass before the repeated-bootstrap guard is enabled.
+- `MANUAL_OWNER_TEST`: configure a dedicated `ANTIABUSE_HMAC_SECRET`, retain
+  explicitly versioned previous peppers only for their active comparison
+  windows, and prove `portal-worker` runs continuously with zero overdue
+  backlog in the production topology.
+- `MANUAL_OWNER_TEST`: inspect proxy/application logs and individual-user admin
+  access so the database cleanup is not misrepresented as complete raw-IP
+  deletion outside the covered first-party columns.
 
 Not source of truth:
 

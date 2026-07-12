@@ -35,6 +35,8 @@ class ReleaseGateCheckTests(unittest.TestCase):
 
     def test_account_foundation_compatibility_suites_are_in_release_pytest_matrix(self) -> None:
         for suite in (
+            "tests/test_antiabuse_privacy.py",
+            "tests/test_antiabuse_retention_script.py",
             "tests/test_account_recovery.py",
             "tests/test_auth_sessions.py",
             "portal_bot/tests/test_app_first_service.py",

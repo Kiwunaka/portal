@@ -75,9 +75,16 @@ below are complete.
 - the additive `auth_sessions` and `recovery_codes` tables now have
   repository-candidate rotating device-session, email OTP, one-time recovery
   exchange, limited-scope and reissue behavior, but none of it is deployed
-- `entitlement_grants` and antiabuse tables remain schema foundation only;
-  production access truth still comes from legacy user/payment/session state
-  until the guarded cutovers land
+- `antiabuse_events` receives a canonical account/device/session trial-start
+  signal and versioned IP/install HMACs. The reservation and initial ledger row
+  commit together; session issuance then fills the canonical session reference.
+  Raw IP is capped at 72 hours, full-IP HMAC at seven days and `/24` or `/64`
+  prefix HMAC at 90 days. A dedicated early-sweep worker drains covered ledger
+  and legacy raw-IP fields before sleeping. This candidate behavior is not
+  deployed
+- `entitlement_grants` remains schema foundation only; production access truth
+  still comes from legacy user/payment/session state until the guarded cutover
+  lands
 - PostgreSQL schema creation and additive migrations use the same
   `pokrov_schema_bootstrap` transaction advisory lock, preventing their
   separate transactions from overlapping during concurrent first startup.

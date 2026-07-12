@@ -280,6 +280,60 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertTrue(fake_session.committed)
         self.assertTrue(fake_session.closed)
 
+    def test_antiabuse_retention_job_drains_before_sleep(self) -> None:
+        drain_calls: list[object] = []
+        to_thread_calls: list[object] = []
+
+        async def _stop_after_first_sleep(_seconds: float) -> None:
+            raise asyncio.CancelledError()
+
+        def _drain(session_factory, *, now=None, batch_limit=1000, max_batches=0):
+            drain_calls.append((session_factory, now, batch_limit, max_batches))
+            return {"status": "drained", "changed_batches": 2, "cleared": {}, "remaining": {}}
+
+        async def _to_thread(func, *args, **kwargs):
+            to_thread_calls.append((func, args, kwargs))
+            return func(*args, **kwargs)
+
+        with mock.patch.object(self.worker, "drain_antiabuse_retention", side_effect=_drain), \
+             mock.patch.object(self.worker.asyncio, "to_thread", side_effect=_to_thread), \
+             mock.patch.object(self.worker.asyncio, "sleep", side_effect=_stop_after_first_sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                self.worker.asyncio.run(self.worker.antiabuse_retention_job())
+
+        self.assertEqual(len(drain_calls), 1)
+        self.assertIs(drain_calls[0][0], self.worker.SessionLocal)
+        self.assertIsNotNone(drain_calls[0][1])
+        self.assertEqual(drain_calls[0][2], self.worker.ANTIABUSE_RETENTION_BATCH_LIMIT)
+        self.assertEqual(drain_calls[0][3], self.worker.ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN)
+        self.assertEqual(len(to_thread_calls), 1)
+
+    def test_antiabuse_retention_job_retries_backlog_without_full_interval_sleep(self) -> None:
+        sleep_calls: list[float] = []
+
+        async def _to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        def _drain(*_args, **_kwargs):
+            return {
+                "status": "backlog_remaining",
+                "changed_batches": 1,
+                "cleared": {"antiabuse_raw_ip": 1},
+                "remaining": {"antiabuse_raw_ip": 1},
+            }
+
+        async def _record_sleep(seconds: float) -> None:
+            sleep_calls.append(seconds)
+            raise asyncio.CancelledError()
+
+        with mock.patch.object(self.worker, "drain_antiabuse_retention", side_effect=_drain), \
+             mock.patch.object(self.worker.asyncio, "to_thread", side_effect=_to_thread), \
+             mock.patch.object(self.worker.asyncio, "sleep", side_effect=_record_sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                self.worker.asyncio.run(self.worker.antiabuse_retention_job())
+
+        self.assertEqual(sleep_calls, [1])
+
 
 if __name__ == "__main__":
     unittest.main()

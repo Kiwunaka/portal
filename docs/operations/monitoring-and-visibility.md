@@ -197,6 +197,27 @@ Default retention windows:
 
 Do not use this job to delete `external_orders`: those rows remain the payment ledger and are needed for reconciliation, refund/chargeback review, and launch evidence.
 
+The separate supervised `antiabuse_retention_job` owns sensitive IP/HMAC field
+deadlines. Defaults and hard bounds:
+
+- raw-IP code cap: 72 hours;
+- full-IP HMAC code cap: 7 days;
+- IPv4 `/24` or IPv6 `/64` prefix HMAC code cap: 90 days;
+- `ANTIABUSE_RETENTION_INTERVAL_SECONDS=300`, clamped to 60-900 seconds;
+- `ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN=20`, clamped to 1-100 batches per
+  thread chunk;
+- `ANTIABUSE_RETENTION_BATCH_LIMIT=1000`, capped at 10000 rows per field and
+  transaction.
+
+Each chunk fixes its observation time, commits bounded `SKIP LOCKED` batches
+outside the asyncio event loop and yields after its configured batch cap.
+Remaining backlog retries after one second. Alert on a stopped `portal-worker`,
+job exceptions, or persistent backlog. The windows are an operational SLO, not
+a PostgreSQL TTL. During an incident or guarded rollback, use
+`python scripts/cleanup_antiabuse_retention.py` for read-only counts and add
+`--apply` only for an explicit one-shot drain. The JSON contains counts, not
+database URLs or row contents.
+
 ## External RU Probe Policy
 
 Required cadence:

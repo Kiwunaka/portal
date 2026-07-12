@@ -107,6 +107,38 @@ TTL after the final issuance before routing app access back to the old revision.
   changed. Clients and operators must treat `provisioning_status=pending` as
   incomplete until the provisioning worker records completion.
 
+### Antiabuse Privacy Ledger
+
+- A successful `POST /api/client/session/start-trial` writes an additive
+  `trial_reserved` signal with canonical account, device and session IDs. Raw
+  `install_id` is not copied into the ledger; it is represented by a
+  domain-separated HMAC.
+- API security events retain the compatibility `security_events` audit row and
+  write a matching `antiabuse_events` signal in the same transaction. Metadata
+  keys that indicate tokens, secrets, passwords or authorization material are
+  redacted before either JSON payload is persisted.
+- Valid IPv4 and IPv6 addresses are canonicalized before storage. Code caps the
+  raw-IP deadline at 72 hours, full-IP HMAC at seven days, and IPv4 `/24` or
+  IPv6 `/64` prefix HMAC at 90 days. Configuration may shorten but cannot extend
+  those caps. Stored deadlines and cleanup cutoffs include a one-hour early
+  sweep margin, larger than the maximum 15-minute worker cadence.
+- HMAC-SHA256 uses `ANTIABUSE_HMAC_SECRET`, purpose separation and
+  `ANTIABUSE_HMAC_VERSION`. Explicit previous secrets use
+  `ANTIABUSE_HMAC_SECRET_V<n>` and remain query candidates only below the
+  current version. Auth, recovery, payment and Telegram secrets are not
+  fallbacks.
+- If the dedicated secret is absent, customer requests continue and raw IP
+  still expires, but HMAC fields remain empty. That state is not production
+  antiabuse readiness and must stay a manual deployment gate.
+- The dedicated antiabuse worker nulls overdue sensitive fields in bounded
+  `SKIP LOCKED` batches and commits each batch. Each thread chunk has a batch
+  cap; backlog triggers another chunk after one second instead of blocking the
+  worker event loop. It does not delete security, antiabuse or user audit rows.
+  Worker outage or persistent backlog can exceed the operational target and is
+  a release-blocking incident, not a database TTL. Hard account lock changes
+  require an explicit operator identity and reason and create an
+  `antiabuse_actions` audit row.
+
 ## Payment Providers
 
 `GET /api/payments/providers` must expose provider availability and enough unavailable-state detail for checkout to avoid presenting blocked payment paths as live.

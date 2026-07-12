@@ -6,6 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -31,9 +32,12 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("PUBLIC_CHANNEL", "pokrov_vpn")
     monkeypatch.setenv("BOT_USERNAME", "pokrov_vpnbot")
     monkeypatch.setenv("SUPPORT_BOT_USERNAME", "pokrov_supportbot")
+    monkeypatch.setenv("ANTIABUSE_HMAC_SECRET", "antiabuse-api-test-secret")
+    monkeypatch.setenv("ANTIABUSE_HMAC_VERSION", "2")
 
     for name in [
         "api",
+        "antiabuse_privacy_service",
         "auth_session_service",
         "config",
         "db",
@@ -68,6 +72,7 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
 
     start_trial_response = client.post(
         "/api/client/session/start-trial",
+        headers={"X-Forwarded-For": "198.51.100.87"},
         json={
             "install_id": "install-123",
             "device_name": "Samsung S25",
@@ -97,6 +102,15 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
         assert stored.device_id == payload["session"]["device_id"]
         assert stored.refresh_token_hash != payload["refresh_token"]
         assert payload["refresh_token"] not in stored.refresh_token_hash
+        antiabuse = db.query(api.AntiAbuseEvent).filter_by(event_kind="trial_reserved").one()
+        assert antiabuse.account_id == payload["session"]["canonical_account_id"]
+        assert antiabuse.device_id == payload["session"]["device_id"]
+        assert antiabuse.session_id == payload["session"]["session_id"]
+        assert antiabuse.raw_ip == "198.51.100.87"
+        assert antiabuse.install_hmac
+        assert antiabuse.ip_full_hmac
+        assert antiabuse.ip_prefix_hmac
+        assert antiabuse.hmac_version == 2
     finally:
         db.close()
 
@@ -119,6 +133,62 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
     user_payload = user_response.json()
     assert user_payload["devices"][0]["name"] == "Samsung S25"
     assert user_payload["devices"][0]["platform"] == "android"
+
+
+def test_security_event_is_mirrored_to_privacy_ledger(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+
+    api._record_security_event(
+        "rate_limit_hit",
+        scope="email_otp",
+        client_ip="203.0.113.42",
+        reason="limit_exceeded",
+        meta={"refresh_token": "must-not-survive", "attempt": 6},
+    )
+
+    db = api.SessionLocal()
+    try:
+        security = db.query(api.SecurityEvent).filter_by(event_type="rate_limit_hit").one()
+        antiabuse = db.query(api.AntiAbuseEvent).filter_by(event_kind="rate_limit_hit").one()
+        assert security.client_ip == "203.0.113.42"
+        assert antiabuse.source == "api_security"
+        assert antiabuse.raw_ip == "203.0.113.42"
+        assert antiabuse.ip_full_hmac
+        assert antiabuse.ip_prefix_hmac
+        assert "must-not-survive" not in str(antiabuse.metadata_json)
+    finally:
+        db.close()
+
+
+def test_start_trial_rolls_back_account_when_ledger_insert_fails(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    def _fail_ledger(*_args, **_kwargs):
+        raise RuntimeError("ledger unavailable")
+
+    monkeypatch.setattr(api, "record_antiabuse_event", _fail_ledger)
+
+    with pytest.raises(RuntimeError, match="ledger unavailable"):
+        client.post(
+            "/api/client/session/start-trial",
+            json={
+                "install_id": "install-ledger-failure",
+                "device_name": "Test device",
+                "platform": "android",
+                "os_version": "15",
+                "app_version": "1.0.0",
+                "locale": "ru",
+                "time_zone": "Europe/Moscow",
+            },
+        )
+
+    db = api.SessionLocal()
+    try:
+        assert db.query(api.User).filter_by(app_install_id="install-ledger-failure").count() == 0
+        assert db.query(api.AntiAbuseEvent).count() == 0
+    finally:
+        db.close()
 
 
 def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monkeypatch, tmp_path):
