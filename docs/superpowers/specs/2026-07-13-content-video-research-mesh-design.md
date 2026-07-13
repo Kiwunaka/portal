@@ -148,10 +148,27 @@ Verified or documented surfaces from the 2026-07-13 audit include:
 - [StopGame news feed](https://rss.stopgame.ru/rss_news.xml) — discovered from the site’s RSS `<link>` and returned HTTP 200.
 - [Playground news feed](https://www.playground.ru/rss/news.xml) and [articles feed](https://www.playground.ru/rss/articles.xml) — discovered from the site’s RSS `<link>` elements and returned HTTP 200.
 - [Google Trends RU feed](https://trends.google.com/trending/rss?geo=RU) — local audit returned HTTP 200 and XML.
+- [BBC Russian](https://feeds.bbci.co.uk/russian/rss.xml), [TASS](https://tass.ru/rss/v2.xml), [RIA](https://ria.ru/export/rss2/archive/index.xml), [RBC](https://rssexport.rbc.ru/rbcnews/news/30/full.rss), [Guardian World](https://www.theguardian.com/world/rss), and [DW Russian](https://rss.dw.com/rdf/rss-ru-all) feeds — local audit returned HTTP 200 XML/RSS for each.
 - Steam store review and other first-party Steam surfaces already used by `src/research/steam.ts`.
 - owner-provided local references and source URL lists.
 
 The registry must also support configured official and established publisher feeds for politics, crime, law, science, business, entertainment, and global news. Those sources are discovery and evidence inputs, not an allowlist of truth.
+
+### V1 discovery groups
+
+`config/scout.yaml` defines these exact groups and minimum health requirements:
+
+| Group | Requirement | Initial adapters |
+| --- | --- | --- |
+| `ru_core` | required, at least 3 healthy | `dtf_all`, `vc_all`, `habr_current`, `stopgame_news`, `playground_news` |
+| `broad_news` | required, at least 3 healthy | `bbc_ru`, `tass`, `ria`, `rbc`, `guardian_world`, `dw_ru` |
+| `trend_signal` | required, at least 1 healthy | `google_trends_ru`, configured Steam signal adapters |
+| `owner_local` | optional | configured local reference folders and owner URL lists |
+| `official_records` | conditional per candidate | registry lookups chosen by entity/jurisdiction; no global health claim |
+
+The 2026-07-13 audit observed HTTP 200 XML/RSS responses from the configured URLs for BBC Russian, TASS, RIA, RBC, Guardian World, and DW Russian. That observation is not permanent health proof; each run records fresh status.
+
+A required group is `healthy` when it meets its minimum healthy-adapter count, `degraded` when at least one adapter works but the minimum is missed, and `blocked` when zero adapters work. Lifecycle `ready` requires every required group to be healthy. Any degraded/blocked required group makes an otherwise useful run `partial`. A run fails for discovery-group outage only when all three required groups are blocked.
 
 ### Local SearXNG
 
@@ -215,6 +232,16 @@ owner_local
 ```
 
 New families require a config/schema update and fixture coverage. `publisher_group_id` groups domains under common editorial ownership and is used to prevent syndicated or commonly controlled sources from counting as independent confirmations.
+
+Concrete results from SearXNG or direct extraction may introduce an unregistered domain. Such an item is normalized as:
+
+```text
+source_family = unregistered
+publisher_group_id = quarantine:<registrable-domain>
+registration_status = quarantined
+```
+
+Quarantined items may remain as discovery hints and produce `source-onboarding/<domain>.json`, but they do not count as evidence, independent confirmation, source-family coverage, or one of the 20 valid candidates. Registration requires an explicit config change that assigns source family, publisher group, risk profile, extraction policy, and fixtures. The running Scout never auto-promotes a domain.
 
 ## Content-Quality Gate
 
@@ -345,6 +372,29 @@ Final ownership is explicit:
 - `ScoreEngine` owns numeric values, confidence, penalties, and exact formula arithmetic;
 - `Selector` owns diversity and final packet roles only after all upstream gates pass.
 
+## Versioned Risk Policy
+
+`config/scout.yaml -> risk_policy.version: 1` defines rule IDs, flags, severity, and action. `RiskEngine` stores every matched rule ID/version with the candidate. LLM critique may add a flag for rule evaluation but can never clear or downgrade a rule match.
+
+V1 flags and actions are:
+
+| Flag | Derived action |
+| --- | --- |
+| `politics`, `crime`, `court` | require enhanced evidence, enhanced approval, and a current-status check |
+| `accusation_public_figure` | enhanced evidence/approval; wording must preserve allegation/charge/ruling status |
+| `public_figure` | no automatic block; combine with politics/crime/accusation and identity/likeness rules to derive the action |
+| `accusation_private_person` | hard block by default |
+| `private_person` | enhanced review; identifying detail must be necessary and public-interest justified |
+| `minor_identifiable` | hard block by default |
+| `minor_nonidentifying` | enhanced review plus public-interest justification |
+| `graphic_explicit` | hard block |
+| `graphic_implied` | enhanced review and a no-explicit-visual constraint |
+| `copyright_low`, `reused_content_low` | eligible with retained source/attribution plan |
+| `copyright_medium`, `reused_content_medium` | `legal_safety <= 3`; not eligible for top three until the rights plan changes |
+| `copyright_high`, `reused_content_high` | hard block |
+
+`enhanced_review_required` is a derived field set when any non-blocking enhanced rule matches. A hard-block rule sets `BLOCKED_LEGAL` regardless of score. Synthetic-media disclosure is also rule-derived: photoreal reconstruction of a real public event/person or any platform-required synthetic disclosure sets `synthetic_media_label_needed: true`. Each packet retains `risk_policy_version`, matched rules, derived actions, and rationale.
+
 ## OpenCode Editorial Layer
 
 The LLM layer receives retained evidence packets. It does not browse independently inside the runtime design and may not add unreferenced facts.
@@ -420,7 +470,26 @@ V1 uses these 0–5 rubrics. A value outside the rubric is a schema error.
 | `legal_safety` | `5` no material flags; `4` enhanced manual approval after evidence lock; `3` controllable medium risk but not top-three eligible; `2` high risk; `1` likely harmful/noncompliant; `0` prohibited. |
 | `production_cost` | `0` source-only/existing assets; `1` ≤4 generated assets; `2` 5–12; `3` 13–22; `4` >22 or required motion bakeoff; `5` multi-model fragile work without a bounded first smoke. |
 
+### V1 visual scoring profiles
+
+Every topic-selectable V1 format has a versioned visual profile. Score `2` means one required mechanic is missing, `1` means the plan is generic or misses two or more mechanics, and `0` means infeasible. Scores `3–5` are format-specific:
+
+| Format | `5` | `4` | `3` minimum viable |
+| --- | --- | --- | --- |
+| `generated_news_fact_story` | ≥16 concrete states with proof and continuity | 12–15 states with proof | 8–11 states with proof |
+| `steam_review_readout` | exact real crop, moving support, ≥3 semantic support beats, banner-safe | exact crop, moving support, 2 beats | exact crop and one valid moving support loop |
+| `patch_notes_therapy` | primary patch-note proof, 5 story beats, ≥8 states | proof, 4 beats, ≥6 states | proof and ≥4 concrete states |
+| `steam_stats_anomaly` | first-party chart/API proof, 3 comparisons, ≥8 states | proof, 2 comparisons, ≥6 states | proof, 1 comparison, ≥4 states |
+| `ai_remaster_visual` | same-subject pair, controlled reveal, ≥3 comparison details | same-subject pair, reveal, ≥1 detail | same-subject pair and basic reveal |
+| `tier_list_absurdity` | ≥5 evidence-backed items and explicit ranking criteria | 4 items and criteria | 3 items and criteria |
+| `kira_dance` | approved donor, complete dance audit/contact-sheet feasibility, camera/floor/body parity | approved donor and audit with only a noncritical gap | donor provenance plus feasible 4s smoke; full audit still pending |
+| `kira_story` | one continuity master, 5–6 explicit motion beats, bounded clip plan | master and 4 motion beats | master, 3 motion beats, one bounded smoke |
+
+`full_video_parts` is excluded from the topic selector because it is owner-provided source-serial work. Under-study formats are also excluded until their scoring profile and fixtures are explicitly added. Profile identity/version is retained with every candidate.
+
 All metric inputs, state counts, and rubric reasons are retained in `score_rationale`. Editorial rubric fields are never accepted from one model pass without the configured critique pass.
+
+Only `absurdity` uses a subjective editorial score in V1. Kimi proposes a 0–5 value and rationale from the locked evidence packet; DeepSeek independently returns `accept` or a counter-score. If the scores differ by at most one, `ScoreEngine` uses the lower value. If they differ by more than one, one reconciliation pass receives both rationales and the same evidence. A remaining difference greater than one emits `UNRESOLVED_EDITORIAL_SCORE`, and the candidate does not count toward the valid 20. Freshness, heat, evidence, visual profile, repeatability, brand fit, legal safety, and cost are computed by rule engines from retained inputs; LLM output cannot directly set those numeric values.
 
 `trend_score.total` must still exactly match the formula. A separate candidate-only selection value controls ordering:
 
@@ -502,7 +571,7 @@ queued | running | ready | partial | failed | cancelled
 
 Terminal semantics are exact:
 
-- `ready`: exactly 20 valid event-cluster candidates, at least four source families, two eligible safe packets, and one eligible AI-video experiment;
+- `ready`: all three required discovery groups are healthy, exactly 20 valid event-cluster candidates cover at least four source families, and the selector produced two eligible safe packets plus one eligible AI-video experiment;
 - `partial`: at least one valid candidate exists, but any `ready` cardinality or coverage condition is missing, including 20 candidates with fewer than two safe packets or no eligible experiment;
 - `failed`: zero valid candidates, a fatal integrity/schema error prevents trustworthy artifacts, or all required discovery groups are unavailable;
 - `cancelled`: the operator won the terminal-state transition before the final report was atomically committed.
@@ -542,6 +611,7 @@ runs/scout/<run-id>/
   run-state.json
   source-health.json
   source-items/
+  source-onboarding/
   snapshots/
   rejections/
   clusters/
@@ -552,7 +622,8 @@ runs/scout/<run-id>/
     safe-02.json
     experiment-01.json
   topic-briefs/
-    <packet-id>.v1.json
+    index.json
+    <packet-id>.<brief-id>.v1.json
   shortlist.json
   scout-report.json
   scout-report.md
@@ -562,6 +633,19 @@ runs/scout/<run-id>/
 Packet filenames are role slots, not promises. A `partial` run writes only roles that have eligible packets and records missing roles in `shortlist.json`; it does not create placeholder packet files.
 
 Snapshots are sanitized, bounded, and hashed. They must not contain secrets, raw provider headers, private customer data, subscription URLs, or private source material.
+
+Owner-local sources use a separate visibility contract:
+
+```text
+source_visibility = private_owner_local
+local_ref_id
+allowlisted_realpath_root_id
+content_hash
+owner_paraphrase          optional
+excerpt_redacted = true
+```
+
+Raw private material is never copied into `snapshots/`, reports, packet JSON, prompts, or publishing output. Persisted evidence uses hash/pointer-only plus an optional owner-authored paraphrase; it does not store a source excerpt. Studio may open the original on demand only through the allowlisted realpath boundary, labels it private, and never exposes it through a shareable report route. OpenCode receives no raw private material by default. Private local evidence cannot support a public factual claim without qualifying public confirmation; it may support private production mechanics such as an owner-provided motion reference.
 
 An approved topic brief contains:
 
@@ -581,7 +665,7 @@ source_refs[]
 trend_score
 ```
 
-The idempotency key is `packet_id + packet_revision_hash + evidence_revision_hash`. Repeating approval for the same revisions returns the same brief. Any packet or evidence revision invalidates prior approvals and produces a new brief revision; old revisions remain retained.
+`brief_id` is the first 32 hexadecimal characters of SHA-256 over `packet_id + packet_revision_hash + evidence_revision_hash + sorted approval_ids`. That same tuple is the idempotency key. Repeating approval for the same revisions returns the same filename and content. `index.json` maps packet/revision tuples to brief IDs and identifies the latest eligible revision. Any packet, evidence, wording, or approval revision produces a new brief ID; old files and index entries remain retained.
 
 ## Content Studio Research Inbox
 
@@ -630,17 +714,26 @@ The full 20-candidate table supports filtering by source family, topic family, s
 - `Создать episode YAML`: separate explicit action available only after approval;
 - no packet action submits paid TTS, image, or video jobs.
 
-Approval states are:
+Approvals are independent tracks, not one mutually exclusive enum:
 
-```text
-unreviewed
-editorial_approved
-enhanced_approved
-rejected
-stale
+```yaml
+approval:
+  editorial: pending | approved | rejected | stale
+  enhanced: not_required | pending | approved | rejected | stale
+  derived: pending | eligible | rejected | stale
 ```
 
-All packets require `editorial_approved`. Enhanced-risk packets also require `enhanced_approved`. The enhanced approval record includes owner identity, timestamp, packet revision hash, evidence revision hash, wording checksum, and `current_status_checked_at`. Topic-brief creation and episode YAML creation are blocked until every required approval is present and current.
+Transition rules:
+
+1. a new normal packet starts `editorial=pending`, `enhanced=not_required`;
+2. a new enhanced-risk packet starts `editorial=pending`, `enhanced=pending`;
+3. editorial rejection makes `derived=rejected` for that packet revision;
+4. enhanced approval is accepted only after editorial approval and after the reviewer confirms locked wording, evidence revision, and current status;
+5. any packet/evidence/wording revision makes every previous approval `stale`;
+6. `derived=eligible` only when editorial is `approved` and enhanced is either `not_required` or `approved`;
+7. rejected and stale revisions remain retained and cannot create a brief.
+
+The enhanced approval record includes owner identity, timestamp, packet revision hash, evidence revision hash, wording checksum, and `current_status_checked_at`. `enhanced_approval_ttl_hours` defaults to `12`. Episode creation after that window changes enhanced state to `stale` and requires a new current-status check and approval. Topic-brief creation and episode YAML creation are blocked until derived state is `eligible`.
 
 `Создать episode YAML` accepts only a current approved topic brief. It:
 
@@ -679,11 +772,13 @@ Extraction has a separate SSRF boundary:
 Required issue codes (not lifecycle statuses):
 
 - `SOURCE_DEGRADED`: one source failed; other adapters continue;
+- `SOURCE_GROUP_DEGRADED`: a required discovery group missed its minimum healthy-adapter count;
 - `REJECTED_CONTENT`: homepage, anti-bot, mojibake, empty body, missing current date, or other content-quality failure;
 - `BLOCKED_EVIDENCE`: minimum evidence rule not met;
 - `BLOCKED_CONFLICT`: material unresolved contradiction;
 - `BLOCKED_LEGAL`: allegation, private-person, minor, graphic, copyright, or platform risk requires rejection or authority;
 - `BLOCKED_EDITORIAL`: OpenCode output remains invalid after bounded retry;
+- `UNRESOLVED_EDITORIAL_SCORE`: Kimi and DeepSeek still differ by more than one point after reconciliation;
 - `INSUFFICIENT_POOL`: fewer than 20 valid event clusters;
 - `INSUFFICIENT_COVERAGE`: fewer than four source families;
 - `MISSING_SAFE_ROLE`: fewer than two eligible safe packets;
@@ -700,13 +795,18 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - parse representative RSS, Atom, API, HTML, and sitemap fixtures;
 - canonicalize URLs and timestamps;
 - detect mojibake, anti-bot pages, homepages, empty content, and duplicate hashes;
+- quarantine unregistered SearXNG/direct-extraction domains and prevent them from counting as evidence;
+- calculate required discovery-group `healthy` / `degraded` / `blocked` state;
 - cluster duplicate event coverage;
 - build claim-to-evidence mappings;
 - enforce normal and politics/crime evidence gates;
+- apply every V1 visual scoring profile and Kimi/DeepSeek reconciliation rule;
+- apply every V1 risk-policy rule and derived enhanced/hard-block action;
 - calculate the exact canonical trend score;
 - calculate selection confidence and penalties;
 - enforce diversity constraints;
-- parse mocked OpenCode JSON and bounded retry behavior.
+- parse mocked OpenCode JSON and bounded retry behavior;
+- enforce hash/pointer-only persistence for `private_owner_local` evidence.
 
 ### Integration tests
 
@@ -716,7 +816,11 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - contradictory sources block selection;
 - AI experiment passes evidence/legal gates but retains a visual smoke requirement;
 - approval writes a topic brief but creates no provider job;
-- episode YAML creation remains a separate action.
+- episode YAML creation remains a separate action;
+- required-group degradation produces `partial`, while all required groups blocked produces `failed`;
+- packet/evidence/wording changes stale approvals and create a new brief revision;
+- identical approval revisions return the same brief ID/file;
+- episode creation rejects stale enhanced approval and refuses output overwrite.
 
 ### Studio tests
 
@@ -725,6 +829,21 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - approve, reject with reason, reserve, cancel;
 - prevent path traversal and arbitrary command execution;
 - verify research actions do not submit paid media.
+
+### Security and lifecycle tests
+
+- reject missing/foreign Origin, missing/incorrect CSRF header, unsupported content type, and JSON bodies over 64 KiB;
+- verify CSP contains no broad `unsafe-inline` and untrusted titles/excerpts render as text, including script-tag fixtures;
+- reject `..`, symlink, junction, and Windows reparse-point escape from every file endpoint;
+- reject SSRF to loopback, RFC1918/private, link-local, multicast, IPv6 local, cloud-metadata, URL credentials, and redirect targets that resolve into blocked ranges;
+- verify only the exact configured SearXNG adapter can use its loopback exception;
+- enforce redirect count, response-size, adapter timeout, and OpenCode timeout;
+- cancel queued and running jobs, abort fetch/subprocess work, and prove no new work starts after cancellation;
+- cover cancellation-versus-atomic-completion race and immutable terminal states;
+- mark orphaned running jobs `failed/INTERRUPTED` on restart and create a new `parent_run_id` retry without overwriting artifacts;
+- enforce editorial/enhanced approval transitions, 12-hour staleness, wording/evidence revision binding, and derived eligibility;
+- prove topic-brief revision retention/idempotency and the no-overwrite episode YAML rule;
+- prove raw private owner-local material never appears in snapshots, JSON reports, prompts, or publishing output.
 
 ### Live health checks
 
@@ -767,11 +886,11 @@ The implementation is successful when an owner-triggered research run can prove 
 3. No homepage, anti-bot page, empty extraction, or corrupted-Cyrillic item appears in the valid pool.
 4. Each candidate has a canonical URL, timestamps appropriate to its classification, series/format routing, evidence state, score rationale, risk state, and visual feasibility.
 5. The top three contain two safe production packets and one AI-video experiment.
-6. All top-three claims map to retained evidence excerpts and snapshot hashes.
+6. All top-three public claims map to retained evidence excerpts and snapshot hashes; private owner-local production references use the hash/pointer-only contract and cannot be sole support for a public claim.
 7. Politics/crime/accusation packets satisfy the enhanced evidence rule and remain manual-approval only.
 8. The AI-video experiment has no unresolved factual/legal weakness and names the cheapest useful smoke.
 9. Studio explains why each packet was selected and exposes degraded sources and blockers.
-10. Approving a packet writes a brief but starts no paid media generation.
+10. Reaching derived approval state `eligible` writes an idempotent revision-bound brief but starts no paid media generation.
 11. The run can be reproduced and audited from its retained artifacts without relying on chat memory.
 
 Not enough:
