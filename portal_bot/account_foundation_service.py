@@ -24,6 +24,7 @@ from models import (
     EntitlementGrant,
     ExternalOrder,
     PayAttempt,
+    PaymentEntitlementClaim,
     ReferralRelationship,
     ReferralTransition,
     RecoveryCode,
@@ -992,6 +993,7 @@ def _move_account_owned_rows(
         AntiAbuseEvent,
         AntiAbuseCase,
         AntiAbuseAction,
+        PaymentEntitlementClaim,
     ):
         session.query(model).filter(model.account_id == source_account_id).update(
             {model.account_id: target_account_id},
@@ -1118,6 +1120,7 @@ def _ensure_legacy_grant(
     user: User,
     account_id: str,
     now: datetime,
+    include_legacy_payment_authority: bool = True,
 ) -> None:
     idempotency_key = f"legacy-user:{int(user.tg_id)}:snapshot-v1"
     snapshot_metadata: dict[str, object] = {
@@ -1182,7 +1185,8 @@ def _ensure_legacy_grant(
             )
         )
         counter.grants_created += 1
-    _ensure_legacy_payment_authority(session, counter, user=user, account_id=account_id, now=now)
+    if include_legacy_payment_authority:
+        _ensure_legacy_payment_authority(session, counter, user=user, account_id=account_id, now=now)
 
 
 def _historical_payment_key(provider: str, order_id: str) -> str:
@@ -1493,6 +1497,7 @@ def ensure_user_account_foundation(
     user: User,
     *,
     now: datetime | None = None,
+    include_legacy_payment_authority: bool = True,
 ) -> AccountBackfillReport:
     """Synchronize one newly created or updated legacy user into the additive model."""
 
@@ -1586,7 +1591,14 @@ def ensure_user_account_foundation(
             now=effective_now,
         )
     _ensure_device(session, counter, user=user, account_id=account_id, now=effective_now)
-    _ensure_legacy_grant(session, counter, user=user, account_id=account_id, now=effective_now)
+    _ensure_legacy_grant(
+        session,
+        counter,
+        user=user,
+        account_id=account_id,
+        now=effective_now,
+        include_legacy_payment_authority=include_legacy_payment_authority,
+    )
     _ensure_grandfathered_channel_grant(session, counter, user=user, now=effective_now)
 
     for email_identity in (

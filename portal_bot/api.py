@@ -81,6 +81,7 @@ from models import (
     PromoCode,
     PromoUsage,
     PayAttempt,
+    PaymentEntitlementClaim,
     ProviderTrafficQuota,
     ProviderTrafficQuotaAudit,
     ReferralBonusQueue,
@@ -203,8 +204,19 @@ from economy_service import (
     migrate_pending_legacy_referral_queue,
     queue_first_payment_referrer_reward,
     read_trial_projection,
+    rebuild_account_entitlement_projection,
     record_successful_payment_grant,
     release_due_referrer_rewards,
+)
+from payment_entitlement_service import (
+    PaymentEntitlementNotFoundError,
+    ensure_fallback_gift_card,
+    ensure_pending_claim,
+    mark_paid_and_fulfill_attached_claim,
+    mark_paid as mark_payment_entitlement_paid,
+    redeem_payment_fallback,
+    record_claim_error as record_payment_entitlement_claim_error,
+    reverse_claim as reverse_payment_entitlement_claim,
 )
 from account_recovery_service import (
     complete_access_reissue,
@@ -2060,6 +2072,22 @@ def _looks_like_subscription_or_proxy_link(value: str) -> bool:
 
 def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
     meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+    payment_claim = (
+        s.query(PaymentEntitlementClaim)
+        .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+        .one_or_none()
+    )
+    if payment_claim is not None:
+        plan_code = str(payment_claim.plan_code or "").strip().lower()
+        current_plan = dict((meta or {}).get("plan") or {})
+        current_plan["code"] = plan_code
+        meta = {
+            **(meta or {}),
+            "kind": "plan",
+            "plan": current_plan,
+            "days": max(1, int(payment_claim.duration_days or 0)),
+            "legacy_type": None,
+        }
     return {
         "key": str(card.code or "").strip(),
         "exists": True,
@@ -3201,7 +3229,12 @@ def _require_email_public_ready() -> dict[str, Any]:
     )
 
 
-def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
+def _ensure_user_row_for_login(
+    *,
+    tg_id: int,
+    username: str | None = None,
+    include_legacy_payment_authority: bool = True,
+) -> None:
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -3209,7 +3242,12 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
             normalized = str(username or "").strip()[:100] or None
             if username is not None and user.username != normalized:
                 user.username = normalized
-            ensure_user_account_foundation(s, user, now=_utcnow())
+            ensure_user_account_foundation(
+                s,
+                user,
+                now=_utcnow(),
+                include_legacy_payment_authority=include_legacy_payment_authority,
+            )
             s.commit()
             return
 
@@ -3233,7 +3271,12 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
         )
         mark_user_became_free(row, now=now)
         s.add(row)
-        ensure_user_account_foundation(s, row, now=now)
+        ensure_user_account_foundation(
+            s,
+            row,
+            now=now,
+            include_legacy_payment_authority=include_legacy_payment_authority,
+        )
         s.commit()
     except Exception:
         s.rollback()
@@ -4015,22 +4058,150 @@ _PAYMENT_REDACT_KEY_RE = re.compile(
     re.IGNORECASE,
 )
 
+_EXTERNAL_ORDER_META_JSON_LIMIT = 4000
+_PAYMENT_EVENT_JSON_LIMIT = 16000
 
-def _redact_payment_payload(value: Any) -> Any:
+
+def _compact_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _bounded_json_value(value: Any, *, depth: int = 0) -> Any:
+    if depth >= 5:
+        return "[nested]"
     if isinstance(value, dict):
         out: dict[str, Any] = {}
-        for key, item in value.items():
-            key_text = str(key)
-            if _PAYMENT_REDACT_KEY_RE.search(key_text):
-                out[key_text] = "[redacted]"
-            else:
-                out[key_text] = _redact_payment_payload(item)
+        items = list(value.items())
+        for key, item in items[:32]:
+            key_text = str(key or "")[:64]
+            if key_text:
+                out[key_text] = _bounded_json_value(item, depth=depth + 1)
+        if len(items) > 32:
+            out["_pokrov_entries_omitted"] = len(items) - 32
         return out
     if isinstance(value, list):
-        return [_redact_payment_payload(item) for item in value[:50]]
+        out = [_bounded_json_value(item, depth=depth + 1) for item in value[:20]]
+        if len(value) > 20:
+            out.append({"_pokrov_entries_omitted": len(value) - 20})
+        return out
     if isinstance(value, str):
-        return value[:512]
-    return value
+        return value[:256]
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    return str(value)[:128]
+
+
+def _bounded_mapping(
+    value: dict[str, Any],
+    *,
+    max_serialized: int,
+    priority_keys: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    for key, item in value.items():
+        key_text = str(key or "")[:64]
+        if key_text:
+            normalized[key_text] = _bounded_json_value(item, depth=1)
+    ordered_keys = [key for key in priority_keys if key in normalized]
+    ordered_keys.extend(key for key in normalized if key not in ordered_keys)
+    result: dict[str, Any] = {}
+    omitted = 0
+    for key in ordered_keys:
+        trial = {**result, key: normalized[key]}
+        if len(_compact_json(trial)) <= max_serialized:
+            result[key] = normalized[key]
+        else:
+            omitted += 1
+    if omitted:
+        summary = {
+            "omitted_fields": omitted,
+            "fingerprint": hashlib.sha256(_compact_json(normalized).encode("utf-8")).hexdigest()[:16],
+        }
+        trial = {**result, "_pokrov_metadata_summary": summary}
+        if len(_compact_json(trial)) <= max_serialized:
+            result["_pokrov_metadata_summary"] = summary
+    return result
+
+
+def _redact_payment_payload(value: Any, *, max_serialized: int = 12000) -> Any:
+    def _redact(item: Any, *, depth: int = 0) -> Any:
+        if depth >= 5:
+            return "[nested]"
+        if isinstance(item, dict):
+            out: dict[str, Any] = {}
+            entries = list(item.items())
+            for key, child in entries[:32]:
+                key_text = str(key or "")[:64]
+                if not key_text:
+                    continue
+                if _PAYMENT_REDACT_KEY_RE.search(key_text):
+                    out[key_text] = "[redacted]"
+                else:
+                    out[key_text] = _redact(child, depth=depth + 1)
+            if len(entries) > 32:
+                out["_pokrov_entries_omitted"] = len(entries) - 32
+            return out
+        if isinstance(item, list):
+            out = [_redact(child, depth=depth + 1) for child in item[:20]]
+            if len(item) > 20:
+                out.append({"_pokrov_entries_omitted": len(item) - 20})
+            return out
+        if isinstance(item, str):
+            return item[:256]
+        if item is None or isinstance(item, (bool, int, float)):
+            return item
+        return str(item)[:128]
+
+    redacted = _redact(value)
+    serialized = _compact_json(redacted)
+    if len(serialized) <= max_serialized:
+        return redacted
+
+    result: dict[str, Any] = {}
+    if isinstance(redacted, dict) and "_pokrov_processing_error" in redacted:
+        result["_pokrov_processing_error"] = redacted["_pokrov_processing_error"]
+    result["_pokrov_payload_summary"] = {
+        "truncated": True,
+        "fingerprint": hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16],
+        "serialized_length": len(serialized),
+        "entry_count": len(redacted) if isinstance(redacted, dict) else None,
+    }
+    if isinstance(redacted, dict):
+        for key in (
+            "eventType",
+            "status",
+            "payment_status",
+            "amount",
+            "currency",
+            "contractId",
+            "order_id",
+            "clientUtm",
+            "plan_code",
+            "provider",
+        ):
+            if key not in redacted or key in result:
+                continue
+            trial = {**result, key: redacted[key]}
+            if len(_compact_json(trial)) <= max_serialized:
+                result[key] = redacted[key]
+    return result
+
+
+def _serialize_payment_event_payload(value: dict[str, Any]) -> str:
+    bounded = _redact_payment_payload(value, max_serialized=_PAYMENT_EVENT_JSON_LIMIT - 512)
+    serialized = _compact_json(bounded)
+    if len(serialized) <= _PAYMENT_EVENT_JSON_LIMIT:
+        return serialized
+    error_code = bounded.get("_pokrov_processing_error") if isinstance(bounded, dict) else None
+    summary = {
+        "_pokrov_processing_error": error_code,
+        "_pokrov_payload_summary": {
+            "truncated": True,
+            "fingerprint": hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16],
+            "serialized_length": len(serialized),
+        },
+    }
+    return _compact_json(summary)
 
 
 def _verify_lavatop_callback_auth(request: Request) -> tuple[bool, str]:
@@ -4199,8 +4370,93 @@ def _external_order_meta(row: ExternalOrder | None) -> dict[str, Any]:
         return {}
 
 
+def _serialize_external_order_meta(meta: dict[str, Any]) -> str:
+    source = dict(meta or {})
+    prepared: dict[str, Any] = {}
+    section_contracts = {
+        "fulfillment": (
+            1100,
+            (
+                "mode",
+                "status",
+                "buyer_email",
+                "access_key",
+                "email_delivery",
+                "error_code",
+                "tg_id",
+                "activated_at",
+                "access_key_issued_at",
+            ),
+        ),
+        "reversal": (
+            1000,
+            (
+                "operator_action_required",
+                "reconciliation_status",
+                "recorded_at",
+                "event_type",
+                "provider",
+                "order_id",
+                "reason",
+                "external_id",
+            ),
+        ),
+        "pricing": (
+            900,
+            (
+                "base_amount_rub",
+                "final_amount_rub",
+                "discount_pct",
+                "discount_applied",
+                "pending_discount_code",
+                "direct_discount_pct",
+                "direct_discount_code",
+                "direct_discount_source",
+                "referral_discount_eligible",
+            ),
+        ),
+    }
+    for key, value in source.items():
+        if key == "callback":
+            prepared[key] = _redact_payment_payload(value, max_serialized=1000)
+        elif key in section_contracts and isinstance(value, dict):
+            max_serialized, priority = section_contracts[key]
+            prepared[key] = _bounded_mapping(
+                value,
+                max_serialized=max_serialized,
+                priority_keys=priority,
+            )
+        else:
+            prepared[key] = _bounded_json_value(value)
+
+    bounded = _bounded_mapping(
+        prepared,
+        max_serialized=_EXTERNAL_ORDER_META_JSON_LIMIT,
+        priority_keys=(
+            "fulfillment",
+            "reversal",
+            "pricing",
+            "buyer_email",
+            "order_id",
+            "tg_id",
+            "plan_code",
+            "provider",
+            "source",
+            "campaign",
+            "requested_promo_code",
+            "promo_code",
+            "payment_method",
+            "lavatop_payment_provider",
+            "lavatop_payment_method",
+            "plan_label",
+            "callback",
+        ),
+    )
+    return _compact_json(bounded)
+
+
 def _set_external_order_meta(row: ExternalOrder, meta: dict[str, Any]) -> None:
-    row.meta_json = json.dumps(dict(meta or {}), ensure_ascii=False, separators=(",", ":"))[:4000]
+    row.meta_json = _serialize_external_order_meta(meta)
 
 
 def _payload_amount(payload: dict[str, Any]) -> float:
@@ -4258,6 +4514,65 @@ def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: b
     return "manual_review"
 
 
+def _payment_order_correlation(*, provider: str, order_id: str) -> str:
+    material = f"{_normalize_provider(provider)}|{str(order_id or '').strip()}"
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+
+
+def _safe_payment_processing_error(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    allowed = {
+        "access_key_issue_failed",
+        "access_key_email_delivery_error",
+        "delivery_evidence_failed",
+        "account_conflict",
+        "claim_definition_conflict",
+        "claim_reversed",
+        "db_error",
+        "fallback_creator_conflict",
+        "fallback_missing",
+        "fallback_ownership_conflict",
+        "fallback_redeemed_conflict",
+        "fallback_type_conflict",
+        "grant_fulfillment_failed",
+        "grant_not_found",
+        "manual_review",
+        "missing_buyer_email",
+        "missing_tg_id",
+        "order_not_found",
+        "order_reversed",
+        "payment_pending",
+        "unsupported_plan",
+        "user_create_failed",
+        "verified_email_mismatch",
+    }
+    return normalized if normalized in allowed else "durable_fulfillment_failed"
+
+
+_TERMINAL_PAYMENT_FULFILLMENT_CODES = {
+    "account_conflict",
+    "claim_definition_conflict",
+    "claim_reversed",
+    "fallback_creator_conflict",
+    "fallback_missing",
+    "fallback_ownership_conflict",
+    "fallback_redeemed_conflict",
+    "fallback_type_conflict",
+    "manual_review",
+    "missing_buyer_email",
+    "order_reversed",
+    "unsupported_plan",
+    "verified_email_mismatch",
+}
+
+_TERMINAL_PAYMENT_REVERSAL_CODES = {
+    "claim_reversed",
+    "fallback_missing",
+    "grant_not_found",
+    "manual_review",
+}
+
+
 def _upsert_external_order(
     s,
     *,
@@ -4266,19 +4581,22 @@ def _upsert_external_order(
     payload: dict[str, Any],
     status: str,
     mark_paid: bool,
-) -> None:
+) -> ExternalOrder | None:
     if not order_id:
-        return
+        return None
     row = (
         s.query(ExternalOrder)
         .filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id)
+        .with_for_update()
+        .populate_existing()
         .first()
     )
-    if not row:
+    created = row is None
+    if created:
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
-    row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = _payload_plan_code(payload) or row.plan_code
+        row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
+        row.plan_code = _payload_plan_code(payload) or row.plan_code
     row.source = (
         _payload_value(payload, "source", "checkout_source", "us_source")
         or _payload_nested_value(payload, "clientUtm", "utm_medium")
@@ -4291,15 +4609,53 @@ def _upsert_external_order(
     )
     row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
     meta = _external_order_meta(row)
-    meta["callback"] = _redact_payment_payload(payload)
+    meta["callback"] = _redact_payment_payload(payload, max_serialized=1000)
     _set_external_order_meta(row, meta)
     callback_amount = _payload_amount(payload)
     if callback_amount > 0 and float(row.amount or 0) <= 0:
         row.amount = callback_amount
     row.currency = _payload_currency(payload) or row.currency or "RUB"
-    row.status = status
+    current_status = str(row.status or "").strip().lower()
+    incoming_status = str(status or "").strip().lower()
+    if current_status == "chargeback":
+        incoming_status = "chargeback"
+    elif current_status == "refunded" and incoming_status != "chargeback":
+        incoming_status = "refunded"
+    elif current_status == "paid" and incoming_status in {
+        "created",
+        "pending",
+        "pending_verification",
+        "failed",
+        "cancelled",
+        "manual_review",
+    }:
+        incoming_status = "paid"
+    row.status = incoming_status or current_status or "created"
     if mark_paid and not row.paid_at:
         row.paid_at = _utcnow()
+    return row
+
+
+def _mark_payment_reversal_pending(
+    *,
+    row: ExternalOrder,
+    provider: str,
+    event_type: str,
+) -> None:
+    meta = _external_order_meta(row)
+    fulfillment = dict(meta.get("fulfillment") or {})
+    fulfillment["status"] = "reversal_pending_operator_action"
+    meta["fulfillment"] = fulfillment
+    meta["reversal"] = {
+        "event_type": re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal",
+        "provider": _normalize_provider(provider),
+        "order_id": str(row.order_id or "")[:128],
+        "reason": "provider_reversal",
+        "operator_action_required": True,
+        "reconciliation_status": "pending",
+        "recorded_at": _safe_iso(_utcnow()),
+    }
+    _set_external_order_meta(row, meta)
 
 
 def _record_external_payment_event(
@@ -4313,7 +4669,7 @@ def _record_external_payment_event(
     processed_ok: bool,
     status: str | None = None,
 ) -> tuple[bool, bool]:
-    persist_payload = _redact_payment_payload(payload)
+    persist_payload = _redact_payment_payload(payload, max_serialized=_PAYMENT_EVENT_JSON_LIMIT - 512)
     s = SessionLocal()
     try:
         exists = (
@@ -4323,26 +4679,30 @@ def _record_external_payment_event(
                 ExternalPaymentEvent.event_type == event_type,
                 ExternalPaymentEvent.external_id == external_id,
             )
+            .with_for_update()
             .first()
         )
         if exists:
-            if bool(getattr(exists, "signature_ok", False)):
+            if bool(getattr(exists, "signature_ok", False)) and bool(getattr(exists, "processed_ok", False)):
                 return True, True
             if not signature_ok:
                 return True, True
             exists.order_id = order_id or None
-            exists.payload_json = json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000]
+            exists.payload_json = _serialize_payment_event_payload(persist_payload)
             exists.signature_ok = True
             exists.processed_ok = bool(processed_ok)
             event_status = status or _status_from_event(event_type, payload, signature_ok=True, provider=provider)
-            _upsert_external_order(
-                s,
-                provider=provider,
-                order_id=order_id,
-                payload=payload,
-                status=event_status,
-                mark_paid=event_status == "paid",
-            )
+            if str(payload.get("_pokrov_validation_error") or "") != "unknown_order":
+                order_row = _upsert_external_order(
+                    s,
+                    provider=provider,
+                    order_id=order_id,
+                    payload=payload,
+                    status=event_status,
+                    mark_paid=event_status == "paid",
+                )
+                if order_row is not None and event_type in {"refund", "chargeback"}:
+                    _mark_payment_reversal_pending(row=order_row, provider=provider, event_type=event_type)
             s.commit()
             return False, True
 
@@ -4351,7 +4711,7 @@ def _record_external_payment_event(
             event_type=event_type,
             external_id=external_id,
             order_id=order_id or None,
-            payload_json=json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000],
+            payload_json=_serialize_payment_event_payload(persist_payload),
             signature_ok=bool(signature_ok),
             processed_ok=bool(processed_ok),
             created_at=_utcnow(),
@@ -4359,27 +4719,99 @@ def _record_external_payment_event(
         s.add(event)
 
         event_status = status or _status_from_event(event_type, payload, signature_ok=signature_ok, provider=provider)
-        _upsert_external_order(
-            s,
-            provider=provider,
-            order_id=order_id,
-            payload=payload,
-            status=event_status,
-            mark_paid=event_status == "paid",
-        )
+        if signature_ok and str(payload.get("_pokrov_validation_error") or "") != "unknown_order":
+            order_row = _upsert_external_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+                payload=payload,
+                status=event_status,
+                mark_paid=event_status == "paid",
+            )
+            if order_row is not None and event_type in {"refund", "chargeback"}:
+                _mark_payment_reversal_pending(row=order_row, provider=provider, event_type=event_type)
         s.commit()
         return False, True
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("payment callback persistence failed: provider=%s event=%s err=%s", provider, event_type, exc)
+        logger.error(
+            "payment callback persistence failed code=callback_persistence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, False
     finally:
         s.close()
 
 
+def _complete_external_payment_event(
+    *,
+    provider: str,
+    event_type: str,
+    external_id: str,
+    processed_ok: bool,
+    error_code: str | None = None,
+) -> bool:
+    s = SessionLocal()
+    try:
+        event = (
+            s.query(ExternalPaymentEvent)
+            .filter(
+                ExternalPaymentEvent.provider == str(provider),
+                ExternalPaymentEvent.event_type == str(event_type),
+                ExternalPaymentEvent.external_id == str(external_id),
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if event is None:
+            return False
+        event.processed_ok = bool(processed_ok)
+        if error_code:
+            try:
+                stored = json.loads(str(event.payload_json or "{}"))
+                if not isinstance(stored, dict):
+                    stored = {}
+            except Exception:
+                stored = {}
+            stored["_pokrov_processing_error"] = _safe_payment_processing_error(error_code)
+            event.payload_json = _serialize_payment_event_payload(stored)
+        s.commit()
+        return True
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment callback completion persistence failed code=callback_completion_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=external_id),
+        )
+        return False
+    finally:
+        s.close()
+
+
+def _record_payment_entitlement_retry_error(*, provider: str, order_id: str, error_code: str) -> None:
+    s = SessionLocal()
+    try:
+        record_payment_entitlement_claim_error(
+            s,
+            provider=provider,
+            order_id=order_id,
+            error_code=error_code,
+            now=_utcnow(),
+        )
+        s.commit()
+    except PaymentEntitlementNotFoundError:
+        s.rollback()
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment entitlement retry evidence persistence failed code=retry_evidence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+    finally:
+        s.close()
+
+
 def _validate_paid_callback_against_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
-    if _normalize_provider(provider) != "lavatop":
-        return True, "ok"
     if not order_id:
         return False, "missing_order_id"
     s = SessionLocal()
@@ -4393,6 +4825,12 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return False, "unknown_order"
         if str(row.provider or "").strip().lower() != str(provider).strip().lower():
             return False, "provider_mismatch"
+        persisted_tg_id = int(row.tg_id) if row.tg_id is not None else None
+        callback_tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
+        if persisted_tg_id is not None and callback_tg_id is not None and persisted_tg_id != callback_tg_id:
+            return False, "order_owner_mismatch"
+        if _normalize_provider(provider) != "lavatop":
+            return True, "ok"
         expected_amount = float(row.amount or 0)
         actual_amount = _payload_amount(payload)
         if expected_amount > 0 and actual_amount <= 0:
@@ -4441,6 +4879,24 @@ def _rub_plan_days(plan_code: str) -> int:
     return max(1, int(fallback.get("days") or 30))
 
 
+def _external_order_has_reversal_state(row: ExternalOrder, meta: dict[str, Any]) -> bool:
+    if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
+        return True
+    fulfillment = meta.get("fulfillment") if isinstance(meta.get("fulfillment"), dict) else {}
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    if fulfillment_status in {"reversed", "reversal_pending_operator_action"}:
+        return True
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    reconciliation = str(reversal.get("reconciliation_status") or "").strip().lower()
+    return bool(reversal.get("operator_action_required") is True or reconciliation in {
+        "pending",
+        "reversed",
+        "already_reversed",
+        "fallback_missing",
+        "grant_not_found",
+    })
+
+
 def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
     s = SessionLocal()
     try:
@@ -4452,34 +4908,58 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
                 .with_for_update()
                 .first()
             )
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
-        if tg_id is None and ext_order and ext_order.tg_id is not None:
-            tg_id = int(ext_order.tg_id)
+        if ext_order is None:
+            return False, "order_not_found"
+        tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
         if tg_id is None:
             return False, "missing_tg_id"
         ext_meta = _external_order_meta(ext_order) if ext_order else {}
         fulfillment = dict(ext_meta.get("fulfillment") or {})
+        if _external_order_has_reversal_state(ext_order, ext_meta):
+            return False, "order_reversed"
         if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
             return True, "already_applied"
 
-        plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
-            payload, "clientUtm", "utm_term"
-        )
-        if not plan_code and ext_order and ext_order.plan_code:
-            plan_code = str(ext_order.plan_code)
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            s.rollback()
+            _ensure_user_row_for_login(
+                tg_id=int(tg_id),
+                username=None,
+                include_legacy_payment_authority=False,
+            )
+            ext_order = (
+                s.query(ExternalOrder)
+                .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+                .with_for_update()
+                .populate_existing()
+                .one_or_none()
+            )
+            if ext_order is None:
+                return False, "order_not_found"
+            refreshed_tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
+            if refreshed_tg_id != tg_id:
+                return False, "account_conflict"
+            ext_meta = _external_order_meta(ext_order)
+            fulfillment = dict(ext_meta.get("fulfillment") or {})
+            if _external_order_has_reversal_state(ext_order, ext_meta):
+                return False, "order_reversed"
+            if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
+                return True, "already_applied"
+            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+            if not user:
+                return False, "user_create_failed"
+
+        plan_code = str(ext_order.plan_code or "").strip()
+        if not plan_code:
+            plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
+                payload, "clientUtm", "utm_term"
+            )
         plan_code = (plan_code or "1_month").strip().lower()
         plan_cfg = _resolve_plan_config(s=s, code=plan_code)
         if not plan_cfg:
             plan_code = "1_month"
         days = _rub_plan_days(plan_code)
-
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            s.rollback()
-            _ensure_user_row_for_login(tg_id=int(tg_id), username=None)
-            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-            if not user:
-                return False, "user_create_failed"
 
         now = _utcnow()
         old_sub = (user.sub_type or "").upper().strip()
@@ -4524,7 +5004,6 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
         if ext_order:
             ext_order.status = "paid"
             ext_order.paid_at = ext_order.paid_at or now
-            ext_order.tg_id = ext_order.tg_id or int(tg_id)
             ext_order.plan_code = plan_code
             fulfillment.update(
                 {
@@ -4541,9 +5020,12 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             ext_order_id = None
         s.commit()
         s.refresh(user)
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("external order activation failed: order_id=%s err=%s", order_id, exc)
+        logger.error(
+            "external order activation failed code=account_grant_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, "db_error"
     finally:
         s.close()
@@ -4556,17 +5038,51 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
                 ref_tg_id=int(tg_id),
                 pay_attempt_id=ext_order_id,
             )
-        except Exception as exc:
+        except Exception:
             logger.warning(
-                "referral points award failed for provider=%s order_id=%s referrer=%s referred=%s err=%s",
-                provider,
-                order_id,
-                referrer_id,
-                tg_id,
-                exc,
+                "referral points award failed code=referral_award_failed correlation=%s",
+                _payment_order_correlation(provider=provider, order_id=order_id),
             )
 
     return True, "ok"
+
+
+def _payment_fallback_delivery_payload(
+    *,
+    row: ExternalOrder,
+    claim: PaymentEntitlementClaim,
+    card: GiftCard,
+    fulfillment: dict[str, Any],
+    buyer_email: str,
+    plan_label: str,
+) -> dict[str, Any]:
+    delivery_status = str((fulfillment.get("email_delivery") or {}).get("status") or "").strip().lower()
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    if fulfillment_status == "email_sent" or delivery_status in {"sent", "debug_echo"}:
+        return {}
+    return {
+        "buyer_email": buyer_email,
+        "access_key": str(card.code or "").strip().upper(),
+        "order_id": str(row.order_id),
+        "plan_code": str(claim.plan_code),
+        "plan_label": str(plan_label or claim.plan_code),
+        "days": int(claim.duration_days or 0),
+    }
+
+
+def _mark_payment_order_manual_review(
+    *,
+    row: ExternalOrder,
+    meta: dict[str, Any],
+    fulfillment: dict[str, Any],
+    error_code: str,
+) -> None:
+    if str(row.status or "").strip().lower() not in {"refunded", "chargeback"}:
+        row.status = "manual_review"
+    fulfillment["status"] = "manual_review"
+    fulfillment["error_code"] = _safe_payment_processing_error(error_code)
+    meta["fulfillment"] = fulfillment
+    _set_external_order_meta(row, meta)
 
 
 def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
@@ -4582,42 +5098,292 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             return False, "order_not_found", {}
         meta = _external_order_meta(row)
         fulfillment = dict(meta.get("fulfillment") or {})
+        existing_claim = (
+            s.query(PaymentEntitlementClaim)
+            .filter(
+                PaymentEntitlementClaim.provider == str(provider),
+                PaymentEntitlementClaim.order_id == str(order_id),
+            )
+            .one_or_none()
+        )
+        if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
+            if existing_claim is not None and str(existing_claim.status or "").strip().lower() == "reversed":
+                return False, "claim_reversed", {}
+            return False, "order_reversed", {}
         buyer_email = str(
-            fulfillment.get("buyer_email")
-            or meta.get("buyer_email")
-            or _payload_value(payload, "buyer_email", "email", "buyerEmail")
-            or ""
+            existing_claim.buyer_email_norm
+            if existing_claim is not None
+            else (
+                fulfillment.get("buyer_email")
+                or meta.get("buyer_email")
+                or _payload_value(payload, "buyer_email", "email", "buyerEmail")
+                or ""
+            )
         ).strip()
         try:
             buyer_email = validate_email_input(buyer_email)
         except InvalidEmailInputError:
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="missing_buyer_email",
+            )
+            s.commit()
             return False, "missing_buyer_email", {}
 
-        plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
-        plan = _resolve_plan_config(s=s, code=plan_code)
-        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
-        if not normalized_plan:
-            return False, "unsupported_plan", {}
+        if existing_claim is not None:
+            plan_code = str(existing_claim.plan_code or "").strip().lower()
+            duration_days = max(1, int(existing_claim.duration_days or 0))
+            display_plan = _resolve_plan_config(s=s, code=plan_code) or {}
+            plan_label = _normalize_mojibake(str(display_plan.get("label") or plan_code).strip()) or plan_code
+        else:
+            plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
+            normalized_plan = _normalized_plan_payload(
+                _resolve_plan_config(s=s, code=plan_code),
+                fallback_code=plan_code,
+            )
+            if not normalized_plan:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code="unsupported_plan",
+                )
+                s.commit()
+                return False, "unsupported_plan", {}
+            plan_code = str(normalized_plan["code"])
+            duration_days = max(1, int(normalized_plan.get("days") or 30))
+            plan_label = str(normalized_plan.get("label") or plan_code)
+
+        if existing_claim is not None and existing_claim.account_id:
+            fulfilled = mark_paid_and_fulfill_attached_claim(
+                s,
+                provider=provider,
+                order_id=order_id,
+                buyer_email=buyer_email,
+                plan_code=plan_code,
+                duration_days=duration_days,
+                paid_at=row.paid_at or _utcnow(),
+            )
+            if fulfilled.code not in {"fulfilled", "already_fulfilled"}:
+                if fulfilled.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                    _mark_payment_order_manual_review(
+                        row=row,
+                        meta=meta,
+                        fulfillment=fulfillment,
+                        error_code=fulfilled.code,
+                    )
+                s.commit()
+                return False, fulfilled.code, {}
+            now = _utcnow()
+            row.status = "paid"
+            row.paid_at = row.paid_at or fulfilled.claim.paid_at or now
+            fulfillment.update(
+                {
+                    "mode": "account_claim",
+                    "status": "account_extended",
+                    "activated_at": _safe_iso(fulfilled.claim.fulfilled_at or now),
+                }
+            )
+            fulfillment.pop("access_key", None)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            s.commit()
+            return True, fulfilled.code, {}
+
+        claim_result = ensure_pending_claim(
+            s,
+            provider=provider,
+            order_id=order_id,
+            buyer_email=buyer_email,
+            plan_code=plan_code,
+            duration_days=duration_days,
+            now=row.created_at,
+        )
+        if claim_result.code == "claim_definition_conflict":
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code=claim_result.code,
+            )
+            s.commit()
+            return False, "claim_definition_conflict", {}
+        paid_result = mark_payment_entitlement_paid(
+            s,
+            provider=provider,
+            order_id=order_id,
+            paid_at=row.paid_at or _utcnow(),
+        )
+        if paid_result.code in {"claim_reversed", "manual_review"}:
+            if paid_result.code == "manual_review":
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code=paid_result.code,
+                )
+            s.commit()
+            return False, paid_result.code, {}
+        claim = paid_result.claim
+        if claim.account_id:
+            s.commit()
+            return _issue_payment_access_key_for_order(provider=provider, order_id=order_id, payload=payload)
+
+        if claim.fallback_gift_card_id:
+            fallback_result = ensure_fallback_gift_card(
+                s,
+                provider=provider,
+                order_id=order_id,
+                gift_code="unused-existing-fallback",
+                now=claim.paid_at,
+            )
+            if fallback_result.code != "fallback_already_exists":
+                if fallback_result.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                    _mark_payment_order_manual_review(
+                        row=row,
+                        meta=meta,
+                        fulfillment=fulfillment,
+                        error_code=fallback_result.code,
+                    )
+                s.commit()
+                return False, fallback_result.code, {}
+            claim = fallback_result.claim
+            card = (
+                s.query(GiftCard)
+                .filter(GiftCard.id == int(claim.fallback_gift_card_id))
+                .with_for_update()
+                .one_or_none()
+            )
+            if card is None:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code="fallback_missing",
+                )
+                s.commit()
+                return False, "fallback_missing", {}
+            fulfillment.pop("access_key", None)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            row.status = "paid"
+            row.paid_at = row.paid_at or claim.paid_at
+            row.plan_code = str(claim.plan_code)
+            delivery_payload = _payment_fallback_delivery_payload(
+                row=row,
+                claim=claim,
+                card=card,
+                fulfillment=fulfillment,
+                buyer_email=buyer_email,
+                plan_label=plan_label,
+            )
+            if delivery_payload and not delivery_payload.get("access_key"):
+                record_payment_entitlement_claim_error(
+                    s,
+                    provider=provider,
+                    order_id=order_id,
+                    error_code="fallback_missing",
+                    now=_utcnow(),
+                )
+                s.commit()
+                return False, "fallback_missing", {}
+            s.commit()
+            return True, "claim_fallback_already_durable", delivery_payload
 
         existing_key = str(fulfillment.get("access_key") or "").strip().upper()
-        if existing_key:
-            key_code = existing_key
-            reason = "access_key_already_issued"
-        else:
-            key_code = _generate_gift_code_for_admin(s)
-            s.add(GiftCard(code=key_code, card_type=str(normalized_plan["code"]), created_by=0))
-            reason = "access_key_issued"
+        key_code = existing_key or _generate_gift_code_for_admin(s)
+        fallback_result = ensure_fallback_gift_card(
+            s,
+            provider=provider,
+            order_id=order_id,
+            gift_code=key_code,
+            now=claim.paid_at,
+        )
+        if fallback_result.code not in {
+            "fallback_created",
+            "fallback_already_exists",
+            "fallback_linked_existing",
+        }:
+            if fallback_result.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code=fallback_result.code,
+                )
+            s.commit()
+            return False, fallback_result.code, {}
+        claim = fallback_result.claim
+        card = (
+            s.query(GiftCard)
+            .filter(GiftCard.id == int(claim.fallback_gift_card_id or 0))
+            .with_for_update()
+            .one_or_none()
+        )
+        if card is None or int(claim.fallback_gift_card_id or 0) != int(card.id):
+            record_payment_entitlement_claim_error(
+                s,
+                provider=provider,
+                order_id=order_id,
+                error_code="fallback_missing",
+                now=_utcnow(),
+            )
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="fallback_missing",
+            )
+            s.commit()
+            return False, "fallback_missing", {}
+        key_code = str(card.code or "").strip().upper()
+        if not key_code:
+            record_payment_entitlement_claim_error(
+                s,
+                provider=provider,
+                order_id=order_id,
+                error_code="fallback_missing",
+                now=_utcnow(),
+            )
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="fallback_missing",
+            )
+            s.commit()
+            return False, "fallback_missing", {}
+        reason = "access_key_relinked" if existing_key else "access_key_issued"
+
+        prior_delivery_status = str((fulfillment.get("email_delivery") or {}).get("status") or "").strip().lower()
+        already_delivered = bool(
+            existing_key
+            and (
+                str(fulfillment.get("status") or "").strip().lower() == "email_sent"
+                or prior_delivery_status in {"sent", "debug_echo"}
+            )
+        )
+        fulfillment.pop("access_key", None)
+        if already_delivered:
+            row.status = "paid"
+            row.paid_at = row.paid_at or claim.paid_at or _utcnow()
+            row.plan_code = str(claim.plan_code)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            s.commit()
+            return True, reason, {}
 
         now = _utcnow()
         row.status = "paid"
         row.paid_at = row.paid_at or now
-        row.plan_code = str(normalized_plan["code"])
+        row.plan_code = str(claim.plan_code)
         fulfillment.update(
             {
                 "mode": "access_key_email",
                 "status": "email_pending",
                 "buyer_email": buyer_email,
-                "access_key": key_code,
                 "access_key_issued_at": _safe_iso(now),
             }
         )
@@ -4628,47 +5394,149 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             "buyer_email": buyer_email,
             "access_key": key_code,
             "order_id": str(row.order_id),
-            "plan_code": str(normalized_plan["code"]),
-            "plan_label": str(normalized_plan.get("label") or normalized_plan["code"]),
-            "days": int(normalized_plan.get("days") or 0),
+            "plan_code": str(claim.plan_code),
+            "plan_label": plan_label,
+            "days": int(claim.duration_days or 0),
         }
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("payment access key issue failed: provider=%s order_id=%s err=%s", provider, order_id, exc)
+        logger.error(
+            "payment access key issue failed code=access_key_issue_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, "access_key_issue_failed", {}
     finally:
         s.close()
 
 
-def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery: dict[str, Any]) -> None:
+def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery: dict[str, Any]) -> bool:
     s = SessionLocal()
     try:
         row = (
             s.query(ExternalOrder)
             .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .with_for_update()
             .first()
         )
         if not row:
-            return
+            return False
         meta = _external_order_meta(row)
         fulfillment = dict(meta.get("fulfillment") or {})
-        delivery_status = str((delivery or {}).get("status") or "").strip()
+        reversal_status = str(row.status or "").strip().lower() in {"refunded", "chargeback"}
+        prior_delivery = fulfillment.get("email_delivery") if isinstance(fulfillment.get("email_delivery"), dict) else {}
+        prior_status = str(prior_delivery.get("status") or "").strip().lower()
+        if str(fulfillment.get("status") or "").strip().lower() == "email_sent" or prior_status in {"sent", "debug_echo"}:
+            s.commit()
+            return True
+        raw_status = str((delivery or {}).get("status") or "").strip().lower()
+        delivery_status = raw_status if raw_status in {
+            "sent",
+            "debug_echo",
+            "not_configured",
+            "delivery_error",
+            "failed",
+        } else "delivery_error"
+        raw_mode = str((delivery or {}).get("mode") or "").strip().lower()
+        delivery_mode = raw_mode if raw_mode in {"webhook", "not_configured"} else None
+        raw_http_status = _safe_int((delivery or {}).get("http_status"))
+        http_status = raw_http_status if raw_http_status is not None and 100 <= raw_http_status <= 599 else None
+        if delivery_status in {"sent", "debug_echo"}:
+            error_code = None
+        elif delivery_status == "not_configured":
+            error_code = "delivery_not_configured"
+        elif http_status is not None and http_status >= 500:
+            error_code = "delivery_upstream_5xx"
+        elif http_status is not None and http_status >= 400:
+            error_code = "delivery_upstream_4xx"
+        else:
+            error_code = "delivery_not_sent"
         fulfillment["email_delivery"] = {
             "status": delivery_status,
-            "mode": str((delivery or {}).get("mode") or "").strip() or None,
-            "http_status": (delivery or {}).get("http_status"),
-            "detail": (delivery or {}).get("detail"),
+            "mode": delivery_mode,
+            "http_status": http_status,
+            "error_code": error_code,
         }
-        if delivery_status == "sent":
+        if reversal_status:
+            pass
+        elif delivery_status in {"sent", "debug_echo"}:
             fulfillment["status"] = "email_sent"
         elif delivery_status:
             fulfillment["status"] = "email_delivery_error"
         meta["fulfillment"] = fulfillment
         _set_external_order_meta(row, meta)
         s.commit()
+        return True
     except Exception:
         s.rollback()
-        logger.exception("failed to record access key email delivery provider=%s order_id=%s", provider, order_id)
+        logger.error(
+            "access key delivery evidence failed code=delivery_evidence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False
+    finally:
+        s.close()
+
+
+def _finalize_paid_event_after_delivery(
+    *,
+    provider: str,
+    order_id: str,
+    event_type: str,
+    external_id: str,
+    delivery_succeeded: bool,
+) -> tuple[bool, str]:
+    s = SessionLocal()
+    try:
+        event = (
+            s.query(ExternalPaymentEvent)
+            .filter(
+                ExternalPaymentEvent.provider == str(provider),
+                ExternalPaymentEvent.event_type == str(event_type),
+                ExternalPaymentEvent.external_id == str(external_id),
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if event is None:
+            return False, "delivery_evidence_failed"
+        order = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .with_for_update()
+            .populate_existing()
+            .one_or_none()
+        )
+        if order is None:
+            return False, "delivery_evidence_failed"
+
+        terminal_reason = ""
+        if str(order.status or "").strip().lower() in {"refunded", "chargeback"}:
+            terminal_reason = "claim_reversed"
+            event.processed_ok = True
+        elif delivery_succeeded:
+            event.processed_ok = True
+        else:
+            terminal_reason = "access_key_email_delivery_error"
+            event.processed_ok = False
+
+        if terminal_reason:
+            try:
+                stored = json.loads(str(event.payload_json or "{}"))
+                if not isinstance(stored, dict):
+                    stored = {}
+            except Exception:
+                stored = {}
+            stored["_pokrov_processing_error"] = _safe_payment_processing_error(terminal_reason)
+            event.payload_json = _serialize_payment_event_payload(stored)
+        s.commit()
+        return True, terminal_reason
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment delivery completion failed code=callback_completion_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False, "delivery_evidence_failed"
     finally:
         s.close()
 
@@ -4680,10 +5548,12 @@ def _record_payment_reversal_operator_action(
     event_type: str,
     payload: dict[str, Any],
     reason: str = "provider_reversal",
-) -> None:
+) -> tuple[bool, str]:
     normalized_provider = _normalize_provider(provider)
     normalized_event = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal"
     tg_id: int | None = None
+    reconciled = False
+    result_code = "order_not_found"
     s = SessionLocal()
     try:
         row = (
@@ -4693,17 +5563,62 @@ def _record_payment_reversal_operator_action(
             .first()
         )
         if row:
+            if normalized_event == "chargeback":
+                row.status = "chargeback"
+            elif str(row.status or "").strip().lower() != "chargeback":
+                row.status = "refunded"
             tg_id = int(row.tg_id) if row.tg_id is not None else None
+            reversal_reason = str(reason or normalized_event or "provider_reversal")[:64]
+            try:
+                reversal = reverse_payment_entitlement_claim(
+                    s,
+                    provider=normalized_provider,
+                    order_id=str(order_id),
+                    reason=reversal_reason,
+                    reversed_at=_utcnow(),
+                )
+                reconciled = reversal.code in {"reversed", "already_reversed"}
+                result_code = reversal.code
+            except PaymentEntitlementNotFoundError:
+                grant = (
+                    s.query(EntitlementGrant)
+                    .filter(
+                        EntitlementGrant.provider == normalized_provider,
+                        EntitlementGrant.external_order_id == str(order_id),
+                        EntitlementGrant.source == "provider_payment",
+                    )
+                    .with_for_update()
+                    .one_or_none()
+                )
+                if grant is not None:
+                    if grant.reversed_at is None:
+                        reversed_at = _utcnow()
+                        grant.status = "reversed"
+                        grant.reversed_at = reversed_at
+                        grant.reversal_reason = reversal_reason
+                        grant.updated_at = reversed_at
+                        rebuild_account_entitlement_projection(
+                            s,
+                            account_id=str(grant.account_id),
+                            now=reversed_at,
+                        )
+                        result_code = "reversed"
+                    else:
+                        result_code = "already_reversed"
+                    reconciled = True
+                else:
+                    result_code = "grant_not_found"
             meta = _external_order_meta(row)
             fulfillment = dict(meta.get("fulfillment") or {})
-            fulfillment["status"] = "reversal_pending_operator_action"
+            fulfillment["status"] = "reversed" if reconciled else "reversal_pending_operator_action"
             meta["fulfillment"] = fulfillment
             meta["reversal"] = {
                 "event_type": normalized_event,
                 "provider": normalized_provider,
                 "order_id": str(order_id or ""),
                 "reason": str(reason or "provider_reversal")[:120],
-                "operator_action_required": True,
+                "operator_action_required": not reconciled,
+                "reconciliation_status": result_code,
                 "recorded_at": _safe_iso(_utcnow()),
                 "external_id": str(_callback_ids(normalized_provider, payload, b"")[1] or "")[:160],
             }
@@ -4713,23 +5628,33 @@ def _record_payment_reversal_operator_action(
             s.rollback()
     except Exception:
         s.rollback()
-        logger.exception("failed to mark payment reversal operator action provider=%s order_id=%s", provider, order_id)
+        result_code = "reversal_persistence_failed"
+        logger.error(
+            "payment reversal persistence failed code=reversal_persistence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
     finally:
         s.close()
     _record_security_event(
-        "payment_reversal_pending",
+        "payment_reversal_reconciled" if reconciled else "payment_reversal_pending",
         scope="payments",
         subject=f"{normalized_provider}:{str(order_id or '')[:96]}",
         reason=normalized_event,
-        meta={"operator_action_required": True},
+        meta={"operator_action_required": not reconciled, "reconciliation_status": result_code},
     )
     if tg_id:
         track_event(
             tg_id=int(tg_id),
             event_name="payment_reversal_pending",
             source="payment_callback",
-            meta={"provider": normalized_provider, "order_id": str(order_id or "")[:96], "event_type": normalized_event},
+            meta={
+                "provider": normalized_provider,
+                "order_id": str(order_id or "")[:96],
+                "event_type": normalized_event,
+                "reconciliation_status": result_code,
+            },
         )
+    return reconciled, result_code
 
 
 def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
@@ -4740,9 +5665,9 @@ def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[
             .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
             .first()
         ) if order_id else None
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
-        if tg_id is None and ext_order and ext_order.tg_id is not None:
-            tg_id = int(ext_order.tg_id)
+        if ext_order is None:
+            return False, "order_not_found", {}
+        tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
     finally:
         s.close()
 
@@ -4789,7 +5714,18 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
             payload = dict(payload)
             payload["_pokrov_validation_error"] = validation_reason
             callback_status = "manual_review"
-    processed_ok = bool(signature_ok and callback_status not in {"manual_review", "pending_verification"})
+    requires_durable_completion = bool(
+        signature_ok
+        and (
+            (et == "result" and callback_status == "paid")
+            or et in {"refund", "chargeback"}
+        )
+    )
+    processed_ok = bool(
+        signature_ok
+        and callback_status != "pending_verification"
+        and not requires_durable_completion
+    )
     duplicate, persist_ok = _record_external_payment_event(
         provider=p,
         event_type=et,
@@ -4800,6 +5736,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         processed_ok=processed_ok,
         status=callback_status,
     )
+    if not persist_ok:
+        raise HTTPException(status_code=503, detail="Payment callback persistence is retryable")
 
     if not signature_ok:
         _record_security_event(
@@ -4822,34 +5760,131 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         if not PAYMENT_CALLBACK_TOLERANT_MODE:
             raise HTTPException(status_code=400, detail=f"Invalid signature: {signature_reason}")
 
-    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
-        _record_payment_reversal_operator_action(
-            provider=p,
-            order_id=order_id,
-            event_type=et,
-            payload=payload,
-            reason=callback_status,
-        )
-
     activated = False
     activation_reason = ""
     sync_ok = None
+    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
+        try:
+            reversed_ok, reversal_code = _record_payment_reversal_operator_action(
+                provider=p,
+                order_id=order_id,
+                event_type=et,
+                payload=payload,
+                reason=callback_status,
+            )
+        except Exception:
+            logger.error(
+                "payment reversal failed code=reversal_persistence_failed correlation=%s",
+                _payment_order_correlation(provider=p, order_id=order_id),
+            )
+            reversed_ok, reversal_code = False, "reversal_persistence_failed"
+        if not reversed_ok:
+            if reversal_code in _TERMINAL_PAYMENT_REVERSAL_CODES:
+                if not _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=True,
+                    error_code=reversal_code,
+                ):
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                activation_reason = reversal_code
+            else:
+                _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=False,
+                    error_code=reversal_code,
+                )
+                raise HTTPException(status_code=503, detail="Payment reversal is retryable")
+        elif not _complete_external_payment_event(
+            provider=p,
+            event_type=et,
+            external_id=external_id,
+            processed_ok=True,
+        ):
+            raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+
     if (not duplicate) and signature_ok and et == "result" and callback_status == "paid":
         activated, activation_reason, fulfillment = _fulfill_external_paid_order(provider=p, order_id=order_id, payload=payload)
-        if activated:
-            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
-                delivery = await deliver_payment_access_key(
-                    email=str(fulfillment["buyer_email"]),
-                    access_key=str(fulfillment["access_key"]),
-                    order_id=str(fulfillment.get("order_id") or order_id),
-                    plan_code=str(fulfillment.get("plan_code") or ""),
-                    plan_label=str(fulfillment.get("plan_label") or ""),
-                    days=int(fulfillment.get("days") or 0),
+        if not activated:
+            safe_reason = _safe_payment_processing_error(activation_reason or "durable_fulfillment_failed")
+            if safe_reason in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                if not _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=True,
+                    error_code=safe_reason,
+                ):
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                activation_reason = safe_reason
+            else:
+                _record_payment_entitlement_retry_error(
+                    provider=p,
+                    order_id=order_id,
+                    error_code=safe_reason,
                 )
-                _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
-                if str(delivery.get("status") or "") != "sent":
-                    activation_reason = "access_key_email_delivery_error"
-            tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id")) or fulfillment.get("tg_id")
+                _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=False,
+                    error_code=safe_reason,
+                )
+                raise HTTPException(status_code=503, detail="Payment fulfillment is retryable")
+        else:
+            delivery_finalized = False
+            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
+                try:
+                    delivery = await deliver_payment_access_key(
+                        email=str(fulfillment["buyer_email"]),
+                        access_key=str(fulfillment["access_key"]),
+                        order_id=str(fulfillment.get("order_id") or order_id),
+                        plan_code=str(fulfillment.get("plan_code") or ""),
+                        plan_label=str(fulfillment.get("plan_label") or ""),
+                        days=int(fulfillment.get("days") or 0),
+                    )
+                except Exception:
+                    delivery = {"status": "delivery_error", "mode": "webhook"}
+                evidence_ok = _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
+                if not evidence_ok:
+                    _complete_external_payment_event(
+                        provider=p,
+                        event_type=et,
+                        external_id=external_id,
+                        processed_ok=False,
+                        error_code="delivery_evidence_failed",
+                    )
+                    raise HTTPException(status_code=503, detail="Payment delivery evidence is retryable")
+                delivery_ok = str(delivery.get("status") or "").strip().lower() in {"sent", "debug_echo"}
+                completion_ok, completion_reason = _finalize_paid_event_after_delivery(
+                    provider=p,
+                    order_id=order_id,
+                    event_type=et,
+                    external_id=external_id,
+                    delivery_succeeded=delivery_ok,
+                )
+                if not completion_ok:
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                delivery_finalized = True
+                if completion_reason == "claim_reversed":
+                    activated = False
+                    activation_reason = completion_reason
+                    fulfillment = {}
+                elif completion_reason:
+                    raise HTTPException(status_code=503, detail="Payment access delivery is retryable")
+            if (not delivery_finalized) and not _complete_external_payment_event(
+                provider=p,
+                event_type=et,
+                external_id=external_id,
+                processed_ok=True,
+            ):
+                raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+            if activated and fulfillment.get("access_key") and fulfillment.get("buyer_email"):
+                activation_reason = activation_reason or "access_key_email_sent"
+            tg_id = fulfillment.get("tg_id")
             if tg_id is not None:
                 try:
                     sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
@@ -4862,11 +5897,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
                     )
                 except Exception:
                     logger.warning(
-                        "telegram paid access notification failed: provider=%s order_id=%s tg_id=%s",
-                        p,
-                        order_id,
-                        tg_id,
-                        exc_info=True,
+                        "telegram paid access notification failed code=telegram_notification_failed correlation=%s",
+                        _payment_order_correlation(provider=p, order_id=order_id),
                     )
     elif (not duplicate) and signature_ok and et == "result":
         activation_reason = validation_reason or callback_status
@@ -9522,7 +10554,7 @@ async def _rub_create_order_internal(
             amount=float(amount_rub),
             currency=(currency or "RUB").strip().upper()[:16] or "RUB",
             status="created",
-            meta_json=json.dumps(
+            meta_json=_serialize_external_order_meta(
                 {
                     "source": source,
                     "campaign": campaign,
@@ -9552,12 +10584,20 @@ async def _rub_create_order_internal(
                         "referral_discount_eligible": bool(referral_discount_eligible),
                     },
                 },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )[:4000],
+            ),
             created_at=_utcnow(),
         )
         s.add(ext)
+        if normalized_tg_id <= 0:
+            ensure_pending_claim(
+                s,
+                provider=provider,
+                order_id=order_id,
+                buyer_email=buyer_email_norm,
+                plan_code=normalized_plan_code,
+                duration_days=max(1, int(plan.get("duration_days") or plan.get("days") or 30)),
+                now=ext.created_at,
+            )
         if user and consume_pending_discount and discount_applied:
             user.pending_discount_pct = None
             user.pending_discount_code = None
@@ -9636,7 +10676,7 @@ async def _rub_create_order_internal(
         row = s.query(ExternalOrder).filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id).first()
         if row:
             row.status = "pending"
-            row.meta_json = json.dumps(
+            row.meta_json = _serialize_external_order_meta(
                 {
                     "request": req_data,
                     "response": {"payment_url": payment_url, "remote": remote_response},
@@ -9662,10 +10702,8 @@ async def _rub_create_order_internal(
                         "lavatop_payment_provider": lavatop_payment_provider or None,
                         "lavatop_payment_method": lavatop_payment_method or None,
                     },
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )[:4000]
+                }
+            )
             s.commit()
     finally:
         s.close()
@@ -12130,33 +13168,58 @@ async def _redeem_access_key_for_auth_user(
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == code).first()
         if not card:
             raise HTTPException(status_code=404, detail="Access key not found")
-        if card.redeemed_by is not None:
+        payment_claim = (
+            s.query(PaymentEntitlementClaim)
+            .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+            .one_or_none()
+        )
+        if card.redeemed_by is not None and (
+            payment_claim is None or int(card.redeemed_by) != int(tg_id)
+        ):
             raise HTTPException(status_code=400, detail="Access key already redeemed")
         if int(card.created_by or 0) == int(tg_id):
             raise HTTPException(status_code=400, detail="You cannot redeem your own key")
         if not bool(getattr(user, "tos_accepted", False)):
             raise HTTPException(status_code=400, detail="Accept terms before redeeming a key")
 
-        meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
-        if not meta:
-            raise HTTPException(status_code=400, detail="Access key type is not supported")
-
         now = _utcnow()
-        applied = _apply_access_key_to_user(user=user, meta=meta, now=now)
-        updated = (
-            s.query(GiftCard)
-            .filter(GiftCard.id == int(card.id), GiftCard.redeemed_by.is_(None))
-            .update(
-                {
-                    GiftCard.redeemed_by: int(tg_id),
-                    GiftCard.redeemed_at: now,
-                },
-                synchronize_session=False,
+        if payment_claim is not None:
+            ensure_user_account_foundation(s, user, now=now)
+            s.flush()
+            payment_result = redeem_payment_fallback(
+                s,
+                gift_card_id=int(card.id),
+                account_id=str(user.account_id),
+                legacy_tg_id=int(tg_id),
+                now=now,
             )
-        )
-        if int(updated or 0) != 1:
-            s.rollback()
-            raise HTTPException(status_code=400, detail="Access key already redeemed")
+            if payment_result.code not in {"fulfilled", "already_fulfilled"}:
+                s.commit()
+                status_code = 409 if payment_result.code in {"account_conflict", "manual_review"} else 400
+                raise HTTPException(status_code=status_code, detail="Payment access key is not redeemable")
+            applied = {
+                "current_plan_code": str(user.current_plan_code or payment_claim.plan_code),
+                "expiry_at": _safe_iso(user.expiry_at),
+            }
+        else:
+            meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+            if not meta:
+                raise HTTPException(status_code=400, detail="Access key type is not supported")
+            applied = _apply_access_key_to_user(user=user, meta=meta, now=now)
+            updated = (
+                s.query(GiftCard)
+                .filter(GiftCard.id == int(card.id), GiftCard.redeemed_by.is_(None))
+                .update(
+                    {
+                        GiftCard.redeemed_by: int(tg_id),
+                        GiftCard.redeemed_at: now,
+                    },
+                    synchronize_session=False,
+                )
+            )
+            if int(updated or 0) != 1:
+                s.rollback()
+                raise HTTPException(status_code=400, detail="Access key already redeemed")
 
         s.commit()
         s.refresh(user)
@@ -12182,11 +13245,9 @@ async def _redeem_access_key_for_auth_user(
     except Exception:
         s.rollback()
         safe_code = _access_key_safe_meta(code)
-        logger.exception(
-            "access key redeem failed key_fp=%s key_preview=%s tg_id=%s",
+        logger.error(
+            "access key redeem failed code=access_key_redeem_failed correlation=%s",
             safe_code.get("code_fp"),
-            safe_code.get("code_preview"),
-            int(tg_id),
         )
         raise HTTPException(status_code=500, detail="Failed to redeem access key")
     finally:
@@ -12277,6 +13338,12 @@ async def unified_redeem(
     try:
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == normalized).first()
         card_meta = _access_key_meta_from_card_type(s=s, card_type=str(getattr(card, "card_type", "") or "")) if card else None
+        payment_claim_exists = bool(
+            card
+            and s.query(PaymentEntitlementClaim.id)
+            .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+            .first()
+        )
         promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == normalized).first()
     finally:
         s.close()
@@ -12303,7 +13370,7 @@ async def unified_redeem(
             payload_out["summary"] = summary
         return payload_out
 
-    if card and card_meta:
+    if card and (card_meta or payment_claim_exists):
         result = await _redeem_access_key_for_auth_user(
             key=normalized,
             request=request,
@@ -13161,6 +14228,36 @@ def _admin_payment_order_payload(*, s, order: ExternalOrder) -> dict[str, Any]:
     }
 
 
+def _payment_reversal_needs_operator(order: ExternalOrder) -> bool:
+    if str(order.status or "").strip().lower() not in {"refunded", "chargeback"}:
+        return False
+    meta = _external_order_meta(order)
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    fulfillment = meta.get("fulfillment") if isinstance(meta.get("fulfillment"), dict) else {}
+    reconciliation_status = str(reversal.get("reconciliation_status") or "").strip().lower()
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    return not bool(
+        reversal.get("operator_action_required") is False
+        and reconciliation_status in {"reversed", "already_reversed"}
+        and fulfillment_status == "reversed"
+    )
+
+
+def _payment_reversal_problem_time(order: ExternalOrder) -> datetime:
+    meta = _external_order_meta(order)
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    raw = str(reversal.get("recorded_at") or "").strip()[:128]
+    if raw:
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if parsed.tzinfo is not None:
+                parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+            return parsed
+        except (TypeError, ValueError, OverflowError):
+            pass
+    return order.created_at or datetime.min
+
+
 def _admin_payment_period_bounds(period: str) -> tuple[str, datetime, datetime]:
     period_norm = str(period or "7d").strip().lower()
     now = _utcnow()
@@ -13215,7 +14312,17 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     }
     pending_count = sum(int(status_counts.get(status, 0)) for status in ("created", "pending", "pending_verification"))
     manual_review_count = int(status_counts.get("manual_review", 0))
-    failed_count = sum(int(status_counts.get(status, 0)) for status in ("failed", "cancelled", "refunded", "chargeback"))
+    reversal_rows = (
+        s.query(ExternalOrder)
+        .filter(ExternalOrder.status.in_(["refunded", "chargeback"]))
+        .all()
+    )
+    reversal_problem_rows = [row for row in reversal_rows if _payment_reversal_needs_operator(row)]
+    reversal_problem_count = len(reversal_problem_rows)
+    failed_count = (
+        sum(int(status_counts.get(status, 0)) for status in ("failed", "cancelled"))
+        + reversal_problem_count
+    )
 
     site_checkout_intent = _count_funnel_sessions(
         s,
@@ -13230,14 +14337,32 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     checkout_started = site_checkout_intent + max(known_checkout_events, pay_attempts_started)
     paid_count = int(primary_revenue.get("paid_count") or 0)
 
-    recent_problem_orders = (
+    ordinary_problem_rows = (
         s.query(ExternalOrder)
         .filter(ExternalOrder.created_at >= from_dt, ExternalOrder.created_at <= to_dt)
-        .filter(func.lower(func.coalesce(ExternalOrder.status, "")).in_(["created", "pending", "pending_verification", "manual_review", "failed"]))
+        .filter(ExternalOrder.status.in_([
+            "created",
+            "pending",
+            "pending_verification",
+            "manual_review",
+            "failed",
+            "cancelled",
+        ]))
         .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
         .limit(25)
         .all()
     )
+    recent_problem_orders = [
+        row
+        for _problem_at, row in sorted(
+            [
+                *((row.created_at or datetime.min, row) for row in ordinary_problem_rows),
+                *((_payment_reversal_problem_time(row), row) for row in reversal_problem_rows),
+            ],
+            key=lambda item: (item[0], int(item[1].id or 0)),
+            reverse=True,
+        )[:25]
+    ]
 
     return {
         "ok": True,

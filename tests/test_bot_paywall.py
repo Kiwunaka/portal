@@ -1,6 +1,8 @@
 import asyncio
+import hashlib
 import importlib
 import inspect
+import json
 import os
 import sys
 import tempfile
@@ -1750,6 +1752,102 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual([item["event_name"] for item in tracked], ["gift_redeemed", "gift_redeem_denied"])
         self.assertEqual(str(tracked[0]["meta"].get("card_type") or "").lower(), "standard")
         self.assertEqual(str(tracked[1]["meta"].get("reason") or ""), "already_redeemed")
+        for item in tracked:
+            meta = item["meta"]
+            self.assertNotIn("code", meta)
+            self.assertEqual(meta["code_preview"], f"...{gift_code[-4:]}")
+            self.assertEqual(meta["code_fp"], hashlib.sha256(gift_code.encode("utf-8")).hexdigest()[:16])
+            self.assertEqual(meta["code_len"], len(gift_code))
+
+    def test_gift_event_persistence_never_contains_raw_activation_code(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+        code = self.bot_module.create_gift_card(2002, "standard")
+        self.assertTrue(code)
+
+        ok, _message = asyncio.run(self.bot_module.redeem_gift_card(code, 1001, _FakeBot(status="member")))
+        denied, _denied_message = asyncio.run(self.bot_module.redeem_gift_card(code, 1001, _FakeBot(status="member")))
+        self.assertTrue(ok)
+        self.assertFalse(denied)
+
+        session = self.bot_module.Session()
+        try:
+            rows = (
+                session.query(self.bot_module.Event)
+                .filter(self.bot_module.Event.event_name.in_(["gift_redeemed", "gift_redeem_denied"]))
+                .order_by(self.bot_module.Event.id.asc())
+                .all()
+            )
+            self.assertEqual([row.event_name for row in rows], ["gift_redeemed", "gift_redeem_denied"])
+            for row in rows:
+                raw_meta = str(row.meta_json or "")
+                meta = json.loads(raw_meta)
+                self.assertFalse(code in raw_meta)
+                self.assertNotIn("code", meta)
+                self.assertEqual(meta["code_preview"], f"...{code[-4:]}")
+                self.assertEqual(meta["code_fp"], hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
+                self.assertEqual(meta["code_len"], len(code))
+        finally:
+            session.close()
+
+    def test_wrong_account_payment_fallback_denial_event_is_redacted(self) -> None:
+        from account_foundation_service import ensure_user_account_foundation
+        from payment_entitlement_service import ensure_fallback_gift_card, ensure_pending_claim, mark_paid
+
+        for tg_id, username in ((1001, "owner"), (1002, "wrong")):
+            self.bot_module.ensure_pending_user(tg_id, username=username)
+            self.bot_module.set_tos_accepted(tg_id)
+        code = "POKROV-" + "PAYMENT" + "-DENY"
+        session = self.bot_module.Session()
+        try:
+            owner = session.query(self.bot_module.User).filter_by(tg_id=1001).one()
+            wrong = session.query(self.bot_module.User).filter_by(tg_id=1002).one()
+            ensure_user_account_foundation(session, owner, now=self.bot_module._utcnow())
+            ensure_user_account_foundation(session, wrong, now=self.bot_module._utcnow())
+            claim = ensure_pending_claim(
+                session,
+                provider="lavatop",
+                order_id="bot-wrong-account",
+                buyer_email="owner@example.test",
+                plan_code="1_month",
+                duration_days=30,
+                now=self.bot_module._utcnow(),
+            ).claim
+            mark_paid(session, provider="lavatop", order_id="bot-wrong-account", paid_at=self.bot_module._utcnow())
+            ensure_fallback_gift_card(
+                session,
+                provider="lavatop",
+                order_id="bot-wrong-account",
+                gift_code=code,
+                now=self.bot_module._utcnow(),
+            )
+            claim.account_id = str(owner.account_id)
+            claim.status = "paid_attached"
+            session.commit()
+        finally:
+            session.close()
+
+        ok, _message = asyncio.run(self.bot_module.redeem_gift_card(code, 1002, _FakeBot(status="member")))
+        self.assertFalse(ok)
+        session = self.bot_module.Session()
+        try:
+            event = (
+                session.query(self.bot_module.Event)
+                .filter_by(tg_id=1002, event_name="gift_redeem_denied")
+                .order_by(self.bot_module.Event.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(event)
+            raw_meta = str(event.meta_json or "")
+            meta = json.loads(raw_meta)
+            self.assertFalse(code in raw_meta)
+            self.assertNotIn("code", meta)
+            self.assertEqual(meta["reason"], "payment_account_conflict")
+            self.assertEqual(meta["code_preview"], f"...{code[-4:]}")
+            self.assertEqual(meta["code_fp"], hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
+            self.assertEqual(meta["code_len"], len(code))
+        finally:
+            session.close()
 
     def test_redeem_gift_card_accepts_plan_access_key(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

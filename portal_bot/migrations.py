@@ -52,6 +52,22 @@ def _postgres_column_exists(conn, table: str, column: str) -> bool:
     )
 
 
+def _postgres_column_is_not_null(conn, table: str, column: str) -> bool:
+    value = conn.execute(
+        text(
+            """
+            SELECT is_nullable = 'NO'
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name;
+            """
+        ),
+        {"table_name": str(table), "column_name": str(column)},
+    ).scalar()
+    return bool(value)
+
+
 def _postgres_varchar_limit(conn, table: str, column: str) -> int | None:
     value = conn.execute(
         text(
@@ -241,6 +257,195 @@ def _ensure_economy_domain_postgres(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_referral_relationship_hold_until ON referral_relationships(hold_until);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_transition_key ON referral_transitions(transition_key);",
         "CREATE INDEX IF NOT EXISTS ix_referral_transition_relationship ON referral_transitions(relationship_id);",
+    ):
+        conn.execute(text(sql))
+
+
+def _ensure_payment_entitlement_claims_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS payment_entitlement_claims (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              provider VARCHAR(32) NOT NULL,
+              order_id VARCHAR(128) NOT NULL,
+              buyer_email_norm VARCHAR(255) NOT NULL,
+              account_id VARCHAR(36),
+              status VARCHAR(32) NOT NULL DEFAULT 'pending_payment',
+              plan_code VARCHAR(32) NOT NULL,
+              duration_days INTEGER NOT NULL,
+              grant_id VARCHAR(36),
+              fallback_gift_card_id INTEGER,
+              paid_at DATETIME,
+              attached_at DATETIME,
+              fulfilled_at DATETIME,
+              reversed_at DATETIME,
+              reversal_reason VARCHAR(64),
+              last_error VARCHAR(120),
+              last_error_at DATETIME,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL,
+              UNIQUE(provider, order_id)
+            );
+            """
+        )
+    )
+    for column, ddl in (
+        ("buyer_email_norm", "VARCHAR(255) NOT NULL DEFAULT 'unavailable@invalid.local'"),
+        ("account_id", "VARCHAR(36)"),
+        ("status", "VARCHAR(32) NOT NULL DEFAULT 'manual_review'"),
+        ("plan_code", "VARCHAR(32) NOT NULL DEFAULT 'unknown'"),
+        ("duration_days", "INTEGER NOT NULL DEFAULT 0"),
+        ("grant_id", "VARCHAR(36)"),
+        ("fallback_gift_card_id", "INTEGER"),
+        ("paid_at", "DATETIME"),
+        ("attached_at", "DATETIME"),
+        ("fulfilled_at", "DATETIME"),
+        ("reversed_at", "DATETIME"),
+        ("reversal_reason", "VARCHAR(64)"),
+        ("last_error", "VARCHAR(120)"),
+        ("last_error_at", "DATETIME"),
+        ("created_at", "DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00'"),
+        ("updated_at", "DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00'"),
+    ):
+        if not _sqlite_column_exists(conn, "payment_entitlement_claims", column):
+            conn.execute(text(f"ALTER TABLE payment_entitlement_claims ADD COLUMN {column} {ddl};"))
+    conn.execute(
+        text(
+            """
+            UPDATE payment_entitlement_claims
+            SET buyer_email_norm = COALESCE(NULLIF(TRIM(buyer_email_norm), ''), 'unavailable@invalid.local'),
+                status = 'manual_review',
+                plan_code = COALESCE(NULLIF(TRIM(plan_code), ''), 'unknown'),
+                duration_days = COALESCE(duration_days, 0),
+                last_error = COALESCE(NULLIF(TRIM(last_error), ''), 'migration_incomplete_claim'),
+                last_error_at = COALESCE(last_error_at, CURRENT_TIMESTAMP),
+                created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+                updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+            WHERE buyer_email_norm IS NULL OR TRIM(buyer_email_norm) = ''
+               OR status IS NULL OR TRIM(status) = ''
+               OR plan_code IS NULL OR TRIM(plan_code) = ''
+               OR duration_days IS NULL OR duration_days <= 0
+               OR created_at IS NULL
+               OR updated_at IS NULL;
+            """
+        )
+    )
+    for sql in (
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_provider_order ON payment_entitlement_claims(provider, order_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_fallback_card ON payment_entitlement_claims(fallback_gift_card_id) WHERE fallback_gift_card_id IS NOT NULL;",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_provider ON payment_entitlement_claims(provider);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_order_id ON payment_entitlement_claims(order_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_email ON payment_entitlement_claims(buyer_email_norm);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_account ON payment_entitlement_claims(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_status ON payment_entitlement_claims(status);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_grant ON payment_entitlement_claims(grant_id);",
+    ):
+        conn.execute(text(sql))
+
+
+def _ensure_external_order_attention_index(conn) -> None:
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_external_orders_status_created_at_id "
+            "ON external_orders(status, created_at, id);"
+        )
+    )
+
+
+def _ensure_payment_entitlement_claims_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS payment_entitlement_claims (
+              id SERIAL PRIMARY KEY,
+              provider VARCHAR(32) NOT NULL,
+              order_id VARCHAR(128) NOT NULL,
+              buyer_email_norm VARCHAR(255) NOT NULL,
+              account_id VARCHAR(36),
+              status VARCHAR(32) NOT NULL DEFAULT 'pending_payment',
+              plan_code VARCHAR(32) NOT NULL,
+              duration_days INTEGER NOT NULL,
+              grant_id VARCHAR(36),
+              fallback_gift_card_id INTEGER,
+              paid_at TIMESTAMP,
+              attached_at TIMESTAMP,
+              fulfilled_at TIMESTAMP,
+              reversed_at TIMESTAMP,
+              reversal_reason VARCHAR(64),
+              last_error VARCHAR(120),
+              last_error_at TIMESTAMP,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL,
+              UNIQUE(provider, order_id)
+            );
+            """
+        )
+    )
+    for column, ddl in (
+        ("buyer_email_norm", "VARCHAR(255) NOT NULL DEFAULT 'unavailable@invalid.local'"),
+        ("account_id", "VARCHAR(36)"),
+        ("status", "VARCHAR(32) NOT NULL DEFAULT 'manual_review'"),
+        ("plan_code", "VARCHAR(32) NOT NULL DEFAULT 'unknown'"),
+        ("duration_days", "INTEGER NOT NULL DEFAULT 0"),
+        ("grant_id", "VARCHAR(36)"),
+        ("fallback_gift_card_id", "INTEGER"),
+        ("paid_at", "TIMESTAMP"),
+        ("attached_at", "TIMESTAMP"),
+        ("fulfilled_at", "TIMESTAMP"),
+        ("reversed_at", "TIMESTAMP"),
+        ("reversal_reason", "VARCHAR(64)"),
+        ("last_error", "VARCHAR(120)"),
+        ("last_error_at", "TIMESTAMP"),
+        ("created_at", "TIMESTAMP NOT NULL DEFAULT TIMESTAMP '1970-01-01 00:00:00'"),
+        ("updated_at", "TIMESTAMP NOT NULL DEFAULT TIMESTAMP '1970-01-01 00:00:00'"),
+    ):
+        _postgres_add_column_if_missing(conn, "payment_entitlement_claims", column, ddl)
+    conn.execute(
+        text(
+            """
+            UPDATE payment_entitlement_claims
+            SET buyer_email_norm = COALESCE(NULLIF(BTRIM(buyer_email_norm), ''), 'unavailable@invalid.local'),
+                status = 'manual_review',
+                plan_code = COALESCE(NULLIF(BTRIM(plan_code), ''), 'unknown'),
+                duration_days = COALESCE(duration_days, 0),
+                last_error = COALESCE(NULLIF(BTRIM(last_error), ''), 'migration_incomplete_claim'),
+                last_error_at = COALESCE(last_error_at, CURRENT_TIMESTAMP),
+                created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+                updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+            WHERE buyer_email_norm IS NULL OR BTRIM(buyer_email_norm) = ''
+               OR status IS NULL OR BTRIM(status) = ''
+               OR plan_code IS NULL OR BTRIM(plan_code) = ''
+               OR duration_days IS NULL OR duration_days <= 0
+               OR created_at IS NULL
+               OR updated_at IS NULL;
+            """
+        )
+    )
+    for column in (
+        "buyer_email_norm",
+        "status",
+        "plan_code",
+        "duration_days",
+        "created_at",
+        "updated_at",
+    ):
+        if not _postgres_column_is_not_null(conn, "payment_entitlement_claims", column):
+            conn.execute(
+                text(
+                    f"ALTER TABLE payment_entitlement_claims "
+                    f"ALTER COLUMN {_postgres_ident(column)} SET NOT NULL;"
+                )
+            )
+    for sql in (
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_provider_order ON payment_entitlement_claims(provider, order_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_fallback_card ON payment_entitlement_claims(fallback_gift_card_id) WHERE fallback_gift_card_id IS NOT NULL;",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_provider ON payment_entitlement_claims(provider);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_order_id ON payment_entitlement_claims(order_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_email ON payment_entitlement_claims(buyer_email_norm);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_account ON payment_entitlement_claims(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_status ON payment_entitlement_claims(status);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_grant ON payment_entitlement_claims(grant_id);",
     ):
         conn.execute(text(sql))
 
@@ -1831,6 +2036,7 @@ def run_migrations(engine: Engine) -> None:
         _ensure_capacity_domain_sqlite(conn)
         _ensure_admin_ops_domain_sqlite(conn)
         _ensure_economy_domain_sqlite(conn)
+        _ensure_payment_entitlement_claims_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -2120,6 +2326,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
+        _ensure_external_order_attention_index(conn)
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_orders_provider_order "
@@ -2667,6 +2874,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _ensure_capacity_domain_postgres(conn)
         _ensure_admin_ops_domain_postgres(conn)
         _ensure_economy_domain_postgres(conn)
+        _ensure_payment_entitlement_claims_postgres(conn)
 
         conn.execute(
             text(
@@ -2697,6 +2905,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
+        _ensure_external_order_attention_index(conn)
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_orders_provider_order "

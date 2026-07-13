@@ -217,7 +217,7 @@ Public funnel rule:
 - marketing introduces the product and captures public intent through trial, install, and first connection before payment pressure
 - `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow when plan intent is explicit
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
-- cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account; anonymous public checkout remains key-first by email
+- cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account; anonymous public checkout creates a durable email-owned pending entitlement and keeps one linked activation key as the unclaimed fallback
 - the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR when explicit manual import is needed, not a fresh-entry marketing surface or first-layer consumer story
@@ -326,6 +326,19 @@ Official Telegram surfaces:
 - `free_monthly` keeps monthly traffic reset via the free-cycle and node-provisioning workers
 - `paid` remains unlimited traffic with up to `5 devices`
 - all active, non-hidden RUB plans with positive `amount_rub` are eligible for hosted checkout after the payment gate; frontend checkout must not keep a stale one-plan allowlist
+- anonymous paid checkout is claimable by the same verified email account in either payment/attach order; this backend slice does not yet expose the OTP claim UI or public claim endpoints
+- one provider order can create at most one paid grant and one linked fallback key across callback retries or different provider event IDs; automatic claim and later fallback-key redemption cannot stack the same purchase twice
+- a pre-existing paid-order key is linked to its existing unredeemed, plan-matching, system-created GiftCard instead of duplicated; a user/admin-created, redeemed, mismatched, or already-owned card requires manual review and cannot transfer or add access
+- a payment-linked key redeems from the purchase claim's saved plan and duration even when that plan has since been removed or renamed in the live catalog; unrelated legacy gift cards keep their existing catalog rules
+- existing payment claims use their saved buyer email, plan, and duration for every paid callback event; later catalog removal, rename, or duration changes cannot downgrade a fulfilled account claim or an emailed fallback to manual review, while orders without a claim still require a current supported plan
+- fallback email delivery is retryable until delivery evidence is stored; the durable purchase claim/key survives relay failure, and an already recorded successful delivery is not resent
+- successful fallback delivery evidence is monotonic and cannot be downgraded by a later failure; bot success/denial analytics stores only a non-secret code preview, fingerprint prefix, and length
+- a refund or chargeback that commits while fallback email is in flight remains authoritative: later transport evidence cannot replace reversal state, the paid receipt terminates without reporting access, and replay does not resend
+- the linked claim and GiftCard are the only durable fallback-key authority; payment order/callback audit JSON does not retain a second raw-key copy, and redemption/status responses continue to use the saved purchase plan and duration after catalog changes
+- a wrong-account key redemption cannot put an already owned claim into manual review or prevent the rightful owner from redeeming it
+- paid callbacks use the owner saved when the order was created; callback-supplied Telegram identity cannot adopt an anonymous order or transfer an account-bound purchase, and conflicts require operator review without access issuance
+- callbacks for one provider order serialize on the shared order row even when event IDs differ; refund and chargeback first enter durable pending reconciliation, then reverse the linked paid grant and recompute account access; paid fulfillment reacquires and refreshes that lock after a missing-user bootstrap rollback, so a reversal committed in the gap cannot issue access or be overwritten; outstanding reversal attention remains global across reporting periods, uses indexed status candidates plus conservative root-state verification, and orders fresh reversals by their safely parsed recorded time rather than the original purchase time; missing grant/key links remain terminal operator-visible manual review rather than reporting success or retrying forever, and late pending, failed, or cancelled callbacks cannot downgrade an already-paid order
+- payment order and event audit metadata is structurally bounded as valid JSON; oversized callback fields become redacted summaries/fingerprints while authoritative fulfillment, reversal, pricing, buyer/order state, and fixed processing evidence remain parseable, and raw activation keys or callback secrets are not retained
 - `start_99` is a one-time user plan; checkout must reject repeat attempts before provider invoice creation when the account has already made a first purchase or already has any successful paid Lava.top order
 - `start_99` is already the first-month action price and must not receive referral, promo, or pending-discount reductions; discount mechanics apply only to standard paid plans when backend eligibility allows them
 

@@ -9,6 +9,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Float,
+    Index,
     Integer,
     String,
     Text,
@@ -232,6 +233,33 @@ class EntitlementGrant(Base):
     metadata_json = Column(Text, nullable=True)
     reversed_at = Column(DateTime, nullable=True)
     reversal_reason = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class PaymentEntitlementClaim(Base):
+    __tablename__ = "payment_entitlement_claims"
+    __table_args__ = (
+        UniqueConstraint("provider", "order_id", name="uq_payment_entitlement_claim_provider_order"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider = Column(String(32), nullable=False, index=True)
+    order_id = Column(String(128), nullable=False, index=True)
+    buyer_email_norm = Column(String(255), nullable=False, index=True)
+    account_id = Column(String(36), nullable=True, index=True)
+    status = Column(String(32), default="pending_payment", nullable=False, index=True)
+    plan_code = Column(String(32), nullable=False)
+    duration_days = Column(Integer, nullable=False)
+    grant_id = Column(String(36), nullable=True, index=True)
+    fallback_gift_card_id = Column(Integer, unique=True, nullable=True, index=True)
+    paid_at = Column(DateTime, nullable=True)
+    attached_at = Column(DateTime, nullable=True)
+    fulfilled_at = Column(DateTime, nullable=True)
+    reversed_at = Column(DateTime, nullable=True)
+    reversal_reason = Column(String(64), nullable=True)
+    last_error = Column(String(120), nullable=True)
+    last_error_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
@@ -1219,7 +1247,10 @@ class ExternalOrder(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     paid_at = Column(DateTime, nullable=True)
 
-    __table_args__ = (UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),)
+    __table_args__ = (
+        UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),
+        Index("ix_external_orders_status_created_at_id", "status", "created_at", "id"),
+    )
 
 
 class ExternalPaymentEvent(Base):

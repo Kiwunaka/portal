@@ -222,6 +222,152 @@ TTL after the final issuance before routing app access back to the old revision.
 
 `GET /api/payments/providers` must expose provider availability and enough unavailable-state detail for checkout to avoid presenting blocked payment paths as live.
 
+Anonymous public order creation persists `ExternalOrder` and one
+`PaymentEntitlementClaim` in the same local transaction. The claim is unique by
+provider and provider order ID, stores only normalized claim ownership data,
+and supports both paid-before-attach and attach-before-paid processing. This
+slice exposes no new public claim or OTP endpoint; verified-email attachment is
+an internal service contract for the next workstream slice.
+
+Paid fulfillment requires an existing `ExternalOrder` and is bound to that
+row's saved account owner. Callback identity fields never replace a persisted
+`tg_id`; a conflicting callback owner produces terminal manual-review receipt
+evidence without a grant. An anonymous order whose saved `tg_id` is null stays
+in claim/fallback fulfillment even when callback data supplies a Telegram ID.
+
+Signed paid callbacks are receipts, not completion proof. A paid event remains
+`processed_ok=false` until either its attached claim has one durable
+order-idempotent entitlement grant or its unclaimed claim has one linked
+fallback GiftCard. For email fallback, the receipt remains incomplete until a
+delivery attempt and its bounded evidence are stored; delivery failure is
+retryable while the durable claim/card commit remains intact. A crash before
+delivery therefore retries. A crash after transport success but before evidence
+may send the same key again, so this boundary is at-least-once rather than an
+at-most-once no-delivery risk. Telegram notification and panel synchronization
+remain downstream and cannot roll back durable entitlement fulfillment.
+If refund/chargeback commits while fallback email transport is in flight,
+delivery evidence cannot replace the reversal fulfillment state. Paid receipt
+completion locks and rechecks the current order after evidence persistence;
+reversal wins terminally as `claim_reversed`, reports no ready access, and the
+processed paid receipt does not resend on replay.
+
+Signed terminal outcomes such as reversal, manual review, definition/type/
+ownership/redeemed conflicts, and verified ownership conflict are completed and
+deduplicated with `activated=false` and fixed safe evidence. Retryability is
+reserved for transient incomplete paid/reversal/delivery persistence and for a
+later valid-signature upgrade. Claim processing
+errors use fixed safe codes with `last_error_at`; successful retries retain the
+last error code and timestamp as audit evidence. Delivery evidence stores only
+bounded status, mode, HTTP status, and a fixed error code, never relay detail,
+message body, buyer email, or activation key.
+
+The initial signed refund/chargeback receipt transaction marks the order as
+pending reversal reconciliation before the separate reconciliation transaction
+starts. A crash or exception between those commits therefore remains visible to
+operators. Only an explicit successful `reversed`/`already_reversed` result
+clears attention; refunded/chargeback rows without that evidence are treated as
+unreconciled. Missing linked fallback or grant rows are fixed-code terminal
+manual-review outcomes: the receipt deduplicates without a retry storm, no
+access is granted or reported as reversed, and the order remains in attention.
+
+Payment order state is monotonic after `paid`: later pending, failed, cancelled,
+or manual-review results do not downgrade it. Refund and chargeback events may
+supersede paid, reverse the linked claim and grant once, rebuild the canonical
+account projection, and block the linked fallback card. Different external
+event IDs for one provider order remain idempotent at the claim, grant, and
+fallback-card layers.
+
+Receipt persistence serializes every callback for the same provider/order on
+the shared `ExternalOrder` row with `FOR UPDATE`, even when external event IDs
+differ. The locked row is refreshed before applying the transition, so stale
+paid/refund/chargeback writers cannot overwrite the monotonic state or pending
+reversal evidence. Successful reversal reconciliation explicitly retains the
+order's `refunded`/`chargeback` status. Paid fulfillment rechecks that locked
+status after receipt persistence; if reversal won the inter-commit race, the
+paid receipt completes terminally as `order_reversed` without a grant or key.
+If account bootstrap requires a transaction rollback, fulfillment reacquires
+and refreshes the provider/order row under `FOR UPDATE` before any account or
+grant mutation. A reversal committed during that bootstrap window remains
+authoritative and cannot be replaced by paid metadata or a historical
+provider-payment grant.
+
+Payment-linked fallback cards redeem through claim ownership rules and use the
+claim's saved plan code and duration even if the current catalog no longer
+contains that plan/card type. Redeeming after an automatic same-account claim is
+idempotent and cannot add another paid period. A wrong-account redemption returns
+a conflict without changing the claim to manual review, so it cannot block the
+rightful owner; verified-email attachment conflict remains an operator-review
+state. A fallback is durable only after its GiftCard row exists and is linked to
+the claim. Legacy GiftCards that are not linked to a payment claim retain their
+catalog-dependent behavior.
+
+Paid callback fulfillment also resolves an existing claim before consulting
+the current catalog. The claim's normalized buyer email, plan code, and duration
+snapshot remain authoritative for repeated and new provider event IDs after a
+plan is removed, renamed, or changes duration. A matching live catalog entry may
+provide a display label only. Orders without a claim still require a supported
+current plan definition.
+
+The linked `GiftCard` plus claim is the canonical fallback-key store. Newly
+issued raw keys are not copied into `ExternalOrder.meta_json`; a legacy
+`fulfillment.access_key` is removed after its matching card is durably linked.
+Retry delivery reconstructs the key from the linked card. Payment-linked redeem
+status and response metadata use the claim's saved plan code and duration, not
+the current catalog.
+
+Payment callback audit JSON is structurally bounded before serialization.
+`ExternalOrder.meta_json` preserves authoritative fulfillment, reversal,
+pricing, buyer/order fields, and fixed safe evidence; oversized callback detail
+is replaced with a valid redacted summary and fingerprint. Every
+`ExternalPaymentEvent.payload_json` write uses the same valid bounded approach
+and retains `_pokrov_processing_error` when present. Neither column is bounded
+by slicing serialized JSON, so persisted values remain parseable within their
+application limits.
+
+Delivery evidence locks the order row and is monotonic: `sent`/`email_sent`
+cannot be downgraded by a later failure, while an earlier failure may still be
+upgraded to success. Bot gift redemption analytics never stores the raw code;
+success and denial events store only last-four preview, a SHA-256 fingerprint
+prefix, code length, and bounded non-secret outcome fields.
+
+For a pre-claim paid order whose fulfillment metadata already references an
+existing GiftCard, callback recovery links that row instead of inserting the
+same code again only when the card is unredeemed, its type exactly matches the
+claim plan, it was system-created (`created_by == 0`), and no other claim links
+it. User/admin-created, redeemed, type-mismatched, or other-claim-owned cards put
+the new claim into manual review with a fixed safe error code and never grant or
+transfer access. Previously recorded successful email delivery is not repeated
+while establishing this durable link.
+
+Additive claim migrations give newly added required columns constant `NOT
+NULL` defaults and PostgreSQL enforces `NOT NULL` after backfill only when
+column metadata still reports nullable. SQLite cannot
+add a constraint to a column that already existed as nullable without rebuilding
+the table; this slice does not perform that destructive rebuild. Such incomplete
+rows are backfilled to `manual_review` with timestamped migration error evidence,
+and claim/payment/fallback service operations keep them quarantined.
+
+Transactions that touch both account and claim lock the canonical account
+before taking the claim row lock, after an initial non-locking claim lookup and
+with revalidation. The attached paid-callback path composes mark-paid and grant
+fulfillment under that same account-first order; an unattached race releases its
+claim transaction before entering the attached path. Outstanding reversal
+attention is global rather than bounded by the selected revenue period. Problem
+rows from ordinary states and reversals share one descending created/id ordering
+before the final display limit; reversal recency uses its safely parsed
+`reversal.recorded_at` and falls back to purchase creation time. Reconciled
+reversals are excluded. The global candidate query uses the additive
+`external_orders(status, created_at, id)` index to select refund/chargeback
+rows, then applies the conservative Python verifier to every candidate. This
+avoids whole-blob substring filtering that could confuse nested callback data
+with authoritative root reversal state. The residual cost scales with the
+number of refund/chargeback rows, not all orders; a normalized reconciliation
+column remains deferred rather than added destructively in this slice. Invalid
+or out-of-range reversal timestamps safely fall back to purchase creation time. Live
+PostgreSQL attach/merge/fulfill/redeem/reverse concurrency remains
+`MANUAL_OWNER_TEST`; SQLite and unit lock-order tests are not production
+deadlock evidence.
+
 ## Support
 
 Support ticket APIs must avoid exposing private attachments or session data in public logs. Attachment privacy remains a beta hardening item.

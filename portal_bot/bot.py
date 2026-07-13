@@ -706,6 +706,17 @@ def _track_bonus_event(*, tg_id: int, event_name: str, meta: dict | None = None)
     )
 
 
+def _activation_code_safe_meta(code: str) -> dict:
+    normalized = str(code or "").strip().upper()
+    if not normalized:
+        return {}
+    return {
+        "code_preview": f"...{normalized[-4:]}",
+        "code_fp": hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16],
+        "code_len": len(normalized),
+    }
+
+
 _BOT_ENTRY_META_KEYS = {
     "command",
     "created_new",
@@ -2786,7 +2797,11 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
                     _track_bonus_event(
                         tg_id=int(recipient_tg_id),
                         event_name="gift_redeem_denied",
-                        meta={"code": norm_code, "card_type": card_type, "reason": "campaign_restriction_mismatch"},
+                        meta={
+                            **_activation_code_safe_meta(norm_code),
+                            "card_type": card_type,
+                            "reason": "campaign_restriction_mismatch",
+                        },
                     )
                     session.flush()
                     return False, "❌ Подарочный код недоступен для этого аккаунта"
@@ -2802,7 +2817,10 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
         _track_bonus_event(
             tg_id=int(recipient_tg_id),
             event_name="gift_redeem_denied",
-            meta={"code": norm_code, "reason": str(result.get("error") or "redeem_failed")},
+            meta={
+                **_activation_code_safe_meta(norm_code),
+                "reason": str(result.get("error") or "redeem_failed"),
+            },
         )
         return False, str(result.get("message") or "❌ Не удалось активировать карту")
     card_type = str(result.get("card_type") or "").strip().upper()
@@ -2828,7 +2846,12 @@ async def redeem_gift_card(code: str, recipient_tg_id: int, bot) -> tuple[bool, 
     _track_bonus_event(
         tg_id=int(recipient_tg_id),
         event_name="gift_redeemed",
-        meta={"code": norm_code, "card_type": result.get("card_type"), "days": days, "sync_ok": result.get("sync_ok")},
+        meta={
+            **_activation_code_safe_meta(norm_code),
+            "card_type": result.get("card_type"),
+            "days": days,
+            "sync_ok": result.get("sync_ok"),
+        },
     )
     return True, f"✅ Карта активирована!\n\n📅 Тариф продлен на {days} дней"
 
