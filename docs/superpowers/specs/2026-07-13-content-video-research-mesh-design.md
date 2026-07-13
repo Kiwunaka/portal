@@ -218,7 +218,7 @@ risk_profile
 
 Adapters also return a versioned source-health result even when they return no items. The health record includes `checked_at`, adapter identity, adapter/config hash, observed status, item count, latency, and a redacted error preview. This separates “no relevant items” from “the source failed” and prevents historical health from looking current.
 
-`source_family` and `publisher_group_id` are configured registry values, not LLM guesses. V1 source families are:
+`source_family` and `publisher_group_id` are configured registry values, except for the reserved quarantine values defined below. They are never LLM guesses. V1 source-family enum values are:
 
 ```text
 community_ru
@@ -229,9 +229,10 @@ first_party_platform
 official_record
 international_press
 owner_local
+unregistered           # reserved; quarantine records only
 ```
 
-New families require a config/schema update and fixture coverage. `publisher_group_id` groups domains under common editorial ownership and is used to prevent syndicated or commonly controlled sources from counting as independent confirmations.
+New registered families require a config/schema update and fixture coverage. `unregistered` is schema-valid only when `registration_status=quarantined`. `publisher_group_id` groups domains under common editorial ownership and is used to prevent syndicated or commonly controlled sources from counting as independent confirmations; the reserved `quarantine:<registrable-domain>` pattern is valid only for quarantined records and never counts as independence.
 
 Concrete results from SearXNG or direct extraction may introduce an unregistered domain. Such an item is normalized as:
 
@@ -372,6 +373,33 @@ Final ownership is explicit:
 - `ScoreEngine` owns numeric values, confidence, penalties, and exact formula arithmetic;
 - `Selector` owns diversity and final packet roles only after all upstream gates pass.
 
+## Bounded Run Budget
+
+One manual run has a finite, versioned budget in `config/scout.yaml`:
+
+```yaml
+limits:
+  max_items_per_adapter: 60
+  max_total_source_items: 300
+  max_sitemap_urls_per_source: 40
+  max_direct_pages: 120
+  max_clusters_after_dedupe: 60
+  max_clusters_entering_verification: 40
+  max_clusters_entering_opencode: 25
+  max_verification_queries_per_cluster: 12
+  max_verification_queries_total: 240
+  max_opencode_calls: 12
+  opencode_batch_size: 10
+  max_schema_retries_per_call: 1
+  max_concurrent_fetches: 8
+  max_concurrent_opencode: 2
+  max_wall_clock_seconds: 900
+```
+
+Before each capped stage, deterministic pre-ranking uses source eligibility, freshness, available heat signals, and evidence-role availability; ties use stable canonical candidate ID order. OpenCode calls batch up to ten candidates. Initial call plus one schema retry is the absolute per-call limit.
+
+When a cap is reached, the orchestrator stops adding work, writes `RUN_LIMIT_REACHED` with the exhausted counter, and completes the best trustworthy report possible. It is `partial` when at least one valid candidate exists but `ready` conditions are missing, and `failed` when no valid candidate or trustworthy report exists. Limits are snapshotted in run state, so queue load, cancellation, latency, and model usage have a finite upper bound.
+
 ## Versioned Risk Policy
 
 `config/scout.yaml -> risk_policy.version: 1` defines rule IDs, flags, severity, and action. `RiskEngine` stores every matched rule ID/version with the candidate. LLM critique may add a flag for rule evaluation but can never clear or downgrade a rule match.
@@ -394,6 +422,27 @@ V1 flags and actions are:
 | `copyright_high`, `reused_content_high` | hard block |
 
 `enhanced_review_required` is a derived field set when any non-blocking enhanced rule matches. A hard-block rule sets `BLOCKED_LEGAL` regardless of score. Synthetic-media disclosure is also rule-derived: photoreal reconstruction of a real public event/person or any platform-required synthetic disclosure sets `synthetic_media_label_needed: true`. Each packet retains `risk_policy_version`, matched rules, derived actions, and rationale.
+
+### Risk signal producers and fail-closed behavior
+
+`RiskSignalExtractor` produces rule inputs from four versioned sources:
+
+1. configured source/section taxonomy and structured source tags;
+2. Russian/English phrase matchers for politics, crime, court status, accusations, charges, convictions, minors, and graphic content;
+3. claim predicates plus person/entity records for public/private/minor status and age when stated in retained evidence;
+4. the union of Kimi and DeepSeek advisory flags.
+
+Rule matchers return `matched`, `not_matched`, or `uncertain` with evidence refs. Advisory LLM output can change `not_matched` to `matched` or `uncertain`, never the reverse.
+
+Fail-closed rules:
+
+- disagreement between deterministic producers sets `risk_classification_uncertain`;
+- a story that depends on an identifiable person but cannot resolve public/private/minor status also sets `risk_classification_uncertain`;
+- uncertain accusation, minor, private-person, or graphic classification blocks the candidate from the valid 20 and top three until resolved;
+- uncertain politics/crime/court classification applies enhanced evidence and approval requirements immediately, and still requires resolution before episode creation;
+- manual resolution is a revision-bound risk decision with owner, timestamp, evidence refs, and `risk_policy_version`; it cannot silently mutate the candidate.
+
+Every matcher category has positive, negative, ambiguous, and Russian/English fixtures. An unknown classification is never treated as absence of risk.
 
 ## OpenCode Editorial Layer
 
@@ -436,6 +485,29 @@ Two packet classes exist:
 - `ai_video_experiment`: the same evidence and legal gates passed, but one visual mechanic remains uncertain and has a cheap first smoke.
 
 An experiment may carry production uncertainty. It may not carry unresolved factual or legal uncertainty.
+
+Packet roles are mutually exclusive and machine-derived:
+
+```text
+safe_production:
+  production_uncertainty = low
+  experiment_axis = none
+  all top-three gates pass
+
+ai_video_experiment:
+  production_uncertainty = medium
+  experiment_axis = motion_transfer | reference_to_video | continuity_edit |
+                    ai_remaster_reveal | new_visual_treatment
+  experiment_hypothesis is non-empty
+  smoke_plan.max_paid_calls <= 3
+  smoke_plan.max_video_seconds <= 4
+  smoke_plan.stop_condition is non-empty
+  all factual, legal, rights, brand, and experiment visual gates pass
+```
+
+`production_uncertainty=high` is not top-three eligible. Routine use of generated images is not an experiment by itself; the packet must name the uncertain mechanic and what the smoke proves.
+
+`Selector` assigns each candidate exactly one `recommended_role`. The shortlist contains three distinct candidate IDs and three distinct event-cluster IDs. A candidate selected as experiment cannot also fill a safe slot, and two safe slots cannot share a candidate or cluster. If any role is missing, lifecycle status is `partial` with the existing missing-role issue code.
 
 ## Scoring And Selection
 
@@ -784,7 +856,8 @@ Required issue codes (not lifecycle statuses):
 - `MISSING_SAFE_ROLE`: fewer than two eligible safe packets;
 - `MISSING_EXPERIMENT_ROLE`: no eligible AI-video experiment;
 - `INTERRUPTED`: process/server exited while the run was `running`;
-- `INTEGRITY_FAILURE`: artifacts or schema cannot be trusted.
+- `INTEGRITY_FAILURE`: artifacts or schema cannot be trusted;
+- `RUN_LIMIT_REACHED`: a versioned run-wide item/page/query/LLM/time limit stopped additional work.
 
 A source failure does not fail the whole run unless the remaining coverage cannot produce any valid candidate or a trustworthy report. Lifecycle `partial` and `failed` follow the exact terminal semantics in Research Run State. A partial run does not claim success.
 
@@ -795,16 +868,17 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - parse representative RSS, Atom, API, HTML, and sitemap fixtures;
 - canonicalize URLs and timestamps;
 - detect mojibake, anti-bot pages, homepages, empty content, and duplicate hashes;
-- quarantine unregistered SearXNG/direct-extraction domains and prevent them from counting as evidence;
+- validate reserved `unregistered` / `quarantine:<domain>` schema semantics, quarantine unknown domains, and prevent them from counting as evidence;
 - calculate required discovery-group `healthy` / `degraded` / `blocked` state;
 - cluster duplicate event coverage;
 - build claim-to-evidence mappings;
 - enforce normal and politics/crime evidence gates;
 - apply every V1 visual scoring profile and Kimi/DeepSeek reconciliation rule;
-- apply every V1 risk-policy rule and derived enhanced/hard-block action;
+- apply every V1 risk-policy matcher, advisory-flag union, uncertain/fail-closed path, and derived enhanced/hard-block action;
 - calculate the exact canonical trend score;
 - calculate selection confidence and penalties;
 - enforce diversity constraints;
+- enforce three distinct candidate/cluster IDs, mutually exclusive safe/experiment roles, experiment axes, and bounded smoke-plan schema;
 - parse mocked OpenCode JSON and bounded retry behavior;
 - enforce hash/pointer-only persistence for `private_owner_local` evidence.
 
@@ -820,7 +894,9 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - required-group degradation produces `partial`, while all required groups blocked produces `failed`;
 - packet/evidence/wording changes stale approvals and create a new brief revision;
 - identical approval revisions return the same brief ID/file;
-- episode creation rejects stale enhanced approval and refuses output overwrite.
+- episode creation rejects stale enhanced approval and refuses output overwrite;
+- every run-wide item/page/cluster/query/OpenCode/wall-clock cap stops additional work and records `RUN_LIMIT_REACHED`;
+- live Scout CLI maps ready/partial/failed/cancelled/internal outcomes to `0/2/3/130/1`.
 
 ### Studio tests
 
@@ -876,6 +952,8 @@ git diff --check
 `evals/trend-scout.eval.yaml` should become a blocking code-backed contract rather than a non-blocking prose checklist.
 
 The CLI command is an internal/manual verification path into the same orchestrator. It is not a scheduler and does not weaken the owner-facing “button in Studio” workflow.
+
+Live Scout CLI exit codes are deterministic: `0=ready`, `2=partial`, `3=failed`, `130=cancelled`, and `1=internal command/schema error`. Tests that intentionally exercise partial/failed runs assert the corresponding code instead of treating every nonzero exit as an implementation failure.
 
 ## Success Oracle
 
