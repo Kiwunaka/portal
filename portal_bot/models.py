@@ -24,6 +24,18 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _default_node_access_role(context) -> str:
+    params = context.get_current_parameters() if context is not None else {}
+    code = str((params or {}).get("code") or "").strip().lower()
+    if "operator" in code or code.endswith("_lab") or code.endswith("-lab"):
+        return "operator_lab"
+    if "free" in code and "soft" in code:
+        return "free_soft"
+    if "free" in code:
+        return "free_standard"
+    return "paid"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -72,6 +84,17 @@ class User(Base):
     free_cycle_anchor_at = Column(DateTime, nullable=True)
     free_cycle_last_reset_at = Column(DateTime, nullable=True)
     free_cycle_next_reset_at = Column(DateTime, nullable=True)
+    free_profile_state = Column(String(32), default="standard", nullable=False)
+    free_profile_active_role = Column(String(32), default="free_standard", nullable=False)
+    free_profile_source = Column(String(64), default="legacy_backfill", nullable=False)
+    free_profile_state_changed_at = Column(DateTime, nullable=True)
+    free_profile_job_id = Column(Integer, index=True, nullable=True)
+    free_profile_error_code = Column(String(64), nullable=True)
+    free_profile_standard_node_code = Column(String(32), nullable=True)
+    free_profile_soft_node_code = Column(String(32), nullable=True)
+    free_profile_observed_bytes = Column(BigInteger, default=0, nullable=False)
+    free_profile_observed_at = Column(DateTime, nullable=True)
+    free_profile_observation_source = Column(String(64), nullable=True)
     app_install_id = Column(String(128), index=True, nullable=True)
     app_device_name = Column(String(120), nullable=True)
     app_platform = Column(String(32), nullable=True)
@@ -469,6 +492,8 @@ class Node(Base):
     panel_user = Column(String(128))
     panel_pass = Column(String(255))
     inbound_id = Column(Integer)
+    access_role = Column(String(32), default=_default_node_access_role, nullable=False, index=True)
+    access_role_legacy = Column(String(32), nullable=True)
 
     enabled = Column(Boolean, default=True)
     accepting_new_clients = Column(Boolean, default=True)
@@ -729,9 +754,15 @@ class NodeProvisioningJob(Base):
     status = Column(String(32), index=True, default="queued", nullable=False)
     desired_state_json = Column(Text, nullable=True)
     result_json = Column(Text, nullable=True)
+    idempotency_key = Column(String(160), unique=True, index=True, nullable=True)
     attempts = Column(Integer, default=0, nullable=False)
     next_run_at = Column(DateTime, nullable=True)
     locked_at = Column(DateTime, nullable=True)
+    lock_token = Column(String(64), index=True, nullable=True)
+    last_error_code = Column(String(64), nullable=True)
+    replacement_key_uuid = Column(String(36), nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    manual_review_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 

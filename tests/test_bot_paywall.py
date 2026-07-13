@@ -150,6 +150,88 @@ class BotPaywallTests(unittest.TestCase):
         self.bot_module = importlib.import_module("bot")
         importlib.reload(self.bot_module)
 
+    def test_admin_resync_respects_persisted_free_role_and_blocks_transitions(self) -> None:
+        nodes = [
+            types.SimpleNamespace(
+                code="nl-free-standard",
+                access_role="free_standard",
+                enabled=True,
+                accepting_new_clients=True,
+                is_draining=False,
+            ),
+            types.SimpleNamespace(
+                code="nl-free-soft",
+                access_role="free_soft",
+                enabled=True,
+                accepting_new_clients=True,
+                is_draining=False,
+            ),
+        ]
+        old_enabled_nodes = self.bot_module._bot_enabled_nodes
+        self.bot_module._bot_enabled_nodes = lambda: nodes
+        try:
+            soft_user = types.SimpleNamespace(
+                sub_type="FREE",
+                current_plan_code="free_monthly",
+                free_profile_state="soft_active",
+                free_profile_active_role="free_soft",
+            )
+            pending_user = types.SimpleNamespace(
+                sub_type="FREE",
+                current_plan_code="free_monthly",
+                free_profile_state="soft_transition_pending",
+                free_profile_active_role="free_standard",
+            )
+            paid_pending_user = types.SimpleNamespace(
+                sub_type="PAID",
+                current_plan_code="paid_30d",
+                free_profile_state="soft_transition_pending",
+                free_profile_active_role="free_standard",
+            )
+
+            self.assertEqual(self.bot_module._bot_resync_node_codes(soft_user), ["nl-free-soft"])
+            with self.assertRaisesRegex(ValueError, "transition"):
+                self.bot_module._bot_resync_node_codes(pending_user)
+            with self.assertRaisesRegex(ValueError, "transition"):
+                self.bot_module._bot_resync_node_codes(paid_pending_user)
+        finally:
+            self.bot_module._bot_enabled_nodes = old_enabled_nodes
+
+        bulk_source = inspect.getsource(self.bot_module.admin_sync_free_pl)
+        self.assertIn("_bot_resync_node_codes", bulk_source)
+        self.assertNotIn("only_node_codes=free_codes", bulk_source)
+
+    def test_expiry_monitor_uses_durable_reentry_instead_of_direct_panel_mutation(self) -> None:
+        source = inspect.getsource(self.bot_module.monitor_expiry)
+
+        self.assertIn("_queue_expired_user_reentry", source)
+        self.assertNotIn("ensure_user_on_all_nodes", source)
+        self.assertNotIn("set_existing_user_enabled_on_nodes", source)
+
+    def test_soft_profile_copy_uses_shared_two_mbps_fact(self) -> None:
+        user = types.SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="free_monthly",
+            free_profile_state="soft_active",
+            free_profile_active_role="free_soft",
+        )
+
+        self.assertEqual(self.bot_module.FREE_SOFT_SPEED_MBIT, 2)
+        self.assertIn("2 Мбит/с", self.bot_module._plan_mode_label("FREE", user=user))
+        self.assertIn("2 Мбит/с", self.bot_module._free_access_note(user))
+        self.assertNotIn("50 Мбит/с", self.bot_module._free_access_note(user))
+        self.assertEqual(asyncio.run(self.bot_module._free_remaining_gb(1001, user=user)), (0.0, 5.0))
+
+        trial_user = types.SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            free_profile_state="standard",
+            free_profile_active_role="free_standard",
+        )
+        trial_label = self.bot_module._plan_mode_label("FREE", user=trial_user)
+        self.assertIn("премиум", trial_label)
+        self.assertNotIn("5 ГБ", trial_label)
+
     def tearDown(self) -> None:
         for k, v in self._saved_env.items():
             if v is None:

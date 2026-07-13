@@ -180,6 +180,44 @@ TTL after the final issuance before routing app access back to the old revision.
   guard remains required while payment and bonus paths have not all cut over to
   grants. Panel synchronization remains retryable and cannot fabricate evidence.
 
+### Free Profile Provisioning
+
+- Free quota authority is exactly `5 * 1024^3` bytes on `free_standard`; an
+  environment override cannot change the credential hard cap.
+- Internal node observations and server-read panel runtime may queue the
+  transition, but traffic bytes alone do not change the projected access state.
+  The additive dashboard/user payload fields are `free_profile_state`,
+  `free_profile_active_role`, `free_profile_job_id`, and
+  `free_profile_error_code`; `free_caps` exposes the same transition state.
+- `soft_mode_active=true` requires persisted `free_profile_active_role=free_soft`
+  and a confirmed compatible state. During `soft_transition_pending`, the API
+  remains `free_monthly`; confirmed soft mode reports zero standard-quota
+  remaining instead of interpreting the fresh soft counter as another 5 GiB.
+- Provisioning jobs are idempotent per account cycle, row-locked on PostgreSQL,
+  bounded on retry/stale recovery, and preserve the pre-existing
+  `rotate_access_key` job contract. Errors persist only stable redacted codes.
+- Target profile ensure and exact confirmation happen before source disable.
+  Reset additionally clears standard traffic before soft disable. A payment or
+  entitlement projection that supersedes an in-flight free job must not be
+  overwritten during finalization. The worker compensates a superseded panel
+  mutation by disabling the free target and restoring the paid source, or the
+  last confirmed standard source when paid provisioning is not yet visible;
+  failed compensation goes directly to manual review.
+- Expiry/revocation re-entry uses the same durable reset job: it confirms and
+  clears standard first, then disables every configured paid source and a stale
+  soft source. Merely changing `sub_type` or `current_plan_code` is not panel
+  synchronization proof.
+- `free_standard`, `free_soft`, `paid`, and `operator_lab` are explicit node
+  roles with positive non-duplicated inbound bindings. Missing free roles never
+  fall back to paid or operator-only nodes.
+- Public locations, subscription rendering, legacy control-panel helpers, and
+  admin resync all resolve the persisted free role. Transition/error states
+  cannot be force-resynced by legacy admin actions. Expiry monitors only queue
+  the durable re-entry job and do not mutate panel profiles directly.
+- A confirmed reset starts a fresh full 30-day cycle. Migration retains any
+  prior invalid node role in `access_role_legacy` before heuristic backfill so
+  an application rollback can restore the old value without deleting evidence.
+
 ## Payment Providers
 
 `GET /api/payments/providers` must expose provider availability and enough unavailable-state detail for checkout to avoid presenting blocked payment paths as live.

@@ -22,7 +22,7 @@ The rework canon now freezes the following target identity and access model for 
 - browser continuation can start from app handoff, Telegram, or email; all three land in the same cabinet session family instead of creating competing account tracks
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
 - commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
-- free-tier policy is fixed to `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, `1 device`, with monthly reset
+- free-tier policy is fixed to one logical `NL-free` location and one device: `free_standard` has an exact `5 * 1024^3` byte panel cap, then a confirmed transition moves the credential to a distinct `free_soft` inbound shaped toward `2 Mbps` per observed public IP until the 30-day reset
 - `GET /api/dashboard`, `GET /api/user/*`, `POST /api/client/session/start-trial`, and `GET /api/client/profile/managed` should converge on one linked-identity and access-state contract that also carries redeem eligibility, promo-slot payloads, and the hidden transport matrix
 - normal consumer UI shows one logical location; ordered transports such as `vless_reality -> vmess -> trojan -> xhttp` remain hidden rollout detail rather than mass-UI choice
 
@@ -692,12 +692,19 @@ Rules:
   consumption clock starts at the first valid internal observer observation
 - a new channel claim adds `+5 days`; already-issued `+10 days` grants remain grandfathered
 - once premium expires, auto-downgrade must set `current_plan_code=free_monthly`, not `trial`
-- `free_monthly` keeps `5 GB / 30 days` with device limit `1`
-- after the `5 GB` quota is exhausted, UI and policy should treat the account as `free_soft_mode` until the next free-cycle reset
+- `free_monthly` keeps an exact `5 * 1024^3` byte quota per 30-day cycle with device limit `1` on a node explicitly labeled `access_role=free_standard`
+- reaching the quota records server-side evidence and queues one durable transition; bytes alone never project `free_soft_mode`
+- the persisted lifecycle is `standard -> soft_transition_pending -> soft_active`, with `error` for bounded retry/manual review; reset uses `soft_active -> reset_pending -> standard`
+- the worker must ensure and confirm the target role before disabling the source role; reset additionally clears standard-profile traffic before disabling soft
+- a successful reset starts the next full 30-day window at confirmation time; delayed worker execution cannot shorten the user's next cycle
+- API selection, subscription output, Telegram/admin resync, and legacy panel wrappers must all use the persisted free role; transition/error states refuse legacy resync
+- if a payment supersedes an in-flight transition, the worker compensates the panel mutation and restores a usable source; compensation failure is manual-review evidence, never a silent success
+- only confirmed `free_soft` state projects `free_soft_mode`; its distinct inbound has no panel hard cap because the local Linux shaper targets `2 Mbps` per observed public IP in each direction
+- the IP shaper is not per-account proof: clients behind one NAT share the cap, and production enablement remains blocked until Linux nftables/throughput/counter/rollback canary evidence exists
 - `paid_unlimited` remains unlimited traffic with device limit `5`
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` must use the paid pool: all enabled non-free delivery nodes
-- free-tier access states `free_monthly` and `free_soft_mode` must use the free pool: the dedicated `NL-free` node only
-- backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and `nl_only` for free-tier access
+- free-tier access states remain one logical `NL-free` location, but routing must select distinct explicit `free_standard` and `free_soft` roles/inbounds; missing soft role must retry/manual-review and never fall back to paid or `operator_lab`
+- backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and the persisted free role for free-tier access
 - desired-state provisioning should place active premium/trial/paid keys on all enabled paid nodes at current scale, while free keys remain on the free pool; renderer output should follow the same pool boundary and capacity state
 
 ## Runtime Notes

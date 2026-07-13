@@ -140,7 +140,9 @@ from node_policy import (
     SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT,
     SUBSCRIPTION_DYNAMIC_ORDERING,
     SUBSCRIPTION_EXCLUDE_HARD_REJECT,
+    PAID_ROLE,
     canonical_free_node_code,
+    node_access_role,
     node_capacity_status,
     node_backend_penalty,
     node_cpu_penalty,
@@ -152,6 +154,7 @@ from node_policy import (
     node_tx_mbps,
     rank_nodes_for_app,
     rank_nodes_for_subscription,
+    user_free_access_role,
     user_uses_free_pool,
 )
 from control_panel import ControlPanel
@@ -167,7 +170,13 @@ from points_service import (
     preview_redeemable_points,
     referral_tier_snapshot,
 )
-from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_free
+from free_cycle_service import (
+    FREE_STANDARD_QUOTA_BYTES,
+    ensure_user_free_cycle_state,
+    mark_user_became_free,
+    queue_free_profile_reentry,
+    reconcile_free_profile_usage,
+)
 from email_auth_service import (
     DuplicateEmailIdentityError,
     InvalidEmailCredentialsError,
@@ -343,16 +352,16 @@ def _shared_telegram_username(key: str, fallback: str) -> str:
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", int(_FREE_TIER_FACTS.get("traffic_limit_gb", 5) or 5))
-FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", int(_FREE_TIER_FACTS.get("device_limit", 1) or 1))
+FREE_TOTAL_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
+FREE_STANDARD_QUOTA_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
+FREE_LIMIT_IP = 1
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 FREE_SPEED_LIMIT_KBPS = env_int(
     "FREE_SPEED_LIMIT_KBPS",
     int(round(float(_FREE_TIER_FACTS.get("speed_limit_mbps", 50) or 50) * 125)),
 )
-FREE_SOFT_MODE_SPEED_LIMIT_KBPS = env_int(
-    "FREE_SOFT_MODE_SPEED_LIMIT_KBPS",
-    int(round(float(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps", 2) or 2) * 125)),
+FREE_SOFT_MODE_SPEED_LIMIT_KBPS = int(
+    round(float(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps", 2) or 2) * 125)
 )
 SUPPORT_USERNAME = (
     os.getenv("SUPPORT_USERNAME") or _shared_telegram_username("support_bot_username", "@pokrov_supportbot")
@@ -1357,6 +1366,10 @@ class DashboardResponse(BaseModel):
     traffic_remaining_gb: float | None = None
     next_reset_at: str | None = None
     soft_mode_active: bool = False
+    free_profile_state: str = "standard"
+    free_profile_active_role: str = "free_standard"
+    free_profile_job_id: int | None = None
+    free_profile_error_code: str | None = None
     active_sessions: int
     active_sessions_source: str | None = None
     device_limit: int
@@ -1575,12 +1588,15 @@ def _plan_total_gb(user: User) -> int:
         plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
         if plan_code == "trial":
             return 0
-        return max(0, int(FREE_TOTAL_GB))
+        return FREE_STANDARD_QUOTA_GB
     return 0
 
 
 def _plan_device_limit(user: User) -> int:
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    st = (user.sub_type or "").upper()
+    if st == "FREE":
+        return 1
     if plan_code:
         s = SessionLocal()
         try:
@@ -1591,9 +1607,6 @@ def _plan_device_limit(user: User) -> int:
             s.close()
     if plan_code == "start_99":
         return 1
-    st = (user.sub_type or "").upper()
-    if st == "FREE":
-        return max(0, int(FREE_LIMIT_IP))
     return max(0, int(PAID_LIMIT_IP))
 
 
@@ -1625,6 +1638,16 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
     active_window = bool(getattr(user, "is_active", False) and expiry and expiry > current_now)
     used_gb = round((int(used_bytes or 0) / (1024**3)), 3) if used_bytes else 0.0
     next_reset_at = _safe_iso(getattr(user, "free_cycle_next_reset_at", None)) if sub_type == "FREE" else None
+    free_profile_state = str(getattr(user, "free_profile_state", "") or "standard").strip().lower()
+    free_profile_active_role = str(
+        getattr(user, "free_profile_active_role", "") or "free_standard"
+    ).strip().lower()
+    free_profile_facts = {
+        "free_profile_state": free_profile_state,
+        "free_profile_active_role": free_profile_active_role,
+        "free_profile_job_id": getattr(user, "free_profile_job_id", None),
+        "free_profile_error_code": str(getattr(user, "free_profile_error_code", "") or "").strip() or None,
+    }
 
     if sub_type == "FREE" and active_window and plan_code == "trial":
         access_state = "bonus_premium" if getattr(user, "channel_bonus_claimed_at", None) else "trial_premium"
@@ -1638,12 +1661,18 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
             "traffic_remaining_gb": None,
             "next_reset_at": None,
             "soft_mode_active": False,
+            **free_profile_facts,
         }
 
     if sub_type == "FREE":
-        limit_gb = float(max(0, int(FREE_TOTAL_GB)))
+        limit_gb = float(FREE_STANDARD_QUOTA_BYTES) / float(1024**3)
         remaining_gb = max(round(limit_gb - used_gb, 3), 0.0) if limit_gb > 0 else 0.0
-        soft_mode_active = bool(limit_gb > 0 and int(used_bytes or 0) >= _gb_to_bytes(int(limit_gb)))
+        soft_mode_active = bool(
+            free_profile_active_role == "free_soft"
+            and free_profile_state in {"soft_active", "reset_pending", "error"}
+        )
+        if soft_mode_active:
+            remaining_gb = 0.0
         if active_window:
             access_state = "free_soft_mode" if soft_mode_active else "free_monthly"
         else:
@@ -1661,6 +1690,7 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
             "traffic_remaining_gb": remaining_gb,
             "next_reset_at": next_reset_at,
             "soft_mode_active": soft_mode_active,
+            **free_profile_facts,
         }
 
     access_state = "paid_unlimited" if active_window else "expired_or_blocked"
@@ -1674,7 +1704,29 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
         "traffic_remaining_gb": None,
         "next_reset_at": None,
         "soft_mode_active": False,
+        **free_profile_facts,
     }
+
+
+def _build_reconciled_access_policy(
+    *,
+    session,
+    user: User,
+    used_bytes: int,
+    source: str,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    current = now or _utcnow()
+    if str(getattr(user, "sub_type", "") or "").strip().upper() == "FREE":
+        reconcile_free_profile_usage(
+            session,
+            user=user,
+            used_bytes=max(0, int(used_bytes or 0)),
+            source=source,
+            now=current,
+        )
+        session.commit()
+    return _build_access_policy(user=user, used_bytes=used_bytes, now=current)
 
 
 def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
@@ -1703,11 +1755,8 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
             s.commit()
             return True
 
-        user.sub_type = "FREE"
-        user.current_plan_code = "free_monthly"
         user.expiry_at = _utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
-        user.is_active = True
-        mark_user_became_free(user)
+        queue_free_profile_reentry(s, user=user, source="api_expired_to_free")
         s.commit()
         return True
     except Exception:
@@ -2125,6 +2174,10 @@ def _free_caps_payload(*, user: User, access_policy: dict[str, Any]) -> dict[str
         "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
         "active": free_active,
         "next_reset_at": access_policy.get("next_reset_at"),
+        "transition_state": str(access_policy.get("free_profile_state") or "standard"),
+        "active_role": str(access_policy.get("free_profile_active_role") or "free_standard"),
+        "provisioning_job_id": access_policy.get("free_profile_job_id"),
+        "error_code": access_policy.get("free_profile_error_code"),
     }
 
 
@@ -5046,7 +5099,7 @@ async def _sync_user_after_paid_bonus(user: User) -> bool:
             free_codes = [
                 (getattr(n, "code", "") or "").strip()
                 for n in nodes
-                if "free" in (getattr(n, "code", "") or "").lower()
+                if node_is_free(n)
             ]
             if free_codes:
                 await panel.set_existing_user_enabled_on_nodes(
@@ -5608,8 +5661,8 @@ def _compute_user_risk(*, s, user: User, keys_summary: dict[str, Any] | None = N
     elif observer_state == "suspicious":
         score += 40
         factors.append({"key": "observer_suspicious", "weight": 40, "value": observer_state})
-    if str(user.sub_type or "").upper() == "FREE" and traffic_gb > float(FREE_TOTAL_GB) * 1.2:
-        val = min(25, int((traffic_gb / max(1.0, float(FREE_TOTAL_GB))) * 8))
+    if str(user.sub_type or "").upper() == "FREE" and traffic_gb > float(FREE_STANDARD_QUOTA_GB) * 1.2:
+        val = min(25, int((traffic_gb / max(1.0, float(FREE_STANDARD_QUOTA_GB))) * 8))
         score += val
         factors.append({"key": "anomalous_traffic", "weight": val, "value": round(traffic_gb, 2)})
     score = max(0, min(100, int(score)))
@@ -7737,7 +7790,7 @@ async def client_locations_catalog(
         )
         transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
         all_nodes = enabled_nodes(s)
-        free_pool_code = canonical_free_node_code(all_nodes)
+        free_pool_code = canonical_free_node_code(all_nodes, access_role=user_free_access_role(user))
         nodes_for_user = _nodes_for_user(user, all_nodes, session=s)
         smart_connect = _smart_connect_shortlist(
             session=s,
@@ -7818,9 +7871,11 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(
+        access_policy = _build_reconciled_access_policy(
+            session=s,
             user=user,
             used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="client_subscription_runtime",
         )
         access_state = str(access_policy.get("access_state") or "")
         expiry = getattr(user, "expiry_at", None)
@@ -7961,7 +8016,12 @@ async def client_notifications(
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="client_notifications_runtime",
+        )
         read_ids = _client_notification_read_ids(s, user=user)
         items = _client_notification_items(user=user, access_policy=access_policy, read_ids=read_ids)
         return {
@@ -8136,9 +8196,11 @@ async def client_managed_profile(
                 str(getattr(user, "sub_type", "") or ""),
             )
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(
+        access_policy = _build_reconciled_access_policy(
+            session=s,
             user=user,
             used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="managed_profile_runtime",
         )
         effective_nodes = _effective_transport_nodes(
             nodes=nodes_for_user,
@@ -8229,7 +8291,12 @@ async def client_promo_slots(
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="promo_runtime",
+        )
         return _promo_slots_payload_for_surface(
             s=s,
             surface=str(surface or "app").strip().lower(),
@@ -8875,6 +8942,16 @@ async def internal_node_xray_stats(node_code: str, request: Request) -> dict[str
                 total_bytes=max(0, total_bytes),
                 source_ip_hashes=source_ip_hashes if isinstance(source_ip_hashes, list) else [],
             )
+            if tg_id:
+                observed_user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+                if observed_user is not None:
+                    reconcile_free_profile_usage(
+                        s,
+                        user=observed_user,
+                        used_bytes=max(0, total_bytes),
+                        source="node_xray_stats",
+                        now=_utcnow(),
+                    )
             accepted += 1
         s.commit()
         return {"ok": True, "node_code": wanted, "accepted": accepted}
@@ -10655,11 +10732,17 @@ async def user_data(
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
-        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=used_bytes,
+            source=traffic_source,
+        )
         setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
         total_gb = _plan_total_gb(user)
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0
-        remaining_gb = max(round(total_gb - used_gb, 3), 0) if total_gb > 0 else 0
+        policy_remaining_gb = access_policy.get("traffic_remaining_gb")
+        remaining_gb = float(policy_remaining_gb) if policy_remaining_gb is not None else 0.0
         referral_code = (user.referral_code or "").strip()
         channel_link = f"https://t.me/{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""
         support_link = f"https://t.me/{SUPPORT_USERNAME}" if SUPPORT_USERNAME else ""
@@ -10716,6 +10799,10 @@ async def user_data(
             "traffic_remaining_gb": access_policy["traffic_remaining_gb"],
             "next_reset_at": access_policy["next_reset_at"],
             "soft_mode_active": bool(access_policy["soft_mode_active"]),
+            "free_profile_state": str(access_policy["free_profile_state"]),
+            "free_profile_active_role": str(access_policy["free_profile_active_role"]),
+            "free_profile_job_id": access_policy.get("free_profile_job_id"),
+            "free_profile_error_code": access_policy.get("free_profile_error_code"),
             "limits": {
                 "device_limit": _plan_device_limit(user) + family_slots,
                 "total_gb": total_gb,
@@ -10860,11 +10947,17 @@ async def dashboard_snapshot(
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
-        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=used_bytes,
+            source=traffic_source,
+        )
         setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
         total_gb = float(_plan_total_gb(user))
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0.0
-        remaining = max(round(total_gb - used_gb, 3), 0.0) if total_gb > 0 else 0.0
+        policy_remaining_gb = access_policy.get("traffic_remaining_gb")
+        remaining = float(policy_remaining_gb) if policy_remaining_gb is not None else 0.0
         expiry = user.expiry_at
         active = bool(user.is_active and expiry and expiry > _utcnow())
         segment = _plan_segment(user)
@@ -10895,6 +10988,10 @@ async def dashboard_snapshot(
             traffic_remaining_gb=access_policy["traffic_remaining_gb"],
             next_reset_at=access_policy["next_reset_at"],
             soft_mode_active=bool(access_policy["soft_mode_active"]),
+            free_profile_state=str(access_policy["free_profile_state"]),
+            free_profile_active_role=str(access_policy["free_profile_active_role"]),
+            free_profile_job_id=access_policy.get("free_profile_job_id"),
+            free_profile_error_code=access_policy.get("free_profile_error_code"),
             active_sessions=int(runtime.get("active_connections", 0) or 0),
             active_sessions_source=str(runtime.get("active_connections_source") or "none"),
             device_limit=int(_plan_device_limit(user) + family_slots),
@@ -16012,7 +16109,7 @@ async def _refresh_ops_alerts_for_payload(*, s, now: datetime) -> tuple[list[dic
     rows, notifications, _metrics_status, _capacity_payload = _ops_refresh_alerts_for_current_state(
         s=s,
         now=now,
-        free_limit_gb=int(FREE_TOTAL_GB),
+        free_limit_gb=FREE_STANDARD_QUOTA_GB,
         cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         stale_after_seconds=stale_after_seconds,
     )
@@ -16148,10 +16245,14 @@ async def admin_provider_quota_status(x_telegram_init_data: str = Header(default
 def _admin_free_tier_facts_payload() -> dict[str, Any]:
     return {
         "node_pool": str(_FREE_TIER_FACTS.get("location_code") or "NL-free"),
-        "traffic_limit_gb": int(FREE_TOTAL_GB),
+        "traffic_limit_gb": FREE_STANDARD_QUOTA_GB,
+        "traffic_limit_bytes": int(FREE_STANDARD_QUOTA_BYTES),
         "cycle_days": int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         "speed_limit_mbps": int(_FREE_TIER_FACTS.get("speed_limit_mbps") or 50),
+        "soft_mode_speed_limit_mbps": int(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps") or 2),
         "device_limit": int(_FREE_TIER_FACTS.get("device_limit") or 1),
+        "standard_access_role": str(_FREE_TIER_FACTS.get("standard_access_role") or "free_standard"),
+        "soft_access_role": str(_FREE_TIER_FACTS.get("soft_access_role") or "free_soft"),
         "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
         "source": "shared_product_facts",
     }
@@ -16168,7 +16269,7 @@ async def admin_free_tier_summary(x_telegram_init_data: str = Header(default="")
             "summary": _ops_free_tier_summary(
                 s=s,
                 now=now,
-                free_limit_gb=int(FREE_TOTAL_GB),
+                free_limit_gb=FREE_STANDARD_QUOTA_GB,
                 cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
             ),
             "facts": _admin_free_tier_facts_payload(),
@@ -16191,7 +16292,7 @@ async def admin_free_tier_users(
         rows, total = _ops_free_tier_user_rows(
             s=s,
             now=now,
-            free_limit_gb=int(FREE_TOTAL_GB),
+            free_limit_gb=FREE_STANDARD_QUOTA_GB,
             cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
             limit=int(limit),
             offset=int(offset),
@@ -16337,7 +16438,7 @@ async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> 
         free_summary = _ops_free_tier_summary(
             s=s,
             now=now,
-            free_limit_gb=int(FREE_TOTAL_GB),
+            free_limit_gb=FREE_STANDARD_QUOTA_GB,
             cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         )
         alert_rows, notifications = await _refresh_ops_alerts_for_payload(s=s, now=now)
@@ -17915,7 +18016,7 @@ def _node_allowed_for_plan(
     if user_uses_free_pool(user):
         return bool(free_code) and code == str(free_code).strip().lower()
 
-    return not node_is_free(node)
+    return node_access_role(node) == PAID_ROLE
 
 
 def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
@@ -17929,7 +18030,9 @@ def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
     out: list[Any] = []
     seen: set[str] = set()
     excluded_codes = _subscription_excluded_codes()
-    free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+    free_code = str(
+        canonical_free_node_code(nodes, access_role=user_free_access_role(user)) or ""
+    ).strip().lower()
     for row in rows:
         node = node_by_id.get(int(getattr(row, "node_id", 0) or 0))
         if not node:
@@ -17953,7 +18056,7 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
     """
     Per-plan node visibility.
     - FREE: dedicated free pool only.
-    - PAID: all enabled non-free nodes.
+    - PAID: all enabled paid-role nodes.
     """
     if not nodes:
         return nodes
@@ -17984,10 +18087,15 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
         candidate_nodes = list(nodes)
 
     if not user_uses_free_pool(user):
-        paid = [n for n in candidate_nodes if not node_is_free(n)]
+        paid = [n for n in candidate_nodes if node_access_role(n) == PAID_ROLE]
         return _apply_node_filters(paid)
 
-    free_code = str(canonical_free_node_code(candidate_nodes) or canonical_free_node_code(nodes) or "").strip().lower()
+    free_role = user_free_access_role(user)
+    free_code = str(
+        canonical_free_node_code(candidate_nodes, access_role=free_role)
+        or canonical_free_node_code(nodes, access_role=free_role)
+        or ""
+    ).strip().lower()
     free_nodes = [n for n in candidate_nodes if str(getattr(n, "code", "") or "").strip().lower() == free_code]
     return _apply_node_filters(free_nodes)
 

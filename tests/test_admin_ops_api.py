@@ -283,6 +283,7 @@ def test_capacity_alert_candidates_ignore_disabled_nodes(monkeypatch, tmp_path) 
 
 
 def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("FREE_TOTAL_GB", "99")
     api = _load_api(monkeypatch, tmp_path)
     sent_messages: list[tuple[int, str]] = []
 
@@ -303,11 +304,19 @@ def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -
     assert free_body["summary"]["near_cap_users"] == 1
     assert free_body["summary"]["over_cap_users"] == 1
     assert free_body["facts"]["node_pool"] == "NL-free"
+    assert free_body["facts"]["traffic_limit_bytes"] == 5 * 1024**3
+    assert free_body["facts"]["standard_access_role"] == "free_standard"
+    assert free_body["facts"]["soft_access_role"] == "free_soft"
+    assert free_body["facts"]["soft_mode_speed_limit_mbps"] == 2
 
     free_users = client.get("/api/admin/free-tier/users", headers=headers)
     assert free_users.status_code == 200, free_users.text
-    states = {row["username"]: row["state"] for row in free_users.json()["users"]}
+    user_rows = free_users.json()["users"]
+    states = {row["username"]: row["state"] for row in user_rows}
     assert states == {"overcap": "over_cap", "nearcap": "near_cap"}
+    assert all(row["transition_state"] == "standard" for row in user_rows)
+    assert all(row["active_role"] == "free_standard" for row in user_rows)
+    assert all("provisioning_job_id" in row and "provisioning_error_code" in row for row in user_rows)
 
     quota_status = client.get("/api/admin/provider-quotas/status", headers=headers)
     assert quota_status.status_code == 200, quota_status.text

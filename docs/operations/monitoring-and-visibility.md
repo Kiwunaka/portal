@@ -399,7 +399,10 @@ Admin ops app wave `2026-07-06`, redesigned `2026-07-08`:
 - `/api/admin/nodes/health`, `/api/admin/nodes/runtime`, `/api/admin/nodes/drift`, and `/api/admin/keys/pressure` power the health-first node, online, and key-risk screens
 - node lifecycle actions in `adminapp` require explicit typed confirmation; node resync supports dry-run before execution
 - `/api/admin/broadcast` supports `dry_run=true`; the UI must preview/dry-run before allowing a real broadcast send
-- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` expose the current free-tier truth: dedicated `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, and `1 device`
+- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` expose the logical `NL-free` free tier: one device, exact `5 * 1024^3` byte standard quota per 30 days, persisted provisioning state/job/error, and the confirmed soft-mode target of `2 Mbps` per observed public IP
+- operators must monitor queued/running/retry/manual-review node-provisioning jobs and must not infer `soft_active` from traffic bytes; the target role/inbound must be confirmed first
+- `free_standard` and `free_soft` must have distinct positive inbound bindings; missing roles, duplicate bindings, paid fallback, and `operator_lab` fallback are configuration failures
+- nftables shaper readiness requires Linux canary evidence for syntax, IPv4/IPv6 TCP/UDP throughput, NAT sharing, counters, premium isolation, idempotent setup, and rollback; local dry-run evidence is not production proof
 - `/api/admin/provider-quotas`, `/api/admin/provider-quotas/{node_code}`, and `/api/admin/provider-quotas/status` own manual provider/hoster traffic-cap configuration, reset windows, thresholds, status, and audit trail
 - `/api/admin/nodes/timeseries` exposes CPU, RAM, disk, network, traffic-counter, and capacity history from `node_health_samples` and `node_runtime_metrics`
 - `/api/admin/traffic/summary` groups `key_usage_rollups` by day, node, and pool for free/premium traffic review

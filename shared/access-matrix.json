@@ -1,5 +1,5 @@
 {
-  "version": "2026-04-22",
+  "version": "2026-07-13",
   "identity_model": "app-first",
   "public_defaults": {
     "routing_mode": "all_except_ru",
@@ -32,11 +32,16 @@
     "plan_code": "free_monthly",
     "location_code": "NL-free",
     "traffic_limit_gb": 5,
+    "traffic_limit_bytes": 5368709120,
     "cycle_days": 30,
     "speed_limit_mbps": 50,
     "soft_mode_speed_limit_mbps": 2,
     "device_limit": 1,
-    "node_policy": "free_single_location",
+    "node_policy": "free_distinct_standard_soft_profiles",
+    "standard_access_role": "free_standard",
+    "soft_access_role": "free_soft",
+    "transition_states": ["standard", "soft_transition_pending", "soft_active", "reset_pending", "error"],
+    "soft_enforcement": "dedicated_inbound_per_observed_ip",
     "monthly_reset": true
   },
   "states": {

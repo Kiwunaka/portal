@@ -31,7 +31,7 @@ from economy_service import (
     release_due_referrer_rewards,
     reverse_due_channel_grants,
 )
-from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
+from free_cycle_service import FREE_STANDARD_QUOTA_BYTES, process_due_free_cycle_resets, queue_free_profile_reentry
 from models import (
     CampaignSend,
     Event,
@@ -49,7 +49,7 @@ from models import (
     User,
     UserKeyPolicy,
 )
-from node_policy import free_pool_node_codes
+from node_provisioning_service import process_node_provisioning_jobs
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USERNAME") or "pokrov_supportbot").lstrip("@")
-FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "5"))
+FREE_TOTAL_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
 START99_WELCOME_ENABLED = os.getenv("START99_WELCOME_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on", "y"}
@@ -86,6 +86,13 @@ ANTIABUSE_RETENTION_INTERVAL_SECONDS = max(
     60,
     min(900, int(os.getenv("ANTIABUSE_RETENTION_INTERVAL_SECONDS", "300"))),
 )
+NODE_PROVISIONING_BATCH_LIMIT = max(1, min(100, int(os.getenv("NODE_PROVISIONING_BATCH_LIMIT", "20"))))
+NODE_PROVISIONING_MAX_ATTEMPTS = max(1, min(20, int(os.getenv("NODE_PROVISIONING_MAX_ATTEMPTS", "5"))))
+NODE_PROVISIONING_STALE_AFTER_SECONDS = max(
+    30,
+    min(86_400, int(os.getenv("NODE_PROVISIONING_STALE_AFTER_SECONDS", "300"))),
+)
+NODE_PROVISIONING_POLL_SECONDS = max(1, min(300, int(os.getenv("NODE_PROVISIONING_POLL_SECONDS", "10"))))
 ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS = max(60, int(os.getenv("ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS", "300")))
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
@@ -395,44 +402,17 @@ async def _switch_user_to_free(*, tg_id: int) -> bool:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
         if not user:
             return False
-        user.sub_type = "FREE"
-        user.is_active = True
         user.expiry_at = now + timedelta(days=max(30, int(AUTO_FREE_DAYS)))
         user.channel_bonus_active = False
         user.channel_bonus_revoked_at = now
-        mark_user_became_free(user, now=now)
+        queue_free_profile_reentry(s, user=user, source="channel_bonus_revoked", now=now)
         s.commit()
-        user_uuid = str(user.uuid or "")
-        user_email = str(user.email or f"User_{int(tg_id)}")
-        user_sub_id = str(user.sub_token or user.tg_id)
     except Exception:
         s.rollback()
         return False
     finally:
         s.close()
 
-    try:
-        panel = ControlPanel()
-        try:
-            await panel.login()
-            nodes = await panel.refresh()
-            free_codes = free_pool_node_codes(nodes)
-            paid_codes = [(getattr(n, "code", "") or "").strip() for n in nodes if "free" not in (getattr(n, "code", "") or "").lower()]
-            if free_codes:
-                await panel.ensure_user_on_all_nodes(
-                    tg_id=int(tg_id),
-                    client_uuid=user_uuid,
-                    email=user_email,
-                    sub_id=user_sub_id,
-                    enable=True,
-                    only_node_codes=free_codes,
-                )
-            if paid_codes:
-                await panel.set_existing_user_enabled_on_nodes(tg_id=int(tg_id), node_codes=paid_codes, enable=False)
-        finally:
-            await panel.close()
-    except Exception:
-        return False
     return True
 
 
@@ -1105,6 +1085,33 @@ async def free_cycle_reset_job() -> None:
         await asyncio.sleep(600)
 
 
+async def node_provisioning_once() -> dict:
+    return await process_node_provisioning_jobs(
+        SessionLocal,
+        limit=NODE_PROVISIONING_BATCH_LIMIT,
+        max_attempts=NODE_PROVISIONING_MAX_ATTEMPTS,
+        stale_after_seconds=NODE_PROVISIONING_STALE_AFTER_SECONDS,
+    )
+
+
+async def node_provisioning_job() -> None:
+    while True:
+        try:
+            report = await node_provisioning_once()
+            if any(int(report.get(key, 0) or 0) > 0 for key in ("claimed", "manual_review", "stale_recovered")):
+                logger.info(
+                    "node_provisioning claimed=%s succeeded=%s retried=%s manual_review=%s stale_recovered=%s",
+                    report.get("claimed"),
+                    report.get("succeeded"),
+                    report.get("retried"),
+                    report.get("manual_review"),
+                    report.get("stale_recovered"),
+                )
+        except Exception:
+            logger.exception("node_provisioning_job failed")
+        await asyncio.sleep(NODE_PROVISIONING_POLL_SECONDS)
+
+
 async def observer_retention_job() -> None:
     while True:
         session = SessionLocal()
@@ -1239,6 +1246,7 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("admin_ops_alert_refresh", admin_ops_alert_refresh_job)),
         asyncio.create_task(_supervise_job("channel_bonus_guard", channel_bonus_guard_job)),
         asyncio.create_task(_supervise_job("free_cycle_reset", free_cycle_reset_job)),
+        asyncio.create_task(_supervise_job("node_provisioning", node_provisioning_job)),
         asyncio.create_task(_supervise_job("observer_retention", observer_retention_job)),
         asyncio.create_task(_supervise_job("trial_reservation_expiry", trial_reservation_expiry_job)),
         asyncio.create_task(_supervise_job("antiabuse_retention", antiabuse_retention_job)),

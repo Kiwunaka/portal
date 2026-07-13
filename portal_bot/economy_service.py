@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -11,6 +10,7 @@ from typing import Any
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
+from free_cycle_service import FREE_CYCLE_DAYS, queue_free_profile_reentry
 from models import (
     AccessKey,
     Account,
@@ -28,7 +28,6 @@ TRIAL_RESERVATION_DAYS = 7
 TRIAL_DURATION_DAYS = 5
 TRIAL_SOURCE = "premium_trial"
 TRIAL_EVIDENCE_KIND = "observer_connection"
-FREE_CYCLE_DAYS = max(1, int(os.getenv("FREE_CYCLE_DAYS", "30")))
 PRE_FIRST_PAYMENT_PREMIUM_CAP_DAYS = 15
 CHANNEL_GRANT_DAYS = 5
 GRANDFATHERED_CHANNEL_GRANT_DAYS = 10
@@ -148,10 +147,8 @@ def _project_active_trial(session, *, account_id: str, expires_at: datetime) -> 
         user.trial_used = True
 
 
-def _mark_user_became_free(user: User, *, now: datetime) -> None:
-    user.free_cycle_anchor_at = now
-    user.free_cycle_last_reset_at = now
-    user.free_cycle_next_reset_at = now + timedelta(days=FREE_CYCLE_DAYS)
+def _mark_user_became_free(session, user: User, *, now: datetime) -> None:
+    queue_free_profile_reentry(session, user=user, source="economy_projection", now=now)
 
 
 def reserve_trial(session, *, account_id: str, device_id: str, now: datetime | None = None) -> EntitlementGrant:
@@ -357,7 +354,7 @@ def expire_stale_trial_reservations(session, *, now: datetime | None = None) -> 
             user.current_plan_code = "free_monthly"
             user.expiry_at = current_now + timedelta(days=FREE_CYCLE_DAYS)
             user.is_active = True
-            _mark_user_became_free(user, now=current_now)
+            _mark_user_became_free(session, user, now=current_now)
         projected_free += 1
     return {
         "expired": len(rows),
@@ -655,6 +652,10 @@ def rebuild_account_entitlement_projection(session, *, account_id: str, now: dat
     legacy_policy = _legacy_snapshot_policy(legacy_premium) if legacy_premium is not None else None
     premium_active = cursor > current_now
     for user in users:
+        was_free_monthly = (
+            str(user.sub_type or "").strip().upper() == "FREE"
+            and str(user.current_plan_code or "").strip().lower() in {"", "free", "free_monthly"}
+        )
         user.is_active = True
         if latest_paid is not None or legacy_policy == "PAID":
             user.expiry_at = cursor
@@ -678,6 +679,8 @@ def rebuild_account_entitlement_projection(session, *, account_id: str, now: dat
             )
             user.sub_type = "FREE"
             user.current_plan_code = "free_monthly"
+            if not was_free_monthly:
+                _mark_user_became_free(session, user, now=current_now)
     tg_ids = [int(user.tg_id) for user in users]
     if tg_ids:
         for key in session.query(AccessKey).filter(AccessKey.tg_id.in_(tg_ids), AccessKey.state == "active").all():

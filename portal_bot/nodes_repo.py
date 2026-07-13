@@ -11,6 +11,7 @@ from node_policy import (
     node_is_free,
     paid_pool_nodes,
     rank_nodes_for_subscription,
+    user_free_access_role,
     user_uses_free_pool,
 )
 
@@ -62,6 +63,7 @@ class NodeRuntime:
     last_ok_at: datetime | None = None
     last_probe_at: datetime | None = None
     transport_profiles_json: str | None = None
+    access_role: str | None = None
 
 
 def _score_value(n: Node) -> float:
@@ -130,6 +132,7 @@ def legacy_node() -> NodeRuntime:
         last_ok_at=None,
         last_probe_at=None,
         transport_profiles_json=None,
+        access_role="paid",
     )
 
 
@@ -188,6 +191,7 @@ def enabled_nodes(session) -> list[NodeRuntime]:
                 last_ok_at=getattr(n, "last_ok_at", None),
                 last_probe_at=getattr(n, "last_probe_at", None),
                 transport_profiles_json=getattr(n, "transport_profiles_json", None),
+                access_role=getattr(n, "access_role", None),
             )
         )
     return out
@@ -199,17 +203,21 @@ def eligible_nodes(session, user, key=None, purpose: str = "subscription") -> li
         return nodes
 
     if user_uses_free_pool(user):
-        free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+        free_code = str(
+            canonical_free_node_code(nodes, access_role=user_free_access_role(user)) or ""
+        ).strip().lower()
         pool = [node for node in nodes if str(node.code or "").strip().lower() == free_code]
     else:
         pool = paid_pool_nodes(nodes)
         if key is not None:
             pool_code = str(getattr(key, "pool_code", "") or "").strip().lower()
             if pool_code == "free_pool":
-                free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+                free_code = str(
+                    canonical_free_node_code(nodes, access_role=user_free_access_role(user)) or ""
+                ).strip().lower()
                 pool = [node for node in nodes if str(node.code or "").strip().lower() == free_code]
             elif pool_code == "premium_pool":
-                pool = [node for node in nodes if not node_is_free(node)]
+                pool = paid_pool_nodes(nodes)
 
     if str(purpose or "").strip().lower() in {"subscription", "profile", "smart_connect"}:
         ranked = rank_nodes_for_subscription(pool)

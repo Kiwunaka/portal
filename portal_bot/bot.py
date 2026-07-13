@@ -30,9 +30,17 @@ import aiohttp
 import qrcode
 from sqlalchemy.exc import IntegrityError
 from bot_texts import bot_text
-from node_policy import canonical_free_node_code, free_pool_node_codes
+from node_policy import (
+    canonical_free_node_code,
+    free_pool_node_codes,
+    node_is_free,
+    paid_pool_nodes,
+    user_free_access_role,
+    user_uses_free_pool,
+)
 from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
 from public_urls import build_subscription_url as build_public_subscription_url
+from shared_surface_facts import get_access_matrix
 from telegram_profile import (
     TELEGRAM_PROFILE_WEBAPP_MENU_TEXT,
     TELEGRAM_PROFILE_WEBAPP_MENU_URL,
@@ -270,11 +278,13 @@ APP_ANDROID_MIRROR_URL = (os.getenv("APP_ANDROID_MIRROR_URL") or "").strip()
 APP_WINDOWS_EXE_URL = (os.getenv("APP_WINDOWS_EXE_URL") or "").strip()
 APP_WINDOWS_MIRROR_URL = (os.getenv("APP_WINDOWS_MIRROR_URL") or "").strip()
 APP_DOCS_URL = (os.getenv("APP_DOCS_URL") or "https://pokrov.space/install/").strip()
-FREE_LIMIT_IP = int(os.getenv("FREE_LIMIT_IP", "1"))
+FREE_LIMIT_IP = 1
 PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
-FREE_TOTAL_GB = int(os.getenv("FREE_TOTAL_GB", "5"))
-FREE_SPEED_LIMIT_KBPS = int(os.getenv("FREE_SPEED_LIMIT_KBPS", "6250"))
-FREE_SPEED_MBIT = max(1, int(round((FREE_SPEED_LIMIT_KBPS * 8) / 1000)))
+FREE_TOTAL_GB = 5
+_BOT_FREE_TIER_FACTS = dict(get_access_matrix().get("free_tier") or {})
+FREE_SPEED_MBIT = max(1, int(_BOT_FREE_TIER_FACTS.get("speed_limit_mbps") or 50))
+FREE_SOFT_SPEED_MBIT = max(1, int(_BOT_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps") or 2))
+FREE_SPEED_LIMIT_KBPS = FREE_SPEED_MBIT * 125
 NEWS_CHANNEL_ID = os.getenv("NEWS_CHANNEL_ID", "@pokrov_vpn")
 STACK_TOTAL_DISCOUNT_CAP = float(os.getenv("STACK_TOTAL_DISCOUNT_CAP", "0.70"))
 FAMILY_SLOT_STARS = int(os.getenv("FAMILY_SLOT_STARS", "99"))
@@ -771,7 +781,7 @@ from models import (
 )
 from nodes_repo import enabled_nodes
 from events_service import track_event
-from free_cycle_service import mark_user_became_free
+from free_cycle_service import mark_user_became_free, queue_free_profile_reentry
 from gift_cards_service import (
     create_gift_card as create_gift_card_service,
     get_gift_card as get_gift_card_service,
@@ -3121,11 +3131,31 @@ def _has_payment_signal(user: User | None) -> bool:
     return False
 
 
-def _plan_mode_label(sub_type: str | None) -> str:
+def _free_speed_mbit_for_user(user: User | None) -> int:
+    return FREE_SOFT_SPEED_MBIT if user is not None and user_free_access_role(user) == "free_soft" else FREE_SPEED_MBIT
+
+
+def _plan_mode_label(sub_type: str | None, *, user: User | None = None) -> str:
     st = _normalize_sub_type(sub_type or "")
+    if st in {"TRIAL", "BONUS"} or (st == "FREE" and user is not None and not user_uses_free_pool(user)):
+        return "премиум-доступ, без лимита трафика"
     if st in {"FREE", "TRIAL", "BONUS"}:
-        return f"до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств, до {FREE_SPEED_MBIT} Мбит/с"
+        speed_mbit = _free_speed_mbit_for_user(user)
+        return f"до {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устройство, до {speed_mbit} Мбит/с"
     return f"платный срок, до {PAID_LIMIT_IP} устройств"
+
+
+def _free_access_note(user: User) -> str:
+    speed_mbit = _free_speed_mbit_for_user(user)
+    if user_free_access_role(user) == "free_soft":
+        return (
+            f"\n\n🆓 Мягкий режим: лимит {FREE_TOTAL_GB} ГБ использован, "
+            f"{FREE_LIMIT_IP} устройство (по IP), до {speed_mbit} Мбит/с."
+        )
+    return (
+        f"\n\n🆓 Бесплатный: до {FREE_TOTAL_GB} ГБ, {FREE_LIMIT_IP} устройство (по IP), "
+        f"до {speed_mbit} Мбит/с."
+    )
 
 
 def _plan_label_ru(sub_type: str | None) -> str:
@@ -3153,12 +3183,19 @@ def _is_paid_active_user(user: User | None) -> bool:
     return _normalize_sub_type(user.sub_type) == "PAID" and _has_payment_signal(user)
 
 
-async def _free_remaining_gb(tg_id: int, *, timeout_sec: float = 3.0) -> tuple[float | None, float]:
+async def _free_remaining_gb(
+    tg_id: int,
+    *,
+    user: User | None = None,
+    timeout_sec: float = 3.0,
+) -> tuple[float | None, float]:
     """
     Return (remaining_gb, total_gb).
     remaining_gb=None means usage is temporarily unavailable.
     """
     total_gb = float(FREE_TOTAL_GB)
+    if user is not None and user_free_access_role(user) == "free_soft":
+        return 0.0, total_gb
     try:
         usage = await asyncio.wait_for(panel.get_usage_by_tgid(tg_id), timeout=timeout_sec)
     except Exception:
@@ -3282,9 +3319,22 @@ def _bot_enabled_nodes() -> list[dict]:
         return []
 
 
-def _bot_free_codes() -> list[str]:
-    nodes = _bot_enabled_nodes()
-    return free_pool_node_codes(nodes)
+def _bot_free_codes(user: User | None = None, *, nodes: list | None = None) -> list[str]:
+    nodes = list(nodes) if nodes is not None else _bot_enabled_nodes()
+    access_role = user_free_access_role(user) if user is not None else "free_standard"
+    return free_pool_node_codes(nodes, access_role=access_role)
+
+
+def _bot_resync_node_codes(user: User, *, nodes: list | None = None) -> list[str] | None:
+    state = str(getattr(user, "free_profile_state", "") or "standard").strip().lower()
+    if state in {"soft_transition_pending", "reset_pending", "error"}:
+        raise ValueError(f"free profile transition blocks resync: {state}")
+    if not user_uses_free_pool(user):
+        return None
+    codes = _bot_free_codes(user, nodes=nodes)
+    if not codes:
+        raise ValueError(f"free profile role is not configured: {user_free_access_role(user)}")
+    return codes
 
 
 def _node_code_base(code: str) -> str:
@@ -3385,7 +3435,7 @@ def _tariff_savings_pct(tariff_key: str) -> int | None:
 
 def build_choose_tariff_text() -> str:
     nodes = _bot_enabled_nodes()
-    paid_nodes = [n for n in nodes if "free" not in (getattr(n, "code", "") or "").lower()]
+    paid_nodes = paid_pool_nodes(nodes)
     paid_count = len(paid_nodes) if paid_nodes else (len(nodes) if nodes else 1)
     paid_list = (
         ", ".join([_node_label_ru_bot(getattr(n, "code", ""), getattr(n, "name", "")) for n in paid_nodes])
@@ -4333,12 +4383,13 @@ async def show_status(callback: CallbackQuery):
     base_limit = FREE_LIMIT_IP if _is_freemium_sub_type(user.sub_type) else PAID_LIMIT_IP
     extra_slots = active_family_slots(tg_id)
     status_text += f"\n📱 Устройства: `{base_limit + extra_slots}` (база {base_limit} + family {extra_slots})"
-    if _is_freemium_sub_type(user.sub_type):
-        remaining_gb, total_gb = await _free_remaining_gb(tg_id)
+    if user_uses_free_pool(user):
+        remaining_gb, total_gb = await _free_remaining_gb(tg_id, user=user)
         if remaining_gb is None:
             status_text += f"\n📊 Бесплатный лимит: до `{int(total_gb)}` ГБ\n⏳ Остаток: `н/д`"
         else:
             status_text += f"\n📊 Бесплатный остаток: `{remaining_gb}` из `{int(total_gb)}` ГБ"
+        status_text += f"\n📡 Скорость режима: до `{_free_speed_mbit_for_user(user)}` Мбит/с"
         is_subscriber = await check_subscription(tg_id, callback.message.bot)
         if is_subscriber:
             status_text += "\n📢 Канал: `подтверждён` — бонусный режим доступен."
@@ -4454,14 +4505,11 @@ async def show_key(callback: CallbackQuery):
 
     sub_link = build_subscription_link(tg_id)
 
-    is_free = _is_freemium_sub_type(user.sub_type if user else "")
+    is_free = bool(user and user_uses_free_pool(user))
     free_note = ""
     if is_free:
-        free_note = (
-            "\n\n🆓 Сейчас бесплатный режим: "
-            f"до {FREE_TOTAL_GB} ГБ на 30 дней и до {FREE_LIMIT_IP} устройства. "
-            f"Платный доступ откроет платные локации и до {PAID_LIMIT_IP} устройств."
-        )
+        free_note = _free_access_note(user)
+        free_note += f" Платный доступ откроет платные локации и до {PAID_LIMIT_IP} устройств."
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -6500,7 +6548,7 @@ async def support_diagnose(callback: CallbackQuery):
         details = (
             f"📦 Тариф: *{tariff}*\n"
             f"📅 До: *{expiry}*\n"
-            f"📡 Режим: *{_plan_mode_label(tariff)}*"
+            f"📡 Режим: *{_plan_mode_label(tariff, user=user)}*"
         )
     
     # Server check
@@ -7220,7 +7268,7 @@ async def admin_nodes(callback: CallbackQuery):
         if pbase:
             lines.append(f"    panel: `{pbase}`")
 
-    free_codes = [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
+    free_codes = [((getattr(n, "code", "") or "").strip()) for n in nodes if node_is_free(n)]
     if free_codes:
         lines.append(f"\nFree pool: `{', '.join(free_codes)}`.")
     else:
@@ -7251,8 +7299,7 @@ async def admin_sync_free_pl(callback: CallbackQuery):
     s = Session()
     try:
         nodes = enabled_nodes(s)
-        free_codes = [((getattr(n, "code", "") or "").strip()) for n in nodes if "free" in (getattr(n, "code", "") or "").lower()]
-        if not free_codes:
+        if not any(node_is_free(node) for node in nodes):
             await callback.message.edit_text(
                 "🆓 *Sync Free pool*\n\n❌ Free-ноды не найдены в `nodes`.\nДобавь отдельную free-ноду (code с `free`).",
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]),
@@ -7277,13 +7324,17 @@ async def admin_sync_free_pl(callback: CallbackQuery):
     async def sync_one(u: User) -> bool:
         async with sem:
             sub_id = u.sub_token or str(u.tg_id)
+            try:
+                only_codes = _bot_resync_node_codes(u, nodes=nodes)
+            except ValueError:
+                return False
             res = await panel.ensure_user_on_all_nodes(
                 tg_id=u.tg_id,
                 client_uuid=u.uuid,
                 email=u.email,
                 sub_id=sub_id,
                 enable=True,
-                only_node_codes=free_codes,
+                only_node_codes=only_codes,
             )
             return any(res.values())
 
@@ -8398,11 +8449,10 @@ async def mass_sync_nodes_run(callback: CallbackQuery):
                 expiry = _naive_utc(u.expiry_at)
                 enable = bool(u.is_active and expiry and expiry > now)
                 sub_id = u.sub_token or str(u.tg_id)
-                only_codes = None
-                if _is_freemium_sub_type(st):
-                    only_codes = _bot_free_codes()
-                    if not only_codes:
-                        return False
+                try:
+                    only_codes = _bot_resync_node_codes(u)
+                except ValueError:
+                    return False
                 res = await panel.ensure_user_on_all_nodes(
                     tg_id=u.tg_id,
                     client_uuid=u.uuid,
@@ -8816,12 +8866,11 @@ async def admin_sync_user_nodes(callback: CallbackQuery):
         return
 
     sub_id = u.sub_token or str(u.tg_id)
-    only_codes = None
-    if _is_freemium_sub_type(u.sub_type):
-        only_codes = _bot_free_codes()
-        if not only_codes:
-            await callback.answer("❌ Free pool не настроен", show_alert=True)
-            return
+    try:
+        only_codes = _bot_resync_node_codes(u)
+    except ValueError:
+        await callback.answer("❌ Переход free-профиля ещё не завершён", show_alert=True)
+        return
     try:
         res = await panel.ensure_user_on_all_nodes(
             tg_id=u.tg_id,
@@ -9131,8 +9180,8 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
     is_manual = _is_manual_test_user(user)
     origin_label = _admin_user_origin_label(user)
     free_usage_line = ""
-    if _is_freemium_sub_type(plan):
-        remaining_gb, total_gb = await _free_remaining_gb(tg_id)
+    if user_uses_free_pool(user):
+        remaining_gb, total_gb = await _free_remaining_gb(tg_id, user=user)
         if remaining_gb is None:
             free_usage_line = f"\n📊 Бесплатный остаток: <b>н/д</b> из <b>{int(total_gb)} ГБ</b>"
         else:
@@ -9152,7 +9201,7 @@ async def render_admin_user_view(callback: CallbackQuery, tg_id: int):
         f"🧩 Origin: <b>{html.escape(origin_label)}</b>\n"
         f"🔋 Статус: {html.escape(status)}\n\n"
         f"📅 До: <b>{html.escape(expiry_txt)}</b> ({days_left} дн.)\n"
-        f"📡 Режим: <b>{html.escape(_plan_mode_label(plan))}</b>\n"
+        f"📡 Режим: <b>{html.escape(_plan_mode_label(plan, user=user))}</b>\n"
         f"🌐 Онлайн: <b>{panel_online_line}</b>\n"
         f"🕓 Последний онлайн: <b>{panel_last_online_line}</b>\n"
         f"Stars: <b>{int(user.stars_paid or 0)}</b>"
@@ -10087,12 +10136,10 @@ async def create_subscription(
     
     user = get_user(tg_id)
     expiry = user.expiry_at.strftime("%d.%m.%Y") if user and user.expiry_at else "—"
-    is_free = _is_freemium_sub_type(user.sub_type if user else "")
+    is_free = bool(user and user_uses_free_pool(user))
     free_note = ""
     if is_free:
-        free_note = (
-            f"\n\n🆓 Бесплатный: до {FREE_TOTAL_GB} ГБ, до {FREE_LIMIT_IP} устройств (по IP), до {FREE_SPEED_MBIT} Мбит/с."
-        )
+        free_note = _free_access_note(user)
     
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📲 Подключить устройство", callback_data="instruction")],
@@ -10196,7 +10243,7 @@ async def admin_user_search(message: Message):
         f"Статус: {status}\n\n"
         f"📦 Тариф: `{user.sub_type or '—'}`\n"
         f"📅 До: `{expiry}`\n"
-        f"📡 Режим: `{_plan_mode_label(user.sub_type)}`\n"
+        f"📡 Режим: `{_plan_mode_label(user.sub_type, user=user)}`\n"
         f"Оплачено: `{user.stars_paid or 0}` Stars\n\n"
         f"🔥 Streak: `{user.streak_months or 0}` мес\n"
         f"🏆 Ачивки: `{ach_count}`\n"
@@ -11227,6 +11274,19 @@ async def admin_gift(message: Message, bot: Bot):
 # ==========================================
 #               BACKGROUND TASKS
 # ==========================================
+def _queue_expired_user_reentry(session, *, user: User, now: datetime) -> dict:
+    result = queue_free_profile_reentry(
+        session,
+        user=user,
+        source="bot_expiry_monitor",
+        now=now,
+    )
+    auto_free_days = max(30, int(os.getenv("AUTO_FREE_DAYS", "3650")))
+    user.expiry_at = now + timedelta(days=auto_free_days)
+    user.is_active = True
+    return result
+
+
 async def monitor_expiry(bot: Bot) -> None:
     """
     Background task to enforce expiry.
@@ -11250,42 +11310,8 @@ async def monitor_expiry(bot: Bot) -> None:
 
                         expiry = _naive_utc(user.expiry_at)
                         if expiry and now > expiry:
-                            # Auto-downgrade to Free instead of disabling access.
-                            user.sub_type = "FREE"
-                            # Keep Free usable for a long time; actual policies are controlled server-side.
-                            auto_free_days = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-                            user.expiry_at = now + timedelta(days=auto_free_days)
-                            user.is_active = True
-                            mark_user_became_free(user, now=now)
+                            _queue_expired_user_reentry(session, user=user, now=now)
                             session.commit()
-
-                            # Ensure the user exists on the Free inbound and disable any existing paid-node clients.
-                            nodes = _bot_enabled_nodes()
-                            free_codes = _bot_free_codes()
-
-                            try:
-                                if free_codes:
-                                    sub_id = user.sub_token or str(user.tg_id)
-                                    await panel.ensure_user_on_all_nodes(
-                                        tg_id=user.tg_id,
-                                        client_uuid=user.uuid,
-                                        email=user.email,
-                                        sub_id=sub_id,
-                                        enable=True,
-                                        only_node_codes=free_codes,
-                                    )
-                            except Exception:
-                                pass
-
-                            paid_codes = [
-                                (getattr(n, "code", "") or "").strip()
-                                for n in nodes
-                                if "free" not in (getattr(n, "code", "") or "").lower()
-                            ]
-                            try:
-                                await panel.set_existing_user_enabled_on_nodes(tg_id=user.tg_id, node_codes=paid_codes, enable=False)
-                            except Exception:
-                                pass
 
                             if user.tg_id > 0 and user.tg_id not in PROTECTED_USERS:
                                 kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Продлить", callback_data="charge")]])
@@ -11294,7 +11320,7 @@ async def monitor_expiry(bot: Bot) -> None:
                                         chat_id=user.tg_id,
                                         text=(
                                             "*Платный срок закончился*\n\n"
-                                            "Но вы не остались без связи: я перевёл вас в бесплатный режим.\n"
+                                            "Перевожу вас в бесплатный режим; профиль обновится после подтверждения сервера.\n"
                                             "Если хотите вернуть все доступные локации и лимит устройств, нажмите кнопку ниже."
                                         ),
                                         reply_markup=kb,

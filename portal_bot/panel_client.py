@@ -12,6 +12,12 @@ from urllib.parse import quote
 import aiohttp
 
 from nodes_repo import NodeRuntime
+from node_policy import (
+    FREE_SOFT_ROLE,
+    FREE_STANDARD_QUOTA_BYTES,
+    FREE_STANDARD_ROLE,
+    node_access_role,
+)
 from transport_catalog import node_transport_profiles, transport_inbound_ids
 
 
@@ -131,23 +137,16 @@ class PanelClient:
         return self._to_int(os.getenv(global_name), default)
 
     def _is_free_node(self) -> bool:
-        return "free" in (self.node.code or "").lower()
+        return node_access_role(self.node) in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE}
 
     def _limit_ip_policy(self) -> int:
         """
         Per-node device policy.
-        Free default: 1 device.
+        Free contract: exactly 1 device.
         Paid default: 5 devices.
         """
-        if self._is_free_node():
-            return max(
-                0,
-                self._node_or_global_int(
-                    node_suffix="LIMIT_IP",
-                    global_name="FREE_LIMIT_IP",
-                    default=1,
-                ),
-            )
+        if node_access_role(self.node) in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE}:
+            return 1
         return max(
             0,
             self._node_or_global_int(
@@ -160,18 +159,12 @@ class PanelClient:
     def _total_gb_policy(self) -> int:
         """
         Per-node traffic cap in GB.
-        Free default: 5 GB.
+        Free standard contract: exactly 5 GiB; free soft is unlimited here and
+        enforced by the dedicated node shaper.
         Paid: always unlimited (0).
         """
-        if self._is_free_node():
-            return max(
-                0,
-                self._node_or_global_int(
-                    node_suffix="TOTAL_GB",
-                    global_name="FREE_TOTAL_GB",
-                    default=5,
-                ),
-            )
+        if node_access_role(self.node) == FREE_STANDARD_ROLE:
+            return int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
         return 0
 
     def _total_bytes_policy(self) -> int:
@@ -961,6 +954,8 @@ class PanelClient:
         expiry_time: int = 0,
         flow: str,
         inbound_id: int | None = None,
+        total_bytes_override: int | None = None,
+        limit_ip_override: int | None = None,
     ) -> bool:
         target_inbound_id = int(inbound_id or self.node.inbound_id or 0)
         if target_inbound_id <= 0:
@@ -975,8 +970,12 @@ class PanelClient:
         # Control policies are node-based:
         # - free node(s): strict device + traffic caps
         # - paid node(s): higher device cap, unlimited traffic by default
-        limit_ip = self._limit_ip_policy()
-        total_gb_bytes = self._total_bytes_policy()
+        limit_ip = self._limit_ip_policy() if limit_ip_override is None else max(0, int(limit_ip_override))
+        total_gb_bytes = (
+            self._total_bytes_policy()
+            if total_bytes_override is None
+            else max(0, int(total_bytes_override))
+        )
 
         client_obj = {
             "id": client_uuid,
@@ -1090,6 +1089,9 @@ class PanelClient:
         hard_cap_gb_override: int | None = None,
         inbound_id: int | None = None,
         flow: str | None = None,
+        total_bytes_override: int | None = None,
+        limit_ip_override: int | None = None,
+        lookup_client_uuid: str | None = None,
     ) -> bool:
         if not self.cookies:
             ok = await self.login()
@@ -1097,8 +1099,10 @@ class PanelClient:
                 return False
         await self.ensure_session()
 
-        limit_ip = self._limit_ip_policy()
-        if hard_cap_gb_override is None:
+        limit_ip = self._limit_ip_policy() if limit_ip_override is None else max(0, int(limit_ip_override))
+        if total_bytes_override is not None:
+            total_gb_bytes = max(0, int(total_bytes_override))
+        elif hard_cap_gb_override is None:
             total_gb_bytes = self._total_bytes_policy()
         else:
             hard_cap_gb = max(0, int(hard_cap_gb_override or 0))
@@ -1126,9 +1130,12 @@ class PanelClient:
         if target_inbound_id <= 0:
             return False
         payload = {"id": target_inbound_id, "settings": json.dumps({"clients": [updated]})}
+        lookup_uuid = str(lookup_client_uuid or updated["id"] or "").strip()
+        if not lookup_uuid:
+            return False
         try:
             async with self.session.post(
-                f"{self._base()}/panel/api/inbounds/updateClient/{updated['id']}",
+                f"{self._base()}/panel/api/inbounds/updateClient/{quote(lookup_uuid, safe='')}",
                 json=payload,
                 headers=await self._csrf_headers(),
                 cookies=self.cookies,
@@ -1500,6 +1507,100 @@ class PanelClient:
             )
             retry_ok = retry_ok and ok
         return cleanup_retry_ok and retry_ok
+
+    async def ensure_client_explicit(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str,
+        email: str,
+        sub_id: str,
+        enable: bool,
+        inbound_id: int,
+        total_bytes: int,
+        limit_ip: int,
+    ) -> bool:
+        """Ensure exactly one role-bound inbound without deleting the source profile."""
+        target_inbound_id = int(inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
+        existing_by_inbound = {
+            int(found_inbound): dict(client or {})
+            for found_inbound, client in await self.find_clients_by_identity(
+                tg_id=int(tg_id),
+                client_uuid=str(client_uuid or ""),
+                email=str(email or ""),
+            )
+        }
+        existing = existing_by_inbound.get(target_inbound_id)
+        flow = self._managed_flow_for_inbound(target_inbound_id)
+        if existing is not None:
+            existing_uuid = str(existing.get("id") or "").strip()
+            existing["id"] = str(client_uuid or existing.get("id") or "")
+            existing["email"] = str(email or existing.get("email") or "")
+            existing["tgId"] = str(int(tg_id))
+            return bool(
+                await self.update_client_enable(
+                    existing,
+                    bool(enable),
+                    sub_id=str(sub_id or ""),
+                    inbound_id=target_inbound_id,
+                    flow=flow,
+                    total_bytes_override=max(0, int(total_bytes)),
+                    limit_ip_override=max(0, int(limit_ip)),
+                    lookup_client_uuid=existing_uuid,
+                )
+            )
+        return bool(
+            await self.add_client(
+                client_uuid=str(client_uuid or ""),
+                email=str(email or ""),
+                tg_id=int(tg_id),
+                sub_id=str(sub_id or ""),
+                enable=bool(enable),
+                flow=flow,
+                inbound_id=target_inbound_id,
+                total_bytes_override=max(0, int(total_bytes)),
+                limit_ip_override=max(0, int(limit_ip)),
+            )
+        )
+
+    async def confirm_client_profile(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str,
+        email: str,
+        inbound_id: int,
+        total_bytes: int,
+        limit_ip: int,
+        enabled: bool,
+    ) -> bool:
+        target_inbound_id = int(inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
+        rows = await self.find_clients_by_identity(
+            tg_id=int(tg_id),
+            client_uuid=str(client_uuid or ""),
+            email=str(email or ""),
+            include_disabled=True,
+        )
+        for found_inbound, raw in rows:
+            if int(found_inbound or 0) != target_inbound_id:
+                continue
+            client = dict(raw or {})
+            if str(client.get("id") or "").strip() != str(client_uuid or "").strip():
+                continue
+            if str(client.get("tgId") or "").strip() != str(int(tg_id)):
+                continue
+            if bool(client.get("enable", True)) is not bool(enabled):
+                continue
+            if int(client.get("totalGB") or 0) != max(0, int(total_bytes)):
+                continue
+            if int(client.get("limitIp") or 0) != max(0, int(limit_ip)):
+                continue
+            return True
+        return False
 
     async def delete_client_uuid(self, client_uuid: str) -> bool:
         if not self.cookies:

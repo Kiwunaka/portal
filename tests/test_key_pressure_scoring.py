@@ -5,6 +5,8 @@ import hmac
 import json
 import sys
 import time
+import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -93,7 +95,6 @@ def test_internal_xray_stats_records_rollup_sources_and_pressure(monkeypatch, tm
         key_id = int(key.id)
     finally:
         session.close()
-
     payload = {
         "source": "xray_stats",
         "window_seconds": 300,
@@ -164,5 +165,102 @@ def test_internal_xray_stats_records_rollup_sources_and_pressure(monkeypatch, tm
         assert pressure.traffic_gb_24h == 350.0
         assert pressure.manual_review_required is True
         assert "traffic_gb_24h>=300" in json.loads(pressure.reasons_json)
+    finally:
+        session.close()
+
+
+def test_internal_xray_stats_queues_free_soft_transition_exactly_at_binary_five_gib(monkeypatch, tmp_path) -> None:
+    monkeypatch.delenv("NODE_AGENT_METRICS_SECRET", raising=False)
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    from models import AccessKey, Node, NodeProvisioningJob, User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        node = Node(
+            code="nl-free-standard",
+            name="NL Free Standard",
+            host="nl-free.example.test",
+            panel_base_url="https://nl-free.example.test:8444",
+            panel_path="xui",
+            panel_user="u",
+            panel_pass="p",
+            inbound_id=41,
+            access_role="free_standard",
+            enabled=True,
+            observer_push_secret="free-secret",
+        )
+        user = User(
+            tg_id=5252,
+            uuid=str(uuid.uuid4()),
+            email="user-5252@example.test",
+            sub_token="sub-5252",
+            sub_type="FREE",
+            current_plan_code="free_monthly",
+            is_active=True,
+            expiry_at=now + timedelta(days=365),
+            free_cycle_anchor_at=now,
+            free_cycle_last_reset_at=now,
+            free_cycle_next_reset_at=now + timedelta(days=30),
+            free_profile_state="standard",
+            free_profile_active_role="free_standard",
+            free_profile_source="test",
+        )
+        session.add_all([node, user])
+        session.flush()
+        session.add(
+            AccessKey(
+                tg_id=5252,
+                key_uuid=user.uuid,
+                panel_email=user.email,
+                node_code=node.code,
+                pool_code="free_pool",
+                state="active",
+                source="test",
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    payload = {
+        "source": "xray_stats",
+        "window_seconds": 300,
+        "keys": [
+            {
+                "panel_email": "user-5252@example.test",
+                "total_bytes": 5 * 1024**3,
+                "observations": 1,
+            }
+        ],
+    }
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    timestamp = str(int(time.time()))
+    signature = hmac.new(
+        b"free-secret",
+        timestamp.encode("utf-8") + b"." + body,
+        hashlib.sha256,
+    ).hexdigest()
+    headers = {
+        "Content-Type": "application/json",
+        "X-POKROV-Timestamp": timestamp,
+        "X-POKROV-Signature": signature,
+    }
+
+    first = client.post("/api/internal/nodes/nl-free-standard/xray-stats", content=body, headers=headers)
+    second = client.post("/api/internal/nodes/nl-free-standard/xray-stats", content=body, headers=headers)
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+
+    session = api.SessionLocal()
+    try:
+        user = session.query(User).filter_by(tg_id=5252).one()
+        assert user.free_profile_state == "soft_transition_pending"
+        assert user.free_profile_active_role == "free_standard"
+        assert user.free_profile_observed_bytes == 5 * 1024**3
+        assert user.free_profile_observation_source == "node_xray_stats"
+        assert session.query(NodeProvisioningJob).filter_by(tg_id=5252, job_type="free_to_soft").count() == 1
     finally:
         session.close()

@@ -57,6 +57,21 @@ class ReleaseGateCheckTests(unittest.TestCase):
             with self.subTest(suite=suite):
                 self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)
 
+    def test_free_profile_suites_are_in_release_pytest_matrix(self) -> None:
+        for suite in (
+            "tests/test_free_soft_profile_contract.py",
+            "tests/test_free_soft_profile_migrations.py",
+            "tests/test_node_provisioning_service.py",
+            "tests/test_panel_client_free_profiles.py",
+            "tests/test_free_soft_inbound_shaper.py",
+            "tests/test_free_cycle_service.py",
+            "tests/test_key_pressure_scoring.py",
+            "tests/test_admin_ops_api.py",
+            "tests/test_plan_policies.py",
+        ):
+            with self.subTest(suite=suite):
+                self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)
+
     def test_client_security_smoke_gate_is_included_in_quick_gate_set(self) -> None:
         gates = self.module._quick_gates()
 

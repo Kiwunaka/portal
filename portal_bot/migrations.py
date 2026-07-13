@@ -252,6 +252,208 @@ def _postgres_add_column_if_missing(conn, table: str, column: str, ddl: str) -> 
     return True
 
 
+_FREE_PROFILE_USER_COLUMNS = (
+    ("free_profile_state", "VARCHAR(32) NOT NULL DEFAULT 'standard'"),
+    ("free_profile_active_role", "VARCHAR(32) NOT NULL DEFAULT 'free_standard'"),
+    ("free_profile_source", "VARCHAR(64) NOT NULL DEFAULT 'legacy_backfill'"),
+    ("free_profile_state_changed_at", "DATETIME"),
+    ("free_profile_job_id", "INTEGER"),
+    ("free_profile_error_code", "VARCHAR(64)"),
+    ("free_profile_standard_node_code", "VARCHAR(32)"),
+    ("free_profile_soft_node_code", "VARCHAR(32)"),
+    ("free_profile_observed_bytes", "BIGINT NOT NULL DEFAULT 0"),
+    ("free_profile_observed_at", "DATETIME"),
+    ("free_profile_observation_source", "VARCHAR(64)"),
+)
+
+_FREE_PROFILE_JOB_COLUMNS = (
+    ("idempotency_key", "VARCHAR(160)"),
+    ("lock_token", "VARCHAR(64)"),
+    ("last_error_code", "VARCHAR(64)"),
+    ("replacement_key_uuid", "VARCHAR(36)"),
+    ("completed_at", "DATETIME"),
+    ("manual_review_at", "DATETIME"),
+)
+
+
+def _sqlite_table_exists(conn, table: str) -> bool:
+    return bool(
+        conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name;"),
+            {"name": str(table)},
+        ).fetchone()
+    )
+
+
+def _ensure_free_profile_schema_sqlite(conn) -> None:
+    if _sqlite_table_exists(conn, "users"):
+        for column, ddl in _FREE_PROFILE_USER_COLUMNS:
+            if not _sqlite_column_exists(conn, "users", column):
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {column} {ddl};"))
+        conn.execute(
+            text(
+                """
+                UPDATE users
+                SET free_profile_state = COALESCE(NULLIF(trim(free_profile_state), ''), 'standard'),
+                    free_profile_active_role = COALESCE(NULLIF(trim(free_profile_active_role), ''), 'free_standard'),
+                    free_profile_source = COALESCE(NULLIF(trim(free_profile_source), ''), 'legacy_backfill'),
+                    free_profile_observed_bytes = COALESCE(free_profile_observed_bytes, 0);
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_free_profile_job_id ON users(free_profile_job_id);"))
+
+    if _sqlite_table_exists(conn, "nodes"):
+        node_role_added = False
+        if not _sqlite_column_exists(conn, "nodes", "access_role"):
+            conn.execute(text("ALTER TABLE nodes ADD COLUMN access_role VARCHAR(32) NOT NULL DEFAULT 'paid';"))
+            node_role_added = True
+        if not _sqlite_column_exists(conn, "nodes", "access_role_legacy"):
+            conn.execute(text("ALTER TABLE nodes ADD COLUMN access_role_legacy VARCHAR(32);"))
+        if not node_role_added:
+            conn.execute(
+                text(
+                    """
+                    UPDATE nodes
+                    SET access_role_legacy = access_role
+                    WHERE access_role_legacy IS NULL
+                      AND access_role IS NOT NULL
+                      AND trim(access_role) <> ''
+                      AND access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab');
+                    """
+                )
+            )
+        node_role_where = (
+            "1 = 1"
+            if node_role_added
+            else "access_role IS NULL OR trim(access_role) = '' "
+            "OR access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab')"
+        )
+        conn.execute(
+            text(
+                f"""
+                UPDATE nodes
+                SET access_role = CASE
+                    WHEN instr(lower(COALESCE(code, '')), 'operator') > 0
+                      OR substr(lower(COALESCE(code, '')), -4) IN ('_lab', '-lab') THEN 'operator_lab'
+                    WHEN instr(lower(COALESCE(code, '')), 'free') > 0
+                      AND instr(lower(COALESCE(code, '')), 'soft') > 0 THEN 'free_soft'
+                    WHEN instr(lower(COALESCE(code, '')), 'free') > 0 THEN 'free_standard'
+                    ELSE 'paid'
+                END
+                WHERE {node_role_where};
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_access_role ON nodes(access_role);"))
+
+    if _sqlite_table_exists(conn, "node_provisioning_jobs"):
+        for column, ddl in _FREE_PROFILE_JOB_COLUMNS:
+            if not _sqlite_column_exists(conn, "node_provisioning_jobs", column):
+                conn.execute(text(f"ALTER TABLE node_provisioning_jobs ADD COLUMN {column} {ddl};"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_node_provisioning_jobs_idempotency_key "
+                "ON node_provisioning_jobs(idempotency_key);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_lock_token "
+                "ON node_provisioning_jobs(lock_token);"
+            )
+        )
+
+
+def _ensure_free_profile_schema_postgres(conn) -> None:
+    for column, ddl in _FREE_PROFILE_USER_COLUMNS:
+        _postgres_add_column_if_missing(conn, "users", column, ddl.replace("DATETIME", "TIMESTAMP"))
+    node_role_added = _postgres_add_column_if_missing(
+        conn,
+        "nodes",
+        "access_role",
+        "VARCHAR(32) NOT NULL DEFAULT 'paid'",
+    )
+    _postgres_add_column_if_missing(conn, "nodes", "access_role_legacy", "VARCHAR(32)")
+    for column, ddl in _FREE_PROFILE_JOB_COLUMNS:
+        _postgres_add_column_if_missing(
+            conn,
+            "node_provisioning_jobs",
+            column,
+            ddl.replace("DATETIME", "TIMESTAMP"),
+        )
+
+    if not node_role_added:
+        conn.execute(
+            text(
+                """
+                UPDATE nodes
+                SET access_role_legacy = access_role
+                WHERE access_role_legacy IS NULL
+                  AND access_role IS NOT NULL
+                  AND btrim(access_role) <> ''
+                  AND access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab');
+                """
+            )
+        )
+    conn.execute(
+        text(
+            """
+            UPDATE users
+            SET free_profile_state = COALESCE(NULLIF(btrim(free_profile_state), ''), 'standard'),
+                free_profile_active_role = COALESCE(NULLIF(btrim(free_profile_active_role), ''), 'free_standard'),
+                free_profile_source = COALESCE(NULLIF(btrim(free_profile_source), ''), 'legacy_backfill'),
+                free_profile_observed_bytes = COALESCE(free_profile_observed_bytes, 0);
+            """
+        )
+    )
+    conn.execute(
+        text(
+            f"""
+            UPDATE nodes
+            SET access_role = CASE
+                WHEN position('operator' in lower(COALESCE(code, ''))) > 0
+                  OR right(lower(COALESCE(code, '')), 4) IN ('_lab', '-lab') THEN 'operator_lab'
+                WHEN position('free' in lower(COALESCE(code, ''))) > 0
+                  AND position('soft' in lower(COALESCE(code, ''))) > 0 THEN 'free_soft'
+                WHEN position('free' in lower(COALESCE(code, ''))) > 0 THEN 'free_standard'
+                ELSE 'paid'
+            END
+            WHERE {
+                'TRUE'
+                if node_role_added
+                else "access_role IS NULL OR btrim(access_role) = '' "
+                "OR access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab')"
+            };
+            """
+        )
+    )
+    for column, default in (
+        ("free_profile_state", "'standard'"),
+        ("free_profile_active_role", "'free_standard'"),
+        ("free_profile_source", "'legacy_backfill'"),
+        ("free_profile_observed_bytes", "0"),
+    ):
+        conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET DEFAULT {default};"))
+        conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET NOT NULL;"))
+    conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET DEFAULT 'paid';"))
+    conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET NOT NULL;"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_free_profile_job_id ON users(free_profile_job_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_access_role ON nodes(access_role);"))
+    conn.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_node_provisioning_jobs_idempotency_key "
+            "ON node_provisioning_jobs(idempotency_key);"
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_lock_token "
+            "ON node_provisioning_jobs(lock_token);"
+        )
+    )
+
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SHARED_DIR = _REPO_ROOT / "shared"
 
@@ -2275,6 +2477,7 @@ def run_migrations(engine: Engine) -> None:
         # already accepts the newer POKROV-XXXX-XXXX format without table rebuild.
 
         # Seed default retention templates for admin editing (idempotent).
+        _ensure_free_profile_schema_sqlite(conn)
         _seed_retention_templates(conn, dialect="sqlite")
         _seed_plan_catalog(conn, dialect="sqlite")
 
@@ -2923,5 +3126,6 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reward_claims_tg_id ON reward_claims(tg_id);"))
 
         # Seed default retention templates for admin editing (idempotent).
+        _ensure_free_profile_schema_postgres(conn)
         _seed_retention_templates(conn, dialect="postgresql")
         _seed_plan_catalog(conn, dialect="postgresql")

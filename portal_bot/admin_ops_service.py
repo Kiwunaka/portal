@@ -99,7 +99,7 @@ def provider_quota_cycle_bounds(
     try:
         tz = ZoneInfo(tz_name)
     except Exception:
-        tz = ZoneInfo("UTC")
+        tz = timezone.utc
     now_aware = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
     local_now = now_aware.astimezone(tz)
     current = _month_boundary(year=local_now.year, month=local_now.month, day=reset_day, tz=tz)
@@ -333,6 +333,10 @@ def free_tier_user_rows(
                 "used_ratio": round(used_ratio, 4),
                 "used_pct": round(used_ratio * 100.0, 1),
                 "state": state,
+                "transition_state": str(getattr(user, "free_profile_state", "") or "standard"),
+                "active_role": str(getattr(user, "free_profile_active_role", "") or "free_standard"),
+                "provisioning_job_id": getattr(user, "free_profile_job_id", None),
+                "provisioning_error_code": str(getattr(user, "free_profile_error_code", "") or "") or None,
                 "cycle_start": safe_iso(start),
                 "cycle_end": safe_iso(end),
                 "next_reset_at": safe_iso(getattr(user, "free_cycle_next_reset_at", None)),

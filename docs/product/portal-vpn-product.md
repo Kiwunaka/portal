@@ -318,10 +318,12 @@ Official Telegram surfaces:
 
 ### Post-Trial Access Model
 
-- `free_monthly`: `5 GB / 30 days`
+- `free_monthly`: exactly `5 * 1024^3` bytes per 30 days on the ordinary `free_standard` profile
 - `free_monthly` device limit: `1`
-- `free_monthly` keeps monthly traffic reset via the free-cycle job
-- after `5 GB` is exhausted, the account stays usable in `soft mode` until the next reset
+- quota evidence queues a durable move to a separate `free_soft` inbound; the UI stays in transition state until that target is confirmed
+- confirmed `free_soft` stays usable at a target `2 Mbps` per observed public IP until the next reset; users behind one NAT share that cap
+- reset is also durable: enable and confirm standard, reset its traffic, then disable soft; failures retry with a bounded manual-review state
+- `free_monthly` keeps monthly traffic reset via the free-cycle and node-provisioning workers
 - `paid` remains unlimited traffic with up to `5 devices`
 - all active, non-hidden RUB plans with positive `amount_rub` are eligible for hosted checkout after the payment gate; frontend checkout must not keep a stale one-plan allowlist
 - `start_99` is a one-time user plan; checkout must reject repeat attempts before provider invoice creation when the account has already made a first purchase or already has any successful paid Lava.top order

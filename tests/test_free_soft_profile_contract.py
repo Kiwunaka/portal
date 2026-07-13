@@ -1,0 +1,386 @@
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+
+GIB = 1024**3
+NOW = datetime(2026, 7, 13, 12, 0, 0)
+
+
+def _node(
+    code: str,
+    role: str,
+    inbound_id: int,
+    *,
+    panel_base_url: str = "https://nl-free.test:8444",
+):
+    return SimpleNamespace(
+        code=code,
+        access_role=role,
+        inbound_id=inbound_id,
+        panel_base_url=panel_base_url,
+        panel_path="panel",
+        enabled=True,
+        accepting_new_clients=True,
+        is_draining=False,
+    )
+
+
+@pytest.fixture()
+def session():
+    from models import Base
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    try:
+        yield db
+    finally:
+        db.close()
+        engine.dispose()
+
+
+def _free_user(*, tg_id: int, plan_code: str = "free_monthly"):
+    from models import User
+
+    return User(
+        tg_id=tg_id,
+        uuid=f"00000000-0000-4000-8000-{tg_id:012d}",
+        email=f"user-{tg_id}@example.test",
+        sub_token=f"sub-{tg_id}",
+        sub_type="FREE",
+        current_plan_code=plan_code,
+        is_active=True,
+        expiry_at=NOW + timedelta(days=365),
+        free_cycle_anchor_at=NOW,
+        free_cycle_last_reset_at=NOW,
+        free_cycle_next_reset_at=NOW + timedelta(days=30),
+    )
+
+
+def test_access_role_validation_requires_distinct_positive_inbounds() -> None:
+    from node_policy import NodeAccessRoleError, validate_node_access_roles
+
+    valid = [
+        _node("nl-free-standard", "free_standard", 41),
+        _node("nl-free-soft", "free_soft", 42),
+        _node("nl-paid", "paid", 43),
+        _node("nl-lab", "operator_lab", 44),
+    ]
+    bindings = validate_node_access_roles(valid, require_free_pair=True)
+    assert bindings["free_standard"][0].inbound_id == 41
+    assert bindings["free_soft"][0].inbound_id == 42
+
+    with pytest.raises(NodeAccessRoleError, match="positive"):
+        validate_node_access_roles(
+            [_node("nl-free-standard", "free_standard", 0), _node("nl-free-soft", "free_soft", 42)],
+            require_free_pair=True,
+        )
+
+    with pytest.raises(NodeAccessRoleError, match="duplicate"):
+        validate_node_access_roles(
+            [_node("nl-free-standard", "free_standard", 42), _node("nl-free-soft", "free_soft", 42)],
+            require_free_pair=True,
+        )
+
+
+def test_soft_role_never_falls_back_to_paid_or_operator_lab() -> None:
+    from node_policy import NodeAccessRoleError, nodes_for_access_role
+
+    nodes = [_node("nl-paid", "paid", 51), _node("nl-lab", "operator_lab", 52)]
+    with pytest.raises(NodeAccessRoleError, match="free_soft"):
+        nodes_for_access_role(nodes, "free_soft", required=True)
+
+
+def test_free_standard_quota_is_exact_binary_five_gib() -> None:
+    from free_cycle_service import FREE_STANDARD_QUOTA_BYTES
+
+    assert FREE_STANDARD_QUOTA_BYTES == 5 * GIB
+
+
+def test_threshold_queues_once_and_persists_pending_state(session) -> None:
+    from free_cycle_service import reconcile_free_profile_usage
+    from models import NodeProvisioningJob
+
+    user = _free_user(tg_id=1101)
+    session.add(user)
+    session.flush()
+
+    below = reconcile_free_profile_usage(
+        session,
+        user=user,
+        used_bytes=(5 * GIB) - 1,
+        source="node_observer",
+        now=NOW,
+    )
+    assert below["queued"] is False
+    assert user.free_profile_state == "standard"
+
+    at_limit = reconcile_free_profile_usage(
+        session,
+        user=user,
+        used_bytes=5 * GIB,
+        source="node_observer",
+        now=NOW,
+    )
+    replay = reconcile_free_profile_usage(
+        session,
+        user=user,
+        used_bytes=6 * GIB,
+        source="api_runtime",
+        now=NOW + timedelta(seconds=1),
+    )
+    session.flush()
+
+    assert at_limit["queued"] is True
+    assert replay["queued"] is False
+    assert replay["job_id"] == at_limit["job_id"]
+    assert user.free_profile_state == "soft_transition_pending"
+    assert user.free_profile_active_role == "free_standard"
+    assert user.free_profile_source == "node_observer"
+    assert user.free_profile_observed_bytes == 6 * GIB
+    assert user.free_profile_observed_at == NOW + timedelta(seconds=1)
+    assert session.query(NodeProvisioningJob).filter_by(tg_id=1101, job_type="free_to_soft").count() == 1
+
+
+@pytest.mark.parametrize(
+    ("sub_type", "plan_code"),
+    [("PAID", "month"), ("FREE", "trial"), ("FREE", "channel_bonus")],
+)
+def test_threshold_never_queues_for_paid_or_premium_trial(session, sub_type: str, plan_code: str) -> None:
+    from free_cycle_service import reconcile_free_profile_usage
+    from models import NodeProvisioningJob
+
+    user = _free_user(tg_id=1200 + session.query(NodeProvisioningJob).count(), plan_code=plan_code)
+    user.sub_type = sub_type
+    session.add(user)
+    session.flush()
+
+    result = reconcile_free_profile_usage(
+        session,
+        user=user,
+        used_bytes=9 * GIB,
+        source="node_observer",
+        now=NOW,
+    )
+    session.flush()
+
+    assert result["queued"] is False
+    assert session.query(NodeProvisioningJob).count() == 0
+
+
+def test_access_policy_uses_persisted_profile_not_usage_bytes() -> None:
+    from api import _build_access_policy
+
+    user = _free_user(tg_id=1301)
+    user.free_profile_state = "soft_transition_pending"
+    user.free_profile_active_role = "free_standard"
+    pending = _build_access_policy(user=user, used_bytes=8 * GIB, now=NOW)
+    assert pending["access_state"] == "free_monthly"
+    assert pending["soft_mode_active"] is False
+    assert pending["free_profile_state"] == "soft_transition_pending"
+
+    user.free_profile_state = "soft_active"
+    user.free_profile_active_role = "free_soft"
+    active = _build_access_policy(user=user, used_bytes=1, now=NOW)
+    assert active["access_state"] == "free_soft_mode"
+    assert active["soft_mode_active"] is True
+    assert active["free_profile_state"] == "soft_active"
+    assert active["traffic_remaining_gb"] == 0.0
+
+
+def test_soft_profile_counter_does_not_replace_standard_quota_evidence(session) -> None:
+    from free_cycle_service import reconcile_free_profile_usage
+
+    user = _free_user(tg_id=1302)
+    user.free_profile_state = "soft_active"
+    user.free_profile_active_role = "free_soft"
+    user.free_profile_observed_bytes = 5 * GIB
+    user.free_profile_observed_at = NOW
+    user.free_profile_observation_source = "node_observer"
+    session.add(user)
+    session.flush()
+
+    result = reconcile_free_profile_usage(
+        session,
+        user=user,
+        used_bytes=1234,
+        source="soft_node_observer",
+        now=NOW + timedelta(minutes=5),
+    )
+
+    assert result["queued"] is False
+    assert result["reason"] == "not_standard"
+    assert user.free_profile_observed_bytes == 5 * GIB
+    assert user.free_profile_observed_at == NOW
+    assert user.free_profile_observation_source == "node_observer"
+
+
+def test_free_profile_transition_query_locks_canonical_user_row(session) -> None:
+    from sqlalchemy.dialects import postgresql
+
+    from free_cycle_service import _locked_free_profile_user_query
+
+    statement = _locked_free_profile_user_query(session, tg_id=1303).statement
+    compiled = str(statement.compile(dialect=postgresql.dialect()))
+
+    assert "FOR UPDATE" in compiled.upper()
+
+
+def test_exact_finalize_lock_waits_instead_of_skipping_payment_row(session) -> None:
+    from sqlalchemy.dialects import postgresql
+
+    from models import User
+    from node_provisioning_service import _lock_exact_query
+
+    statement = _lock_exact_query(session.query(User).filter(User.tg_id == 1303), session).statement
+    compiled = str(statement.compile(dialect=postgresql.dialect())).upper()
+
+    assert "FOR UPDATE" in compiled
+    assert "SKIP LOCKED" not in compiled
+
+
+def test_node_access_role_model_declares_migration_index() -> None:
+    from models import Node
+
+    assert Node.__table__.c.access_role.index is True
+
+
+def test_free_cycle_is_exactly_thirty_days_not_environment_overridable() -> None:
+    portal_dir = Path(__file__).resolve().parents[1] / "portal_bot"
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "PYTHONPATH": str(portal_dir),
+            "DATABASE_URL": "sqlite:///:memory:",
+            "BOT_TOKEN": "test-token",
+            "FREE_CYCLE_DAYS": "3",
+        }
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import economy_service, free_cycle_service; "
+            "print(free_cycle_service.FREE_CYCLE_DAYS, economy_service.FREE_CYCLE_DAYS)",
+        ],
+        cwd=portal_dir,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "30 30"
+
+
+def test_free_plan_total_uses_exact_quota_not_legacy_environment(monkeypatch) -> None:
+    import api
+
+    user = _free_user(tg_id=1304)
+    monkeypatch.setattr(api, "FREE_TOTAL_GB", 99)
+    monkeypatch.setattr(api, "FREE_LIMIT_IP", 9)
+
+    assert api._plan_total_gb(user) == 5
+    assert api._plan_device_limit(user) == 1
+
+
+def test_soft_speed_authority_is_exactly_two_mbps() -> None:
+    portal_dir = Path(__file__).resolve().parents[1] / "portal_bot"
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "PYTHONPATH": str(portal_dir),
+            "DATABASE_URL": "sqlite:///:memory:",
+            "BOT_TOKEN": "test-token",
+            "FREE_SOFT_MODE_SPEED_LIMIT_KBPS": "9999",
+        }
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", "import api; print(api.FREE_SOFT_MODE_SPEED_LIMIT_KBPS)"],
+        cwd=portal_dir,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "250"
+
+
+def test_free_reset_job_rejects_operator_lab_source_binding(session) -> None:
+    import json
+
+    from free_cycle_service import queue_free_profile_reset
+    from models import NodeProvisioningJob
+
+    user = _free_user(tg_id=1305)
+    session.add(user)
+    session.flush()
+
+    result = queue_free_profile_reset(
+        session,
+        user=user,
+        source="test",
+        now=NOW,
+        source_bindings=[{"node_code": "operator-lab", "access_role": "operator_lab"}],
+    )
+
+    job = session.query(NodeProvisioningJob).filter_by(id=result["job_id"]).one()
+    assert json.loads(job.desired_state_json)["source_bindings"] == []
+
+
+def test_premium_pool_key_never_exposes_operator_lab(monkeypatch) -> None:
+    import nodes_repo
+
+    nodes = [
+        _node("nl-paid", "paid", 51),
+        _node("nl-lab", "operator_lab", 52),
+    ]
+    user = SimpleNamespace(sub_type="PAID", current_plan_code="paid_30d", is_active=True)
+    key = SimpleNamespace(pool_code="premium_pool")
+    monkeypatch.setattr(nodes_repo, "enabled_nodes", lambda _session: nodes)
+
+    selected = nodes_repo.eligible_nodes(object(), user, key=key)
+
+    assert [node.code for node in selected] == ["nl-paid"]
+
+
+def test_api_paid_pool_never_exposes_operator_lab() -> None:
+    import api
+
+    nodes = [
+        _node("nl-paid", "paid", 51),
+        _node("nl-lab", "operator_lab", 52),
+    ]
+    user = SimpleNamespace(sub_type="PAID", current_plan_code="paid_30d", is_active=True)
+
+    assert api._node_allowed_for_plan(user, nodes[0]) is True
+    assert api._node_allowed_for_plan(user, nodes[1]) is False
+    assert [node.code for node in api._fallback_nodes_for_user(user, nodes)] == ["nl-paid"]
+
+
+def test_api_soft_active_user_only_receives_soft_pool() -> None:
+    import api
+
+    nodes = [
+        _node("nl-free-standard", "free_standard", 41),
+        _node("nl-free-soft", "free_soft", 42),
+    ]
+    user = _free_user(tg_id=1306)
+    user.free_profile_state = "soft_active"
+    user.free_profile_active_role = "free_soft"
+
+    assert [node.code for node in api._fallback_nodes_for_user(user, nodes)] == ["nl-free-soft"]

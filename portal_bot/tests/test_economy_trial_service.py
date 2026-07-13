@@ -205,6 +205,7 @@ def test_observer_offsets_activate_at_exact_naive_utc_plus_five_days(tmp_path: P
 
 def test_expiration_sweep_projects_free_without_revoking_paid_grants(tmp_path: Path) -> None:
     from economy_service import expire_stale_trial_reservations, reserve_trial
+    from models import NodeProvisioningJob
 
     engine, session = _session(tmp_path)
     free_account, free_device, free_user = _seed_account(session, suffix="3")
@@ -226,6 +227,8 @@ def test_expiration_sweep_projects_free_without_revoking_paid_grants(tmp_path: P
     assert free_user.current_plan_code == "free_monthly"
     assert free_user.is_active is True
     assert free_user.expiry_at == NOW + timedelta(days=38)
+    assert free_user.free_profile_state == "reset_pending"
+    assert session.query(NodeProvisioningJob).filter_by(tg_id=free_user.tg_id, job_type="free_to_standard").count() == 1
     assert paid_trial.status == "expired"
     assert paid_user.sub_type == "PAID"
     assert paid_user.current_plan_code == "1_month"

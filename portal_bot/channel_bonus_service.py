@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 import db
 from config import Settings
 from control_panel import ControlPanel
+from node_policy import node_is_free
 from economy_service import CHANNEL_GRANT_DAYS, GRANDFATHERED_CHANNEL_GRANT_DAYS, grant_channel_bonus
 from events_service import track_event
 from models import CampaignSend, EntitlementGrant, User
@@ -117,7 +118,7 @@ async def _sync_user_after_paid_bonus(user: User) -> bool:
             free_codes = [
                 (getattr(n, "code", "") or "").strip()
                 for n in nodes
-                if "free" in (getattr(n, "code", "") or "").lower()
+                if node_is_free(n)
             ]
             if free_codes:
                 await panel.set_existing_user_enabled_on_nodes(

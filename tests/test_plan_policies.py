@@ -87,7 +87,7 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertEqual(paid_client._total_gb_policy(), 0)
         self.assertEqual(paid_client._total_bytes_policy(), 0)
 
-    def test_panel_policy_node_overrides(self) -> None:
+    def test_paid_node_override_does_not_change_exact_free_policy(self) -> None:
         from panel_client import PanelClient
 
         os.environ["FREE_LIMIT_IP"] = "1"
@@ -100,8 +100,8 @@ class PlanPolicyTests(unittest.TestCase):
         free_client = PanelClient(self._node("pl_free"))
         paid_client = PanelClient(self._node("pl"))
 
-        self.assertEqual(free_client._limit_ip_policy(), 3)
-        self.assertEqual(free_client._total_gb_policy(), 8)
+        self.assertEqual(free_client._limit_ip_policy(), 1)
+        self.assertEqual(free_client._total_gb_policy(), 5)
         self.assertEqual(paid_client._limit_ip_policy(), 7)
 
     def test_api_plan_total_gb_policy(self) -> None:
@@ -173,6 +173,8 @@ class PlanPolicyTests(unittest.TestCase):
             expiry_at=now + timedelta(days=365),
             channel_bonus_claimed_at=None,
             free_cycle_next_reset_at=now + timedelta(days=12),
+            free_profile_state="soft_active",
+            free_profile_active_role="free_soft",
         )
         soft = api._build_access_policy(user=free_user, used_bytes=6 * 1024**3, now=now)
         self.assertEqual(soft["access_state"], "free_soft_mode")
