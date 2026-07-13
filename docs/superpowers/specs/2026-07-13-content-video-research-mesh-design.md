@@ -11,7 +11,7 @@ Replace the current placeholder Trend Scout with a production research system th
 - two safe production packets;
 - one controlled AI-video experiment.
 
-The system runs only when the owner clicks a button in Content Studio. It uses free discovery surfaces and the already approved OpenCode model gateway. It does not schedule background work, publish content, or start paid TTS, image, or video jobs.
+The only user-facing trigger is a button in Content Studio. The same orchestrator remains callable through a manual CLI for tests and operator diagnostics; neither entry point schedules background work. The system uses free discovery surfaces and the already approved OpenCode model gateway. It does not publish content or start paid TTS, image, or video jobs.
 
 This document defines intended behavior. Current code and retained scout runs remain the authority for what is implemented today.
 
@@ -59,7 +59,8 @@ The current Scout does not fulfill the contract described by `AGENTS.md`, `confi
 The owner approved these decisions during brainstorming:
 
 - architecture: **Research Mesh**;
-- trigger: manual button in Content Studio only;
+- user-facing trigger: manual button in Content Studio only;
+- internal trigger: the existing Scout CLI may invoke the same orchestrator for tests and operator diagnostics, but never from a scheduler;
 - output: 20 candidate pool, then two safe production packets and one AI-video experiment;
 - topical perimeter: broad, including gaming, technology, AI, science, internet culture, politics, crime, and controversial current events;
 - politics and crime require stronger evidence and mandatory manual approval;
@@ -67,6 +68,18 @@ The owner approved these decisions during brainstorming:
 - POKROV remains a sponsor/banner layer and is not forced into ordinary topics;
 - episode YAML generation is a separate explicit action after a topic packet is approved;
 - paid TTS, image, and video generation remain outside Scout.
+
+This owner decision intentionally supersedes the current `1 safe + 1 experiment + 1 reserve` Scout contract. Implementation must update all current local owners in the same change:
+
+```yaml
+trend_scout:
+  choose:
+    safe_production: 2
+    experimental_ai_video: 1
+    reserve_candidate: 0
+```
+
+The required owner updates are `.content-video-ad/AGENTS.md`, `config/content-series.yaml`, `docs/content-series-strategy.md`, `docs/pipeline.md`, `prompts/agent-research.md`, and `evals/trend-scout.eval.yaml`. Until those changes land and pass together, current runtime behavior remains authoritative and the new selector must not be called implemented.
 
 ## Goals
 
@@ -160,9 +173,11 @@ The fallback must not use stealth, proxy, browser accounts, or paywall bypass by
 Every adapter returns normalized `SourceItem` records with at least:
 
 ```text
+schema_version
 id
 source_id
 source_family
+publisher_group_id
 source_role_hint
 canonical_url
 title
@@ -175,13 +190,31 @@ text_excerpt
 content_hash
 snapshot_path
 fetch_method
+adapter_id
+adapter_config_hash
+checked_at
 http_status            when available
 content_type           when available
 health_status
 risk_profile
 ```
 
-Adapters also return a source-health result even when they return no items. This separates “no relevant items” from “the source failed.”
+Adapters also return a versioned source-health result even when they return no items. The health record includes `checked_at`, adapter identity, adapter/config hash, observed status, item count, latency, and a redacted error preview. This separates “no relevant items” from “the source failed” and prevents historical health from looking current.
+
+`source_family` and `publisher_group_id` are configured registry values, not LLM guesses. V1 source families are:
+
+```text
+community_ru
+gaming_press_ru
+tech_press_ru
+trend_signal
+first_party_platform
+official_record
+international_press
+owner_local
+```
+
+New families require a config/schema update and fixture coverage. `publisher_group_id` groups domains under common editorial ownership and is used to prevent syndicated or commonly controlled sources from counting as independent confirmations.
 
 ## Content-Quality Gate
 
@@ -200,21 +233,45 @@ A `SourceItem` is rejected before clustering when it is any of the following:
 
 Rejected records remain in source-health and rejection artifacts for audit. They do not become candidates.
 
+V1 thresholds live in `config/scout.yaml`, are versioned with the run, and have these defaults:
+
+```yaml
+quality:
+  min_body_chars:
+    article_or_news: 400
+    official_notice: 160
+    steam_review: 40
+  max_replacement_char_ratio: 0.002
+  max_redirects: 5
+  max_response_bytes: 1500000
+freshness:
+  breaking_hours: 72
+  current_days: 7
+  evergreen_trigger_days: 30
+diversity:
+  max_candidates_per_registered_domain: 5
+  max_candidates_per_source_family: 8
+  ready_min_source_families: 4
+```
+
+A feed title or snippet that does not meet the appropriate body threshold must be followed to the concrete item and extracted; the snippet alone is not evidence. `breaking` covers items at most 72 hours old, `current` covers items at most seven days old, and `evergreen` requires a separate current trigger no older than 30 days. Missing or unclassifiable dates block current-news classification.
+
+The replacement-character ratio is the count of Unicode replacement characters divided by normalized text length. Known mojibake signatures may add a rejection reason, but must be fixture-tested before becoming blocking.
+
 ## Event Clustering And Deduplication
 
 The system clusters multiple articles about the same event before scoring.
 
 Clustering uses normalized canonical URLs, title similarity, named entities, time proximity, content hashes, and LLM-assisted comparison only when deterministic signals are inconclusive.
 
-The cluster is the topic candidate boundary. One event should not occupy several positions in the pool because it appeared on several sites.
+The cluster is the topic candidate and uniqueness boundary. One event cluster produces exactly one candidate in the 20-candidate pool. Alternative hooks or formats live inside that candidate and do not consume another pool slot.
 
 Default diversity constraints:
 
-- no more than two candidates from one event cluster;
-- the second candidate from a cluster must use a materially different format or editorial angle;
+- exactly one candidate per event cluster;
 - one domain cannot dominate the 20-candidate pool;
 - the final three packets must not all come from the same source family or series lane;
-- when fewer than 20 valid clusters exist, mark the run `PARTIAL` instead of adding duplicates or weak filler.
+- when fewer than 20 valid clusters exist, mark lifecycle status `partial` instead of adding duplicates or weak filler.
 
 ## Evidence Graph
 
@@ -243,6 +300,15 @@ intended_visual_use
 
 The evidence excerpt is short and bounded. Long source text is not copied into production artifacts.
 
+Definitions used by the gate:
+
+- **strong primary:** the original review, dataset, filing, recording, first-party release, direct record, or document held by the event actor or record custodian, with a retained snapshot and date;
+- **authoritative original:** a source that is the custodian of a specific record, such as a court docket, regulator notice, company filing, original dataset, or platform record; this describes provenance, not neutrality or truthfulness;
+- **genuinely independent:** a source with different editorial control and `publisher_group_id`, non-syndicated body text, and reporting that is not merely a rewrite of the same press release;
+- **material contradiction:** a disagreement that changes the actor, action, date, magnitude, outcome, legal status, or the truth of the hook. It blocks selection unless the packet is explicitly about the dispute and represents both sides with separate claims.
+
+A first-party or official statement proves that the statement or document exists. Assertions inside it about other actors, causes, outcomes, or contested events require independent confirmation. Shared ownership, syndicated copy, substantially identical text, and multiple domains repeating one press release do not count as independence.
+
 ### Minimum evidence rules
 
 Normal source-driven topic:
@@ -258,9 +324,26 @@ Politics, crime, accusations, court matters, and controversial public events:
 - a current-status and date check;
 - mandatory manual approval before episode creation.
 
-An official statement proves that the statement exists. It does not automatically prove every assertion inside it. Contradictions remain visible.
-
 Private-person accusations, minors, doxxing, unnecessary identifying information, and graphic material are rejected by default. The system does not turn real harm into a punchline merely because the topic is trending.
+
+## Verification Feedback Loop
+
+Evidence gaps are closed by an explicit bounded loop rather than by allowing the LLM to browse freely.
+
+1. `ClaimPlanner` extracts proposed claims and missing evidence roles from the normalized cluster. Kimi may suggest wording and query terms, but its output is advisory.
+2. `VerificationQueryBuilder` deterministically combines entities, dates, claim terms, and required source roles into queries.
+3. `DiscoveryCoordinator` re-invokes only eligible adapters: local SearXNG, configured feed/search adapters, official-source registry lookups, and direct HTTP extraction for returned concrete URLs.
+4. `ProvenanceResolver` classifies source role and independence from registry ownership, canonical domain, byline, content similarity, and syndication markers.
+5. `EvidenceGate` recomputes claim coverage, contradictions, and unknowns.
+6. The loop stops after two verification rounds or the configured per-cluster query budget of 12, whichever comes first. Remaining gaps become blockers; the system does not keep searching indefinitely.
+
+Final ownership is explicit:
+
+- `EvidenceGate` owns evidence eligibility;
+- `RiskEngine` owns rule-based legal/editorial flags and hard blocks; LLM risk critique is advisory;
+- `FormatRouter` maps candidate features to the configured series/format registry; LLM suggestions must validate against that registry;
+- `ScoreEngine` owns numeric values, confidence, penalties, and exact formula arithmetic;
+- `Selector` owns diversity and final packet roles only after all upstream gates pass.
 
 ## OpenCode Editorial Layer
 
@@ -323,6 +406,22 @@ trend_score.total =
 
 Each value is calculated per candidate rather than copied from lane defaults. Every field stores a reason, evidence references, and confidence.
 
+V1 uses these 0–5 rubrics. A value outside the rubric is a schema error.
+
+| Field | Deterministic rubric |
+| --- | --- |
+| `freshness` | `5` ≤24h; `4` >24–72h; `3` >72h–7d; `2` evergreen/current topic with a trigger ≤7d; `1` evergreen with a trigger >7–30d; `0` missing/outside policy. |
+| `audience_heat` | `5` ≥90th native-metric percentile plus a second source family, or ≥3 independent trend signals; `4` ≥75th percentile or 2 signals; `3` ≥50th percentile or 1 strong signal; `2` measured below median; `1` coverage without comparable metrics; `0` no heat evidence. Percentiles are computed per adapter/run and retained. |
+| `absurdity` | `5` the verified mechanism is inherently surprising and explainable in one sentence; `4` strong incongruity with little setup; `3` useful twist after setup; `2` angle depends heavily on writing; `1` weak novelty; `0` no honest absurdity. Kimi proposes, DeepSeek critiques, `ScoreEngine` stores both rationales. |
+| `evidence_strength` | `5` primary + 2 independent; `4` primary + 1 independent or 3 independent; `3` 2 independent; `2` single primary; `1` single secondary/discovery; `0` none. Enhanced-risk topics require the `5` pattern regardless of numeric total. |
+| `visual_punch` | Default news/facts profile: `5` ≥16 concrete states including proof and continuity; `4` ≥12; `3` ≥8; `2` ≥5; `1` <5; `0` no viable plan. Other formats define equivalent thresholds in their registered profile and must be fixture-tested. |
+| `repeatability` | `5` approved lane with ≥3 distinct current clusters; `4` approved lane with ≥2; `3` under-study/owner-test lane with ≥2; `2` one credible follow-up; `1` one-off; `0` no valid lane. |
+| `brand_nonintrusion` | `5` banner fits without crop or story change; `4` minor layout adjustment; `3` proof/layout repair required; `2` banner competes with the key evidence; `1` topic must be bent toward POKROV; `0` incompatible. |
+| `legal_safety` | `5` no material flags; `4` enhanced manual approval after evidence lock; `3` controllable medium risk but not top-three eligible; `2` high risk; `1` likely harmful/noncompliant; `0` prohibited. |
+| `production_cost` | `0` source-only/existing assets; `1` ≤4 generated assets; `2` 5–12; `3` 13–22; `4` >22 or required motion bakeoff; `5` multi-model fragile work without a bounded first smoke. |
+
+All metric inputs, state counts, and rubric reasons are retained in `score_rationale`. Editorial rubric fields are never accepted from one model pass without the configured critique pass.
+
 `trend_score.total` must still exactly match the formula. A separate candidate-only selection value controls ordering:
 
 ```text
@@ -333,22 +432,53 @@ selection_score =
   - configured_risk_penalties
 ```
 
+Confidence is deterministic:
+
+| Evidence shape | `evidence_confidence` |
+| --- | ---: |
+| primary + 2 independent, no material contradiction | `1.00` |
+| primary + 1 independent | `0.90` |
+| 2 independent | `0.80` |
+| single primary, normal-risk pool only | `0.65` |
+| below minimum or material contradiction | `0.00` |
+
+`coverage_confidence = min(1, qualified_evidence_source_count / target_source_count)`, where the target is `2` for normal topics and `3` for enhanced-risk topics. Sources sharing a `publisher_group_id` count once.
+
+Configured non-blocking penalties are:
+
+```text
+ENHANCED_MANUAL_APPROVAL       2
+MINOR_NON_MATERIAL_CONFLICT    2
+SOURCE_RIGHTS_REVIEW           1
+VISUAL_SMOKE_REQUIRED          1   # experiment role only
+```
+
+Material conflicts, high rights risk, missing evidence, and harmful subject treatment are hard blocks and are not converted into numeric penalties.
+
 Hard gates run before selection score. A blocked candidate cannot be rescued by high trendiness.
 
 Hard gates:
 
-1. source content quality;
-2. evidence coverage;
-3. legal/editorial safety;
-4. visual feasibility;
-5. valid series/format routing;
-6. known production cost band and first smoke.
+1. source content quality is `PASS`;
+2. a valid pool candidate has `evidence_confidence >= 0.65`; enhanced-risk candidates require `1.00`;
+3. a top-three packet requires `evidence_confidence >= 0.80`, `legal_safety >= 4`, and no material contradiction;
+4. a top-three packet requires `brand_nonintrusion >= 4`;
+5. safe packets require `visual_punch >= 3`; experiments require `visual_punch >= 4` plus a bounded first smoke;
+6. copyright/reuse risk is not `high`;
+7. series and format IDs exist in the current registry;
+8. production cost band and first smoke are known.
 
 `brand_nonintrusion` rewards topics where the POKROV banner can coexist without hijacking the story. It never turns ordinary content into VPN education.
 
 ## Research Run State
 
 Scout runs receive the same durable operating-loop discipline as production runs.
+
+State uses three orthogonal fields:
+
+- `phase`: current lowercase work phase;
+- `status`: lowercase lifecycle state;
+- `issues[]`: uppercase machine-readable issue codes.
 
 Phases:
 
@@ -361,8 +491,23 @@ clustering
 verifying
 enriching
 ranking
-ready | partial | failed | cancelled
+complete
 ```
+
+Statuses:
+
+```text
+queued | running | ready | partial | failed | cancelled
+```
+
+Terminal semantics are exact:
+
+- `ready`: exactly 20 valid event-cluster candidates, at least four source families, two eligible safe packets, and one eligible AI-video experiment;
+- `partial`: at least one valid candidate exists, but any `ready` cardinality or coverage condition is missing, including 20 candidates with fewer than two safe packets or no eligible experiment;
+- `failed`: zero valid candidates, a fatal integrity/schema error prevents trustworthy artifacts, or all required discovery groups are unavailable;
+- `cancelled`: the operator won the terminal-state transition before the final report was atomically committed.
+
+Partial runs expose every individually eligible packet with a `run_status: partial` warning. An individually eligible packet may still be reviewed and approved; the run itself must not be described as successful. Missing packet roles are left empty and receive explicit reasons. The selector never fabricates a role to satisfy cardinality.
 
 `runs/scout/<run-id>/run-state.json` includes:
 
@@ -377,6 +522,18 @@ ready | partial | failed | cancelled
 - next action;
 - cancellation state;
 - timestamps and safe telemetry.
+
+All JSON contracts contain `schema_version`. Run state also records `config_hash`, `adapter_set_hash`, and `parent_run_id` when a retry derives from an older run.
+
+### Cancellation, timeout, and restart semantics
+
+- queued cancellation removes the job from the queue and writes terminal `cancelled` state;
+- running cancellation signals one shared `AbortController`, stops scheduling new adapter or LLM work, aborts fetches, and terminates an OpenCode subprocess after a five-second grace period;
+- adapter timeout defaults to 30 seconds per request; OpenCode timeout defaults to 120 seconds per call; both are configurable and retained in the run config snapshot;
+- terminal transitions use compare-and-set semantics and are immutable. `ready` or `partial` wins only after the final report is atomically renamed into place; otherwise a concurrent cancellation wins;
+- partial artifacts already written remain inspectable but are never relabeled as completed output;
+- on Studio restart, orphaned `running` runs become `failed` with issue code `INTERRUPTED`;
+- `Retry` creates a new run with `parent_run_id`, may reuse immutable snapshot/content-hash artifacts, and never overwrites the old run.
 
 ## Artifact Layout
 
@@ -394,13 +551,37 @@ runs/scout/<run-id>/
     safe-01.json
     safe-02.json
     experiment-01.json
+  topic-briefs/
+    <packet-id>.v1.json
   shortlist.json
   scout-report.json
   scout-report.md
   decisions.jsonl
 ```
 
+Packet filenames are role slots, not promises. A `partial` run writes only roles that have eligible packets and records missing roles in `shortlist.json`; it does not create placeholder packet files.
+
 Snapshots are sanitized, bounded, and hashed. They must not contain secrets, raw provider headers, private customer data, subscription URLs, or private source material.
+
+An approved topic brief contains:
+
+```text
+schema_version
+brief_id
+packet_id
+packet_revision_hash
+evidence_revision_hash
+approval_ids[]
+generated_at
+locked_claims[]
+series_and_format
+editorial_angle
+visual_plan
+source_refs[]
+trend_score
+```
+
+The idempotency key is `packet_id + packet_revision_hash + evidence_revision_hash`. Repeating approval for the same revisions returns the same brief. Any packet or evidence revision invalidates prior approvals and produces a new brief revision; old revisions remain retained.
 
 ## Content Studio Research Inbox
 
@@ -442,15 +623,60 @@ The full 20-candidate table supports filtering by source family, topic family, s
 
 ### Owner actions
 
-- `Approve packet`: records the approval and writes a stable topic brief;
+- `Approve editorial`: records the normal owner approval against packet and evidence revision hashes;
+- `Approve enhanced-risk wording`: separate required action for politics, crime, accusation, court, and other `enhanced_review_required` packets;
 - `Reject`: requires a short reason and appends it to `decisions.jsonl` and run steering;
 - `Reserve`: retains a packet without advancing;
 - `Создать episode YAML`: separate explicit action available only after approval;
 - no packet action submits paid TTS, image, or video jobs.
 
+Approval states are:
+
+```text
+unreviewed
+editorial_approved
+enhanced_approved
+rejected
+stale
+```
+
+All packets require `editorial_approved`. Enhanced-risk packets also require `enhanced_approved`. The enhanced approval record includes owner identity, timestamp, packet revision hash, evidence revision hash, wording checksum, and `current_status_checked_at`. Topic-brief creation and episode YAML creation are blocked until every required approval is present and current.
+
+`Создать episode YAML` accepts only a current approved topic brief. It:
+
+1. invokes the approved fact-packet script route only after approval;
+2. writes `content/episode.<slug>.yaml` with `brief_ref`, locked `claim_map`, source refs, evidence/approval revision hashes, trend score, legal review, and visual plan;
+3. validates the resulting episode contract;
+4. submits no paid provider job;
+5. refuses to overwrite an existing output unless the owner supplies a new slug/version explicitly.
+
+## Studio And Extraction Security Boundary
+
+V1 Content Studio is a local operator surface, not a network service.
+
+- bind to `127.0.0.1` by default;
+- refuse non-loopback `--host` in V1; remote Studio access is out of scope;
+- accept mutating API requests only from the exact configured Origin and with an in-memory CSRF token injected into the page and sent through `X-POKROV-Studio-CSRF`;
+- cap JSON request bodies at 64 KiB and reject unsupported content types;
+- keep the command allowlist; no request field becomes a shell command or arbitrary argument vector;
+- serve files only from allowlisted real paths under `runs/scout/`, `content/`, and explicitly approved generated preview roots;
+- resolve `realpath` for both root and target and reject symlink, junction, or reparse-point escape;
+- allowlist served extensions and never derive a local file path from an untrusted source URL;
+- render source titles, excerpts, URLs, and errors through `textContent` or context-aware escaping, never raw `innerHTML`;
+- ship a restrictive CSP. Inline scripts/styles require per-response nonces rather than broad `unsafe-inline`.
+
+Extraction has a separate SSRF boundary:
+
+- accept only `http:` and `https:` for remote sources;
+- reject URL credentials, non-canonical hosts, loopback, private, link-local, multicast, and cloud-metadata address ranges after DNS resolution;
+- revalidate every redirect target and stop after five redirects;
+- enforce configured timeouts and the 1.5 MB response cap;
+- the only loopback HTTP exception is the exact configured SearXNG base URL, used solely by its adapter and never accepted from a request payload;
+- `file:` is allowed only for configured owner-local adapters whose real paths stay inside allowlisted reference roots.
+
 ## Error Handling
 
-Required statuses:
+Required issue codes (not lifecycle statuses):
 
 - `SOURCE_DEGRADED`: one source failed; other adapters continue;
 - `REJECTED_CONTENT`: homepage, anti-bot, mojibake, empty body, missing current date, or other content-quality failure;
@@ -458,11 +684,14 @@ Required statuses:
 - `BLOCKED_CONFLICT`: material unresolved contradiction;
 - `BLOCKED_LEGAL`: allegation, private-person, minor, graphic, copyright, or platform risk requires rejection or authority;
 - `BLOCKED_EDITORIAL`: OpenCode output remains invalid after bounded retry;
-- `PARTIAL`: fewer than 20 valid candidates or insufficient source-family coverage;
-- `FAILED`: no useful pool can be produced;
-- `CANCELLED`: owner cancelled the run.
+- `INSUFFICIENT_POOL`: fewer than 20 valid event clusters;
+- `INSUFFICIENT_COVERAGE`: fewer than four source families;
+- `MISSING_SAFE_ROLE`: fewer than two eligible safe packets;
+- `MISSING_EXPERIMENT_ROLE`: no eligible AI-video experiment;
+- `INTERRUPTED`: process/server exited while the run was `running`;
+- `INTEGRITY_FAILURE`: artifacts or schema cannot be trusted.
 
-A source failure does not fail the whole run unless the remaining coverage cannot satisfy the oracle. A partial run does not claim success.
+A source failure does not fail the whole run unless the remaining coverage cannot produce any valid candidate or a trustworthy report. Lifecycle `partial` and `failed` follow the exact terminal semantics in Research Run State. A partial run does not claim success.
 
 ## Testing Strategy
 
@@ -502,10 +731,16 @@ A source failure does not fail the whole run unless the remaining coverage canno
 Live network health is not part of deterministic unit tests. Add a separate read-only command such as:
 
 ```text
-npm run scout:health
+npm run scout:health -- --report-only
+npm run scout:health -- --require-minimum
 ```
 
-It reports current feed/search/extraction status, HTTP/content type when available, and a redacted error preview. It does not convert a historical PASS into current proof.
+Both modes report current feed/search/extraction status, `checked_at`, adapter/config identity, HTTP/content type when available, and a redacted error preview.
+
+- `--report-only` exits `0` when a schema-valid observation report is written, regardless of whether observed source state is `HEALTHY`, `DEGRADED`, or `BLOCKED`; internal command/schema failure exits `1`.
+- `--require-minimum` exits `0` for `HEALTHY`, `2` for `DEGRADED`, `3` for `BLOCKED`, and `1` for internal command failure.
+
+Deterministic implementation acceptance requires `--report-only` to produce a valid report. It must not turn a temporary source outage into a code PASS or FAIL. An actual live Scout run uses the observed source state to determine `ready`, `partial`, or `failed`.
 
 ### Required verification commands
 
@@ -513,7 +748,7 @@ It reports current feed/search/extraction status, HTTP/content type when availab
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run scout:doctor
-npm.cmd run scout:health
+npm.cmd run scout:health -- --report-only
 npm.cmd run scout -- --lane topics
 npm.cmd run secrets:scan
 git diff --check
@@ -521,12 +756,14 @@ git diff --check
 
 `evals/trend-scout.eval.yaml` should become a blocking code-backed contract rather than a non-blocking prose checklist.
 
+The CLI command is an internal/manual verification path into the same orchestrator. It is not a scheduler and does not weaken the owner-facing “button in Studio” workflow.
+
 ## Success Oracle
 
 The implementation is successful when an owner-triggered research run can prove all of the following:
 
 1. It returns 20 unique concrete-topic candidates when enough valid clusters exist.
-2. The pool covers at least four configured source families, or the run is honestly marked `PARTIAL`.
+2. The pool covers at least four configured source families, or the run is honestly marked lifecycle `partial`.
 3. No homepage, anti-bot page, empty extraction, or corrupted-Cyrillic item appears in the valid pool.
 4. Each candidate has a canonical URL, timestamps appropriate to its classification, series/format routing, evidence state, score rationale, risk state, and visual feasibility.
 5. The top three contain two safe production packets and one AI-video experiment.
@@ -548,16 +785,17 @@ Not enough:
 
 ## Documentation Impact
 
-Implementation will require scoped updates inside the local `.content-video-ad` workspace:
+Implementation will require scoped updates inside the local `.content-video-ad` workspace. The selector contract change is atomic: code cannot claim the new behavior until all starred owner documents agree and tests enforce it.
 
-- `AGENTS.md` research rules only if behavior or owner contract changes;
-- `config/scout.yaml` source adapters, health, query families, and selector rules;
-- `config/content-series.yaml` only for score/selection schema changes;
-- `docs/content-series-strategy.md` for current research and selection behavior;
-- `docs/pipeline.md` for the Scout-to-episode approval boundary;
+- **`AGENTS.md`** for `2 safe + 1 experiment`, manual-trigger boundary, and enhanced-risk gate;
+- **`config/scout.yaml`** for versioned source adapters, thresholds, health, query budgets, selector rules, and security policy;
+- **`config/content-series.yaml`** for `safe_production: 2`, `experimental_ai_video: 1`, `reserve_candidate: 0`, score/selection schema, and rubric profile references;
+- **`docs/content-series-strategy.md`** for current research and selection behavior;
+- **`docs/pipeline.md`** for the Scout-to-topic-brief-to-episode approval boundary;
+- **`prompts/agent-research.md`** for the current packet schema and exact shortlist contract;
 - `docs/video-agent-operating-loop.md` for Scout `run-state.json`;
 - `README.md` for Studio and commands;
-- `evals/trend-scout.eval.yaml` for blocking acceptance.
+- **`evals/trend-scout.eval.yaml`** for blocking acceptance and the removal of the old reserve requirement.
 
 Do not duplicate current behavior into root `AGENTS.md`. The local `.content-video-ad` directory is intentionally ignored by the platform repository and must not be force-added wholesale. This root design spec is the tracked review artifact.
 
