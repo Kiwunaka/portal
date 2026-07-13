@@ -398,7 +398,7 @@ limits:
 
 Before each capped stage, deterministic pre-ranking uses source eligibility, freshness, available heat signals, and evidence-role availability; ties use stable canonical candidate ID order. OpenCode calls batch up to ten candidates. Initial call plus one schema retry is the absolute per-call limit.
 
-When a cap is reached, the orchestrator stops adding work, writes `RUN_LIMIT_REACHED` with the exhausted counter, and completes the best trustworthy report possible. It is `partial` when at least one valid candidate exists but `ready` conditions are missing, and `failed` when no valid candidate or trustworthy report exists. Limits are snapshotted in run state, so queue load, cancellation, latency, and model usage have a finite upper bound.
+When an item/query/call cap is reached, the orchestrator stops adding work, writes `RUN_LIMIT_REACHED` with the exhausted counter, and completes the best trustworthy report possible. At the 900-second wall-clock deadline it signals the shared `AbortController` immediately, permits at most the same five-second subprocess grace period used by cancellation, then force-terminates remaining work. The result is `partial` when at least one valid candidate exists but `ready` conditions are missing, and `failed` when no valid candidate or trustworthy report exists. Limits are snapshotted in run state, so queue load, cancellation, latency, and model usage have a finite upper bound.
 
 ## Versioned Risk Policy
 
@@ -507,7 +507,16 @@ ai_video_experiment:
 
 `production_uncertainty=high` is not top-three eligible. Routine use of generated images is not an experiment by itself; the packet must name the uncertain mechanic and what the smoke proves.
 
-`Selector` assigns each candidate exactly one `recommended_role`. The shortlist contains three distinct candidate IDs and three distinct event-cluster IDs. A candidate selected as experiment cannot also fill a safe slot, and two safe slots cannot share a candidate or cluster. If any role is missing, lifecycle status is `partial` with the existing missing-role issue code.
+Eligibility and shortlist assignment are separate fields:
+
+```text
+pool_disposition = pool_only | safe_eligible | experiment_eligible
+shortlist_role = safe_01 | safe_02 | experiment_01 | null
+```
+
+A valid candidate that passes pool evidence/content gates but misses any top-three gate is `pool_only`; it remains useful in the 20-candidate table and receives no packet role. Low production uncertainty with no experiment axis may produce `safe_eligible`. Medium production uncertainty plus the complete experiment contract may produce `experiment_eligible`. The two eligibility values are mutually exclusive.
+
+`Selector` assigns `shortlist_role` only to eligible candidates. The shortlist contains three distinct candidate IDs and three distinct event-cluster IDs. An experiment-eligible candidate cannot fill a safe slot, and two safe slots cannot share a candidate or cluster. If any slot is missing, lifecycle status is `partial` with the existing missing-role issue code.
 
 ## Scoring And Selection
 
@@ -717,7 +726,7 @@ owner_paraphrase          optional
 excerpt_redacted = true
 ```
 
-Raw private material is never copied into `snapshots/`, reports, packet JSON, prompts, or publishing output. Persisted evidence uses hash/pointer-only plus an optional owner-authored paraphrase; it does not store a source excerpt. Studio may open the original on demand only through the allowlisted realpath boundary, labels it private, and never exposes it through a shareable report route. OpenCode receives no raw private material by default. Private local evidence cannot support a public factual claim without qualifying public confirmation; it may support private production mechanics such as an owner-provided motion reference.
+Raw private material is never copied into `snapshots/`, reports, packet JSON, prompts, or publishing output. Persisted evidence uses hash/pointer-only plus an optional owner-authored paraphrase; it does not store a source excerpt. Studio may invoke a CSRF-protected `open private local reference` action that resolves the allowlisted ref ID/realpath and opens the file in the host OS viewer; the HTTP response never contains file bytes or a reusable file URL. OpenCode receives no raw private material by default. Private local evidence cannot support a public factual claim without qualifying public confirmation; it may support private production mechanics such as an owner-provided motion reference.
 
 An approved topic brief contains:
 
@@ -878,7 +887,7 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - calculate the exact canonical trend score;
 - calculate selection confidence and penalties;
 - enforce diversity constraints;
-- enforce three distinct candidate/cluster IDs, mutually exclusive safe/experiment roles, experiment axes, and bounded smoke-plan schema;
+- enforce `pool_only` vs mutually exclusive safe/experiment eligibility, nullable shortlist role, three distinct shortlisted candidate/cluster IDs, experiment axes, and bounded smoke-plan schema;
 - parse mocked OpenCode JSON and bounded retry behavior;
 - enforce hash/pointer-only persistence for `private_owner_local` evidence.
 
@@ -895,7 +904,7 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - packet/evidence/wording changes stale approvals and create a new brief revision;
 - identical approval revisions return the same brief ID/file;
 - episode creation rejects stale enhanced approval and refuses output overwrite;
-- every run-wide item/page/cluster/query/OpenCode/wall-clock cap stops additional work and records `RUN_LIMIT_REACHED`;
+- every run-wide item/page/cluster/query/OpenCode cap stops additional work; wall-clock expiry aborts in-flight work with at most five seconds of subprocess grace; all record `RUN_LIMIT_REACHED`;
 - live Scout CLI maps ready/partial/failed/cancelled/internal outcomes to `0/2/3/130/1`.
 
 ### Studio tests
@@ -920,6 +929,7 @@ A source failure does not fail the whole run unless the remaining coverage canno
 - enforce editorial/enhanced approval transitions, 12-hour staleness, wording/evidence revision binding, and derived eligibility;
 - prove topic-brief revision retention/idempotency and the no-overwrite episode YAML rule;
 - prove raw private owner-local material never appears in snapshots, JSON reports, prompts, or publishing output.
+- prove the private-local open action requires Origin/CSRF/allowlisted realpath, opens only through the host OS viewer, and returns no file bytes or reusable URL.
 
 ### Live health checks
 
