@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-07-12
+Last updated: 2026-07-14
 
 ## Purpose
 
@@ -151,6 +151,17 @@ owner gates.
 & $py -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py -q
 git diff --check
 ~~~
+
+## Feature Story Audit Artifacts
+
+The [Repository Map](repository-map.md#canonical-audit-artifacts) links every
+canonical feature/story ledger and human summary. Start with the
+[canonical tracker](pokrov-canonical-feature-tracker.md), then use the
+[owner-gated scenarios](pokrov-owner-gated-scenarios.md),
+[open questions](pokrov-open-questions.md), and the retained completion audit
+([COMPLETION-AUDIT.md](work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md),
+[COMPLETION-AUDIT.csv](work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv))
+for the current evidence class and remaining owner gates.
 
 ## Documentation Impact
 

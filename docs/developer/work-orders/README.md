@@ -1,6 +1,6 @@
 # POKROV Work Orders
 
-Last updated: 2026-07-11
+Last updated: 2026-07-14
 
 This directory stores durable execution state and retained execution evidence. It is not a product, architecture, operations, design, release, or active-client source of truth.
 
@@ -45,6 +45,12 @@ Exactly one active `INDEX.md` exists per wave. It routes the queue, dependencies
 Completed evidence is not rewritten into product canon. If a completed WO contains a decision that should remain current, reconcile that decision through the canonical owner and link back to the WO as provenance.
 
 Completed or superseded WOs are immutable. Use a dated addendum for a factual correction that preserves the original record. Use a superseding WO for new scope, changed acceptance, or a new decision.
+
+## Retained Audit Work Order
+
+The completed repository feature/story audit remains available through
+[2026-06-27--repo-feature-story-audit/INDEX.md](2026-06-27--repo-feature-story-audit/INDEX.md),
+with its current output summary and completion evidence retained in that wave.
 
 ## Continuity Contract
 

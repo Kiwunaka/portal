@@ -1,6 +1,6 @@
 # POKROV Source Symbol Coverage Audit
 
-Last updated: 2026-07-08
+Last updated: 2026-07-14
 
 ## Purpose
 
@@ -21,24 +21,24 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3289 |
-| Story dependency source file | 760 |
-| Entrypoint mapped | 463 |
-| Direct token test ref | 263 |
+| Story source file | 3316 |
+| Story dependency source file | 810 |
+| Entrypoint mapped | 464 |
+| Direct token test ref | 266 |
 | Module test ref | 78 |
-| Private inventory only | 14 |
+| Private inventory only | 23 |
 | Client platform host manual gate | 77 |
-| Entrypoint route test ref | 21 |
+| Entrypoint route test ref | 22 |
 | Operator tooling inventory | 5 |
 | Next route boundary inventory | 7 |
 | Client desktop tray manual gate | 3 |
 | QA tooling inventory | 1 |
 | Script CLI deprecated | 2 |
 | Telegram WebApp bootstrap inventory | 1 |
-| Entrypoint story source ref | 10 |
+| Entrypoint story source ref | 11 |
 | Client package public API review | 3 |
 | Entrypoint needs mapping review | 0 |
-| Public symbol review | 2 |
+| Public symbol review | 12 |
 
 ### Manual Gate Reference Counts
 
@@ -72,26 +72,27 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 
 ## Current Open Review Buckets
 
-- `script_cli_manifest_review`: 0.
-- `public_symbol_review`: 2.
+- `script_cli_manifest_review`: 1.
+- `script_cli_active_without_workflow_mapping`: 1.
+- `public_symbol_review`: 12.
 - `client_package_public_api_review`: 3.
 - Manual-gate buckets remain evidence honest: `client_platform_host_manual_gate` 77, `client_desktop_tray_manual_gate` 3, and `telegram_webapp_bootstrap_inventory` 1. Platform/tray manual-tier rows carry `manual_gate_refs`; Telegram bootstrap inventory is tracked through browser/Telegram WebApp integration evidence rather than the platform owner-gate matrix.
 - `entrypoint_needs_mapping_review`: 0.
-- `private_inventory_only` public/entrypoint leakage: 0; current private inventory-only rows: 14.
+- `private_inventory_only` public/entrypoint leakage: 0; current private inventory-only rows: 23.
 
 ## Latest Fixes
 
 - Added route-path test fallback for FastAPI route symbols so callback/subscription/email-relay routes with direct tests are not misreported as unmapped.
 - Added `tests/test_email_relay_app.py` for `/healthz` and fail-closed `/email/deliver` secret behavior.
 - Split non-active script CLIs into explicit manifest-status tiers instead of mixing them with externally reachable entrypoint gaps.
-- Classified 20 script CLIs as active workflows and 2 legacy FreeKassa CLIs as deprecated; `script_cli_manifest_review` is now 0.
+- An earlier pass classified 20 script CLIs as active workflows and 2 legacy FreeKassa CLIs as deprecated; the current generated review/gap counts are reported above.
 - Added `story_dependency_source_file` for Python and TypeScript/TSX files imported from story-mapped source files, and `module_test_ref` so public helpers in modules imported or parent-types exercised by tests are separated from truly untriaged public symbols.
 - Added `client_platform_host_manual_gate` so native Android/iOS/macOS/Windows host symbols are visible as platform/manual verification scope instead of ordinary public helper review.
 - Fixed TypeScript/Dart visibility and import-graph precision: module-local TS helpers and methods on private Dart classes are no longer treated as public API; multiline TS re-exports and symbol-free barrel modules now participate in story dependency mapping; generator self-tests are excluded from product coverage signals.
 - Removed unused stale frontend helpers `webapp/src/lib/pricing.ts` and `marketing/src/components/ui/fade-up.tsx`.
-- Added specialized tiers for Next route boundaries, Telegram WebApp bootstrap, QA/operator tooling, Windows tray callbacks, and client package public API review; `public_symbol_review` is now 0.
+- Added specialized tiers for Next route boundaries, Telegram WebApp bootstrap, QA/operator tooling, Windows tray callbacks, and client package public API review; the current `public_symbol_review` count is reported above.
 - Added direct FreeKassa checkout-ticket helper coverage in `tests/test_freekassa_staging_smoke.py`.
-- Added direct POKROV-app Flutter contract coverage for app-shell design-system and platform bootstrap public APIs; `client_package_public_api_review` is now 0.
+- Added direct POKROV-app Flutter contract coverage for app-shell design-system and platform bootstrap public APIs; the current `client_package_public_api_review` count is reported above.
 - Reclassified `@app.middleware` as `fastapi_middleware`, not as a FastAPI route handler.
 - Added a generated-artifact guard that fails if `private_inventory_only` ever contains a public symbol or entrypoint hint.
 - Added `pokrov-private-helper-coverage.csv` and `.md` so the current private-inventory rows have per-symbol expected behavior, risk, proof status, and Q-001 next action.

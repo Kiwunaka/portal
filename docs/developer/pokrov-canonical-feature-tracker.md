@@ -1,6 +1,6 @@
 # POKROV Canonical Feature And User Story Tracker
 
-Last updated: 2026-07-05
+Last updated: 2026-07-14
 
 ## Purpose
 
@@ -29,13 +29,13 @@ Interpretation rule: in this tracker, `function` means a product capability or e
 
 - `telegram-bots`: `docs\developer\pokrov-telegram-bot-user-stories.xlsx` (57 story rows imported)
 - `webapp`: `docs\developer\webapp-feature-user-stories.xlsx` (58 story rows imported)
-- `marketing`: `outputs\019f05ac-5b2e-7053-abc2-f4ac146e2ff4\marketing_landing_user_story_tracker.xlsx` (55 story rows imported)
-- `client-app`: `C:\Users\kiwun\Documents\ai\POKROV-app\outputs\019f05ac-cfd2-7423-96b6-a7fb48dc87a9\pokrov_flutter_feature_user_story_tracker.xlsx` (67 story rows imported)
+- `marketing`: `docs/audit-artifacts/source-trackers/2026-06-27/marketing-landing-user-story-tracker.xlsx` (55 story rows imported)
+- `client-app`: `docs/audit-artifacts/source-trackers/2026-06-27/pokrov-client-user-story-tracker.xlsx` (67 story rows imported)
 - generated backend API rows use `source_tracker = generated from portal_bot/api.py route decorators` (165 route rows imported; all 165 now have direct test-reference mappings)
 - generated script/operator rows use `source_tracker = generated from scripts/manifest.yaml` (123 active script/operator workflow rows imported; all 123 now have direct test-reference mappings; 2 legacy FreeKassa CLIs are explicitly deprecated)
-- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (4827 low-level source symbols inventoried; 0 parser errors)
-- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (4827 rows; 0 generic public-symbol review rows; 0 client-package public-API review rows; 0 entrypoint mapping gaps; 0 script-manifest review rows; 80 platform/tray manual-tier rows carry `manual_gate_refs`)
-- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 decision matrix (17 current private helper rows; 0 high risk, 2 medium risk, 15 low risk; owner accepted story/symbol tiers for this audit)
+- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (5103 low-level source symbols inventoried; 0 parser errors)
+- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (5103 rows; 12 generic public-symbol review rows; 3 client-package public-API review rows; 0 entrypoint mapping gaps; 1 script-manifest review row; 1 active script workflow-mapping gap; 80 platform/tray manual-tier rows carry `manual_gate_refs`)
+- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 decision matrix (23 current private helper rows; 0 high risk, 2 medium risk, 21 low risk; owner accepted story/symbol tiers for this audit)
 - `generated-story-test-evidence-audit`: canonical tracker evidence, retest proof, and field-completeness classifier (525 rows audited; 524 direct file refs, 524 `direct_test_ref_passed` rows, 0 imported-pass rows without direct file refs, 1 manual owner gate / `manual_owner_gate_open`, 0 stale refs; 0 missing story contract fields; every row has at least one resolvable concrete `code_evidence` ref, with no wildcard source evidence; 0 unresolved `source_tracker` refs)
 - `generated-defect-fix-retest-ledger`: canonical rows with documented defects or discrepancies (18 rows; 16 `closed_retested`, 2 `closed_retested_no_product_change`, 0 weak/open closure rows; all 18 have `direct_test_ref_passed`)
 - `generated-entrypoint-story-coverage`: source entrypoint to route/story/script evidence bridge (514 entrypoints audited; 514 direct evidence mappings; 0 review gaps)
@@ -93,10 +93,10 @@ No backend route scenario gaps remain in the current coverage map. If a new rout
 
 | Metric | Count |
 | --- | ---: |
-| Total source symbols | 4827 |
-| Root repo symbols | 3586 |
-| POKROV-app symbols | 1241 |
-| Symbols with token-level test references | 1580 |
+| Total source symbols | 5103 |
+| Root repo symbols | 3780 |
+| POKROV-app symbols | 1323 |
+| Symbols with token-level test references | 1705 |
 | Parser errors | 0 |
 
 This companion inventory is intentionally `inventory_only`: token-level test references are a triage signal, not a claim that every private helper has a dedicated behavior test.
@@ -105,26 +105,26 @@ This companion inventory is intentionally `inventory_only`: token-level test ref
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3201 |
-| Story dependency source file | 707 |
+| Story source file | 3316 |
+| Story dependency source file | 810 |
 | Entrypoint mapped | 464 |
-| Direct token test ref | 249 |
-| Module test ref | 77 |
-| Private inventory only | 17 |
+| Direct token test ref | 266 |
+| Module test ref | 78 |
+| Private inventory only | 23 |
 | Client platform host manual gate | 77 |
-| Entrypoint route test ref | 9 |
+| Entrypoint route test ref | 22 |
 | Operator tooling inventory | 5 |
 | Next route boundary inventory | 7 |
 | Client desktop tray manual gate | 3 |
 | QA tooling inventory | 1 |
 | Script CLI deprecated | 2 |
 | Telegram WebApp bootstrap inventory | 1 |
-| Entrypoint story source ref | 7 |
-| Client package public API review | 0 |
+| Entrypoint story source ref | 11 |
+| Client package public API review | 3 |
 | Entrypoint needs mapping review | 0 |
-| Public symbol review | 0 |
+| Public symbol review | 12 |
 
-Every low-level symbol now has a status tier. `Story dependency source file` means a local Python/TypeScript/TSX dependency, including symbol-free barrel/re-export modules, is reachable from a source file referenced by canonical story evidence. `Module test ref` means the source module/import path or parent type is referenced by automated tests, but the individual symbol name is not asserted directly. `Client platform host manual gate` and `client desktop tray manual gate` mean platform/runtime host symbols require platform/unit/simulator/device or explicit manual owner evidence before stronger runtime claims. `Private inventory only` is guarded so it contains only private non-entrypoint symbols. Generic `public_symbol_review = 0`, `client_package_public_api_review = 0`, `script CLI manifest review = 0`, and `entrypoint needs mapping review = 0` mean every detected script/route/handler/source symbol has an explicit status or evidence mapping.
+Every low-level symbol now has a status tier. `Story dependency source file` means a local Python/TypeScript/TSX dependency, including symbol-free barrel/re-export modules, is reachable from a source file referenced by canonical story evidence. `Module test ref` means the source module/import path or parent type is referenced by automated tests, but the individual symbol name is not asserted directly. `Client platform host manual gate` and `client desktop tray manual gate` mean platform/runtime host symbols require platform/unit/simulator/device or explicit manual owner evidence before stronger runtime claims. `Private inventory only` is guarded so it contains only private non-entrypoint symbols. Current open review/gap buckets are `public_symbol_review = 12`, `client_package_public_api_review = 3`, `script_cli_manifest_review = 1`, and `script_cli_active_without_workflow_mapping = 1`; `entrypoint_needs_mapping_review = 0`.
 
 Client platform/tray manual-tier symbol rows also carry `manual_gate_refs`: Android host symbols point to `OWNER-GATE-ANDROID-PHYSICAL-INSTALL-CONNECT`, Windows host/tray symbols point to `OWNER-GATE-WINDOWS-INSTALL-CONNECT`, and iOS/macOS host symbols are inventoried as `NOT_CURRENT_PUBLIC_BETA_TARGET` because they are not part of the current outside-store public beta target.
 
@@ -132,11 +132,11 @@ Client platform/tray manual-tier symbol rows also carry `manual_gate_refs`: Andr
 
 | Metric | Count |
 | --- | ---: |
-| Private helper rows | 17 |
-| Rows needing Q-001 owner decision | 17 |
+| Private helper rows | 23 |
+| Rows needing Q-001 owner decision | 23 |
 | High risk rows | 0 |
 | Medium risk rows | 2 |
-| Low risk rows | 15 |
+| Low risk rows | 21 |
 
 `pokrov-private-helper-coverage.csv` expands the `private_inventory_only`
 tier into per-symbol expected behavior, risk, proof status, and next action.
@@ -390,7 +390,7 @@ Machine-readable ledger: [pokrov-open-questions.csv](C:/Users/kiwun/Documents/ai
 1. Keep backend API coverage at `165/165` by adding every new route to the canonical CSV and mapping it to a direct scenario test before promotion.
 2. Keep `scripts/manifest.yaml` authoritative: every new `scripts/*.py` CLI `main()` must be active, deprecated, archive-only, or denylisted, and active scripts must keep direct workflow tests before promotion.
 3. Keep story evidence audit at `0` imported-pass rows by mapping every new non-manual story row to direct automated tests before promotion.
-4. Keep Q-001 policy recorded: current `private_inventory_only` rows are `17`, and the owner has accepted story/symbol tiers unless a future stricter one-test-per-private-helper policy is explicitly requested.
+4. Keep Q-001 policy recorded: current `private_inventory_only` rows are `23`, and the owner has accepted story/symbol tiers unless a future stricter one-test-per-private-helper policy is explicitly requested.
 5. Continue the same story-test-fix-retest loop for the 8 owner-gated client/runtime scenarios in `pokrov-owner-gated-scenarios.csv`.
 6. Ask the owner to choose the next Q-004 release gate before attempting live/device/provider/RU checks.
 7. For any failed or mismatched story, add a defect row in the relevant source tracker or this canonical CSV, fix the code/copy/UX, then rerun the matching tests.

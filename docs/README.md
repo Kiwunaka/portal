@@ -39,7 +39,7 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | active client readiness | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md` | `PENDING_CLIENT_REVIEW` |
 | `ACTIVE_EXECUTION` | work-order registry | `docs/developer/work-orders/README.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | orchestration state | `docs/developer/orchestration/flow-state.md` | `RECONCILED` |
-| `EVIDENCE` | feature and test ledgers | `docs/developer/pokrov-*` | `PENDING_COLLISION_REVIEW` |
+| `EVIDENCE` | feature and test ledgers | `docs/developer/pokrov-canonical-feature-tracker.md`, `docs/developer/pokrov-owner-gated-scenarios.md`, `docs/developer/pokrov-open-questions.md`, `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv`, and `docs/developer/pokrov-*` sidecars | `PENDING_COLLISION_REVIEW` |
 | `EVIDENCE` | completed work orders | `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | retained release work | `docs/developer/work-orders/2026-04-open-beta-v4/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | retired client lanes | `docs/archive/client-lanes/` | `REVIEWED_NO_CHANGE` |

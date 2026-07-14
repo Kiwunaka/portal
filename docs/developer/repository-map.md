@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-07-12
+Last updated: 2026-07-14
 
 ## Purpose
 
@@ -54,6 +54,22 @@ their dedicated migration and promotion gates close.
 | Developer workflow and cleanup | [Developer Guide](developer-guide.md) |
 | Task-specific context | [Agent Context Map](agent-context-map.md) |
 | Active client contracts | C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md |
+
+## Canonical Audit Artifacts
+
+Use these tracked ledgers and summaries for the repository feature/story audit:
+
+- Canonical story tracker: [pokrov-canonical-feature-tracker.md](pokrov-canonical-feature-tracker.md) and [pokrov-canonical-feature-tracker.csv](pokrov-canonical-feature-tracker.csv).
+- Entrypoints: [pokrov-entrypoint-inventory.csv](pokrov-entrypoint-inventory.csv), [pokrov-entrypoint-story-coverage.csv](pokrov-entrypoint-story-coverage.csv), and [pokrov-entrypoint-story-coverage.md](pokrov-entrypoint-story-coverage.md).
+- Source inventory: [pokrov-code-function-inventory.csv](pokrov-code-function-inventory.csv) and [pokrov-code-function-inventory.md](pokrov-code-function-inventory.md).
+- Symbol coverage: [pokrov-symbol-coverage-audit.csv](pokrov-symbol-coverage-audit.csv) and [pokrov-symbol-coverage-audit.md](pokrov-symbol-coverage-audit.md).
+- Private-helper coverage and policy: [pokrov-private-helper-coverage.csv](pokrov-private-helper-coverage.csv), [pokrov-private-helper-coverage.md](pokrov-private-helper-coverage.md), and [pokrov-coverage-policy-decision-guide.md](pokrov-coverage-policy-decision-guide.md).
+- Story/test evidence: [pokrov-story-test-evidence-audit.csv](pokrov-story-test-evidence-audit.csv) and [pokrov-story-test-evidence-audit.md](pokrov-story-test-evidence-audit.md).
+- Defect/fix/retest evidence: [pokrov-defect-fix-retest-ledger.csv](pokrov-defect-fix-retest-ledger.csv) and [pokrov-defect-fix-retest-ledger.md](pokrov-defect-fix-retest-ledger.md).
+- Route and workflow coverage: [pokrov-backend-route-coverage.csv](pokrov-backend-route-coverage.csv) and [pokrov-script-workflow-coverage.csv](pokrov-script-workflow-coverage.csv).
+- Owner gates: [pokrov-owner-gated-scenarios.md](pokrov-owner-gated-scenarios.md), [pokrov-owner-gated-execution-guide.md](pokrov-owner-gated-execution-guide.md), [pokrov-owner-gated-scenarios.csv](pokrov-owner-gated-scenarios.csv), [pokrov-owner-gated-results.csv](pokrov-owner-gated-results.csv), and [pokrov-owner-answer-sheet.md](pokrov-owner-answer-sheet.md).
+- Open questions: [pokrov-open-questions.md](pokrov-open-questions.md) and [pokrov-open-questions.csv](pokrov-open-questions.csv).
+- Completion evidence: [docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md](work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md) and [docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv](work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv).
 
 ## Script Categories
 
