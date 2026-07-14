@@ -1,9 +1,19 @@
 # POKROV Codex Context And Active Documentation Renewal
 
 Date: 2026-07-10
-Status: ACTIVE_EXECUTION design, approved direction, pending owner review
+Status: IMPLEMENTED_HISTORICAL
 Scope: platform docs, POKROV-app docs, Codex-only instructions, orchestration,
 historical retrieval policy, and safe local worktree cleanup
+
+## Current Owners
+
+Current instructions and documentation authority now live in root `AGENTS.md`,
+`docs/README.md`, `docs/developer/agent-context-map.md`, and the active client
+owner at `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`.
+
+## Historical Snapshot Boundary — 2026-07-10
+
+The client-without-AGENTS, expected-canon, worktree, baseline, and promotion sections are 2026-07-10 historical snapshots. They preserve the approved rationale and evidence; they are not current instructions.
 
 ## Problem
 

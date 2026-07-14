@@ -105,8 +105,8 @@ Stage only the source-workbook evidence, tracker/ledger outputs, navigation, and
 **Files:**
 - Modify: `docs/README.md`
 - Modify: current canonical/operation documents named by a `PENDING_*` registry row only when evidence proves an actual stale statement
-- Move or modify: `docs/superpowers/plans/2026-07-10-pokrov-codex-docs-renewal-roadmap.md`
-- Move or modify: `docs/superpowers/specs/2026-07-10-agent-context-refactor-design.md`
+- Move: `docs/superpowers/plans/2026-07-10-pokrov-codex-docs-renewal-roadmap.md` -> `docs/archive/superpowers-plans/2026-07-10-pokrov-codex-docs-renewal-roadmap.md`
+- Move: `docs/superpowers/specs/2026-07-10-agent-context-refactor-design.md` -> `docs/archive/superpowers-plans/2026-07-10-agent-context-refactor-design.md`
 - Modify link owners that point to either moved file
 - Test: `tests/test_agent_docs_contract.py`
 - Test: `tests/test_agent_context_packet_audit.py`

@@ -1,14 +1,17 @@
 # Archived Superpowers Plans
 
-Last updated: 2026-07-03
+Last updated: 2026-07-14
 
-These files were execution plans for earlier client/product directions. They
-are not current work queues.
+These completed plans and designs are retained for rationale, provenance, and
+rollback context. They are historical records, not current work queues or
+instructions.
 
 Current client truth lives in `C:/Users/kiwun/Documents/ai/POKROV-app/docs/`.
 Use archived plans only for historical context.
 
 Archived plans:
 
-- [2026-06-02-karing-client-migration.md](C:/Users/kiwun/Documents/ai/VPN/docs/archive/superpowers-plans/2026-06-02-karing-client-migration.md)
-- [2026-06-03-pokrov-full-client-build.md](C:/Users/kiwun/Documents/ai/VPN/docs/archive/superpowers-plans/2026-06-03-pokrov-full-client-build.md)
+- [2026-06-02-karing-client-migration.md](2026-06-02-karing-client-migration.md)
+- [2026-06-03-pokrov-full-client-build.md](2026-06-03-pokrov-full-client-build.md)
+- [2026-07-10-agent-context-refactor-design.md](2026-07-10-agent-context-refactor-design.md)
+- [2026-07-10-pokrov-codex-docs-renewal-roadmap.md](2026-07-10-pokrov-codex-docs-renewal-roadmap.md)

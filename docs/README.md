@@ -10,7 +10,7 @@ This registry classifies important platform documents and the active client poin
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |
 | `OPERATOR_PLAYBOOK` | operator consults | `docs/developer/agent-playbooks/external-model-consults.md` | `RECONCILED` |
-| `EXPERIMENTAL` | OpenAI helper | `docs/developer/openai-operator-assistants.md` | `PENDING_WAVE_2` |
+| `EXPERIMENTAL` | OpenAI helper | `docs/developer/openai-operator-assistants.md` | `RECONCILED` |
 | `CANONICAL` | repository policy | `AGENTS.md` | `RECONCILED` |
 | `CANONICAL` | documentation ownership | `docs/README.md` | `RECONCILED` |
 | `CANONICAL` | task routing | `docs/developer/agent-context-map.md` | `RECONCILED` |
@@ -24,7 +24,7 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | API contracts | `docs/architecture/api-contracts.md` | `RECONCILED` |
 | `CANONICAL` | payment state | `docs/architecture/payment-state-machine.md` | `RECONCILED` |
 | `CANONICAL` | support and feedback | `docs/architecture/support-feedback-flow.md` | `PENDING_WAVE_3` |
-| `CANONICAL` | client delivery | `docs/architecture/client-downloads-flow.md` | `PENDING_COLLISION_REVIEW` |
+| `CANONICAL` | client delivery | `docs/architecture/client-downloads-flow.md` | `RECONCILED` |
 | `CANONICAL` | deployment and access | `docs/operations/deployment-and-access.md` | `RECONCILED` |
 | `CANONICAL` | monitoring and origins | `docs/operations/monitoring-and-visibility.md` | `RECONCILED` |
 | `CANONICAL` | client delivery operations | `docs/operations/client-delivery-update-content-plan.md` | `RECONCILED` |
@@ -34,18 +34,18 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | developer workflow | `docs/developer/developer-guide.md` | `RECONCILED` |
 | `CANONICAL` | repository structure | `docs/developer/repository-map.md` | `RECONCILED` |
 | `CANONICAL` | Russian user guidance | `docs/user/portal-vpn-user-guide-ru.md` | `RECONCILED` |
-| `CANONICAL` | compatibility guidance | `docs/user/compatibility-clients-guide-ru.md` | `PENDING_WAVE_3` |
-| `CANONICAL` | active client docs | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md` | `PENDING_CLIENT_REVIEW` |
-| `CANONICAL` | active client readiness | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md` | `PENDING_CLIENT_REVIEW` |
+| `CANONICAL` | compatibility guidance | `docs/user/compatibility-clients-guide-ru.md` | `RECONCILED` |
+| `CANONICAL` | active client docs | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md` | `RECONCILED` |
+| `CANONICAL` | active client readiness | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | work-order registry | `docs/developer/work-orders/README.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | orchestration state | `docs/developer/orchestration/flow-state.md` | `RECONCILED` |
-| `EVIDENCE` | feature and test ledgers | `docs/developer/pokrov-canonical-feature-tracker.md`, `docs/developer/pokrov-owner-gated-scenarios.md`, `docs/developer/pokrov-open-questions.md`, `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv`, and `docs/developer/pokrov-*` sidecars | `PENDING_COLLISION_REVIEW` |
+| `EVIDENCE` | feature and test ledgers | `docs/developer/pokrov-canonical-feature-tracker.md`, `docs/developer/pokrov-owner-gated-scenarios.md`, `docs/developer/pokrov-open-questions.md`, `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.csv`, and `docs/developer/pokrov-*` sidecars | `RECONCILED` |
 | `EVIDENCE` | completed work orders | `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | retained release work | `docs/developer/work-orders/2026-04-open-beta-v4/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | retired client lanes | `docs/archive/client-lanes/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | completed plans | `docs/archive/plans/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | completed design plans | `docs/archive/design-plans/` | `REVIEWED_NO_CHANGE` |
-| `HISTORICAL_REFERENCE` | completed implementation specs | `docs/archive/superpowers-plans/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | completed implementation specs | `docs/archive/superpowers-plans/` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | older specs | `docs/superpowers/specs/` | `PENDING_COLLISION_REVIEW` |
 | `HISTORICAL_REFERENCE` | visual reference atlas | `reference-atlas/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | Atlas Glass design research | `docs/design/atlas-glass/` | `REVIEWED_NO_CHANGE` |
@@ -64,12 +64,12 @@ This registry classifies important platform documents and the active client poin
 | `EVIDENCE` | release-link handoff record | `docs/operations/release-links-and-final-handoff.md` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | plans and decisions closure audit | `docs/operations/2026-06-06-plans-decisions-closure-audit.md` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | email delivery webhook handoff | `docs/operations/email-delivery-webhook-handoff.md` | `REVIEWED_NO_CHANGE` |
-| `OPERATOR_PLAYBOOK` | rollback | `docs/operations/rollback-runbook.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | rollback | `docs/operations/rollback-runbook.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | payment reconciliation | `docs/operations/payment-reconciliation.md` | `PENDING_WAVE_3` |
 | `OPERATOR_PLAYBOOK` | provider payments | `docs/operations/lavatop-payment-operations.md` | `PENDING_WAVE_3` |
-| `OPERATOR_PLAYBOOK` | Android release audit | `docs/operations/android-release-audit.md` | `PENDING_COLLISION_REVIEW` |
-| `OPERATOR_PLAYBOOK` | runtime download smoke | `docs/operations/runtime-app-download-smoke.md` | `PENDING_COLLISION_REVIEW` |
-| `OPERATOR_PLAYBOOK` | RU-origin probe | `docs/operations/ru-origin-probe.md` | `PENDING_COLLISION_REVIEW` |
+| `OPERATOR_PLAYBOOK` | Android release audit | `docs/operations/android-release-audit.md` | `RECONCILED` |
+| `OPERATOR_PLAYBOOK` | runtime download smoke | `docs/operations/runtime-app-download-smoke.md` | `RECONCILED` |
+| `OPERATOR_PLAYBOOK` | RU-origin probe | `docs/operations/ru-origin-probe.md` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | growth and competitor research | `docs/product/pokrov-growth-and-competitor-notes.md` | `REVIEWED_NO_CHANGE` |
 | `EXPERIMENTAL` | context-cost harnesses | `docs/developer/orchestration/context-cost-harnesses.md` | `RECONCILED` |
 
@@ -85,6 +85,8 @@ This registry classifies important platform documents and the active client poin
 ## Review States
 
 `RECONCILED` means the document was reconciled in the current context-containment slice. `REVIEWED_NO_CHANGE` means the retained collection was intentionally left unchanged. Every `PENDING_*` state records an unperformed or scoped future review, not a defect and not approval. `UNRESOLVED_OWNER_DECISION` is reserved for a real owner choice that cannot be inferred safely.
+
+`PENDING_WAVE_3` remains only for unmerged market-ready slices and canonical/operations follow-ups. `PENDING_COLLISION_REVIEW` on `docs/superpowers/specs/` remains for concurrent design/research.
 
 ## Boundaries
 

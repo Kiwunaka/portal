@@ -1,6 +1,6 @@
 # POKROV Codex And Documentation Renewal Roadmap
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Archived execution record — historical/non-executable.** This roadmap preserves the original task sequence and checkboxes as evidence. Do not execute it as a current plan; use the current owners and task router instead.
 
 **Goal:** Deliver the approved Codex instruction and active-documentation renewal across the platform repo, `POKROV-app`, and local worktree estate without overwriting concurrent work or promoting historical evidence into current canon.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Markdown, Python 3 standard library, pytest, Git worktrees, PowerShell Core, existing repository validation scripts, Flutter/Dart tooling already present in `POKROV-app`.
 
-## Execution Status — 2026-07-12
+## Retained Execution Snapshot — 2026-07-12 (superseded)
 
 - Platform containment is complete: root `AGENTS.md`, the task router, classified registry, guards, and official Codex alignment are committed on `codex/agent-context-refactor`.
 - Orchestration Slice A and the optional external-model playbook are complete. The playbook is opt-in, isolated from default routes, and introduces no dependency or service. Remaining orchestration Tasks 5 and 6 must run before platform-canon Task 2 because both plans modify `tests/test_agent_docs_contract.py`.
@@ -18,6 +18,15 @@
 - Platform canonical refresh is `UNBLOCKED_NOT_EXECUTED`: the former branch collision is resolved, but no canon task has run.
 - Cleanup Stage A is complete: snapshots and three named stashes preserve the stale worktrees. Cleanup Stage B/C and every destructive cleanup action are `DEFERRED`; no proof gate was pinned, no production cleanup command ran, and no ignored output, worktree, or branch was deleted.
 - Promotion, push, deploy, and manual release gates have not run. Preserve the two documentation branches and the active neighboring worktrees until an explicit reconciliation/promotion pass.
+
+## Closure — 2026-07-14
+
+Platform canon landed through `5553d22`, and local `master` reached `35975f5`.
+Client renewal landed through `efb6aea`.
+
+No push, deploy, destructive cleanup, or manual release gates ran as part of this closure. This closure is not a release, deploy, or production-readiness claim.
+
+All old worktree paths, hashes `4722cd8` and `4b6124b`, deferred promotion commands, and the final verification recipe below are retained as historical/non-executable evidence. Do not run them as current instructions.
 
 ## Global Constraints
 
@@ -54,7 +63,7 @@
 | 5 | `2026-07-10-worktree-cleanup-promotion.md` | completed Stage A snapshots; Stage B/C and promotion remain deferred | future owner-authorized handoff |
 
 The exact approved design is
-`docs/superpowers/specs/2026-07-10-agent-context-refactor-design.md` at
+`docs/archive/superpowers-plans/2026-07-10-agent-context-refactor-design.md` at
 platform commit `c584916`.
 
 Plan 5 has an early non-destructive Stage A. Run that inventory/snapshot stage
@@ -117,7 +126,7 @@ manual/origin scope, freshness, and attribution into one numeric tier.
 ### Task 1: Confirm The Approved Baseline
 
 **Files:**
-- Read: `docs/superpowers/specs/2026-07-10-agent-context-refactor-design.md`
+- Read: `docs/archive/superpowers-plans/2026-07-10-agent-context-refactor-design.md`
 - Read: all five plans listed above
 - Do not modify: `.worktrees/market-ready-cis-integration/**`
 - Do not modify: `C:/Users/kiwun/Documents/ai/POKROV-app/.worktrees/market-ready-cis-client-integration/**`

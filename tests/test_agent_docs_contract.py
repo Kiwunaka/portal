@@ -357,6 +357,188 @@ def test_registry_classifies_every_listed_document() -> None:
     assert "Start Here As Agent" not in text
 
 
+def test_docs_finalization_registry_states_are_exact() -> None:
+    text = (REPO_ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+    rows = parse_markdown_table(
+        text,
+        ("Class", "Owner", "Document", "Review state"),
+    )
+    review_state_by_document = {
+        row["Document"].strip("`"): row["Review state"].strip("`")
+        for row in rows
+    }
+    ledger_document = next(
+        document
+        for document in review_state_by_document
+        if document.startswith("docs/developer/pokrov-canonical-feature-tracker.md")
+    )
+    reconciled_documents = {
+        "docs/developer/openai-operator-assistants.md",
+        "docs/architecture/client-downloads-flow.md",
+        "docs/user/compatibility-clients-guide-ru.md",
+        "C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md",
+        "C:/Users/kiwun/Documents/ai/POKROV-app/docs/operations/cutover-readiness.md",
+        ledger_document,
+        "docs/operations/rollback-runbook.md",
+        "docs/operations/android-release-audit.md",
+        "docs/operations/runtime-app-download-smoke.md",
+        "docs/operations/ru-origin-probe.md",
+    }
+    assert len(reconciled_documents) == 10
+    assert {
+        document: review_state_by_document.get(document)
+        for document in reconciled_documents
+    } == {document: "RECONCILED" for document in reconciled_documents}
+
+    assert {
+        document: state
+        for document, state in review_state_by_document.items()
+        if state.startswith("PENDING_")
+    } == {
+        "docs/developer/work-orders/2026-07-09-growth-megapass/": "PENDING_WAVE_3",
+        "docs/architecture/system-overview.md": "PENDING_WAVE_3",
+        "docs/architecture/app-first-and-bonus-flows.md": "PENDING_WAVE_3",
+        "docs/architecture/support-feedback-flow.md": "PENDING_WAVE_3",
+        "docs/operations/payment-reconciliation.md": "PENDING_WAVE_3",
+        "docs/operations/lavatop-payment-operations.md": "PENDING_WAVE_3",
+        "docs/superpowers/specs/": "PENDING_COLLISION_REVIEW",
+    }
+    assert (
+        review_state_by_document["docs/archive/superpowers-plans/"]
+        == "RECONCILED"
+    )
+    assert (
+        "`PENDING_WAVE_3` remains only for unmerged market-ready slices and "
+        "canonical/operations follow-ups."
+    ) in text
+    assert (
+        "`PENDING_COLLISION_REVIEW` on `docs/superpowers/specs/` remains for "
+        "concurrent design/research."
+    ) in text
+
+
+def test_docs_finalization_archives_context_renewal_material() -> None:
+    active_roadmap = (
+        REPO_ROOT
+        / "docs"
+        / "superpowers"
+        / "plans"
+        / "2026-07-10-pokrov-codex-docs-renewal-roadmap.md"
+    )
+    active_design = (
+        REPO_ROOT
+        / "docs"
+        / "superpowers"
+        / "specs"
+        / "2026-07-10-agent-context-refactor-design.md"
+    )
+    archive_root = REPO_ROOT / "docs" / "archive" / "superpowers-plans"
+    archived_roadmap = archive_root / active_roadmap.name
+    archived_design = archive_root / active_design.name
+
+    assert not active_roadmap.exists()
+    assert not active_design.exists()
+    assert archived_roadmap.is_file()
+    assert archived_design.is_file()
+
+    design = archived_design.read_text(encoding="utf-8")
+    assert "Status: IMPLEMENTED_HISTORICAL" in design
+    assert "## Current Owners" in design
+    for owner in (
+        "AGENTS.md",
+        "docs/README.md",
+        "docs/developer/agent-context-map.md",
+        "C:/Users/kiwun/Documents/ai/POKROV-app/docs/",
+    ):
+        assert owner in design
+    assert (
+        "client-without-AGENTS, expected-canon, worktree, baseline, and "
+        "promotion sections are 2026-07-10 historical snapshots"
+    ) in design
+    assert "not current instructions" in design
+
+    roadmap = archived_roadmap.read_text(encoding="utf-8")
+    roadmap_lowered = roadmap.casefold()
+    assert "REQUIRED SUB-SKILL" not in roadmap
+    assert "implement this plan task-by-task" not in roadmap
+    assert (
+        "> **Archived execution record — historical/non-executable.**" in roadmap
+    )
+    assert "## Retained Execution Snapshot — 2026-07-12 (superseded)" in roadmap
+    assert "## Closure — 2026-07-14" in roadmap
+    for closure_marker in (
+        "platform canon landed through `5553d22`",
+        "local `master` reached `35975f5`",
+        "client renewal landed through `efb6aea`",
+        "historical/non-executable",
+        "`4722cd8`",
+        "`4b6124b`",
+    ):
+        assert closure_marker.casefold() in roadmap_lowered
+    assert (
+        "No push, deploy, destructive cleanup, or manual release gates ran "
+        "as part of this closure."
+    ) in roadmap
+    assert (
+        "This closure is not a release, deploy, or production-readiness claim."
+    ) in roadmap
+    active_design_path = (
+        "docs/superpowers/specs/2026-07-10-agent-context-refactor-design.md"
+    )
+    archived_design_path = (
+        "docs/archive/superpowers-plans/"
+        "2026-07-10-agent-context-refactor-design.md"
+    )
+    assert active_design_path not in roadmap
+    assert roadmap.count(archived_design_path) == 2
+
+    archive_readme = (archive_root / "README.md").read_text(encoding="utf-8")
+    assert "Last updated: 2026-07-14" in archive_readme
+    assert "completed plans and designs" in archive_readme.casefold()
+    for archived_name in (archived_roadmap.name, archived_design.name):
+        assert f"]({archived_name})" in archive_readme
+
+    finalization_plan = (
+        REPO_ROOT
+        / "docs"
+        / "superpowers"
+        / "plans"
+        / "2026-07-14-docs-finalization.md"
+    ).read_text(encoding="utf-8")
+    assert (
+        "- Move: `docs/superpowers/plans/"
+        "2026-07-10-pokrov-codex-docs-renewal-roadmap.md` -> "
+        "`docs/archive/superpowers-plans/"
+        "2026-07-10-pokrov-codex-docs-renewal-roadmap.md`"
+    ) in finalization_plan
+    assert (
+        "- Move: `docs/superpowers/specs/"
+        "2026-07-10-agent-context-refactor-design.md` -> "
+        "`docs/archive/superpowers-plans/"
+        "2026-07-10-agent-context-refactor-design.md`"
+    ) in finalization_plan
+
+
+def test_docs_finalization_rollback_preserves_release_evidence() -> None:
+    text = (
+        REPO_ROOT / "docs" / "operations" / "rollback-runbook.md"
+    ).read_text(encoding="utf-8")
+    lowered = text.casefold()
+    assert "Last updated: 2026-07-14" in text
+    assert "remove or blank public download urls" not in lowered
+    assert "switch the active pointer to the last verified release handoff" in lowered
+    assert (
+        "disable the public route while preserving versioned metadata and artifacts"
+        in lowered
+    )
+    assert "prepare a short support notice" in lowered
+    assert "only through an explicitly authorized owner/operator" in lowered
+    assert (
+        "[Paid Beta Deploy And Rollback Checklist]"
+        "(deployment-and-access.md#paid-beta-deploy-and-rollback-checklist)"
+    ) in text
+
+
 def test_context_links_and_tracked_agents_are_valid() -> None:
     assert find_broken_local_markdown_links(
         REPO_ROOT,
