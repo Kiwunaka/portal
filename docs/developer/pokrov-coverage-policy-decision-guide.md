@@ -1,6 +1,6 @@
 # POKROV Coverage Policy Decision Guide
 
-Last updated: 2026-06-28
+Last updated: 2026-07-14
 
 ## Purpose
 
@@ -22,14 +22,17 @@ Canonical inputs:
 - Every non-manual story row has direct automated file evidence.
 - Every active source symbol is listed in `pokrov-code-function-inventory.csv`.
 - Every active source symbol has a tier in `pokrov-symbol-coverage-audit.csv`.
-- `public_symbol_review`, `client_package_public_api_review`,
-  `entrypoint_needs_mapping_review`, and `script_cli_manifest_review` are `0`.
+- Current source-symbol review buckets remain open: `public_symbol_review = 12`,
+  `client_package_public_api_review = 3`, `script_cli_manifest_review = 1`, and
+  `script_cli_active_without_workflow_mapping = 1`.
+- The separate entrypoint bucket is `entrypoint_needs_mapping_review = 0`; it
+  does not close the four source-symbol review buckets above.
 - `private_inventory_only` is guarded so it only contains private non-entrypoint
   symbols.
-- `pokrov-private-helper-coverage.csv` currently has `11` low-risk
-  private-inventory rows. Under the accepted Q-001 policy these stay tracked as
-  source-inventory-only helpers unless the owner later asks for stricter
-  one-test-per-private-helper coverage.
+- `pokrov-private-helper-coverage.csv` currently has 23 private-inventory rows:
+  21 low-risk and 2 medium-risk. Under the accepted Q-001 policy these stay
+  tracked as source-inventory-only helpers unless the owner later asks for
+  stricter one-test-per-private-helper coverage.
 - Owner accepted `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28.
 
 ## Not Claimed
@@ -70,9 +73,9 @@ Use the existing baseline artifact first:
 `docs/developer/pokrov-private-helper-coverage.csv`
 
 It records each private-only symbol with expected behavior, risk, proof status,
-and next action when such rows exist. The current matrix is empty. Before
-future implementation under this strict policy, extend it or create a paired
-execution ledger:
+and next action. The current matrix contains 23 rows: 21 low-risk and 2
+medium-risk. Before future implementation under this strict policy, extend it
+or create a paired execution ledger:
 
 `docs/developer/pokrov-private-helper-test-matrix.csv`
 
@@ -94,5 +97,6 @@ row has a passing dedicated test reference or an explicit owner waiver.
 
 ## Decision Record
 
-Until the owner chooses one option above, keep Q-001 open in
-`pokrov-open-questions.csv` with `blocks_goal_completion=yes`.
+The owner selected `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28. Keep Q-001
+answered and nonblocking in `pokrov-open-questions.csv`; reopen it only if the
+owner later requires a stricter coverage option.

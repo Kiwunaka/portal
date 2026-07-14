@@ -1485,6 +1485,47 @@ def test_open_questions_ledger_tracks_owner_blockers() -> None:
     owner_answer_sheet = OWNER_ANSWER_SHEET.read_text(encoding="utf-8")
     coverage_policy_guide = COVERAGE_POLICY_DECISION_GUIDE.read_text(encoding="utf-8")
     completion_body = COMPLETION_AUDIT.read_text(encoding="utf-8")
+    with PRIVATE_HELPER_COVERAGE.open("r", encoding="utf-8", newline="") as f:
+        private_helper_rows = list(csv.DictReader(f))
+    private_risk_counts = Counter(
+        row["risk_tier"] for row in private_helper_rows
+    )
+    with SYMBOL_COVERAGE_AUDIT.open("r", encoding="utf-8", newline="") as f:
+        symbol_tier_counts = Counter(
+            row["coverage_tier"] for row in csv.DictReader(f)
+        )
+    with ENTRYPOINT_STORY_COVERAGE.open("r", encoding="utf-8", newline="") as f:
+        entrypoint_tier_counts = Counter(
+            row["coverage_tier"] for row in csv.DictReader(f)
+        )
+    review_tiers = (
+        "public_symbol_review",
+        "client_package_public_api_review",
+        "script_cli_manifest_review",
+        "script_cli_active_without_workflow_mapping",
+    )
+    guide_current_state = coverage_policy_guide.split(
+        "## Current Proven State", 1
+    )[1].split("\n## ", 1)[0]
+    q001_current_state = q001_row["default_assumption"]
+    for current_state in (guide_current_state, q001_current_state):
+        for fragment in (
+            f"{len(private_helper_rows)} private-inventory rows",
+            f"{private_risk_counts.get('low', 0)} low-risk",
+            f"{private_risk_counts.get('medium', 0)} medium-risk",
+        ):
+            assert fragment in current_state
+        for tier in review_tiers:
+            assert f"`{tier} = {symbol_tier_counts.get(tier, 0)}`" in current_state
+        assert (
+            "`entrypoint_needs_mapping_review = "
+            f"{entrypoint_tier_counts.get('entrypoint_needs_mapping_review', 0)}`"
+        ) in current_state
+        assert "does not close" in current_state
+    assert "are `0`" not in guide_current_state
+    assert "The current matrix is empty" not in coverage_policy_guide
+    assert "Last updated: 2026-07-14" in coverage_policy_guide
+    assert q001_row["updated_at"] == "2026-07-14"
     for question_id in required_question_ids:
         assert question_id in tracker_body
         assert question_id in questions_summary
@@ -1574,6 +1615,57 @@ def test_completion_audit_tracks_current_story_counts() -> None:
     assert not missing
 
 
+def test_completion_audit_preserves_current_source_symbol_review_gaps() -> None:
+    review_tiers = (
+        "public_symbol_review",
+        "client_package_public_api_review",
+        "script_cli_manifest_review",
+        "script_cli_active_without_workflow_mapping",
+    )
+    with SYMBOL_COVERAGE_AUDIT.open("r", encoding="utf-8", newline="") as f:
+        symbol_tier_counts = Counter(
+            row["coverage_tier"] for row in csv.DictReader(f)
+        )
+    current_review_counts = {
+        tier: symbol_tier_counts.get(tier, 0) for tier in review_tiers
+    }
+
+    with COMPLETION_AUDIT_CSV.open("r", encoding="utf-8", newline="") as f:
+        completion_rows = {
+            row["requirement_id"]: row for row in csv.DictReader(f)
+        }
+    source_symbol_requirement = completion_rows["REQ-009"]
+
+    completion_body = COMPLETION_AUDIT.read_text(encoding="utf-8")
+    completion_position = completion_body.split(
+        "## Completion Position", 1
+    )[1].split("\n## ", 1)[0]
+    work_order_body = WORK_ORDER.read_text(encoding="utf-8")
+    residual_risk = work_order_body.split("## Residual Risk", 1)[1].split(
+        "\n## ", 1
+    )[0]
+
+    if any(current_review_counts.values()):
+        assert source_symbol_requirement["status"] == "review_gaps_open"
+        for tier, count in current_review_counts.items():
+            count_fragment = f"`{tier} = {count}`"
+            assert count_fragment in source_symbol_requirement["remaining_gap"]
+            assert count_fragment in completion_position
+            assert count_fragment in residual_risk
+
+        contradictory_current_claims = (
+            "currently has no local story/entrypoint/script/source-symbol review gaps",
+            "every detected script CLI `main()` now has active/deprecated/archive/denylist status",
+            "No source entrypoint currently remains without route/story/script evidence mapping",
+            "No active script/operator workflow remains as a local scenario-test gap",
+        )
+        for claim in contradictory_current_claims:
+            assert claim not in completion_position
+            assert claim not in residual_risk
+    else:
+        assert source_symbol_requirement["status"] == "locally_proven"
+
+
 def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
     required_fields = {
         "requirement_id",
@@ -1588,6 +1680,7 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
         "locally_proven",
         "locally_proven_for_local_suites",
         "locally_documented_and_guarded",
+        "review_gaps_open",
     }
     allowed_blocker_relationships = {
         "none",
@@ -1628,6 +1721,7 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
         "locally_proven": "Locally proven",
         "locally_proven_for_local_suites": "Locally proven for local suites",
         "locally_documented_and_guarded": "Locally documented and guarded",
+        "review_gaps_open": "Review gaps open",
     }
     completion_lines = completion_body.splitlines()
     checklist_header = "| Requirement | Current evidence | Status | Remaining gap |"
