@@ -2751,27 +2751,30 @@ def _account_recovery_http_exception(exc: AccountRecoveryError) -> HTTPException
     )
 
 
+_RECOVERY_SCOPE_ROUTE_ALLOWLIST = frozenset(
+    {
+        ("GET", "/api/auth/session"),
+        ("POST", "/api/client/session/revoke"),
+        ("POST", "/api/client/access/reissue"),
+        ("GET", "/api/client/devices"),
+        ("DELETE", "/api/client/devices/{device_id}"),
+        ("GET", "/api/tickets"),
+        ("POST", "/api/tickets"),
+        ("GET", "/api/tickets/{ticket_id}"),
+        ("POST", "/api/tickets/{ticket_id}/messages"),
+    }
+)
+
+
 def _recovery_scope_request_allowed(request: Request | None) -> bool:
     if request is None:
         return False
     method = str(getattr(request, "method", "") or "").upper()
-    path = str(getattr(getattr(request, "url", None), "path", "") or "")
-    exact = {
-        ("GET", "/api/auth/session"),
-        ("POST", "/api/client/access/reissue"),
-        ("POST", "/api/client/session/revoke"),
-        ("GET", "/api/client/devices"),
-        ("POST", "/api/client/support/assistant"),
-    }
-    if (method, path) in exact:
-        return True
-    if method == "DELETE" and path.startswith("/api/client/devices/"):
-        return True
-    if path == "/api/tickets" and method in {"GET", "POST"}:
-        return True
-    if path.startswith("/api/tickets/") and method in {"GET", "POST"}:
-        return True
-    return False
+    route = (getattr(request, "scope", None) or {}).get("route")
+    route_path = str(getattr(route, "path", "") or "")
+    if not method or not route_path:
+        return False
+    return (method, route_path) in _RECOVERY_SCOPE_ROUTE_ALLOWLIST
 
 
 def _optional_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any] | None:
@@ -3599,6 +3602,22 @@ def _auth_actor_tg_id(auth_user: dict[str, Any] | None) -> int:
 
 def _auth_user_is_recovery_scope(auth_user: dict[str, Any] | None) -> bool:
     return str((auth_user or {}).get("scope") or "").strip() == "recovery"
+
+
+def _reject_recovery_ticket_media(*, auth_user: dict[str, Any] | None, payload: Any) -> None:
+    if not _auth_user_is_recovery_scope(auth_user):
+        return
+    media_values = (
+        getattr(payload, "media_type", None),
+        getattr(payload, "media_file_id", None),
+        getattr(payload, "media_payload", None),
+    )
+    if any(value is not None and str(value) != "" for value in media_values):
+        raise _auth_http_exception(
+            detail="Recovery-сессия поддерживает только текстовые обращения.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
 
 
 def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User | None) -> bool:
@@ -6168,18 +6187,24 @@ def _ticket_status_title(status: str) -> str:
     return st or "Неизвестно"
 
 
-def _ticket_message_row(msg) -> dict[str, Any]:
-    return {
+def _ticket_message_row(msg, *, include_media: bool = True) -> dict[str, Any]:
+    row = {
         "id": msg.id,
         "ticket_id": msg.ticket_id,
         "sender_tg_id": msg.sender_tg_id,
         "sender_role": msg.sender_role,
         "body": msg.body,
-        "media_type": getattr(msg, "media_type", None),
-        "media_file_id": getattr(msg, "media_file_id", None),
-        "media_payload": getattr(msg, "media_payload", None),
         "created_at": _safe_iso(msg.created_at),
     }
+    if include_media:
+        row.update(
+            {
+                "media_type": getattr(msg, "media_type", None),
+                "media_file_id": getattr(msg, "media_file_id", None),
+                "media_payload": getattr(msg, "media_payload", None),
+            }
+        )
+    return row
 
 
 def _ticket_operator_presence(ticket) -> str:
@@ -6204,7 +6229,7 @@ def _ticket_unread_for_user(messages: list | None) -> int:
     return unread
 
 
-def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
+def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = True) -> dict[str, Any]:
     rows = messages if messages is not None else []
     last_message = rows[-1] if rows else None
     return {
@@ -6217,7 +6242,7 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
-        "messages": [_ticket_message_row(m) for m in rows],
+        "messages": [_ticket_message_row(m, include_media=include_media) for m in rows],
         "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
         "operatorPresence": _ticket_operator_presence(ticket),
         "operatorTyping": False,
@@ -6226,14 +6251,14 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
     }
 
 
-def _load_ticket_row(ticket_id: int, *, message_limit: int = 100) -> dict[str, Any]:
+def _load_ticket_row(ticket_id: int, *, message_limit: int = 100, include_media: bool = True) -> dict[str, Any]:
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, int(ticket_id))
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
         msgs = list_ticket_messages(s, ticket.id, limit=max(1, min(int(message_limit), 100)))
-        return _ticket_row(ticket, msgs)
+        return _ticket_row(ticket, msgs, include_media=include_media)
     finally:
         s.close()
 
@@ -6281,12 +6306,18 @@ async def _maybe_append_support_ai_reply(
         )
         s.commit()
         return True
-    except Exception as exc:
-        s.rollback()
-        logger.warning("support AI ticket append failed ticket=%s err=%s", ticket_id, exc)
+    except Exception:
+        try:
+            s.rollback()
+        except Exception:
+            pass
+        logger.warning("support AI ticket append failed code=support_reply_persist_error")
         return False
     finally:
-        s.close()
+        try:
+            s.close()
+        except Exception:
+            logger.warning("support AI ticket session cleanup failed code=support_reply_cleanup_error")
 
 
 def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = None, meta: dict[str, Any] | None = None) -> None:
@@ -13654,13 +13685,14 @@ async def create_feedback(payload: FeedbackCreateIn, request: Request, x_telegra
 async def get_tickets(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 20) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    include_media = not _auth_user_is_recovery_scope(auth_user)
     s = SessionLocal()
     try:
         items = list_user_tickets(s, tg_id, limit=max(1, min(int(limit), 50)))
         data = []
         for t in items:
             msgs = list_ticket_messages(s, t.id, limit=1)
-            data.append(_ticket_row(t, msgs))
+            data.append(_ticket_row(t, msgs, include_media=include_media))
         return {"tickets": data}
     finally:
         s.close()
@@ -13759,6 +13791,7 @@ async def download_ticket_attachment(
 @app.post("/api/tickets")
 async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_create", request, identity=f"tg:{tg_id}")
     s = SessionLocal()
@@ -13791,7 +13824,13 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
         text=payload.body,
         has_attachment=bool(payload.media_type or payload.media_file_id),
     )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=20)}
+    return {
+        "ticket": _load_ticket_row(
+            ticket_id,
+            message_limit=20,
+            include_media=not _auth_user_is_recovery_scope(auth_user),
+        )
+    }
 
 
 @app.get("/api/tickets/{ticket_id}")
@@ -13807,7 +13846,13 @@ async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str
         if not (admin_actor or int(ticket.user_tg_id) == actor):
             raise HTTPException(status_code=403, detail="Access denied")
         msgs = list_ticket_messages(s, ticket.id, limit=100)
-        return {"ticket": _ticket_row(ticket, msgs)}
+        return {
+            "ticket": _ticket_row(
+                ticket,
+                msgs,
+                include_media=not _auth_user_is_recovery_scope(auth_user),
+            )
+        }
     finally:
         s.close()
 
@@ -13815,6 +13860,7 @@ async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str
 @app.post("/api/tickets/{ticket_id}/messages")
 async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     actor = int(auth_user.get("id", 0))
     admin_actor = bool(_is_admin_tg(actor) and not _auth_user_is_recovery_scope(auth_user))
     s = SessionLocal()
@@ -13857,7 +13903,13 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             text=payload.body,
             has_attachment=bool(payload.media_type or payload.media_file_id),
         )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=100)}
+    return {
+        "ticket": _load_ticket_row(
+            ticket_id,
+            message_limit=100,
+            include_media=not _auth_user_is_recovery_scope(auth_user),
+        )
+    }
 
 
 @app.get("/api/admin/summary")

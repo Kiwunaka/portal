@@ -105,6 +105,14 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             importlib.reload(sys.modules["api"])
         self.api = importlib.import_module("api")
         importlib.reload(self.api)
+        self._telegram_send_patcher = patch.object(
+            self.api,
+            "_telegram_send_message",
+            new_callable=AsyncMock,
+            return_value=True,
+        )
+        self.telegram_send_mock = self._telegram_send_patcher.start()
+        self.addCleanup(self._telegram_send_patcher.stop)
         self.client = TestClient(self.api.app)
 
         from db import SessionLocal
@@ -186,6 +194,33 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             return out
         finally:
             s.close()
+
+    def test_telegram_delivery_is_offline_by_default(self) -> None:
+        self.assertIsInstance(self.api._telegram_send_message, AsyncMock)
+
+    def test_normal_session_support_assistant_accepts_safe_diagnostics(self) -> None:
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        response = self.client.post(
+            "/api/client/support/assistant",
+            headers=headers,
+            json={
+                "message": "Connection diagnostic question",
+                "scope": "support",
+                "safeDiagnostics": {
+                    "platform": "windows",
+                    "runtimeState": "disconnected",
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["source"], "local_fallback")
+        events = self._event_rows("client_support_assistant")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(
+            events[0]["meta"]["diagnostics_keys"],
+            ["platform", "runtimeState"],
+        )
 
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}

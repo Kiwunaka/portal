@@ -1,6 +1,6 @@
 # API Contracts
 
-Last updated: 2026-07-12
+Last updated: 2026-07-14
 
 This page captures release-critical API contract expectations for Open Beta v4.
 
@@ -96,9 +96,22 @@ TTL after the final issuance before routing app access back to the old revision.
 - `POST /api/client/recovery/exchange` consumes an active code once, registers
   or reauthenticates the supplied device, and returns a device-bound
   `scope=recovery` session whose access and refresh expiry are both 15 minutes.
-- Recovery scope is checked on every authenticated request. It can reach only
-  account status, support tickets, device list/revoke, logout and audited
-  reissue. It cannot link a new identity, create payment ownership, read
+- Recovery scope is checked on every authenticated request against the exact
+  HTTP method plus FastAPI `request.scope["route"].path` template. Missing or
+  unknown route templates fail closed. The complete allowlist is
+  `GET /api/auth/session`, `POST /api/client/session/revoke`,
+  `POST /api/client/access/reissue`, `GET /api/client/devices`,
+  `DELETE /api/client/devices/{device_id}`, `GET|POST /api/tickets`,
+  `GET /api/tickets/{ticket_id}`, and
+  `POST /api/tickets/{ticket_id}/messages`.
+- Recovery support is text-only. Ticket create/message returns
+  `403 recovery_scope_forbidden` when any `media_type`, `media_file_id`, or
+  `media_payload` value is nonempty. Recovery ticket list/get/create/message
+  responses omit all three media keys from every message, including historical
+  messages. Upload, attachment download, standalone support AI, subscription,
+  managed-profile, and normal client networking routes are outside the
+  allowlist. Normal client and admin ticket attachment contracts are unchanged.
+- Recovery scope cannot link a new identity, create payment ownership, read
   subscription URLs or managed profiles, or access normal client networking
   surfaces before reissue.
 - `POST /api/client/access/reissue` accepts `vpn_credentials` or
@@ -370,7 +383,56 @@ deadlock evidence.
 
 ## Support
 
-Support ticket APIs must avoid exposing private attachments or session data in public logs. Attachment privacy remains a beta hardening item.
+Support ticket APIs must avoid exposing private attachments or session data in
+public logs. `portal_bot/support_ai_service.py` applies one sanitizer before
+length truncation to both outbound user text and inbound model text. Sanitizer
+input and output are bounded to 65,536 characters and three percent-decode
+passes plus one non-recursive decoded URL rescan. Residual nested percent-encoded
+URL signatures fail closed through a linear structural probe instead of further
+decoding. NFKC is applied incrementally and fails closed before its output can
+exceed the bound; JSON escapes, HTML entities, zero-width characters, IDNA
+separators, and Unicode compatibility forms are normalized within the same
+bound. Provider model chunks are sliced before concatenation. Provider response
+bodies are limited to 262,144 bytes by declared length and incremental stream
+reads before JSON parsing.
+
+Stable category placeholders cover Unicode email, proxy/private subscription
+URLs, recovery and activation codes, hyphenated or compact UUIDs,
+refresh/session credentials, common API and private-key forms, English or
+Russian labelled credentials, Basic/Bearer authorization, and long digit
+forms. Telegram init data is recognized only with a realistic numeric
+`auth_date` and 64-hex `hash`; `query_id`, `user`, and `signature` are optional.
+Recognized labelled or raw data is redacted through the end of its line so a
+top-level pipe or HTML-entity separator cannot leave optional fields behind.
+Mere `initData: empty` prose and placeholder documentation are not classified
+as Telegram data.
+
+After bounded normalization and Telegram handling, one scanner emits
+alternating non-URL and URL spans. Generic credential/PII matching runs only on
+non-URL spans. A safe URL is emitted directly and a private URL is replaced
+directly; there are no internal shield markers or restoration pass. The
+public-reference host allowlist is exact (`github.com`, `pokrov.space`,
+`www.pokrov.space`, `docs.pokrov.space`, and `status.pokrov.space`), and leading
+or trailing host dots are not stripped. Authority is validated before host
+trust on every supported decode layer; malformed ports, encoded delimiters, and
+quote/space userinfo confusion fail closed. Userinfo, canonical sensitive
+query/fragment keys, semicolon or quoted nested assignments, keyless session
+tokens, nested proxy/subscription URLs, POKROV endpoint tokens, subscription
+token paths, and ticket UUIDs make the whole URL private. Genuine GitHub commit
+and public docs reference URLs remain readable. Scan work, nested URL depth,
+and output are bounded linearly.
+
+Sanitized model text is the only model text returned for ticket storage.
+Provider failure logging contains only a bounded status and fixed code; response
+bodies and exception detail are not logged. Support-reply database failures in
+API/helpbot log only `support_reply_persist_error`; rollback failures are
+contained without exception detail. Session-close failures are also contained
+and use only `support_reply_cleanup_error`. SQLAlchemy exception rendering hides
+statement parameters.
+
+Authenticated normal client/admin attachment behavior remains available under
+the owner/admin contract. The limited recovery projection is text-only and
+cannot upload, download, submit, or receive attachment metadata.
 
 ## Admin
 

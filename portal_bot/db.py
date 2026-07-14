@@ -9,7 +9,7 @@ from migrations import POSTGRES_SCHEMA_BOOTSTRAP_LOCK, run_migrations
 from models import Base
 
 
-engine = create_engine(Settings.DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(Settings.DATABASE_URL, pool_pre_ping=True, hide_parameters=True)
 SessionLocal = sessionmaker(bind=engine)
 
 

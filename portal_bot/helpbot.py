@@ -248,12 +248,18 @@ async def _maybe_generate_support_ai_reply(message: Message, *, ticket_id: int, 
             body=reply,
         )
         session.commit()
-    except Exception as exc:
-        session.rollback()
-        logger.warning("support AI ticket append failed ticket=%s err=%s", ticket_id, exc)
+    except Exception:
+        try:
+            session.rollback()
+        except Exception:
+            pass
+        logger.warning("support AI ticket append failed code=support_reply_persist_error")
         return None
     finally:
-        session.close()
+        try:
+            session.close()
+        except Exception:
+            logger.warning("support AI ticket session cleanup failed code=support_reply_cleanup_error")
     return reply
 
 
