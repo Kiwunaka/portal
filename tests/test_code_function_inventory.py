@@ -379,8 +379,18 @@ def test_private_helper_coverage_matrix_matches_private_inventory_only() -> None
             invalid_rows.append(f"{symbol_id}: current_status={row.get('current_status')}")
         if row.get("proof_status") != "no_dedicated_private_helper_test":
             invalid_rows.append(f"{symbol_id}: proof_status={row.get('proof_status')}")
-        if row.get("coverage_policy_status") != "needs_owner_decision_q001":
+        if row.get("coverage_policy_status") != "accepted_story_and_symbol_tiers_q001":
             invalid_rows.append(f"{symbol_id}: policy={row.get('coverage_policy_status')}")
+        owner_policy_note = row.get("owner_policy_note", "")
+        for fragment in (
+            "ACCEPT_STORY_AND_SYMBOL_TIERS",
+            "2026-06-28",
+            "answered and nonblocking",
+        ):
+            if fragment not in owner_policy_note:
+                invalid_rows.append(f"{symbol_id}: owner_policy_note={fragment}")
+        if row.get("updated_at") != "2026-07-14":
+            invalid_rows.append(f"{symbol_id}: updated_at={row.get('updated_at')}")
 
         inventory = inventory_rows[symbol_id]
         for field in ("root", "path", "line", "language", "subsystem", "symbol_kind", "qualified_name"):
@@ -403,6 +413,11 @@ def test_private_helper_coverage_markdown_summary_matches_csv() -> None:
     risk_counts = Counter(row["risk_tier"] for row in rows)
     assert current_counts == {
         "Private helper rows": len(rows),
+        "Accepted Q-001 policy rows": sum(
+            row["coverage_policy_status"]
+            == "accepted_story_and_symbol_tiers_q001"
+            for row in rows
+        ),
         "Rows needing Q-001 owner decision": sum(
             row["coverage_policy_status"] == "needs_owner_decision_q001"
             for row in rows
@@ -411,6 +426,10 @@ def test_private_helper_coverage_markdown_summary_matches_csv() -> None:
         "Medium risk rows": risk_counts.get("medium", 0),
         "Low risk rows": risk_counts.get("low", 0),
     }
+    completion_rule = body.split("## Completion Rule", 1)[1].split("\n## ", 1)[0]
+    assert "Owner accepted `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28" in completion_rule
+    assert "Q-001 is answered and nonblocking" in completion_rule
+    assert "If the owner chooses `ACCEPT_STORY_AND_SYMBOL_TIERS`" not in completion_rule
     assert _markdown_count_table_after_heading(body, "### By Private Helper Area") == dict(
         sorted(Counter(row["private_helper_area"] for row in rows).items())
     )

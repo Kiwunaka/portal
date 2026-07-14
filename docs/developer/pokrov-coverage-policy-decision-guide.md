@@ -25,12 +25,15 @@ Canonical inputs:
 - Current source-symbol review buckets remain open: `public_symbol_review = 12`,
   `client_package_public_api_review = 3`, `script_cli_manifest_review = 1`, and
   `script_cli_active_without_workflow_mapping = 1`.
-- The separate entrypoint bucket is `entrypoint_needs_mapping_review = 0`; it
-  does not close the four source-symbol review buckets above.
+- The dedicated entrypoint-story ledger reports `needs_story_mapping_review = 0`.
+  Separately, the source-symbol audit reports
+  `entrypoint_needs_mapping_review = 0`; the dedicated zero does not close the
+  four source-symbol review buckets above.
 - `private_inventory_only` is guarded so it only contains private non-entrypoint
   symbols.
 - `pokrov-private-helper-coverage.csv` currently has 23 private-inventory rows:
-  21 low-risk and 2 medium-risk. Under the accepted Q-001 policy these stay
+  21 low-risk and 2 medium-risk. It has 23 accepted-policy rows and
+  0 owner-decision rows under `accepted_story_and_symbol_tiers_q001`; they stay
   tracked as source-inventory-only helpers unless the owner later asks for
   stricter one-test-per-private-helper coverage.
 - Owner accepted `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28.

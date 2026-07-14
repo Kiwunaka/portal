@@ -1,6 +1,6 @@
 # POKROV Private Helper Coverage Matrix
 
-Last updated: 2026-07-05
+Last updated: 2026-07-14
 
 ## Purpose
 
@@ -22,7 +22,8 @@ one-test-per-private-helper coverage.
 | Metric | Count |
 | --- | ---: |
 | Private helper rows | 23 |
-| Rows needing Q-001 owner decision | 23 |
+| Accepted Q-001 policy rows | 23 |
+| Rows needing Q-001 owner decision | 0 |
 | High risk rows | 0 |
 | Medium risk rows | 2 |
 | Low risk rows | 21 |
@@ -57,12 +58,11 @@ one-test-per-private-helper coverage.
 
 ## Completion Rule
 
-If the owner chooses `ACCEPT_STORY_AND_SYMBOL_TIERS` or
-`REQUIRE_PUBLIC_AND_ENTRYPOINT_ONLY`, these rows remain tracked as
-`source_inventory_only` and Q-001 can close after the policy decision is
-recorded. If the owner chooses `REQUIRE_ONE_TEST_PER_PRIVATE_HELPER`,
-each row must receive a dedicated test reference or explicit owner waiver
-before Q-001 can close.
+Owner accepted `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28, so
+these rows remain tracked as `source_inventory_only`.
+Q-001 is answered and nonblocking. If the owner later requires
+`REQUIRE_ONE_TEST_PER_PRIVATE_HELPER`, each row must receive a dedicated
+test reference or explicit owner waiver under that stricter policy.
 
 ## Regeneration
 

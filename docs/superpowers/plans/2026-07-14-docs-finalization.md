@@ -34,6 +34,7 @@
 - Modify: `docs/developer/work-orders/README.md`
 - Modify: `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/WO-001-canonical-feature-tracker.md`
 - Modify: `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md`
+- Modify: `scripts/generate_private_helper_coverage.py`
 - Test: `tests/test_story_test_evidence_audit.py`
 - Test: `tests/test_code_function_inventory.py`
 - Test: `tests/test_pokrov_migration_defaults.py`

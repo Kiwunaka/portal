@@ -416,6 +416,11 @@ def test_canonical_tracker_markdown_summary_matches_csv_artifacts() -> None:
     }
     assert _markdown_table_after_heading(body, "### Private Helper Coverage Matrix") == {
         "Private helper rows": len(private_helper_rows),
+        "Accepted Q-001 policy rows": sum(
+            row["coverage_policy_status"]
+            == "accepted_story_and_symbol_tiers_q001"
+            for row in private_helper_rows
+        ),
         "Rows needing Q-001 owner decision": sum(
             row["coverage_policy_status"] == "needs_owner_decision_q001"
             for row in private_helper_rows
@@ -588,7 +593,9 @@ def test_work_order_current_output_counts_match_csv_artifacts() -> None:
         ),
         (
             "- Private helper coverage matrix rows: "
-            f"`{len(private_rows)}`; Q-001 owner-decision rows: "
+            f"`{len(private_rows)}`; accepted-policy rows: "
+            f"`{sum(row.get('coverage_policy_status') == 'accepted_story_and_symbol_tiers_q001' for row in private_rows)}`; "
+            "Q-001 owner-decision rows: "
             f"`{sum(row.get('coverage_policy_status') == 'needs_owner_decision_q001' for row in private_rows)}`"
         ),
         (
@@ -1490,6 +1497,9 @@ def test_open_questions_ledger_tracks_owner_blockers() -> None:
     private_risk_counts = Counter(
         row["risk_tier"] for row in private_helper_rows
     )
+    private_policy_counts = Counter(
+        row["coverage_policy_status"] for row in private_helper_rows
+    )
     with SYMBOL_COVERAGE_AUDIT.open("r", encoding="utf-8", newline="") as f:
         symbol_tier_counts = Counter(
             row["coverage_tier"] for row in csv.DictReader(f)
@@ -1513,13 +1523,19 @@ def test_open_questions_ledger_tracks_owner_blockers() -> None:
             f"{len(private_helper_rows)} private-inventory rows",
             f"{private_risk_counts.get('low', 0)} low-risk",
             f"{private_risk_counts.get('medium', 0)} medium-risk",
+            f"{private_policy_counts.get('accepted_story_and_symbol_tiers_q001', 0)} accepted-policy rows",
+            f"{private_policy_counts.get('needs_owner_decision_q001', 0)} owner-decision rows",
         ):
             assert fragment in current_state
         for tier in review_tiers:
             assert f"`{tier} = {symbol_tier_counts.get(tier, 0)}`" in current_state
         assert (
+            "`needs_story_mapping_review = "
+            f"{entrypoint_tier_counts.get('needs_story_mapping_review', 0)}`"
+        ) in current_state
+        assert (
             "`entrypoint_needs_mapping_review = "
-            f"{entrypoint_tier_counts.get('entrypoint_needs_mapping_review', 0)}`"
+            f"{symbol_tier_counts.get('entrypoint_needs_mapping_review', 0)}`"
         ) in current_state
         assert "does not close" in current_state
     assert "are `0`" not in guide_current_state
@@ -1626,6 +1642,10 @@ def test_completion_audit_preserves_current_source_symbol_review_gaps() -> None:
         symbol_tier_counts = Counter(
             row["coverage_tier"] for row in csv.DictReader(f)
         )
+    with ENTRYPOINT_STORY_COVERAGE.open("r", encoding="utf-8", newline="") as f:
+        entrypoint_tier_counts = Counter(
+            row["coverage_tier"] for row in csv.DictReader(f)
+        )
     current_review_counts = {
         tier: symbol_tier_counts.get(tier, 0) for tier in review_tiers
     }
@@ -1647,11 +1667,27 @@ def test_completion_audit_preserves_current_source_symbol_review_gaps() -> None:
 
     if any(current_review_counts.values()):
         assert source_symbol_requirement["status"] == "review_gaps_open"
+        assert source_symbol_requirement["blocks_goal_completion"] == "yes"
+        assert source_symbol_requirement["blocker_relationship"] == "blocking_requirement"
+        assert not source_symbol_requirement["blocker_ids"].strip()
+        assert sum(
+            row["blocks_goal_completion"] == "yes"
+            for row in completion_rows.values()
+        ) == 3
         for tier, count in current_review_counts.items():
             count_fragment = f"`{tier} = {count}`"
             assert count_fragment in source_symbol_requirement["remaining_gap"]
             assert count_fragment in completion_position
             assert count_fragment in residual_risk
+        for current_summary in (completion_position, residual_risk):
+            assert (
+                "`needs_story_mapping_review = "
+                f"{entrypoint_tier_counts.get('needs_story_mapping_review', 0)}`"
+            ) in current_summary
+            assert (
+                "`entrypoint_needs_mapping_review = "
+                f"{symbol_tier_counts.get('entrypoint_needs_mapping_review', 0)}`"
+            ) in current_summary
 
         contradictory_current_claims = (
             "currently has no local story/entrypoint/script/source-symbol review gaps",
@@ -1780,6 +1816,11 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
     with SYMBOL_COVERAGE_AUDIT.open("r", encoding="utf-8", newline="") as f:
         symbol_rows = list(csv.DictReader(f))
     symbol_tier_counts = Counter(row["coverage_tier"] for row in symbol_rows)
+    with PRIVATE_HELPER_COVERAGE.open("r", encoding="utf-8", newline="") as f:
+        private_helper_rows = list(csv.DictReader(f))
+    private_policy_counts = Counter(
+        row["coverage_policy_status"] for row in private_helper_rows
+    )
     manual_symbol_rows = symbol_tier_counts.get("client_platform_host_manual_gate", 0) + symbol_tier_counts.get(
         "client_desktop_tray_manual_gate", 0
     )
@@ -1894,6 +1935,8 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
         "Q-001 policy codes",
         "compact owner answer sheet",
         "private-helper decision matrix",
+        f"{private_policy_counts.get('accepted_story_and_symbol_tiers_q001', 0)} accepted-policy rows",
+        f"{private_policy_counts.get('needs_owner_decision_q001', 0)} owner-decision rows",
     ):
         assert q001_fragment in completion_body
     req_011_refs = evidence_by_requirement["REQ-011"]
@@ -2115,8 +2158,6 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
                 invalid_rows.append(
                     f"{requirement_id}: blocking row must use blocking_requirement"
                 )
-            if not row_blocker_ids:
-                invalid_rows.append(f"{requirement_id}: blocking row needs blocker_ids")
         elif row_blocker_ids:
             if blocker_relationship != "related_context":
                 invalid_rows.append(
@@ -2145,7 +2186,7 @@ def test_completion_audit_requirement_ledger_tracks_goal_scope() -> None:
                     missing_test_symbols.append(f"{requirement_id}: {evidence_ref}")
 
     assert len(rows) == 17
-    assert len(blocking_rows) == 2
+    assert len(blocking_rows) == 3
     assert blocker_ids_seen == required_blockers
     relationship_counts = Counter(row["blocker_relationship"] for row in rows)
     status_counts = Counter(row["status"] for row in rows)

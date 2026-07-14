@@ -35,7 +35,7 @@ Interpretation rule: in this tracker, `function` means a product capability or e
 - generated script/operator rows use `source_tracker = generated from scripts/manifest.yaml` (123 active script/operator workflow rows imported; all 123 now have direct test-reference mappings; 2 legacy FreeKassa CLIs are explicitly deprecated)
 - `generated-code-function-inventory`: root repo plus `POKROV-app` active source (5103 low-level source symbols inventoried; 0 parser errors)
 - `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (5103 rows; 12 generic public-symbol review rows; 3 client-package public-API review rows; 0 entrypoint mapping gaps; 1 script-manifest review row; 1 active script workflow-mapping gap; 80 platform/tray manual-tier rows carry `manual_gate_refs`)
-- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 decision matrix (23 current private helper rows; 0 high risk, 2 medium risk, 21 low risk; owner accepted story/symbol tiers for this audit)
+- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 policy matrix (23 current private helper rows; 0 high risk, 2 medium risk, 21 low risk; 23 `accepted_story_and_symbol_tiers_q001`, 0 `needs_owner_decision_q001`)
 - `generated-story-test-evidence-audit`: canonical tracker evidence, retest proof, and field-completeness classifier (525 rows audited; 524 direct file refs, 524 `direct_test_ref_passed` rows, 0 imported-pass rows without direct file refs, 1 manual owner gate / `manual_owner_gate_open`, 0 stale refs; 0 missing story contract fields; every row has at least one resolvable concrete `code_evidence` ref, with no wildcard source evidence; 0 unresolved `source_tracker` refs)
 - `generated-defect-fix-retest-ledger`: canonical rows with documented defects or discrepancies (18 rows; 16 `closed_retested`, 2 `closed_retested_no_product_change`, 0 weak/open closure rows; all 18 have `direct_test_ref_passed`)
 - `generated-entrypoint-story-coverage`: source entrypoint to route/story/script evidence bridge (514 entrypoints audited; 514 direct evidence mappings; 0 review gaps)
@@ -133,15 +133,17 @@ Client platform/tray manual-tier symbol rows also carry `manual_gate_refs`: Andr
 | Metric | Count |
 | --- | ---: |
 | Private helper rows | 23 |
-| Rows needing Q-001 owner decision | 23 |
+| Accepted Q-001 policy rows | 23 |
+| Rows needing Q-001 owner decision | 0 |
 | High risk rows | 0 |
 | Medium risk rows | 2 |
 | Low risk rows | 21 |
 
 `pokrov-private-helper-coverage.csv` expands the `private_inventory_only`
 tier into per-symbol expected behavior, risk, proof status, and next action.
-It does not claim dedicated private-helper tests; it is the concrete matrix to
-use if the owner chooses `REQUIRE_ONE_TEST_PER_PRIVATE_HELPER` for Q-001.
+All rows preserve `source_inventory_only` under the accepted
+`ACCEPT_STORY_AND_SYMBOL_TIERS` decision. The matrix remains the concrete
+baseline if the owner later requires `REQUIRE_ONE_TEST_PER_PRIVATE_HELPER`.
 
 ### Story Test Evidence Audit
 

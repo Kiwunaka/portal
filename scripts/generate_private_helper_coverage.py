@@ -11,7 +11,7 @@ DEFAULT_INVENTORY = REPO_ROOT / "docs" / "developer" / "pokrov-code-function-inv
 DEFAULT_SYMBOL_COVERAGE = REPO_ROOT / "docs" / "developer" / "pokrov-symbol-coverage-audit.csv"
 DEFAULT_OUT = REPO_ROOT / "docs" / "developer" / "pokrov-private-helper-coverage.csv"
 DEFAULT_MARKDOWN_OUT = REPO_ROOT / "docs" / "developer" / "pokrov-private-helper-coverage.md"
-TODAY = "2026-07-05"
+TODAY = "2026-07-14"
 
 FIELDS = [
     "symbol_id",
@@ -159,9 +159,9 @@ def build_rows(
                 "current_status": "source_inventory_only",
                 "proof_status": "no_dedicated_private_helper_test",
                 "strict_coverage_required": "yes_if_owner_requires_one_test_per_private_helper",
-                "coverage_policy_status": "needs_owner_decision_q001",
+                "coverage_policy_status": "accepted_story_and_symbol_tiers_q001",
                 "next_action": _next_action(coverage, risk_tier),
-                "owner_policy_note": "Q-001 decides whether this private symbol needs a dedicated behavior test or remains covered by story/symbol tiers.",
+                "owner_policy_note": "Owner accepted `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28; Q-001 is answered and nonblocking. This private symbol remains covered by story/symbol tiers unless the owner later requires stricter one-test-per-private-helper coverage.",
                 "updated_at": TODAY,
             }
         )
@@ -215,6 +215,7 @@ def write_markdown(rows: list[dict[str, str]], out_path: Path) -> None:
         "| Metric | Count |",
         "| --- | ---: |",
         f"| Private helper rows | {len(rows)} |",
+        f"| Accepted Q-001 policy rows | {policy_counts.get('accepted_story_and_symbol_tiers_q001', 0)} |",
         f"| Rows needing Q-001 owner decision | {policy_counts.get('needs_owner_decision_q001', 0)} |",
         f"| High risk rows | {risk_counts.get('high', 0)} |",
         f"| Medium risk rows | {risk_counts.get('medium', 0)} |",
@@ -229,12 +230,11 @@ def write_markdown(rows: list[dict[str, str]], out_path: Path) -> None:
         [
             "## Completion Rule",
             "",
-            "If the owner chooses `ACCEPT_STORY_AND_SYMBOL_TIERS` or",
-            "`REQUIRE_PUBLIC_AND_ENTRYPOINT_ONLY`, these rows remain tracked as",
-            "`source_inventory_only` and Q-001 can close after the policy decision is",
-            "recorded. If the owner chooses `REQUIRE_ONE_TEST_PER_PRIVATE_HELPER`,",
-            "each row must receive a dedicated test reference or explicit owner waiver",
-            "before Q-001 can close.",
+            "Owner accepted `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28, so",
+            "these rows remain tracked as `source_inventory_only`.",
+            "Q-001 is answered and nonblocking. If the owner later requires",
+            "`REQUIRE_ONE_TEST_PER_PRIVATE_HELPER`, each row must receive a dedicated",
+            "test reference or explicit owner waiver under that stricter policy.",
             "",
             "## Regeneration",
             "",
