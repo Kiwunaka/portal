@@ -58,7 +58,7 @@ TABLE_DEPENDENCIES: dict[str, set[str]] = {
     "key_pressure_state": {"access_keys"},
     "rendered_subscription_snapshots": {"subscription_fetch_events"},
     "support_tickets": {"accounts", "users"},
-    "support_attachments": {"accounts", "users"},
+    "support_attachments": {"accounts", "users", "support_tickets", "support_ticket_messages"},
     "support_ticket_messages": {"support_tickets"},
     "pay_attempts": {"offers"},
     "points_ledger": {"pay_attempts"},
@@ -585,6 +585,8 @@ def run_invariant_checks(connection: Connection, metadata: MetaData) -> list[dic
         ("support_tickets", "account_id", "accounts", "id"),
         ("support_tickets", "user_tg_id", "users", "tg_id"),
         ("support_attachments", "owner_account_id", "accounts", "id"),
+        ("support_attachments", "ticket_id", "support_tickets", "id"),
+        ("support_attachments", "message_id", "support_ticket_messages", "id"),
         ("support_ticket_messages", "ticket_id", "support_tickets", "id"),
         ("pay_attempts", "offer_id", "offers", "id"),
         ("pay_attempts", "tg_id", "users", "tg_id"),
@@ -636,6 +638,16 @@ def run_invariant_checks(connection: Connection, metadata: MetaData) -> list[dic
     )
     if payment_check is not None:
         checks.append(payment_check)
+    attachment_message_check = _composite_orphan_check(
+        connection,
+        metadata,
+        child_table="support_attachments",
+        child_columns=("ticket_id", "message_id"),
+        parent_table="support_ticket_messages",
+        parent_columns=("ticket_id", "id"),
+    )
+    if attachment_message_check is not None:
+        checks.append(attachment_message_check)
     return checks
 
 

@@ -10,6 +10,7 @@ POKROV API for Telegram WebApp and Subscription endpoint.
 from __future__ import annotations
 
 import base64
+import contextlib
 import contextvars
 import hashlib
 import hmac
@@ -21,6 +22,7 @@ import mimetypes
 import os
 import re
 import secrets
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -35,7 +37,7 @@ from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Requ
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, or_, case, func
+from sqlalchemy import and_, or_, case, func, text
 from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -443,6 +445,12 @@ SUPPORT_UPLOAD_DIR = Path(
 ).resolve()
 SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uploads/support').strip().strip('/')}"
 SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
+SUPPORT_PENDING_UPLOAD_TTL_HOURS = max(1, env_int("SUPPORT_PENDING_UPLOAD_TTL_HOURS", 24))
+SUPPORT_PENDING_UPLOAD_MAX_COUNT = max(1, env_int("SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5))
+SUPPORT_PENDING_UPLOAD_MAX_BYTES = max(
+    1,
+    env_int("SUPPORT_PENDING_UPLOAD_MAX_BYTES", 50 * 1024 * 1024),
+)
 SUPPORT_ATTACHMENT_URL_PREFIX = f"/{(os.getenv('SUPPORT_ATTACHMENT_URL_PREFIX') or 'api/tickets/attachments').strip().strip('/')}"
 WEB_SESSION_COOKIE_NAME = (os.getenv("WEB_SESSION_COOKIE_NAME") or "portal_web_session").strip() or "portal_web_session"
 WEB_SESSION_COOKIE_DOMAIN = (os.getenv("WEB_SESSION_COOKIE_DOMAIN") or ".pokrov.space").strip() or ".pokrov.space"
@@ -893,6 +901,7 @@ def _is_loopback_ip(ip: str) -> bool:
 
 class TicketMessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
+    attachment_id: str | None = Field(default=None, max_length=160)
     media_type: str | None = Field(default=None, max_length=32)
     media_file_id: str | None = Field(default=None, max_length=256)
     media_payload: str | None = Field(default=None, max_length=2000)
@@ -3613,6 +3622,7 @@ def _reject_recovery_ticket_media(*, auth_user: dict[str, Any] | None, payload: 
     if not _auth_user_is_recovery_scope(auth_user):
         return
     media_values = (
+        getattr(payload, "attachment_id", None),
         getattr(payload, "media_type", None),
         getattr(payload, "media_file_id", None),
         getattr(payload, "media_payload", None),
@@ -6370,6 +6380,23 @@ async def _read_limited_request_body(request: Request, *, max_bytes: int, scope:
     return b"".join(chunks)
 
 
+def _support_upload_reject_reason(exc: HTTPException) -> str:
+    detail = str(exc.detail or "").strip().lower()
+    if "body is too large" in detail:
+        return "body_too_large"
+    if "pending attachment byte quota" in detail:
+        return "pending_bytes_quota"
+    if "pending attachment quota" in detail:
+        return "pending_count_quota"
+    if "unsupported attachment type" in detail:
+        return "unsupported_type"
+    if "attachment is empty" in detail:
+        return "empty_attachment"
+    if "attachment is too large" in detail:
+        return "attachment_too_large"
+    return f"http_{int(exc.status_code)}"
+
+
 def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: bytes) -> tuple[str, str, str]:
     declared = str(content_type or "").split(";", 1)[0].strip().lower()
     suffix = Path(filename).suffix.lower().strip()
@@ -6393,6 +6420,42 @@ def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: 
     raise HTTPException(status_code=400, detail="Unsupported attachment type")
 
 
+_SUPPORT_UPLOAD_OWNER_LOCKS = tuple(threading.Lock() for _ in range(256))
+
+
+def _support_upload_owner_key(*, owner_tg_id: int, owner_account_id: str | None) -> str:
+    canonical_owner = str(owner_account_id or "").strip()
+    return f"account:{canonical_owner}" if canonical_owner else f"tg:{int(owner_tg_id)}"
+
+
+def _support_upload_owner_lock(owner_key: str) -> threading.Lock:
+    digest = hashlib.sha256(str(owner_key).encode("utf-8")).digest()
+    return _SUPPORT_UPLOAD_OWNER_LOCKS[int.from_bytes(digest[:2], "big") % len(_SUPPORT_UPLOAD_OWNER_LOCKS)]
+
+
+def _support_upload_advisory_lock_key(owner_key: str) -> int:
+    return int.from_bytes(hashlib.sha256(str(owner_key).encode("utf-8")).digest()[:8], "big", signed=True)
+
+
+def _lock_support_upload_owner_in_db(session, owner_key: str) -> None:
+    if session.bind is None or session.bind.dialect.name != "postgresql":
+        return
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_key)"),
+        {"lock_key": _support_upload_advisory_lock_key(owner_key)},
+    )
+
+
+def _fsync_parent_directory(path: Path) -> None:
+    if os.name != "posix":
+        return
+    descriptor = os.open(str(path.parent), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def _store_support_upload(
     *,
     owner_tg_id: int,
@@ -6401,14 +6464,40 @@ def _store_support_upload(
     content_type: str | None,
     raw_bytes: bytes,
 ) -> dict[str, Any]:
+    owner_key = _support_upload_owner_key(
+        owner_tg_id=owner_tg_id,
+        owner_account_id=owner_account_id,
+    )
+    with _support_upload_owner_lock(owner_key):
+        return _store_support_upload_locked(
+            owner_tg_id=owner_tg_id,
+            owner_account_id=owner_account_id,
+            filename=filename,
+            content_type=content_type,
+            raw_bytes=raw_bytes,
+            owner_key=owner_key,
+        )
+
+
+def _store_support_upload_locked(
+    *,
+    owner_tg_id: int,
+    owner_account_id: str | None,
+    filename: str | None,
+    content_type: str | None,
+    raw_bytes: bytes,
+    owner_key: str,
+) -> dict[str, Any]:
     original_name = _sanitize_ticket_upload_name(filename)
     content_type, media_type, suffix = _detect_support_upload_type(
         filename=original_name,
         content_type=str(content_type or ""),
         raw_bytes=raw_bytes,
     )
-    stored_name = f"{_utcnow().strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
+    now = _utcnow()
+    stored_name = f"{now.strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
     stored_path = SUPPORT_UPLOAD_DIR / stored_name
+    temp_path = SUPPORT_UPLOAD_DIR / f".{stored_name}.{secrets.token_hex(8)}.tmp"
 
     total_size = len(raw_bytes or b"")
     if total_size <= 0:
@@ -6416,31 +6505,109 @@ def _store_support_upload(
     if total_size > SUPPORT_UPLOAD_MAX_BYTES:
         raise HTTPException(status_code=413, detail="Attachment is too large")
 
+    s = SessionLocal()
     try:
-        stored_path.write_bytes(raw_bytes)
-        s = SessionLocal()
-        try:
-            s.add(
-                SupportAttachment(
-                    stored_name=stored_name,
-                    owner_tg_id=int(owner_tg_id),
-                    owner_account_id=str(owner_account_id or "").strip() or None,
-                    original_name=original_name,
-                    content_type=content_type,
-                    size_bytes=int(total_size),
-                    media_type=media_type,
-                    created_at=_utcnow(),
-                )
+        _lock_support_upload_owner_in_db(s, owner_key)
+        canonical_owner = str(owner_account_id or "").strip()
+        owner_filter = (
+            SupportAttachment.owner_account_id == canonical_owner
+            if canonical_owner
+            else and_(
+                SupportAttachment.owner_account_id.is_(None),
+                SupportAttachment.owner_tg_id == int(owner_tg_id),
             )
-            s.commit()
-        except Exception:
-            s.rollback()
-            stored_path.unlink(missing_ok=True)
-            raise
-        finally:
-            s.close()
+        )
+        expired_rows = (
+            s.query(SupportAttachment)
+            .filter(
+                SupportAttachment.ticket_id.is_(None),
+                SupportAttachment.message_id.is_(None),
+                SupportAttachment.expires_at.isnot(None),
+                SupportAttachment.expires_at <= now,
+                owner_filter,
+            )
+            .order_by(SupportAttachment.id.asc())
+            .all()
+        )
+        removed_names: list[str] = []
+        for expired in expired_rows:
+            removed = (
+                s.query(SupportAttachment)
+                .filter(
+                    SupportAttachment.id == expired.id,
+                    SupportAttachment.ticket_id.is_(None),
+                    SupportAttachment.message_id.is_(None),
+                    SupportAttachment.expires_at.isnot(None),
+                    SupportAttachment.expires_at <= now,
+                    owner_filter,
+                )
+                .delete(synchronize_session=False)
+            )
+            if removed:
+                removed_names.append(str(expired.stored_name))
+                s.expunge(expired)
+        s.commit()
+        _lock_support_upload_owner_in_db(s, owner_key)
+        for expired_name in removed_names:
+            clean_expired_name = Path(expired_name).name
+            if clean_expired_name != expired_name or not re.fullmatch(
+                r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)",
+                clean_expired_name,
+            ):
+                continue
+            row_reappeared = (
+                s.query(SupportAttachment.id)
+                .filter(SupportAttachment.stored_name == clean_expired_name)
+                .first()
+                is not None
+            )
+            if not row_reappeared:
+                (SUPPORT_UPLOAD_DIR / clean_expired_name).unlink(missing_ok=True)
+
+        pending = s.query(
+            func.count(SupportAttachment.id),
+            func.coalesce(func.sum(SupportAttachment.size_bytes), 0),
+        ).filter(
+            SupportAttachment.ticket_id.is_(None),
+            SupportAttachment.message_id.is_(None),
+            SupportAttachment.expires_at.isnot(None),
+            SupportAttachment.expires_at > now,
+            owner_filter,
+        )
+        pending_count, pending_bytes = pending.one()
+        if int(pending_count or 0) >= SUPPORT_PENDING_UPLOAD_MAX_COUNT:
+            raise HTTPException(status_code=429, detail="Pending attachment quota exceeded")
+        if int(pending_bytes or 0) + total_size > SUPPORT_PENDING_UPLOAD_MAX_BYTES:
+            raise HTTPException(status_code=429, detail="Pending attachment byte quota exceeded")
+
+        descriptor = os.open(str(temp_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as temp_file:
+            temp_file.write(raw_bytes)
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+        os.replace(temp_path, stored_path)
+        _fsync_parent_directory(stored_path)
+        s.add(
+            SupportAttachment(
+                stored_name=stored_name,
+                owner_tg_id=int(owner_tg_id),
+                owner_account_id=str(owner_account_id or "").strip() or None,
+                original_name=original_name,
+                content_type=content_type,
+                size_bytes=int(total_size),
+                media_type=media_type,
+                expires_at=now + timedelta(hours=SUPPORT_PENDING_UPLOAD_TTL_HOURS),
+                created_at=now,
+            )
+        )
+        s.commit()
+    except HTTPException:
+        s.rollback()
+        temp_path.unlink(missing_ok=True)
+        raise
     except Exception:
-        stored_path.unlink(missing_ok=True)
+        s.rollback()
+        temp_path.unlink(missing_ok=True)
         _record_security_event(
             "support_upload_reject",
             scope="ticket_upload",
@@ -6449,6 +6616,8 @@ def _store_support_upload(
             reason="store_failed",
         )
         raise
+    finally:
+        s.close()
 
     file_url = f"{SUPPORT_ATTACHMENT_URL_PREFIX.rstrip('/')}/{stored_name}"
     payload = {
@@ -6463,7 +6632,171 @@ def _store_support_upload(
         "media_file_id": f"support/{stored_name}",
         "media_payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
     }
-    return {"attachment": attachment, "attachment_payload": payload}
+    return {"attachment_id": stored_name, "attachment": attachment, "attachment_payload": payload}
+
+
+_SUPPORT_ATTACHMENT_BIND_LOCKS = tuple(threading.Lock() for _ in range(64))
+
+
+def _support_attachment_error(*, code: str, status_code: int) -> HTTPException:
+    details = {
+        "support_attachment_invalid": "Attachment reference is invalid",
+        "support_attachment_not_found": "Attachment not found",
+        "support_attachment_already_bound": "Attachment is already bound",
+    }
+    return _auth_http_exception(detail=details[code], code=code, status_code=status_code)
+
+
+def _support_attachment_reference(payload: TicketMessageIn) -> str:
+    attachment_id = str(payload.attachment_id or "").strip()
+    if attachment_id:
+        return attachment_id
+    media_file_id = str(payload.media_file_id or "").strip()
+    return media_file_id.removeprefix("support/") if media_file_id.startswith("support/") else ""
+
+
+def _support_attachment_bind_lock(reference: str):
+    if not reference:
+        return contextlib.nullcontext()
+    digest = hashlib.sha256(reference.encode("utf-8")).digest()
+    return _SUPPORT_ATTACHMENT_BIND_LOCKS[digest[0] % len(_SUPPORT_ATTACHMENT_BIND_LOCKS)]
+
+
+def _canonical_support_attachment(row: SupportAttachment) -> dict[str, Any]:
+    stored_name = str(row.stored_name)
+    payload = {
+        "url": f"{SUPPORT_ATTACHMENT_URL_PREFIX.rstrip('/')}/{stored_name}",
+        "name": str(row.original_name),
+        "content_type": str(row.content_type),
+        "size": int(row.size_bytes or 0),
+        "private": True,
+    }
+    return {
+        "media_type": str(row.media_type),
+        "media_file_id": f"support/{stored_name}",
+        "media_payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+    }
+
+
+def _support_attachment_owned_by(
+    row: SupportAttachment,
+    *,
+    actor_tg_id: int,
+    account_id: str | None,
+) -> bool:
+    return can_access_support_attachment(
+        row,
+        int(actor_tg_id),
+        0,
+        account_id=str(account_id or "").strip() or None,
+    )
+
+
+def _resolve_ticket_attachment(
+    session,
+    *,
+    payload: TicketMessageIn,
+    actor_tg_id: int,
+    account_id: str | None,
+) -> tuple[SupportAttachment | None, dict[str, Any]]:
+    attachment_id = str(payload.attachment_id or "").strip()
+    media_values = (payload.media_type, payload.media_file_id, payload.media_payload)
+    has_media = any(value is not None and str(value).strip() for value in media_values)
+    if attachment_id and has_media:
+        raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+
+    media_file_id = str(payload.media_file_id or "").strip()
+    legacy_private = not attachment_id and media_file_id.startswith("support/")
+    if not attachment_id and not legacy_private:
+        return None, {
+            "media_type": payload.media_type,
+            "media_file_id": payload.media_file_id,
+            "media_payload": payload.media_payload,
+        }
+    stored_name = attachment_id or media_file_id.removeprefix("support/")
+    if (
+        not stored_name
+        or Path(stored_name).name != stored_name
+        or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", stored_name)
+    ):
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+
+    query = session.query(SupportAttachment).filter(SupportAttachment.stored_name == stored_name)
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        query = query.with_for_update()
+    row = query.first()
+    now = _utcnow()
+    if not row or not _support_attachment_owned_by(
+        row,
+        actor_tg_id=actor_tg_id,
+        account_id=account_id,
+    ):
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+    if row.expires_at is not None and row.expires_at <= now:
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+    if row.ticket_id is not None or row.message_id is not None:
+        raise _support_attachment_error(code="support_attachment_already_bound", status_code=409)
+
+    canonical = _canonical_support_attachment(row)
+    if legacy_private:
+        try:
+            supplied_payload = json.loads(str(payload.media_payload or ""))
+            canonical_payload = json.loads(canonical["media_payload"])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+        accepted_urls = {
+            canonical_payload["url"],
+            f"{SUPPORT_UPLOAD_URL_PREFIX.rstrip('/')}/{stored_name}",
+        }
+        supplied_url = str((supplied_payload or {}).get("url") or "")
+        comparable_keys = ("name", "content_type", "size", "private")
+        if (
+            str(payload.media_type or "") != canonical["media_type"]
+            or media_file_id != canonical["media_file_id"]
+            or not isinstance(supplied_payload, dict)
+            or supplied_url not in accepted_urls
+            or any(supplied_payload.get(key) != canonical_payload[key] for key in comparable_keys)
+        ):
+            raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+    return row, canonical
+
+
+def _bind_ticket_attachment(
+    session,
+    *,
+    row: SupportAttachment,
+    ticket_id: int,
+    message_id: int,
+) -> None:
+    now = _utcnow()
+    filters = [
+        SupportAttachment.id == row.id,
+        SupportAttachment.ticket_id.is_(None),
+        SupportAttachment.message_id.is_(None),
+    ]
+    if row.expires_at is not None:
+        filters.append(SupportAttachment.expires_at > now)
+    updated = session.query(SupportAttachment).filter(*filters).update(
+        {
+            SupportAttachment.ticket_id: int(ticket_id),
+            SupportAttachment.message_id: int(message_id),
+            SupportAttachment.attached_at: now,
+            SupportAttachment.expires_at: None,
+        },
+        synchronize_session=False,
+    )
+    if updated != 1:
+        current = (
+            session.query(SupportAttachment)
+            .filter(SupportAttachment.id == row.id)
+            .populate_existing()
+            .first()
+        )
+        if current is None or (current.expires_at is not None and current.expires_at <= now):
+            raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+        if current.ticket_id is not None or current.message_id is not None:
+            raise _support_attachment_error(code="support_attachment_already_bound", status_code=409)
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
 
 
 def _json_obj(raw: str | None) -> dict[str, Any]:
@@ -13730,17 +14063,21 @@ async def upload_ticket_attachment(
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_upload", request, identity=f"tg:{tg_id}")
-    raw_bytes = await _read_limited_request_body(request, max_bytes=SUPPORT_UPLOAD_MAX_BYTES, scope="Attachment")
-    s = SessionLocal()
     try:
-        account_id = resolve_support_account_id(
-            s,
-            account_id=str(auth_user.get("account_id") or "").strip() or None,
-            user_tg_id=tg_id,
+        raw_bytes = await _read_limited_request_body(
+            request,
+            max_bytes=SUPPORT_UPLOAD_MAX_BYTES,
+            scope="Attachment",
         )
-    finally:
-        s.close()
-    try:
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=tg_id,
+            )
+        finally:
+            s.close()
         uploaded = _store_support_upload(
             owner_tg_id=tg_id,
             owner_account_id=account_id,
@@ -13754,8 +14091,8 @@ async def upload_ticket_attachment(
             scope="ticket_upload",
             client_ip=_request_client_ip(request),
             subject=f"tg:{tg_id}",
-            reason=str(exc.detail or "unsupported_attachment")[:160],
-            meta={"content_type": request.headers.get("content-type"), "filename": x_upload_filename},
+            reason=_support_upload_reject_reason(exc),
+            meta={"status_code": int(exc.status_code)},
         )
         raise
     logger.info(
@@ -13777,6 +14114,12 @@ async def download_ticket_attachment(
     x_telegram_init_data: str = Header(default=""),
 ) -> FileResponse:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    if _auth_user_is_recovery_scope(auth_user):
+        raise _auth_http_exception(
+            detail="Recovery-сессия не открывает вложения.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
     actor = int(auth_user.get("id", 0))
     clean_name = Path(str(stored_name or "")).name
     if clean_name != stored_name or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", clean_name):
@@ -13792,12 +14135,31 @@ async def download_ticket_attachment(
         row = s.query(SupportAttachment).filter(SupportAttachment.stored_name == clean_name).first()
         if not row:
             raise HTTPException(status_code=404, detail="Attachment not found")
-        if not can_access_support_attachment(
-            row,
-            actor,
-            int(Settings.ADMIN_ID or 0),
-            account_id=account_id,
+        if (
+            row.ticket_id is None
+            and row.message_id is None
+            and row.expires_at is not None
+            and row.expires_at <= _utcnow()
         ):
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        bound_ticket = get_ticket_by_id(s, int(row.ticket_id)) if row.ticket_id is not None else None
+        allowed = (
+            can_access_ticket(
+                bound_ticket,
+                actor,
+                int(Settings.ADMIN_ID or 0),
+                account_id=account_id,
+            )
+            if bound_ticket is not None
+            else row.ticket_id is None
+            and can_access_support_attachment(
+                row,
+                actor,
+                int(Settings.ADMIN_ID or 0),
+                account_id=account_id,
+            )
+        )
+        if not allowed:
             _record_security_event(
                 "support_attachment_denied",
                 scope="ticket_attachment_download",
@@ -13836,33 +14198,50 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
     _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_create", request, identity=f"tg:{tg_id}")
-    s = SessionLocal()
-    try:
-        account_id = resolve_support_account_id(
-            s,
-            account_id=str(auth_user.get("account_id") or "").strip() or None,
-            user_tg_id=tg_id,
-        )
-        ticket = get_user_active_ticket(s, tg_id, account_id=account_id)
-        if not ticket:
-            ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject, account_id=account_id)
-        else:
-            claim_legacy_ticket(ticket, actor_tg_id=tg_id, account_id=account_id)
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=tg_id,
-            sender_role="user",
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(s, ticket=ticket, status=STATUS_OPEN)
-        s.commit()
-        ticket_id = int(ticket.id)
-    finally:
-        s.close()
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=tg_id,
+            )
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=tg_id,
+                account_id=account_id,
+            )
+            ticket = get_user_active_ticket(s, tg_id, account_id=account_id)
+            if not ticket:
+                ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject, account_id=account_id)
+            else:
+                claim_legacy_ticket(ticket, actor_tg_id=tg_id, account_id=account_id)
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=tg_id,
+                sender_role="user",
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(s, ticket=ticket, status=STATUS_OPEN)
+            s.commit()
+            ticket_id = int(ticket.id)
+            has_attachment = bool(attachment is not None or media.get("media_type") or media.get("media_file_id"))
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     if Settings.ADMIN_ID:
         await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый обращение #{ticket_id} от пользователя {tg_id}.")
@@ -13871,7 +14250,7 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
         ticket_id=ticket_id,
         user_tg_id=tg_id,
         text=payload.body,
-        has_attachment=bool(payload.media_type or payload.media_file_id),
+        has_attachment=has_attachment,
     )
     return {
         "ticket": _load_ticket_row(
@@ -13925,46 +14304,63 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
     recovery_scope = _auth_user_is_recovery_scope(auth_user)
     admin_actor = bool(_is_admin_tg(actor) and not recovery_scope)
     admin_bypass_tg_id = 0 if recovery_scope else int(Settings.ADMIN_ID or 0)
-    s = SessionLocal()
-    try:
-        account_id = resolve_support_account_id(
-            s,
-            account_id=str(auth_user.get("account_id") or "").strip() or None,
-            user_tg_id=actor,
-        )
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        if not can_access_ticket(
-            ticket,
-            actor,
-            admin_bypass_tg_id,
-            account_id=account_id,
-        ):
-            raise HTTPException(status_code=403, detail="Access denied")
-        role = "admin" if admin_actor else "user"
-        if role == "user":
-            claim_legacy_ticket(ticket, actor_tg_id=actor, account_id=account_id)
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=actor,
-            sender_role=role,
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(
-            s,
-            ticket=ticket,
-            status=STATUS_IN_PROGRESS if role == "admin" else STATUS_OPEN,
-            assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
-        )
-        s.commit()
-        ticket_user_tg_id = resolve_ticket_notification_tg_id(s, ticket)
-    finally:
-        s.close()
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=actor,
+            )
+            ticket = get_ticket_by_id(s, ticket_id)
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket not found")
+            if not can_access_ticket(
+                ticket,
+                actor,
+                admin_bypass_tg_id,
+                account_id=account_id,
+            ):
+                raise HTTPException(status_code=403, detail="Access denied")
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=actor,
+                account_id=account_id,
+            )
+            role = "admin" if admin_actor else "user"
+            if role == "user":
+                claim_legacy_ticket(ticket, actor_tg_id=actor, account_id=account_id)
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=actor,
+                sender_role=role,
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(
+                s,
+                ticket=ticket,
+                status=STATUS_IN_PROGRESS if role == "admin" else STATUS_OPEN,
+                assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
+            )
+            s.commit()
+            ticket_user_tg_id = resolve_ticket_notification_tg_id(s, ticket)
+            has_attachment = bool(attachment is not None or media.get("media_type") or media.get("media_file_id"))
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     if role == "admin":
         if ticket_user_tg_id is None:
@@ -13981,7 +14377,7 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             ticket_id=ticket_id,
             user_tg_id=actor,
             text=payload.body,
-            has_attachment=bool(payload.media_type or payload.media_file_id),
+            has_attachment=has_attachment,
         )
     return {
         "ticket": _load_ticket_row(
@@ -17173,26 +17569,43 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
 @app.post("/api/admin/tickets/{ticket_id}/reply")
 async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_telegram_init_data: str = Header(default="")) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=actor,
-            sender_role="admin",
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(s, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=actor)
-        s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
-    finally:
-        s.close()
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(s, user_tg_id=actor)
+            ticket = get_ticket_by_id(s, ticket_id)
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket not found")
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=actor,
+                account_id=account_id,
+            )
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=actor,
+                sender_role="admin",
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(s, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=actor)
+            s.commit()
+            msgs = list_ticket_messages(s, ticket.id, limit=100)
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     await _telegram_send_message(int(ticket.user_tg_id), f"💬 Ответ оператора в обращении #{ticket.id}.")
     _audit_admin(actor_tg_id=actor, action="admin_ticket_reply", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id})

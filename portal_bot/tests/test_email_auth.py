@@ -1015,6 +1015,7 @@ def test_recovery_ticket_http_rejects_nonempty_media_fields(monkeypatch, tmp_pat
     ticket_id = int(text_create.json()["ticket"]["id"])
 
     media_cases = [
+        ("attachment-id", {"attachment_id": "staged-private-id"}),
         ("media-type", {"media_type": "photo"}),
         ("media-file-id", {"media_file_id": "private-file-id"}),
         ("media-payload", {"media_payload": '{"private":true}'}),
@@ -1120,7 +1121,8 @@ def test_recovery_ticket_http_hides_attachment_metadata_and_enforces_ownership(m
 
 
 def test_recovery_actor_equal_to_admin_id_cannot_access_foreign_ticket(monkeypatch, tmp_path):
-    api, client, _normal_headers, recovery_headers = _recovery_http_fixture(monkeypatch, tmp_path)
+    api, client, normal_headers, recovery_headers = _recovery_http_fixture(monkeypatch, tmp_path)
+    _owned_ticket_id, attachment_url = _seed_ticket_with_private_attachment(client, normal_headers)
     session_response = client.get("/api/auth/session", headers=recovery_headers)
     assert session_response.status_code == 200, session_response.text
     recovery_actor = int(session_response.json()["user"]["id"])
@@ -1148,9 +1150,14 @@ def test_recovery_actor_equal_to_admin_id_cannot_access_foreign_ticket(monkeypat
         headers=recovery_headers,
         json={"body": "Recovery scope must not inherit admin bypass"},
     )
+    attachment_download = client.get(attachment_url, headers=recovery_headers)
 
     assert foreign_get.status_code == 403, "recovery-admin-foreign-ticket-get"
     assert foreign_message.status_code == 403, "recovery-admin-foreign-ticket-message"
+    assert attachment_download.status_code == 403, "recovery-admin-attachment-download"
+    assert (
+        attachment_download.headers.get("X-POKROV-Auth-Error") == "recovery_scope_forbidden"
+    ), "recovery-admin-attachment-code"
 
 
 def test_email_otp_fresh_auth_recovery_exchange_and_vpn_reissue(monkeypatch, tmp_path):

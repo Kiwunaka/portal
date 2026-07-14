@@ -450,6 +450,67 @@ Authenticated normal client/admin attachment behavior remains available under
 the owner/admin contract. The limited recovery projection is text-only and
 cannot upload, download, submit, or receive attachment metadata.
 
+`POST /api/tickets/uploads` stages a private file and preserves the legacy
+`attachment` plus `attachment_payload` response while adding an opaque
+`attachment_id` equal to the stored server identifier. New rows expire after
+`SUPPORT_PENDING_UPLOAD_TTL_HOURS` (default 24). Account-first pending quotas
+count only unexpired, unbound rows and default to
+`SUPPORT_PENDING_UPLOAD_MAX_COUNT=5` and
+`SUPPORT_PENDING_UPLOAD_MAX_BYTES=52428800`; without a canonical account, only
+the exact legacy Telegram owner is counted. Upload admission may remove only
+that same owner's expired rows with non-null `expires_at` while both `ticket_id`
+and `message_id` remain null. Legacy null-expiry, bound rows, and other owners'
+rows are never swept by admission.
+
+Ticket create/reply accepts optional `attachment_id`. It cannot be mixed with
+nonempty media fields (`400 support_attachment_invalid`). Missing, foreign, or
+expired staged IDs return `404 support_attachment_not_found`; a previously
+bound row returns `409 support_attachment_already_bound`. Admin ticket access
+does not permit an operator to bind another owner's staged upload. The server
+loads canonical media metadata from the persisted row, flushes the message,
+then conditionally sets `ticket_id`, unique `message_id`, `attached_at`, and a
+null `expires_at` in the same transaction. A concurrent loser rolls back its
+message and ticket mutation.
+
+Rolling clients may omit `attachment_id` and send the exact historical
+`support/{stored_name}` private triplet. The server resolves ownership and
+semantic metadata before canonicalizing and binding it. Forged or mismatched
+`support/*` references fail closed. Non-private Telegram/client triplets remain
+unchanged. Bound download authorization follows the bound ticket; unbound and
+legacy rows retain exact owner/admin fallback. Recovery scope remains denied
+even when its synthetic actor ID numerically equals the configured admin ID. An
+unbound row with an explicit `expires_at <= now` returns `404` to both owner and
+admin; bound history and legacy null-expiry rows retain their existing access.
+
+Upload finalization fsyncs the exclusive temporary file, atomically renames it,
+and fsyncs the containing directory on POSIX before attempting the attachment
+row commit. Once rename succeeds, any persistence or commit-acknowledgement
+exception preserves the final file. A durable committed row therefore is not
+turned into a missing-file row by error cleanup; a verified rowless final is
+left for grace-period reconciliation. Temporary paths are still cleaned.
+
+The supervised support-attachment cleanup job defaults to a 900-second interval,
+3600-second orphan safety grace, 100 expired rows per batch, 500 selected file
+candidates, and 500 DB-row observations per run. It conditionally deletes only
+explicit-expiry unbound rows, uses PostgreSQL `SKIP LOCKED`, removes old temp and rowless
+canonical files after grace, and checks the exact canonical basename and DB row
+again before unlink. Its DB missing-file query and file candidate processing are
+bounded, deterministic, and non-destructive across bound, unexpired, and legacy
+rows. At the start of each cycle, one worker-held cursor freezes a DB max-ID
+high-water and a filesystem mtime cutoff; bounded windows then advance by row ID
+and filename without admitting newer entries into that active cycle. Integer
+wrap flags report cycle completion without logging names, IDs, cutoffs, or
+cursors. The process-local snapshot resets after worker restart. File candidate
+selection uses bounded memory but enumerates the whole upload directory once per
+run, so large-directory latency remains an operational measurement gate.
+
+The schema change is additive for SQLite and PostgreSQL: nullable indexed
+`ticket_id`, nullable unique/indexed `message_id`, nullable `attached_at`, and
+nullable indexed `expires_at`. Runtime migration is rerunnable and creates no
+physical foreign key or destructive table rebuild. Rehearsal checks report
+counts/status for missing tickets, missing messages, and attachment/message
+ticket mismatch.
+
 Notification routing does not grant access. Operator replies use a bounded,
 deterministic target order: explicit linked Telegram, enabled Telegram identity,
 then the historical ticket ID only when it is a real Telegram target. With no

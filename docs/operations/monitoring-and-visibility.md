@@ -170,7 +170,7 @@ Track these as operator-facing abuse signals:
 
 - `rate_limit_hit`: brute force, token scanning, callback spam, or broken automation
 - `payment_callback_invalid_signature`: bad provider auth/signature attempts
-- `support_upload_reject`: rejected attachment type, oversized body, or failed private storage
+- `support_upload_reject`: one event per rejected upload with a stable bounded reason; `store_failed` is reserved for non-HTTP storage/persistence failure
 - `support_attachment_denied`: private attachment access mismatch
 - `admin_access_denied`: non-admin account attempted admin access
 - `subscription_lookup_failed`: unknown subscription token lookup, usually token scanning when repeated
@@ -181,6 +181,18 @@ Operational rules:
 - repeated `subscription_lookup_failed` from one origin is an abuse signal even when delivery nodes are healthy
 - callback failure spikes should be checked against provider dashboard status before treating them as user payment failures
 - volumetric DDoS is still outside the guarantee of app-level counters; correlate with HAProxy, hoster, and firewall evidence
+
+Support attachment visibility for this candidate is metadata-only:
+
+- `ticket_attachment_uploaded` logs owner ID, canonical media type, stored private reference, and byte count, never file bytes or payload content;
+- `support_upload_reject` is emitted once for each HTTP format, body-size, attachment-size, or pending quota rejection, including oversized streaming reads; it includes only a stable reason and status. Non-HTTP storage/persistence failure uses `store_failed`. Filename, body, bytes, and private payload are excluded;
+- `store_failed` can include an ambiguous database commit acknowledgement after final rename. The upload path preserves that final file, so operators must correlate redacted row/file and cleanup counts instead of treating the event as proof that no row committed. A rowless final is expected to remain until the configured safety grace and reconciler pass;
+- `support_attachment_denied` covers bound-ticket or legacy-owner download mismatch;
+- supervised `support_attachment_cleanup` logs integer-only local counters for expired rows/files, missing or row-reappeared expired files, old temp files, rowless canonical files, selected file candidates (`file_candidates_selected`), total directory entries enumerated (`filesystem_entries_enumerated`), bounded DB rows scanned, DB rows whose canonical file is missing, malformed names skipped, file errors, and file/row cycle-wrap flags. The DB missing-file counter is non-destructive and includes bound, unexpired, and legacy rows within the deterministic query limit;
+- a worker-held process-local cursor freezes one filesystem mtime cutoff and one DB max-ID high-water per cycle, then advances by filename and row ID. Newer entries do not extend the active cycle; integer wrap flags expose exhaustion, while names, IDs, cutoffs, and cursor values are never logged. Worker restart discards active snapshots and begins new cycles;
+- file candidate processing and selection memory are bounded by `SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT`, but candidate selection enumerates the whole upload directory once per run and `filesystem_entries_enumerated` can therefore exceed that limit. Treat large-directory latency as a production manual gate rather than a locally proven bound;
+- operators should track redacted counts of pending unexpired, expired unbound, bound, and dangling ticket/message rows during migration rehearsal and backup/restore. No raw stored name, owner payload, or attachment body belongs in a shared metric label;
+- local SQLite counters, worker wiring tests, and E2E requests are not proof that the production worker schedule, PostgreSQL, reverse proxy, or filesystem behavior is live.
 
 ## Telemetry Retention
 

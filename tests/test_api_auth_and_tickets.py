@@ -4,6 +4,8 @@ import json
 import os
 import sys
 import tempfile
+import concurrent.futures
+import threading
 import unittest
 import uuid
 import time
@@ -220,6 +222,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(
             events[0]["meta"]["diagnostics_keys"],
             ["platform", "runtimeState"],
+        )
+
+    def _upload_support_attachment(
+        self,
+        headers: dict[str, str],
+        *,
+        name: str = "diagnostic.txt",
+        content: bytes = b"private diagnostic",
+    ):
+        return self.client.post(
+            "/api/tickets/uploads",
+            headers={**headers, "Content-Type": "text/plain", "X-Upload-Filename": name},
+            content=content,
         )
 
     def test_admin_endpoint_requires_admin_guard(self) -> None:
@@ -1534,6 +1549,888 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(fetched.headers.get("content-type"), "image/png")
         self.assertEqual(fetched.headers.get("x-content-type-options"), "nosniff")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
+
+    def test_ticket_upload_stages_opaque_id_with_default_expiry(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        before = _utcnow()
+        response = self._upload_support_attachment(headers)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        attachment_id = str(payload.get("attachment_id") or "")
+        self.assertTrue(attachment_id)
+        self.assertEqual(
+            payload["attachment_payload"]["url"],
+            f"/api/tickets/attachments/{attachment_id}",
+        )
+        self.assertEqual(payload["attachment"]["media_file_id"], f"support/{attachment_id}")
+
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(stored_name=attachment_id).one()
+            self.assertIsNone(row.ticket_id)
+            self.assertIsNone(row.message_id)
+            self.assertIsNone(row.attached_at)
+            self.assertGreaterEqual(row.expires_at, before + timedelta(hours=23, minutes=59))
+            self.assertLessEqual(row.expires_at, before + timedelta(hours=24, minutes=1))
+        finally:
+            session.close()
+
+    def test_ticket_upload_cleanup_and_pending_quota_boundaries(self) -> None:
+        from db import SessionLocal
+        from models import Account, SecurityEvent, SupportAttachment, User
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        upload_dir = Path(self.api.SUPPORT_UPLOAD_DIR)
+        now = _utcnow()
+        session = SessionLocal()
+        try:
+            account = Account(id="attachment-quota-account", status="active", created_source="test")
+            session.add(account)
+            session.query(User).filter_by(tg_id=1001).one().account_id = account.id
+            rows = [
+                SupportAttachment(
+                    stored_name="20260714-expiredrow.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=account.id,
+                    original_name="expired.txt",
+                    content_type="text/plain",
+                    size_bytes=7,
+                    media_type="file",
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+                SupportAttachment(
+                    stored_name="20260714-legacyrow.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=None,
+                    original_name="legacy.txt",
+                    content_type="text/plain",
+                    size_bytes=6,
+                    media_type="file",
+                    expires_at=None,
+                    created_at=now - timedelta(days=30),
+                ),
+                SupportAttachment(
+                    stored_name="20260714-boundrow.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=account.id,
+                    original_name="bound.txt",
+                    content_type="text/plain",
+                    size_bytes=5,
+                    media_type="file",
+                    ticket_id=77,
+                    message_id=88,
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+                SupportAttachment(
+                    stored_name="20260714-otherowner.txt",
+                    owner_tg_id=2002,
+                    owner_account_id="other-attachment-owner",
+                    original_name="other-owner.txt",
+                    content_type="text/plain",
+                    size_bytes=11,
+                    media_type="file",
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+                SupportAttachment(
+                    stored_name="nested/20260714-otherowner.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=account.id,
+                    original_name="malformed.txt",
+                    content_type="text/plain",
+                    size_bytes=9,
+                    media_type="file",
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+            ]
+            session.add_all(rows)
+            session.commit()
+        finally:
+            session.close()
+        for name in (
+            "20260714-expiredrow.txt",
+            "20260714-legacyrow.txt",
+            "20260714-boundrow.txt",
+            "20260714-otherowner.txt",
+        ):
+            (upload_dir / name).write_bytes(name.encode("ascii"))
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5), patch.object(
+            self.api, "SUPPORT_PENDING_UPLOAD_MAX_BYTES", 50 * 1024 * 1024
+        ):
+            accepted = self._upload_support_attachment(headers, name="fresh.txt", content=b"fresh")
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertFalse((upload_dir / "20260714-expiredrow.txt").exists())
+        self.assertTrue((upload_dir / "20260714-legacyrow.txt").exists())
+        self.assertTrue((upload_dir / "20260714-boundrow.txt").exists())
+        self.assertTrue((upload_dir / "20260714-otherowner.txt").exists())
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", 1):
+            count_limited = self._upload_support_attachment(headers, name="over-count.txt", content=b"x")
+        self.assertEqual(count_limited.status_code, 429, count_limited.text)
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5), patch.object(
+            self.api, "SUPPORT_PENDING_UPLOAD_MAX_BYTES", 5
+        ):
+            bytes_limited = self._upload_support_attachment(headers, name="over-bytes.txt", content=b"x")
+        self.assertEqual(bytes_limited.status_code, 429, bytes_limited.text)
+
+        session = SessionLocal()
+        try:
+            names = {row.stored_name for row in session.query(SupportAttachment).all()}
+        finally:
+            session.close()
+        self.assertNotIn("20260714-expiredrow.txt", names)
+        self.assertIn("20260714-legacyrow.txt", names)
+        self.assertIn("20260714-boundrow.txt", names)
+        self.assertIn("20260714-otherowner.txt", names)
+        session = SessionLocal()
+        try:
+            reasons = [
+                row.reason
+                for row in session.query(SecurityEvent)
+                .filter(SecurityEvent.event_type == "support_upload_reject")
+                .order_by(SecurityEvent.id.asc())
+                .all()
+            ]
+        finally:
+            session.close()
+        self.assertEqual(reasons, ["pending_count_quota", "pending_bytes_quota"])
+
+    def test_ticket_upload_rejection_telemetry_is_single_bounded_and_redacted(self) -> None:
+        from db import SessionLocal
+        from models import SecurityEvent
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        marker = "private-filename-marker"
+
+        unsupported = self.client.post(
+            "/api/tickets/uploads",
+            headers={
+                **headers,
+                "Content-Type": "application/octet-stream",
+                "X-Upload-Filename": f"{marker}.bin",
+            },
+            content=b"private-body-marker",
+        )
+        self.assertEqual(unsupported.status_code, 400, unsupported.text)
+
+        session = SessionLocal()
+        try:
+            rows = (
+                session.query(SecurityEvent)
+                .filter(SecurityEvent.event_type == "support_upload_reject")
+                .order_by(SecurityEvent.id.asc())
+                .all()
+            )
+            self.assertEqual([row.reason for row in rows], ["unsupported_type"])
+            serialized = "\n".join(f"{row.reason}\n{row.meta_json or ''}" for row in rows)
+            self.assertNotIn(marker, serialized)
+            self.assertNotIn("private-body-marker", serialized)
+        finally:
+            session.close()
+
+        with patch.object(self.api, "SUPPORT_UPLOAD_MAX_BYTES", 3):
+            oversized = self.client.post(
+                "/api/tickets/uploads",
+                headers={
+                    **headers,
+                    "Content-Type": "text/plain",
+                    "X-Upload-Filename": f"{marker}.txt",
+                },
+                content=b"oversized-private-body",
+            )
+        self.assertEqual(oversized.status_code, 413, oversized.text)
+
+        session = SessionLocal()
+        try:
+            rows = (
+                session.query(SecurityEvent)
+                .filter(SecurityEvent.event_type == "support_upload_reject")
+                .order_by(SecurityEvent.id.asc())
+                .all()
+            )
+            self.assertEqual([row.reason for row in rows], ["unsupported_type", "body_too_large"])
+            serialized = "\n".join(f"{row.reason}\n{row.meta_json or ''}" for row in rows)
+            self.assertNotIn(marker, serialized)
+            self.assertNotIn("oversized-private-body", serialized)
+        finally:
+            session.close()
+
+    def _run_concurrent_pending_uploads(
+        self,
+        *,
+        owners: tuple[tuple[int, str | None], tuple[int, str | None]],
+        payloads: tuple[bytes, bytes],
+        max_count: int,
+        max_bytes: int,
+    ) -> tuple[list[tuple[str, int | str]], int]:
+        from fastapi import HTTPException
+        from sqlalchemy.orm import Query
+
+        barrier = threading.Barrier(2)
+        arrivals = 0
+        arrivals_lock = threading.Lock()
+        original_one = Query.one
+
+        def coordinated_one(query):
+            nonlocal arrivals
+            statement = str(query.statement).lower()
+            if "support_attachments" in statement and "count(" in statement:
+                with arrivals_lock:
+                    arrivals += 1
+                try:
+                    barrier.wait(timeout=0.4)
+                except threading.BrokenBarrierError:
+                    pass
+            return original_one(query)
+
+        def store(index: int) -> tuple[str, int | str]:
+            owner_tg_id, owner_account_id = owners[index]
+            try:
+                self.api._store_support_upload(
+                    owner_tg_id=owner_tg_id,
+                    owner_account_id=owner_account_id,
+                    filename=f"concurrent-{index}.txt",
+                    content_type="text/plain",
+                    raw_bytes=payloads[index],
+                )
+                return ("ok", 200)
+            except HTTPException as exc:
+                return ("http", int(exc.status_code))
+            except Exception as exc:  # The RED path may expose a SQLite write race.
+                return ("error", type(exc).__name__)
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", max_count), patch.object(
+            self.api, "SUPPORT_PENDING_UPLOAD_MAX_BYTES", max_bytes
+        ), patch.object(Query, "one", new=coordinated_one):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                results = list(executor.map(store, (0, 1)))
+        return results, arrivals
+
+    def test_concurrent_pending_upload_count_is_serialized_by_canonical_account(self) -> None:
+        results, arrivals = self._run_concurrent_pending_uploads(
+            owners=((1001, "shared-quota-owner"), (1002, "shared-quota-owner")),
+            payloads=(b"one", b"two"),
+            max_count=1,
+            max_bytes=1024,
+        )
+
+        self.assertEqual(sorted(results), [("http", 429), ("ok", 200)])
+        self.assertEqual(arrivals, 2)
+
+    def test_concurrent_pending_upload_bytes_are_serialized_by_legacy_tg_owner(self) -> None:
+        results, arrivals = self._run_concurrent_pending_uploads(
+            owners=((1001, None), (1001, None)),
+            payloads=(b"abc", b"def"),
+            max_count=5,
+            max_bytes=5,
+        )
+
+        self.assertEqual(sorted(results), [("http", 429), ("ok", 200)])
+        self.assertEqual(arrivals, 2)
+
+    def test_pending_upload_owner_keys_and_advisory_keys_keep_distinct_owners_separate(self) -> None:
+        shared_from_first_tg = self.api._support_upload_owner_key(
+            owner_tg_id=1001,
+            owner_account_id="shared",
+        )
+        shared_from_second_tg = self.api._support_upload_owner_key(
+            owner_tg_id=1002,
+            owner_account_id="shared",
+        )
+        other_account = self.api._support_upload_owner_key(
+            owner_tg_id=1001,
+            owner_account_id="other",
+        )
+        legacy_owner = self.api._support_upload_owner_key(owner_tg_id=1001, owner_account_id=None)
+
+        self.assertEqual(shared_from_first_tg, shared_from_second_tg)
+        self.assertEqual(len(self.api._SUPPORT_UPLOAD_OWNER_LOCKS), 256)
+        self.assertIsInstance(self.api._SUPPORT_UPLOAD_OWNER_LOCKS, tuple)
+        advisory_keys = {
+            self.api._support_upload_advisory_lock_key(owner_key)
+            for owner_key in (shared_from_first_tg, other_account, legacy_owner)
+        }
+        self.assertEqual(len(advisory_keys), 3)
+
+    def test_pending_upload_postgres_uses_transaction_advisory_owner_lock(self) -> None:
+        class _Session:
+            def __init__(self, dialect_name: str):
+                self.bind = SimpleNamespace(dialect=SimpleNamespace(name=dialect_name))
+                self.calls: list[tuple[str, dict[str, int]]] = []
+
+            def execute(self, statement, params):
+                self.calls.append((str(statement), dict(params)))
+
+        postgres = _Session("postgresql")
+        sqlite = _Session("sqlite")
+
+        self.api._lock_support_upload_owner_in_db(postgres, "account:shared")
+        self.api._lock_support_upload_owner_in_db(sqlite, "account:shared")
+
+        self.assertEqual(len(postgres.calls), 1)
+        self.assertIn("pg_advisory_xact_lock", postgres.calls[0][0])
+        self.assertIsInstance(postgres.calls[0][1]["lock_key"], int)
+        self.assertEqual(sqlite.calls, [])
+
+    def test_pending_upload_db_owner_lock_is_reacquired_after_cleanup_commit(self) -> None:
+        from db import SessionLocal
+
+        sessions = []
+        lock_boundaries: list[int] = []
+        boundary_events: list[str] = []
+
+        class _RecordingSession:
+            def __init__(self, inner):
+                self._inner = inner
+                self.commit_count = 0
+
+            def commit(self):
+                self._inner.commit()
+                self.commit_count += 1
+                boundary_events.append(f"commit:{self.commit_count}")
+
+            def query(self, *entities, **kwargs):
+                if any("count(" in str(entity).lower() for entity in entities):
+                    boundary_events.append(f"quota:{self.commit_count}")
+                return self._inner.query(*entities, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+        def session_factory():
+            session = _RecordingSession(SessionLocal())
+            sessions.append(session)
+            return session
+
+        def record_lock(session, _owner_key: str):
+            lock_boundaries.append(session.commit_count)
+            boundary_events.append(f"lock:{session.commit_count}")
+
+        with patch.object(self.api, "SessionLocal", new=session_factory), patch.object(
+            self.api, "_lock_support_upload_owner_in_db", new=record_lock
+        ):
+            self.api._store_support_upload(
+                owner_tg_id=1001,
+                owner_account_id="lock-order-owner",
+                filename="lock-order.txt",
+                content_type="text/plain",
+                raw_bytes=b"lock order",
+            )
+
+        self.assertEqual(lock_boundaries, [0, 1])
+        self.assertEqual(sessions[0].commit_count, 2)
+        self.assertEqual(
+            boundary_events,
+            ["lock:0", "commit:1", "lock:1", "quota:1", "commit:2"],
+        )
+
+    def test_attachment_id_binds_create_and_reply_with_conflict_and_owner_checks(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, SupportTicketMessage, User
+
+        alice = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        admin = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        first_upload = self._upload_support_attachment(alice, name="create.txt", content=b"create payload")
+        self.assertEqual(first_upload.status_code, 200, first_upload.text)
+        first_id = first_upload.json()["attachment_id"]
+
+        created = self.client.post(
+            "/api/tickets",
+            headers=alice,
+            json={"subject": "Private", "body": "Create with staged file", "attachment_id": first_id},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        ticket = created.json()["ticket"]
+        ticket_id = int(ticket["id"])
+        message = ticket["messages"][-1]
+        self.assertEqual(message["media_file_id"], f"support/{first_id}")
+        self.assertEqual(json.loads(message["media_payload"])["name"], "create.txt")
+
+        second_upload = self._upload_support_attachment(alice, name="reply.txt", content=b"reply payload")
+        second_id = second_upload.json()["attachment_id"]
+        replied = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={"body": "Reply with staged file", "attachment_id": second_id},
+        )
+        self.assertEqual(replied.status_code, 200, replied.text)
+
+        before_count = len(replied.json()["ticket"]["messages"])
+        duplicate = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={"body": "Must roll back", "attachment_id": second_id},
+        )
+        self.assertEqual(duplicate.status_code, 409, duplicate.text)
+        self.assertEqual(duplicate.headers.get("x-pokrov-auth-error"), "support_attachment_already_bound")
+
+        mixed_upload = self._upload_support_attachment(alice, name="mixed.txt", content=b"mixed")
+        mixed = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={
+                "body": "Mixed",
+                "attachment_id": mixed_upload.json()["attachment_id"],
+                "media_type": "file",
+            },
+        )
+        self.assertEqual(mixed.status_code, 400, mixed.text)
+        self.assertEqual(mixed.headers.get("x-pokrov-auth-error"), "support_attachment_invalid")
+
+        expired_upload = self._upload_support_attachment(alice, name="expired.txt", content=b"expired")
+        expired_id = expired_upload.json()["attachment_id"]
+        session = SessionLocal()
+        try:
+            session.query(SupportAttachment).filter_by(stored_name=expired_id).update(
+                {SupportAttachment.expires_at: _utcnow() - timedelta(seconds=1)}
+            )
+            session.add(
+                User(
+                    tg_id=1002,
+                    username="bob",
+                    uuid=str(uuid.uuid4()),
+                    email="user_1002",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+        expired = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={"body": "Expired", "attachment_id": expired_id},
+        )
+        self.assertEqual(expired.status_code, 404, expired.text)
+        self.assertEqual(expired.headers.get("x-pokrov-auth-error"), "support_attachment_not_found")
+
+        bob = {"X-Telegram-Init-Data": self._init_data(1002, "bob")}
+        foreign_upload = self._upload_support_attachment(bob, name="foreign.txt", content=b"foreign")
+        foreign = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=admin,
+            json={"body": "Admin cannot steal staged upload", "attachment_id": foreign_upload.json()["attachment_id"]},
+        )
+        self.assertEqual(foreign.status_code, 404, foreign.text)
+        self.assertEqual(foreign.headers.get("x-pokrov-auth-error"), "support_attachment_not_found")
+
+        session = SessionLocal()
+        try:
+            self.assertEqual(
+                session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).count(),
+                before_count,
+            )
+            bound = session.query(SupportAttachment).filter_by(stored_name=first_id).one()
+            self.assertEqual(bound.ticket_id, ticket_id)
+            self.assertIsNotNone(bound.message_id)
+            self.assertIsNotNone(bound.attached_at)
+            self.assertIsNone(bound.expires_at)
+        finally:
+            session.close()
+
+    def test_old_private_triplet_is_verified_and_nonprivate_triplet_remains_compatible(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        uploaded = self._upload_support_attachment(headers, name="old-client.txt", content=b"old client")
+        body = uploaded.json()
+        legacy = self.client.post(
+            "/api/tickets",
+            headers=headers,
+            json={"subject": "Old client", "body": "Legacy private triplet", **body["attachment"]},
+        )
+        self.assertEqual(legacy.status_code, 200, legacy.text)
+        ticket_id = int(legacy.json()["ticket"]["id"])
+        session = SessionLocal()
+        try:
+            self.assertIsNotNone(
+                session.query(SupportAttachment).filter_by(stored_name=body["attachment_id"]).one().message_id
+            )
+        finally:
+            session.close()
+
+        forged_upload = self._upload_support_attachment(headers, name="forged.txt", content=b"forged")
+        forged_attachment = dict(forged_upload.json()["attachment"])
+        forged_payload = json.loads(forged_attachment["media_payload"])
+        forged_payload["name"] = "different.txt"
+        forged_attachment["media_payload"] = json.dumps(forged_payload)
+        forged = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=headers,
+            json={"body": "Forged metadata", **forged_attachment},
+        )
+        self.assertEqual(forged.status_code, 400, forged.text)
+        self.assertEqual(forged.headers.get("x-pokrov-auth-error"), "support_attachment_invalid")
+
+        missing = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=headers,
+            json={
+                "body": "Forged reference",
+                "media_type": "file",
+                "media_file_id": "support/20260714-doesnotexist.txt",
+                "media_payload": "{}",
+            },
+        )
+        self.assertEqual(missing.status_code, 404, missing.text)
+        self.assertEqual(missing.headers.get("x-pokrov-auth-error"), "support_attachment_not_found")
+
+        telegram = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=headers,
+            json={
+                "body": "Telegram compatibility",
+                "media_type": "photo",
+                "media_file_id": "telegram-file-id",
+                "media_payload": '{"file_unique_id":"telegram-unique"}',
+            },
+        )
+        self.assertEqual(telegram.status_code, 200, telegram.text)
+        self.assertEqual(telegram.json()["ticket"]["messages"][-1]["media_file_id"], "telegram-file-id")
+
+    def test_bound_download_follows_ticket_access_while_unbound_uses_owner_fallback(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, User
+
+        alice = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        bob = {"X-Telegram-Init-Data": self._init_data(1002, "bob")}
+        admin = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        session = SessionLocal()
+        try:
+            session.add(
+                User(
+                    tg_id=1002,
+                    username="bob",
+                    uuid=str(uuid.uuid4()),
+                    email="user_1002",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        bound_upload = self._upload_support_attachment(alice, name="bound.txt", content=b"bound")
+        bound_id = bound_upload.json()["attachment_id"]
+        created = self.client.post(
+            "/api/tickets",
+            headers=alice,
+            json={"subject": "Bound ACL", "body": "Bound", "attachment_id": bound_id},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        bound_url = bound_upload.json()["attachment_payload"]["url"]
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(stored_name=bound_id).one()
+            row.owner_tg_id = 1002
+            row.owner_account_id = None
+            session.commit()
+        finally:
+            session.close()
+        self.assertEqual(self.client.get(bound_url, headers=alice).status_code, 200)
+        self.assertEqual(self.client.get(bound_url, headers=bob).status_code, 403)
+        self.assertEqual(self.client.get(bound_url, headers=admin).status_code, 200)
+
+        unbound_upload = self._upload_support_attachment(bob, name="unbound.txt", content=b"unbound")
+        unbound_url = unbound_upload.json()["attachment_payload"]["url"]
+        self.assertEqual(self.client.get(unbound_url, headers=bob).status_code, 200)
+        self.assertEqual(self.client.get(unbound_url, headers=alice).status_code, 403)
+        self.assertEqual(self.client.get(unbound_url, headers=admin).status_code, 200)
+
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(stored_name=unbound_upload.json()["attachment_id"]).one()
+            row.expires_at = _utcnow() - timedelta(seconds=1)
+            session.commit()
+        finally:
+            session.close()
+        self.assertEqual(self.client.get(unbound_url, headers=bob).status_code, 404)
+        self.assertEqual(self.client.get(unbound_url, headers=admin).status_code, 404)
+
+    def test_upload_commit_ack_loss_preserves_durable_row_and_final_file(self) -> None:
+        from db import SessionLocal
+        from models import SecurityEvent, SupportAttachment
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        replace_calls: list[tuple[Path, Path]] = []
+        finalization_events: list[str] = []
+        original_replace = self.api.os.replace
+        original_parent_fsync = self.api._fsync_parent_directory
+
+        def recording_replace(source, destination):
+            finalization_events.append("replace")
+            replace_calls.append((Path(source), Path(destination)))
+            return original_replace(source, destination)
+
+        def recording_parent_fsync(path):
+            finalization_events.append("parent_fsync")
+            return original_parent_fsync(path)
+
+        class _FailingCommitSession:
+            def __init__(self, inner):
+                self._inner = inner
+                self.commit_count = 0
+
+            def commit(self):
+                self.commit_count += 1
+                finalization_events.append(f"commit_{self.commit_count}")
+                if self.commit_count == 2:
+                    self._inner.commit()
+                    finalization_events.append("commit_2_durable")
+                    raise RuntimeError("forced attachment commit acknowledgement loss")
+                return self._inner.commit()
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+        calls = 0
+        failing_sessions: list[_FailingCommitSession] = []
+
+        def _session_factory():
+            nonlocal calls
+            calls += 1
+            inner = SessionLocal()
+            if calls == 1:
+                return inner
+            failing = _FailingCommitSession(inner)
+            failing_sessions.append(failing)
+            return failing
+
+        with patch.object(self.api, "SessionLocal", new=_session_factory), patch.object(
+            self.api.os, "replace", new=recording_replace
+        ), patch.object(
+            self.api, "_fsync_parent_directory", new=recording_parent_fsync
+        ):
+            with self.assertRaises(RuntimeError):
+                self._upload_support_attachment(headers, name="atomic.txt", content=b"atomic")
+        self.assertEqual(len(replace_calls), 1)
+        self.assertIn(2, [session.commit_count for session in failing_sessions])
+        self.assertLess(finalization_events.index("replace"), finalization_events.index("parent_fsync"))
+        self.assertLess(finalization_events.index("parent_fsync"), finalization_events.index("commit_2"))
+        self.assertLess(finalization_events.index("commit_2"), finalization_events.index("commit_2_durable"))
+        self.assertFalse(replace_calls[0][0].exists())
+        self.assertTrue(replace_calls[0][1].exists())
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(original_name="atomic.txt").one()
+            self.assertEqual(replace_calls[0][1].name, row.stored_name)
+            events = session.query(SecurityEvent).filter_by(event_type="support_upload_reject").all()
+            self.assertEqual([row.reason for row in events], ["store_failed"])
+        finally:
+            session.close()
+
+    def test_upload_precommit_failure_leaves_rowless_final_for_grace_reconciliation(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment
+
+        cleanup = importlib.import_module("support_attachment_cleanup_service")
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        replace_calls: list[tuple[Path, Path]] = []
+        original_replace = self.api.os.replace
+
+        def recording_replace(source, destination):
+            replace_calls.append((Path(source), Path(destination)))
+            return original_replace(source, destination)
+
+        class _FailingAddSession:
+            def __init__(self, inner):
+                self._inner = inner
+
+            def add(self, value):
+                if isinstance(value, SupportAttachment):
+                    raise RuntimeError("forced pre-commit attachment persistence failure")
+                return self._inner.add(value)
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+        calls = 0
+
+        def _session_factory():
+            nonlocal calls
+            calls += 1
+            inner = SessionLocal()
+            return inner if calls == 1 else _FailingAddSession(inner)
+
+        with patch.object(self.api, "SessionLocal", new=_session_factory), patch.object(
+            self.api.os, "replace", new=recording_replace
+        ):
+            with self.assertRaises(RuntimeError):
+                self._upload_support_attachment(headers, name="precommit.txt", content=b"precommit")
+
+        self.assertEqual(len(replace_calls), 1)
+        temp_path, final_path = replace_calls[0]
+        self.assertFalse(temp_path.exists())
+        self.assertTrue(final_path.exists())
+        session = SessionLocal()
+        try:
+            self.assertEqual(session.query(SupportAttachment).filter_by(original_name="precommit.txt").count(), 0)
+        finally:
+            session.close()
+
+        now = _utcnow()
+        recent = cleanup.reconcile_support_attachments(
+            SessionLocal,
+            upload_dir=Path(self.api.SUPPORT_UPLOAD_DIR),
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=20,
+        )
+        self.assertEqual(recent["orphan_files_removed"], 0)
+        self.assertTrue(final_path.exists())
+
+        old_timestamp = (now - timedelta(hours=2)).replace(tzinfo=timezone.utc).timestamp()
+        os.utime(final_path, (old_timestamp, old_timestamp))
+        expired = cleanup.reconcile_support_attachments(
+            SessionLocal,
+            upload_dir=Path(self.api.SUPPORT_UPLOAD_DIR),
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=20,
+        )
+        self.assertEqual(expired["orphan_files_removed"], 1)
+        self.assertFalse(final_path.exists())
+
+    def test_support_upload_parent_directory_fsync_is_posix_only(self) -> None:
+        target = Path(self.api.SUPPORT_UPLOAD_DIR) / "20260714-fsynctest.txt"
+        expected_flags = self.api.os.O_RDONLY | getattr(self.api.os, "O_DIRECTORY", 0)
+        with patch.object(self.api.os, "name", "posix"), patch.object(
+            self.api.os, "open", return_value=73
+        ) as open_mock, patch.object(self.api.os, "fsync") as fsync_mock, patch.object(
+            self.api.os, "close"
+        ) as close_mock:
+            self.api._fsync_parent_directory(target)
+
+        open_mock.assert_called_once_with(str(target.parent), expected_flags)
+        fsync_mock.assert_called_once_with(73)
+        close_mock.assert_called_once_with(73)
+
+    def test_concurrent_attachment_bind_has_one_winner_and_no_duplicate_message(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, SupportTicketMessage
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        created = self.client.post(
+            "/api/tickets",
+            headers=headers,
+            json={"subject": "Concurrency", "body": "Initial"},
+        )
+        ticket_id = int(created.json()["ticket"]["id"])
+        upload = self._upload_support_attachment(headers, name="race.txt", content=b"race")
+        attachment_id = upload.json()["attachment_id"]
+
+        def _bind(body: str):
+            with TestClient(self.api.app) as client:
+                return client.post(
+                    f"/api/tickets/{ticket_id}/messages",
+                    headers=headers,
+                    json={"body": body, "attachment_id": attachment_id},
+                )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            responses = list(executor.map(_bind, ("racer one", "racer two")))
+        self.assertEqual(sorted(response.status_code for response in responses), [200, 409])
+
+        session = SessionLocal()
+        try:
+            messages = session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).all()
+            self.assertEqual(len(messages), 2)
+            attachment = session.query(SupportAttachment).filter_by(stored_name=attachment_id).one()
+            self.assertIn(attachment.message_id, {message.id for message in messages})
+        finally:
+            session.close()
+
+    def test_attachment_bind_boundary_expiry_or_deletion_is_not_found_and_rolls_back_message(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, SupportTicketMessage
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        created = self.client.post(
+            "/api/tickets",
+            headers=headers,
+            json={"subject": "Bind boundary", "body": "Initial"},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        ticket_id = int(created.json()["ticket"]["id"])
+        original_bind = self.api._bind_ticket_attachment
+
+        for boundary in ("expired", "deleted"):
+            with self.subTest(boundary=boundary):
+                upload = self._upload_support_attachment(
+                    headers,
+                    name=f"boundary-{boundary}.txt",
+                    content=boundary.encode("ascii"),
+                )
+                self.assertEqual(upload.status_code, 200, upload.text)
+                attachment_id = upload.json()["attachment_id"]
+                body = f"must roll back {boundary} boundary"
+
+                session = SessionLocal()
+                try:
+                    before_count = session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).count()
+                finally:
+                    session.close()
+
+                def boundary_bind(session, *, row, ticket_id, message_id):
+                    query = session.query(SupportAttachment).filter(SupportAttachment.id == row.id)
+                    if boundary == "expired":
+                        query.update(
+                            {SupportAttachment.expires_at: _utcnow() - timedelta(seconds=1)},
+                            synchronize_session=False,
+                        )
+                    else:
+                        query.delete(synchronize_session=False)
+                    return original_bind(
+                        session,
+                        row=row,
+                        ticket_id=ticket_id,
+                        message_id=message_id,
+                    )
+
+                with patch.object(self.api, "_bind_ticket_attachment", new=boundary_bind):
+                    response = self.client.post(
+                        f"/api/tickets/{ticket_id}/messages",
+                        headers=headers,
+                        json={"body": body, "attachment_id": attachment_id},
+                    )
+
+                self.assertEqual(response.status_code, 404, response.text)
+                self.assertEqual(
+                    response.headers.get("x-pokrov-auth-error"),
+                    "support_attachment_not_found",
+                )
+                session = SessionLocal()
+                try:
+                    self.assertEqual(
+                        session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).count(),
+                        before_count,
+                    )
+                    self.assertEqual(
+                        session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id, body=body).count(),
+                        0,
+                    )
+                    restored = session.query(SupportAttachment).filter_by(stored_name=attachment_id).one()
+                    self.assertIsNone(restored.ticket_id)
+                    self.assertIsNone(restored.message_id)
+                    self.assertGreater(restored.expires_at, _utcnow())
+                finally:
+                    session.close()
 
     def test_linked_account_sessions_share_tickets_and_uploads_with_strict_nonnull_owner(self) -> None:
         from db import SessionLocal

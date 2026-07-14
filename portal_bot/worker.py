@@ -55,6 +55,7 @@ from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 from admin_ops_service import refresh_ops_alerts_for_current_state
 from antiabuse_privacy_service import drain_antiabuse_retention
+from support_attachment_cleanup_service import SupportAttachmentCleanupCursor, reconcile_support_attachments
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,26 @@ NODE_PROVISIONING_STALE_AFTER_SECONDS = max(
 )
 NODE_PROVISIONING_POLL_SECONDS = max(1, min(300, int(os.getenv("NODE_PROVISIONING_POLL_SECONDS", "10"))))
 ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS = max(60, int(os.getenv("ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS", "300")))
+SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS = max(
+    60,
+    int(os.getenv("SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS", "900")),
+)
+SUPPORT_ATTACHMENT_CLEANUP_GRACE_SECONDS = max(
+    60,
+    int(os.getenv("SUPPORT_ATTACHMENT_CLEANUP_GRACE_SECONDS", "3600")),
+)
+SUPPORT_ATTACHMENT_CLEANUP_BATCH_SIZE = max(
+    1,
+    min(1000, int(os.getenv("SUPPORT_ATTACHMENT_CLEANUP_BATCH_SIZE", "100"))),
+)
+SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT = max(
+    1,
+    min(5000, int(os.getenv("SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT", "500"))),
+)
+SUPPORT_ATTACHMENT_UPLOAD_DIR = Path(
+    os.getenv("SUPPORT_UPLOAD_DIR") or (Path(__file__).resolve().parent / "uploads" / "support")
+).resolve()
+_SUPPORT_ATTACHMENT_CLEANUP_CURSOR = SupportAttachmentCleanupCursor()
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
 _TEMPLATE_CACHE: dict[str, tuple[datetime, str]] = {}
@@ -1126,6 +1147,25 @@ async def observer_retention_job() -> None:
         await asyncio.sleep(21600)
 
 
+async def support_attachment_cleanup_job() -> None:
+    while True:
+        try:
+            report = await asyncio.to_thread(
+                reconcile_support_attachments,
+                SessionLocal,
+                upload_dir=SUPPORT_ATTACHMENT_UPLOAD_DIR,
+                now=_utcnow(),
+                grace_seconds=SUPPORT_ATTACHMENT_CLEANUP_GRACE_SECONDS,
+                batch_size=SUPPORT_ATTACHMENT_CLEANUP_BATCH_SIZE,
+                scan_limit=SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT,
+                cursor=_SUPPORT_ATTACHMENT_CLEANUP_CURSOR,
+            )
+            logger.info("support_attachment_cleanup report=%s", report)
+        except Exception:
+            logger.exception("support_attachment_cleanup_job failed")
+        await asyncio.sleep(SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS)
+
+
 async def trial_reservation_expiry_job() -> None:
     while True:
         session = SessionLocal()
@@ -1248,6 +1288,7 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("free_cycle_reset", free_cycle_reset_job)),
         asyncio.create_task(_supervise_job("node_provisioning", node_provisioning_job)),
         asyncio.create_task(_supervise_job("observer_retention", observer_retention_job)),
+        asyncio.create_task(_supervise_job("support_attachment_cleanup", support_attachment_cleanup_job)),
         asyncio.create_task(_supervise_job("trial_reservation_expiry", trial_reservation_expiry_job)),
         asyncio.create_task(_supervise_job("antiabuse_retention", antiabuse_retention_job)),
         asyncio.create_task(_supervise_job("telemetry_retention", telemetry_retention_job)),

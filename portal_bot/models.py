@@ -999,6 +999,10 @@ class SupportAttachment(Base):
     content_type = Column(String(80), nullable=False)
     size_bytes = Column(Integer, default=0, nullable=False)
     media_type = Column(String(32), nullable=False)
+    ticket_id = Column(Integer, index=True, nullable=True)
+    message_id = Column(Integer, unique=True, index=True, nullable=True)
+    attached_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 

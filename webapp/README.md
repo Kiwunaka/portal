@@ -90,6 +90,11 @@ Rules:
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
 - public email continuation must stay hidden/marked `soon` unless sender readiness, delivery confirmation, public mode, and debug-echo-off checks are live
 - marketing and cabinet copy should inherit governed text from `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` instead of inventing separate public messaging
+- support upload responses expose `attachment_id`; preferred create/reply requests send only that ID and never resend the server-private media triplet
+- support thread media accepts only canonical `/api/tickets/attachments/*` paths and rewrites retained `/uploads/support/*` history to that endpoint; arbitrary external attachment URLs are not rendered
+- attachment preview/download is user-triggered rather than fetched on thread mount; it uses an authenticated blob request with the same API-base candidates, bearer/init-data headers, and `credentials: include` behavior as normal API calls, then a revocable object URL, and aborts in-flight retrieval on path change or unmount
+- the support picker is limited to PNG, JPEG, WebP, PDF, and UTF-8 TXT; video, SVG, HTML, log aliases, and arbitrary files are not offered
+- client preflight rejects files above the shared 20 MiB constant before reading TXT bytes; the backend `SUPPORT_UPLOAD_MAX_BYTES` check remains authoritative
 
 ## Shell, Theme, And Loading
 

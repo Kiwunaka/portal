@@ -1,5 +1,6 @@
 ﻿import importlib
 import asyncio
+import inspect
 import os
 import sys
 import tempfile
@@ -20,8 +21,16 @@ class WorkerRetentionTests(unittest.TestCase):
             sys.path.insert(0, portal_dir)
 
         self._saved_env: dict[str, str | None] = {}
-        for key in ("DATABASE_URL", "BOT_TOKEN", "PUBLIC_CHANNEL"):
+        cleanup_env_keys = (
+            "SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS",
+            "SUPPORT_ATTACHMENT_CLEANUP_GRACE_SECONDS",
+            "SUPPORT_ATTACHMENT_CLEANUP_BATCH_SIZE",
+            "SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT",
+        )
+        for key in ("DATABASE_URL", "BOT_TOKEN", "PUBLIC_CHANNEL", *cleanup_env_keys):
             self._saved_env[key] = os.environ.get(key)
+        for key in cleanup_env_keys:
+            os.environ.pop(key, None)
 
         self._tmp = tempfile.TemporaryDirectory()
         self.db_path = (repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve()
@@ -664,6 +673,53 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(cleanup_calls, [1])
         self.assertTrue(fake_session.committed)
         self.assertTrue(fake_session.closed)
+
+    def test_support_attachment_cleanup_job_uses_bounded_defaults_and_is_supervised(self) -> None:
+        cleanup_calls: list[tuple[object, dict]] = []
+        sleep_calls: list[float] = []
+
+        def _cleanup(session_factory, **kwargs):
+            cleanup_calls.append((session_factory, kwargs))
+            return {
+                "expired_rows_removed": 0,
+                "expired_files_removed": 0,
+                "expired_files_missing": 0,
+                "expired_files_preserved": 0,
+                "temp_files_removed": 0,
+                "orphan_files_removed": 0,
+                "rows_missing_files": 0,
+                "rows_scanned": 0,
+                "malformed_rows_skipped": 0,
+                "file_errors": 0,
+                "file_candidates_selected": 0,
+                "filesystem_entries_enumerated": 0,
+                "file_window_wrapped": 0,
+                "row_window_wrapped": 0,
+            }
+
+        async def _to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        async def _stop_after_first_sleep(seconds: float) -> None:
+            sleep_calls.append(seconds)
+            raise asyncio.CancelledError()
+
+        with mock.patch.object(self.worker, "reconcile_support_attachments", side_effect=_cleanup), \
+             mock.patch.object(self.worker.asyncio, "to_thread", side_effect=_to_thread), \
+             mock.patch.object(self.worker.asyncio, "sleep", side_effect=_stop_after_first_sleep):
+            with self.assertRaises(asyncio.CancelledError):
+                self.worker.asyncio.run(self.worker.support_attachment_cleanup_job())
+
+        self.assertEqual(len(cleanup_calls), 1)
+        self.assertIs(cleanup_calls[0][0], self.worker.SessionLocal)
+        self.assertEqual(cleanup_calls[0][1]["grace_seconds"], 3600)
+        self.assertEqual(cleanup_calls[0][1]["batch_size"], 100)
+        self.assertEqual(cleanup_calls[0][1]["scan_limit"], 500)
+        self.assertIs(cleanup_calls[0][1]["cursor"], self.worker._SUPPORT_ATTACHMENT_CLEANUP_CURSOR)
+        self.assertEqual(sleep_calls, [900])
+        main_source = inspect.getsource(self.worker.main)
+        self.assertIn('"support_attachment_cleanup"', main_source)
+        self.assertIn("support_attachment_cleanup_job", main_source)
 
     def test_antiabuse_retention_job_drains_before_sleep(self) -> None:
         drain_calls: list[object] = []

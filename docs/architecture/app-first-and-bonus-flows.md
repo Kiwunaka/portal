@@ -528,7 +528,7 @@ Focused compatibility matrix to run before changing support copy:
 2. session-backed support may create a real ticket through `POST /api/tickets`
 3. cabinet/support surfaces may load the thread through `GET /api/tickets/{ticket_id}`
 4. follow-up replies continue through `POST /api/tickets/{ticket_id}/messages`
-5. attachment-capable browser support uses `POST /api/tickets/uploads`, then authenticated `GET /api/tickets/attachments/{stored_name}` for private downloads; raw `/uploads/support/*` static access is not part of the current contract
+5. attachment-capable browser support stages through `POST /api/tickets/uploads`, sends only the returned opaque `attachment_id` on create/reply, then fetches authenticated `GET /api/tickets/attachments/{stored_name}` only after explicit user action; raw `/uploads/support/*` static access is not part of the current contract
 6. operators continue the same case through `/api/admin/tickets/*`
 
 Contract rule:
@@ -536,6 +536,10 @@ Contract rule:
 - app-first support may start from prepared context even before a live thread exists
 - web and cabinet support must be documented as a real ticket lifecycle, not as decorative form state
 - attachment-capable ticket flows belong to authenticated browser and admin paths today
+- staged uploads are unbound until message commit, expire after 24 hours by default, and use account-first pending count/byte quotas; admission cleanup is same-owner only, while supervised reconciliation uses bounded per-run processing and memory for global expired/orphan cleanup and never sweeps bound or legacy null-expiry history; its filesystem candidate selection still enumerates the full upload directory once per run
+- upload finalization fsyncs the file and, on POSIX, its parent directory before row commit; after atomic rename, ambiguous persistence outcomes retain the final file so a committed row never loses its file, while verified rowless finals age into grace-period reconciliation
+- rolling old private `support/{stored_name}` triplets are ownership/metadata checked and canonicalized, while non-private Telegram/client media remains compatible
+- bound attachment access follows ticket access; recovery sessions cannot upload, bind, receive metadata, or download even when a recovery actor numerically matches the admin ID
 - canonical account ownership is internal and additive; public ticket payloads retain the legacy shape
 - linked app, email, and Telegram identities on one canonical account share account-owned ticket and upload history
 - exact legacy Telegram fallback applies only to `NULL`-owned rows and cannot override another non-null account owner

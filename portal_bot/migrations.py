@@ -457,6 +457,21 @@ def _postgres_add_column_if_missing(conn, table: str, column: str, ddl: str) -> 
     return True
 
 
+def _ensure_support_attachment_binding_postgres(conn) -> None:
+    _postgres_add_column_if_missing(conn, "support_attachments", "ticket_id", "INTEGER")
+    _postgres_add_column_if_missing(conn, "support_attachments", "message_id", "INTEGER")
+    _postgres_add_column_if_missing(conn, "support_attachments", "attached_at", "TIMESTAMP")
+    _postgres_add_column_if_missing(conn, "support_attachments", "expires_at", "TIMESTAMP")
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_attachments_ticket_id ON support_attachments(ticket_id);"))
+    conn.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_support_attachments_message_id "
+            "ON support_attachments(message_id);"
+        )
+    )
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_attachments_expires_at ON support_attachments(expires_at);"))
+
+
 _FREE_PROFILE_USER_COLUMNS = (
     ("free_profile_state", "VARCHAR(32) NOT NULL DEFAULT 'standard'"),
     ("free_profile_active_role", "VARCHAR(32) NOT NULL DEFAULT 'free_standard'"),
@@ -1874,12 +1889,38 @@ def run_migrations(engine: Engine) -> None:
                     conn.execute(text(f"ALTER TABLE support_ticket_messages ADD COLUMN {col} {ddl};"))
 
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_attachments';")).fetchone():
-            if not _sqlite_column_exists(conn, "support_attachments", "owner_account_id"):
-                conn.execute(text("ALTER TABLE support_attachments ADD COLUMN owner_account_id VARCHAR(36);"))
+            wanted_cols = [
+                ("owner_account_id", "VARCHAR(36)"),
+                ("ticket_id", "INTEGER"),
+                ("message_id", "INTEGER"),
+                ("attached_at", "DATETIME"),
+                ("expires_at", "DATETIME"),
+            ]
+            for col, ddl in wanted_cols:
+                if not _sqlite_column_exists(conn, "support_attachments", col):
+                    conn.execute(text(f"ALTER TABLE support_attachments ADD COLUMN {col} {ddl};"))
         conn.execute(
             text(
                 "CREATE INDEX IF NOT EXISTS ix_support_attachments_owner_account_id "
                 "ON support_attachments(owner_account_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_ticket_id "
+                "ON support_attachments(ticket_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_support_attachments_message_id "
+                "ON support_attachments(message_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_expires_at "
+                "ON support_attachments(expires_at);"
             )
         )
 
@@ -2753,6 +2794,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
                 "ON support_attachments(owner_account_id);"
             )
         )
+        _ensure_support_attachment_binding_postgres(conn)
         _postgres_add_column_if_missing(conn, "users", "referral_code", "VARCHAR(10)")
         _postgres_add_column_if_missing(conn, "users", "account_id", "VARCHAR(36)")
         _postgres_add_column_if_missing(conn, "users", "first_purchase_done", "BOOLEAN DEFAULT FALSE")

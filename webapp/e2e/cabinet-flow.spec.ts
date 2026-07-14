@@ -171,12 +171,38 @@ function mockTickets(): TicketMock[] {
           body: "Прикрепили короткий файл диагностики без личных ключей.",
           media_type: "file",
           media_payload: JSON.stringify({
-            url: "/uploads/support/diagnostic.txt",
+            url: "/uploads/support/20260714-e2ediagnostic.txt",
             name: "diagnostic.txt",
             size: 2048,
             content_type: "text/plain",
           }),
           created_at: "2030-01-01T00:03:00",
+        },
+        {
+          id: 3,
+          sender_role: "admin",
+          body: "External attachment references are not rendered.",
+          media_type: "file",
+          media_payload: JSON.stringify({
+            url: "https://evil.example/unsafe.txt",
+            name: "unsafe.txt",
+            size: 12,
+            content_type: "text/plain",
+          }),
+          created_at: "2030-01-01T00:04:00",
+        },
+        {
+          id: 4,
+          sender_role: "admin",
+          body: "Non-canonical private paths are not rendered.",
+          media_type: "file",
+          media_payload: JSON.stringify({
+            url: "/api/tickets/attachments/not-canonical.txt",
+            name: "invalid-private.txt",
+            size: 12,
+            content_type: "text/plain",
+          }),
+          created_at: "2030-01-01T00:05:00",
         },
       ],
     },
@@ -388,11 +414,33 @@ async function registerCabinetMocks(
     }
     if (path === "/api/tickets/uploads") {
       return json({
+        ok: true,
+        attachment_id: "20260714-e2estagedattachment.txt",
         attachment: {
-          media_type: "text/plain",
-          media_file_id: "mock-upload",
-          media_payload: "attachment.bin",
+          media_type: "file",
+          media_file_id: "support/20260714-e2estagedattachment.txt",
+          media_payload: JSON.stringify({
+            url: "/api/tickets/attachments/20260714-e2estagedattachment.txt",
+            name: "attachment.txt",
+            size: 10,
+            content_type: "text/plain",
+            private: true,
+          }),
         },
+        attachment_payload: {
+          url: "/api/tickets/attachments/20260714-e2estagedattachment.txt",
+          name: "attachment.txt",
+          size: 10,
+          content_type: "text/plain",
+          private: true,
+        },
+      });
+    }
+    if (path === "/api/tickets/attachments/20260714-e2ediagnostic.txt") {
+      return route.fulfill({
+        status: 200,
+        contentType: "text/plain; charset=utf-8",
+        body: "private diagnostic body",
       });
     }
     if (path.startsWith("/api/tickets/")) {
@@ -913,6 +961,33 @@ test.describe("Cabinet flow", () => {
   });
 
   test("renders support thread attachments without exposing private access data", async ({ page }) => {
+    await page.context().addCookies([
+      {
+        name: "portal_web_session",
+        value: "e2e-cookie-session",
+        domain: "127.0.0.1",
+        path: "/",
+      },
+      {
+        name: "portal_web_session",
+        value: "e2e-cookie-session",
+        domain: "localhost",
+        path: "/",
+      },
+      {
+        name: "portal_web_session",
+        value: "e2e-cookie-session",
+        url: "https://api.pokrov.space/",
+        sameSite: "None",
+        secure: true,
+      },
+    ]);
+    const attachmentRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/tickets/attachments/20260714-e2ediagnostic.txt")) {
+        attachmentRequests.push(request.url());
+      }
+    });
     await page.goto("/support/thread/?id=11");
 
     await expect(page).toHaveURL(/\/support\/thread\/\?id=11$/);
@@ -920,14 +995,108 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("История");
     await expect(page.locator("main")).toContainText("Ответ");
     await expect(page.locator("main")).toContainText("diagnostic.txt");
-    const attachment = page.locator('main a[href*="/uploads/support/diagnostic.txt"]').first();
+    await page.waitForTimeout(200);
+    expect(attachmentRequests).toHaveLength(0);
+
+    const blobRequestPromise = page.waitForRequest((request) =>
+      request.url().includes("/api/tickets/attachments/20260714-e2ediagnostic.txt"),
+    );
+    await page.getByRole("button", { name: "Загрузить diagnostic.txt" }).click();
+    const blobRequest = await blobRequestPromise;
+    expect(blobRequest.headers()["authorization"]).toBe("Bearer e2e_mock_token");
+    expect(blobRequest.headers()["cookie"]).toContain("portal_web_session=e2e-cookie-session");
+    const attachment = page.locator('main a[href^="blob:"]').first();
     await expect(attachment).toBeVisible();
     await expect(attachment).toContainText("diagnostic.txt");
     await expect(attachment).toContainText("2.0 КБ");
+    await expect(page.locator("main")).not.toContainText("unsafe.txt");
+    await expect(page.locator("main")).not.toContainText("invalid-private.txt");
     await expect(page.locator("main")).not.toContainText("Диалог");
     await expect(page.locator("main")).not.toContainText("Продолжайте это обращение");
     await expect(page.locator("main")).not.toContainText("mock_token");
     await expect(page.locator("main")).not.toContainText("subscription_url");
+  });
+
+  test("sends staged attachment id without the private media triplet", async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalArrayBuffer = File.prototype.arrayBuffer;
+      Object.defineProperty(window, "__supportAttachmentArrayBufferCalls", {
+        configurable: true,
+        value: 0,
+        writable: true,
+      });
+      File.prototype.arrayBuffer = function arrayBuffer() {
+        const state = window as Window & { __supportAttachmentArrayBufferCalls?: number };
+        state.__supportAttachmentArrayBufferCalls =
+          (state.__supportAttachmentArrayBufferCalls || 0) + 1;
+        return originalArrayBuffer.call(this);
+      };
+    });
+    await page.goto("/support/");
+    await page.getByRole("button", { name: "Новый вопрос" }).first().click();
+    await page.getByPlaceholder("Коротко: что случилось").fill("Вложение из кабинета");
+    await page
+      .getByPlaceholder("Опишите, что делали, где сломалось и что видите сейчас.")
+      .fill("Проверяем staged upload contract.");
+    const picker = page.locator('input[type="file"]');
+    await expect(picker).toHaveAttribute(
+      "accept",
+      "image/png,image/jpeg,image/webp,application/pdf,text/plain,.png,.jpg,.jpeg,.webp,.pdf,.txt",
+    );
+    await picker.setInputFiles({
+      name: "oversized.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.alloc(20 * 1024 * 1024 + 1, "a"),
+    });
+    await page.getByRole("button", { name: "Отправить вопрос" }).click();
+    await expect(page.locator("main")).toContainText("Размер файла не должен превышать 20 МиБ.");
+    expect(
+      await page.evaluate(
+        () =>
+          (window as Window & { __supportAttachmentArrayBufferCalls?: number })
+            .__supportAttachmentArrayBufferCalls,
+      ),
+    ).toBe(0);
+    await picker.setInputFiles({
+      name: "mismatched.pdf",
+      mimeType: "text/plain",
+      buffer: Buffer.from("not a PDF"),
+    });
+    await page.getByRole("button", { name: "Отправить вопрос" }).click();
+    await expect(page.locator("main")).toContainText("Можно приложить PNG, JPEG, WebP, PDF или TXT.");
+    await picker.setInputFiles({
+      name: "attachment.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("attachment"),
+    });
+    const createRequestPromise = page.waitForRequest(
+      (request) => new URL(request.url()).pathname === "/api/tickets" && request.method() === "POST",
+    );
+    await page.getByRole("button", { name: "Отправить вопрос" }).click();
+    const createRequest = await createRequestPromise;
+    const payload = createRequest.postDataJSON();
+    expect(payload.attachment_id).toBe("20260714-e2estagedattachment.txt");
+    expect(payload).not.toHaveProperty("media_type");
+    expect(payload).not.toHaveProperty("media_file_id");
+    expect(payload).not.toHaveProperty("media_payload");
+
+    await page.goto("/support/thread/?id=11");
+    await page.getByPlaceholder("Напишите ответ...").fill("Reply with staged upload.");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "reply.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("reply attachment"),
+    });
+    const replyRequestPromise = page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname === "/api/tickets/11/messages" && request.method() === "POST",
+    );
+    await page.getByRole("button", { name: "Отправить", exact: true }).click();
+    const replyPayload = (await replyRequestPromise).postDataJSON();
+    expect(replyPayload.attachment_id).toBe("20260714-e2estagedattachment.txt");
+    expect(replyPayload).not.toHaveProperty("media_type");
+    expect(replyPayload).not.toHaveProperty("media_file_id");
+    expect(replyPayload).not.toHaveProperty("media_payload");
   });
 
   test("keeps legal documents as compact support rows", async ({ page }) => {
