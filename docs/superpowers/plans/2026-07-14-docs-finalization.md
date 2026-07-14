@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Work only in `C:/Users/kiwun/Documents/ai/VPN-docs-finalization` on `codex/docs-finalization` until integration.
+- Work only in `C:/Users/kiwun/Documents/ai/VPN/.worktrees/docs-finalization` on `codex/docs-finalization` until integration.
 - Do not modify `C:/Users/kiwun/Documents/ai/VPN` or any existing neighboring worktree; they contain concurrent work.
 - Do not modify product code, runtime state, release artifacts, secrets, docs-assistant allowlists, or support knowledge-base allowlists.
 - Preserve `.content-video-ad`, `docs/audit-artifacts/**`, archive history, rollback evidence, and generated provenance.
@@ -28,7 +28,10 @@
 - Modify: `docs/developer/pokrov-canonical-feature-tracker.csv`
 - Modify: `docs/developer/pokrov-canonical-feature-tracker.md`
 - Modify generated ledgers under `docs/developer/pokrov-*.csv` and `docs/developer/pokrov-*.md` only through their repository generators where a generator exists
+- Modify: `docs/README.md`
+- Modify: `docs/developer/developer-guide.md`
 - Modify: `docs/developer/repository-map.md`
+- Modify: `docs/developer/work-orders/README.md`
 - Modify: `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/WO-001-canonical-feature-tracker.md`
 - Modify: `docs/developer/work-orders/2026-06-27--repo-feature-story-audit/COMPLETION-AUDIT.md`
 - Test: `tests/test_story_test_evidence_audit.py`
@@ -153,7 +156,7 @@ Stage only registry/canonical/history/link changes owned by this task. Commit wi
 **Files:**
 - Move: `docs/superpowers/plans/2026-07-14-docs-finalization.md` to `docs/archive/superpowers-plans/2026-07-14-docs-finalization.md`
 - Modify only links required by that move
-- Delete: exact disposable cache/scratch paths inside `C:/Users/kiwun/Documents/ai/VPN-docs-finalization` after resolved-path verification
+- Delete: exact disposable cache/scratch paths inside `C:/Users/kiwun/Documents/ai/VPN/.worktrees/docs-finalization` after resolved-path verification
 
 **Interfaces:**
 - Consumes: reviewed commits from Tasks 1 and 2.
@@ -169,7 +172,7 @@ Classify every candidate. Never clean another worktree, the active root checkout
 
 - [ ] **Step 2: Remove only exact worktree-local disposable output**
 
-Resolve each selected absolute path, prove it remains under `C:/Users/kiwun/Documents/ai/VPN-docs-finalization`, and remove only generated caches, scratch, test databases, or build outputs named by the dry-run inventory. Do not invoke `--apply` and do not delete the worktree itself.
+Resolve each selected absolute path, prove it remains under `C:/Users/kiwun/Documents/ai/VPN/.worktrees/docs-finalization`, and remove only generated caches, scratch, test databases, or build outputs named by the dry-run inventory. Do not invoke `--apply` and do not delete the worktree itself.
 
 - [ ] **Step 3: Archive this completed plan**
 
