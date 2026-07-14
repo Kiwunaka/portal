@@ -1,12 +1,22 @@
 # POKROV Documentation Finalization Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Archived execution record — historical/non-executable.** This file preserves the finalization sequence and evidence. Do not execute it as a current plan; use root `AGENTS.md`, the task router, and current canonical owners.
+
+Status: COMPLETED_HISTORICAL
 
 **Goal:** Make the platform and client documentation system reproducible from a clean checkout, reconcile current documentation status without overriding concurrent product work, and remove only proven disposable local output.
 
 **Architecture:** Keep root `AGENTS.md` thin and route task context through the existing registry/router. Treat generated ledgers as evidence derived from tracked inputs, retain workbook provenance under `docs/audit-artifacts/`, and separate current canon from completed plans and historical evidence. Cleanup is exact-path and manual; automated cleanup `--apply`, protected zones, active worktrees, secrets, and retained evidence are out of scope.
 
 **Tech Stack:** Markdown, CSV, XLSX evidence, Python 3.12 generators and pytest, PowerShell, Git worktrees.
+
+## Finalization Snapshot — 2026-07-14
+
+- Reproducible tracker, ledger, completion-audit, and navigation work is committed through `b91e9e8`.
+- Registry reconciliation and the July 10 historical closure are committed as `754bb96`.
+- The cleanup dry-run returned `safe=0` and `intentional-reset=0`; no repository path was deleted. `.content-video-ad`, retained workbook provenance, audit evidence, and neighboring worktrees remain untouched.
+- Final verification passed: `84 passed in 73.24s`; platform context audit, link check, cleanup inventory, client docs contract, client seed validation, and `git diff --check` all exited `0`.
+- Independent scoped review returned `CLEAN`. The commit containing this archived record closes the plan; branch-wide review and safe local `master` integration remain post-plan checks. No push, deploy, production mutation, or manual release gate ran or is claimed.
 
 ## Global Constraints
 
@@ -43,7 +53,7 @@
 - Consumes: the two retained source workbooks currently under the ignored platform/client `outputs/` trees and canonical CSV inputs already tracked in Git.
 - Produces: tracked, portable source-tracker paths; generated ledgers matching current CSV/code counts; developer navigation that reaches every canonical audit artifact.
 
-- [ ] **Step 1: Confirm the red baseline**
+- [x] **Step 1: Confirm the red baseline**
 
 Run:
 
@@ -53,7 +63,7 @@ python -B -m pytest -p no:cacheprovider tests\test_story_test_evidence_audit.py 
 
 Expected: failures for stale Markdown/generated counts, missing repository-map navigation, and ignored `outputs/*.xlsx` provenance when run from the clean worktree.
 
-- [ ] **Step 2: Retain source workbooks as tracked evidence**
+- [x] **Step 2: Retain source workbooks as tracked evidence**
 
 Copy the exact source workbooks without modifying their contents:
 
@@ -64,11 +74,11 @@ C:/Users/kiwun/Documents/ai/POKROV-app/outputs/019f05ac-cfd2-7423-96b6-a7fb48dc8
 
 Store them at the two `docs/audit-artifacts/source-trackers/2026-06-27/` paths listed above. Verify byte size and SHA-256 equality between each source and retained copy. Do not delete either ignored source workbook in this task.
 
-- [ ] **Step 3: Replace non-portable source-tracker references**
+- [x] **Step 3: Replace non-portable source-tracker references**
 
 Update the 55 marketing and 67 client rows in `pokrov-canonical-feature-tracker.csv` so `source_tracker` points at the matching tracked evidence workbook with repository-relative forward-slash paths. Update the source list in `pokrov-canonical-feature-tracker.md`. Do not change story text, status, test proof, or manual-gate meaning.
 
-- [ ] **Step 4: Regenerate derived evidence**
+- [x] **Step 4: Regenerate derived evidence**
 
 Run in this order:
 
@@ -81,11 +91,11 @@ python -B scripts/generate_private_helper_coverage.py
 
 Review every generated diff. Generated counts must come from current CSV/code, not hand-selected expected numbers.
 
-- [ ] **Step 5: Synchronize human summaries and navigation**
+- [x] **Step 5: Synchronize human summaries and navigation**
 
 Update the canonical tracker summary, completed WO current-output block, and completion audit to the generated values. Restore explicit repository-map links for every artifact named by `NAVIGATION_ARTIFACTS` and `WORK_ORDER_NAVIGATION_ARTIFACTS` in `tests/test_story_test_evidence_audit.py`. Preserve historical dated result rows as historical evidence rather than rewriting old run results.
 
-- [ ] **Step 6: Run the green task gate**
+- [x] **Step 6: Run the green task gate**
 
 ```powershell
 python -B -m pytest -p no:cacheprovider tests\test_story_test_evidence_audit.py tests\test_code_function_inventory.py tests\test_pokrov_migration_defaults.py tests\test_check_script_manifest.py -q
@@ -94,7 +104,7 @@ git diff --check
 
 Expected: all tests pass and `git diff --check` exits `0`.
 
-- [ ] **Step 7: Commit the scoped task**
+- [x] **Step 7: Commit the scoped task**
 
 Stage only the source-workbook evidence, tracker/ledger outputs, navigation, and completed-WO summary files. Commit with message `docs: make audit ledgers reproducible`.
 
@@ -116,11 +126,11 @@ Stage only the source-workbook evidence, tracker/ledger outputs, navigation, and
 - Consumes: current `master` canon, the clean `POKROV-app/main` documentation contract, and read-only branch/worktree state for concurrent unmerged work.
 - Produces: registry review states that distinguish completed reconciliation from future concurrent work; completed context-refactor plans no longer present themselves as active/unexecuted.
 
-- [ ] **Step 1: Audit each pending row against current authority**
+- [x] **Step 1: Audit each pending row against current authority**
 
 For every `PENDING_WAVE_2`, `PENDING_WAVE_3`, `PENDING_CLIENT_REVIEW`, and `PENDING_COLLISION_REVIEW` row, inspect its named document, current code/tests, and active client owner where relevant. Change a row to `RECONCILED` only when the current tracked candidate supports that conclusion. Leave work owned by an unmerged concurrent branch pending and add concise scope wording if the reason is otherwise unclear.
 
-- [ ] **Step 2: Reconcile the client pointers**
+- [x] **Step 2: Reconcile the client pointers**
 
 Run:
 
@@ -131,11 +141,11 @@ powershell -ExecutionPolicy Bypass -File C:/Users/kiwun/Documents/ai/POKROV-app/
 
 If both pass and the scoped client docs diff is empty, mark the two client pointer rows `RECONCILED`. Do not convert manual device/signing/store/WARP gates into `PASS`.
 
-- [ ] **Step 3: Close completed context-refactor planning material**
+- [x] **Step 3: Close completed context-refactor planning material**
 
 The July 10 roadmap must no longer claim that canon refresh or promotion never ran. The context-refactor design must no longer say `ACTIVE_EXECUTION ... pending owner review` after the owner-approved implementation. Prefer moving completed material into the already classified `docs/archive/superpowers-plans/` family with link updates; if a move would break a retained evidence contract, use an explicit implemented/historical header instead.
 
-- [ ] **Step 4: Run documentation contracts**
+- [x] **Step 4: Run documentation contracts**
 
 ```powershell
 python -B -m pytest -p no:cacheprovider tests\test_agent_docs_contract.py tests\test_agent_context_packet_audit.py tests\test_pokrov_migration_defaults.py -q
@@ -146,7 +156,7 @@ git diff --check
 
 Expected: all tests/checks pass. `check-links.py` may refresh its canonical report only if the script contract requires it; review that diff as evidence, never as product canon.
 
-- [ ] **Step 5: Commit the scoped task**
+- [x] **Step 5: Commit the scoped task**
 
 Stage only registry/canonical/history/link changes owned by this task. Commit with message `docs: close context renewal review states`.
 
@@ -163,7 +173,7 @@ Stage only registry/canonical/history/link changes owned by this task. Commit wi
 - Consumes: reviewed commits from Tasks 1 and 2.
 - Produces: a clean isolated worktree, archived completion plan, full verification evidence, and an integration-ready branch.
 
-- [ ] **Step 1: Inventory without applying**
+- [x] **Step 1: Inventory without applying**
 
 ```powershell
 python -B scripts/cleanup_inventory.py --dry-run --format json --root .
@@ -171,15 +181,15 @@ python -B scripts/cleanup_inventory.py --dry-run --format json --root .
 
 Classify every candidate. Never clean another worktree, the active root checkout, `.content-video-ad`, `.git`, evidence, release artifacts, secrets, `ops-local`, or retained workbook provenance.
 
-- [ ] **Step 2: Remove only exact worktree-local disposable output**
+- [x] **Step 2: Remove only exact worktree-local disposable output**
 
 Resolve each selected absolute path, prove it remains under `C:/Users/kiwun/Documents/ai/VPN/.worktrees/docs-finalization`, and remove only generated caches, scratch, test databases, or build outputs named by the dry-run inventory. Do not invoke `--apply` and do not delete the worktree itself.
 
-- [ ] **Step 3: Archive this completed plan**
+- [x] **Step 3: Archive this completed plan**
 
 Move this plan into `docs/archive/superpowers-plans/`, update required links, and preserve it as historical execution evidence rather than an active reading route.
 
-- [ ] **Step 4: Run the full documentation/evidence gate**
+- [x] **Step 4: Run the full documentation/evidence gate**
 
 ```powershell
 python -B -m pytest -p no:cacheprovider tests\test_agent_docs_contract.py tests\test_agent_context_packet_audit.py tests\test_story_test_evidence_audit.py tests\test_code_function_inventory.py tests\test_pokrov_migration_defaults.py tests\test_check_script_manifest.py tests\test_cleanup_inventory.py -q
@@ -193,6 +203,6 @@ git status --short --branch
 
 Expected: all automated checks pass; any manual release/device/provider gates remain explicitly manual or blocked.
 
-- [ ] **Step 5: Commit and hand off**
+- [x] **Step 5: Commit and hand off**
 
 Commit the plan archive/link changes with message `docs: finalize repository context renewal`. Do not push, deploy, delete other branches/worktrees, or fast-forward `master` until the final independent review is clean and the root checkout is safe for integration.

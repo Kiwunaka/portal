@@ -495,16 +495,34 @@ def test_docs_finalization_archives_context_renewal_material() -> None:
     archive_readme = (archive_root / "README.md").read_text(encoding="utf-8")
     assert "Last updated: 2026-07-14" in archive_readme
     assert "completed plans and designs" in archive_readme.casefold()
-    for archived_name in (archived_roadmap.name, archived_design.name):
-        assert f"]({archived_name})" in archive_readme
-
-    finalization_plan = (
+    active_finalization_plan = (
         REPO_ROOT
         / "docs"
         / "superpowers"
         / "plans"
         / "2026-07-14-docs-finalization.md"
-    ).read_text(encoding="utf-8")
+    )
+    archived_finalization_plan = archive_root / active_finalization_plan.name
+    assert not active_finalization_plan.exists()
+    assert archived_finalization_plan.is_file()
+
+    for archived_name in (
+        archived_roadmap.name,
+        archived_design.name,
+        archived_finalization_plan.name,
+    ):
+        assert f"]({archived_name})" in archive_readme
+
+    finalization_plan = archived_finalization_plan.read_text(encoding="utf-8")
+    assert "REQUIRED SUB-SKILL" not in finalization_plan
+    assert (
+        "> **Archived execution record — historical/non-executable.**"
+        in finalization_plan
+    )
+    assert "Status: COMPLETED_HISTORICAL" in finalization_plan
+    assert "- [ ]" not in finalization_plan
+    assert "`84 passed in 73.24s`" in finalization_plan
+    assert "Independent scoped review returned `CLEAN`." in finalization_plan
     assert (
         "- Move: `docs/superpowers/plans/"
         "2026-07-10-pokrov-codex-docs-renewal-roadmap.md` -> "
