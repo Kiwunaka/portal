@@ -536,6 +536,12 @@ Contract rule:
 - app-first support may start from prepared context even before a live thread exists
 - web and cabinet support must be documented as a real ticket lifecycle, not as decorative form state
 - attachment-capable ticket flows belong to authenticated browser and admin paths today
+- canonical account ownership is internal and additive; public ticket payloads retain the legacy shape
+- linked app, email, and Telegram identities on one canonical account share account-owned ticket and upload history
+- exact legacy Telegram fallback applies only to `NULL`-owned rows and cannot override another non-null account owner
+- read-only access never changes ownership; an exact historical actor may claim an eligible `NULL` ticket only while writing with an unambiguous canonical account
+- account merge retargets ticket/upload ownership without deleting, deduplicating, or moving support history
+- operator delivery uses bounded deterministic linked-Telegram, enabled Telegram-identity, then real historical-ticket evidence; no target means skip with a metadata-only warning
 - client UX may poll the active ticket and show lifecycle hints such as
   checking, operator reply, closed, or temporarily offline while the support
   screen is open

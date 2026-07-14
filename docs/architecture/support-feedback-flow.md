@@ -9,6 +9,16 @@ Last updated: 2026-07-14
 - `@pokrov_feedbackbot` handles feedback intake and public review moderation.
 - `@pokrov_supportbot`, `/api/tickets`, and `/api/tickets/{ticket_id}/messages` may add an immediate AI support hint to text-only user messages when `SUPPORT_AI_ENABLED=true`; the ticket remains open and operators still see the full thread.
 
+## Canonical Support Ownership
+
+- `support_tickets.account_id` and `support_attachments.owner_account_id` are nullable internal ownership projections. Telegram-shaped ticket, upload, and message sender fields remain compatibility attribution and notification hints; canonical UUIDs are not added to public ticket responses.
+- New API, main-bot, and helpbot writes store canonical ownership when exact account evidence resolves to one account. Linked app, email, and Telegram sessions for that account can use the same account-owned ticket and private upload history.
+- Authorization is account-first: admin bypass, then exact canonical account match. Exact legacy Telegram ID is accepted only while the corresponding ownership field is `NULL`; a matching legacy ID never overrides a different non-null owner, and read-only checks never claim ownership.
+- A user write may claim an eligible `NULL` ticket only when the writer has the exact historical Telegram ID and an unambiguous canonical account. Continuation selects the newest active ticket by `updated_at DESC, id DESC`; it does not delete, close, merge, or move duplicate tickets or messages.
+- Startup runs marker-gated `migration.support_account_ownership.v1` after account-foundation. It uses only exact direct-user, explicit linked-Telegram, and enabled Telegram-identity candidates, follows bounded merge chains, and records unresolved/conflicting rows as idempotent metadata-only account merge reviews. The direct backfill remains available for operator repair.
+- Account merge moves only the two canonical ownership fields. Legacy attribution, support rows, messages, upload metadata, and files remain intact. Manual/test-user cleanup may remove only still-legacy `NULL`-owned tickets for that exact Telegram ID.
+- Delivery is separate from authorization. Operator replies use bounded deterministic routing: an explicit linked Telegram target on the canonical account, then enabled Telegram-identity evidence, then the ticket's historical ID only when it is a real Telegram ID. If no real target exists, delivery is skipped with a metadata-only warning; synthetic app or email IDs are never treated as Telegram chats.
+
 ## AI Support Helper
 
 - Runtime home: `portal-api` and `portal-helpbot` on `brain`.

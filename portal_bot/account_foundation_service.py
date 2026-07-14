@@ -28,6 +28,8 @@ from models import (
     ReferralRelationship,
     ReferralTransition,
     RecoveryCode,
+    SupportAttachment,
+    SupportTicket,
     User,
     WebEmailIdentity,
 )
@@ -999,6 +1001,17 @@ def _move_account_owned_rows(
             {model.account_id: target_account_id},
             synchronize_session=False,
         )
+
+    session.query(SupportTicket).filter(SupportTicket.account_id == source_account_id).update(
+        {SupportTicket.account_id: target_account_id},
+        synchronize_session="fetch",
+    )
+    session.query(SupportAttachment).filter(
+        SupportAttachment.owner_account_id == source_account_id
+    ).update(
+        {SupportAttachment.owner_account_id: target_account_id},
+        synchronize_session="fetch",
+    )
 
     _rewrite_referrer_edges_for_merge(
         session,

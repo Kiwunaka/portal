@@ -979,6 +979,7 @@ class SupportTicket(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_tg_id = Column(BigInteger, index=True, nullable=False)
+    account_id = Column(String(36), index=True, nullable=True)
     status = Column(String(20), default="open", nullable=False)  # open / in_progress / closed
     subject = Column(String(200), nullable=True)
     assigned_admin_tg_id = Column(BigInteger, nullable=True)
@@ -993,6 +994,7 @@ class SupportAttachment(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     stored_name = Column(String(160), unique=True, index=True, nullable=False)
     owner_tg_id = Column(BigInteger, index=True, nullable=False)
+    owner_account_id = Column(String(36), index=True, nullable=True)
     original_name = Column(String(160), nullable=False)
     content_type = Column(String(80), nullable=False)
     size_bytes = Column(Integer, default=0, nullable=False)

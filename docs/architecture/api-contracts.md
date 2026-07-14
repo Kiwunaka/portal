@@ -383,6 +383,22 @@ deadlock evidence.
 
 ## Support
 
+Support tickets and uploads are internally owned by nullable canonical account
+UUID fields while retaining their legacy Telegram fields for attribution and
+delivery compatibility. Public ticket and message payloads do not expose those
+UUIDs. New writes persist canonical ownership when the authenticated account or
+exact Telegram identity evidence resolves unambiguously.
+
+User reads and authorization are account-first: an exact account match wins,
+while exact Telegram-ID fallback applies only to rows whose canonical owner is
+`NULL`. A matching Telegram ID never bypasses a different non-null owner, and
+read-only requests never mutate ownership. A continuing user write may claim a
+`NULL` legacy ticket only for its exact historical Telegram actor and that
+actor's unambiguous canonical account. Linked identities of one account may
+list, open, reply to, and download the same normal-session history; admin access
+is unchanged. Active continuation chooses `updated_at DESC, id DESC` without
+coalescing or deleting duplicate tickets.
+
 Support ticket APIs must avoid exposing private attachments or session data in
 public logs. `portal_bot/support_ai_service.py` applies one sanitizer before
 length truncation to both outbound user text and inbound model text. Sanitizer
@@ -433,6 +449,11 @@ statement parameters.
 Authenticated normal client/admin attachment behavior remains available under
 the owner/admin contract. The limited recovery projection is text-only and
 cannot upload, download, submit, or receive attachment metadata.
+
+Notification routing does not grant access. Operator replies use a bounded,
+deterministic target order: explicit linked Telegram, enabled Telegram identity,
+then the historical ticket ID only when it is a real Telegram target. With no
+real target, delivery is skipped and logged without content or provider data.
 
 ## Admin
 

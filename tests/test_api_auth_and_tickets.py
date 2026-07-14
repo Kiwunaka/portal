@@ -1535,6 +1535,98 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(fetched.headers.get("x-content-type-options"), "nosniff")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
 
+    def test_linked_account_sessions_share_tickets_and_uploads_with_strict_nonnull_owner(self) -> None:
+        from db import SessionLocal
+        from models import Account, SupportAttachment, SupportTicket, User
+
+        s = SessionLocal()
+        try:
+            shared = Account(id="shared-support-account", status="active", created_source="test")
+            other = Account(id="other-support-account", status="active", created_source="test")
+            alice = s.query(User).filter_by(tg_id=1001).one()
+            alice.account_id = shared.id
+            linked = User(
+                tg_id=1002,
+                account_id=shared.id,
+                username="linked",
+                uuid=str(uuid.uuid4()),
+                email="user_1002",
+                sub_type="FREE",
+                is_active=True,
+                tos_accepted=True,
+            )
+            s.add_all([shared, other, linked])
+            s.commit()
+        finally:
+            s.close()
+
+        alice_headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        linked_headers = {"X-Telegram-Init-Data": self._init_data(1002, "linked")}
+        admin_headers = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        created = self.client.post(
+            "/api/tickets",
+            headers=alice_headers,
+            json={"subject": "Shared", "body": "Created from Telegram identity one"},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        ticket_payload = created.json()["ticket"]
+        ticket_id = int(ticket_payload["id"])
+        self.assertNotIn("account_id", ticket_payload)
+
+        listed = self.client.get("/api/tickets", headers=linked_headers)
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertIn(ticket_id, [int(row["id"]) for row in listed.json()["tickets"]])
+
+        opened = self.client.get(f"/api/tickets/{ticket_id}", headers=linked_headers)
+        self.assertEqual(opened.status_code, 200, opened.text)
+        replied = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=linked_headers,
+            json={"body": "Reply from Telegram identity two"},
+        )
+        self.assertEqual(replied.status_code, 200, replied.text)
+
+        uploaded = self.client.post(
+            "/api/tickets/uploads",
+            headers={**alice_headers, "Content-Type": "image/png", "X-Upload-Filename": "shared.png"},
+            content=b"\x89PNG\r\n\x1a\nshared-account",
+        )
+        self.assertEqual(uploaded.status_code, 200, uploaded.text)
+        file_url = uploaded.json()["attachment_payload"]["url"]
+        downloaded = self.client.get(file_url, headers=linked_headers)
+        self.assertEqual(downloaded.status_code, 200, downloaded.text)
+
+        s = SessionLocal()
+        try:
+            ticket = s.query(SupportTicket).filter_by(id=ticket_id).one()
+            attachment = s.query(SupportAttachment).order_by(SupportAttachment.id.desc()).first()
+            self.assertEqual(ticket.account_id, "shared-support-account")
+            self.assertEqual(attachment.owner_account_id, "shared-support-account")
+            attachment.owner_tg_id = 1002
+            attachment.owner_account_id = "other-support-account"
+            tempting = SupportTicket(
+                user_tg_id=1002,
+                account_id="other-support-account",
+                status="open",
+                created_at=_utcnow(),
+                updated_at=_utcnow(),
+            )
+            s.add(tempting)
+            s.commit()
+            tempting_id = int(tempting.id)
+        finally:
+            s.close()
+
+        denied = self.client.get(f"/api/tickets/{tempting_id}", headers=linked_headers)
+        self.assertEqual(denied.status_code, 403, denied.text)
+        denied_attachment = self.client.get(file_url, headers=linked_headers)
+        self.assertEqual(denied_attachment.status_code, 403, denied_attachment.text)
+        admin_opened = self.client.get(f"/api/tickets/{tempting_id}", headers=admin_headers)
+        self.assertEqual(admin_opened.status_code, 200, admin_opened.text)
+        admin_downloaded = self.client.get(file_url, headers=admin_headers)
+        self.assertEqual(admin_downloaded.status_code, 200, admin_downloaded.text)
+
     def test_ticket_upload_rejects_svg_and_octet_stream(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 

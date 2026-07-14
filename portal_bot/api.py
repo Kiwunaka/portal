@@ -122,12 +122,17 @@ from tickets_repo import (
     STATUS_IN_PROGRESS,
     STATUS_OPEN,
     add_ticket_message,
+    can_access_support_attachment,
+    can_access_ticket,
+    claim_legacy_ticket,
     create_ticket,
     get_ticket_by_id,
     get_user_active_ticket,
     list_active_tickets,
     list_ticket_messages,
     list_user_tickets,
+    resolve_support_account_id,
+    resolve_ticket_notification_tg_id,
     set_ticket_status,
 )
 from support_ai_service import SupportAIConfig, generate_support_reply
@@ -6388,7 +6393,14 @@ def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: 
     raise HTTPException(status_code=400, detail="Unsupported attachment type")
 
 
-def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_type: str | None, raw_bytes: bytes) -> dict[str, Any]:
+def _store_support_upload(
+    *,
+    owner_tg_id: int,
+    owner_account_id: str | None = None,
+    filename: str | None,
+    content_type: str | None,
+    raw_bytes: bytes,
+) -> dict[str, Any]:
     original_name = _sanitize_ticket_upload_name(filename)
     content_type, media_type, suffix = _detect_support_upload_type(
         filename=original_name,
@@ -6412,6 +6424,7 @@ def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_typ
                 SupportAttachment(
                     stored_name=stored_name,
                     owner_tg_id=int(owner_tg_id),
+                    owner_account_id=str(owner_account_id or "").strip() or None,
                     original_name=original_name,
                     content_type=content_type,
                     size_bytes=int(total_size),
@@ -13688,7 +13701,17 @@ async def get_tickets(request: Request, x_telegram_init_data: str = Header(defau
     include_media = not _auth_user_is_recovery_scope(auth_user)
     s = SessionLocal()
     try:
-        items = list_user_tickets(s, tg_id, limit=max(1, min(int(limit), 50)))
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=tg_id,
+        )
+        items = list_user_tickets(
+            s,
+            tg_id,
+            limit=max(1, min(int(limit), 50)),
+            account_id=account_id,
+        )
         data = []
         for t in items:
             msgs = list_ticket_messages(s, t.id, limit=1)
@@ -13708,9 +13731,19 @@ async def upload_ticket_attachment(
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_upload", request, identity=f"tg:{tg_id}")
     raw_bytes = await _read_limited_request_body(request, max_bytes=SUPPORT_UPLOAD_MAX_BYTES, scope="Attachment")
+    s = SessionLocal()
+    try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=tg_id,
+        )
+    finally:
+        s.close()
     try:
         uploaded = _store_support_upload(
             owner_tg_id=tg_id,
+            owner_account_id=account_id,
             filename=x_upload_filename,
             content_type=request.headers.get("content-type"),
             raw_bytes=raw_bytes,
@@ -13745,17 +13778,26 @@ async def download_ticket_attachment(
 ) -> FileResponse:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
-    admin_actor = bool(_is_admin_tg(actor) and not _auth_user_is_recovery_scope(auth_user))
     clean_name = Path(str(stored_name or "")).name
     if clean_name != stored_name or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", clean_name):
         raise HTTPException(status_code=404, detail="Attachment not found")
     _enforce_beta_rate_limit("ticket_attachment_download", request, identity=f"tg:{actor}")
     s = SessionLocal()
     try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=actor,
+        )
         row = s.query(SupportAttachment).filter(SupportAttachment.stored_name == clean_name).first()
         if not row:
             raise HTTPException(status_code=404, detail="Attachment not found")
-        if not (admin_actor or int(row.owner_tg_id) == actor):
+        if not can_access_support_attachment(
+            row,
+            actor,
+            int(Settings.ADMIN_ID or 0),
+            account_id=account_id,
+        ):
             _record_security_event(
                 "support_attachment_denied",
                 scope="ticket_attachment_download",
@@ -13796,9 +13838,16 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
     _enforce_beta_rate_limit("ticket_create", request, identity=f"tg:{tg_id}")
     s = SessionLocal()
     try:
-        ticket = get_user_active_ticket(s, tg_id)
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=tg_id,
+        )
+        ticket = get_user_active_ticket(s, tg_id, account_id=account_id)
         if not ticket:
-            ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject)
+            ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject, account_id=account_id)
+        else:
+            claim_legacy_ticket(ticket, actor_tg_id=tg_id, account_id=account_id)
         add_ticket_message(
             s,
             ticket_id=ticket.id,
@@ -13837,20 +13886,31 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
 async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
-    admin_actor = bool(_is_admin_tg(actor) and not _auth_user_is_recovery_scope(auth_user))
+    recovery_scope = _auth_user_is_recovery_scope(auth_user)
+    admin_bypass_tg_id = 0 if recovery_scope else int(Settings.ADMIN_ID or 0)
     s = SessionLocal()
     try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=actor,
+        )
         ticket = get_ticket_by_id(s, ticket_id)
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (admin_actor or int(ticket.user_tg_id) == actor):
+        if not can_access_ticket(
+            ticket,
+            actor,
+            admin_bypass_tg_id,
+            account_id=account_id,
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
         msgs = list_ticket_messages(s, ticket.id, limit=100)
         return {
             "ticket": _ticket_row(
                 ticket,
                 msgs,
-                include_media=not _auth_user_is_recovery_scope(auth_user),
+                include_media=not recovery_scope,
             )
         }
     finally:
@@ -13862,15 +13922,29 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     actor = int(auth_user.get("id", 0))
-    admin_actor = bool(_is_admin_tg(actor) and not _auth_user_is_recovery_scope(auth_user))
+    recovery_scope = _auth_user_is_recovery_scope(auth_user)
+    admin_actor = bool(_is_admin_tg(actor) and not recovery_scope)
+    admin_bypass_tg_id = 0 if recovery_scope else int(Settings.ADMIN_ID or 0)
     s = SessionLocal()
     try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=actor,
+        )
         ticket = get_ticket_by_id(s, ticket_id)
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (admin_actor or int(ticket.user_tg_id) == actor):
+        if not can_access_ticket(
+            ticket,
+            actor,
+            admin_bypass_tg_id,
+            account_id=account_id,
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
         role = "admin" if admin_actor else "user"
+        if role == "user":
+            claim_legacy_ticket(ticket, actor_tg_id=actor, account_id=account_id)
         add_ticket_message(
             s,
             ticket_id=ticket.id,
@@ -13888,12 +13962,18 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
         )
         s.commit()
-        ticket_user_tg_id = int(ticket.user_tg_id)
+        ticket_user_tg_id = resolve_ticket_notification_tg_id(s, ticket)
     finally:
         s.close()
 
     if role == "admin":
-        await _telegram_send_message(int(ticket_user_tg_id), f"💬 Новый ответ оператора в обращении #{ticket_id}.")
+        if ticket_user_tg_id is None:
+            logger.warning(
+                "support ticket notification skipped ticket=%s reason=no_telegram_target",
+                ticket_id,
+            )
+        else:
+            await _telegram_send_message(ticket_user_tg_id, f"💬 Новый ответ оператора в обращении #{ticket_id}.")
     elif Settings.ADMIN_ID:
         await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое сообщение в обращении #{ticket_id} от {actor}.")
     if role == "user":
@@ -13907,7 +13987,7 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
         "ticket": _load_ticket_row(
             ticket_id,
             message_limit=100,
-            include_media=not _auth_user_is_recovery_scope(auth_user),
+            include_media=not recovery_scope,
         )
     }
 

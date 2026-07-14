@@ -1823,6 +1823,7 @@ def run_migrations(engine: Engine) -> None:
         # support_tickets table: backfill columns for legacy DBs if table already exists
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets';")).fetchone():
             wanted_cols = [
+                ("account_id", "VARCHAR(36)"),
                 ("status", "VARCHAR(20) DEFAULT 'open'"),
                 ("subject", "VARCHAR(200)"),
                 ("assigned_admin_tg_id", "BIGINT"),
@@ -1855,6 +1856,7 @@ def run_migrations(engine: Engine) -> None:
 
         # Ticket indexes (safe for both new and old DBs).
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_user_tg_id ON support_tickets(user_tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_account_id ON support_tickets(account_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_status ON support_tickets(status);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_updated_at ON support_tickets(updated_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_ticket_messages_ticket_id ON support_ticket_messages(ticket_id);"))
@@ -1870,6 +1872,16 @@ def run_migrations(engine: Engine) -> None:
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "support_ticket_messages", col):
                     conn.execute(text(f"ALTER TABLE support_ticket_messages ADD COLUMN {col} {ddl};"))
+
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_attachments';")).fetchone():
+            if not _sqlite_column_exists(conn, "support_attachments", "owner_account_id"):
+                conn.execute(text("ALTER TABLE support_attachments ADD COLUMN owner_account_id VARCHAR(36);"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_owner_account_id "
+                "ON support_attachments(owner_account_id);"
+            )
+        )
 
         # nodes: runtime health fields for soft LB + fallback.
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='nodes';")).fetchone():
@@ -2732,6 +2744,15 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_status ON feedback_entries(status);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_created_at ON feedback_entries(created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_review_id ON feedback_entries(review_id);"))
+        _postgres_add_column_if_missing(conn, "support_tickets", "account_id", "VARCHAR(36)")
+        _postgres_add_column_if_missing(conn, "support_attachments", "owner_account_id", "VARCHAR(36)")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_account_id ON support_tickets(account_id);"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_owner_account_id "
+                "ON support_attachments(owner_account_id);"
+            )
+        )
         _postgres_add_column_if_missing(conn, "users", "referral_code", "VARCHAR(10)")
         _postgres_add_column_if_missing(conn, "users", "account_id", "VARCHAR(36)")
         _postgres_add_column_if_missing(conn, "users", "first_purchase_done", "BOOLEAN DEFAULT FALSE")

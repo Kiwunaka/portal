@@ -107,6 +107,7 @@ def test_rehearsal_target_guard_requires_confirmed_disposable_postgres_name() ->
 def test_table_plan_is_stable_and_respects_declared_dependencies() -> None:
     module = _load_script()
     names = {
+        "support_attachments",
         "support_ticket_messages",
         "support_tickets",
         "antiabuse_actions",
@@ -128,6 +129,10 @@ def test_table_plan_is_stable_and_respects_declared_dependencies() -> None:
     assert first.index("accounts") < first.index("account_devices")
     assert first.index("antiabuse_cases") < first.index("antiabuse_actions")
     assert first.index("support_tickets") < first.index("support_ticket_messages")
+    assert first.index("accounts") < first.index("support_tickets")
+    assert first.index("accounts") < first.index("support_attachments")
+    assert {"accounts"} <= module.TABLE_DEPENDENCIES["support_tickets"]
+    assert {"accounts"} <= module.TABLE_DEPENDENCIES["support_attachments"]
     assert first.index("offers") < first.index("pay_attempts") < first.index("points_ledger")
     assert first.index("a_standalone") < first.index("z_standalone")
 
@@ -473,6 +478,45 @@ def test_invariants_report_orphan_without_exposing_rows(tmp_path: Path) -> None:
     orphan_check = next(check for check in checks if check["name"] == "users.account_id->accounts.id")
     assert orphan_check == {"name": "users.account_id->accounts.id", "status": "FAIL", "violations": 1}
     assert "missing-account" not in json.dumps(checks)
+
+
+def test_invariants_cover_support_account_owners_without_weakening_legacy_ticket_owner(tmp_path: Path) -> None:
+    module = _load_script()
+    metadata = MetaData()
+    accounts = Table("accounts", metadata, Column("id", String(36), primary_key=True))
+    users = Table("users", metadata, Column("tg_id", Integer, primary_key=True), Column("account_id", String(36)))
+    tickets = Table(
+        "support_tickets",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("user_tg_id", Integer),
+        Column("account_id", String(36)),
+    )
+    attachments = Table(
+        "support_attachments",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("owner_tg_id", Integer),
+        Column("owner_account_id", String(36)),
+    )
+    engine = create_engine(f"sqlite:///{(tmp_path / 'support-invariants.db').as_posix()}")
+    metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(accounts.insert(), [{"id": "account-ok"}])
+        connection.execute(users.insert(), [{"tg_id": 1, "account_id": "account-ok"}])
+        connection.execute(tickets.insert(), [{"id": 7, "user_tg_id": 1, "account_id": "missing-ticket-account"}])
+        connection.execute(
+            attachments.insert(),
+            [{"id": 8, "owner_tg_id": 1, "owner_account_id": "missing-attachment-account"}],
+        )
+        checks = module.run_invariant_checks(connection, metadata)
+
+    by_name = {check["name"]: check for check in checks}
+    assert by_name["support_tickets.account_id->accounts.id"]["status"] == "FAIL"
+    assert by_name["support_attachments.owner_account_id->accounts.id"]["status"] == "FAIL"
+    assert by_name["support_tickets.user_tg_id->users.tg_id"]["status"] == "PASS"
+    assert "missing-ticket-account" not in json.dumps(checks)
+    assert "missing-attachment-account" not in json.dumps(checks)
 
 
 def test_invariants_cover_security_key_provisioning_and_payment_chains(tmp_path: Path) -> None:

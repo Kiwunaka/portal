@@ -1119,6 +1119,40 @@ def test_recovery_ticket_http_hides_attachment_metadata_and_enforces_ownership(m
     ), "normal-ticket-media-compatible"
 
 
+def test_recovery_actor_equal_to_admin_id_cannot_access_foreign_ticket(monkeypatch, tmp_path):
+    api, client, _normal_headers, recovery_headers = _recovery_http_fixture(monkeypatch, tmp_path)
+    session_response = client.get("/api/auth/session", headers=recovery_headers)
+    assert session_response.status_code == 200, session_response.text
+    recovery_actor = int(session_response.json()["user"]["id"])
+
+    db = api.SessionLocal()
+    try:
+        foreign_ticket = api.SupportTicket(
+            user_tg_id=123456,
+            status="open",
+            subject="Foreign ticket",
+            created_at=api._utcnow(),
+            updated_at=api._utcnow(),
+        )
+        db.add(foreign_ticket)
+        db.commit()
+        foreign_ticket_id = int(foreign_ticket.id)
+    finally:
+        db.close()
+
+    monkeypatch.setattr(api.Settings, "ADMIN_ID", recovery_actor)
+
+    foreign_get = client.get(f"/api/tickets/{foreign_ticket_id}", headers=recovery_headers)
+    foreign_message = client.post(
+        f"/api/tickets/{foreign_ticket_id}/messages",
+        headers=recovery_headers,
+        json={"body": "Recovery scope must not inherit admin bypass"},
+    )
+
+    assert foreign_get.status_code == 403, "recovery-admin-foreign-ticket-get"
+    assert foreign_message.status_code == 403, "recovery-admin-foreign-ticket-message"
+
+
 def test_email_otp_fresh_auth_recovery_exchange_and_vpn_reissue(monkeypatch, tmp_path):
     monkeypatch.setenv("ADMIN_ID", "9000000000000")
     api = _load_api(monkeypatch, tmp_path, email_public_ready=True)

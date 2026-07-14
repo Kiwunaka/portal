@@ -46,9 +46,14 @@ class _FakeMessage:
         self.media_group_id = media_group_id
         self.bot = bot or _FakeBot()
         self.answers: list[tuple[str, dict]] = []
+        self.edits: list[str] = []
 
     async def answer(self, text, **kwargs):
         self.answers.append((str(text), dict(kwargs)))
+        return None
+
+    async def edit_text(self, text, **kwargs):
+        self.edits.append(str(text))
         return None
 
     async def copy_to(self, chat_id, **kwargs):
@@ -62,6 +67,19 @@ class _FakeTelegramFile:
         self.file_unique_id = kwargs.pop("file_unique_id", f"unique-{file_id}")
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+
+class _FakeCallback:
+    def __init__(self, tg_id: int, data: str, bot: _FakeBot | None = None):
+        self.from_user = _FakeUser(tg_id)
+        self.data = data
+        self.bot = bot or _FakeBot()
+        self.message = _FakeMessage(tg_id, bot=self.bot)
+        self.answers: list[tuple[str, bool]] = []
+
+    async def answer(self, text="", show_alert=False):
+        self.answers.append((str(text), bool(show_alert)))
+        return None
 
 
 class MainBotTicketAttachmentTests(unittest.TestCase):
@@ -221,3 +239,122 @@ class MainBotTicketAttachmentTests(unittest.TestCase):
         _ticket, messages = self._ticket_messages(ticket_id)
         self.assertEqual([message.media_file_id for message in messages], ["first-file-id", "second-file-id"])
         self.assertEqual(len(fake_bot.copies), 2)
+
+    def test_account_owned_admin_reply_prefers_explicit_linked_telegram_target(self) -> None:
+        from models import Account, User
+
+        session = self.bot_module.Session()
+        try:
+            session.add_all(
+                [
+                    Account(id="bot-support-account", status="active", created_source="test"),
+                    User(
+                        tg_id=8_000_000_000_111,
+                        account_id="bot-support-account",
+                        linked_telegram_id=5111,
+                    ),
+                ]
+            )
+            session.flush()
+            ticket = self.bot_module.create_ticket(
+                session,
+                user_tg_id=8_000_000_000_111,
+                account_id="bot-support-account",
+            )
+            session.commit()
+            ticket_id = int(ticket.id)
+        finally:
+            session.close()
+
+        self.bot_module.pending_ticket_replies[9999] = ticket_id
+        fake_bot = _FakeBot()
+        message = _FakeMessage(
+            9999,
+            bot=fake_bot,
+            caption="Ответ на account-owned обращение",
+            document=_FakeTelegramFile("linked-target-file", file_name="answer.txt"),
+        )
+
+        asyncio.run(self.bot_module.capture_ticket_attachment(message))
+
+        self.assertEqual(fake_bot.copies[0]["chat_id"], 5111)
+        self.assertNotEqual(fake_bot.copies[0]["chat_id"], 8_000_000_000_111)
+
+    def test_linked_identity_continues_existing_account_ticket_from_main_bot(self) -> None:
+        from models import Account, User
+
+        session = self.bot_module.Session()
+        try:
+            session.add_all(
+                [
+                    Account(id="main-bot-shared-account", status="active", created_source="test"),
+                    User(tg_id=6101, account_id="main-bot-shared-account"),
+                    User(tg_id=6102, account_id="main-bot-shared-account"),
+                ]
+            )
+            session.flush()
+            ticket = self.bot_module.create_ticket(
+                session,
+                user_tg_id=6101,
+                account_id="main-bot-shared-account",
+            )
+            session.commit()
+            ticket_id = int(ticket.id)
+        finally:
+            session.close()
+
+        callback = _FakeCallback(6102, "ticket_new")
+        asyncio.run(self.bot_module.ticket_new(callback))
+
+        self.assertTrue(callback.message.edits)
+        self.assertIn(f"#{ticket_id}", callback.message.edits[-1])
+        self.assertIn("уже есть", callback.message.edits[-1])
+        self.assertNotIn(6102, self.bot_module.pending_ticket_replies)
+
+    def test_manual_cleanup_preserves_account_owned_support_history(self) -> None:
+        from models import Account, SupportTicket, SupportTicketMessage
+
+        session = self.bot_module.Session()
+        try:
+            session.add(Account(id="retained-support-account", status="active", created_source="test"))
+            owned = self.bot_module.create_ticket(
+                session,
+                user_tg_id=-7001,
+                account_id="retained-support-account",
+            )
+            legacy = SupportTicket(
+                user_tg_id=-7001,
+                account_id=None,
+                status="open",
+                created_at=owned.created_at,
+                updated_at=owned.updated_at,
+            )
+            session.add(legacy)
+            session.flush()
+            session.add_all(
+                [
+                    SupportTicketMessage(
+                        ticket_id=owned.id,
+                        sender_tg_id=-7001,
+                        sender_role="user",
+                        body="retain owned",
+                    ),
+                    SupportTicketMessage(
+                        ticket_id=legacy.id,
+                        sender_tg_id=-7001,
+                        sender_role="user",
+                        body="delete legacy",
+                    ),
+                ]
+            )
+            session.flush()
+
+            self.bot_module._delete_legacy_support_history_for_test_user(session, tg_id=-7001)
+            session.flush()
+
+            remaining_tickets = session.query(SupportTicket).all()
+            remaining_messages = session.query(SupportTicketMessage).all()
+            self.assertEqual([row.id for row in remaining_tickets], [owned.id])
+            self.assertEqual([row.body for row in remaining_messages], ["retain owned"])
+        finally:
+            session.close()

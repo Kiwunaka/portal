@@ -63,6 +63,20 @@ class PostgresMigrationHelperTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.migrations._postgres_add_column_if_missing(conn, "users; drop table users", "referral_code", "TEXT")
 
+    def test_support_ownership_migration_declares_additive_columns_and_indexes(self) -> None:
+        source = Path(self.migrations.__file__).read_text(encoding="utf-8")
+
+        self.assertIn(
+            '_postgres_add_column_if_missing(conn, "support_tickets", "account_id", "VARCHAR(36)")',
+            source,
+        )
+        self.assertIn(
+            '_postgres_add_column_if_missing(conn, "support_attachments", "owner_account_id", "VARCHAR(36)")',
+            source,
+        )
+        self.assertIn("ix_support_tickets_account_id", source)
+        self.assertIn("ix_support_attachments_owner_account_id", source)
+
     def test_varchar_limit_reads_information_schema(self) -> None:
         conn = _FakeConn(varchar_limits={("gift_cards", "code"): 16})
 

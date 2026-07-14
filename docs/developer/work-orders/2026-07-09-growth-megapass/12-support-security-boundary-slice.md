@@ -1,7 +1,7 @@
 # Support Security Boundary Slice
 
 Date: 2026-07-14
-Status: platform candidate implemented; promotion blocked on recovery-aware client slice; deploy not requested
+Status: platform Tasks A-B candidates implemented; promotion blocked on recovery-aware client slice and manual support-ownership gates; deploy not requested
 
 ## Scope
 
@@ -23,12 +23,58 @@ Only these paths changed:
 - `docs/architecture/support-feedback-flow.md`
 - this completion note
 
-Account ownership, models, migrations, `tickets_repo`, bot, webapp, payments,
-and integrations were not changed. The `helpbot.py` and `db.py` follow-up edits
-are limited to the two review findings above. Nothing was staged, committed,
-pushed, deployed, or installed while the candidate was being built. The final
-handoff uses one scoped feature-branch commit. No final-candidate test called
-Telegram or any other live provider/system.
+Task A did not change account ownership, models, migrations, `tickets_repo`,
+bot, webapp, payments, or integrations. Task B adds the canonical support
+ownership slice described below on its separate assigned branch. No
+final-candidate test called Telegram or any other live provider/system.
+
+## Task B Canonical Ownership
+
+Task B was implemented in
+`C:/Users/kiwun/Documents/ai/VPN/.worktrees/support-account-ownership` on
+`codex/support-account-ownership`, based on
+`7162481e5ff6c948ecb40c4d2835f9466b7e3470`.
+
+- Nullable indexed canonical owners were added to tickets and uploads with
+  additive rerunnable SQLite/PostgreSQL migrations. Legacy Telegram ownership,
+  message attribution, bodies, media, and files remain unchanged.
+- Marker-gated `migration.support_account_ownership.v1` runs after account
+  foundation and atomically commits assignments, safe idempotent merge reviews,
+  and its marker. Resolution uses only exact direct-user, explicit linked
+  Telegram, or enabled Telegram-identity evidence and bounded merge traversal.
+- Repository, API, main bot, and helpbot enforce account-first access with
+  legacy fallback only for `NULL` owners. Read-only checks do not claim rows;
+  eligible user writes may claim an exact legacy ticket. Account-linked
+  identities share history, while a tempting legacy ID cannot override a
+  different non-null owner.
+- Account merge retargets ticket/upload owners without deleting or changing
+  support history. Bounded notification routing prefers explicit linked
+  Telegram, then enabled Telegram-identity evidence, then only a real
+  historical Telegram ID; missing real targets are skipped and safely logged.
+- Rehearsal ordering and account-orphan checks cover both new fields without
+  weakening existing user/message checks. Manual/test cleanup preserves all
+  account-owned support history.
+
+## Task B TDD And Verification
+
+All Task B Python commands used only
+`C:/Users/kiwun/Documents/ai/VPN/.worktrees/market-ready-cis-integration/.tmp/venv-auth-sessions/Scripts/python.exe`,
+with this worktree's `portal_bot` on `PYTHONPATH` and worktree-local pytest
+basetemp paths.
+
+- RED was captured before each production slice: model/migration `3 failed`,
+  backfill service import `5 failed`, repository behavior `3 failed`,
+  merge/rehearsal `3 failed`, startup/API `2 failed`, and bot/helpbot/cleanup
+  `3 failed`. Each focused group passed after its implementation.
+- Final exact-candidate regression over ownership service/repository,
+  migrations/rehearsal, account foundation/merge, API/auth/recovery, main bot,
+  and helpbot: `PASS`, `177 passed in 303.13s`.
+- Focused final account-merge authority check: `PASS`, `7 passed in 10.48s`.
+- Python compilation: `PASS` for all changed Python production and test paths.
+- Documentation checks: `PASS`, 30 link checks and 4 agent-context/app-bot
+  contract tests.
+- `git diff --check`: `PASS` with only Git LF-to-CRLF conversion notices.
+- Added-line high-confidence credential-shape scan: `PASS`, no matches.
 
 ## Implemented Contract
 
@@ -188,6 +234,14 @@ synthetic invalid test configuration. That run is excluded from final evidence
 and is not a live-success claim. The exact-candidate API runs above globally
 patched `_telegram_send_message` to `AsyncMock`; their evidence is offline.
 
+- `MANUAL_OWNER_TEST`: measure production PostgreSQL `ALTER TABLE` and index
+  lock impact for both additive support ownership fields before deployment.
+- `MANUAL_OWNER_TEST`: run backup/restore against the exact deployment
+  candidate and retain redacted before/after ticket, attachment, assignment,
+  unresolved/conflict review, and marker counts.
+- `MANUAL_OWNER_TEST`: exercise real PostgreSQL concurrency between account
+  merge/backfill and support create/reply/upload writes. SQLite and unit lock
+  tests are not live deadlock or lost-update evidence.
 - `MANUAL_OWNER_TEST`: verify the configured model/provider and production log
   collector never retain raw user/model/provider echo material.
 - `MANUAL_OWNER_TEST`: exercise the exact deployed API revision through the

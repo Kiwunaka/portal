@@ -813,12 +813,15 @@ from tickets_repo import (
     STATUS_OPEN,
     add_ticket_message,
     can_access_ticket,
+    claim_legacy_ticket,
     create_ticket,
     get_ticket_by_id,
     get_user_active_ticket,
     list_active_tickets,
     list_ticket_messages,
     list_user_tickets,
+    resolve_support_account_id,
+    resolve_ticket_notification_tg_id,
     set_ticket_status,
 )
 
@@ -5640,6 +5643,19 @@ def _ticket_delivery_text(prefix: str, body: str, *, limit: int = 950) -> str:
     return text
 
 
+def _support_actor_account_id(session, tg_id: int) -> str | None:
+    return resolve_support_account_id(session, user_tg_id=int(tg_id))
+
+
+def _can_access_support_ticket(session, ticket: SupportTicket, tg_id: int) -> bool:
+    return can_access_ticket(
+        ticket,
+        int(tg_id),
+        ADMIN_ID,
+        account_id=_support_actor_account_id(session, int(tg_id)),
+    )
+
+
 async def _capture_ticket_reply_message(
     message: Message,
     *,
@@ -5664,11 +5680,14 @@ async def _capture_ticket_reply_message(
         if not ticket:
             await message.answer("❌ Обращение не найдено.")
             return True
-        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+        if not _can_access_support_ticket(session, ticket, tg_id):
             await message.answer("⛔ Нет доступа к обращению.")
             return True
 
         role = "admin" if tg_id == ADMIN_ID else "user"
+        actor_account_id = _support_actor_account_id(session, tg_id)
+        if role == "user":
+            claim_legacy_ticket(ticket, actor_tg_id=tg_id, account_id=actor_account_id)
         add_ticket_message(
             session,
             ticket_id=ticket.id,
@@ -5692,19 +5711,26 @@ async def _capture_ticket_reply_message(
             )
         else:
             set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
+        delivery_tg_id = resolve_ticket_notification_tg_id(session, ticket)
         session.commit()
 
         await message.answer(f"✅ Ответ добавлен в обращение #{ticket.id}.")
 
         if tg_id == ADMIN_ID:
             delivery = _ticket_delivery_text(f"💬 Новый ответ команды POKROV по обращению #{ticket.id}:", body)
-            try:
-                if media_type and media_file_id:
-                    await message.copy_to(ticket.user_tg_id, caption=delivery)
-                else:
-                    await message.bot.send_message(ticket.user_tg_id, delivery)
-            except Exception as exc:
-                logger.warning("main bot ticket reply to user failed ticket=%s err=%s", ticket.id, exc)
+            if delivery_tg_id is None:
+                logger.warning(
+                    "main bot ticket notification skipped ticket=%s reason=no_telegram_target",
+                    ticket.id,
+                )
+            else:
+                try:
+                    if media_type and media_file_id:
+                        await message.copy_to(delivery_tg_id, caption=delivery)
+                    else:
+                        await message.bot.send_message(delivery_tg_id, delivery)
+                except Exception as exc:
+                    logger.warning("main bot ticket reply to user failed ticket=%s err=%s", ticket.id, exc)
         else:
             delivery = _ticket_delivery_text(f"🆕 Новое сообщение в обращении #{ticket.id} от пользователя {ticket.user_tg_id}:", body)
             try:
@@ -6637,7 +6663,7 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
         if not ticket:
             await callback.answer("Обращение не найден", show_alert=True)
             return
-        if not can_access_ticket(ticket, tg_id, ADMIN_ID):
+        if not _can_access_support_ticket(session, ticket, tg_id):
             await callback.answer("Нет доступа к обращениеу", show_alert=True)
             return
 
@@ -6776,7 +6802,7 @@ async def ticket_reply(callback: CallbackQuery):
         if not ticket:
             await callback.answer("Обращение не найден", show_alert=True)
             return
-        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+        if not _can_access_support_ticket(session, ticket, callback.from_user.id):
             await callback.answer("Нет доступа", show_alert=True)
             return
         if callback.from_user.id == ADMIN_ID:
@@ -6787,6 +6813,11 @@ async def ticket_reply(callback: CallbackQuery):
                 assigned_admin_tg_id=ADMIN_ID,
             )
         elif ticket.status == STATUS_CLOSED:
+            claim_legacy_ticket(
+                ticket,
+                actor_tg_id=callback.from_user.id,
+                account_id=_support_actor_account_id(session, callback.from_user.id),
+            )
             set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
         session.commit()
     finally:
@@ -6811,18 +6842,31 @@ async def ticket_close(callback: CallbackQuery):
         if not ticket:
             await callback.answer("Обращение не найден", show_alert=True)
             return
-        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+        if not _can_access_support_ticket(session, ticket, callback.from_user.id):
             await callback.answer("Нет доступа", show_alert=True)
             return
+        if callback.from_user.id != ADMIN_ID:
+            claim_legacy_ticket(
+                ticket,
+                actor_tg_id=callback.from_user.id,
+                account_id=_support_actor_account_id(session, callback.from_user.id),
+            )
         set_ticket_status(session, ticket=ticket, status=STATUS_CLOSED)
+        delivery_tg_id = resolve_ticket_notification_tg_id(session, ticket)
         session.commit()
 
         # Notify opposite side.
         if callback.from_user.id == ADMIN_ID:
-            try:
-                await callback.bot.send_message(ticket.user_tg_id, f"Обращение #{ticket.id} закрыт оператором.")
-            except Exception:
-                pass
+            if delivery_tg_id is None:
+                logger.warning(
+                    "main bot ticket close notification skipped ticket=%s reason=no_telegram_target",
+                    ticket.id,
+                )
+            else:
+                try:
+                    await callback.bot.send_message(delivery_tg_id, f"Обращение #{ticket.id} закрыт оператором.")
+                except Exception:
+                    pass
         else:
             try:
                 await callback.bot.send_message(
@@ -6846,9 +6890,15 @@ async def ticket_reopen(callback: CallbackQuery):
         if not ticket:
             await callback.answer("Обращение не найден", show_alert=True)
             return
-        if not can_access_ticket(ticket, callback.from_user.id, ADMIN_ID):
+        if not _can_access_support_ticket(session, ticket, callback.from_user.id):
             await callback.answer("Нет доступа", show_alert=True)
             return
+        if callback.from_user.id != ADMIN_ID:
+            claim_legacy_ticket(
+                ticket,
+                actor_tg_id=callback.from_user.id,
+                account_id=_support_actor_account_id(session, callback.from_user.id),
+            )
         set_ticket_status(session, ticket=ticket, status=STATUS_OPEN)
         session.commit()
 
@@ -9419,6 +9469,26 @@ async def admin_reset_traffic(callback: CallbackQuery):
     # Refresh user view
     await render_admin_user_view(callback, tg_id)
 
+
+def _delete_legacy_support_history_for_test_user(session, *, tg_id: int) -> None:
+    ticket_ids = [
+        row[0]
+        for row in session.query(SupportTicket.id)
+        .filter(
+            SupportTicket.user_tg_id == int(tg_id),
+            SupportTicket.account_id.is_(None),
+        )
+        .all()
+    ]
+    if not ticket_ids:
+        return
+    session.query(SupportTicketMessage).filter(
+        SupportTicketMessage.ticket_id.in_(ticket_ids)
+    ).delete(synchronize_session=False)
+    session.query(SupportTicket).filter(SupportTicket.id.in_(ticket_ids)).delete(
+        synchronize_session=False
+    )
+
 @router.callback_query(F.data.startswith("adm_del_"))
 async def admin_delete_user(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
@@ -9442,18 +9512,7 @@ async def admin_delete_user(callback: CallbackQuery):
         session.query(UserKeyPolicy).filter_by(tg_id=tg_id).delete(synchronize_session=False)
         session.query(KeyActionHistory).filter_by(tg_id=tg_id).delete(synchronize_session=False)
         session.query(Event).filter_by(tg_id=tg_id).delete(synchronize_session=False)
-        ticket_ids = [
-            row[0]
-            for row in session.query(SupportTicket.id)
-            .filter_by(user_tg_id=tg_id)
-            .all()
-        ]
-        if ticket_ids:
-            session.query(SupportTicketMessage).filter(
-                SupportTicketMessage.ticket_id.in_(ticket_ids)
-            ).delete(synchronize_session=False)
-        session.query(SupportTicketMessage).filter_by(sender_tg_id=tg_id).delete(synchronize_session=False)
-        session.query(SupportTicket).filter_by(user_tg_id=tg_id).delete(synchronize_session=False)
+        _delete_legacy_support_history_for_test_user(session, tg_id=tg_id)
         session.query(PointsLedger).filter_by(tg_id=tg_id).delete(synchronize_session=False)
         session.query(AdminAudit).filter_by(target_tg_id=tg_id).delete(synchronize_session=False)
         if user:

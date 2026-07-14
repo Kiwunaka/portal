@@ -216,11 +216,11 @@ Production source of truth:
 
 Account ownership transition:
 
-- deployment status: the additive account foundation and rotating app-session
-  slice are repo-implemented on `codex/market-ready-cis-integration` but are not
-  deployed. Production remains on the legacy auth, entitlement, payment,
-  support, bonus, `users.tg_id` and stateless app-bearer paths until the
-  predeploy gates below are approved.
+- deployment status: the additive account foundation, rotating app-session,
+  and canonical support-ownership slices are repo-implemented candidates but
+  are not deployed. Production remains on the legacy auth, entitlement,
+  payment, support, bonus, `users.tg_id` and stateless app-bearer paths until
+  the predeploy gates below are approved.
 
 - `accounts.id` is the new immutable UUID ownership root; `users.account_id`
   is an additive legacy projection and may point multiple legacy user rows at
@@ -228,6 +228,22 @@ Account ownership transition:
 - `users.tg_id` remains the compatibility adapter for current bot, panel,
   payment and public API behavior. Existing response fields that call the
   numeric value `account_id` have not switched to the UUID yet.
+- `support_tickets.account_id` and `support_attachments.owner_account_id` are
+  nullable canonical ownership projections. Exact account ownership controls
+  non-admin access when present; exact legacy Telegram fallback is valid only
+  while the relevant field is `NULL`. Public support responses retain their
+  existing shape and do not expose canonical UUIDs.
+- the distinct `migration.support_account_ownership.v1` startup backfill runs
+  after account-foundation in one commit scope. It resolves only exact direct,
+  explicit linked-Telegram, and enabled Telegram-identity evidence through
+  bounded merge chains. Zero or multiple canonical candidates remain `NULL`
+  and create idempotent metadata-only merge reviews. A direct repair entrypoint
+  is retained after the startup marker is complete.
+- account merge retargets canonical ticket and upload ownership without
+  deleting support rows or changing messages, files, or legacy attribution.
+  Notification delivery separately uses bounded deterministic linked-Telegram,
+  enabled Telegram-identity, then real historical-ticket evidence. It skips
+  safely when no real Telegram target exists.
 - the first startup backfill uses deterministic UUIDv5 values, preserves legacy
   rows, creates typed identity/device projections and one non-authoritative
   `legacy_snapshot` entitlement grant per legacy user, then records the
