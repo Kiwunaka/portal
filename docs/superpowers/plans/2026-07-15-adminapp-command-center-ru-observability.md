@@ -431,6 +431,7 @@ git commit -m "feat(adminapp): build grouped operations shell"
 - Create: `adminapp/src/features/registry.tsx`
 - Modify: `adminapp/src/components/ops-dashboard.tsx`
 - Modify: `adminapp/src/lib/api.ts`
+- Modify: `adminapp/e2e/adminapp-smoke.spec.ts`
 - Modify: `adminapp/e2e/shell-and-overview.spec.ts`
 
 **Interfaces:**
@@ -514,7 +515,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit only Task 3 files**
 
 ```powershell
-git add adminapp/src/lib/admin-api adminapp/src/lib/use-route-resource.ts adminapp/src/components/ops/route-boundary.tsx adminapp/src/features adminapp/src/components/ops-dashboard.tsx adminapp/src/lib/api.ts adminapp/e2e/shell-and-overview.spec.ts
+git add adminapp/src/lib/admin-api adminapp/src/lib/use-route-resource.ts adminapp/src/components/ops/route-boundary.tsx adminapp/src/features adminapp/src/components/ops-dashboard.tsx adminapp/src/lib/api.ts adminapp/e2e/adminapp-smoke.spec.ts adminapp/e2e/shell-and-overview.spec.ts
 git commit -m "refactor(adminapp): load only the active operations route"
 ```
 
