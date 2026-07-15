@@ -1,10 +1,10 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Dialog } from "@/components/ui/dialog";
-import { apiFetch } from "@/lib/api";
+import { AdminApiError, apiFetch } from "@/lib/api";
 import { OPS_SECTIONS } from "@/lib/sections";
 
 export type AdminSearchResult = {
@@ -18,21 +18,39 @@ export type AdminSearchResult = {
 type SearchState = "idle" | "loading" | "ready" | "unavailable" | "error";
 
 const SEARCH_KINDS = new Set<AdminSearchResult["kind"]>(["user", "order", "node", "key"]);
+const SEARCH_RESULT_FIELDS = new Set(["kind", "id", "title", "subtitle", "href"]);
 const RAW_IP_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
-const SECRET_PATTERN = /(?:vless|trojan|ss|wg):\/\/|subscription[_ -]?url|private[_ -]?key|api[_ -]?token|access[_ -]?token|\bsecret\b/i;
+const SCHEME_URL_PATTERN = /\b[a-z][a-z0-9+.-]*:(?:\/\/)?[^\s]+/i;
+const TOKEN_PATTERN = /(?:^|[^a-zа-яё0-9])(?:token|токен(?:а|у|ом|е|ы|ов|ами|ах)?)(?=$|[^a-zа-яё0-9])/i;
+const SECRET_PATTERN = /subscription[_ -]?(?:url|link)|private[_ -]?key|authorization|bearer|password|парол|\bsecret\b|\bсекрет/i;
 const SECRET_QUERY_KEY = /(?:token|secret|subscription|private|config|raw[_-]?ip)/i;
 
+function hasIpv6(value: string): boolean {
+  const candidates = value.match(/[0-9a-f:]*:[0-9a-f:]*/gi) || [];
+  return candidates.some((candidate) => {
+    if (candidate.length < 2) return false;
+    const parts = candidate.split(":");
+    const validParts = parts.filter(Boolean);
+    if (!validParts.every((part) => /^[0-9a-f]{1,4}$/i.test(part))) return false;
+    if (candidate.includes("::")) {
+      return candidate.indexOf("::") === candidate.lastIndexOf("::") && validParts.length <= 7;
+    }
+    return parts.length === 8;
+  });
+}
+
 function hasUnsafeVisibleValue(value: string): boolean {
-  return RAW_IP_PATTERN.test(value) || SECRET_PATTERN.test(value);
+  return RAW_IP_PATTERN.test(value) || hasIpv6(value) || SCHEME_URL_PATTERN.test(value) || TOKEN_PATTERN.test(value) || SECRET_PATTERN.test(value);
 }
 
 function canonicalHref(value: string): string | null {
   if (!value.startsWith("/") || value.startsWith("//")) return null;
   const url = new URL(value, "https://admin.pokrov.space");
+  if (url.hash) return null;
   const pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
   if (!OPS_SECTIONS.some((section) => section.href === pathname)) return null;
   for (const [key, queryValue] of url.searchParams) {
-    if (SECRET_QUERY_KEY.test(key) || hasUnsafeVisibleValue(queryValue)) return null;
+    if (SECRET_QUERY_KEY.test(key) || hasUnsafeVisibleValue(key) || hasUnsafeVisibleValue(queryValue)) return null;
   }
   return `${pathname}${url.search}`;
 }
@@ -40,13 +58,16 @@ function canonicalHref(value: string): string | null {
 function normalizeResult(value: unknown): AdminSearchResult | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
-  const kind = String(record.kind || "") as AdminSearchResult["kind"];
-  const id = String(record.id || "").trim();
-  const title = String(record.title || "").trim();
-  const subtitle = String(record.subtitle || "").trim();
-  const href = canonicalHref(String(record.href || "").trim());
+  const fields = Object.keys(record);
+  if (fields.length !== SEARCH_RESULT_FIELDS.size || fields.some((field) => !SEARCH_RESULT_FIELDS.has(field))) return null;
+  if (![record.kind, record.id, record.title, record.subtitle, record.href].every((field) => typeof field === "string")) return null;
+  const kind = record.kind as AdminSearchResult["kind"];
+  const id = (record.id as string).trim();
+  const title = (record.title as string).trim();
+  const subtitle = (record.subtitle as string).trim();
+  const href = canonicalHref((record.href as string).trim());
   if (!SEARCH_KINDS.has(kind) || !id || !title || !subtitle || !href) return null;
-  if (hasUnsafeVisibleValue(title) || hasUnsafeVisibleValue(subtitle)) return null;
+  if ([id, title, subtitle].some(hasUnsafeVisibleValue)) return null;
   return { kind, id, title, subtitle, href };
 }
 
@@ -73,6 +94,7 @@ export interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPaletteProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AdminSearchResult[]>([]);
   const [searchState, setSearchState] = useState<SearchState>("idle");
@@ -94,9 +116,8 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
-          const message = error instanceof Error ? error.message.toLowerCase() : "";
           setResults([]);
-          setSearchState(message.includes("404") || message.includes("not found") ? "unavailable" : "error");
+          setSearchState(error instanceof AdminApiError && error.status === 404 ? "unavailable" : "error");
         });
     }, 200);
 
@@ -118,11 +139,13 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
       title="Палитра команд"
       description="Перейдите в раздел или найдите пользователя, заказ, ноду либо ключ."
       className="max-w-3xl"
+      initialFocusRef={searchInputRef}
     >
       <label className="relative block">
         <span className="sr-only">Глобальный поиск</span>
         <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--atlas-text-muted)]" size={17} />
         <input
+          ref={searchInputRef}
           type="search"
           aria-label="Глобальный поиск"
           autoComplete="off"

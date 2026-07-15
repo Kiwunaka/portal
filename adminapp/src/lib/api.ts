@@ -280,6 +280,20 @@ export type AdminSessionPayload = {
 
 type ApiRequestInit = RequestInit & { timeoutMs?: number };
 
+export class AdminApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  readonly correlationId: string | null;
+
+  constructor(message: string, status: number, code: string | null, correlationId: string | null) {
+    super(message);
+    this.name = "AdminApiError";
+    this.status = status;
+    this.code = code;
+    this.correlationId = correlationId;
+  }
+}
+
 function getCookieValue(name: string): string {
   if (typeof document === "undefined") return "";
   const prefix = `${encodeURIComponent(name)}=`;
@@ -354,13 +368,45 @@ function apiBase(): string {
   return (envBase || CANONICAL_API_BASE_URL || "https://api.pokrov.space").replace(/\/+$/, "");
 }
 
-async function parseApiError(response: Response): Promise<string> {
+type ParsedApiError = {
+  message: string;
+  code: string | null;
+  correlationId: string | null;
+};
+
+function optionalErrorField(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+async function parseApiError(response: Response): Promise<ParsedApiError> {
+  let body: Record<string, unknown> = {};
   try {
-    const body = await response.json();
-    return String(body?.detail || body?.message || `API error ${response.status}`);
+    const parsed = await response.json();
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      body = parsed as Record<string, unknown>;
+    }
   } catch {
-    return `API error ${response.status}`;
+    // Keep the HTTP metadata even when the response body is absent or malformed.
   }
+
+  const detail = body.detail && typeof body.detail === "object" && !Array.isArray(body.detail)
+    ? (body.detail as Record<string, unknown>)
+    : {};
+  const message =
+    optionalErrorField(body.detail) ||
+    optionalErrorField(body.message) ||
+    optionalErrorField(detail.message) ||
+    `API error ${response.status}`;
+  const code = optionalErrorField(body.code) || optionalErrorField(detail.code);
+  const correlationId =
+    optionalErrorField(body.correlation_id) ||
+    optionalErrorField(body.correlationId) ||
+    optionalErrorField(detail.correlation_id) ||
+    optionalErrorField(detail.correlationId) ||
+    optionalErrorField(response.headers.get("x-correlation-id")) ||
+    optionalErrorField(response.headers.get("x-request-id"));
+
+  return { message, code, correlationId };
 }
 
 export function saveAdminInitData(value: string): void {
@@ -422,7 +468,10 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
       credentials: "include",
       signal: signal || controller.signal
     });
-    if (!response.ok) throw new Error(await parseApiError(response));
+    if (!response.ok) {
+      const parsedError = await parseApiError(response);
+      throw new AdminApiError(parsedError.message, response.status, parsedError.code, parsedError.correlationId);
+    }
     if (response.status === 204) return {} as T;
     return (await response.json()) as T;
   } finally {

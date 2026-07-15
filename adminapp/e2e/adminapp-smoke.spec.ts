@@ -291,6 +291,21 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
       return;
     }
 
+    if (url.pathname === "/api/admin/search") {
+      await jsonResponse(route, {
+        results: [
+          {
+            kind: "user",
+            id: "1001",
+            title: "Operator User",
+            subtitle: "Активный доступ · профиль проверен",
+            href: "/users?selected=1001"
+          }
+        ]
+      });
+      return;
+    }
+
     if (options.delayMs) {
       await new Promise((resolve) => setTimeout(resolve, options.delayMs));
     }
@@ -555,8 +570,10 @@ test("dashboard reuses browser session and renders action-first overview", async
   await page.goto("/");
   await expect(page.getByRole("button", { name: /Обновить/ })).toBeVisible();
 
-  expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session")).toBe(true);
-  expect(calls.some((call) => call.path === "/api/admin/ops/overview" && call.auth === "Bearer mock-admin-token")).toBe(true);
+  await expect.poll(() => calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session")).toBe(true);
+  await expect
+    .poll(() => calls.some((call) => call.path === "/api/admin/ops/overview" && call.auth === "Bearer mock-admin-token"))
+    .toBe(true);
   await expect(page.getByRole("heading", { name: "Требует действий" })).toBeVisible();
   await expect(page.getByText("NL-free traffic near provider cap")).toBeVisible();
   await expect(page.getByText("Выручка сегодня")).toBeVisible();
@@ -567,7 +584,9 @@ test("dashboard exchanges initData when browser session is missing", async ({ pa
   await page.goto("/");
   await authenticate(page);
 
-  expect(calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session" && call.initData.includes("query_id=test"))).toBe(true);
+  await expect
+    .poll(() => calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session" && call.initData.includes("query_id=test")))
+    .toBe(true);
   await expect(page.getByRole("heading", { name: "Требует действий" })).toBeVisible();
 });
 
@@ -575,15 +594,23 @@ test("global search opens users and renders card with raw IP only inside user ca
   const calls = await mockAdminApi(page);
   await gotoWithAdminSession(page, "/");
 
-  await page.getByPlaceholder("Найти: tg_id, username, заказ, нода, ключ/email").fill("1001");
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "Палитра команд" });
+  const search = page.getByRole("searchbox", { name: "Глобальный поиск" });
+  await expect(search).toBeFocused();
+  await search.fill("1001");
+  await expect.poll(() => calls.some((call) => call.method === "GET" && call.path === "/api/admin/search?q=1001")).toBe(true);
+  await expect(palette).not.toContainText("203.0.113.77");
+  await palette.getByRole("button", { name: /Operator User/ }).click();
 
-  await expect(page).toHaveURL(/\/users\/?\?q=1001$/);
+  await expect(page).toHaveURL(/\/users\/?\?selected=1001$/);
   await expect(page.getByRole("heading", { name: "Поиск пользователей" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Operator User tg/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "IP-наблюдения" })).toBeVisible();
-  await expect(page.getByText("203.0.113.77")).toBeVisible();
-  expect(calls.some((call) => call.path.includes("/api/admin/users?") && call.path.includes("q=1001"))).toBe(true);
+  const ipHeading = page.getByRole("heading", { name: "IP-наблюдения" });
+  await expect(ipHeading).toBeVisible();
+  const ipCard = page.locator("section").filter({ has: ipHeading });
+  await expect(ipCard.getByText("203.0.113.77")).toBeVisible();
+  await expect(page.locator("main").getByText("203.0.113.77")).toHaveCount(1);
 });
 
 test("online screen hides raw IP in the general list", async ({ page }) => {

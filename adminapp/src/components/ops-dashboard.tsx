@@ -30,8 +30,10 @@ import {
 } from "recharts";
 
 import { DataTable } from "@/components/data-table";
+import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, Progress, SectionTitle, type Tone } from "@/components/ui";
 import {
+  AdminApiError,
   ackAlert,
   adminCommand,
   clearAdminInitData,
@@ -193,6 +195,21 @@ function settledError(result: PromiseSettledResult<unknown>): string {
   return result.status === "rejected" ? errorMessage(result.reason, "request failed") : "";
 }
 
+function isAccessDeniedError(error: unknown): boolean {
+  return error instanceof AdminApiError && (error.status === 401 || error.status === 403);
+}
+
+function oldestSourceTimestamp(values: Array<string | null | undefined>): string | null {
+  let oldest: { value: string; time: number } | null = null;
+  for (const value of values) {
+    if (!value) continue;
+    const time = Date.parse(value);
+    if (Number.isNaN(time)) continue;
+    if (!oldest || time < oldest.time) oldest = { value, time };
+  }
+  return oldest?.value ?? null;
+}
+
 function buildTrafficChart(rows: TrafficSummaryRow[]) {
   const buckets = new Map<string, { date: string; free: number; premium: number; total: number }>();
   for (const row of rows) {
@@ -275,7 +292,7 @@ function Field({ label, value, tone }: { label: string; value: unknown; tone?: T
   );
 }
 
-function AuthGate({ onReady }: { onReady: () => void }) {
+function AuthGate({ onReady, onSessionFailure }: { onReady: () => void; onSessionFailure: (error: unknown) => void }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -293,12 +310,13 @@ function AuthGate({ onReady }: { onReady: () => void }) {
         clearAdminInitData();
         onReady();
       } catch (err) {
+        onSessionFailure(err);
         if (!options?.silent) setError(errorMessage(err, "Не удалось открыть admin session"));
       } finally {
         setBusy(false);
       }
     },
-    [onReady]
+    [onReady, onSessionFailure]
   );
 
   useEffect(() => {
@@ -602,7 +620,13 @@ function UserCard({
   );
 }
 
-export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
+export function OpsDashboard({
+  section,
+  onShellStatus
+}: {
+  section: OpsDashboardSection;
+  onShellStatus?: (status: OpsShellStatus) => void;
+}) {
   const [authReady, setAuthReady] = useState(false);
   const [overview, setOverview] = useState<OpsOverview | null>(null);
   const [alerts, setAlerts] = useState<OpsAlert[]>([]);
@@ -652,6 +676,17 @@ export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
   const [broadcastSending, setBroadcastSending] = useState(false);
   const [broadcastError, setBroadcastError] = useState("");
 
+  const publishSessionFailure = useCallback(
+    (reason: unknown) => {
+      onShellStatus?.({
+        api: "missing",
+        session: isAccessDeniedError(reason) ? "BLOCKED_BY_ACCESS" : "unavailable",
+        oldestRequiredSourceAt: null
+      });
+    },
+    [onShellStatus]
+  );
+
   useEffect(() => {
     const applySearch = (q: string) => {
       setUserSearch(q);
@@ -673,6 +708,7 @@ export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
     if (!hasAdminAuthMaterial()) {
       setLoading(false);
       setAuthReady(false);
+      onShellStatus?.({ api: "missing", session: "missing", oldestRequiredSourceAt: null });
       return;
     }
     setAuthReady(true);
@@ -750,9 +786,23 @@ export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
       settledError(todayResult),
       settledError(usersResult)
     ].filter(Boolean);
+    const shellResults = [overviewResult, alertsResult, nodesResult, onlineResult, todayResult, usersResult] as const;
+    const fulfilledCount = shellResults.filter((result) => result.status === "fulfilled").length;
+    const rejectedCount = shellResults.length - fulfilledCount;
+    const accessDenied = shellResults.some(
+      (result) => result.status === "rejected" && isAccessDeniedError(result.reason)
+    );
+    onShellStatus?.({
+      api: accessDenied ? "BLOCKED_BY_ACCESS" : rejectedCount === 0 ? "ok" : fulfilledCount > 0 ? "degraded" : "failed",
+      session: accessDenied ? "BLOCKED_BY_ACCESS" : fulfilledCount > 0 ? "ok" : "unavailable",
+      oldestRequiredSourceAt: oldestSourceTimestamp([
+        overviewResult.status === "fulfilled" ? overviewResult.value.generated_at : null,
+        section === "online" && onlineResult.status === "fulfilled" ? onlineResult.value.generated_at : null
+      ])
+    });
     setError(errors.length ? errors.slice(0, 2).join(" | ") : "");
     setLoading(false);
-  }, [section, userSearch, userStatus]);
+  }, [onShellStatus, section, userSearch, userStatus]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1066,7 +1116,7 @@ export function OpsDashboard({ section }: { section: OpsDashboardSection }) {
   ], []);
 
   if (!authReady && !loading) {
-    return <AuthGate onReady={() => void load()} />;
+    return <AuthGate onReady={() => void load()} onSessionFailure={publishSessionFailure} />;
   }
 
   const renderTopBar = (

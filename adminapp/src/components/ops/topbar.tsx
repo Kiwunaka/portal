@@ -1,15 +1,16 @@
 "use client";
 
 import { Command, Menu, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { hasAdminAuthMaterial } from "@/lib/api";
+import { formatSourceAge, statusPresentation } from "@/lib/ops-status/presentation";
+
+import type { OpsShellStatus } from "./shell-status";
 
 export interface OpsTopbarProps {
   sectionLabel: string;
-  oldestRequiredSourceAge?: string;
+  status: OpsShellStatus;
   onOpenCommands: () => void;
   onOpenNavigation: () => void;
   onRefresh: () => void;
@@ -17,23 +18,13 @@ export interface OpsTopbarProps {
 
 export function OpsTopbar({
   sectionLabel,
-  oldestRequiredSourceAge = "Нет данных",
+  status,
   onOpenCommands,
   onOpenNavigation,
   onRefresh
 }: OpsTopbarProps) {
-  const [sessionActive, setSessionActive] = useState(false);
-
-  useEffect(() => {
-    const updateSessionState = () => setSessionActive(hasAdminAuthMaterial());
-    updateSessionState();
-    const timer = window.setInterval(updateSessionState, 1000);
-    window.addEventListener("storage", updateSessionState);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener("storage", updateSessionState);
-    };
-  }, []);
+  const apiPresentation = statusPresentation(status.api);
+  const sessionPresentation = statusPresentation(status.session);
 
   return (
     <header className="sticky top-0 z-30 border-b border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]/95 px-4 py-3 backdrop-blur lg:px-6">
@@ -57,13 +48,18 @@ export function OpsTopbar({
 
         <div className="order-3 flex w-full flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)] lg:order-none lg:w-auto">
           <span className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] px-3 py-1.5">
-            Старейший источник: {oldestRequiredSourceAge}
+            Старейший источник:{" "}
+            {status.oldestRequiredSourceAt ? (
+              <time dateTime={status.oldestRequiredSourceAt}>{formatSourceAge(status.oldestRequiredSourceAt)}</time>
+            ) : (
+              "Нет данных"
+            )}
           </span>
-          <span className="inline-flex items-center gap-1.5" aria-label="Состояние API: нет данных">
-            API <StatusBadge status="missing" />
+          <span className="inline-flex items-center gap-1.5" aria-label={`Состояние API: ${apiPresentation.label}`}>
+            API <StatusBadge status={status.api} />
           </span>
-          <span className="inline-flex items-center gap-1.5" aria-label={sessionActive ? "Сессия активна" : "Сессия требует входа"}>
-            Сессия <StatusBadge status={sessionActive ? "ok" : "missing"} />
+          <span className="inline-flex items-center gap-1.5" aria-label={`Состояние сессии: ${sessionPresentation.label}`}>
+            Сессия <StatusBadge status={status.session} />
           </span>
         </div>
 

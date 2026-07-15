@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 
 import { cn } from "@/components/utils";
 
@@ -17,9 +17,10 @@ export interface DialogProps {
   footer?: ReactNode;
   id?: string;
   className?: string;
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
-export function Dialog({ open, onOpenChange, title, description, children, footer, id, className }: DialogProps) {
+export function Dialog({ open, onOpenChange, title, description, children, footer, id, className, initialFocusRef }: DialogProps) {
   const generatedId = useId();
   const dialogId = id ?? `${generatedId}-dialog`;
   const titleId = `${dialogId}-title`;
@@ -34,12 +35,12 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
 
     restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE);
-    (firstFocusable ?? dialogRef.current)?.focus();
+    (initialFocusRef?.current ?? firstFocusable ?? dialogRef.current)?.focus();
 
     return () => {
       restoreFocusRef.current?.focus();
     };
-  }, [open]);
+  }, [initialFocusRef, open]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {

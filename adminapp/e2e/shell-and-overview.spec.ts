@@ -2,18 +2,85 @@ import { expect, test } from "@playwright/test";
 
 import { installAdminApiMock } from "./fixtures/admin-api";
 
+const expectedGroups = [
+  { label: "Команда", links: [["Главная", "/"]] },
+  {
+    label: "Сеть",
+    links: [
+      ["Ноды", "/nodes"],
+      ["Трафик", "/traffic"],
+      ["Алерты", "/alerts"],
+      ["Лимиты провайдеров", "/provider-caps"],
+      ["Бесплатный контур", "/free-tier"]
+    ]
+  },
+  {
+    label: "Клиенты",
+    links: [
+      ["Пользователи", "/users"],
+      ["Сейчас онлайн", "/online"],
+      ["Тикеты", "/tickets"]
+    ]
+  },
+  {
+    label: "Деньги и рост",
+    links: [
+      ["Платежи", "/payments"],
+      ["Воронка", "/funnel"],
+      ["Промо", "/promos"],
+      ["Рефералы", "/referrals"]
+    ]
+  },
+  {
+    label: "Управление",
+    links: [
+      ["Релиз", "/release"],
+      ["Рассылка", "/broadcast"]
+    ]
+  }
+] as const;
+
 test("оболочка группирует 15 разделов и открывает палитру с клавиатуры", async ({ page }) => {
   await installAdminApiMock(page);
   await page.goto("/");
 
-  for (const group of ["Команда", "Сеть", "Клиенты", "Деньги и рост", "Управление"]) {
-    await expect(page.getByRole("navigation").getByText(group, { exact: true })).toBeVisible();
+  const navigation = page.getByRole("navigation", { name: "Разделы центра управления" });
+  const groups = navigation.getByRole("region");
+  await expect(groups).toHaveCount(expectedGroups.length);
+  for (const [groupIndex, group] of expectedGroups.entries()) {
+    const region = groups.nth(groupIndex);
+    await expect(region).toHaveAccessibleName(group.label);
+    const links = region.getByRole("link");
+    await expect(links).toHaveCount(group.links.length);
+    for (const [index, [label, href]] of group.links.entries()) {
+      await expect(links.nth(index)).toHaveText(label);
+      await expect(links.nth(index)).toHaveAttribute("href", href);
+    }
   }
-  await expect(page.getByRole("link")).toHaveCount(15);
   await page.keyboard.press("Control+k");
   await expect(page.getByRole("dialog", { name: "Палитра команд" })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Глобальный поиск" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Палитра команд" })).toBeHidden();
+});
+
+test("верхняя панель показывает фактический статус API, сессии и timestamp источника", async ({ page }) => {
+  await installAdminApiMock(page);
+  await page.goto("/");
+
+  await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
+  await expect(page.locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
+  await expect(page.getByText(/Старейший источник:/)).not.toContainText("Нет данных");
+});
+
+test("401 от загрузчика не выглядит активной сессией", async ({ page }) => {
+  await installAdminApiMock(page, { overviewStatus: 401 });
+  await page.goto("/");
+
+  await expect(page.getByLabel("Состояние API: Доступ заблокирован")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Доступ заблокирован")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 });
 
 test("поиск начинается с двух символов и ведёт по безопасному canonical href", async ({ page }) => {
@@ -48,6 +115,18 @@ test("поиск 404 оставляет палитру и текущий мар�
   await expect(page).toHaveURL(/\/nodes\?selected=de$/);
   await page.getByRole("button", { name: "Главная" }).click();
   await expect(page).toHaveURL(/\/$/);
+});
+
+test("поиск не рендерит IPv6, URL, токены и поля вне allowlist", async ({ page }) => {
+  await installAdminApiMock(page, { includeUnsafeSearchResults: true });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Команды" }).click();
+  await page.getByRole("searchbox", { name: "Глобальный поиск" }).fill("safe");
+
+  await expect(page.getByRole("button", { name: /Нода NL/ })).toBeVisible();
+  for (const unsafeTitle of ["Небезопасный IPv6", "Небезопасная ссылка", "Небезопасный токен", "Лишнее поле"]) {
+    await expect(page.getByText(unsafeTitle, { exact: true })).toHaveCount(0);
+  }
 });
 
 test("назад и вперёд восстанавливают маршрут вместе с чужими query-параметрами", async ({ page }) => {

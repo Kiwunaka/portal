@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CommandPalette } from "@/components/ops/command-palette";
 import { MobileNavigation } from "@/components/ops/mobile-navigation";
 import { OpsNavigation } from "@/components/ops/navigation";
+import { EMPTY_OPS_SHELL_STATUS, type OpsShellStatus } from "@/components/ops/shell-status";
 import { OpsTopbar } from "@/components/ops/topbar";
 import { OpsDashboard } from "@/components/ops-dashboard";
 import { opsSectionFromPath, normalizeOpsSection, type OpsSectionId } from "@/lib/sections";
@@ -24,6 +25,7 @@ export function OpsShell({ section }: { section: string }) {
   const [active, setActive] = useState<OpsSectionId>(() => normalizeOpsSection(section));
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [shellStatus, setShellStatus] = useState<OpsShellStatus>(EMPTY_OPS_SHELL_STATUS);
   const legacyDashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,13 +95,14 @@ export function OpsShell({ section }: { section: string }) {
       <div className="lg:pl-[248px]">
         <OpsTopbar
           sectionLabel={activeSection.label}
+          status={shellStatus}
           onOpenCommands={() => setCommandsOpen(true)}
           onOpenNavigation={() => setMobileNavigationOpen(true)}
           onRefresh={refresh}
         />
         <main className="px-4 py-4 lg:px-6 lg:py-5">
           <div ref={legacyDashboardRef} className="[&>.space-y-4>div:first-child]:hidden">
-            <OpsDashboard section={active} />
+            <OpsDashboard section={active} onShellStatus={setShellStatus} />
           </div>
         </main>
       </div>

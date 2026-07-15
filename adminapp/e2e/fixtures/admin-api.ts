@@ -32,6 +32,44 @@ const searchResults: AdminSearchResult[] = [
   }
 ];
 
+const unsafeSearchResults: Array<Record<string, unknown>> = [
+  {
+    kind: "node",
+    id: "2001:db8::44",
+    title: "Небезопасный IPv6",
+    subtitle: "Источник 2001:0db8:0000:0000:0000:0000:0000:0044",
+    href: "/nodes?selected=2001%3Adb8%3A%3A44"
+  },
+  {
+    kind: "user",
+    id: "subscription-link",
+    title: "Небезопасная ссылка",
+    subtitle: "https://example.invalid/subscription-redacted",
+    href: "/users?selected=https%3A%2F%2Fexample.invalid%2Fsubscription-redacted"
+  },
+  {
+    kind: "key",
+    id: "access-marker",
+    title: "Небезопасный токен",
+    subtitle: "Токен доступа показан в результате",
+    href: "/users?selected=access-marker"
+  },
+  {
+    kind: "user",
+    id: "1002",
+    title: "Лишнее поле",
+    subtitle: "Профиль",
+    href: "/users?selected=1002",
+    raw_payload: "поле вне публичного контракта"
+  }
+];
+
+type AdminApiMockOptions = {
+  includeUnsafeSearchResults?: boolean;
+  overviewStatus?: number;
+  searchStatus?: number;
+};
+
 function fulfillJson(route: Route, data: unknown, status = 200) {
   const origin = route.request().headers().origin || "http://127.0.0.1:3107";
   return route.fulfill({
@@ -49,7 +87,7 @@ function fulfillJson(route: Route, data: unknown, status = 200) {
 
 export async function installAdminApiMock(
   page: Page,
-  options: { searchStatus?: number } = {}
+  options: AdminApiMockOptions = {}
 ): Promise<{ calls: AdminApiCall[] }> {
   const calls: AdminApiCall[] = [];
   await page.route("**/api/admin/**", async (route) => {
@@ -74,6 +112,18 @@ export async function installAdminApiMock(
     }
 
     if (url.pathname === "/api/admin/ops/overview") {
+      if (options.overviewStatus && options.overviewStatus !== 200) {
+        await fulfillJson(
+          route,
+          {
+            detail: "Сессия отклонена",
+            code: "admin_session_rejected",
+            correlation_id: "test-correlation-id"
+          },
+          options.overviewStatus
+        );
+        return;
+      }
       await fulfillJson(route, {
         ok: true,
         generated_at: generatedAt,
@@ -127,10 +177,14 @@ export async function installAdminApiMock(
 
     if (url.pathname === "/api/admin/search") {
       if (options.searchStatus === 404) {
-        await fulfillJson(route, { detail: "Not found" }, 404);
+        await fulfillJson(route, { detail: "Сервис временно выключен" }, 404);
         return;
       }
-      await fulfillJson(route, { results: searchResults }, options.searchStatus ?? 200);
+      await fulfillJson(
+        route,
+        { results: options.includeUnsafeSearchResults ? [...searchResults, ...unsafeSearchResults] : searchResults },
+        options.searchStatus ?? 200
+      );
       return;
     }
 
