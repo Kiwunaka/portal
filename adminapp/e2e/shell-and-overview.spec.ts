@@ -2,6 +2,11 @@ import { expect, test } from "@playwright/test";
 
 import { installAdminApiMock } from "./fixtures/admin-api";
 
+const apiCorsHeaders = {
+  "access-control-allow-origin": "http://127.0.0.1:3107",
+  "access-control-allow-credentials": "true"
+};
+
 const expectedGroups = [
   { label: "Команда", links: [["Главная", "/"]] },
   {
@@ -74,8 +79,134 @@ test("верхняя панель показывает фактический с
 
   await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
-  await expect(page.locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
+  await expect(page.getByRole("banner").locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
   await expect(page.getByText(/Старейший источник:/)).not.toContainText("Нет данных");
+});
+
+test("главная не загружает данные скрытых разделов", async ({ page }) => {
+  const api = await installAdminApiMock(page);
+  await page.goto("/");
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/ops/overview")).toBe(true);
+
+  expect(api.calls.map((call) => call.path)).not.toContain("/api/admin/users?page_size=50");
+  expect(api.calls.map((call) => call.path)).not.toContain("/api/admin/nodes/runtime");
+  expect(api.calls.map((call) => call.path)).not.toContain("/api/admin/payments/orders?limit=80");
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
+});
+
+test("каждый раздел запрашивает только собственные источники", async ({ page }) => {
+  const api = await installAdminApiMock(page);
+  const routes = [
+    { href: "/", label: "Главная", paths: ["/api/admin/ops/overview", "/api/admin/alerts?status=active"] },
+    { href: "/nodes", label: "Ноды", paths: ["/api/admin/nodes/health", "/api/admin/nodes/runtime", "/api/admin/nodes/timeseries", "/api/admin/online/users?limit=200"] },
+    { href: "/traffic", label: "Трафик", paths: ["/api/admin/traffic/summary"] },
+    { href: "/alerts", label: "Алерты", paths: ["/api/admin/alerts?status=active"] },
+    { href: "/provider-caps", label: "Лимиты провайдеров", paths: ["/api/admin/ops/overview", "/api/admin/provider-quotas"] },
+    { href: "/free-tier", label: "Бесплатный контур", paths: ["/api/admin/ops/overview", "/api/admin/free-tier/users?limit=500"] },
+    { href: "/users", label: "Пользователи", paths: ["/api/admin/users?page_size=80&offset=0&sort=created_desc"] },
+    { href: "/online", label: "Сейчас онлайн", paths: ["/api/admin/online/users?limit=200", "/api/admin/keys/pressure?limit=80"] },
+    { href: "/tickets", label: "Тикеты", paths: ["/api/admin/tickets?status=&limit=50"] },
+    { href: "/payments", label: "Платежи", paths: ["/api/admin/payments/summary?period=today", "/api/admin/payments/summary?period=7d", "/api/admin/payments/summary?period=30d", "/api/admin/payments/orders?limit=80"] },
+    { href: "/funnel", label: "Воронка", paths: ["/api/admin/funnel/summary"] },
+    { href: "/promos", label: "Промо", paths: ["/api/admin/promos?limit=100"] },
+    { href: "/referrals", label: "Рефералы", paths: ["/api/admin/referrals/pending?limit=100&status="] },
+    { href: "/release", label: "Релиз", paths: ["/api/admin/live-updates?include_inactive=true"] },
+    { href: "/broadcast", label: "Рассылка", paths: [] }
+  ] as const;
+
+  for (const route of routes) {
+    const firstCall = api.calls.length;
+    await page.goto(route.href);
+    await expect(page.getByRole("heading", { name: route.label, exact: true, level: 1 })).toBeVisible();
+    if (route.paths.length) {
+      await expect.poll(() => {
+        const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET").map((call) => call.path);
+        return route.paths.every((path) => calls.includes(path));
+      }).toBe(true);
+    } else {
+      await page.waitForTimeout(150);
+    }
+    const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET").map((call) => call.path);
+    expect(calls, `лишние GET на ${route.href}`).toEqual(expect.arrayContaining([...route.paths]));
+    expect(calls.every((path) => route.paths.includes(path as never)), `скрытый GET на ${route.href}: ${calls.join(", ")}`).toBe(true);
+  }
+});
+
+test("очередь действий сортируется детерминированно и не подменяет пропуски нулём", async ({ page }) => {
+  await installAdminApiMock(page);
+  await page.route("**/api/admin/alerts?status=active", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: apiCorsHeaders,
+      body: JSON.stringify({
+        alerts: [
+          { id: 30, fingerprint: "critical-late", source: "node", severity: "critical", status: "active", title: "Поздний критичный", affected_count: 5, last_seen_at: "2026-07-15T12:00:00Z" },
+          { id: 20, fingerprint: "critical-b", source: "node", severity: "critical", status: "active", title: "Критичный B", affected_count: 5, last_seen_at: "2026-07-15T10:00:00Z" },
+          { id: 10, fingerprint: "critical-a", source: "node", severity: "critical", status: "active", title: "Критичный A", affected_count: 5, last_seen_at: "2026-07-15T10:00:00Z" },
+          { id: 40, fingerprint: "critical-missing", source: "node", severity: "critical", status: "active", title: "Критичный без охвата", affected_count: null, last_seen_at: "2026-07-15T09:00:00Z" },
+          { id: 50, fingerprint: "warning-large", source: "quota", severity: "warning", status: "active", title: "Большое предупреждение", affected_count: 100, last_seen_at: "2026-07-15T08:00:00Z" }
+        ]
+      })
+    });
+  });
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
+  await expect.poll(() => page.locator("[data-action-id]").evaluateAll((rows) => rows.map((row) => row.getAttribute("data-action-id")))).toEqual([
+    "critical-a",
+    "critical-b",
+    "critical-late",
+    "critical-missing",
+    "warning-large"
+  ]);
+  await expect(page.locator('[data-action-id="critical-missing"]')).toContainText("Нет данных");
+  await expect(page.locator('[data-action-id="critical-missing"]')).not.toContainText(/Охват:\s*0/);
+});
+
+test("сбой алертов оставляет обзор и даёт локальный повтор", async ({ page }) => {
+  await installAdminApiMock(page);
+  await page.route("**/api/admin/alerts?status=active", async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      headers: apiCorsHeaders,
+      body: JSON.stringify({ detail: "Источник алертов временно недоступен", code: "alerts_unavailable" })
+    });
+  });
+
+  await page.goto("/");
+  await expect(page.getByText("Активные пользователи", { exact: true })).toBeVisible();
+  const retry = page.getByRole("button", { name: "Повторить загрузку алертов" });
+  await expect(retry).toBeVisible();
+  await retry.click();
+});
+
+test("обновление сохраняет последний успешный overview и показывает состояние", async ({ page }) => {
+  await installAdminApiMock(page);
+  let releaseSecondOverview: () => void = () => undefined;
+  const secondOverviewGate = new Promise<void>((resolve) => {
+    releaseSecondOverview = resolve;
+  });
+  let overviewCalls = 0;
+  await page.route("**/api/admin/ops/overview", async (route) => {
+    overviewCalls += 1;
+    if (overviewCalls === 2) await secondOverviewGate;
+    await route.fallback();
+  });
+
+  await page.goto("/");
+  const activeUsers = page.getByText("Активные пользователи", { exact: true }).locator("..");
+  await expect(activeUsers).toContainText("88");
+
+  await page.getByRole("banner").getByRole("button", { name: "Обновить" }).click();
+  await expect.poll(() => overviewCalls).toBe(2);
+  await expect(activeUsers).toContainText("88");
+  await expect(page.getByText("Обновляем", { exact: true }).last()).toBeVisible();
+
+  releaseSecondOverview();
+  await expect(page.getByText("Обновляем", { exact: true })).toHaveCount(0);
+  await expect(activeUsers).toContainText("88");
 });
 
 test("обычный 401 от overview показывает деградацию и сбой сессии без access-evidence", async ({ page }) => {
@@ -89,11 +220,11 @@ test("обычный 401 от overview показывает деградацию
   await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 });
 
-test("401 от traffic, пропущенного старым verdict-срезом, не выглядит нормой", async ({ page }) => {
+test("401 выбранного traffic-раздела не выглядит нормой", async ({ page }) => {
   await installAdminApiMock(page, { trafficStatus: 401 });
-  await page.goto("/");
+  await page.goto("/traffic");
 
-  await expect(page.getByLabel("Состояние API: Требует внимания")).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Сбой")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Сбой")).toBeVisible();
   await expect(page.getByLabel("Состояние API: Норма")).toHaveCount(0);
   await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
@@ -109,30 +240,30 @@ test("нулевой реальный успех не маскируется syn
   await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 });
 
-test("завершившаяся позже старая загрузка не перезаписывает новый маршрут", async ({ page }) => {
+test("прерванная старая загрузка не перезаписывает новый маршрут", async ({ page }) => {
   const api = await installAdminApiMock(page, { delayFirstOverviewFailure: true });
+  const abortedOverview = page.waitForEvent("requestfailed", {
+    predicate: (request) => new URL(request.url()).pathname === "/api/admin/ops/overview"
+  });
   await page.goto("/");
   await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length).toBe(1);
 
   await page.getByRole("link", { name: "Ноды", exact: true }).click();
   await expect(page).toHaveURL(/\/nodes$/);
-  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length).toBe(2);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/nodes/health").length).toBe(1);
+  expect(api.calls.filter((call) => call.path === "/api/admin/ops/overview")).toHaveLength(1);
+  await abortedOverview;
   await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
 
-  const delayedResponse = page.waitForResponse(
-    (response) => new URL(response.url()).pathname === "/api/admin/ops/overview" && response.status() === 500
-  );
   api.releaseFirstOverview();
-  await delayedResponse;
-  await expect.poll(() => api.overviewResponses.length).toBe(2);
   await page.evaluate(() => new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   }));
 
   await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
-  await expect(page.locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
+  await expect(page.getByRole("banner").locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
   await expect(page.getByText("Сессия отклонена", { exact: true })).toHaveCount(0);
 });
 

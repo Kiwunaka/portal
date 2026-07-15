@@ -586,9 +586,10 @@ test("dashboard reuses browser session and renders action-first overview", async
   await expect
     .poll(() => calls.some((call) => call.path === "/api/admin/ops/overview" && call.auth === "Bearer mock-admin-token"))
     .toBe(true);
-  await expect(page.getByRole("heading", { name: "Требует действий" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
   await expect(page.getByText("NL-free traffic near provider cap")).toBeVisible();
-  await expect(page.getByText("Выручка сегодня")).toBeVisible();
+  await expect(page.getByText("Активные пользователи", { exact: true })).toBeVisible();
+  await expect(page.getByText("Выручка сегодня", { exact: true })).toHaveCount(0);
 });
 
 test("dashboard exchanges initData when browser session is missing", async ({ page }) => {
@@ -599,7 +600,7 @@ test("dashboard exchanges initData when browser session is missing", async ({ pa
   await expect
     .poll(() => calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session" && call.initData.includes("query_id=test")))
     .toBe(true);
-  await expect(page.getByRole("heading", { name: "Требует действий" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
 });
 
 test("global search opens users and renders card with raw IP only inside user card", async ({ page }) => {
