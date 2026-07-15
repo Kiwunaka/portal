@@ -99,6 +99,43 @@ test("401 от traffic, пропущенного старым verdict-срезо
   await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 });
 
+test("нулевой реальный успех не маскируется synthetic module result", async ({ page }) => {
+  await installAdminApiMock(page, { failAllLegacyRequests: true });
+  await page.goto("/");
+
+  await expect(page.getByLabel("Состояние API: Сбой")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Недоступно")).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Требует внимания")).toHaveCount(0);
+  await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
+});
+
+test("завершившаяся позже старая загрузка не перезаписывает новый маршрут", async ({ page }) => {
+  const api = await installAdminApiMock(page, { delayFirstOverviewFailure: true });
+  await page.goto("/");
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length).toBe(1);
+
+  await page.getByRole("link", { name: "Ноды", exact: true }).click();
+  await expect(page).toHaveURL(/\/nodes$/);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length).toBe(2);
+  await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
+
+  const delayedResponse = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/admin/ops/overview" && response.status() === 500
+  );
+  api.releaseFirstOverview();
+  await delayedResponse;
+  await expect.poll(() => api.overviewResponses.length).toBe(2);
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
+
+  await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
+  await expect(page.locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
+  await expect(page.getByText("Сессия отклонена", { exact: true })).toHaveCount(0);
+});
+
 test("поиск начинается с двух символов и ведёт по безопасному canonical href", async ({ page }) => {
   const api = await installAdminApiMock(page);
   await page.goto("/nodes?keep=1");
@@ -133,6 +170,16 @@ test("поиск 404 оставляет палитру и текущий мар�
   await expect(page).toHaveURL(/\/$/);
 });
 
+test("поиск не принимает безопасную метку ID за URL-схему", async ({ page }) => {
+  await installAdminApiMock(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Команды" }).click();
+  await page.getByRole("searchbox", { name: "Глобальный поиск" }).fill("safe");
+
+  await expect(page.getByRole("button", { name: /Безопасная метка ID/ })).toBeVisible();
+  await expect(page.getByText("ID: 1001", { exact: true })).toBeVisible();
+});
+
 test("поиск независимо отбрасывает каждый запрещённый privacy-класс", async ({ page }) => {
   await installAdminApiMock(page, { includeUnsafeSearchResults: true });
   await page.goto("/");
@@ -160,12 +207,29 @@ test("поиск независимо отбрасывает каждый зап
     "Проверка обратной черты",
     "Проверка двойного слеша",
     "Проверка ключа запроса",
-    "Проверка значения запроса"
+    "Проверка значения запроса",
+    "Проверка IDN-домена"
   ];
-  expect(unsafeTitles).toHaveLength(20);
+  expect(unsafeTitles).toHaveLength(21);
   for (const unsafeTitle of unsafeTitles) {
     await expect(page.getByText(unsafeTitle, { exact: true })).toHaveCount(0);
   }
+});
+
+test("focused API fixture отклоняет неизвестный contract path", async ({ page }) => {
+  await installAdminApiMock(page);
+  await page.goto("/");
+
+  const result = await page.evaluate(async () => {
+    const response = await fetch("/api/admin/not-in-focused-contract");
+    return { status: response.status, body: await response.json() as Record<string, unknown> };
+  });
+  expect(result.status).toBe(501);
+  expect(result.body).toMatchObject({
+    code: "fixture_contract_error",
+    method: "GET",
+    path: "/api/admin/not-in-focused-contract"
+  });
 });
 
 test("назад и вперёд восстанавливают маршрут вместе с чужими query-параметрами", async ({ page }) => {
@@ -192,4 +256,23 @@ test("на узком экране навигация открывается д�
   await drawer.getByRole("link", { name: "Ноды", exact: true }).click();
   await expect(drawer).toBeHidden();
   await expect(page).toHaveURL(/\/nodes$/);
+});
+
+test("палитра команд вытесняет мобильную навигацию и возвращает фокус живому opener", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  await installAdminApiMock(page);
+  await page.goto("/");
+
+  const navigationButton = page.getByRole("button", { name: "Открыть навигацию" });
+  await navigationButton.click();
+  await expect(page.getByRole("dialog", { name: "Навигация по разделам" })).toBeVisible();
+
+  await page.keyboard.press("Control+k");
+  await expect(page.getByRole("dialog", { name: "Палитра команд" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Навигация по разделам" })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(navigationButton).toBeFocused();
 });

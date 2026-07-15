@@ -28,6 +28,16 @@ export function OpsShell({ section }: { section: string }) {
   const [shellStatus, setShellStatus] = useState<OpsShellStatus>(EMPTY_OPS_SHELL_STATUS);
   const legacyDashboardRef = useRef<HTMLDivElement>(null);
 
+  const changeCommandsOpen = useCallback((open: boolean) => {
+    if (open) setMobileNavigationOpen(false);
+    setCommandsOpen(open);
+  }, []);
+
+  const changeMobileNavigationOpen = useCallback((open: boolean) => {
+    if (open) setCommandsOpen(false);
+    setMobileNavigationOpen(open);
+  }, []);
+
   useEffect(() => {
     const syncFromHistory = () => {
       setActive(opsSectionFromPath(window.location.pathname).id);
@@ -50,11 +60,11 @@ export function OpsShell({ section }: { section: string }) {
       if (event.defaultPrevented || event.altKey || event.shiftKey) return;
       if (!event.ctrlKey || event.metaKey || event.key.toLowerCase() !== "k") return;
       event.preventDefault();
-      setCommandsOpen(true);
+      changeCommandsOpen(true);
     };
     window.addEventListener("keydown", openCommands);
     return () => window.removeEventListener("keydown", openCommands);
-  }, []);
+  }, [changeCommandsOpen]);
 
   const navigate = useCallback((href: string) => {
     const canonical = canonicalRouteHref(href);
@@ -96,8 +106,8 @@ export function OpsShell({ section }: { section: string }) {
         <OpsTopbar
           sectionLabel={activeSection.label}
           status={shellStatus}
-          onOpenCommands={() => setCommandsOpen(true)}
-          onOpenNavigation={() => setMobileNavigationOpen(true)}
+          onOpenCommands={() => changeCommandsOpen(true)}
+          onOpenNavigation={() => changeMobileNavigationOpen(true)}
           onRefresh={refresh}
         />
         <main className="px-4 py-4 lg:px-6 lg:py-5">
@@ -110,10 +120,10 @@ export function OpsShell({ section }: { section: string }) {
       <MobileNavigation
         open={mobileNavigationOpen}
         active={active}
-        onOpenChange={setMobileNavigationOpen}
+        onOpenChange={changeMobileNavigationOpen}
         onNavigate={navigate}
       />
-      {commandsOpen ? <CommandPalette open onOpenChange={setCommandsOpen} onNavigate={navigate} /> : null}
+      {commandsOpen ? <CommandPalette open onOpenChange={changeCommandsOpen} onNavigate={navigate} /> : null}
     </div>
   );
 }

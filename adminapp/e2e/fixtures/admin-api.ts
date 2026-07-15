@@ -29,6 +29,13 @@ const searchResults: AdminSearchResult[] = [
     title: "Пользователь 1001",
     subtitle: "Активный доступ · профиль проверен",
     href: "/users?selected=1001"
+  },
+  {
+    kind: "user",
+    id: "safe-colon-label",
+    title: "Безопасная метка ID",
+    subtitle: "ID: 1001",
+    href: "/users?selected=1001"
   }
 ];
 
@@ -173,6 +180,13 @@ const unsafeSearchResults: Array<Record<string, unknown>> = [
     title: "Проверка значения запроса",
     subtitle: "Публичное описание",
     href: "/users?selected=secret"
+  },
+  {
+    kind: "user",
+    id: "privacy-21",
+    title: "Проверка IDN-домена",
+    subtitle: "пример.рф/путь",
+    href: "/users?selected=privacy-21"
   }
 ];
 
@@ -181,7 +195,32 @@ type AdminApiMockOptions = {
   overviewStatus?: number;
   searchStatus?: number;
   trafficStatus?: number;
+  failAllLegacyRequests?: boolean;
+  delayFirstOverviewFailure?: boolean;
 };
+
+const LEGACY_GET_PATHS = new Set([
+  "/api/admin/ops/overview",
+  "/api/admin/alerts",
+  "/api/admin/free-tier/users",
+  "/api/admin/traffic/summary",
+  "/api/admin/nodes/timeseries",
+  "/api/admin/provider-quotas",
+  "/api/admin/nodes/health",
+  "/api/admin/nodes/runtime",
+  "/api/admin/online/users",
+  "/api/admin/payments/summary",
+  "/api/admin/payments/orders",
+  "/api/admin/keys/pressure",
+  "/api/admin/tickets",
+  "/api/admin/live-updates",
+  "/api/admin/funnel/summary",
+  "/api/admin/users",
+  "/api/admin/promos",
+  "/api/admin/referrals/pending"
+]);
+
+const FOCUSED_GET_PATHS = new Set([...LEGACY_GET_PATHS, "/api/admin/search"]);
 
 function fulfillJson(route: Route, data: unknown, status = 200) {
   const origin = route.request().headers().origin || "http://127.0.0.1:3107";
@@ -201,14 +240,44 @@ function fulfillJson(route: Route, data: unknown, status = 200) {
 export async function installAdminApiMock(
   page: Page,
   options: AdminApiMockOptions = {}
-): Promise<{ calls: AdminApiCall[] }> {
+): Promise<{
+  calls: AdminApiCall[];
+  overviewResponses: number[];
+  releaseFirstOverview: () => void;
+}> {
   const calls: AdminApiCall[] = [];
+  const overviewResponses: number[] = [];
+  let releaseFirstOverview: () => void = () => undefined;
+  const firstOverviewGate = new Promise<void>((resolve) => {
+    releaseFirstOverview = () => resolve();
+  });
+  let overviewRequestCount = 0;
   await page.route("**/api/admin/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    calls.push({ method: request.method(), path: `${url.pathname}${url.search}` });
+    const method = request.method();
+    calls.push({ method, path: `${url.pathname}${url.search}` });
 
-    if (request.method() === "OPTIONS") {
+    const knownPath = FOCUSED_GET_PATHS.has(url.pathname) || url.pathname === "/api/admin/auth/session";
+    const knownRequest =
+      (method === "GET" && FOCUSED_GET_PATHS.has(url.pathname)) ||
+      (method === "POST" && url.pathname === "/api/admin/auth/session") ||
+      (method === "OPTIONS" && knownPath);
+    if (!knownRequest) {
+      await fulfillJson(
+        route,
+        {
+          detail: "Focused fixture contract rejected the request",
+          code: "fixture_contract_error",
+          method,
+          path: url.pathname
+        },
+        501
+      );
+      return;
+    }
+
+    if (method === "OPTIONS") {
       await fulfillJson(route, {}, 204);
       return;
     }
@@ -224,8 +293,19 @@ export async function installAdminApiMock(
       return;
     }
 
+    if (options.failAllLegacyRequests && method === "GET" && LEGACY_GET_PATHS.has(url.pathname)) {
+      await fulfillJson(route, { detail: "Legacy request failed", code: "legacy_test_failure" }, 500);
+      if (url.pathname === "/api/admin/ops/overview") overviewResponses.push(500);
+      return;
+    }
+
     if (url.pathname === "/api/admin/ops/overview") {
-      if (options.overviewStatus && options.overviewStatus !== 200) {
+      const requestNumber = overviewRequestCount;
+      overviewRequestCount += 1;
+      const delayedFailure = options.delayFirstOverviewFailure && requestNumber === 0;
+      if (delayedFailure) await firstOverviewGate;
+      const overviewStatus = delayedFailure ? 500 : options.overviewStatus;
+      if (overviewStatus && overviewStatus !== 200) {
         await fulfillJson(
           route,
           {
@@ -233,8 +313,9 @@ export async function installAdminApiMock(
             code: "admin_session_rejected",
             correlation_id: "test-correlation-id"
           },
-          options.overviewStatus
+          overviewStatus
         );
+        overviewResponses.push(overviewStatus);
         return;
       }
       await fulfillJson(route, {
@@ -266,6 +347,7 @@ export async function installAdminApiMock(
         provider_quotas: [],
         alerts: { active: [], active_count: 0, critical_count: 0, warning_count: 0 }
       });
+      overviewResponses.push(200);
       return;
     }
 
@@ -288,12 +370,16 @@ export async function installAdminApiMock(
       return;
     }
 
-    if (url.pathname === "/api/admin/traffic/summary" && options.trafficStatus && options.trafficStatus !== 200) {
-      await fulfillJson(
-        route,
-        { detail: "Доступ к сводке отклонён", code: "traffic_access_rejected", correlation_id: "traffic-test-id" },
-        options.trafficStatus
-      );
+    if (url.pathname === "/api/admin/traffic/summary") {
+      if (options.trafficStatus && options.trafficStatus !== 200) {
+        await fulfillJson(
+          route,
+          { detail: "Доступ к сводке отклонён", code: "traffic_access_rejected", correlation_id: "traffic-test-id" },
+          options.trafficStatus
+        );
+        return;
+      }
+      await fulfillJson(route, { rows: [] });
       return;
     }
 
@@ -310,8 +396,35 @@ export async function installAdminApiMock(
       return;
     }
 
-    await fulfillJson(route, {});
+    const minimalPayloads: Record<string, unknown> = {
+      "/api/admin/alerts": { alerts: [] },
+      "/api/admin/free-tier/users": { users: [] },
+      "/api/admin/nodes/timeseries": { rows: [] },
+      "/api/admin/provider-quotas": { quotas: [] },
+      "/api/admin/nodes/health": { nodes: [] },
+      "/api/admin/nodes/runtime": { ok: true, nodes: [] },
+      "/api/admin/online/users": { ok: true, generated_at: generatedAt, rows: [] },
+      "/api/admin/payments/orders": { orders: [] },
+      "/api/admin/keys/pressure": { rows: [] },
+      "/api/admin/tickets": { tickets: [] },
+      "/api/admin/live-updates": { updates: [] },
+      "/api/admin/funnel/summary": { stages: [], sources: [] },
+      "/api/admin/users": { page: 1, page_size: 80, total: 0, sort: "created_desc", users: [] },
+      "/api/admin/promos": { promos: [] },
+      "/api/admin/referrals/pending": { rows: [] }
+    };
+    const payload = minimalPayloads[url.pathname];
+    if (payload !== undefined) {
+      await fulfillJson(route, payload);
+      return;
+    }
+
+    await fulfillJson(
+      route,
+      { detail: "Focused fixture response missing", code: "fixture_contract_error", method, path: url.pathname },
+      501
+    );
   });
 
-  return { calls };
+  return { calls, overviewResponses, releaseFirstOverview };
 }

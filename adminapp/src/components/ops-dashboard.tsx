@@ -682,6 +682,7 @@ export function OpsDashboard({
   const [broadcastResult, setBroadcastResult] = useState<AnyRow | null>(null);
   const [broadcastSending, setBroadcastSending] = useState(false);
   const [broadcastError, setBroadcastError] = useState("");
+  const loadGenerationRef = useRef(0);
 
   const publishSessionFailure = useCallback(
     (reason: unknown) => {
@@ -726,7 +727,10 @@ export function OpsDashboard({
   }, [section]);
 
   const load = useCallback(async () => {
+    const generation = ++loadGenerationRef.current;
+    const isCurrentLoad = () => generation === loadGenerationRef.current;
     if (!hasAdminAuthMaterial()) {
+      if (!isCurrentLoad()) return;
       setLoading(false);
       setAuthReady(false);
       onShellStatus?.({ api: "missing", session: "missing", oldestRequiredSourceAt: null });
@@ -735,7 +739,8 @@ export function OpsDashboard({
     setAuthReady(true);
     setLoading(true);
     setError("");
-    const modulePromise = moduleSections.has(section) ? fetchAdminModule(section) : Promise.resolve(null);
+    const moduleRequested = moduleSections.has(section);
+    const modulePromise = moduleRequested ? fetchAdminModule(section) : Promise.resolve(null);
     const [
       overviewResult,
       alertsResult,
@@ -778,6 +783,8 @@ export function OpsDashboard({
       modulePromise
     ]);
 
+    if (!isCurrentLoad()) return;
+
     setOverview(settledValue(overviewResult, null));
     setAlerts(settledValue(alertsResult, []));
     setFreeUsers(settledValue(freeResult, []));
@@ -799,7 +806,7 @@ export function OpsDashboard({
     setModulePayload(settledValue(moduleResult, null));
     setLastLoadedAt(new Date().toISOString());
 
-    const shellResults = [
+    const requiredResults: PromiseSettledResult<unknown>[] = [
       overviewResult,
       alertsResult,
       freeResult,
@@ -817,9 +824,9 @@ export function OpsDashboard({
       ticketsResult,
       releaseResult,
       funnelResult,
-      usersResult,
-      moduleResult
-    ] as const;
+      usersResult
+    ];
+    const shellResults = moduleRequested ? [...requiredResults, moduleResult] : requiredResults;
     const errors = shellResults.map((result) => settledError(result)).filter(Boolean);
     const fulfilledCount = shellResults.filter((result) => result.status === "fulfilled").length;
     const rejectedCount = shellResults.length - fulfilledCount;
@@ -842,7 +849,10 @@ export function OpsDashboard({
     const timer = window.setTimeout(() => {
       void load();
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      loadGenerationRef.current += 1;
+    };
   }, [load]);
 
   const firstUserTgId = useMemo(() => {

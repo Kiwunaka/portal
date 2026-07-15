@@ -21,9 +21,37 @@ const SEARCH_KINDS = new Set<AdminSearchResult["kind"]>(["user", "order", "node"
 const SEARCH_RESULT_FIELDS = new Set(["kind", "id", "title", "subtitle", "href"]);
 const ADMIN_ORIGIN = "https://admin.pokrov.space";
 const RAW_IP_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
-const PROTOCOL_RELATIVE_URL_PATTERN = /(?:^|[\s([{'"`])\/\/[^\s]+/;
-const BARE_DOMAIN_PATTERN = /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?::\d{1,5})?(?:\/[^\s]*)?/i;
-const SCHEME_MARKER_PATTERN = /(?:^|[^a-z0-9+.-])[a-z][a-z0-9+.-]*:/i;
+const EXPLICIT_SCHEME_URL_PATTERN = /(?:^|[^a-z0-9+.-])[a-z][a-z0-9+.-]*:\/\//i;
+const URL_TOKEN_SPLIT_PATTERN = /[\s<>"'()[\]{},;=]+/u;
+const DANGEROUS_BARE_PROTOCOLS = new Set([
+  "http",
+  "https",
+  "ftp",
+  "ftps",
+  "file",
+  "data",
+  "javascript",
+  "mailto",
+  "vless",
+  "vmess",
+  "trojan",
+  "ss",
+  "ssr",
+  "wg",
+  "wireguard",
+  "hysteria",
+  "hysteria2",
+  "hy2",
+  "ssh",
+  "socks",
+  "socks4",
+  "socks5",
+  "tuic",
+  "quic",
+  "shadowtls",
+  "naive",
+  "clash"
+]);
 const SENSITIVE_WORD_PATTERN = /(?:^|[^a-zа-яё0-9])(?:token|токен(?:а|у|ом|е|ы|ов|ами|ах)?|subscription|подписк(?:а|и|е|у|ой|ою|ам|ами|ах)?|private|secret|authorization|bearer|password|парол(?:ь|я|ю|ем|и)?|секрет(?:а|у|ом|е|ы|ов|ами|ах)?)(?=$|[^a-zа-яё0-9])/i;
 const SECRET_QUERY_KEY = /(?:token|secret|subscription|private|config|raw[_-]?ip)/i;
 
@@ -41,13 +69,41 @@ function hasIpv6(value: string): boolean {
   });
 }
 
+function isBareDomainCandidate(value: string): boolean {
+  const candidate = value.replace(/^[.!?]+|[.!?]+$/gu, "");
+  if (!candidate.includes(".") || candidate.startsWith("/") || candidate.includes("\\")) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(`https://${candidate}`);
+  } catch {
+    return false;
+  }
+  const hostname = parsed.hostname.replace(/\.$/, "").toLowerCase();
+  const labels = hostname.split(".");
+  const tld = labels.at(-1) || "";
+  if (labels.length < 2 || !tld || /^\d+$/.test(tld)) return false;
+  if (!labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label))) return false;
+  return labels.slice(0, -1).some((label) => !/^\d+$/.test(label));
+}
+
+function hasUrlLikeValue(value: string): boolean {
+  const candidates = value.split(URL_TOKEN_SPLIT_PATTERN).filter(Boolean);
+  for (const candidate of candidates) {
+    if (candidate.startsWith("//") || EXPLICIT_SCHEME_URL_PATTERN.test(candidate) || /^www\./i.test(candidate)) return true;
+    const protocol = /^([a-z][a-z0-9+.-]*):/i.exec(candidate)?.[1]?.toLowerCase();
+    if (protocol && DANGEROUS_BARE_PROTOCOLS.has(protocol)) return true;
+    if (isBareDomainCandidate(candidate)) return true;
+    const labelSeparator = candidate.indexOf(":");
+    if (labelSeparator >= 0 && isBareDomainCandidate(candidate.slice(labelSeparator + 1))) return true;
+  }
+  return false;
+}
+
 function hasUnsafeVisibleValue(value: string): boolean {
   return (
     RAW_IP_PATTERN.test(value) ||
     hasIpv6(value) ||
-    PROTOCOL_RELATIVE_URL_PATTERN.test(value) ||
-    BARE_DOMAIN_PATTERN.test(value) ||
-    SCHEME_MARKER_PATTERN.test(value) ||
+    hasUrlLikeValue(value) ||
     SENSITIVE_WORD_PATTERN.test(value) ||
     value.includes("\\")
   );
