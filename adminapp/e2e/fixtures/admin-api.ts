@@ -35,32 +35,144 @@ const searchResults: AdminSearchResult[] = [
 const unsafeSearchResults: Array<Record<string, unknown>> = [
   {
     kind: "node",
-    id: "2001:db8::44",
-    title: "Небезопасный IPv6",
+    id: "privacy-01",
+    title: "Проверка адреса четыре",
+    subtitle: "Источник 192.0.2.44",
+    href: "/nodes?selected=privacy-01"
+  },
+  {
+    kind: "node",
+    id: "privacy-02",
+    title: "Проверка адреса шесть кратко",
+    subtitle: "Источник 2001:db8::44",
+    href: "/nodes?selected=privacy-02"
+  },
+  {
+    kind: "node",
+    id: "privacy-03",
+    title: "Проверка адреса шесть полно",
     subtitle: "Источник 2001:0db8:0000:0000:0000:0000:0000:0044",
-    href: "/nodes?selected=2001%3Adb8%3A%3A44"
+    href: "/nodes?selected=privacy-03"
   },
   {
     kind: "user",
-    id: "subscription-link",
-    title: "Небезопасная ссылка",
-    subtitle: "https://example.invalid/subscription-redacted",
-    href: "/users?selected=https%3A%2F%2Fexample.invalid%2Fsubscription-redacted"
+    id: "privacy-04",
+    title: "Проверка веб-ссылки",
+    subtitle: "https://example.invalid/profile",
+    href: "/users?selected=privacy-04"
+  },
+  {
+    kind: "user",
+    id: "privacy-05",
+    title: "Проверка сетевого пути",
+    subtitle: "//host/path",
+    href: "/users?selected=privacy-05"
+  },
+  {
+    kind: "user",
+    id: "privacy-06",
+    title: "Проверка доменного пути",
+    subtitle: "example.invalid/path",
+    href: "/users?selected=privacy-06"
   },
   {
     kind: "key",
-    id: "access-marker",
-    title: "Небезопасный токен",
-    subtitle: "Токен доступа показан в результате",
-    href: "/users?selected=access-marker"
+    id: "privacy-07",
+    title: "Проверка схемы",
+    subtitle: "vless:",
+    href: "/users?selected=privacy-07"
+  },
+  {
+    kind: "key",
+    id: "privacy-08",
+    title: "Проверка английского слова",
+    subtitle: "token",
+    href: "/users?selected=privacy-08"
+  },
+  {
+    kind: "key",
+    id: "privacy-09",
+    title: "Проверка русского слова",
+    subtitle: "токен",
+    href: "/users?selected=privacy-09"
+  },
+  {
+    kind: "key",
+    id: "privacy-10",
+    title: "Проверка маркера один",
+    subtitle: "subscription",
+    href: "/users?selected=privacy-10"
+  },
+  {
+    kind: "key",
+    id: "privacy-11",
+    title: "Проверка маркера два",
+    subtitle: "подписка",
+    href: "/users?selected=privacy-11"
+  },
+  {
+    kind: "key",
+    id: "privacy-12",
+    title: "Проверка маркера три",
+    subtitle: "private_key",
+    href: "/users?selected=privacy-12"
+  },
+  {
+    kind: "key",
+    id: "privacy-13",
+    title: "Проверка маркера четыре",
+    subtitle: "secret",
+    href: "/users?selected=privacy-13"
   },
   {
     kind: "user",
-    id: "1002",
-    title: "Лишнее поле",
-    subtitle: "Профиль",
-    href: "/users?selected=1002",
-    raw_payload: "поле вне публичного контракта"
+    id: "privacy-14",
+    title: "Проверка структуры",
+    subtitle: "Публичное описание",
+    href: "/users?selected=privacy-14",
+    internal_value: "поле вне публичного контракта"
+  },
+  {
+    kind: "user",
+    id: "privacy-15",
+    title: "Проверка фрагмента",
+    subtitle: "Публичное описание",
+    href: "/users?selected=privacy-15#details"
+  },
+  {
+    kind: "user",
+    id: "privacy-16",
+    title: "Проверка внешнего адреса",
+    subtitle: "Публичное описание",
+    href: "https://outside.invalid/users"
+  },
+  {
+    kind: "user",
+    id: "privacy-17",
+    title: "Проверка обратной черты",
+    subtitle: "Публичное описание",
+    href: "/\\outside.invalid/users"
+  },
+  {
+    kind: "user",
+    id: "privacy-18",
+    title: "Проверка двойного слеша",
+    subtitle: "Публичное описание",
+    href: "//outside/users"
+  },
+  {
+    kind: "user",
+    id: "privacy-19",
+    title: "Проверка ключа запроса",
+    subtitle: "Публичное описание",
+    href: "/users?token_hint=safe"
+  },
+  {
+    kind: "user",
+    id: "privacy-20",
+    title: "Проверка значения запроса",
+    subtitle: "Публичное описание",
+    href: "/users?selected=secret"
   }
 ];
 
@@ -68,6 +180,7 @@ type AdminApiMockOptions = {
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
   searchStatus?: number;
+  trafficStatus?: number;
 };
 
 function fulfillJson(route: Route, data: unknown, status = 200) {
@@ -172,6 +285,15 @@ export async function installAdminApiMock(
         },
         problem_orders: []
       });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/traffic/summary" && options.trafficStatus && options.trafficStatus !== 200) {
+      await fulfillJson(
+        route,
+        { detail: "Доступ к сводке отклонён", code: "traffic_access_rejected", correlation_id: "traffic-test-id" },
+        options.trafficStatus
+      );
       return;
     }
 

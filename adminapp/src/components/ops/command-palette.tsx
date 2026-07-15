@@ -19,10 +19,12 @@ type SearchState = "idle" | "loading" | "ready" | "unavailable" | "error";
 
 const SEARCH_KINDS = new Set<AdminSearchResult["kind"]>(["user", "order", "node", "key"]);
 const SEARCH_RESULT_FIELDS = new Set(["kind", "id", "title", "subtitle", "href"]);
+const ADMIN_ORIGIN = "https://admin.pokrov.space";
 const RAW_IP_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
-const SCHEME_URL_PATTERN = /\b[a-z][a-z0-9+.-]*:(?:\/\/)?[^\s]+/i;
-const TOKEN_PATTERN = /(?:^|[^a-zа-яё0-9])(?:token|токен(?:а|у|ом|е|ы|ов|ами|ах)?)(?=$|[^a-zа-яё0-9])/i;
-const SECRET_PATTERN = /subscription[_ -]?(?:url|link)|private[_ -]?key|authorization|bearer|password|парол|\bsecret\b|\bсекрет/i;
+const PROTOCOL_RELATIVE_URL_PATTERN = /(?:^|[\s([{'"`])\/\/[^\s]+/;
+const BARE_DOMAIN_PATTERN = /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?::\d{1,5})?(?:\/[^\s]*)?/i;
+const SCHEME_MARKER_PATTERN = /(?:^|[^a-z0-9+.-])[a-z][a-z0-9+.-]*:/i;
+const SENSITIVE_WORD_PATTERN = /(?:^|[^a-zа-яё0-9])(?:token|токен(?:а|у|ом|е|ы|ов|ами|ах)?|subscription|подписк(?:а|и|е|у|ой|ою|ам|ами|ах)?|private|secret|authorization|bearer|password|парол(?:ь|я|ю|ем|и)?|секрет(?:а|у|ом|е|ы|ов|ами|ах)?)(?=$|[^a-zа-яё0-9])/i;
 const SECRET_QUERY_KEY = /(?:token|secret|subscription|private|config|raw[_-]?ip)/i;
 
 function hasIpv6(value: string): boolean {
@@ -40,13 +42,26 @@ function hasIpv6(value: string): boolean {
 }
 
 function hasUnsafeVisibleValue(value: string): boolean {
-  return RAW_IP_PATTERN.test(value) || hasIpv6(value) || SCHEME_URL_PATTERN.test(value) || TOKEN_PATTERN.test(value) || SECRET_PATTERN.test(value);
+  return (
+    RAW_IP_PATTERN.test(value) ||
+    hasIpv6(value) ||
+    PROTOCOL_RELATIVE_URL_PATTERN.test(value) ||
+    BARE_DOMAIN_PATTERN.test(value) ||
+    SCHEME_MARKER_PATTERN.test(value) ||
+    SENSITIVE_WORD_PATTERN.test(value) ||
+    value.includes("\\")
+  );
 }
 
 function canonicalHref(value: string): string | null {
-  if (!value.startsWith("/") || value.startsWith("//")) return null;
-  const url = new URL(value, "https://admin.pokrov.space");
-  if (url.hash) return null;
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
+  let url: URL;
+  try {
+    url = new URL(value, ADMIN_ORIGIN);
+  } catch {
+    return null;
+  }
+  if (url.origin !== ADMIN_ORIGIN || url.hash) return null;
   const pathname = url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
   if (!OPS_SECTIONS.some((section) => section.href === pathname)) return null;
   for (const [key, queryValue] of url.searchParams) {

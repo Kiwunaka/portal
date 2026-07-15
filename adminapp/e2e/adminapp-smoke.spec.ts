@@ -448,15 +448,17 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
     }
 
     if (/^\/api\/admin\/users\/\d+$/.test(url.pathname)) {
+      const requestedTgId = Number(url.pathname.split("/").pop());
+      const isOperatorUser = requestedTgId === 1001;
       await jsonResponse(route, {
         user: {
-          tg_id: 1001,
-          username: "operator_user",
-          display_name: "Operator User",
+          tg_id: requestedTgId,
+          username: isOperatorUser ? "operator_user" : "first_user",
+          display_name: isOperatorUser ? "Operator User" : "First User",
           status: "active",
           sub_type: "PAID",
           expiry_at: "2026-08-01T00:00:00Z",
-          app_install_id: "install-1001",
+          app_install_id: `install-${requestedTgId}`,
           observer_state: "watch"
         },
         summary: {
@@ -472,15 +474,15 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
         ],
         observer: {
           state: "watch",
-          observed_ip_count_24h: 2,
-          recent_ips: [
-            { source_ip_raw: "203.0.113.77", node_code: "NL-free", counts_for_suspicion: true, last_seen_at: generatedAt }
-          ],
+          observed_ip_count_24h: isOperatorUser ? 2 : 0,
+          recent_ips: isOperatorUser
+            ? [{ source_ip_raw: "203.0.113.77", node_code: "NL-free", counts_for_suspicion: true, last_seen_at: generatedAt }]
+            : [],
           recent_nodes: []
         },
         risk: { state: "watch" },
         tickets: [{ id: 2001, status: "open", subject: "Need help", updated_at: generatedAt }],
-        payment_orders: [{ provider: "lavatop", order_id: "ord_1", status: "pending", amount: 990, currency: "RUB", created_at: generatedAt }],
+        payment_orders: [{ provider: "lavatop", order_id: `ord_${requestedTgId}`, status: "pending", amount: 990, currency: "RUB", created_at: generatedAt }],
         key_history: [{ action: "key_sync", node_code: "NL-free", actor_tg_id: 9999, created_at: generatedAt }],
         admin_actions: [{ action: "admin_note", actor_tg_id: 9999, created_at: generatedAt }]
       });
@@ -491,9 +493,19 @@ async function mockAdminApi(page: Page, options: { requireInitDataForSession?: b
       await jsonResponse(route, {
         page: 1,
         page_size: 80,
-        total: 1,
+        total: 2,
         sort: "created_desc",
         users: [
+          {
+            tg_id: 2002,
+            username: "first_user",
+            display_name: "First User",
+            status: "active",
+            sub_type: "PAID",
+            expiry_at: "2026-08-01T00:00:00Z",
+            observer_state: "watch",
+            app_install_id: "install-2002"
+          },
           {
             tg_id: 1001,
             username: "operator_user",
@@ -592,6 +604,7 @@ test("dashboard exchanges initData when browser session is missing", async ({ pa
 
 test("global search opens users and renders card with raw IP only inside user card", async ({ page }) => {
   const calls = await mockAdminApi(page);
+  const cardCallCount = (tgId: number) => calls.filter((call) => call.path === `/api/admin/users/${tgId}`).length;
   await gotoWithAdminSession(page, "/");
 
   await page.keyboard.press("Control+k");
@@ -604,13 +617,46 @@ test("global search opens users and renders card with raw IP only inside user ca
   await palette.getByRole("button", { name: /Operator User/ }).click();
 
   await expect(page).toHaveURL(/\/users\/?\?selected=1001$/);
+  await expect.poll(() => cardCallCount(1001)).toBeGreaterThan(0);
   await expect(page.getByRole("heading", { name: "Поиск пользователей" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Operator User tg/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Пользователь 1001", exact: true })).toBeVisible();
   const ipHeading = page.getByRole("heading", { name: "IP-наблюдения" });
   await expect(ipHeading).toBeVisible();
   const ipCard = page.locator("section").filter({ has: ipHeading });
   await expect(ipCard.getByText("203.0.113.77")).toBeVisible();
   await expect(page.locator("main").getByText("203.0.113.77")).toHaveCount(1);
+
+  const firstUserCallsBeforeClear = cardCallCount(2002);
+  await page.evaluate(() => {
+    window.history.pushState({}, "", "/users");
+    window.dispatchEvent(new Event("pokrov-admin-url-state"));
+  });
+  await expect(page).toHaveURL(/\/users$/);
+  await expect.poll(() => cardCallCount(2002)).toBeGreaterThan(firstUserCallsBeforeClear);
+  await expect(page.getByRole("heading", { name: "Пользователь 2002", exact: true })).toBeVisible();
+
+  const selectedCallsBeforePopstate = cardCallCount(1001);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/users\/?\?selected=1001$/);
+  await expect.poll(() => cardCallCount(1001)).toBeGreaterThan(selectedCallsBeforePopstate);
+  await expect(page.getByRole("heading", { name: "Пользователь 1001", exact: true })).toBeVisible();
+
+  const firstUserCallsBeforeInvalid = cardCallCount(2002);
+  await page.evaluate(() => {
+    window.history.pushState({}, "", "/users?selected=not-a-number");
+    window.dispatchEvent(new Event("pokrov-admin-url-state"));
+  });
+  await expect.poll(() => cardCallCount(2002)).toBeGreaterThan(firstUserCallsBeforeInvalid);
+  await expect(page.getByRole("heading", { name: "Пользователь 2002", exact: true })).toBeVisible();
+
+  const selectedCallsBeforeLegacyQuery = cardCallCount(1001);
+  await page.evaluate(() => {
+    window.history.pushState({}, "", "/users?q=1001");
+    window.dispatchEvent(new Event("pokrov-admin-url-state"));
+  });
+  await expect.poll(() => cardCallCount(1001)).toBeGreaterThan(selectedCallsBeforeLegacyQuery);
+  await expect(page.getByRole("heading", { name: "Пользователь 1001", exact: true })).toBeVisible();
 });
 
 test("online screen hides raw IP in the general list", async ({ page }) => {

@@ -79,6 +79,7 @@ import {
   type TrafficSummaryRow
 } from "@/lib/api";
 import { formatGb, formatInt, formatPct, shortDateTime } from "@/lib/format";
+import { URL_STATE_CHANGE_EVENT } from "@/lib/url-state";
 
 type OpsDashboardSection =
   | "dashboard"
@@ -197,6 +198,12 @@ function settledError(result: PromiseSettledResult<unknown>): string {
 
 function isAccessDeniedError(error: unknown): boolean {
   return error instanceof AdminApiError && (error.status === 401 || error.status === 403);
+}
+
+function parseUserTgId(value: string | null): number | null {
+  if (!value || !/^[1-9]\d*$/.test(value.trim())) return null;
+  const tgId = Number(value.trim());
+  return Number.isSafeInteger(tgId) ? tgId : null;
 }
 
 function oldestSourceTimestamp(values: Array<string | null | undefined>): string | null {
@@ -680,7 +687,7 @@ export function OpsDashboard({
     (reason: unknown) => {
       onShellStatus?.({
         api: "missing",
-        session: isAccessDeniedError(reason) ? "BLOCKED_BY_ACCESS" : "unavailable",
+        session: isAccessDeniedError(reason) ? "failed" : "unavailable",
         oldestRequiredSourceAt: null
       });
     },
@@ -690,18 +697,32 @@ export function OpsDashboard({
   useEffect(() => {
     const applySearch = (q: string) => {
       setUserSearch(q);
-      setSelectedTgId(/^-?\d+$/.test(q.trim()) ? Number(q.trim()) : null);
+      setSelectedTgId(parseUserTgId(q));
     };
-    if (typeof window !== "undefined" && section === "users") {
-      const q = new URLSearchParams(window.location.search).get("q") || "";
-      if (q) applySearch(q);
-    }
-    const handler = (event: Event) => {
+
+    const syncFromUrl = () => {
+      if (section !== "users") return;
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get("q")?.trim() || "";
+      const selected = params.get("selected");
+      setUserSearch(q);
+      setSelectedTgId(selected === null ? parseUserTgId(q) : parseUserTgId(selected));
+    };
+
+    const globalSearchHandler = (event: Event) => {
       const detail = (event as CustomEvent<{ q?: string }>).detail;
-      if (detail?.q) applySearch(String(detail.q));
+      if (typeof detail?.q === "string") applySearch(detail.q);
     };
-    window.addEventListener("pokrov-admin-global-search", handler);
-    return () => window.removeEventListener("pokrov-admin-global-search", handler);
+
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    window.addEventListener(URL_STATE_CHANGE_EVENT, syncFromUrl);
+    window.addEventListener("pokrov-admin-global-search", globalSearchHandler);
+    return () => {
+      window.removeEventListener("popstate", syncFromUrl);
+      window.removeEventListener(URL_STATE_CHANGE_EVENT, syncFromUrl);
+      window.removeEventListener("pokrov-admin-global-search", globalSearchHandler);
+    };
   }, [section]);
 
   const load = useCallback(async () => {
@@ -778,23 +799,36 @@ export function OpsDashboard({
     setModulePayload(settledValue(moduleResult, null));
     setLastLoadedAt(new Date().toISOString());
 
-    const errors = [
-      settledError(overviewResult),
-      settledError(alertsResult),
-      settledError(nodesResult),
-      settledError(onlineResult),
-      settledError(todayResult),
-      settledError(usersResult)
-    ].filter(Boolean);
-    const shellResults = [overviewResult, alertsResult, nodesResult, onlineResult, todayResult, usersResult] as const;
+    const shellResults = [
+      overviewResult,
+      alertsResult,
+      freeResult,
+      trafficResult,
+      timeseriesResult,
+      quotasResult,
+      nodesResult,
+      runtimeResult,
+      onlineResult,
+      todayResult,
+      weekResult,
+      monthResult,
+      ordersResult,
+      pressureResult,
+      ticketsResult,
+      releaseResult,
+      funnelResult,
+      usersResult,
+      moduleResult
+    ] as const;
+    const errors = shellResults.map((result) => settledError(result)).filter(Boolean);
     const fulfilledCount = shellResults.filter((result) => result.status === "fulfilled").length;
     const rejectedCount = shellResults.length - fulfilledCount;
     const accessDenied = shellResults.some(
       (result) => result.status === "rejected" && isAccessDeniedError(result.reason)
     );
     onShellStatus?.({
-      api: accessDenied ? "BLOCKED_BY_ACCESS" : rejectedCount === 0 ? "ok" : fulfilledCount > 0 ? "degraded" : "failed",
-      session: accessDenied ? "BLOCKED_BY_ACCESS" : fulfilledCount > 0 ? "ok" : "unavailable",
+      api: rejectedCount === 0 ? "ok" : fulfilledCount > 0 ? "degraded" : "failed",
+      session: accessDenied ? "failed" : fulfilledCount > 0 ? "ok" : "unavailable",
       oldestRequiredSourceAt: oldestSourceTimestamp([
         overviewResult.status === "fulfilled" ? overviewResult.value.generated_at : null,
         section === "online" && onlineResult.status === "fulfilled" ? onlineResult.value.generated_at : null
@@ -1210,7 +1244,7 @@ export function OpsDashboard({
             onSubmit={(event: FormEvent) => {
               event.preventDefault();
               const q = userSearch.trim();
-              setSelectedTgId(/^-?\d+$/.test(q) ? Number(q) : null);
+              setSelectedTgId(parseUserTgId(q));
               void load();
             }}
           >

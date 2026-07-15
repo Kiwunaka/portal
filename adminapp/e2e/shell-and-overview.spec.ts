@@ -57,11 +57,15 @@ test("оболочка группирует 15 разделов и открыв�
       await expect(links.nth(index)).toHaveAttribute("href", href);
     }
   }
+  const commandsButton = page.getByRole("button", { name: "Команды" });
+  await commandsButton.focus();
+  await expect(commandsButton).toBeFocused();
   await page.keyboard.press("Control+k");
   await expect(page.getByRole("dialog", { name: "Палитра команд" })).toBeVisible();
   await expect(page.getByRole("searchbox", { name: "Глобальный поиск" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Палитра команд" })).toBeHidden();
+  await expect(commandsButton).toBeFocused();
 });
 
 test("верхняя панель показывает фактический статус API, сессии и timestamp источника", async ({ page }) => {
@@ -74,12 +78,24 @@ test("верхняя панель показывает фактический с
   await expect(page.getByText(/Старейший источник:/)).not.toContainText("Нет данных");
 });
 
-test("401 от загрузчика не выглядит активной сессией", async ({ page }) => {
+test("обычный 401 от overview показывает деградацию и сбой сессии без access-evidence", async ({ page }) => {
   await installAdminApiMock(page, { overviewStatus: 401 });
   await page.goto("/");
 
-  await expect(page.getByLabel("Состояние API: Доступ заблокирован")).toBeVisible();
-  await expect(page.getByLabel("Состояние сессии: Доступ заблокирован")).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Требует внимания")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Сбой")).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Доступ заблокирован")).toHaveCount(0);
+  await expect(page.getByLabel("Состояние сессии: Доступ заблокирован")).toHaveCount(0);
+  await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
+});
+
+test("401 от traffic, пропущенного старым verdict-срезом, не выглядит нормой", async ({ page }) => {
+  await installAdminApiMock(page, { trafficStatus: 401 });
+  await page.goto("/");
+
+  await expect(page.getByLabel("Состояние API: Требует внимания")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Сбой")).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Норма")).toHaveCount(0);
   await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 });
 
@@ -117,14 +133,37 @@ test("поиск 404 оставляет палитру и текущий мар�
   await expect(page).toHaveURL(/\/$/);
 });
 
-test("поиск не рендерит IPv6, URL, токены и поля вне allowlist", async ({ page }) => {
+test("поиск независимо отбрасывает каждый запрещённый privacy-класс", async ({ page }) => {
   await installAdminApiMock(page, { includeUnsafeSearchResults: true });
   await page.goto("/");
   await page.getByRole("button", { name: "Команды" }).click();
   await page.getByRole("searchbox", { name: "Глобальный поиск" }).fill("safe");
 
   await expect(page.getByRole("button", { name: /Нода NL/ })).toBeVisible();
-  for (const unsafeTitle of ["Небезопасный IPv6", "Небезопасная ссылка", "Небезопасный токен", "Лишнее поле"]) {
+  const unsafeTitles = [
+    "Проверка адреса четыре",
+    "Проверка адреса шесть кратко",
+    "Проверка адреса шесть полно",
+    "Проверка веб-ссылки",
+    "Проверка сетевого пути",
+    "Проверка доменного пути",
+    "Проверка схемы",
+    "Проверка английского слова",
+    "Проверка русского слова",
+    "Проверка маркера один",
+    "Проверка маркера два",
+    "Проверка маркера три",
+    "Проверка маркера четыре",
+    "Проверка структуры",
+    "Проверка фрагмента",
+    "Проверка внешнего адреса",
+    "Проверка обратной черты",
+    "Проверка двойного слеша",
+    "Проверка ключа запроса",
+    "Проверка значения запроса"
+  ];
+  expect(unsafeTitles).toHaveLength(20);
+  for (const unsafeTitle of unsafeTitles) {
     await expect(page.getByText(unsafeTitle, { exact: true })).toHaveCount(0);
   }
 });
