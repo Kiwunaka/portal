@@ -307,6 +307,7 @@ git commit -m "feat(adminapp): add Russian status primitives"
 - Modify: `adminapp/src/components/ui/dialog.tsx`
 - Modify: `adminapp/src/components/shell.tsx`
 - Modify: `adminapp/src/lib/api.ts`
+- Modify: `adminapp/e2e/adminapp-smoke.spec.ts`
 - Create: `adminapp/e2e/fixtures/admin-api.ts`
 - Create: `adminapp/e2e/shell-and-overview.spec.ts`
 
@@ -412,7 +413,7 @@ Expected: PASS.
 - [ ] **Step 7: Commit only Task 2 files**
 
 ```powershell
-git add adminapp/src/lib/sections.ts adminapp/src/lib/url-state.ts adminapp/src/lib/api.ts adminapp/src/components/ops adminapp/src/components/ops-dashboard.tsx adminapp/src/components/ui/dialog.tsx adminapp/src/components/shell.tsx adminapp/e2e/fixtures/admin-api.ts adminapp/e2e/shell-and-overview.spec.ts
+git add adminapp/src/lib/sections.ts adminapp/src/lib/url-state.ts adminapp/src/lib/api.ts adminapp/src/components/ops adminapp/src/components/ops-dashboard.tsx adminapp/src/components/ui/dialog.tsx adminapp/src/components/shell.tsx adminapp/e2e/adminapp-smoke.spec.ts adminapp/e2e/fixtures/admin-api.ts adminapp/e2e/shell-and-overview.spec.ts
 git commit -m "feat(adminapp): build grouped operations shell"
 ```
 
