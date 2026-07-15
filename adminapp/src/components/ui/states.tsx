@@ -36,7 +36,7 @@ function StatePanel({ title, description, action, tone = "neutral", busy = false
 
 export interface EmptyStateProps {
   title?: string;
-  description?: string;
+  description: string;
   action?: ReactNode;
   className?: string;
 }
@@ -57,7 +57,7 @@ export function LoadingState({ title = "Загрузка данных", descript
 
 export interface ErrorStateProps {
   title?: string;
-  description?: string;
+  description: string;
   action?: ReactNode;
   className?: string;
 }

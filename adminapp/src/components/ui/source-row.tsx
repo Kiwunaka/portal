@@ -20,7 +20,13 @@ export interface SourceRowProps {
   className?: string;
 }
 
-function sourceDetail(detail: ReactNode): ReactNode {
+function sourceDetail(status: OpsStatusCode, detail: ReactNode): ReactNode {
+  if (status === "missing") {
+    return "Нет данных";
+  }
+  if (status === "unavailable") {
+    return "Недоступно";
+  }
   if (detail === null || detail === undefined) {
     return "Нет данных";
   }
@@ -43,7 +49,7 @@ export function SourceRow({ source, status, sampledAt, threshold = null, detail,
           <StatusBadge status={status} />
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[color:var(--atlas-text-muted)]">
-          <span className="text-[color:var(--atlas-text-soft)]">{sourceDetail(detail)}</span>
+          <span className="text-[color:var(--atlas-text-soft)]">{sourceDetail(status, detail)}</span>
           {sampledAt ? <time dateTime={sampledAt}>{formatSourceAge(sampledAt)}</time> : <span>Нет данных</span>}
         </div>
       </div>
