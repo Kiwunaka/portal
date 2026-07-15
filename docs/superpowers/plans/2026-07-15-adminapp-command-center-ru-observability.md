@@ -204,6 +204,7 @@ Label pre-existing failures exactly; do not convert them into PASS.
 - Create: `adminapp/src/components/ui/data-table.tsx`
 - Create: `adminapp/src/components/ui/states.tsx`
 - Create: `adminapp/src/components/ui/index.ts`
+- Modify: `adminapp/src/components/data-table.tsx`
 - Modify: `adminapp/src/app/globals.css`
 
 **Interfaces:**
@@ -288,7 +289,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit only Task 1 files**
 
 ```powershell
-git add tests/test_adminapp_command_center_contract.py adminapp/src/lib/ops-status adminapp/src/components/ui adminapp/src/app/globals.css
+git add tests/test_adminapp_command_center_contract.py adminapp/src/lib/ops-status adminapp/src/components/ui adminapp/src/components/data-table.tsx adminapp/src/app/globals.css
 git commit -m "feat(adminapp): add Russian status primitives"
 ```
 
