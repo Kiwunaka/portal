@@ -109,6 +109,149 @@ def test_reconciler_removes_only_old_temp_and_rowless_canonical_files(tmp_path) 
     assert all(isinstance(value, int) for value in report.values())
 
 
+def test_cleanup_directory_fsync_is_posix_only(monkeypatch, tmp_path) -> None:
+    cleanup = importlib.import_module("support_attachment_cleanup_service")
+    expected_flags = cleanup.os.O_RDONLY | getattr(cleanup.os, "O_DIRECTORY", 0)
+    calls: list[tuple] = []
+
+    monkeypatch.setattr(cleanup.os, "name", "posix")
+    monkeypatch.setattr(
+        cleanup.os,
+        "open",
+        lambda path, flags: calls.append(("open", path, flags)) or 73,
+    )
+    monkeypatch.setattr(cleanup.os, "fsync", lambda fd: calls.append(("fsync", fd)))
+    monkeypatch.setattr(cleanup.os, "close", lambda fd: calls.append(("close", fd)))
+
+    cleanup._fsync_directory(tmp_path)
+
+    assert calls == [
+        ("open", str(tmp_path), expected_flags),
+        ("fsync", 73),
+        ("close", 73),
+    ]
+
+    calls.clear()
+    monkeypatch.setattr(cleanup.os, "name", "nt")
+    cleanup._fsync_directory(tmp_path)
+    assert calls == []
+
+
+def test_reconciler_fsyncs_directory_after_successful_unlinks(monkeypatch, tmp_path) -> None:
+    cleanup = importlib.import_module("support_attachment_cleanup_service")
+    now = _utcnow()
+    engine, sessions = _session_factory(tmp_path)
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir()
+    old_temp = upload_dir / ".20260714-fsynctest1.txt.deadbeef.tmp"
+    old_temp.write_bytes(b"old")
+    _age(old_temp, now - timedelta(hours=2))
+    synced: list = []
+    monkeypatch.setattr(cleanup, "_fsync_directory", lambda path: synced.append(path))
+
+    try:
+        report = cleanup.reconcile_support_attachments(
+            sessions,
+            upload_dir=upload_dir,
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=20,
+        )
+    finally:
+        engine.dispose()
+
+    assert report["temp_files_removed"] == 1
+    assert synced == [upload_dir.resolve()]
+
+
+def test_reconciler_reports_directory_fsync_failure(monkeypatch, tmp_path) -> None:
+    cleanup = importlib.import_module("support_attachment_cleanup_service")
+    now = _utcnow()
+    engine, sessions = _session_factory(tmp_path)
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir()
+    old_orphan = upload_dir / "20260714-fsyncfail1.txt"
+    old_orphan.write_bytes(b"old")
+    _age(old_orphan, now - timedelta(hours=2))
+
+    def fail_fsync(_path):
+        raise OSError("forced directory fsync failure")
+
+    monkeypatch.setattr(cleanup, "_fsync_directory", fail_fsync)
+    try:
+        report = cleanup.reconcile_support_attachments(
+            sessions,
+            upload_dir=upload_dir,
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=20,
+        )
+    finally:
+        engine.dispose()
+
+    assert report["orphan_files_removed"] == 1
+    assert report["file_errors"] == 1
+
+
+def test_reconciler_retries_same_file_window_after_directory_fsync_failure(
+    monkeypatch, tmp_path
+) -> None:
+    cleanup = importlib.import_module("support_attachment_cleanup_service")
+    now = _utcnow()
+    engine, sessions = _session_factory(tmp_path)
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir()
+    first = upload_dir / "20260714-fsyncretry1.txt"
+    second = upload_dir / "20260714-fsyncretry2.txt"
+    for path in (first, second):
+        path.write_bytes(b"old")
+        _age(path, now - timedelta(hours=2))
+    cursor = cleanup.SupportAttachmentCleanupCursor()
+
+    monkeypatch.setattr(
+        cleanup,
+        "_fsync_directory",
+        lambda _path: (_ for _ in ()).throw(OSError("forced directory fsync failure")),
+    )
+    try:
+        failed = cleanup.reconcile_support_attachments(
+            sessions,
+            upload_dir=upload_dir,
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=1,
+            cursor=cursor,
+        )
+
+        assert failed["orphan_files_removed"] == 1
+        assert failed["file_errors"] == 1
+        assert cursor.file_after == ""
+        assert cursor.file_cycle_cutoff_ns > 0
+
+        first.write_bytes(b"reappeared-after-power-loss")
+        _age(first, now - timedelta(hours=2))
+        monkeypatch.setattr(cleanup, "_fsync_directory", lambda _path: None)
+        retried = cleanup.reconcile_support_attachments(
+            sessions,
+            upload_dir=upload_dir,
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=1,
+            cursor=cursor,
+        )
+    finally:
+        engine.dispose()
+
+    assert retried["orphan_files_removed"] == 1
+    assert not first.exists()
+    assert second.exists()
+    assert cursor.file_after == first.name
+
+
 def test_reconciler_cleans_expired_rows_but_preserves_bound_and_legacy_rows_idempotently(tmp_path) -> None:
     from models import SupportAttachment
 

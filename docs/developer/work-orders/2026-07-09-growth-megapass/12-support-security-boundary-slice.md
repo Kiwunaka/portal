@@ -511,3 +511,33 @@ must not bulk-delete bound rows, legacy null-expiry rows, or attachment files.
   durable row-plus-file preservation and grace-delayed rowless-orphan cleanup.
 - `NOT_REQUESTED`: live-system mutation, deploy, push, merge, physical-device,
   current-origin, brain-origin, and RU-origin proof.
+
+### 2026-07-15 Manual-Gate Addendum
+
+- `PASS`: production reverse proxy rejected missing, invalid bearer, invalid
+  Web token, invalid cookie, and invalid Telegram initData on a private
+  attachment route with `401`; allowed CORS preflight returned the exact app
+  origin with credentials, an untrusted origin was rejected, and HTTP redirected
+  to HTTPS.
+- `BLOCKED_BY_ACCESS`: a valid cookie/bearer/initData attachment download could
+  not be proven because no valid session material was extracted and production
+  contained no attachment fixture. Browser/session secrets were intentionally
+  not harvested.
+- `NOT_APPLICABLE_NO_FIXTURES`: production had zero support attachment rows and
+  zero private `support/*` references. One historical non-private media
+  reference remains and must be preserved by additive migration.
+- `PASS`: the supervised `portal-worker` was manually restarted, returned
+  active with a new process ID, and had no fresh journal error. This proves the
+  current worker supervision path, not candidate deployment.
+- `PASS`: a real ext4 scratch run covered 50,001 entries, frozen mtime windows,
+  file and parent-directory fsync, and process termination after durable rename.
+  Physical datacenter power removal remains `NOT_RUN_SAFETY`.
+- Cleanup now fsyncs the upload directory after successful POSIX unlink batches;
+  a failure increments the existing integer `file_errors` counter and preserves
+  the frozen file-window cursor so a deletion that reappears after power loss is
+  retried before the scan advances.
+- A long-lived `portal-helpbot` idle-in-transaction session was observed. It was
+  not killed or restarted because that production mutation was not authorized;
+  treat it as a separate P1 operator incident.
+
+See `13-live-postgres-support-gates.md` for the redacted cross-gate summary.

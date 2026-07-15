@@ -88,7 +88,9 @@ def _postgres_varchar_limit(conn, table: str, column: str) -> int | None:
 
 
 def _ensure_economy_domain_sqlite(conn) -> None:
-    if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='entitlement_grants';")).fetchone():
+    if conn.execute(
+        text("SELECT name FROM sqlite_master WHERE type='table' AND name='account_entitlement_grants';")
+    ).fetchone():
         for column, ddl in (
             ("reserved_at", "DATETIME"),
             ("reservation_expires_at", "DATETIME"),
@@ -96,8 +98,8 @@ def _ensure_economy_domain_sqlite(conn) -> None:
             ("duration_days", "INTEGER"),
             ("activation_evidence_id", "VARCHAR(36)"),
         ):
-            if not _sqlite_column_exists(conn, "entitlement_grants", column):
-                conn.execute(text(f"ALTER TABLE entitlement_grants ADD COLUMN {column} {ddl};"))
+            if not _sqlite_column_exists(conn, "account_entitlement_grants", column):
+                conn.execute(text(f"ALTER TABLE account_entitlement_grants ADD COLUMN {column} {ddl};"))
     conn.execute(
         text(
             """
@@ -157,9 +159,9 @@ def _ensure_economy_domain_sqlite(conn) -> None:
         )
     )
     for sql in (
-        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_reservation_expires_at ON entitlement_grants(reservation_expires_at);",
-        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_activation_evidence_id ON entitlement_grants(activation_evidence_id);",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_entitlement_grants_premium_trial_account ON entitlement_grants(account_id) WHERE source = 'premium_trial';",
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_reservation_expires_at ON account_entitlement_grants(reservation_expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_activation_evidence_id ON account_entitlement_grants(activation_evidence_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_account_entitlement_grants_premium_trial_account ON account_entitlement_grants(account_id) WHERE source = 'premium_trial';",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_connection_evidence_key ON connection_evidence(evidence_key);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_account_id ON connection_evidence(account_id);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",
@@ -183,7 +185,7 @@ def _ensure_economy_domain_postgres(conn) -> None:
         ("duration_days", "INTEGER"),
         ("activation_evidence_id", "VARCHAR(36)"),
     ):
-        _postgres_add_column_if_missing(conn, "entitlement_grants", column, ddl)
+        _postgres_add_column_if_missing(conn, "account_entitlement_grants", column, ddl)
     conn.execute(
         text(
             """
@@ -243,9 +245,9 @@ def _ensure_economy_domain_postgres(conn) -> None:
         )
     )
     for sql in (
-        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_reservation_expires_at ON entitlement_grants(reservation_expires_at);",
-        "CREATE INDEX IF NOT EXISTS ix_entitlement_grants_activation_evidence_id ON entitlement_grants(activation_evidence_id);",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_entitlement_grants_premium_trial_account ON entitlement_grants(account_id) WHERE source = 'premium_trial';",
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_reservation_expires_at ON account_entitlement_grants(reservation_expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_activation_evidence_id ON account_entitlement_grants(activation_evidence_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_account_entitlement_grants_premium_trial_account ON account_entitlement_grants(account_id) WHERE source = 'premium_trial';",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_connection_evidence_key ON connection_evidence(evidence_key);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_account_id ON connection_evidence(account_id);",
         "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",

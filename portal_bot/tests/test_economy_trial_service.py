@@ -248,7 +248,7 @@ def test_sqlite_and_postgres_economy_migrations_are_additive(tmp_path: Path) -> 
     with sqlite_engine.begin() as conn:
         conn.execute(
             text(
-                "CREATE TABLE entitlement_grants ("
+                "CREATE TABLE account_entitlement_grants ("
                 "id VARCHAR(36) PRIMARY KEY, account_id VARCHAR(36) NOT NULL, "
                 "idempotency_key VARCHAR(160) NOT NULL, source VARCHAR(40) NOT NULL, "
                 "status VARCHAR(24) NOT NULL)"
@@ -256,7 +256,10 @@ def test_sqlite_and_postgres_economy_migrations_are_additive(tmp_path: Path) -> 
         )
         migrations._ensure_economy_domain_sqlite(conn)
 
-    grant_columns = {column["name"] for column in inspect(sqlite_engine).get_columns("entitlement_grants")}
+    grant_columns = {
+        column["name"]
+        for column in inspect(sqlite_engine).get_columns("account_entitlement_grants")
+    }
     assert {"reserved_at", "reservation_expires_at", "activated_at", "duration_days", "activation_evidence_id"} <= grant_columns
     assert inspect(sqlite_engine).has_table("connection_evidence")
 
@@ -276,9 +279,15 @@ def test_sqlite_and_postgres_economy_migrations_are_additive(tmp_path: Path) -> 
     migrations._ensure_economy_domain_postgres(conn)
     postgres_sql = "\n".join(conn.sql)
     assert "CREATE TABLE IF NOT EXISTS connection_evidence" in postgres_sql
-    assert "ALTER TABLE entitlement_grants ADD COLUMN reservation_expires_at TIMESTAMP" in postgres_sql
+    assert (
+        "ALTER TABLE account_entitlement_grants ADD COLUMN reservation_expires_at TIMESTAMP"
+        in postgres_sql
+    )
     assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_connection_evidence_key" in postgres_sql
-    assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_entitlement_grants_premium_trial_account" in postgres_sql
+    assert (
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_account_entitlement_grants_premium_trial_account"
+        in postgres_sql
+    )
     sqlite_engine.dispose()
 
 
@@ -297,7 +306,7 @@ def test_postgres_rehearsal_orders_and_validates_connection_evidence() -> None:
         "id",
     ) in module.ECONOMY_INVARIANT_RELATIONS
     assert (
-        "entitlement_grants",
+        "account_entitlement_grants",
         "activation_evidence_id",
         "connection_evidence",
         "id",
@@ -318,7 +327,7 @@ def test_sqlite_postgres_and_rehearsal_include_referral_authority(tmp_path: Path
     with sqlite_engine.begin() as conn:
         conn.execute(
             text(
-                "CREATE TABLE entitlement_grants ("
+                "CREATE TABLE account_entitlement_grants ("
                 "id VARCHAR(36) PRIMARY KEY, account_id VARCHAR(36) NOT NULL, "
                 "idempotency_key VARCHAR(160) NOT NULL, source VARCHAR(40) NOT NULL, "
                 "status VARCHAR(24) NOT NULL)"
@@ -357,7 +366,11 @@ def test_sqlite_postgres_and_rehearsal_include_referral_authority(tmp_path: Path
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.TABLE_DEPENDENCIES["referral_relationships"] == {"accounts", "connection_evidence", "entitlement_grants"}
+    assert module.TABLE_DEPENDENCIES["referral_relationships"] == {
+        "accounts",
+        "connection_evidence",
+        "account_entitlement_grants",
+    }
     assert module.TABLE_DEPENDENCIES["referral_transitions"] == {"referral_relationships", "accounts"}
     assert ("referral_relationships", "referred_account_id", "accounts", "id") in module.ECONOMY_INVARIANT_RELATIONS
     sqlite_engine.dispose()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -27,6 +28,17 @@ _TEMP_NAME_RE = re.compile(
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _fsync_directory(path: Path) -> None:
+    if os.name != "posix":
+        return
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    directory_fd = os.open(str(path), flags)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 
 
 def _is_old_enough(path: Path, cutoff: datetime) -> bool:
@@ -163,6 +175,7 @@ def reconcile_support_attachments(
         session.close()
 
     report["expired_rows_removed"] = len(expired_names)
+    expired_files_changed = False
     session = session_factory()
     try:
         for stored_name in expired_names:
@@ -182,13 +195,21 @@ def reconcile_support_attachments(
             path = root / clean_name
             try:
                 path.unlink()
+                expired_files_changed = True
                 report["expired_files_removed"] += 1
             except FileNotFoundError:
                 report["expired_files_missing"] += 1
             except OSError:
                 report["file_errors"] += 1
     finally:
-        session.close()
+        try:
+            session.close()
+        finally:
+            if expired_files_changed:
+                try:
+                    _fsync_directory(root)
+                except OSError:
+                    report["file_errors"] += 1
 
     file_after = str(cursor.file_after if cursor is not None else "")
     file_cycle_cutoff_ns = int(cursor.file_cycle_cutoff_ns if cursor is not None else 0)
@@ -208,6 +229,8 @@ def reconcile_support_attachments(
     file_cycle_exhausted = len(candidates) < file_limit
     report["file_window_wrapped"] = int(file_cycle_exhausted)
 
+    candidate_files_changed = False
+    candidate_fsync_failed = False
     session = session_factory()
     try:
         row_after_id = int(cursor.row_after_id if cursor is not None else 0)
@@ -247,6 +270,7 @@ def reconcile_support_attachments(
             if _TEMP_NAME_RE.fullmatch(path.name):
                 try:
                     path.unlink()
+                    candidate_files_changed = True
                     report["temp_files_removed"] += 1
                 except FileNotFoundError:
                     continue
@@ -264,16 +288,28 @@ def reconcile_support_attachments(
                 continue
             try:
                 path.unlink()
+                candidate_files_changed = True
                 report["orphan_files_removed"] += 1
             except FileNotFoundError:
                 continue
             except OSError:
                 report["file_errors"] += 1
     finally:
-        session.close()
+        try:
+            session.close()
+        finally:
+            if candidate_files_changed:
+                try:
+                    _fsync_directory(root)
+                except OSError:
+                    candidate_fsync_failed = True
+                    report["file_errors"] += 1
 
     if cursor is not None:
-        if file_cycle_exhausted:
+        if candidate_fsync_failed:
+            cursor.file_after = file_after
+            cursor.file_cycle_cutoff_ns = file_cycle_cutoff_ns
+        elif file_cycle_exhausted:
             cursor.file_after = ""
             cursor.file_cycle_cutoff_ns = 0
         else:

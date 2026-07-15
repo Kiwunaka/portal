@@ -4,7 +4,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker
 
 
@@ -118,6 +118,7 @@ def test_account_foundation_models_cover_release_contract() -> None:
         "auth_sessions",
         "recovery_codes",
         "entitlement_grants",
+        "account_entitlement_grants",
         "antiabuse_events",
         "antiabuse_cases",
         "antiabuse_actions",
@@ -131,7 +132,7 @@ def test_account_foundation_models_cover_release_contract() -> None:
     )
     assert {"code_hmac", "code_hint", "status", "used_at"} <= set(tables["recovery_codes"].c.keys())
     assert {"idempotency_key", "source", "status", "expires_at", "reversed_at"} <= set(
-        tables["entitlement_grants"].c.keys()
+        tables["account_entitlement_grants"].c.keys()
     )
     assert {
         "raw_ip",
@@ -140,6 +141,60 @@ def test_account_foundation_models_cover_release_contract() -> None:
         "ip_prefix_hmac",
         "hmac_version",
     } <= set(tables["antiabuse_events"].c.keys())
+
+
+def test_legacy_entitlement_table_is_preserved_beside_account_ledger(tmp_path: Path) -> None:
+    engine = create_engine(f"sqlite:///{(tmp_path / 'legacy-entitlements.db').as_posix()}")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE entitlement_grants ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "tg_id BIGINT NOT NULL, "
+                "activation_key_code VARCHAR(64) NOT NULL, "
+                "plan_code VARCHAR(32) NOT NULL, "
+                "source VARCHAR(32), "
+                "duration_days INTEGER NOT NULL, "
+                "granted_from DATETIME NOT NULL, "
+                "granted_until DATETIME NOT NULL, "
+                "meta_json TEXT, "
+                "created_at DATETIME NOT NULL)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO entitlement_grants "
+                "(tg_id, activation_key_code, plan_code, source, duration_days, "
+                "granted_from, granted_until, created_at) "
+                "VALUES (42, 'legacy-key', 'legacy-paid', 'legacy', 30, "
+                "'2026-06-01 00:00:00', '2026-07-01 00:00:00', '2026-06-01 00:00:00')"
+            )
+        )
+
+    Base.metadata.create_all(engine)
+    run_migrations(engine)
+
+    inspector = inspect(engine)
+    assert inspector.has_table("entitlement_grants")
+    assert inspector.has_table("account_entitlement_grants")
+    assert {column["name"] for column in inspector.get_columns("entitlement_grants")} == {
+        "id",
+        "tg_id",
+        "activation_key_code",
+        "plan_code",
+        "source",
+        "duration_days",
+        "granted_from",
+        "granted_until",
+        "meta_json",
+        "created_at",
+    }
+    assert {"account_id", "idempotency_key", "grant_kind", "status"} <= {
+        column["name"] for column in inspector.get_columns("account_entitlement_grants")
+    }
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT COUNT(*) FROM entitlement_grants")).scalar_one() == 1
+    engine.dispose()
 
 
 def _trial_grant(

@@ -118,6 +118,8 @@
     "scripts/remote_check_subscription_interval.py",
     "scripts/remote_inspect_user.py",
     "scripts/remote_install_portal_worker_service.py",
+    "scripts/remote_postgres_backup_restore_gate.py",
+    "scripts/remote_postgres_candidate_gate.py",
     "scripts/remote_postgres_cutover.py",
     "scripts/remote_reconcile_payment.py",
     "scripts/text_integrity.py",

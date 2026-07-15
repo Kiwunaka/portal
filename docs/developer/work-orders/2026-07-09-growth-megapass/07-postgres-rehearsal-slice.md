@@ -123,3 +123,38 @@ These labels cannot be promoted to `PASS` from SQLite tests.
 Implement canonical entitlement/trial activation and the approved referral/free
 economy. Client `clicked_connect` and `connected_ok` remain UX telemetry and
 cannot activate trial or referral grants without node/control-plane evidence.
+
+## 2026-07-15 Live PostgreSQL Addendum
+
+The earlier environment limits above remain accurate for that synthetic slice,
+but they are superseded for the separately authorized 2026-07-15 live gate:
+
+- `PASS`: an encrypted `pg_dump -Fc` of production PostgreSQL `portal` was
+  restored into a retained, separately named `_rehearsal` database without a
+  plaintext dump on disk.
+- `PASS`: all 62 public-table row counts matched exactly between the exported
+  repeatable-read source snapshot and restored target. The source remained
+  read-only and the target existed separately.
+- `PASS`: the final clone target was created as the guarded live application
+  role, all 526 restored public objects were owned by it, and database/schema
+  access from `PUBLIC` was revoked before restore. Reports contain no role or
+  database URL.
+- `PASS`: the authoritative clone evidence starts its first database statement
+  with a repeatable-read `READ ONLY` transaction, imports the exported
+  snapshot, and streams aggregate JSON without temporary tables or any source
+  DDL/DML.
+- `PASS`: source and target aggregate support counts were retained without row
+  values; the live schema had no support attachment rows.
+- Earlier apply/candidate attempts are retained, not hidden: PostgreSQL 14
+  rejected temporary-table creation after entering read-only mode; a later
+  attempt moved session-local temporary DDL before `READ ONLY` and was rejected
+  by review as insufficient for the strict source contract;
+  `pg_restore` rejected a positional `-`; and the first restored target was
+  owned by `postgres`, causing the app-role candidate to fail with SQLSTATE
+  `42501`. Focused tests and the final app-owned restore corrected these
+  assumptions without persistent or temporary source mutation.
+- The exact post-commit candidate DDL/concurrency result is authoritative only
+  in its no-clobber report outside Git. Do not infer it from this addendum or
+  from backup/restore success.
+
+See `13-live-postgres-support-gates.md` for the redacted cross-gate summary.

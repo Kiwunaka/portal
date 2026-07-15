@@ -241,6 +241,96 @@ The older no-subcommand copier remains compatibility-only for existing operator
 automation. Do not use `--truncate-target` as rehearsal evidence. The remote
 production cutover script is not hardened or executed by this slice.
 
+### Production PostgreSQL encrypted clone and candidate gate
+
+Use `remote_postgres_backup_restore_gate.py` when the live database is already
+PostgreSQL and an encrypted production-to-rehearsal clone is required. The
+source guard accepts only the exact confirmed `portal` database. The target
+must be separately confirmed, end in `_rehearsal`, and differ from the source.
+The script never prints a database URL or passphrase and does not retain a
+plaintext dump:
+
+```powershell
+$env:POKROV_POSTGRES_BACKUP_PASSPHRASE = <read from the local protected secret store>
+python scripts/remote_postgres_backup_restore_gate.py `
+  --brain-ip <brain-ip> `
+  --source-db portal `
+  --confirm-source portal `
+  --target-db portal_candidate_rehearsal `
+  --confirm-target portal_candidate_rehearsal `
+  --report C:\path\outside-git\postgres-backup-restore.json
+
+# Review PLAN_ONLY before adding --apply. Use --reset-target only for an
+# explicitly approved disposable target.
+Remove-Item Env:POKROV_POSTGRES_BACKUP_PASSPHRASE
+```
+
+The apply path exports one repeatable-read snapshot, streams `pg_dump -Fc`
+directly into AES-256-CBC/PBKDF2 encryption, and verifies the encrypted stream.
+Its evidence connection begins with a repeatable-read `READ ONLY` transaction
+as the first database statement, imports the exported snapshot, and emits one
+aggregate JSON record per read-only query through psql `\gexec`. It must not use
+temporary tables or any source DDL/DML.
+It resolves the ordinary login role from the live `DATABASE_URL` entirely on
+the control plane, checks that the URL still names the confirmed source, creates
+the target owned by that role, removes database/schema access from `PUBLIC`,
+grants the role explicit `USAGE, CREATE` on `public`, and restores with
+`--no-owner --no-privileges --role=<resolved role>`. Neither the URL nor role is
+included in reports.
+
+After restore, the gate proves that the role owns the target, the `public`
+schema, and every supported namespaced public object: all relations and indexes,
+routines, types, extensions, collations, conversions, operators and
+operator classes/families, text-search dictionaries/configurations, extended
+statistics, and schema-scoped default ACLs. It proves the role can create in
+`public` and that `PUBLIC` database/schema access remains revoked, then compares
+exact aggregate table counts. The encrypted archive, report, and protected
+passphrase material stay outside Git. A count match is restore proof for the
+cloned target, not approval to mutate the source or deploy application code. If
+target creation, ACL setup, restore, or ownership evidence fails, retain the
+encrypted backup and treat the target as tainted; reset only the separately
+confirmed `_rehearsal` database on the next approved run. Do not use
+cluster-wide `REASSIGN OWNED` as repair.
+
+Run the exact application candidate only after the clone is retained. Build the
+archive from a clean `portal_bot` tree at `HEAD`; keep it outside Git:
+
+```powershell
+$commit = (git rev-parse HEAD).Trim()
+git archive --format=tar --output C:\path\outside-git\portal-bot-candidate.tar $commit portal_bot shared
+$sha256 = (Get-FileHash C:\path\outside-git\portal-bot-candidate.tar -Algorithm SHA256).Hash.ToLowerInvariant()
+
+python scripts/remote_postgres_candidate_gate.py `
+  --brain-ip <brain-ip> `
+  --candidate-archive C:\path\outside-git\portal-bot-candidate.tar `
+  --candidate-sha256 $sha256 `
+  --candidate-commit $commit `
+  --source-db portal `
+  --confirm-source portal `
+  --target-db portal_candidate_rehearsal `
+  --confirm-target portal_candidate_rehearsal `
+  --report C:\path\outside-git\postgres-candidate-plan.json
+```
+
+The archive contains the exact tracked backend plus its tracked `shared/`
+runtime truth; dirty scoped files, untracked files, and secret-like filenames
+are rejected. The exact tracked `.env.example` template is the only environment
+filename exception; real `.env`, credential, password, private-key, and
+keystore paths remain forbidden. Review
+`PLAN_ONLY`, use a new no-clobber report path, then add `--apply`. The
+candidate gate derives the target URL in remote process memory, imports only the
+uploaded archive, and connects only to the rehearsal database. Before reading
+application rows or running DDL it proves target/session identity, ordinary
+login-role attributes, database ownership, schema privileges, `users` read
+access, and ownership of every public application object. It then checks
+additive DDL and index lock timeouts, the schema advisory lock, two idempotent
+`db.init_db()` runs, `FOR UPDATE SKIP LOCKED`, concurrent attachment bind/retry,
+and a real PostgreSQL protocol-level lost commit acknowledgement. Reports carry
+only boolean/count access evidence, never a role or URL. Synthetic rows and
+probe DDL must be confirmed absent before the report can say `PASS`.
+The script does not create, drop, or reset a database and does not deploy or
+restart a service.
+
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)

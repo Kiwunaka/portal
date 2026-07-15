@@ -82,12 +82,14 @@ below are complete.
   prefix HMAC at 90 days. A dedicated early-sweep worker drains covered ledger
   and legacy raw-IP fields before sleeping. This candidate behavior is not
   deployed
-- `entitlement_grants` now carries the repository-candidate premium-trial
-  reservation and activation authority. `connection_evidence` is append-only,
-  account-owned server evidence keyed uniquely without subscription URLs,
-  bearer tokens, provider secrets, source IPs, or traffic payloads. Existing
-  legacy snapshot grants remain unchanged as compatibility fallback. This
-  candidate is not deployed
+- `account_entitlement_grants` carries the repository-candidate premium-trial
+  reservation and activation authority. The pre-existing
+  `entitlement_grants` activation-key history keeps its legacy integer schema
+  and rows unchanged; it is not reused as the UUID account ledger.
+  `connection_evidence` is append-only, account-owned server evidence keyed
+  uniquely without subscription URLs, bearer tokens, provider secrets, source
+  IPs, or traffic payloads. Existing legacy snapshot grants remain unchanged
+  as compatibility fallback. This candidate is not deployed
 - PostgreSQL schema creation and additive migrations use the same
   `pokrov_schema_bootstrap` transaction advisory lock, preventing their
   separate transactions from overlapping during concurrent first startup.

@@ -295,10 +295,13 @@ Account ownership transition:
   is not deployed and worker availability is not production proof. These are
   operational deadlines, not an in-database TTL: worker outage or persistent
   backlog is a release-blocking incident.
-- `entitlement_grants` remains foundation schema. Entitlement-authority
-  cutover and automated antiabuse decisions are not live. A hard lock can be
-  written through the antiabuse service only with an explicit operator ID and
-  reason; no automatic rule may hard-lock an account.
+- `account_entitlement_grants` is the UUID account-foundation ledger. The
+  pre-existing `entitlement_grants` table remains an untouched legacy
+  activation-key history with integer IDs; migrations and rollback retain it
+  separately instead of rebuilding it. Entitlement-authority cutover and
+  automated antiabuse decisions are not live. A hard lock can be written
+  through the antiabuse service only with an explicit operator ID and reason;
+  no automatic rule may hard-lock an account.
 - `scripts/migrate_sqlite_to_postgres.py rehearse` now provides a fail-closed
   synthetic rehearsal path: SQLite backup API plus `quick_check`, confirmed
   reviewed source-count manifest, disposable `_rehearsal` target,

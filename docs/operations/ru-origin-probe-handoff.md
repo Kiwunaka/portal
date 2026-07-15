@@ -35,25 +35,37 @@ Current SSH access note, verified on `2026-05-22`: `mini` / `RFMINI` is reachabl
 1. Проверьте, жив ли `mini` / `RFMINI`.
 2. Если TCP до `mini` есть, но SSH auth не проходит, зафиксируйте `RU-origin check: BLOCKED_BY_ACCESS` и обновите credential/authorized_keys.
 3. Если `mini` недоступен, сразу зафиксируйте, что RU-origin observability degraded, и укажите replacement host, если он есть.
-4. Запустите probe:
+4. Подключитесь к `mini` со строгой проверкой SSH host key. Во временный каталог
+   с режимом `0700` перенесите точные candidate-версии `ru_probe_runner.py`,
+   `node_dataplane_probe.py`, `node_inventory.py` и inventory. Запустите probe
+   **внутри `mini`**, затем заберите JSON и удалите временный каталог:
 
-```powershell
-python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host mini --out ops-local/ru-probe.json
+```bash
+python3 ru_probe_runner.py \
+  --inventory inventory.md \
+  --reserve-host rf1.pokrov.space \
+  --probe-host mini \
+  --out ru-probe.json
 ```
 
-4. Соберите короткий операторский отчёт:
+   `--probe-host mini` только записывает метку в JSON и не выполняет SSH.
+   Локальный запуск этой команды на workstation не является RU-origin proof.
+   Временный каталог, runner и сырой JSON на сервере удаляются после успешного
+   копирования отчёта в локальный `ops-local/` вне Git.
+
+5. Соберите короткий операторский отчёт локально:
 
 ```powershell
 python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 ```
 
-5. Прочитайте отчёт до того, как писать handoff.
-6. Правильно классифицируйте результат:
+6. Прочитайте отчёт до того, как писать handoff.
+7. Правильно классифицируйте результат:
    - проблема probe host
    - проблема canonical host
    - проблема foreign edge
    - проблема EU-node
-7. Из того же самого запуска запишите `xhttp_alive` и `hysteria_alive`.
+8. Из того же самого запуска запишите `xhttp_alive` и `hysteria_alive`.
 
 ## Что probe обязан показать
 

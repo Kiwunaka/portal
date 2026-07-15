@@ -210,8 +210,23 @@ class RecoveryCode(Base):
     replaced_by_code_id = Column(String(36), nullable=True)
 
 
-class EntitlementGrant(Base):
+class LegacyEntitlementGrant(Base):
     __tablename__ = "entitlement_grants"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, nullable=False)
+    activation_key_code = Column(String(64), nullable=False)
+    plan_code = Column(String(32), nullable=False)
+    source = Column(String(32), nullable=True)
+    duration_days = Column(Integer, nullable=False)
+    granted_from = Column(DateTime, nullable=False)
+    granted_until = Column(DateTime, nullable=False)
+    meta_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class EntitlementGrant(Base):
+    __tablename__ = "account_entitlement_grants"
 
     id = Column(String(36), primary_key=True)
     account_id = Column(String(36), index=True, nullable=False)
