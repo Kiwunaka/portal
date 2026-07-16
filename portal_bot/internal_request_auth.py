@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import re
+import stat
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -20,6 +21,7 @@ _MAX_REGISTRY_BYTES = 64 * 1024
 _HTTP_METHOD_RE = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+\Z")
 _KEY_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _REGISTRY_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}\Z")
+_SCOPE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@/-]{0,63}\Z")
 _TIMESTAMP_RE = re.compile(r"(?:0|[1-9][0-9]{0,10})\Z")
 _SIGNATURE_RE = re.compile(r"[0-9a-f]{64}\Z")
 _REQUIRED_HEADERS = (
@@ -64,9 +66,10 @@ def _canonical_method(method: str) -> str:
         or not method
         or len(method) > 32
         or _HTTP_METHOD_RE.fullmatch(method) is None
+        or method != method.upper()
     ):
         raise ValueError("invalid HTTP method")
-    return method.upper()
+    return method
 
 
 def _is_visible_ascii(value: object, *, maximum: int) -> bool:
@@ -159,7 +162,7 @@ def _registry_identifier(value: object) -> str:
     return value
 
 
-def _registry_values(value: object) -> frozenset[str]:
+def _registry_values(value: object, *, pattern=_REGISTRY_ID_RE) -> frozenset[str]:
     if (
         not isinstance(value, list)
         or not value
@@ -167,10 +170,21 @@ def _registry_values(value: object) -> frozenset[str]:
         or not all(isinstance(item, str) for item in value)
     ):
         raise _invalid_registry()
-    normalized = frozenset(_registry_identifier(item) for item in value)
+    if any(pattern.fullmatch(item) is None for item in value):
+        raise _invalid_registry()
+    normalized = frozenset(value)
     if len(normalized) != len(value):
         raise _invalid_registry()
     return normalized
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate JSON member")
+        result[name] = value
+    return result
 
 
 def load_internal_service_key_registry() -> dict[str, InternalServiceKey]:
@@ -180,10 +194,16 @@ def load_internal_service_key_registry() -> dict[str, InternalServiceKey]:
 
     try:
         path = Path(configured_path)
-        size = path.stat().st_size
-        if not path.is_file() or size <= 0 or size > _MAX_REGISTRY_BYTES:
-            raise OSError
-        payload = json.loads(path.read_bytes().decode("utf-8"))
+        with path.open("rb") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise OSError
+            raw_registry = handle.read(_MAX_REGISTRY_BYTES + 1)
+        if not raw_registry or len(raw_registry) > _MAX_REGISTRY_BYTES:
+            raise ValueError("invalid registry size")
+        payload = json.loads(
+            raw_registry.decode("utf-8"),
+            object_pairs_hook=_unique_json_object,
+        )
     except (OSError, UnicodeError):
         raise InternalAuthError(500, "key_registry_unavailable") from None
     except (TypeError, ValueError):
@@ -226,7 +246,7 @@ def load_internal_service_key_registry() -> dict[str, InternalServiceKey]:
                 key_id=key_id,
                 secret=secret,
                 subject=_registry_identifier(entry["subject"]),
-                scopes=_registry_values(entry["scopes"]),
+                scopes=_registry_values(entry["scopes"], pattern=_SCOPE_RE),
                 origins=_registry_values(entry["origins"]),
                 enabled=enabled,
             )
@@ -256,24 +276,35 @@ def _auth_headers(headers: Mapping[str, str]) -> dict[str, str]:
 
 
 def _utc_now(now: datetime) -> datetime:
-    if not isinstance(now, datetime):
+    if not isinstance(now, datetime) or now.tzinfo is None:
         raise InternalAuthError(500, "invalid_auth_clock")
-    if now.tzinfo is None:
-        return now.replace(tzinfo=timezone.utc)
     return now.astimezone(timezone.utc)
 
 
-def _ensure_sqlite_outer_transaction(session) -> None:
+def _ensure_sqlite_outer_transaction(session):
+    connection = session.connection()
     bind = session.get_bind()
     if getattr(getattr(bind, "dialect", None), "name", None) != "sqlite":
-        return
-    connection = session.connection()
+        return connection
     proxied = getattr(connection, "connection", None)
     driver_connection = getattr(proxied, "driver_connection", proxied)
     if driver_connection is not None and not bool(
         getattr(driver_connection, "in_transaction", True)
     ):
         connection.exec_driver_sql("BEGIN")
+    return connection
+
+
+def _is_replayed_nonce_integrity_error(error) -> bool:
+    original = getattr(error, "orig", None)
+    diagnostic = getattr(original, "diag", None)
+    constraint_name = getattr(diagnostic, "constraint_name", None)
+    if constraint_name is not None:
+        return constraint_name == "uq_internal_ingest_nonce_scope_key_hash"
+    return str(original) == (
+        "UNIQUE constraint failed: internal_ingest_nonces.key_scope, "
+        "internal_ingest_nonces.key_id, internal_ingest_nonces.nonce_hash"
+    )
 
 
 def _consume_nonce(
@@ -294,11 +325,11 @@ def _consume_nonce(
     except ImportError:
         from .models import InternalIngestNonce
 
-    _ensure_sqlite_outer_transaction(session)
+    connection = _ensure_sqlite_outer_transaction(session)
     try:
-        with session.begin_nested():
-            session.add(
-                InternalIngestNonce(
+        with connection.begin_nested():
+            connection.execute(
+                InternalIngestNonce.__table__.insert().values(
                     key_scope=key_scope,
                     key_id=key_id,
                     nonce_hash=nonce_hash,
@@ -308,9 +339,10 @@ def _consume_nonce(
                     expires_at=expires_at,
                 )
             )
-            session.flush()
-    except IntegrityError:
-        raise InternalAuthError(409, "replayed_nonce") from None
+    except IntegrityError as error:
+        if _is_replayed_nonce_integrity_error(error):
+            raise InternalAuthError(409, "replayed_nonce") from None
+        raise
 
 
 def authenticate_internal_request(
@@ -341,7 +373,7 @@ def authenticate_internal_request(
 
     if (
         not isinstance(required_scope, str)
-        or _REGISTRY_ID_RE.fullmatch(required_scope) is None
+        or _SCOPE_RE.fullmatch(required_scope) is None
         or not isinstance(required_origin, str)
         or _REGISTRY_ID_RE.fullmatch(required_origin) is None
     ):
