@@ -1,0 +1,49 @@
+{
+  "targets": [
+    {
+      "target_id": "environment:google",
+      "target_kind": "environment",
+      "scope": "release_required",
+      "node_code": null,
+      "label": "Проверка среды из России",
+      "endpoint": {
+        "host": "google.com",
+        "port": 443,
+        "sni": "google.com",
+        "address_families": ["ipv6", "ipv4"],
+        "transport_profile": "https",
+        "probe_mode": "google_https",
+        "http_path": "/",
+        "min_body_bytes": 65536,
+        "local_probe_profile_id": null
+      },
+      "endpoint_fingerprint": "db46af2fa604f3a3e154d8edbe73475f8b5fc77b5cfb7596203200ed86b48685",
+      "required_stages": ["http_large_body", "tls", "tcp", "dns"]
+    },
+    {
+      "target_id": "node:nl",
+      "target_kind": "delivery_node",
+      "scope": "release_required",
+      "node_code": "nl",
+      "label": "Нидерланды",
+      "endpoint": {
+        "host": "nl.example.net",
+        "port": 443,
+        "sni": "front.example.net",
+        "address_families": ["ipv6", "ipv4"],
+        "transport_profile": "legacy_reality_fallback",
+        "probe_mode": "delivery_tls",
+        "http_path": null,
+        "min_body_bytes": null,
+        "local_probe_profile_id": null
+      },
+      "endpoint_fingerprint": "4a4b7fc98cd6df202d20cbec3cba79d4314cf0c24399a86dc07aa75084acd81b",
+      "required_stages": ["tls", "tcp", "dns"]
+    }
+  ],
+  "endpoint_fingerprints": {
+    "environment:google": "db46af2fa604f3a3e154d8edbe73475f8b5fc77b5cfb7596203200ed86b48685",
+    "node:nl": "4a4b7fc98cd6df202d20cbec3cba79d4314cf0c24399a86dc07aa75084acd81b"
+  },
+  "manifest_revision": "49f8ca49d4d35069fbbf8a96850507d3451b246f5622c3ed5e1436674fe44ed3"
+}
