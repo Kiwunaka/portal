@@ -540,7 +540,7 @@ git commit -m "refactor(adminapp): load only the active operations route"
 | `ru_probe_runs` | unique `run_id`; indexed `finished_at`, `release_verdict`, `current_eligible`, `probe_host_label`; raw body is represented only by `artifact_sha256`, never stored as secret-bearing log text |
 | `ru_probe_target_results` | FK `run_db_id → ru_probe_runs.id ON DELETE CASCADE`; unique `(run_db_id,target_id)`; indexes `node_code`, `target_kind`, `verdict` |
 | `ru_probe_uploader_heartbeats` | unique `(probe_host_id,observed_at)`; indexes `received_at`, `probe_host_id`; DTO fields are allowlisted columns/JSON only |
-| `internal_ingest_nonces` | unique `(key_id,nonce)`; index `expires_at`; stores path/timestamp/body hash for audit without secret/signature |
+| `internal_ingest_nonces` | unique `(key_scope,key_id,nonce_hash)`; index `expires_at`; stores nonce SHA-256 plus path/timestamp/body hash for audit, never raw nonce, secret or signature |
 
 - [ ] **Step 1: Write failing SQLite model/migration assertions**
 
@@ -561,7 +561,7 @@ def test_ru_probe_tables_have_required_constraints(api_module) -> None:
     )
 ```
 
-Also assert the target FK has `ondelete=CASCADE`, nonce unique is `(key_id,nonce)`, and running `run_migrations(engine)` twice succeeds.
+Also assert the target FK has `ondelete=CASCADE`, nonce unique is `(key_scope,key_id,nonce_hash)`, no raw `nonce` column exists, and running `run_migrations(engine)` twice succeeds.
 
 - [ ] **Step 2: Run and confirm missing tables fail**
 
@@ -573,7 +573,7 @@ Expected: FAIL because the tables do not exist.
 
 - [ ] **Step 3: Add SQLAlchemy models with exact domain columns**
 
-`RuProbeRun` includes IDs/version/origin/host, started/finished/received timestamps, manifest/execution/environment/release/current fields, server booleans, redacted reason/summary, artifact/key identity and retention hold fields. `RuProbeTargetResult` stores identity, endpoint/stages/address-family/transport JSON, server verdict and bounded redacted detail. Heartbeat stores the schema-v1 counters, disk/archive state and allowlisted last error. Nonce stores no secret.
+`RuProbeRun` includes IDs/version/origin/host, started/finished/received timestamps, manifest/execution/environment/release/current fields, server booleans, redacted reason/summary, artifact/key identity and retention hold fields. `RuProbeTargetResult` stores identity, endpoint/stages/address-family/transport JSON, server verdict and bounded redacted detail. Heartbeat stores the schema-v1 counters, disk/archive state and allowlisted last error. Nonce stores only `key_scope`, `key_id`, SHA-256 `nonce_hash`, normalized request path, request timestamp, body SHA-256, expiry and creation time; it stores no raw nonce, secret or signature.
 
 - [ ] **Step 4: Add `_ensure_ru_probe_domain_sqlite` and `_ensure_ru_probe_domain_postgres`**
 
@@ -679,7 +679,7 @@ Keep module-level signing/path helpers stdlib-only. Import `InternalIngestNonce`
 
 - [ ] **Step 4: Implement durable nonce insertion in the caller transaction**
 
-Validate size/timestamp/key/scope/HMAC first, then create `InternalIngestNonce(key_id=key.key_id, nonce=nonce, request_path=path, request_timestamp=request_time, body_sha256=body_hash, expires_at=now + timedelta(hours=24))`, add it to the caller session and call `flush()`. Convert the unique race to `409 replayed_nonce`; the API task will commit nonce and domain rows together.
+Validate size/timestamp/key/scope/HMAC first, then create `InternalIngestNonce(key_scope=required_scope, key_id=key.key_id, nonce_hash=hashlib.sha256(nonce.encode("utf-8")).hexdigest(), request_path=path, request_timestamp=request_time, body_sha256=body_hash, expires_at=now + timedelta(hours=24))`, add it to the caller session and call `flush()`. Never persist the raw nonce. Convert the unique race to `409 replayed_nonce`; the API task will commit nonce and domain rows together.
 
 - [ ] **Step 5: Run focused tests**
 
