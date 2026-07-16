@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, event, text
 
 
 def _sqlite_column_exists(conn, table: str, column: str) -> bool:
@@ -20,6 +20,24 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
         {"name": index_name},
     ).fetchall()
     return bool(rows)
+
+
+def _sqlite_enable_foreign_keys_on_checkout(
+    dbapi_connection,
+    _connection_record,
+    _connection_proxy,
+) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
+
+
+def _configure_sqlite_foreign_keys(engine: Engine) -> None:
+    pool = engine.pool
+    if not event.contains(pool, "checkout", _sqlite_enable_foreign_keys_on_checkout):
+        event.listen(pool, "checkout", _sqlite_enable_foreign_keys_on_checkout)
 
 
 _POSTGRES_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -1005,6 +1023,299 @@ def _ensure_admin_ops_domain_postgres(conn) -> None:
         conn.execute(text(sql))
 
 
+def _ensure_ru_probe_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_runs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              run_id VARCHAR(36) NOT NULL,
+              schema_version INTEGER NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              probe_host_id VARCHAR(64) NOT NULL,
+              probe_host_label VARCHAR(128) NOT NULL,
+              probe_public_ip VARCHAR(64),
+              runner_version VARCHAR(64) NOT NULL,
+              started_at DATETIME NOT NULL,
+              finished_at DATETIME NOT NULL,
+              received_at DATETIME NOT NULL,
+              manifest_revision VARCHAR(64) NOT NULL,
+              execution_status VARCHAR(32) NOT NULL,
+              evidence_code VARCHAR(64),
+              environment_verdict VARCHAR(32) NOT NULL,
+              release_verdict VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              google_reachable BOOLEAN,
+              xhttp_alive BOOLEAN,
+              hysteria_alive BOOLEAN,
+              server_reason VARCHAR(500),
+              server_summary VARCHAR(1000),
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              retention_hold BOOLEAN NOT NULL DEFAULT FALSE,
+              retention_hold_reason VARCHAR(500),
+              retention_held_at DATETIME,
+              CONSTRAINT uq_ru_probe_runs_run_id UNIQUE (run_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_target_results (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              run_db_id INTEGER NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              target_kind VARCHAR(32) NOT NULL,
+              scope VARCHAR(32) NOT NULL,
+              node_code VARCHAR(32),
+              endpoint_fingerprint VARCHAR(64) NOT NULL,
+              endpoint_host VARCHAR(255) NOT NULL,
+              endpoint_port INTEGER NOT NULL,
+              endpoint_sni VARCHAR(255),
+              requested_address_families_json TEXT NOT NULL,
+              transport_metadata_json TEXT NOT NULL,
+              transport_profile VARCHAR(64) NOT NULL,
+              probe_mode VARCHAR(64) NOT NULL,
+              http_path VARCHAR(512),
+              min_body_bytes INTEGER,
+              local_probe_profile_id VARCHAR(128),
+              observed_at DATETIME NOT NULL,
+              overall_status VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              dns_status VARCHAR(32) NOT NULL,
+              dns_latency_ms INTEGER,
+              tcp_status VARCHAR(32) NOT NULL,
+              tcp_latency_ms INTEGER,
+              tls_status VARCHAR(32) NOT NULL,
+              tls_latency_ms INTEGER,
+              http_large_body_status VARCHAR(32) NOT NULL,
+              http_large_body_latency_ms INTEGER,
+              transport_handshake_status VARCHAR(32) NOT NULL,
+              transport_handshake_latency_ms INTEGER,
+              ipv4_status VARCHAR(32) NOT NULL,
+              ipv6_status VARCHAR(32) NOT NULL,
+              reported_transport_handshake_status VARCHAR(32) NOT NULL,
+              reported_transport_classification VARCHAR(64) NOT NULL,
+              server_reason_code VARCHAR(64),
+              server_detail VARCHAR(500),
+              CONSTRAINT fk_ru_probe_target_results_run FOREIGN KEY (run_db_id) REFERENCES ru_probe_runs(id) ON DELETE CASCADE,
+              CONSTRAINT uq_ru_probe_target_run_target UNIQUE (run_db_id, target_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_uploader_heartbeats (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              probe_host_id VARCHAR(64) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              received_at DATETIME NOT NULL,
+              service_version VARCHAR(64) NOT NULL,
+              pending_count INTEGER NOT NULL DEFAULT 0,
+              blocked_count INTEGER NOT NULL DEFAULT 0,
+              quarantine_count INTEGER NOT NULL DEFAULT 0,
+              oldest_pending_at DATETIME,
+              archive_write_ok BOOLEAN NOT NULL DEFAULT FALSE,
+              disk_free_bytes BIGINT,
+              disk_state VARCHAR(32) NOT NULL,
+              last_error_code VARCHAR(64),
+              ingest_key_id VARCHAR(128) NOT NULL,
+              CONSTRAINT uq_ru_probe_uploader_heartbeat_host_observed UNIQUE (probe_host_id, observed_at)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS internal_ingest_nonces (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              key_scope VARCHAR(64) NOT NULL,
+              key_id VARCHAR(128) NOT NULL,
+              nonce_hash VARCHAR(64) NOT NULL,
+              request_path VARCHAR(512) NOT NULL,
+              request_timestamp DATETIME NOT NULL,
+              body_sha256 VARCHAR(64) NOT NULL,
+              expires_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_internal_ingest_nonce_scope_key_hash UNIQUE (key_scope, key_id, nonce_hash)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_finished_at ON ru_probe_runs(finished_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_release_verdict ON ru_probe_runs(release_verdict);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_current_eligible ON ru_probe_runs(current_eligible);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_probe_host_label ON ru_probe_runs(probe_host_label);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_code ON ru_probe_target_results(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_target_kind ON ru_probe_target_results(target_kind);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_overall_status ON ru_probe_target_results(overall_status);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_observed_at ON ru_probe_target_results(node_code, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_run_node ON ru_probe_target_results(run_db_id, node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_received_at ON ru_probe_uploader_heartbeats(received_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_probe_host_id ON ru_probe_uploader_heartbeats(probe_host_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_host_observed_at ON ru_probe_uploader_heartbeats(probe_host_id, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_internal_ingest_nonces_expires_at ON internal_ingest_nonces(expires_at);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_ru_probe_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_runs (
+              id SERIAL PRIMARY KEY,
+              run_id VARCHAR(36) NOT NULL,
+              schema_version INTEGER NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              probe_host_id VARCHAR(64) NOT NULL,
+              probe_host_label VARCHAR(128) NOT NULL,
+              probe_public_ip VARCHAR(64),
+              runner_version VARCHAR(64) NOT NULL,
+              started_at TIMESTAMPTZ NOT NULL,
+              finished_at TIMESTAMPTZ NOT NULL,
+              received_at TIMESTAMPTZ NOT NULL,
+              manifest_revision VARCHAR(64) NOT NULL,
+              execution_status VARCHAR(32) NOT NULL,
+              evidence_code VARCHAR(64),
+              environment_verdict VARCHAR(32) NOT NULL,
+              release_verdict VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              google_reachable BOOLEAN,
+              xhttp_alive BOOLEAN,
+              hysteria_alive BOOLEAN,
+              server_reason VARCHAR(500),
+              server_summary VARCHAR(1000),
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              retention_hold BOOLEAN NOT NULL DEFAULT FALSE,
+              retention_hold_reason VARCHAR(500),
+              retention_held_at TIMESTAMPTZ,
+              CONSTRAINT uq_ru_probe_runs_run_id UNIQUE (run_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_target_results (
+              id SERIAL PRIMARY KEY,
+              run_db_id INTEGER NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              target_kind VARCHAR(32) NOT NULL,
+              scope VARCHAR(32) NOT NULL,
+              node_code VARCHAR(32),
+              endpoint_fingerprint VARCHAR(64) NOT NULL,
+              endpoint_host VARCHAR(255) NOT NULL,
+              endpoint_port INTEGER NOT NULL,
+              endpoint_sni VARCHAR(255),
+              requested_address_families_json TEXT NOT NULL,
+              transport_metadata_json TEXT NOT NULL,
+              transport_profile VARCHAR(64) NOT NULL,
+              probe_mode VARCHAR(64) NOT NULL,
+              http_path VARCHAR(512),
+              min_body_bytes INTEGER,
+              local_probe_profile_id VARCHAR(128),
+              observed_at TIMESTAMPTZ NOT NULL,
+              overall_status VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              dns_status VARCHAR(32) NOT NULL,
+              dns_latency_ms INTEGER,
+              tcp_status VARCHAR(32) NOT NULL,
+              tcp_latency_ms INTEGER,
+              tls_status VARCHAR(32) NOT NULL,
+              tls_latency_ms INTEGER,
+              http_large_body_status VARCHAR(32) NOT NULL,
+              http_large_body_latency_ms INTEGER,
+              transport_handshake_status VARCHAR(32) NOT NULL,
+              transport_handshake_latency_ms INTEGER,
+              ipv4_status VARCHAR(32) NOT NULL,
+              ipv6_status VARCHAR(32) NOT NULL,
+              reported_transport_handshake_status VARCHAR(32) NOT NULL,
+              reported_transport_classification VARCHAR(64) NOT NULL,
+              server_reason_code VARCHAR(64),
+              server_detail VARCHAR(500),
+              CONSTRAINT fk_ru_probe_target_results_run
+                FOREIGN KEY (run_db_id) REFERENCES ru_probe_runs(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_ru_probe_target_run_target
+                UNIQUE (run_db_id, target_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_uploader_heartbeats (
+              id SERIAL PRIMARY KEY,
+              probe_host_id VARCHAR(64) NOT NULL,
+              observed_at TIMESTAMPTZ NOT NULL,
+              received_at TIMESTAMPTZ NOT NULL,
+              service_version VARCHAR(64) NOT NULL,
+              pending_count INTEGER NOT NULL DEFAULT 0,
+              blocked_count INTEGER NOT NULL DEFAULT 0,
+              quarantine_count INTEGER NOT NULL DEFAULT 0,
+              oldest_pending_at TIMESTAMPTZ,
+              archive_write_ok BOOLEAN NOT NULL DEFAULT FALSE,
+              disk_free_bytes BIGINT,
+              disk_state VARCHAR(32) NOT NULL,
+              last_error_code VARCHAR(64),
+              ingest_key_id VARCHAR(128) NOT NULL,
+              CONSTRAINT uq_ru_probe_uploader_heartbeat_host_observed
+                UNIQUE (probe_host_id, observed_at)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS internal_ingest_nonces (
+              id SERIAL PRIMARY KEY,
+              key_scope VARCHAR(64) NOT NULL,
+              key_id VARCHAR(128) NOT NULL,
+              nonce_hash VARCHAR(64) NOT NULL,
+              request_path VARCHAR(512) NOT NULL,
+              request_timestamp TIMESTAMPTZ NOT NULL,
+              body_sha256 VARCHAR(64) NOT NULL,
+              expires_at TIMESTAMPTZ NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_internal_ingest_nonce_scope_key_hash
+                UNIQUE (key_scope, key_id, nonce_hash)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_finished_at ON ru_probe_runs(finished_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_release_verdict ON ru_probe_runs(release_verdict);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_current_eligible ON ru_probe_runs(current_eligible);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_probe_host_label ON ru_probe_runs(probe_host_label);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_code ON ru_probe_target_results(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_target_kind ON ru_probe_target_results(target_kind);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_overall_status ON ru_probe_target_results(overall_status);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_observed_at ON ru_probe_target_results(node_code, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_run_node ON ru_probe_target_results(run_db_id, node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_received_at ON ru_probe_uploader_heartbeats(received_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_probe_host_id ON ru_probe_uploader_heartbeats(probe_host_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_host_observed_at ON ru_probe_uploader_heartbeats(probe_host_id, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_internal_ingest_nonces_expires_at ON internal_ingest_nonces(expires_at);",
+    ]:
+        conn.execute(text(sql))
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -1017,6 +1328,7 @@ def run_migrations(engine: Engine) -> None:
     if dialect and dialect != "sqlite":
         return
 
+    _configure_sqlite_foreign_keys(engine)
     with engine.begin() as conn:
         # users table: add columns if missing
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")).fetchone():
@@ -1454,6 +1766,7 @@ def run_migrations(engine: Engine) -> None:
 
         _ensure_capacity_domain_sqlite(conn)
         _ensure_admin_ops_domain_sqlite(conn)
+        _ensure_ru_probe_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -2288,6 +2601,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
 
         _ensure_capacity_domain_postgres(conn)
         _ensure_admin_ops_domain_postgres(conn)
+        _ensure_ru_probe_domain_postgres(conn)
 
         conn.execute(
             text(

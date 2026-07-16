@@ -9,10 +9,13 @@ from sqlalchemy import (
     Date,
     DateTime,
     Float,
+    ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    text as sql_text,
 )
 from sqlalchemy.orm import declarative_base
 
@@ -738,6 +741,215 @@ class OpsAlert(Base):
     metadata_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class RuProbeRun(Base):
+    __tablename__ = "ru_probe_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String(36), nullable=False)
+    schema_version = Column(Integer, nullable=False)
+    origin = Column(String(16), nullable=False)
+    probe_host_id = Column(String(64), nullable=False)
+    probe_host_label = Column(String(128), nullable=False)
+    probe_public_ip = Column(String(64), nullable=True)
+    runner_version = Column(String(64), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False)
+    manifest_revision = Column(String(64), nullable=False)
+    execution_status = Column(String(32), nullable=False)
+    evidence_code = Column(String(64), nullable=True)
+    environment_verdict = Column(String(32), nullable=False)
+    release_verdict = Column(String(32), nullable=False)
+    current_eligible = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    ineligible_reason = Column(String(64), nullable=True)
+    google_reachable = Column(Boolean, nullable=True)
+    xhttp_alive = Column(Boolean, nullable=True)
+    hysteria_alive = Column(Boolean, nullable=True)
+    server_reason = Column(String(500), nullable=True)
+    server_summary = Column(String(1000), nullable=True)
+    artifact_sha256 = Column(String(64), nullable=False)
+    ingest_key_id = Column(String(128), nullable=False)
+    retention_hold = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    retention_hold_reason = Column(String(500), nullable=True)
+    retention_held_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("run_id", name="uq_ru_probe_runs_run_id"),
+        Index("ix_ru_probe_runs_finished_at", finished_at),
+        Index("ix_ru_probe_runs_release_verdict", release_verdict),
+        Index("ix_ru_probe_runs_current_eligible", current_eligible),
+        Index("ix_ru_probe_runs_probe_host_label", probe_host_label),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class RuProbeTargetResult(Base):
+    __tablename__ = "ru_probe_target_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_db_id = Column(
+        Integer,
+        ForeignKey(
+            "ru_probe_runs.id",
+            name="fk_ru_probe_target_results_run",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    target_id = Column(String(128), nullable=False)
+    target_kind = Column(String(32), nullable=False)
+    scope = Column(String(32), nullable=False)
+    node_code = Column(String(32), nullable=True)
+    endpoint_fingerprint = Column(String(64), nullable=False)
+    endpoint_host = Column(String(255), nullable=False)
+    endpoint_port = Column(Integer, nullable=False)
+    endpoint_sni = Column(String(255), nullable=True)
+    requested_address_families_json = Column(Text, nullable=False)
+    transport_metadata_json = Column(Text, nullable=False)
+    transport_profile = Column(String(64), nullable=False)
+    probe_mode = Column(String(64), nullable=False)
+    http_path = Column(String(512), nullable=True)
+    min_body_bytes = Column(Integer, nullable=True)
+    local_probe_profile_id = Column(String(128), nullable=True)
+    observed_at = Column(DateTime(timezone=True), nullable=False)
+    overall_status = Column(String(32), nullable=False)
+    current_eligible = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    ineligible_reason = Column(String(64), nullable=True)
+    dns_status = Column(String(32), nullable=False)
+    dns_latency_ms = Column(Integer, nullable=True)
+    tcp_status = Column(String(32), nullable=False)
+    tcp_latency_ms = Column(Integer, nullable=True)
+    tls_status = Column(String(32), nullable=False)
+    tls_latency_ms = Column(Integer, nullable=True)
+    http_large_body_status = Column(String(32), nullable=False)
+    http_large_body_latency_ms = Column(Integer, nullable=True)
+    transport_handshake_status = Column(String(32), nullable=False)
+    transport_handshake_latency_ms = Column(Integer, nullable=True)
+    ipv4_status = Column(String(32), nullable=False)
+    ipv6_status = Column(String(32), nullable=False)
+    reported_transport_handshake_status = Column(String(32), nullable=False)
+    reported_transport_classification = Column(String(64), nullable=False)
+    server_reason_code = Column(String(64), nullable=True)
+    server_detail = Column(String(500), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "run_db_id",
+            "target_id",
+            name="uq_ru_probe_target_run_target",
+        ),
+        Index("ix_ru_probe_target_results_node_code", node_code),
+        Index("ix_ru_probe_target_results_target_kind", target_kind),
+        Index("ix_ru_probe_target_results_overall_status", overall_status),
+        Index(
+            "ix_ru_probe_target_results_node_observed_at",
+            node_code,
+            observed_at.desc(),
+        ),
+        Index("ix_ru_probe_target_results_run_node", run_db_id, node_code),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class RuProbeUploaderHeartbeat(Base):
+    __tablename__ = "ru_probe_uploader_heartbeats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    probe_host_id = Column(String(64), nullable=False)
+    observed_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False)
+    service_version = Column(String(64), nullable=False)
+    pending_count = Column(
+        Integer,
+        default=0,
+        server_default=sql_text("0"),
+        nullable=False,
+    )
+    blocked_count = Column(
+        Integer,
+        default=0,
+        server_default=sql_text("0"),
+        nullable=False,
+    )
+    quarantine_count = Column(
+        Integer,
+        default=0,
+        server_default=sql_text("0"),
+        nullable=False,
+    )
+    oldest_pending_at = Column(DateTime(timezone=True), nullable=True)
+    archive_write_ok = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    disk_free_bytes = Column(BigInteger, nullable=True)
+    disk_state = Column(String(32), nullable=False)
+    last_error_code = Column(String(64), nullable=True)
+    ingest_key_id = Column(String(128), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "probe_host_id",
+            "observed_at",
+            name="uq_ru_probe_uploader_heartbeat_host_observed",
+        ),
+        Index("ix_ru_probe_uploader_heartbeats_received_at", received_at),
+        Index("ix_ru_probe_uploader_heartbeats_probe_host_id", probe_host_id),
+        Index(
+            "ix_ru_probe_uploader_heartbeats_host_observed_at",
+            probe_host_id,
+            observed_at.desc(),
+        ),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class InternalIngestNonce(Base):
+    __tablename__ = "internal_ingest_nonces"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key_scope = Column(String(64), nullable=False)
+    key_id = Column(String(128), nullable=False)
+    nonce_hash = Column(String(64), nullable=False)
+    request_path = Column(String(512), nullable=False)
+    request_timestamp = Column(DateTime(timezone=True), nullable=False)
+    body_sha256 = Column(String(64), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "key_scope",
+            "key_id",
+            "nonce_hash",
+            name="uq_internal_ingest_nonce_scope_key_hash",
+        ),
+        Index("ix_internal_ingest_nonces_expires_at", expires_at),
+        {"sqlite_autoincrement": True},
+    )
 
 
 class AdminAudit(Base):

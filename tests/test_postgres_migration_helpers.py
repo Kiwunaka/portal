@@ -10,6 +10,12 @@ class _ScalarResult:
     def scalar(self):
         return self._value
 
+    def fetchall(self):
+        return []
+
+    def fetchone(self):
+        return None
+
 
 class _FakeConn:
     def __init__(self, *, existing_columns=None, varchar_limits=None):
@@ -27,6 +33,25 @@ class _FakeConn:
             key = (params or {}).get("table_name"), (params or {}).get("column_name")
             return _ScalarResult(self.varchar_limits.get(key))
         return _ScalarResult(None)
+
+
+class _BeginContext:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        return self.conn
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+
+class _FakeEngine:
+    def __init__(self):
+        self.conn = _FakeConn()
+
+    def begin(self):
+        return _BeginContext(self.conn)
 
 
 class PostgresMigrationHelperTests(unittest.TestCase):
@@ -108,6 +133,75 @@ class PostgresMigrationHelperTests(unittest.TestCase):
         )
         self.assertIn("is_enabled", backfill_sql)
         self.assertIn("TRUE", backfill_sql)
+
+    def test_ru_probe_postgres_ddl_is_safe_and_dependency_ordered(self) -> None:
+        conn = _FakeConn()
+
+        self.migrations._ensure_ru_probe_domain_postgres(conn)
+
+        sql = [" ".join(statement.split()) for statement, _params in conn.executed]
+        run_pos = next(i for i, item in enumerate(sql) if "CREATE TABLE IF NOT EXISTS ru_probe_runs" in item)
+        target_pos = next(i for i, item in enumerate(sql) if "CREATE TABLE IF NOT EXISTS ru_probe_target_results" in item)
+        heartbeat_pos = next(i for i, item in enumerate(sql) if "CREATE TABLE IF NOT EXISTS ru_probe_uploader_heartbeats" in item)
+        nonce_pos = next(i for i, item in enumerate(sql) if "CREATE TABLE IF NOT EXISTS internal_ingest_nonces" in item)
+        first_index_pos = next(i for i, item in enumerate(sql) if "CREATE INDEX IF NOT EXISTS" in item)
+
+        self.assertLess(run_pos, target_pos)
+        self.assertLess(target_pos, heartbeat_pos)
+        self.assertLess(heartbeat_pos, nonce_pos)
+        self.assertLess(nonce_pos, first_index_pos)
+
+        target_ddl = sql[target_pos]
+        self.assertIn("ON DELETE CASCADE", target_ddl)
+        self.assertIn("CONSTRAINT uq_ru_probe_target_run_target", target_ddl)
+        self.assertIn("overall_status", target_ddl)
+        self.assertNotIn(" verdict ", f" {target_ddl.lower()} ")
+
+        nonce_ddl = sql[nonce_pos]
+        self.assertIn("nonce_hash VARCHAR(64) NOT NULL", nonce_ddl)
+        self.assertIn("request_path VARCHAR(512) NOT NULL", nonce_ddl)
+        self.assertIn("body_sha256 VARCHAR(64) NOT NULL", nonce_ddl)
+        self.assertNotIn(" nonce VARCHAR", nonce_ddl)
+        self.assertNotIn(" signature ", f" {nonce_ddl.lower()} ")
+        self.assertNotIn(" secret ", f" {nonce_ddl.lower()} ")
+
+        ru_sql = " ".join(sql[run_pos:])
+        self.assertIn("TIMESTAMPTZ", ru_sql)
+        self.assertNotIn(" TIMESTAMP ", f" {ru_sql} ")
+        for index_name in (
+            "ix_ru_probe_runs_finished_at",
+            "ix_ru_probe_target_results_overall_status",
+            "ix_ru_probe_target_results_node_observed_at",
+            "ix_ru_probe_target_results_run_node",
+            "ix_ru_probe_uploader_heartbeats_host_observed_at",
+            "ix_internal_ingest_nonces_expires_at",
+        ):
+            self.assertTrue(any(index_name in item for item in sql), index_name)
+
+    def test_postgres_ru_probe_ddl_immediately_follows_admin_ops(self) -> None:
+        engine = _FakeEngine()
+
+        self.migrations._run_postgres_migrations(engine)
+
+        sql = [
+            " ".join(statement.split())
+            for statement, _params in engine.conn.executed
+        ]
+        admin_last = next(
+            i for i, item in enumerate(sql) if "ix_ops_alerts_last_seen_at" in item
+        )
+        ru_first = next(
+            i
+            for i, item in enumerate(sql)
+            if "CREATE TABLE IF NOT EXISTS ru_probe_runs" in item
+        )
+        external_orders = next(
+            i
+            for i, item in enumerate(sql)
+            if "CREATE TABLE IF NOT EXISTS external_orders" in item
+        )
+        self.assertEqual(ru_first, admin_last + 1)
+        self.assertLess(ru_first, external_orders)
 
 
 if __name__ == "__main__":
