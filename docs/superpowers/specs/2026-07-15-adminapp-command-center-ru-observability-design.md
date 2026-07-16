@@ -277,7 +277,7 @@ systemd timer на mini (каждые 6 часов)
 | `409 payload_conflict`, `400`, `413`, `422`, unsupported schema | Перенести в quarantine с status, correlation ID и очищенной причиной; автоматического повтора нет |
 | `409 replayed_nonce` | Сформировать новый timestamp/nonce и повторить один раз; повторный конфликт — quarantine |
 
-Каждая upload-попытка создаёт новый request timestamp/nonce и подписывает неизменные raw bytes файла. Следующий probe не ждёт завершения backlog.
+Каждая upload-попытка создаёт новый request timestamp/nonce и подписывает неизменные raw bytes файла. Durable backoff хранится отдельно в атомарном `pending/<run_id>.retry.json` с полями attempt, next eligible attempt time, last HTTP status и stable code; этот mutable sidecar не содержит signature, response body или credentials и никогда не меняет artifact/sha256 bytes. Terminal transition удаляет retry sidecar. Следующий probe не ждёт завершения backlog.
 
 Отдельный timer каждые 15 минут отправляет новый signed DTO в `POST /api/internal/probes/ru-origin/heartbeat`: `schema_version`, `probe_host_id`, `observed_at`, service version, counts pending/blocked/quarantine, `oldest_pending_at`, `archive_write_ok`, disk free/state и allowlisted `last_error_code`. Heartbeat не является частью run artifact и имеет собственный raw-body hash/nonce.
 

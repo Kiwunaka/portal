@@ -943,6 +943,7 @@ git commit -m "feat(probes): run manifest-driven RU checks"
 /var/lib/pokrov-ru-probe/
   pending/<run_id>.json
   pending/<run_id>.sha256
+  pending/<run_id>.retry.json
   blocked/<run_id>.json
   blocked/<run_id>.sha256
   blocked/<run_id>.reason.json
@@ -954,6 +955,7 @@ git commit -m "feat(probes): run manifest-driven RU checks"
 ```
 
 Directories are `0700`, files `0600`. Artifact bytes and sidecar hash never change between attempts.
+`pending/<run_id>.retry.json` is separate mutable uploader state written atomically; it contains only the attempt number, next eligible attempt time, last HTTP status and stable code. It never contains or modifies artifact bytes, signatures, response bodies or credentials, and is removed after a terminal transition.
 
 - [ ] **Step 1: Write failing atomic-write and transition tests**
 
