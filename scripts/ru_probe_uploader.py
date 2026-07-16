@@ -74,6 +74,23 @@ _ERROR_RESPONSE_CODES_BY_STATUS = {
     425: {"temporary"},
     429: {"temporary"},
 }
+_TERMINAL_DESTINATION_BY_STATUS_CODE: dict[
+    tuple[int | None, str],
+    str,
+] = {
+    (None, "artifact_hash_mismatch"): "quarantine",
+    (None, "blocked_key"): "blocked",
+    (400, "invalid_request"): "quarantine",
+    (401, "key_disabled"): "blocked",
+    (401, "key_scope_forbidden"): "blocked",
+    (403, "key_disabled"): "blocked",
+    (403, "key_scope_forbidden"): "blocked",
+    (409, "payload_conflict"): "quarantine",
+    (409, "replayed_nonce"): "quarantine",
+    (413, "request_too_large"): "quarantine",
+    (422, "invalid_payload"): "quarantine",
+    (422, "unsupported_schema"): "quarantine",
+}
 _RETRY_STATE_KEYS = {
     "attempt",
     "next_attempt_at",
@@ -475,6 +492,122 @@ def _ensure_exact_file(path: Path, raw: bytes) -> None:
     _atomic_write_private(path, raw)
 
 
+def _inspect_existing_run_path(
+    root: Path,
+    *,
+    run_id: str,
+    artifact: bytes,
+    expected_sidecar: bytes,
+) -> Path | None:
+    observed: list[tuple[str, Path]] = []
+    for state in SPOOL_STATES:
+        artifact_path = root / state / f"{run_id}.json"
+        sidecar_path = artifact_path.with_suffix(".sha256")
+        reason_path = artifact_path.with_name(f"{run_id}.reason.json")
+        retry_path = _retry_path(artifact_path)
+        artifact_exists = _path_exists(artifact_path)
+        sidecar_exists = _path_exists(sidecar_path)
+        reason_exists = _path_exists(reason_path)
+        retry_exists = state == "pending" and _path_exists(retry_path)
+        if not any(
+            (
+                artifact_exists,
+                sidecar_exists,
+                reason_exists,
+                retry_exists,
+            )
+        ):
+            continue
+        if state == "pending" and reason_exists:
+            raise SpoolError("pending_reason_invalid")
+
+        artifact_raw: bytes | None = None
+        if artifact_exists:
+            artifact_raw = _read_regular_file(
+                artifact_path,
+                maximum=MAX_ARTIFACT_BYTES,
+                symlink_code=(
+                    "artifact_symlink"
+                    if state == "pending"
+                    else "destination_symlink"
+                ),
+                invalid_code=(
+                    "artifact_invalid"
+                    if state == "pending"
+                    else "destination_invalid"
+                ),
+            )
+            if _artifact_run_id(artifact_raw) != run_id:
+                raise SpoolError("artifact_run_id_mismatch")
+            if artifact_raw != artifact:
+                raise SpoolError("run_id_conflict")
+
+        sidecar_raw: bytes | None = None
+        if sidecar_exists:
+            sidecar_raw = _read_regular_file(
+                sidecar_path,
+                maximum=128,
+                symlink_code=(
+                    "sidecar_symlink"
+                    if state == "pending"
+                    else "destination_symlink"
+                ),
+                invalid_code=(
+                    "sidecar_invalid"
+                    if state == "pending"
+                    else "destination_invalid"
+                ),
+            )
+            if artifact_raw is None:
+                if sidecar_raw != expected_sidecar:
+                    raise SpoolError("run_id_conflict")
+            elif sidecar_raw != _sidecar_bytes(artifact_raw):
+                raise SpoolError("artifact_hash_mismatch")
+
+        if state == "pending":
+            if retry_exists:
+                if artifact_raw is None:
+                    raise SpoolError("retry_without_artifact")
+                retry_raw = _read_regular_file(
+                    retry_path,
+                    maximum=512,
+                    symlink_code="retry_state_symlink",
+                    invalid_code="retry_state_invalid",
+                )
+                _parse_retry_state(retry_raw)
+            observed.append((state, artifact_path))
+            continue
+
+        if artifact_raw is None or sidecar_raw is None:
+            raise SpoolError("terminal_pair_incomplete")
+        if state == "archive":
+            if reason_exists:
+                raise SpoolError("archive_reason_conflict")
+        else:
+            if not reason_exists:
+                raise SpoolError("terminal_reason_missing")
+            reason_raw = _read_transition_member(
+                reason_path,
+                maximum=1024,
+            )
+            metadata = _reason_metadata(reason_raw)
+            if (
+                metadata is None
+                or not _terminal_reason_matches_destination(state, metadata)
+            ):
+                raise SpoolError("terminal_reason_invalid")
+        observed.append((state, artifact_path))
+
+    if len(observed) > 1:
+        terminal_count = sum(
+            state != "pending" for state, _ in observed
+        )
+        if terminal_count > 1:
+            raise SpoolError("multiple_terminal_states")
+        raise SpoolError("multiple_spool_states")
+    return observed[0][1] if observed else None
+
+
 def write_pending_artifact(
     spool_root: str | Path,
     run_id: str,
@@ -488,6 +621,17 @@ def write_pending_artifact(
     sidecar_path = artifact_path.with_suffix(".sha256")
     expected_sidecar = _sidecar_bytes(artifact)
     with _spool_lock(root):
+        existing_path = _inspect_existing_run_path(
+            root,
+            run_id=validated_run_id,
+            artifact=artifact,
+            expected_sidecar=expected_sidecar,
+        )
+        if (
+            existing_path is not None
+            and existing_path.parent.name != "pending"
+        ):
+            return existing_path
         artifact_exists = artifact_path.exists() or artifact_path.is_symlink()
         sidecar_exists = sidecar_path.exists() or sidecar_path.is_symlink()
         if artifact_exists:
@@ -812,26 +956,11 @@ def _retryable_http_status(status: int) -> bool:
     return status in {408, 425, 429} or 500 <= status <= 599
 
 
-def _terminal_destination(status: int, code: str) -> str | None:
-    if (
-        status in {401, 403}
-        and code in {"key_disabled", "key_scope_forbidden"}
-    ):
-        return "blocked"
-    if (
-        (status == 400 and code == "invalid_request")
-        or (
-            status == 409
-            and code in {"payload_conflict", "replayed_nonce"}
-        )
-        or (status == 413 and code == "request_too_large")
-        or (
-            status == 422
-            and code in {"invalid_payload", "unsupported_schema"}
-        )
-    ):
-        return "quarantine"
-    return None
+def _terminal_destination(
+    status: int | None,
+    code: str,
+) -> str | None:
+    return _TERMINAL_DESTINATION_BY_STATUS_CODE.get((status, code))
 
 
 def _reason_bytes(
@@ -1070,7 +1199,11 @@ def _reason_metadata(raw: bytes) -> dict[str, object] | None:
         and _safe_correlation_id(correlation_id) is None
     ):
         return None
-    if _parse_utc_text(payload["observed_at"]) is None:
+    observed_at = _parse_utc_text(payload["observed_at"])
+    if (
+        observed_at is None
+        or _utc_text(observed_at) != payload["observed_at"]
+    ):
         return None
     return payload
 
@@ -1243,17 +1376,17 @@ def _terminal_reason_matches_destination(
 ) -> bool:
     status = metadata["status"]
     code = metadata["code"]
-    if destination == "blocked":
-        return (
-            status in {401, 403}
-            or (status is None and code == "blocked_key")
+    return (
+        isinstance(code, str)
+        and (
+            status is None
+            or (
+                isinstance(status, int)
+                and not isinstance(status, bool)
+            )
         )
-    if destination == "quarantine":
-        return not (
-            status in {200, 201, 401, 403, 408, 425, 429}
-            or (isinstance(status, int) and 500 <= status <= 599)
-        )
-    return False
+        and _terminal_destination(status, code) == destination
+    )
 
 
 def _resume_terminal_transition(

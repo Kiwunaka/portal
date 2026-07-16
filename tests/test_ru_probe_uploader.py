@@ -118,6 +118,35 @@ def _reason(path: Path) -> dict[str, object]:
     )
 
 
+def _terminalize(
+    tmp_path: Path,
+    destination: str,
+    *,
+    raw: bytes | None = None,
+) -> Path:
+    artifact_raw = _artifact() if raw is None else raw
+    pending = write_pending_artifact(tmp_path, RUN_ID, artifact_raw)
+    transport = FakeTransport()
+    if destination == "archive":
+        transport.respond(status=201, body=_run_success_body(status=201))
+    elif destination == "blocked":
+        transport.respond(
+            status=401,
+            body={"code": "key_disabled", "correlation_id": "corr-terminal"},
+        )
+    elif destination == "quarantine":
+        transport.respond(
+            status=422,
+            body={"code": "invalid_payload", "correlation_id": "corr-terminal"},
+        )
+    else:  # pragma: no cover - test helper contract
+        raise AssertionError(destination)
+    outcome = upload_one(pending, transport=transport, now=NOW)
+    assert outcome.destination == destination
+    assert outcome.path is not None
+    return outcome.path
+
+
 def _load_runner():
     module_path = SCRIPTS_DIR / "ru_probe_runner.py"
     spec = importlib.util.spec_from_file_location("ru_probe_runner_task8", module_path)
@@ -251,6 +280,146 @@ def test_concurrent_writers_never_mix_artifact_and_sidecar(
     assert artifact.with_suffix(".sha256").read_text(encoding="ascii").strip() == (
         hashlib.sha256(raw).hexdigest()
     )
+
+
+@pytest.mark.parametrize("destination", ["archive", "blocked", "quarantine"])
+def test_same_terminal_artifact_is_idempotent_without_pending_requeue(
+    tmp_path: Path,
+    destination: str,
+) -> None:
+    terminal_path = _terminalize(tmp_path, destination)
+
+    returned = write_pending_artifact(tmp_path, RUN_ID, _artifact())
+
+    assert returned == terminal_path
+    assert returned.exists()
+    assert not (tmp_path / "pending" / f"{RUN_ID}.json").exists()
+    assert not (tmp_path / "pending" / f"{RUN_ID}.sha256").exists()
+
+
+@pytest.mark.parametrize("destination", ["archive", "blocked", "quarantine"])
+def test_different_terminal_artifact_rejects_run_id_reuse(
+    tmp_path: Path,
+    destination: str,
+) -> None:
+    terminal_path = _terminalize(tmp_path, destination)
+
+    with pytest.raises(SpoolError, match="run_id_conflict"):
+        write_pending_artifact(tmp_path, RUN_ID, _artifact() + b" ")
+
+    assert terminal_path.read_bytes() == _artifact()
+    assert not (tmp_path / "pending" / f"{RUN_ID}.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("member", "error_code"),
+    [
+        ("artifact_only", "terminal_pair_incomplete"),
+        ("sidecar_only", "terminal_pair_incomplete"),
+        ("artifact_only_different", "run_id_conflict"),
+        ("sidecar_only_different", "run_id_conflict"),
+        ("bad_hash", "artifact_hash_mismatch"),
+    ],
+)
+def test_partial_or_tampered_terminal_pair_blocks_pending_creation(
+    tmp_path: Path,
+    member: str,
+    error_code: str,
+) -> None:
+    for state in ("pending", "blocked", "quarantine", "archive"):
+        (tmp_path / state).mkdir(parents=True, exist_ok=True)
+    artifact_path = tmp_path / "archive" / f"{RUN_ID}.json"
+    sidecar_path = artifact_path.with_suffix(".sha256")
+    if member in {"artifact_only", "artifact_only_different", "bad_hash"}:
+        artifact_path.write_bytes(
+            _artifact() + b" "
+            if member == "artifact_only_different"
+            else _artifact()
+        )
+    if member in {"sidecar_only", "sidecar_only_different", "bad_hash"}:
+        sidecar_path.write_bytes(
+            (b"0" * 64 + b"\n")
+            if member == "bad_hash"
+            else hashlib.sha256(
+                _artifact() + b" "
+                if member == "sidecar_only_different"
+                else _artifact()
+            ).hexdigest().encode("ascii")
+            + b"\n"
+        )
+
+    with pytest.raises(SpoolError, match=error_code):
+        write_pending_artifact(tmp_path, RUN_ID, _artifact())
+
+    assert not (tmp_path / "pending" / f"{RUN_ID}.json").exists()
+
+
+def test_terminal_symlink_blocks_pending_creation_without_touching_target(
+    tmp_path: Path,
+) -> None:
+    for state in ("pending", "blocked", "quarantine", "archive"):
+        (tmp_path / state).mkdir(parents=True, exist_ok=True)
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(_artifact())
+    terminal = tmp_path / "archive" / f"{RUN_ID}.json"
+    try:
+        terminal.symlink_to(outside)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+    terminal.with_suffix(".sha256").write_bytes(
+        hashlib.sha256(_artifact()).hexdigest().encode("ascii") + b"\n"
+    )
+
+    with pytest.raises(SpoolError, match="destination_symlink"):
+        write_pending_artifact(tmp_path, RUN_ID, _artifact())
+
+    assert outside.read_bytes() == _artifact()
+    assert terminal.is_symlink()
+    assert not (tmp_path / "pending" / f"{RUN_ID}.json").exists()
+
+
+def test_multiple_terminal_states_fail_closed_without_pending_creation(
+    tmp_path: Path,
+) -> None:
+    archive = _terminalize(tmp_path, "archive")
+    quarantine = tmp_path / "quarantine" / archive.name
+    quarantine.write_bytes(archive.read_bytes())
+    quarantine.with_suffix(".sha256").write_bytes(
+        archive.with_suffix(".sha256").read_bytes()
+    )
+    (tmp_path / "quarantine" / f"{RUN_ID}.reason.json").write_text(
+        '{"status":422,"code":"invalid_payload",'
+        '"correlation_id":"corr-old",'
+        '"observed_at":"2026-07-16T06:00:00Z"}',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpoolError, match="multiple_terminal_states"):
+        write_pending_artifact(tmp_path, RUN_ID, _artifact())
+
+    assert not (tmp_path / "pending" / f"{RUN_ID}.json").exists()
+
+
+def test_two_writers_after_archive_keep_single_immutable_run_identity(
+    tmp_path: Path,
+) -> None:
+    archive = _terminalize(tmp_path, "archive")
+    barrier = threading.Barrier(2)
+
+    def writer(raw: bytes) -> str:
+        barrier.wait()
+        try:
+            path = write_pending_artifact(tmp_path, RUN_ID, raw)
+            return path.parent.name
+        except SpoolError as exc:
+            return exc.code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(writer, (_artifact(), _artifact() + b" ")))
+
+    assert sorted(results) == ["archive", "run_id_conflict"]
+    assert archive.read_bytes() == _artifact()
+    assert not (tmp_path / "pending" / f"{RUN_ID}.json").exists()
 
 
 @pytest.mark.parametrize(
@@ -972,6 +1141,193 @@ def test_orphan_terminal_reason_recovers_pair_without_network(
     assert not pending.exists()
 
 
+@pytest.mark.parametrize(
+    (
+        "destination",
+        "status",
+        "code",
+        "correlation_id",
+        "observed_at",
+    ),
+    [
+        (
+            "quarantine",
+            404,
+            "invalid_request",
+            "corr-route",
+            "2026-07-16T06:00:00Z",
+        ),
+        (
+            "quarantine",
+            400,
+            "key_disabled",
+            "corr-contradiction",
+            "2026-07-16T06:00:00Z",
+        ),
+        (
+            "blocked",
+            401,
+            "invalid_payload",
+            "corr-contradiction",
+            "2026-07-16T06:00:00Z",
+        ),
+        (
+            "blocked",
+            403,
+            "payload_conflict",
+            "corr-contradiction",
+            "2026-07-16T06:00:00Z",
+        ),
+        (
+            "quarantine",
+            422,
+            "invalid_payload",
+            "corr-fractional",
+            "2026-07-16T06:00:00.123Z",
+        ),
+    ],
+    ids=[
+        "unsupported-404",
+        "quarantine-status-code-contradiction",
+        "blocked-401-code-contradiction",
+        "blocked-403-code-contradiction",
+        "noncanonical-time",
+    ],
+)
+def test_orphan_terminal_reason_requires_exact_live_authorization(
+    tmp_path: Path,
+    destination: str,
+    status: int | None,
+    code: str,
+    correlation_id: str | None,
+    observed_at: str,
+) -> None:
+    pending = _pending(tmp_path)
+    reason_path = tmp_path / destination / f"{RUN_ID}.reason.json"
+    reason_path.write_text(
+        json.dumps(
+            {
+                "status": status,
+                "code": code,
+                "correlation_id": correlation_id,
+                "observed_at": observed_at,
+            },
+            separators=(",", ":"),
+        ),
+        encoding="utf-8",
+    )
+    transport = FakeTransport()
+    transport.respond(status=201, body=_run_success_body(status=201))
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "spool_transition_failed"
+    assert transport.calls == []
+    assert pending.read_bytes() == _artifact()
+    assert pending.with_suffix(".sha256").exists()
+    assert reason_path.exists()
+    assert not (tmp_path / destination / pending.name).exists()
+    assert not (
+        tmp_path / destination / pending.with_suffix(".sha256").name
+    ).exists()
+
+
+@pytest.mark.parametrize(
+    "reason_raw",
+    [
+        (
+            b'{"status":422,"code":"invalid_payload",'
+            b'"correlation_id":"bad correlation",'
+            b'"observed_at":"2026-07-16T06:00:00Z"}'
+        ),
+        (
+            b'{"status":422,"code":"invalid_payload",'
+            b'"correlation_id":"corr-valid",'
+            b'"observed_at":"2026-07-16T06:00:00Z","extra":true}'
+        ),
+        (
+            b'{"status":422,"code":"invalid_payload",'
+            b'"correlation_id":"corr-valid"}'
+        ),
+        (
+            b'{"status":422,"code":"invalid_payload",'
+            b'"code":"unsupported_schema",'
+            b'"correlation_id":"corr-valid",'
+            b'"observed_at":"2026-07-16T06:00:00Z"}'
+        ),
+    ],
+    ids=[
+        "invalid-correlation",
+        "extra-field",
+        "missing-time",
+        "duplicate-code",
+    ],
+)
+def test_orphan_terminal_reason_requires_strict_schema_fields(
+    tmp_path: Path,
+    reason_raw: bytes,
+) -> None:
+    pending = _pending(tmp_path)
+    reason_path = tmp_path / "quarantine" / f"{RUN_ID}.reason.json"
+    reason_path.write_bytes(reason_raw)
+    transport = FakeTransport()
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "spool_transition_failed"
+    assert transport.calls == []
+    assert pending.exists()
+    assert reason_path.read_bytes() == reason_raw
+    assert not (tmp_path / "quarantine" / pending.name).exists()
+
+
+@pytest.mark.parametrize(
+    ("destination", "status", "code"),
+    [
+        ("blocked", 401, "key_disabled"),
+        ("blocked", 403, "key_scope_forbidden"),
+        ("quarantine", 400, "invalid_request"),
+        ("quarantine", 409, "payload_conflict"),
+        ("quarantine", 409, "replayed_nonce"),
+        ("quarantine", 413, "request_too_large"),
+        ("quarantine", 422, "invalid_payload"),
+        ("quarantine", 422, "unsupported_schema"),
+    ],
+)
+def test_orphan_terminal_reason_uses_exact_live_destination_matrix(
+    tmp_path: Path,
+    destination: str,
+    status: int,
+    code: str,
+) -> None:
+    pending = _pending(tmp_path)
+    reason_path = tmp_path / destination / f"{RUN_ID}.reason.json"
+    reason_path.write_text(
+        json.dumps(
+            {
+                "status": status,
+                "code": code,
+                "correlation_id": "corr-exact",
+                "observed_at": "2026-07-16T06:00:00Z",
+            },
+            separators=(",", ":"),
+        ),
+        encoding="utf-8",
+    )
+    transport = FakeTransport()
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == destination
+    assert outcome.status == status
+    assert outcome.code == code
+    assert transport.calls == []
+    assert (tmp_path / destination / pending.name).exists()
+    assert not pending.exists()
+
+
 def test_partial_archive_pair_recovers_without_network(
     tmp_path: Path,
 ) -> None:
@@ -1045,6 +1401,67 @@ def test_pending_fsync_failure_restores_both_source_files(
     assert pending.with_suffix(".sha256").read_text(
         encoding="ascii"
     ).strip() == hashlib.sha256(_artifact()).hexdigest()
+
+
+def test_writer_waiting_on_archive_transition_cannot_requeue_same_run_id(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(status=201, body=_run_success_body(status=201))
+    import ru_probe_uploader
+
+    transition_holds_lock = threading.Event()
+    release_transition = threading.Event()
+    writer_started = threading.Event()
+    writer_done = threading.Event()
+    original = ru_probe_uploader._atomic_write_private
+
+    def pause_archive_write(path: Path, raw: bytes) -> None:
+        if path.parent.name == "archive" and path.name == pending.name:
+            transition_holds_lock.set()
+            assert release_transition.wait(5)
+        original(path, raw)
+
+    monkeypatch.setattr(
+        ru_probe_uploader,
+        "_atomic_write_private",
+        pause_archive_write,
+    )
+    upload_outcomes: list[object] = []
+    writer_results: list[str] = []
+
+    def uploader() -> None:
+        upload_outcomes.append(
+            upload_one(pending, transport=transport, now=NOW)
+        )
+
+    def writer() -> None:
+        writer_started.set()
+        try:
+            write_pending_artifact(tmp_path, RUN_ID, _artifact() + b" ")
+            writer_results.append("written")
+        except SpoolError as exc:
+            writer_results.append(exc.code)
+        finally:
+            writer_done.set()
+
+    upload_thread = threading.Thread(target=uploader)
+    writer_thread = threading.Thread(target=writer)
+    upload_thread.start()
+    assert transition_holds_lock.wait(5)
+    writer_thread.start()
+    assert writer_started.wait(5)
+    assert not writer_done.wait(0.1)
+    release_transition.set()
+    upload_thread.join(5)
+    writer_thread.join(5)
+
+    assert [outcome.destination for outcome in upload_outcomes] == ["archive"]
+    assert writer_results == ["run_id_conflict"]
+    assert (tmp_path / "archive" / pending.name).read_bytes() == _artifact()
+    assert not pending.exists()
 
 
 def test_concurrent_upload_claim_sends_artifact_at_most_once(
@@ -1685,6 +2102,59 @@ def test_runner_defaults_to_pending_spool_and_explicit_out_stays_manual(
     assert spooled.with_suffix(".sha256").exists()
     assert manual == tmp_path / "manual.json"
     assert not (tmp_path / "pending" / f"{OTHER_RUN_ID}.json").exists()
+
+
+def test_runner_main_reports_existing_terminal_path_without_requeue(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runner = _load_runner()
+    payload = {
+        "schema_version": 2,
+        "run_id": RUN_ID,
+        "origin": "ru",
+        "execution_status": "completed",
+    }
+    pending = runner.write_run_artifact(
+        payload,
+        spool_root=tmp_path,
+        out_path=None,
+    )
+    transport = FakeTransport()
+    transport.respond(status=201, body=_run_success_body(status=201))
+    archived = upload_one(pending, transport=transport, now=NOW).path
+    assert archived is not None
+    args = SimpleNamespace(
+        api_base_url="https://api.example.test",
+        key_id="ru-mini-v1",
+        secret_file=str(tmp_path / "secret"),
+        manifest_cache=str(tmp_path / "manifest.json"),
+        spool_root=str(tmp_path),
+        probe_host_id="mini",
+        probe_host_label="mini",
+        probe_public_ip="",
+        profile_registry=str(tmp_path / "profiles.json"),
+        timeout_sec=5.0,
+        out="",
+    )
+
+    with (
+        mock.patch.object(
+            runner,
+            "build_parser",
+            return_value=SimpleNamespace(parse_args=lambda: args),
+        ),
+        mock.patch.object(runner, "fetch_manifest", return_value={}),
+        mock.patch.object(runner, "run_manifest", return_value=payload),
+    ):
+        exit_code = runner.main()
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.out.strip() == str(archived)
+    assert captured.err == ""
+    assert archived.exists()
+    assert not (tmp_path / "pending" / f"{RUN_ID}.json").exists()
 
 
 def test_uploader_rejects_pending_symlink_without_sending(
