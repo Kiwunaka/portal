@@ -305,6 +305,19 @@ test("главная показывает отдельную свежесть RU
   await expect(page.getByRole("tooltip").filter({ hasText: "ИсточникRU-origin" })).toContainText("7 ч");
 });
 
+test("главная переводит реальные причины сбоя и неполной RU-проверки", async ({ page }) => {
+  await installAdminApiMock(page, {
+    ruLatestReasonCodes: ["required_target_failed", "required_target_incomplete"]
+  });
+  await page.goto("/");
+
+  const ruRow = page.locator("span", { hasText: /^RU-origin$/ }).locator("xpath=../../..");
+  await expect(ruRow).toContainText("Обязательная цель RU-проверки завершилась сбоем");
+  await page.getByRole("button", { name: "Обновить", exact: true }).click();
+  await expect(ruRow).toContainText("Обязательная цель RU-проверки проверена не полностью");
+  await expect(ruRow).not.toContainText("required_target_");
+});
+
 test("сбой RU-origin не скрывает overview и имеет локальный повтор", async ({ page }) => {
   const api = await installAdminApiMock(page, { ruLatestStatus: 503 });
   await page.goto("/");

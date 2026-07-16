@@ -122,7 +122,9 @@ const RU_REASON_TEXT: Record<string, string> = {
   release_incomplete: "Последняя RU-проверка неполная",
   blocked_by_access: "Проверка заблокирована подтверждённым отсутствием доступа",
   superseded_manifest: "Конфигурация RU-проверки изменилась: нужен новый запуск",
-  current_target_missing: "В последнем запуске нет обязательной текущей цели"
+  current_target_missing: "В последнем запуске нет обязательной текущей цели",
+  required_target_failed: "Обязательная цель RU-проверки завершилась сбоем",
+  required_target_incomplete: "Обязательная цель RU-проверки проверена не полностью"
 };
 
 function ruReason(reasonCode: unknown): string {

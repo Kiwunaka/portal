@@ -1007,6 +1007,50 @@ def test_latest_pass_is_not_current_after_enabled_node_changes_manifest(session)
     assert nodes["de"]["reason_code"] == "target_missing"
 
 
+def test_latest_falls_back_to_valid_run_after_exact_manifest_rollback(
+    session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    config_a = [
+        {
+            "target_id": "canonical:rollback",
+            "host": "a.example.net",
+            "http_path": "/probe",
+            "min_body_bytes": 65536,
+        }
+    ]
+    config_b = copy.deepcopy(config_a)
+    config_b[0]["host"] = "b.example.net"
+    monkeypatch.setenv("RU_PROBE_CANONICAL_TARGETS_JSON", json.dumps(config_a))
+    manifest_a = build_ru_manifest(session, now=now - timedelta(hours=2))
+    run_a = _store_manifest_run(
+        session,
+        manifest=manifest_a,
+        now=now,
+        run_id="00000000-0000-4000-8000-000000000129",
+        finished_at=now - timedelta(hours=2),
+        received_at=now - timedelta(hours=2),
+    )
+    monkeypatch.setenv("RU_PROBE_CANONICAL_TARGETS_JSON", json.dumps(config_b))
+    manifest_b = build_ru_manifest(session, now=now - timedelta(hours=1))
+    run_b = _store_manifest_run(
+        session,
+        manifest=manifest_b,
+        now=now,
+        run_id="00000000-0000-4000-8000-000000000130",
+        finished_at=now - timedelta(hours=1),
+        received_at=now - timedelta(hours=1),
+    )
+    monkeypatch.setenv("RU_PROBE_CANONICAL_TARGETS_JSON", json.dumps(config_a))
+
+    latest = get_latest_ru_status(session, now=now)
+
+    assert latest["status"] == "ok"
+    assert latest["latest_eligible_run"]["run_id"] == run_a.run_id
+    assert latest["latest_received_attempt"]["run_id"] == run_b.run_id
+
+
 @pytest.mark.parametrize(
     ("transition", "expected_node_status", "expected_node_reason"),
     [
@@ -1449,6 +1493,38 @@ def test_node_filtered_ru_history_includes_only_requested_target_detail(
         target["node_code"]
         for target in history["items"][0]["targets"]
     ] == ["nl"]
+
+
+def test_node_filtered_ru_history_filters_target_detail_in_sql(session) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add_all([_node("de", enabled=True), _node("nl", enabled=True)])
+    session.commit()
+    _store_current_manifest_run(
+        session,
+        now=now,
+        run_id="00000000-0000-4000-8000-000000000131",
+    )
+    selects: list[str] = []
+
+    def record_select(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if statement.lstrip().upper().startswith("SELECT"):
+            selects.append(statement)
+
+    event.listen(session.bind, "before_cursor_execute", record_select)
+    try:
+        history = get_ru_run_history(session, node_code="NL", limit=1)
+    finally:
+        event.remove(session.bind, "before_cursor_execute", record_select)
+
+    detail_select = next(
+        statement
+        for statement in selects
+        if statement.lstrip().lower().startswith(
+            "select ru_probe_target_results.id"
+        )
+    )
+    assert "lower(ru_probe_target_results.node_code)" in detail_select.lower()
+    assert history["items"][0]["targets"][0]["node_code"] == "nl"
 
 
 def test_uploader_status_uses_latest_observed_heartbeat_and_server_freshness(

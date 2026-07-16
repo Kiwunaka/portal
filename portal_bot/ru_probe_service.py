@@ -47,6 +47,7 @@ RU_RUN_STALE_AFTER_SECONDS = 7 * 60 * 60
 RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS = 45 * 60
 RU_HISTORY_DEFAULT_LIMIT = 50
 RU_HISTORY_MAX_LIMIT = 200
+RU_LATEST_CANDIDATE_LIMIT = 32
 
 _CANONICAL_CONFIG_ENV = "RU_PROBE_CANONICAL_TARGETS_JSON"
 _RESERVE_CONFIG_ENV = "RU_PROBE_RESERVE_TARGETS_JSON"
@@ -1705,26 +1706,68 @@ def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
         .order_by(RuProbeRun.received_at.desc(), RuProbeRun.id.desc())
         .first()
     )
-    persisted_candidate = (
-        session.query(RuProbeRun)
+    newest_candidate_id = (
+        session.query(RuProbeRun.id)
         .filter(RuProbeRun.current_eligible == True)
         .order_by(RuProbeRun.finished_at.desc(), RuProbeRun.id.desc())
-        .first()
+        .limit(1)
+        .scalar_subquery()
     )
-    candidate_target_rows: list[RuProbeTargetResult] = []
-    if persisted_candidate is not None:
-        candidate_target_rows = (
+    persisted_candidates = (
+        session.query(RuProbeRun)
+        .filter(RuProbeRun.current_eligible == True)
+        .filter(
+            (RuProbeRun.manifest_revision == str(current_manifest["manifest_revision"]))
+            | (RuProbeRun.id == newest_candidate_id)
+        )
+        .order_by(RuProbeRun.finished_at.desc(), RuProbeRun.id.desc())
+        .limit(RU_LATEST_CANDIDATE_LIMIT)
+        .all()
+    )
+    candidate_targets_by_run: dict[int, list[RuProbeTargetResult]] = {
+        int(row.id): [] for row in persisted_candidates
+    }
+    if persisted_candidates:
+        candidate_run_ids = [int(row.id) for row in persisted_candidates]
+        persisted_target_rows = (
             session.query(RuProbeTargetResult)
-            .filter(RuProbeTargetResult.run_db_id == int(persisted_candidate.id))
-            .order_by(RuProbeTargetResult.target_id.asc(), RuProbeTargetResult.id.asc())
+            .filter(RuProbeTargetResult.run_db_id.in_(candidate_run_ids))
+            .order_by(
+                RuProbeTargetResult.run_db_id.asc(),
+                RuProbeTargetResult.target_id.asc(),
+                RuProbeTargetResult.id.asc(),
+            )
             .all()
         )
-    candidate_valid, candidate_reason = _current_run_candidate_validation(
-        persisted_candidate,
-        target_rows=candidate_target_rows,
-        current_manifest=current_manifest,
+        for target_row in persisted_target_rows:
+            candidate_targets_by_run[int(target_row.run_db_id)].append(target_row)
+    latest_eligible: RuProbeRun | None = None
+    candidate_reason = "eligible_run_missing"
+    for index, candidate in enumerate(persisted_candidates):
+        candidate_valid, validation_reason = _current_run_candidate_validation(
+            candidate,
+            target_rows=candidate_targets_by_run[int(candidate.id)],
+            current_manifest=current_manifest,
+        )
+        if index == 0:
+            candidate_reason = validation_reason
+        if candidate_valid:
+            latest_eligible = candidate
+            candidate_reason = validation_reason
+            break
+    candidate_valid = latest_eligible is not None
+    persisted_candidate = (
+        latest_eligible
+        if latest_eligible is not None
+        else persisted_candidates[0]
+        if persisted_candidates
+        else None
     )
-    latest_eligible = persisted_candidate if candidate_valid else None
+    candidate_target_rows = (
+        candidate_targets_by_run[int(persisted_candidate.id)]
+        if persisted_candidate is not None
+        else []
+    )
     target_rows = candidate_target_rows if candidate_valid else []
     candidate_target_by_id = {
         str(row.target_id or ""): row for row in candidate_target_rows
@@ -2083,6 +2126,7 @@ def get_ru_run_history(
         targets = (
             session.query(RuProbeTargetResult)
             .filter(RuProbeTargetResult.run_db_id.in_(run_ids))
+            .filter(func.lower(RuProbeTargetResult.node_code) == wanted_node)
             .order_by(
                 RuProbeTargetResult.run_db_id.asc(),
                 RuProbeTargetResult.target_id.asc(),

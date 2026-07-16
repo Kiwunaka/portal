@@ -194,6 +194,7 @@ type AdminApiMockOptions = {
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
   ruLatestStatus?: number;
+  ruLatestReasonCodes?: string[];
   searchStatus?: number;
   trafficStatus?: number;
   promoRows?: Array<Record<string, unknown>>;
@@ -257,6 +258,7 @@ export async function installAdminApiMock(
     releaseFirstOverview = () => resolve();
   });
   let overviewRequestCount = 0;
+  let ruLatestRequestCount = 0;
   await page.route("**/api/admin/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -384,14 +386,24 @@ export async function installAdminApiMock(
         );
         return;
       }
+      const configuredReasons = options.ruLatestReasonCodes || [];
+      const reasonCode = configuredReasons.length
+        ? configuredReasons[Math.min(ruLatestRequestCount, configuredReasons.length - 1)]
+        : "current_ru_run";
+      ruLatestRequestCount += 1;
+      const releaseVerdict = reasonCode === "required_target_failed"
+        ? "fail"
+        : reasonCode === "required_target_incomplete"
+          ? "incomplete"
+          : "pass";
       await fulfillJson(route, {
         ok: true,
         generated_at: generatedAt,
-        status: "ok",
+        status: releaseVerdict === "fail" ? "failed" : releaseVerdict === "incomplete" ? "degraded" : "ok",
         sampled_at: "2026-07-15T09:50:00Z",
         age_seconds: 600,
         threshold_seconds: 25200,
-        reason_code: "current_ru_run",
+        reason_code: reasonCode,
         environment_verdict: "available",
         environment: {
           status: "ok",
@@ -403,12 +415,12 @@ export async function installAdminApiMock(
         latest_received_attempt: {
           run_id: "00000000-0000-4000-8000-000000000401",
           finished_at: "2026-07-15T09:50:00Z",
-          release_verdict: "pass"
+          release_verdict: releaseVerdict
         },
         latest_eligible_run: {
           run_id: "00000000-0000-4000-8000-000000000401",
           finished_at: "2026-07-15T09:50:00Z",
-          release_verdict: "pass"
+          release_verdict: releaseVerdict
         },
         nodes: [
           {
