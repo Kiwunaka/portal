@@ -91,6 +91,75 @@ def _gb(value: float) -> int:
     return int(value * 1024 * 1024 * 1024)
 
 
+def _ru_payload_from_manifest(
+    manifest: dict[str, object],
+    *,
+    now: datetime,
+    run_id: str,
+) -> dict[str, object]:
+    finished_at = now - timedelta(minutes=6)
+    targets: list[dict[str, object]] = []
+    for expected in manifest["targets"]:
+        stages: dict[str, dict[str, object]] = {}
+        for stage_name in (
+            "dns",
+            "tcp",
+            "tls",
+            "http_large_body",
+            "transport_handshake",
+        ):
+            required = stage_name in expected["required_stages"]
+            stages[stage_name] = {
+                "status": "pass" if required else "not_applicable",
+                "latency_ms": 10 if required else None,
+                "code": None,
+            }
+        families = expected["endpoint"]["address_families"]
+        targets.append(
+            {
+                "target_id": expected["target_id"],
+                "target_kind": expected["target_kind"],
+                "scope": expected["scope"],
+                "node_code": expected["node_code"],
+                "endpoint": dict(expected["endpoint"]),
+                "endpoint_fingerprint": expected["endpoint_fingerprint"],
+                "stages": stages,
+                "address_family_status": {
+                    "ipv4": "pass" if "ipv4" in families else "not_applicable",
+                    "ipv6": "pass" if "ipv6" in families else "not_applicable",
+                },
+                "transport": {
+                    "profile_code": expected["endpoint"]["transport_profile"],
+                    "handshake_status": stages["transport_handshake"]["status"],
+                    "classification": "ok",
+                    "detail_code": None,
+                },
+                "detail_code": None,
+                "detail": None,
+            }
+        )
+    return {
+        "schema_version": 2,
+        "run_id": run_id,
+        "origin": "ru",
+        "probe_host": {"id": "mini", "label": "Мини", "public_ip": None},
+        "runner_version": "2.0.0",
+        "manifest_revision": manifest["manifest_revision"],
+        "started_at": (finished_at - timedelta(minutes=2))
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "finished_at": finished_at.isoformat().replace("+00:00", "Z"),
+        "execution_status": "completed",
+        "evidence_code": None,
+        "targets": targets,
+        "ok": True,
+        "google_reachable": True,
+        "xhttp_alive": False,
+        "hysteria_alive": False,
+        "classifications": [],
+    }
+
+
 def _seed_ops_fixture(api, *, now: datetime) -> None:
     from models import AccessKey, KeyUsageRollup, Node, NodeHealthSample, ProviderTrafficQuota, User
 
@@ -102,6 +171,7 @@ def _seed_ops_fixture(api, *, now: datetime) -> None:
                     code="nl-free",
                     name="NL Free",
                     host="nl-free.example.test",
+                    inbound_id=1,
                     enabled=True,
                     accepting_new_clients=True,
                     is_healthy=True,
@@ -112,6 +182,7 @@ def _seed_ops_fixture(api, *, now: datetime) -> None:
                     code="de",
                     name="DE",
                     host="de.example.test",
+                    inbound_id=1,
                     enabled=True,
                     accepting_new_clients=True,
                     is_healthy=True,
@@ -251,8 +322,6 @@ def _seed_ru_read_fixture(api, *, now: datetime) -> None:
         NodeHealthSample,
         NodeRuntimeMetric,
         OpsAlert,
-        RuProbeRun,
-        RuProbeTargetResult,
         RuProbeUploaderHeartbeat,
     )
 
@@ -324,71 +393,21 @@ def _seed_ru_read_fixture(api, *, now: datetime) -> None:
                 capacity_state="ok",
             )
         )
-        run = RuProbeRun(
+        s.flush()
+        aware_now = now.replace(tzinfo=timezone.utc)
+        manifest = api.build_ru_manifest(s, now=aware_now)
+        payload = _ru_payload_from_manifest(
+            manifest,
+            now=aware_now,
             run_id="00000000-0000-4000-8000-000000000201",
-            schema_version=2,
-            origin="ru",
-            probe_host_id="mini",
-            probe_host_label="Мини",
-            runner_version="2.0.0",
-            started_at=now - timedelta(minutes=8),
-            finished_at=now - timedelta(minutes=6),
-            received_at=now - timedelta(minutes=5),
-            manifest_revision="a" * 64,
-            execution_status="completed",
-            environment_verdict="available",
-            release_verdict="pass",
-            current_eligible=True,
-            google_reachable=True,
-            xhttp_alive=False,
-            hysteria_alive=False,
-            server_summary="fixture",
+        )
+        evaluated = api.evaluate_ru_run(s, payload, now=aware_now)
+        api.store_evaluated_ru_run(
+            s,
+            evaluated,
             artifact_sha256="b" * 64,
             ingest_key_id="ru-test",
-            retention_hold=False,
-        )
-        s.add(run)
-        s.flush()
-        s.add(
-            RuProbeTargetResult(
-                run_db_id=run.id,
-                target_id="node:de",
-                target_kind="delivery_node",
-                scope="release_required",
-                node_code="de",
-                endpoint_fingerprint="c" * 64,
-                endpoint_host="203.0.113.77",
-                endpoint_port=443,
-                endpoint_sni="front.example.test",
-                requested_address_families_json=["ipv4", "ipv6"],
-                transport_metadata_json={
-                    "address_family_status": {
-                        "ipv4": "pass",
-                        "ipv6": "not_run",
-                    },
-                    "transport": {
-                        "handshake_status": "pass",
-                        "classification": "ok",
-                    },
-                },
-                transport_profile="legacy_reality_fallback",
-                probe_mode="delivery_tls",
-                observed_at=now - timedelta(minutes=6),
-                overall_status="pass",
-                current_eligible=True,
-                dns_status="pass",
-                dns_latency_ms=10,
-                tcp_status="pass",
-                tcp_latency_ms=20,
-                tls_status="pass",
-                tls_latency_ms=30,
-                http_large_body_status="not_applicable",
-                transport_handshake_status="not_applicable",
-                ipv4_status="pass",
-                ipv6_status="not_run",
-                reported_transport_handshake_status="not_applicable",
-                reported_transport_classification="ok",
-            )
+            received_at=aware_now - timedelta(minutes=5),
         )
         s.add(
             RuProbeUploaderHeartbeat(
@@ -1102,6 +1121,14 @@ def test_admin_search_is_typed_bounded_and_never_echoes_key_or_email(
     short = client.get("/api/admin/search?q=x", headers=headers)
     assert short.status_code == 400
     assert short.json()["detail"] == "Search query must contain at least 2 characters"
+
+    for literal_wildcards in ("%%", "__", "%_", "de%"):
+        response = client.get(
+            f"/api/admin/search?{urlencode({'q': literal_wildcards})}",
+            headers=headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["results"] == []
 
 
 def test_ru_alert_candidates_use_server_freshness_and_received_heartbeat_facts(

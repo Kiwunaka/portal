@@ -120,7 +120,9 @@ const RU_REASON_TEXT: Record<string, string> = {
   google_unavailable: "Среда RU-пробы недоступна",
   release_failed: "Обязательная RU-проверка завершилась сбоем",
   release_incomplete: "Последняя RU-проверка неполная",
-  blocked_by_access: "Проверка заблокирована подтверждённым отсутствием доступа"
+  blocked_by_access: "Проверка заблокирована подтверждённым отсутствием доступа",
+  superseded_manifest: "Конфигурация RU-проверки изменилась: нужен новый запуск",
+  current_target_missing: "В последнем запуске нет обязательной текущей цели"
 };
 
 function ruReason(reasonCode: unknown): string {

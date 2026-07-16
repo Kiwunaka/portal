@@ -1151,7 +1151,13 @@ def admin_search_results(
     if not 2 <= len(query_text) <= 128:
         raise ValueError("invalid_search_query")
     normalized_limit = max(1, min(int(limit), 20))
-    like = f"%{query_text.lower()}%"
+    escaped_query = (
+        query_text.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+    like = f"%{escaped_query.lower()}%"
+    numeric_like = f"%{escaped_query}%"
     results: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
 
@@ -1163,11 +1169,11 @@ def admin_search_results(
         results.append(item)
 
     user_filter = or_(
-        func.cast(User.tg_id, String).like(f"%{query_text}%"),
-        func.lower(func.coalesce(User.username, "")).like(like),
-        func.lower(func.coalesce(User.display_name, "")).like(like),
-        func.lower(func.coalesce(User.app_install_id, "")).like(like),
-        func.lower(func.coalesce(User.email, "")).like(like),
+        func.cast(User.tg_id, String).like(numeric_like, escape="\\"),
+        func.lower(func.coalesce(User.username, "")).like(like, escape="\\"),
+        func.lower(func.coalesce(User.display_name, "")).like(like, escape="\\"),
+        func.lower(func.coalesce(User.app_install_id, "")).like(like, escape="\\"),
+        func.lower(func.coalesce(User.email, "")).like(like, escape="\\"),
     )
     users = (
         s.query(User)
@@ -1178,7 +1184,7 @@ def admin_search_results(
     )
     matching_devices = (
         s.query(AccountDevice)
-        .filter(func.lower(AccountDevice.install_id).like(like))
+        .filter(func.lower(AccountDevice.install_id).like(like, escape="\\"))
         .order_by(AccountDevice.last_seen_at.desc(), AccountDevice.id.asc())
         .limit(normalized_limit)
         .all()
@@ -1224,11 +1230,11 @@ def admin_search_results(
         s.query(Node)
         .filter(
             or_(
-                func.lower(func.coalesce(Node.code, "")).like(like),
-                func.lower(func.coalesce(Node.name, "")).like(like),
-                func.lower(func.coalesce(Node.hoster_family, "")).like(like),
-                func.lower(func.coalesce(Node.hoster_asn, "")).like(like),
-                func.lower(func.coalesce(Node.hoster_subnet, "")).like(like),
+                func.lower(func.coalesce(Node.code, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.name, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.hoster_family, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.hoster_asn, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.hoster_subnet, "")).like(like, escape="\\"),
             )
         )
         .order_by(Node.code.asc())
@@ -1260,8 +1266,8 @@ def admin_search_results(
         s.query(ExternalOrder)
         .filter(
             or_(
-                func.lower(ExternalOrder.order_id).like(like),
-                func.cast(ExternalOrder.tg_id, String).like(f"%{query_text}%"),
+                func.lower(ExternalOrder.order_id).like(like, escape="\\"),
+                func.cast(ExternalOrder.tg_id, String).like(numeric_like, escape="\\"),
             )
         )
         .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
@@ -1284,10 +1290,10 @@ def admin_search_results(
         )
 
     key_filter = or_(
-        func.lower(AccessKey.key_uuid).like(like),
-        func.lower(AccessKey.panel_email).like(like),
-        func.cast(AccessKey.id, String).like(f"%{query_text}%"),
-        func.cast(AccessKey.tg_id, String).like(f"%{query_text}%"),
+        func.lower(AccessKey.key_uuid).like(like, escape="\\"),
+        func.lower(AccessKey.panel_email).like(like, escape="\\"),
+        func.cast(AccessKey.id, String).like(numeric_like, escape="\\"),
+        func.cast(AccessKey.tg_id, String).like(numeric_like, escape="\\"),
     )
     keys = (
         s.query(AccessKey)

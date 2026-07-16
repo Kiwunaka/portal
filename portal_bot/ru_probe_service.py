@@ -1603,37 +1603,136 @@ def _ru_source_row(
     return payload
 
 
+def _stored_target_matches_manifest(
+    row: RuProbeTargetResult,
+    expected: dict[str, object],
+) -> bool:
+    requested_families = row.requested_address_families_json
+    expected_endpoint = expected.get("endpoint")
+    if not isinstance(requested_families, list) or not isinstance(
+        expected_endpoint, dict
+    ):
+        return False
+    try:
+        stored_endpoint = _endpoint(
+            host=str(row.endpoint_host or ""),
+            port=int(row.endpoint_port),
+            sni=str(row.endpoint_sni) if row.endpoint_sni is not None else None,
+            address_families=copy.deepcopy(requested_families),
+            transport_profile=str(row.transport_profile or ""),
+            probe_mode=str(row.probe_mode or ""),
+            http_path=str(row.http_path) if row.http_path is not None else None,
+            min_body_bytes=(
+                int(row.min_body_bytes) if row.min_body_bytes is not None else None
+            ),
+            local_probe_profile_id=(
+                str(row.local_probe_profile_id)
+                if row.local_probe_profile_id is not None
+                else None
+            ),
+        )
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return bool(
+        row.current_eligible
+        and str(row.target_id or "") == str(expected.get("target_id") or "")
+        and str(row.target_kind or "") == str(expected.get("target_kind") or "")
+        and str(row.scope or "") == str(expected.get("scope") or "")
+        and (str(row.node_code) if row.node_code is not None else None)
+        == (
+            str(expected.get("node_code"))
+            if expected.get("node_code") is not None
+            else None
+        )
+        and str(row.endpoint_fingerprint or "")
+        == str(expected.get("endpoint_fingerprint") or "")
+        and _same_endpoint(stored_endpoint, expected_endpoint)
+    )
+
+
+def _current_run_candidate_validation(
+    row: RuProbeRun | None,
+    *,
+    target_rows: list[RuProbeTargetResult],
+    current_manifest: dict[str, object],
+) -> tuple[bool, str]:
+    if row is None:
+        return False, "eligible_run_missing"
+    if not bool(row.current_eligible):
+        return False, "eligible_run_missing"
+    if str(row.manifest_revision or "") != str(
+        current_manifest.get("manifest_revision") or ""
+    ):
+        return False, "superseded_manifest"
+    expected_release = {
+        str(target["target_id"]): target
+        for target in list(current_manifest.get("targets") or [])
+        if str(target.get("scope") or "") == "release_required"
+    }
+    stored_release: dict[str, RuProbeTargetResult] = {}
+    for target in target_rows:
+        if str(target.scope or "") != "release_required":
+            continue
+        target_id = str(target.target_id or "")
+        if target_id not in expected_release or target_id in stored_release:
+            return False, "superseded_manifest"
+        stored_release[target_id] = target
+    if set(stored_release) != set(expected_release):
+        return False, "current_target_missing"
+    if any(
+        not _stored_target_matches_manifest(stored_release[target_id], expected)
+        for target_id, expected in expected_release.items()
+    ):
+        return False, "superseded_manifest"
+    return True, "current_ru_run"
+
+
 def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
     normalized_now = _read_model_now(now)
+    current_manifest = build_ru_manifest(session, now=normalized_now)
+    current_targets = {
+        str(target["target_id"]): target
+        for target in list(current_manifest.get("targets") or [])
+    }
+    current_node_targets = {
+        str(target.get("node_code") or "").strip().lower(): target
+        for target in current_targets.values()
+        if str(target.get("target_kind") or "") == "delivery_node"
+        and str(target.get("node_code") or "").strip()
+    }
     latest_received = (
         session.query(RuProbeRun)
         .order_by(RuProbeRun.received_at.desc(), RuProbeRun.id.desc())
         .first()
     )
-    latest_eligible = (
+    persisted_candidate = (
         session.query(RuProbeRun)
         .filter(RuProbeRun.current_eligible == True)
         .order_by(RuProbeRun.finished_at.desc(), RuProbeRun.id.desc())
         .first()
     )
-    target_rows: list[RuProbeTargetResult] = []
-    if latest_eligible is not None:
-        target_rows = (
+    candidate_target_rows: list[RuProbeTargetResult] = []
+    if persisted_candidate is not None:
+        candidate_target_rows = (
             session.query(RuProbeTargetResult)
-            .filter(RuProbeTargetResult.run_db_id == int(latest_eligible.id))
+            .filter(RuProbeTargetResult.run_db_id == int(persisted_candidate.id))
             .order_by(RuProbeTargetResult.target_id.asc(), RuProbeTargetResult.id.asc())
             .all()
         )
-    target_by_node = {
-        str(row.node_code or "").strip().lower(): row
-        for row in target_rows
-        if str(row.node_code or "").strip()
-        and str(row.target_kind or "") == "delivery_node"
+    candidate_valid, candidate_reason = _current_run_candidate_validation(
+        persisted_candidate,
+        target_rows=candidate_target_rows,
+        current_manifest=current_manifest,
+    )
+    latest_eligible = persisted_candidate if candidate_valid else None
+    target_rows = candidate_target_rows if candidate_valid else []
+    candidate_target_by_id = {
+        str(row.target_id or ""): row for row in candidate_target_rows
     }
     known_nodes = session.query(Node).order_by(Node.code.asc(), Node.id.asc()).all()
     sampled_at = (
-        _read_model_utc(latest_eligible.finished_at)
-        if latest_eligible is not None
+        _read_model_utc(persisted_candidate.finished_at)
+        if persisted_candidate is not None
         else None
     )
     age_seconds = _read_model_age_seconds(
@@ -1644,9 +1743,14 @@ def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
         age_seconds is not None and age_seconds > RU_RUN_STALE_AFTER_SECONDS
     )
 
-    if latest_eligible is None:
+    if persisted_candidate is None:
         overall_status = "missing"
         overall_reason = "eligible_run_missing"
+    elif not candidate_valid:
+        overall_status = (
+            "missing" if candidate_reason == "current_target_missing" else "degraded"
+        )
+        overall_reason = candidate_reason
     elif stale:
         overall_status = "stale"
         overall_reason = "eligible_run_stale"
@@ -1669,12 +1773,17 @@ def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
 
     environment_verdict = (
         str(latest_eligible.environment_verdict or "")
-        if latest_eligible is not None
+        if candidate_valid and latest_eligible is not None
         else "unknown"
     )
-    if latest_eligible is None:
+    if persisted_candidate is None:
         environment_status = "missing"
         environment_reason = "eligible_run_missing"
+    elif not candidate_valid:
+        environment_status = (
+            "missing" if candidate_reason == "current_target_missing" else "degraded"
+        )
+        environment_reason = candidate_reason
     elif stale:
         environment_status = "stale"
         environment_reason = "eligible_run_stale"
@@ -1699,19 +1808,42 @@ def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
     nodes: list[dict[str, object]] = []
     for node in known_nodes:
         code = str(node.code or "").strip().lower()
-        target = target_by_node.get(code)
-        if latest_eligible is None:
+        current_target = current_node_targets.get(code)
+        target = (
+            candidate_target_by_id.get(str(current_target["target_id"]))
+            if current_target is not None
+            else None
+        )
+        target_identity_current = bool(
+            target is not None
+            and current_target is not None
+            and _stored_target_matches_manifest(target, current_target)
+        )
+        if current_target is None:
+            node_status = "not_in_scope"
+            node_reason = "not_in_scope"
+        elif persisted_candidate is None:
             node_status = "missing"
             node_reason = "eligible_run_missing"
-        elif stale and target is not None:
+        elif target is None:
+            node_status = "missing"
+            node_reason = "target_missing"
+        elif not target_identity_current:
+            node_status = "degraded"
+            node_reason = "superseded_manifest"
+        elif not candidate_valid:
+            node_status = (
+                "missing"
+                if candidate_reason == "current_target_missing" and target is None
+                else "degraded"
+            )
+            node_reason = candidate_reason
+        elif stale:
             node_status = "stale"
             node_reason = "eligible_run_stale"
         elif environment_verdict == "unavailable":
             node_status = "unavailable"
             node_reason = "google_unavailable"
-        elif target is None:
-            node_status = "missing"
-            node_reason = "target_not_in_run"
         else:
             node_status, node_reason = _ru_status_from_target(
                 str(target.overall_status or "")
@@ -1720,14 +1852,18 @@ def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
                 node_reason = str(target.server_reason_code)
         row = _ru_source_row(
             status=node_status,
-            sampled_at=sampled_at if target is not None else None,
+            sampled_at=(
+                sampled_at
+                if current_target is not None and target is not None
+                else None
+            ),
             now=normalized_now,
             threshold_seconds=RU_RUN_STALE_AFTER_SECONDS,
             reason_code=node_reason,
             extra={
                 "node_code": code,
-                "run_id": str(latest_eligible.run_id)
-                if latest_eligible is not None and target is not None
+                "run_id": str(persisted_candidate.run_id)
+                if persisted_candidate is not None and target is not None
                 else None,
                 "target": _target_result_summary(target)
                 if target is not None
@@ -1741,18 +1877,43 @@ def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
         ("xhttp", "reserve_xhttp"),
         ("hysteria", "reserve_hysteria"),
     ):
-        target = next(
+        expected_target = next(
             (
                 row
-                for row in target_rows
-                if str(row.target_kind or "") == target_kind
+                for row in current_targets.values()
+                if str(row.get("target_kind") or "") == target_kind
             ),
             None,
         )
-        if latest_eligible is None or target is None:
+        target = (
+            candidate_target_by_id.get(str(expected_target["target_id"]))
+            if expected_target is not None
+            else None
+        )
+        if expected_target is None:
             reserve_status = "missing"
             reserve_reason = "reserve_target_missing"
             reserve_sampled_at = None
+        elif persisted_candidate is None:
+            reserve_status = "missing"
+            reserve_reason = "eligible_run_missing"
+            reserve_sampled_at = None
+        elif target is None:
+            reserve_status = "missing"
+            reserve_reason = "current_target_missing"
+            reserve_sampled_at = None
+        elif not _stored_target_matches_manifest(target, expected_target):
+            reserve_status = "degraded"
+            reserve_reason = "superseded_manifest"
+            reserve_sampled_at = sampled_at
+        elif not candidate_valid:
+            reserve_status = (
+                "missing"
+                if candidate_reason == "current_target_missing"
+                else "degraded"
+            )
+            reserve_reason = candidate_reason
+            reserve_sampled_at = sampled_at
         elif stale:
             reserve_status = "stale"
             reserve_reason = "eligible_run_stale"
@@ -1771,9 +1932,9 @@ def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
             extra={
                 "alive": (
                     bool(latest_eligible.xhttp_alive)
-                    if key == "xhttp" and latest_eligible is not None
+                    if key == "xhttp" and candidate_valid and latest_eligible is not None
                     else bool(latest_eligible.hysteria_alive)
-                    if latest_eligible is not None
+                    if candidate_valid and latest_eligible is not None
                     else None
                 )
             },
@@ -1915,11 +2076,10 @@ def get_ru_run_history(
     )
     has_more = len(rows) > normalized_limit
     page_rows = rows[:normalized_limit]
-    run_ids = [int(row.id) for row in page_rows]
-    targets_by_run: dict[int, list[RuProbeTargetResult]] = {
-        run_id: [] for run_id in run_ids
-    }
-    if run_ids:
+    targets_by_run: dict[int, list[RuProbeTargetResult]] = {}
+    if wanted_node and page_rows:
+        run_ids = [int(row.id) for row in page_rows]
+        targets_by_run = {run_id: [] for run_id in run_ids}
         targets = (
             session.query(RuProbeTargetResult)
             .filter(RuProbeTargetResult.run_db_id.in_(run_ids))
@@ -1935,7 +2095,10 @@ def get_ru_run_history(
                 continue
             targets_by_run.setdefault(int(target.run_db_id), []).append(target)
     items = [
-        _run_summary(row, targets=targets_by_run.get(int(row.id), []))
+        _run_summary(
+            row,
+            targets=(targets_by_run.get(int(row.id), []) if wanted_node else None),
+        )
         for row in page_rows
     ]
     next_cursor = None

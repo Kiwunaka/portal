@@ -19,6 +19,20 @@ def test_status_mapper_has_the_seven_approved_russian_labels() -> None:
         assert label in text
 
 
+def test_ru_read_reasons_have_russian_operator_copy() -> None:
+    text = (ROOT / "adminapp/src/features/overview/overview-page.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        'superseded_manifest: "Конфигурация RU-проверки изменилась: нужен новый запуск"'
+        in text
+    )
+    assert (
+        'current_target_missing: "В последнем запуске нет обязательной текущей цели"'
+        in text
+    )
+
+
 def test_tooltip_contract_is_not_a_title_attribute() -> None:
     text = (ROOT / "adminapp/src/components/ui/tooltip.tsx").read_text(encoding="utf-8")
     assert "aria-describedby" in text

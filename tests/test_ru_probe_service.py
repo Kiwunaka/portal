@@ -17,6 +17,7 @@ if str(PORTAL_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_DIR))
 
 import models  # noqa: E402
+import ru_probe_service as ru_probe_service_module  # noqa: E402
 from ru_probe_contract import RuProbeContractError, endpoint_fingerprint  # noqa: E402
 from ru_probe_service import (  # noqa: E402
     DEFAULT_MANIFEST_MAX_CACHE_AGE_SECONDS,
@@ -31,6 +32,7 @@ from ru_probe_service import (  # noqa: E402
     get_latest_ru_status,
     get_ru_run_history,
     get_ru_uploader_status,
+    store_evaluated_ru_run,
 )
 
 
@@ -249,6 +251,76 @@ def _payload_from_manifest(
         "hysteria_alive": False,
         "classifications": ["client_lie"],
     }
+
+
+def _store_manifest_run(
+    session,
+    *,
+    manifest: dict[str, object],
+    now: datetime,
+    run_id: str,
+    finished_at: datetime | None = None,
+    received_at: datetime | None = None,
+    execution_status: str = "completed",
+    google_available: bool = True,
+) -> models.RuProbeRun:
+    effective_finished_at = finished_at or (now - timedelta(minutes=1))
+    payload = _payload_from_manifest(
+        manifest,
+        now=effective_finished_at + timedelta(minutes=1),
+        execution_status=execution_status,
+    )
+    payload["run_id"] = run_id
+    if not google_available:
+        google = next(
+            target
+            for target in payload["targets"]
+            if target["target_id"] == "environment:google"
+        )
+        google["stages"]["http_large_body"].update(
+            status="fail",
+            latency_ms=None,
+            code="network_unavailable",
+        )
+    evaluated = evaluate_ru_run(session, payload, now=now)
+    stored = store_evaluated_ru_run(
+        session,
+        evaluated,
+        artifact_sha256=(run_id.replace("-", "") + ("0" * 64))[:64],
+        ingest_key_id="ru-test",
+        received_at=received_at or now,
+    )
+    session.commit()
+    return session.query(models.RuProbeRun).filter_by(id=stored.run_db_id).one()
+
+
+def _store_current_manifest_run(
+    session,
+    *,
+    now: datetime,
+    run_id: str,
+) -> tuple[models.RuProbeRun, dict[str, object]]:
+    manifest = build_ru_manifest(session, now=now)
+    row = _store_manifest_run(
+        session,
+        manifest=manifest,
+        now=now,
+        run_id=run_id,
+    )
+    return row, manifest
+
+
+def _copy_target_result(
+    row: models.RuProbeTargetResult,
+    **overrides: object,
+) -> models.RuProbeTargetResult:
+    values = {
+        column.name: copy.deepcopy(getattr(row, column.name))
+        for column in models.RuProbeTargetResult.__table__.columns
+        if column.name != "id"
+    }
+    values.update(overrides)
+    return models.RuProbeTargetResult(**values)
 
 
 def test_manifest_membership_is_bulk_and_includes_only_delivery_scope(session) -> None:
@@ -883,24 +955,24 @@ def test_protocol_alive_requires_protocol_handshake_not_tls_or_client_hint(
 def test_latest_eligible_uses_finished_at_not_received_at(session) -> None:
     now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
     session.add(_node("nl", enabled=True))
-    session.flush()
-    newer = _stored_run(
+    session.commit()
+    manifest = build_ru_manifest(session, now=now)
+    newer = _store_manifest_run(
         session,
+        manifest=manifest,
+        now=now,
         run_id="00000000-0000-4000-8000-000000000101",
         finished_at=now,
         received_at=now,
-        current_eligible=True,
-        release_verdict="pass",
     )
-    late_old = _stored_run(
+    late_old = _store_manifest_run(
         session,
+        manifest=manifest,
+        now=now,
         run_id="00000000-0000-4000-8000-000000000102",
         finished_at=now - timedelta(hours=2),
         received_at=now + timedelta(minutes=1),
-        current_eligible=True,
-        release_verdict="pass",
     )
-    session.commit()
 
     latest = get_latest_ru_status(session, now=now + timedelta(minutes=2))
 
@@ -911,29 +983,284 @@ def test_latest_eligible_uses_finished_at_not_received_at(session) -> None:
     assert latest["threshold_seconds"] == RU_RUN_STALE_AFTER_SECONDS
 
 
+def test_latest_pass_is_not_current_after_enabled_node_changes_manifest(session) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add(_node("nl", enabled=True))
+    session.commit()
+    stored, _manifest = _store_current_manifest_run(
+        session,
+        now=now,
+        run_id="00000000-0000-4000-8000-000000000109",
+    )
+
+    session.add(_node("de", enabled=True))
+    session.commit()
+
+    latest = get_latest_ru_status(session, now=now + timedelta(minutes=1))
+
+    assert latest["status"] != "ok"
+    assert latest["reason_code"] == "superseded_manifest"
+    assert latest["latest_received_attempt"]["run_id"] == stored.run_id
+    assert latest["latest_eligible_run"] is None
+    nodes = {row["node_code"]: row for row in latest["nodes"]}
+    assert nodes["de"]["status"] == "missing"
+    assert nodes["de"]["reason_code"] == "target_missing"
+
+
+@pytest.mark.parametrize(
+    ("transition", "expected_node_status", "expected_node_reason"),
+    [
+        ("enable", "missing", "target_missing"),
+        ("disable", "not_in_scope", "not_in_scope"),
+        ("drain", "missing", "target_missing"),
+    ],
+)
+def test_latest_revalidates_node_scope_transitions_against_live_manifest(
+    session,
+    transition: str,
+    expected_node_status: str,
+    expected_node_reason: str,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    node = _node("nl", enabled=transition == "disable")
+    session.add(node)
+    session.commit()
+    stored, _manifest = _store_current_manifest_run(
+        session,
+        now=now,
+        run_id=f"00000000-0000-4000-8000-00000000011{len(transition)}",
+    )
+
+    if transition == "enable":
+        node.enabled = True
+    elif transition == "disable":
+        node.enabled = False
+    else:
+        node.is_draining = True
+    session.commit()
+
+    latest = get_latest_ru_status(session, now=now + timedelta(minutes=1))
+
+    assert latest["status"] != "ok"
+    assert latest["reason_code"] == "superseded_manifest"
+    assert latest["latest_received_attempt"]["run_id"] == stored.run_id
+    assert latest["latest_eligible_run"] is None
+    node_row = next(row for row in latest["nodes"] if row["node_code"] == "nl")
+    assert node_row["status"] == expected_node_status
+    assert node_row["reason_code"] == expected_node_reason
+
+
+@pytest.mark.parametrize("target_family", ["canonical", "reserve"])
+def test_latest_revalidates_canonical_and_reserve_endpoint_revisions(
+    session,
+    monkeypatch: pytest.MonkeyPatch,
+    target_family: str,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    if target_family == "canonical":
+        env_name = "RU_PROBE_CANONICAL_TARGETS_JSON"
+        before = [
+            {
+                "target_id": "canonical:read-check",
+                "host": "old-read.example.net",
+                "http_path": "/probe",
+                "min_body_bytes": 65536,
+            }
+        ]
+        after = copy.deepcopy(before)
+        after[0]["host"] = "new-read.example.net"
+    else:
+        env_name = "RU_PROBE_RESERVE_TARGETS_JSON"
+        before = [
+            {
+                "target_id": "reserve:read-check",
+                "probe_mode": "xhttp_handshake",
+                "host": "old-reserve.example.net",
+                "transport_profile": "reserve_xhttp_cdn",
+                "local_probe_profile_id": "xhttp-canary-v1",
+                "http_path": "/probe",
+            }
+        ]
+        after = copy.deepcopy(before)
+        after[0]["http_path"] = "/probe-v2"
+    monkeypatch.setenv(env_name, json.dumps(before))
+    stored, old_manifest = _store_current_manifest_run(
+        session,
+        now=now,
+        run_id=(
+            "00000000-0000-4000-8000-000000000121"
+            if target_family == "canonical"
+            else "00000000-0000-4000-8000-000000000122"
+        ),
+    )
+    monkeypatch.setenv(env_name, json.dumps(after))
+    current_manifest = build_ru_manifest(session, now=now + timedelta(minutes=1))
+    assert current_manifest["manifest_revision"] != old_manifest["manifest_revision"]
+
+    latest = get_latest_ru_status(session, now=now + timedelta(minutes=1))
+
+    assert latest["status"] != "ok"
+    assert latest["reason_code"] == "superseded_manifest"
+    assert latest["latest_received_attempt"]["run_id"] == stored.run_id
+    assert latest["latest_eligible_run"] is None
+
+
+@pytest.mark.parametrize(
+    ("corruption", "expected_reason"),
+    [
+        ("missing", "current_target_missing"),
+        ("fingerprint", "superseded_manifest"),
+        ("extra", "superseded_manifest"),
+        ("endpoint", "superseded_manifest"),
+        ("target_flag", "superseded_manifest"),
+    ],
+)
+def test_latest_rejects_corrupt_missing_and_extra_release_target_rows(
+    session,
+    corruption: str,
+    expected_reason: str,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add(_node("nl", enabled=True))
+    session.commit()
+    stored, _manifest = _store_current_manifest_run(
+        session,
+        now=now,
+        run_id=(
+            "00000000-0000-4000-8000-000000000123"
+            if corruption == "missing"
+            else "00000000-0000-4000-8000-000000000124"
+            if corruption == "fingerprint"
+            else "00000000-0000-4000-8000-000000000125"
+        ),
+    )
+    target = (
+        session.query(models.RuProbeTargetResult)
+        .filter_by(run_db_id=stored.id, target_id="node:nl")
+        .one()
+    )
+    if corruption == "missing":
+        session.delete(target)
+    elif corruption == "fingerprint":
+        target.endpoint_fingerprint = "f" * 64
+    elif corruption == "extra":
+        session.add(
+            _copy_target_result(
+                target,
+                target_id="node:unknown-release-target",
+                node_code="unknown-release-target",
+            )
+        )
+    elif corruption == "endpoint":
+        target.endpoint_host = "corrupt-endpoint.example.net"
+    else:
+        target.current_eligible = False
+    session.commit()
+
+    latest = get_latest_ru_status(session, now=now + timedelta(minutes=1))
+
+    assert latest["status"] != "ok"
+    assert latest["reason_code"] == expected_reason
+    assert latest["latest_received_attempt"]["run_id"] == stored.run_id
+    assert latest["latest_eligible_run"] is None
+    assert {row["status"] for row in latest["nodes"]} != {"unavailable"}
+    if corruption == "missing":
+        node_row = next(row for row in latest["nodes"] if row["node_code"] == "nl")
+        assert node_row["status"] == "missing"
+        assert node_row["reason_code"] == "target_missing"
+
+
+def test_latest_stale_boundary_is_strictly_after_seven_hours(session) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add(_node("nl", enabled=True))
+    session.commit()
+    manifest = build_ru_manifest(session, now=now)
+    stored = _store_manifest_run(
+        session,
+        manifest=manifest,
+        now=now,
+        run_id="00000000-0000-4000-8000-000000000126",
+        finished_at=now - timedelta(seconds=RU_RUN_STALE_AFTER_SECONDS),
+        received_at=now,
+    )
+
+    at_boundary = get_latest_ru_status(session, now=now)
+    after_boundary = get_latest_ru_status(session, now=now + timedelta(seconds=1))
+
+    assert at_boundary["status"] == "ok"
+    assert at_boundary["age_seconds"] == RU_RUN_STALE_AFTER_SECONDS
+    assert at_boundary["latest_eligible_run"]["run_id"] == stored.run_id
+    assert after_boundary["status"] == "stale"
+    assert after_boundary["reason_code"] == "eligible_run_stale"
+
+
+def test_latest_builds_manifest_once_and_has_constant_query_count(
+    session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add_all([_node(f"n{index:02d}", enabled=True) for index in range(32)])
+    session.commit()
+    stored, _manifest = _store_current_manifest_run(
+        session,
+        now=now,
+        run_id="00000000-0000-4000-8000-000000000127",
+    )
+    original_build = ru_probe_service_module.build_ru_manifest
+    manifest_calls = 0
+
+    def tracked_build(current_session, *, now: datetime):
+        nonlocal manifest_calls
+        manifest_calls += 1
+        return original_build(current_session, now=now)
+
+    monkeypatch.setattr(
+        ru_probe_service_module,
+        "build_ru_manifest",
+        tracked_build,
+    )
+    selects: list[str] = []
+
+    def record_select(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if statement.lstrip().upper().startswith("SELECT"):
+            selects.append(statement)
+
+    event.listen(session.bind, "before_cursor_execute", record_select)
+    try:
+        latest = get_latest_ru_status(session, now=now + timedelta(minutes=1))
+    finally:
+        event.remove(session.bind, "before_cursor_execute", record_select)
+
+    assert latest["latest_eligible_run"]["run_id"] == stored.run_id
+    assert len(latest["nodes"]) == 32
+    assert manifest_calls == 1
+    assert len(selects) <= 7
+
+
 def test_latest_keeps_incomplete_attempt_separate_and_stales_last_eligible(
     session,
 ) -> None:
     now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
     session.add(_node("nl", enabled=True))
-    session.flush()
-    eligible = _stored_run(
+    session.commit()
+    manifest = build_ru_manifest(session, now=now)
+    eligible = _store_manifest_run(
         session,
+        manifest=manifest,
+        now=now,
         run_id="00000000-0000-4000-8000-000000000103",
         finished_at=now - timedelta(seconds=RU_RUN_STALE_AFTER_SECONDS + 1),
         received_at=now - timedelta(hours=7),
-        current_eligible=True,
-        release_verdict="pass",
     )
-    attempt = _stored_run(
+    attempt = _store_manifest_run(
         session,
+        manifest=manifest,
+        now=now,
         run_id="00000000-0000-4000-8000-000000000104",
         finished_at=now - timedelta(minutes=5),
         received_at=now - timedelta(minutes=4),
-        current_eligible=False,
-        release_verdict="incomplete",
+        execution_status="partial",
     )
-    session.commit()
 
     latest = get_latest_ru_status(session, now=now)
 
@@ -955,18 +1282,16 @@ def test_latest_missing_and_google_failure_are_honest(session) -> None:
     assert missing["latest_received_attempt"] is None
     assert {row["status"] for row in missing["nodes"]} == {"missing"}
 
-    _stored_run(
+    manifest = build_ru_manifest(session, now=now)
+    _store_manifest_run(
         session,
+        manifest=manifest,
+        now=now,
         run_id="00000000-0000-4000-8000-000000000105",
         finished_at=now - timedelta(minutes=1),
         received_at=now,
-        current_eligible=True,
-        release_verdict="fail",
-        environment_verdict="unavailable",
-        node_code="nl",
-        node_status="unavailable_probe_host",
+        google_available=False,
     )
-    session.commit()
 
     unavailable = get_latest_ru_status(session, now=now)
     assert unavailable["environment_verdict"] == "unavailable"
@@ -1020,6 +1345,7 @@ def test_ru_history_cursor_is_opaque_deterministic_and_filters_unknown_node(
     ]
     assert page_one["next_cursor"]
     assert "2026-07-16" not in page_one["next_cursor"]
+    assert all("targets" not in row for row in page_one["items"])
     assert "endpoint_host" not in json.dumps(page_one, ensure_ascii=False)
     assert "artifact_sha256" not in json.dumps(page_one, ensure_ascii=False)
 
@@ -1041,6 +1367,88 @@ def test_ru_history_cursor_is_opaque_deterministic_and_filters_unknown_node(
     )
     assert [row["run_id"] for row in diagnostic["items"]] == [second.run_id]
     assert diagnostic["items"][0]["targets"][0]["node_code"] == "ghost"
+
+
+def test_unfiltered_ru_history_does_not_load_target_matrix_at_max_page_size(
+    session,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    for index in range(200):
+        run = _stored_run(
+            session,
+            run_id=f"00000000-0000-4000-8000-{1000 + index:012d}",
+            finished_at=now - timedelta(minutes=index),
+            received_at=now - timedelta(minutes=index),
+            current_eligible=True,
+            release_verdict="pass",
+        )
+        seed_target = (
+            session.query(models.RuProbeTargetResult)
+            .filter_by(run_db_id=run.id, target_id="node:nl")
+            .one()
+        )
+        base_values = {
+            column.name: copy.deepcopy(getattr(seed_target, column.name))
+            for column in models.RuProbeTargetResult.__table__.columns
+            if column.name != "id"
+        }
+        session.execute(
+            models.RuProbeTargetResult.__table__.insert(),
+            [
+                {
+                    **base_values,
+                    "target_id": f"diagnostic:{target_index:03d}",
+                    "target_kind": "diagnostic",
+                    "scope": "diagnostic",
+                    "node_code": None,
+                    "current_eligible": False,
+                    "ineligible_reason": "diagnostic_only",
+                }
+                for target_index in range(1, 256)
+            ],
+        )
+    session.commit()
+    selects: list[str] = []
+
+    def record_select(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if statement.lstrip().upper().startswith("SELECT"):
+            selects.append(statement)
+
+    event.listen(session.bind, "before_cursor_execute", record_select)
+    try:
+        history = get_ru_run_history(session, limit=200)
+    finally:
+        event.remove(session.bind, "before_cursor_execute", record_select)
+
+    serialized = json.dumps(history, ensure_ascii=False)
+    assert len(history["items"]) == 200
+    assert all("targets" not in row for row in history["items"])
+    assert len(serialized.encode("utf-8")) < 350_000
+    assert not any(
+        "ru_probe_target_results" in statement.lower()
+        for statement in selects
+    )
+
+
+def test_node_filtered_ru_history_includes_only_requested_target_detail(
+    session,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add_all([_node("de", enabled=True), _node("nl", enabled=True)])
+    session.commit()
+    stored, _manifest = _store_current_manifest_run(
+        session,
+        now=now,
+        run_id="00000000-0000-4000-8000-000000000128",
+    )
+
+    history = get_ru_run_history(session, node_code="nl", limit=200)
+
+    assert [row["run_id"] for row in history["items"]] == [stored.run_id]
+    assert [
+        target["node_code"]
+        for target in history["items"][0]["targets"]
+    ] == ["nl"]
 
 
 def test_uploader_status_uses_latest_observed_heartbeat_and_server_freshness(
