@@ -20,7 +20,13 @@ class WorkerRetentionTests(unittest.TestCase):
             sys.path.insert(0, portal_dir)
 
         self._saved_env: dict[str, str | None] = {}
-        for key in ("DATABASE_URL", "BOT_TOKEN", "PUBLIC_CHANNEL"):
+        for key in (
+            "DATABASE_URL",
+            "BOT_TOKEN",
+            "PUBLIC_CHANNEL",
+            "RU_PROBE_RETENTION_DAYS",
+            "RU_PROBE_HEARTBEAT_RETENTION_DAYS",
+        ):
             self._saved_env[key] = os.environ.get(key)
 
         self._tmp = tempfile.TemporaryDirectory()
@@ -28,6 +34,8 @@ class WorkerRetentionTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path.as_posix()}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
+        os.environ["RU_PROBE_RETENTION_DAYS"] = "180"
+        os.environ["RU_PROBE_HEARTBEAT_RETENTION_DAYS"] = "30"
 
         for mod_name in ("config", "db", "worker"):
             if mod_name in sys.modules:
@@ -279,6 +287,154 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(cleanup_calls, [1])
         self.assertTrue(fake_session.committed)
         self.assertTrue(fake_session.closed)
+
+    def test_telemetry_retention_cleans_ru_tables_and_preserves_holds(self) -> None:
+        from models import (
+            InternalIngestNonce,
+            RuProbeRun,
+            RuProbeTargetResult,
+            RuProbeUploaderHeartbeat,
+        )
+
+        now = self.worker._utcnow()
+        session = self.db.SessionLocal()
+        try:
+            old_unheld = RuProbeRun(
+                run_id=str(uuid.uuid4()),
+                schema_version=2,
+                origin="ru",
+                probe_host_id="mini",
+                probe_host_label="Мини",
+                runner_version="2.0.0",
+                started_at=now - timedelta(days=181, minutes=2),
+                finished_at=now - timedelta(days=181),
+                received_at=now - timedelta(days=181),
+                manifest_revision="a" * 64,
+                execution_status="completed",
+                environment_verdict="available",
+                release_verdict="pass",
+                current_eligible=True,
+                google_reachable=True,
+                xhttp_alive=False,
+                hysteria_alive=False,
+                artifact_sha256="b" * 64,
+                ingest_key_id="ru-test",
+                retention_hold=False,
+            )
+            old_held = RuProbeRun(
+                run_id=str(uuid.uuid4()),
+                schema_version=2,
+                origin="ru",
+                probe_host_id="mini",
+                probe_host_label="Мини",
+                runner_version="2.0.0",
+                started_at=now - timedelta(days=181, minutes=2),
+                finished_at=now - timedelta(days=181),
+                received_at=now - timedelta(days=181),
+                manifest_revision="c" * 64,
+                execution_status="completed",
+                environment_verdict="available",
+                release_verdict="pass",
+                current_eligible=True,
+                google_reachable=True,
+                xhttp_alive=False,
+                hysteria_alive=False,
+                artifact_sha256="d" * 64,
+                ingest_key_id="ru-test",
+                retention_hold=True,
+                retention_hold_reason="release_evidence:candidate-1",
+                retention_held_at=now - timedelta(days=180),
+            )
+            session.add_all([old_unheld, old_held])
+            session.flush()
+            for run in (old_unheld, old_held):
+                session.add(
+                    RuProbeTargetResult(
+                        run_db_id=run.id,
+                        target_id="node:nl",
+                        target_kind="delivery_node",
+                        scope="release_required",
+                        node_code="nl",
+                        endpoint_fingerprint="e" * 64,
+                        endpoint_host="nl.example.test",
+                        endpoint_port=443,
+                        requested_address_families_json=["ipv4"],
+                        transport_metadata_json={},
+                        transport_profile="legacy_reality_fallback",
+                        probe_mode="delivery_tls",
+                        observed_at=run.finished_at,
+                        overall_status="pass",
+                        current_eligible=True,
+                        dns_status="pass",
+                        tcp_status="pass",
+                        tls_status="pass",
+                        http_large_body_status="not_applicable",
+                        transport_handshake_status="not_applicable",
+                        ipv4_status="pass",
+                        ipv6_status="not_applicable",
+                        reported_transport_handshake_status="not_applicable",
+                        reported_transport_classification="ok",
+                    )
+                )
+            session.add_all(
+                [
+                    InternalIngestNonce(
+                        key_scope="ru_probe:ingest",
+                        key_id="ru-test",
+                        nonce_hash="1" * 64,
+                        request_path="/api/internal/probes/ru-origin/runs",
+                        request_timestamp=now - timedelta(days=2),
+                        body_sha256="2" * 64,
+                        expires_at=now - timedelta(minutes=1),
+                        created_at=now - timedelta(days=2),
+                    ),
+                    RuProbeUploaderHeartbeat(
+                        probe_host_id="mini",
+                        observed_at=now - timedelta(days=31),
+                        received_at=now - timedelta(days=31),
+                        service_version="2.0.0",
+                        pending_count=0,
+                        blocked_count=0,
+                        quarantine_count=0,
+                        archive_write_ok=True,
+                        disk_free_bytes=1_000_000,
+                        disk_state="ok",
+                        ingest_key_id="ru-test",
+                    ),
+                    RuProbeUploaderHeartbeat(
+                        probe_host_id="mini",
+                        observed_at=now - timedelta(days=29),
+                        received_at=now - timedelta(days=29),
+                        service_version="2.0.0",
+                        pending_count=0,
+                        blocked_count=0,
+                        quarantine_count=0,
+                        archive_write_ok=True,
+                        disk_free_bytes=1_000_000,
+                        disk_state="ok",
+                        ingest_key_id="ru-test",
+                    ),
+                ]
+            )
+            session.commit()
+
+            deleted = self.worker.run_telemetry_retention_once(
+                session=session,
+                now=now,
+            )
+            session.commit()
+
+            self.assertEqual(deleted["ru_probe_runs"], 1)
+            self.assertEqual(deleted["internal_ingest_nonces"], 1)
+            self.assertEqual(deleted["ru_probe_uploader_heartbeats"], 1)
+            remaining_runs = session.query(RuProbeRun).all()
+            self.assertEqual([row.id for row in remaining_runs], [old_held.id])
+            remaining_targets = session.query(RuProbeTargetResult).all()
+            self.assertEqual([row.run_db_id for row in remaining_targets], [old_held.id])
+            self.assertEqual(session.query(InternalIngestNonce).count(), 0)
+            self.assertEqual(session.query(RuProbeUploaderHeartbeat).count(), 1)
+        finally:
+            session.close()
 
 
 if __name__ == "__main__":

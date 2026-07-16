@@ -246,6 +246,186 @@ def _seed_ops_fixture(api, *, now: datetime) -> None:
         s.close()
 
 
+def _seed_ru_read_fixture(api, *, now: datetime) -> None:
+    from models import (
+        NodeHealthSample,
+        NodeRuntimeMetric,
+        OpsAlert,
+        RuProbeRun,
+        RuProbeTargetResult,
+        RuProbeUploaderHeartbeat,
+    )
+
+    s = api.SessionLocal()
+    try:
+        node = s.query(api.Node).filter(api.Node.code == "de").one()
+        node.observer_last_push_at = now - timedelta(minutes=3)
+        node.observer_last_batch_id = "observer-batch-safe"
+        node.observer_unmatched_count = 2
+        node.observer_parse_error_count = 1
+        node.transport_profiles_json = json.dumps(
+            [
+                {
+                    "name": "legacy_reality_fallback",
+                    "enabled": True,
+                    "kind": "reality",
+                    "inbound_id": 1,
+                    "host": "203.0.113.77",
+                    "port": 443,
+                    "tls_server_name": "front.example.test",
+                    "reality_public_key": "SYNTHETIC-PUBLIC-MATERIAL",
+                    "reality_short_id": "SYNTHETIC-SHORT-ID",
+                }
+            ]
+        )
+        s.add(
+            NodeHealthSample(
+                node_code="de",
+                sampled_at=now - timedelta(minutes=2),
+                panel_latency_ms=42,
+                panel_error_rate=0.0,
+                active_clients=7,
+                cpu_percent=23.5,
+                memory_used_mb=1024,
+                memory_total_mb=4096,
+                disk_used_gb=12.5,
+                disk_total_gb=80.0,
+                disk_free_gb=67.5,
+                network_rx_mbps=10.0,
+                network_tx_mbps=20.0,
+                network_total_mbps=30.0,
+                is_healthy=True,
+                score=95.0,
+                source="brain",
+                probe_at=now - timedelta(minutes=2),
+                probe_stage="tls",
+                probe_classification="ok",
+                ipv4_health="ok",
+                ipv6_health="missing",
+                transport_health_json=json.dumps({"status": "ok"}),
+            )
+        )
+        s.add(
+            NodeRuntimeMetric(
+                node_code="de",
+                sampled_at=now - timedelta(minutes=1),
+                source="collector",
+                provisioned_clients_count=7,
+                online_connections_hint=3,
+                network_rx_mbps_1m=11.0,
+                network_tx_mbps_1m=21.0,
+                network_rx_mbps_5m=9.0,
+                network_tx_mbps_5m=19.0,
+                network_total_mbps=32.0,
+                cpu_percent=24.0,
+                memory_used_mb=1024,
+                memory_total_mb=4096,
+                capacity_score=88.0,
+                capacity_state="ok",
+            )
+        )
+        run = RuProbeRun(
+            run_id="00000000-0000-4000-8000-000000000201",
+            schema_version=2,
+            origin="ru",
+            probe_host_id="mini",
+            probe_host_label="Мини",
+            runner_version="2.0.0",
+            started_at=now - timedelta(minutes=8),
+            finished_at=now - timedelta(minutes=6),
+            received_at=now - timedelta(minutes=5),
+            manifest_revision="a" * 64,
+            execution_status="completed",
+            environment_verdict="available",
+            release_verdict="pass",
+            current_eligible=True,
+            google_reachable=True,
+            xhttp_alive=False,
+            hysteria_alive=False,
+            server_summary="fixture",
+            artifact_sha256="b" * 64,
+            ingest_key_id="ru-test",
+            retention_hold=False,
+        )
+        s.add(run)
+        s.flush()
+        s.add(
+            RuProbeTargetResult(
+                run_db_id=run.id,
+                target_id="node:de",
+                target_kind="delivery_node",
+                scope="release_required",
+                node_code="de",
+                endpoint_fingerprint="c" * 64,
+                endpoint_host="203.0.113.77",
+                endpoint_port=443,
+                endpoint_sni="front.example.test",
+                requested_address_families_json=["ipv4", "ipv6"],
+                transport_metadata_json={
+                    "address_family_status": {
+                        "ipv4": "pass",
+                        "ipv6": "not_run",
+                    },
+                    "transport": {
+                        "handshake_status": "pass",
+                        "classification": "ok",
+                    },
+                },
+                transport_profile="legacy_reality_fallback",
+                probe_mode="delivery_tls",
+                observed_at=now - timedelta(minutes=6),
+                overall_status="pass",
+                current_eligible=True,
+                dns_status="pass",
+                dns_latency_ms=10,
+                tcp_status="pass",
+                tcp_latency_ms=20,
+                tls_status="pass",
+                tls_latency_ms=30,
+                http_large_body_status="not_applicable",
+                transport_handshake_status="not_applicable",
+                ipv4_status="pass",
+                ipv6_status="not_run",
+                reported_transport_handshake_status="not_applicable",
+                reported_transport_classification="ok",
+            )
+        )
+        s.add(
+            RuProbeUploaderHeartbeat(
+                probe_host_id="mini",
+                observed_at=now - timedelta(minutes=10),
+                received_at=now - timedelta(minutes=9),
+                service_version="2.0.0",
+                pending_count=2,
+                blocked_count=0,
+                quarantine_count=1,
+                oldest_pending_at=now - timedelta(hours=1),
+                archive_write_ok=True,
+                disk_free_bytes=10_000_000,
+                disk_state="ok",
+                last_error_code="quarantine_present",
+                ingest_key_id="ru-test",
+            )
+        )
+        s.add(
+            OpsAlert(
+                fingerprint="node_metrics:de:cpu_high",
+                source="node_metrics",
+                severity="warning",
+                status="active",
+                title="CPU",
+                node_code="de",
+                first_seen_at=now,
+                last_seen_at=now,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        s.commit()
+    finally:
+        s.close()
+
+
 def test_provider_quota_cycle_bounds_handles_short_month_reset(monkeypatch, tmp_path) -> None:
     _load_api(monkeypatch, tmp_path)
     from admin_ops_service import provider_quota_cycle_bounds
@@ -746,3 +926,242 @@ def test_worker_refreshes_durable_alerts_without_admin_ui(monkeypatch, tmp_path)
     finally:
         s.close()
     assert {"provider_quota:de", "free_tier:over_cap"}.issubset(fingerprints)
+
+
+def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
+    monkeypatch, tmp_path
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    now = _utcnow()
+    _seed_ops_fixture(api, now=now)
+    _seed_ru_read_fixture(api, now=now)
+    client = TestClient(api.app)
+    paths = [
+        "/api/admin/probes/ru-origin/latest",
+        "/api/admin/probes/ru-origin/runs?limit=10",
+        "/api/admin/probes/ru-origin/uploader-status",
+        "/api/admin/nodes/de/observability",
+        "/api/admin/search?q=de",
+    ]
+
+    for path in paths:
+        denied = client.get(path)
+        assert denied.status_code in {401, 403}, (path, denied.text)
+
+    headers = _admin_headers()
+    latest = client.get(paths[0], headers=headers)
+    assert latest.status_code == 200, latest.text
+    latest_body = latest.json()
+    assert latest_body["latest_eligible_run"]["run_id"].endswith("0201")
+    assert latest_body["latest_received_attempt"]["run_id"].endswith("0201")
+    assert latest_body["nodes"][0]["threshold_seconds"] == 7 * 60 * 60
+
+    runs = client.get(paths[1], headers=headers)
+    assert runs.status_code == 200, runs.text
+    assert runs.json()["items"][0]["run_id"].endswith("0201")
+    assert "artifact_sha256" not in runs.text
+    assert "203.0.113.77" not in runs.text
+
+    uploader = client.get(paths[2], headers=headers)
+    assert uploader.status_code == 200, uploader.text
+    assert uploader.json()["heartbeat"]["pending_count"] == 2
+    assert uploader.json()["threshold_seconds"] == 45 * 60
+
+    observability = client.get(paths[3], headers=headers)
+    assert observability.status_code == 200, observability.text
+    body = observability.json()
+    assert body["node"]["code"] == "de"
+    assert body["sources"]["brain_metrics"]["sampled_at"]
+    assert body["sources"]["brain_metrics"]["threshold_seconds"] >= 300
+    assert body["sources"]["runtime"]["sampled_at"]
+    assert body["sources"]["observer"]["sampled_at"]
+    assert body["sources"]["ru_origin"]["sampled_at"]
+    assert body["ru"]["history"]["items"]
+    serialized = observability.text.lower()
+    for forbidden in (
+        "panel_pass",
+        "panel_user",
+        "reality_public_key",
+        "reality_short_id",
+        "synthetic-public-material",
+        "synthetic-short-id",
+        "203.0.113.77",
+        "source_ip_raw",
+    ):
+        assert forbidden not in serialized
+
+    missing_node = client.get(
+        "/api/admin/nodes/does-not-exist/observability",
+        headers=headers,
+    )
+    assert missing_node.status_code == 404
+    assert missing_node.json()["detail"] == "Node not found"
+
+    invalid_cursor = client.get(
+        "/api/admin/probes/ru-origin/runs?cursor=not-a-cursor",
+        headers=headers,
+    )
+    assert invalid_cursor.status_code == 400
+    assert invalid_cursor.json()["detail"] == "Invalid RU history cursor"
+
+
+def test_admin_search_is_typed_bounded_and_never_echoes_key_or_email(
+    monkeypatch, tmp_path
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AccessKey, AccountDevice, ExternalOrder, User
+
+    now = _utcnow()
+    _seed_ops_fixture(api, now=now)
+    s = api.SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == 1001).one()
+        user.display_name = "Тестовый операторский поиск"
+        user.app_install_id = "install-search-1001"
+        user.email = "private-search@example.test"
+        user.account_id = "00000000-0000-4000-8000-000000000301"
+        s.add(
+            AccountDevice(
+                id="00000000-0000-4000-8000-000000000302",
+                account_id=user.account_id,
+                install_id="install-device-search",
+                label="Windows",
+                state="active",
+                first_seen_at=now,
+                last_seen_at=now,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        s.add(
+            ExternalOrder(
+                order_id="order-search-2026",
+                tg_id=1001,
+                provider="lavatop",
+                plan_code="1_month",
+                amount=990.0,
+                currency="RUB",
+                status="paid",
+                meta_json='{"callback_body":"SYNTHETIC-SECRET-CALLBACK"}',
+                created_at=now,
+                paid_at=now,
+            )
+        )
+        s.add(
+            AccessKey(
+                tg_id=1001,
+                key_uuid="00000000-0000-4000-8000-000000000303",
+                panel_email="private-key-search@example.test",
+                node_code="de",
+                pool_code="premium_pool",
+                state="active",
+                meta_json='{"subscription_url":"https://secret.invalid/token"}',
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        s.commit()
+    finally:
+        s.close()
+
+    client = TestClient(api.app)
+    headers = _admin_headers()
+    queries = [
+        "1001",
+        "nearcap",
+        "Тестовый операторский",
+        "install-device-search",
+        "order-search-2026",
+        "de",
+        "private-key-search@example.test",
+    ]
+    seen_kinds: set[str] = set()
+    for query in queries:
+        response = client.get(
+            f"/api/admin/search?{urlencode({'q': query})}",
+            headers=headers,
+        )
+        assert response.status_code == 200, response.text
+        rows = response.json()["results"]
+        assert len(rows) <= 20
+        assert all(set(row) == {"kind", "id", "title", "subtitle", "href"} for row in rows)
+        assert all(str(row["href"]).startswith("/") for row in rows)
+        seen_kinds.update(str(row["kind"]) for row in rows)
+        lower = response.text.lower()
+        for forbidden in (
+            "private-key-search@example.test",
+            "00000000-0000-4000-8000-000000000303",
+            "synthetic-secret-callback",
+            "secret.invalid",
+            "subscription_url",
+            "callback_body",
+        ):
+            assert forbidden not in lower
+    assert {"user", "order", "node", "key"}.issubset(seen_kinds)
+
+    short = client.get("/api/admin/search?q=x", headers=headers)
+    assert short.status_code == 400
+    assert short.json()["detail"] == "Search query must contain at least 2 characters"
+
+
+def test_ru_alert_candidates_use_server_freshness_and_received_heartbeat_facts(
+    monkeypatch, tmp_path
+) -> None:
+    _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import build_alert_candidates
+
+    candidates = build_alert_candidates(
+        metrics_status={},
+        provider_status=[],
+        free_summary={},
+        capacity_rows=[],
+        ru_status={
+            "status": "stale",
+            "age_seconds": 7 * 60 * 60 + 1,
+            "threshold_seconds": 7 * 60 * 60,
+            "reason_code": "eligible_run_stale",
+        },
+        ru_uploader_status={
+            "status": "stale",
+            "age_seconds": 45 * 60 + 1,
+            "threshold_seconds": 45 * 60,
+            "reason_code": "uploader_heartbeat_stale",
+            "heartbeat": {
+                "pending_count": 3,
+                "blocked_count": 1,
+                "quarantine_count": 2,
+                "archive_write_ok": False,
+                "disk_state": "critical",
+                "last_error_code": "archive_write_failed",
+            },
+        },
+    )
+
+    fingerprints = {row["fingerprint"] for row in candidates}
+    assert {
+        "ru_probe_run_stale",
+        "ru_probe_uploader_heartbeat_stale",
+        "ru_probe_uploader_backlog",
+        "ru_probe_uploader_blocked",
+        "ru_probe_uploader_quarantine",
+        "ru_probe_uploader_archive",
+        "ru_probe_uploader_disk",
+    }.issubset(fingerprints)
+    assert {row["source"] for row in candidates if row["fingerprint"].startswith("ru_probe")} == {
+        "ru_probe"
+    }
+
+    no_heartbeat = build_alert_candidates(
+        metrics_status={},
+        provider_status=[],
+        free_summary={},
+        capacity_rows=[],
+        ru_status={"status": "missing"},
+        ru_uploader_status={"status": "missing", "heartbeat": None},
+    )
+    assert not {
+        row["fingerprint"]
+        for row in no_heartbeat
+        if row["fingerprint"].startswith("ru_probe_uploader_")
+        and row["fingerprint"] != "ru_probe_uploader_heartbeat_stale"
+    }

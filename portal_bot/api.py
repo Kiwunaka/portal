@@ -229,10 +229,12 @@ from warp_service import (
     warp_material_public_payload,
 )
 from admin_ops_service import (
+    admin_search_results as _ops_admin_search_results,
     admin_nodes_capacity_payload as _ops_admin_nodes_capacity_payload,
     alert_payload as _ops_alert_payload,
     build_admin_metrics_status_snapshot as _ops_build_admin_metrics_status_snapshot,
     build_alert_candidates as _ops_build_alert_candidates,
+    build_node_observability as _ops_build_node_observability,
     bytes_to_gb as _ops_bytes_to_gb,
     free_tier_summary as _ops_free_tier_summary,
     free_tier_user_rows as _ops_free_tier_user_rows,
@@ -253,8 +255,12 @@ from ru_probe_contract import RuProbeContractError, validate_run_payload
 from ru_probe_service import (
     RuProbeConfigurationError,
     RuProbePayloadConflict,
+    RuProbeReadModelError,
     build_ru_manifest,
     evaluate_ru_run,
+    get_latest_ru_status,
+    get_ru_run_history,
+    get_ru_uploader_status,
     store_evaluated_ru_run,
     store_ru_heartbeat,
     validate_ru_heartbeat,
@@ -15800,6 +15806,144 @@ async def admin_traffic_summary(
             "to": to_dt.date().isoformat(),
             "rows": rows,
             "totals_by_pool": {pool: {"traffic_bytes": value, "traffic_gb": _ops_bytes_to_gb(value)} for pool, value in sorted(totals_by_pool.items())},
+        }
+    finally:
+        s.close()
+
+
+def _parse_ru_history_datetime(raw: str, *, field: str) -> datetime | None:
+    value = str(raw or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, OverflowError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid RU history {field}",
+        ) from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _ru_read_model_http_error(error: RuProbeReadModelError) -> HTTPException:
+    messages = {
+        "invalid_cursor": "Invalid RU history cursor",
+        "invalid_limit": "Invalid RU history limit",
+        "invalid_from": "Invalid RU history from",
+        "invalid_to": "Invalid RU history to",
+        "invalid_range": "Invalid RU history range",
+        "invalid_verdict": "Invalid RU history verdict",
+        "invalid_node_code": "Invalid RU history node_code",
+        "invalid_now": "Invalid RU read timestamp",
+    }
+    return HTTPException(
+        status_code=400,
+        detail=messages.get(error.code, "Invalid RU read request"),
+    )
+
+
+@app.get("/api/admin/probes/ru-origin/latest")
+async def admin_ru_probe_latest(
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return get_latest_ru_status(s, now=_utcnow())
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/probes/ru-origin/runs")
+async def admin_ru_probe_runs(
+    x_telegram_init_data: str = Header(default=""),
+    node_code: str = Query(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default=""),
+    verdict: str = Query(default=""),
+    limit: int = Query(default=50),
+    cursor: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return get_ru_run_history(
+                s,
+                node_code=node_code or None,
+                from_at=_parse_ru_history_datetime(from_, field="from"),
+                to_at=_parse_ru_history_datetime(to, field="to"),
+                verdict=verdict or None,
+                limit=limit,
+                cursor=cursor or None,
+            )
+        except RuProbeReadModelError as exc:
+            raise _ru_read_model_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/probes/ru-origin/uploader-status")
+async def admin_ru_probe_uploader_status(
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return get_ru_uploader_status(s, now=_utcnow())
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/nodes/{node_code}/observability")
+async def admin_node_observability(
+    node_code: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        payload = _ops_build_node_observability(
+            s=s,
+            node_code=node_code,
+            now=_utcnow(),
+            metrics_stale_after_seconds=max(
+                300,
+                int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")),
+            ),
+        )
+        if payload is None:
+            raise HTTPException(status_code=404, detail="Node not found")
+        return payload
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/search")
+async def admin_global_search(
+    q: str = Query(default=""),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    normalized = str(q or "").strip()
+    if len(normalized) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Search query must contain at least 2 characters",
+        )
+    if len(normalized) > 128:
+        raise HTTPException(status_code=400, detail="Search query is too long")
+    s = SessionLocal()
+    try:
+        return {
+            "ok": True,
+            "results": _ops_admin_search_results(
+                s=s,
+                q=normalized,
+                limit=20,
+            ),
         }
     finally:
         s.close()

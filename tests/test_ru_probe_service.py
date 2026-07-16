@@ -20,12 +20,17 @@ import models  # noqa: E402
 from ru_probe_contract import RuProbeContractError, endpoint_fingerprint  # noqa: E402
 from ru_probe_service import (  # noqa: E402
     DEFAULT_MANIFEST_MAX_CACHE_AGE_SECONDS,
+    RU_RUN_STALE_AFTER_SECONDS,
+    RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS,
     DeliveryNodeScopeDecision,
     EvaluatedRuRun,
     RuProbeConfigurationError,
     build_ru_manifest,
     classify_delivery_node_scope,
     evaluate_ru_run,
+    get_latest_ru_status,
+    get_ru_run_history,
+    get_ru_uploader_status,
 )
 
 
@@ -47,6 +52,9 @@ def session(tmp_path: Path):
     engine = create_engine(f"sqlite:///{(tmp_path / 'ru-service.db').as_posix()}")
     models.Node.__table__.create(engine)
     models.UserNode.__table__.create(engine)
+    models.RuProbeRun.__table__.create(engine)
+    models.RuProbeTargetResult.__table__.create(engine)
+    models.RuProbeUploaderHeartbeat.__table__.create(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     value = factory()
     try:
@@ -82,6 +90,102 @@ def _node(
 
 def _targets_by_id(manifest: dict[str, object]) -> dict[str, dict[str, object]]:
     return {target["target_id"]: target for target in manifest["targets"]}
+
+
+def _stored_run(
+    session,
+    *,
+    run_id: str,
+    finished_at: datetime,
+    received_at: datetime,
+    current_eligible: bool,
+    release_verdict: str,
+    environment_verdict: str = "available",
+    node_code: str = "nl",
+    node_status: str = "pass",
+    scope: str = "release_required",
+) -> models.RuProbeRun:
+    run = models.RuProbeRun(
+        run_id=run_id,
+        schema_version=2,
+        origin="ru",
+        probe_host_id="mini",
+        probe_host_label="Мини",
+        probe_public_ip=None,
+        runner_version="2.0.0",
+        started_at=finished_at - timedelta(minutes=2),
+        finished_at=finished_at,
+        received_at=received_at,
+        manifest_revision="a" * 64,
+        execution_status="completed" if current_eligible else "partial",
+        evidence_code=None,
+        environment_verdict=environment_verdict,
+        release_verdict=release_verdict,
+        current_eligible=current_eligible,
+        ineligible_reason=None if current_eligible else "partial_execution",
+        google_reachable=environment_verdict == "available",
+        xhttp_alive=False,
+        hysteria_alive=False,
+        server_reason=None,
+        server_summary="fixture",
+        artifact_sha256=(run_id.replace("-", "") + ("0" * 64))[:64],
+        ingest_key_id="ru-test",
+        retention_hold=False,
+    )
+    session.add(run)
+    session.flush()
+    session.add(
+        models.RuProbeTargetResult(
+            run_db_id=run.id,
+            target_id=f"node:{node_code}",
+            target_kind="delivery_node",
+            scope=scope,
+            node_code=node_code,
+            endpoint_fingerprint="b" * 64,
+            endpoint_host=f"{node_code}.example.test",
+            endpoint_port=443,
+            endpoint_sni=f"front-{node_code}.example.test",
+            requested_address_families_json=["ipv4", "ipv6"],
+            transport_metadata_json={
+                "address_family_status": {"ipv4": "pass", "ipv6": "not_run"},
+                "transport": {
+                    "handshake_status": "pass",
+                    "classification": "ok",
+                },
+            },
+            transport_profile="legacy_reality_fallback",
+            probe_mode="delivery_tls",
+            http_path=None,
+            min_body_bytes=None,
+            local_probe_profile_id=None,
+            observed_at=finished_at,
+            overall_status=node_status,
+            current_eligible=current_eligible,
+            ineligible_reason=None if current_eligible else "partial_execution",
+            dns_status="pass",
+            dns_latency_ms=10,
+            tcp_status="pass",
+            tcp_latency_ms=20,
+            tls_status="pass" if node_status == "pass" else "fail",
+            tls_latency_ms=30 if node_status == "pass" else None,
+            http_large_body_status="not_applicable",
+            http_large_body_latency_ms=None,
+            transport_handshake_status="not_applicable",
+            transport_handshake_latency_ms=None,
+            ipv4_status="pass",
+            ipv6_status="not_run",
+            reported_transport_handshake_status="not_applicable",
+            reported_transport_classification="ok",
+            server_reason_code=(
+                "google_unavailable"
+                if node_status == "unavailable_probe_host"
+                else None
+            ),
+            server_detail=None,
+        )
+    )
+    session.flush()
+    return run
 
 
 def _payload_from_manifest(
@@ -774,3 +878,223 @@ def test_protocol_alive_requires_protocol_handshake_not_tls_or_client_hint(
     assert result.xhttp_alive is False
     assert result.hysteria_alive is True
     assert result.release_verdict == "incomplete"
+
+
+def test_latest_eligible_uses_finished_at_not_received_at(session) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add(_node("nl", enabled=True))
+    session.flush()
+    newer = _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000101",
+        finished_at=now,
+        received_at=now,
+        current_eligible=True,
+        release_verdict="pass",
+    )
+    late_old = _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000102",
+        finished_at=now - timedelta(hours=2),
+        received_at=now + timedelta(minutes=1),
+        current_eligible=True,
+        release_verdict="pass",
+    )
+    session.commit()
+
+    latest = get_latest_ru_status(session, now=now + timedelta(minutes=2))
+
+    assert latest["latest_eligible_run"]["run_id"] == newer.run_id
+    assert latest["eligible_run"]["run_id"] == newer.run_id
+    assert latest["latest_received_attempt"]["run_id"] == late_old.run_id
+    assert latest["status"] == "ok"
+    assert latest["threshold_seconds"] == RU_RUN_STALE_AFTER_SECONDS
+
+
+def test_latest_keeps_incomplete_attempt_separate_and_stales_last_eligible(
+    session,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add(_node("nl", enabled=True))
+    session.flush()
+    eligible = _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000103",
+        finished_at=now - timedelta(seconds=RU_RUN_STALE_AFTER_SECONDS + 1),
+        received_at=now - timedelta(hours=7),
+        current_eligible=True,
+        release_verdict="pass",
+    )
+    attempt = _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000104",
+        finished_at=now - timedelta(minutes=5),
+        received_at=now - timedelta(minutes=4),
+        current_eligible=False,
+        release_verdict="incomplete",
+    )
+    session.commit()
+
+    latest = get_latest_ru_status(session, now=now)
+
+    assert latest["latest_received_attempt"]["run_id"] == attempt.run_id
+    assert latest["latest_eligible_run"]["run_id"] == eligible.run_id
+    assert latest["status"] == "stale"
+    assert latest["reason_code"] == "eligible_run_stale"
+    assert latest["nodes"][0]["status"] == "stale"
+    assert latest["nodes"][0]["sampled_at"].startswith("2026-07-16T04:59:59")
+
+
+def test_latest_missing_and_google_failure_are_honest(session) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add_all([_node("nl", enabled=True), _node("de", enabled=True)])
+    session.commit()
+
+    missing = get_latest_ru_status(session, now=now)
+    assert missing["status"] == "missing"
+    assert missing["latest_received_attempt"] is None
+    assert {row["status"] for row in missing["nodes"]} == {"missing"}
+
+    _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000105",
+        finished_at=now - timedelta(minutes=1),
+        received_at=now,
+        current_eligible=True,
+        release_verdict="fail",
+        environment_verdict="unavailable",
+        node_code="nl",
+        node_status="unavailable_probe_host",
+    )
+    session.commit()
+
+    unavailable = get_latest_ru_status(session, now=now)
+    assert unavailable["environment_verdict"] == "unavailable"
+    assert unavailable["environment"]["status"] == "unavailable"
+    assert {row["node_code"] for row in unavailable["nodes"]} == {"nl", "de"}
+    assert {row["status"] for row in unavailable["nodes"]} == {"unavailable"}
+    assert {row["reason_code"] for row in unavailable["nodes"]} == {
+        "google_unavailable"
+    }
+
+
+def test_ru_history_cursor_is_opaque_deterministic_and_filters_unknown_node(
+    session,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    session.add(_node("nl", enabled=True))
+    session.flush()
+    first = _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000106",
+        finished_at=now,
+        received_at=now,
+        current_eligible=True,
+        release_verdict="pass",
+    )
+    second = _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000107",
+        finished_at=now,
+        received_at=now + timedelta(seconds=1),
+        current_eligible=True,
+        release_verdict="fail",
+        node_code="ghost",
+        node_status="failed",
+        scope="diagnostic",
+    )
+    third = _stored_run(
+        session,
+        run_id="00000000-0000-4000-8000-000000000108",
+        finished_at=now - timedelta(hours=1),
+        received_at=now + timedelta(seconds=2),
+        current_eligible=True,
+        release_verdict="pass",
+    )
+    session.commit()
+
+    page_one = get_ru_run_history(session, limit=2)
+    assert [row["run_id"] for row in page_one["items"]] == [
+        second.run_id,
+        first.run_id,
+    ]
+    assert page_one["next_cursor"]
+    assert "2026-07-16" not in page_one["next_cursor"]
+    assert "endpoint_host" not in json.dumps(page_one, ensure_ascii=False)
+    assert "artifact_sha256" not in json.dumps(page_one, ensure_ascii=False)
+
+    page_two = get_ru_run_history(
+        session,
+        limit=2,
+        cursor=page_one["next_cursor"],
+    )
+    assert [row["run_id"] for row in page_two["items"]] == [third.run_id]
+    assert page_two["next_cursor"] is None
+
+    diagnostic = get_ru_run_history(
+        session,
+        node_code="ghost",
+        from_at=now - timedelta(minutes=1),
+        to_at=now + timedelta(minutes=1),
+        verdict="fail",
+        limit=10,
+    )
+    assert [row["run_id"] for row in diagnostic["items"]] == [second.run_id]
+    assert diagnostic["items"][0]["targets"][0]["node_code"] == "ghost"
+
+
+def test_uploader_status_uses_latest_observed_heartbeat_and_server_freshness(
+    session,
+) -> None:
+    now = datetime(2026, 7, 16, 12, 0, tzinfo=timezone.utc)
+    missing = get_ru_uploader_status(session, now=now)
+    assert missing["status"] == "missing"
+    assert missing["heartbeat"] is None
+
+    newest = models.RuProbeUploaderHeartbeat(
+        probe_host_id="mini",
+        observed_at=now - timedelta(minutes=10),
+        received_at=now - timedelta(minutes=9),
+        service_version="2.0.0",
+        pending_count=3,
+        blocked_count=1,
+        quarantine_count=2,
+        oldest_pending_at=now - timedelta(hours=3),
+        archive_write_ok=False,
+        disk_free_bytes=1_000_000,
+        disk_state="low",
+        last_error_code="archive_write_failed",
+        ingest_key_id="ru-test",
+    )
+    late_old = models.RuProbeUploaderHeartbeat(
+        probe_host_id="mini",
+        observed_at=now - timedelta(hours=2),
+        received_at=now,
+        service_version="1.9.0",
+        pending_count=99,
+        blocked_count=0,
+        quarantine_count=0,
+        oldest_pending_at=now - timedelta(hours=4),
+        archive_write_ok=True,
+        disk_free_bytes=9_000_000,
+        disk_state="ok",
+        last_error_code=None,
+        ingest_key_id="ru-test",
+    )
+    session.add_all([newest, late_old])
+    session.commit()
+
+    fresh = get_ru_uploader_status(session, now=now)
+    assert fresh["status"] == "ok"
+    assert fresh["threshold_seconds"] == RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS
+    assert fresh["heartbeat"]["service_version"] == "2.0.0"
+    assert fresh["heartbeat"]["pending_count"] == 3
+    assert fresh["heartbeat"]["archive_write_ok"] is False
+
+    stale = get_ru_uploader_status(
+        session,
+        now=now + timedelta(seconds=RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS + 1),
+    )
+    assert stale["status"] == "stale"
+    assert stale["reason_code"] == "uploader_heartbeat_stale"
+    assert stale["heartbeat"]["last_error_code"] == "archive_write_failed"

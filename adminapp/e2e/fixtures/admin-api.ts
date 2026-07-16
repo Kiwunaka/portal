@@ -193,6 +193,7 @@ const unsafeSearchResults: Array<Record<string, unknown>> = [
 type AdminApiMockOptions = {
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
+  ruLatestStatus?: number;
   searchStatus?: number;
   trafficStatus?: number;
   promoRows?: Array<Record<string, unknown>>;
@@ -204,6 +205,7 @@ type AdminApiMockOptions = {
 
 const LEGACY_GET_PATHS = new Set([
   "/api/admin/ops/overview",
+  "/api/admin/probes/ru-origin/latest",
   "/api/admin/alerts",
   "/api/admin/free-tier/users",
   "/api/admin/traffic/summary",
@@ -366,6 +368,59 @@ export async function installAdminApiMock(
         alerts: { active: [], active_count: 0, critical_count: 0, warning_count: 0 }
       });
       overviewResponses.push(200);
+      return;
+    }
+
+    if (url.pathname === "/api/admin/probes/ru-origin/latest") {
+      if (options.ruLatestStatus && options.ruLatestStatus !== 200) {
+        await fulfillJson(
+          route,
+          {
+            detail: "RU-origin временно недоступен",
+            code: "ru_origin_unavailable",
+            correlation_id: "ru-origin-test-id"
+          },
+          options.ruLatestStatus
+        );
+        return;
+      }
+      await fulfillJson(route, {
+        ok: true,
+        generated_at: generatedAt,
+        status: "ok",
+        sampled_at: "2026-07-15T09:50:00Z",
+        age_seconds: 600,
+        threshold_seconds: 25200,
+        reason_code: "current_ru_run",
+        environment_verdict: "available",
+        environment: {
+          status: "ok",
+          sampled_at: "2026-07-15T09:50:00Z",
+          age_seconds: 600,
+          threshold_seconds: 25200,
+          reason_code: "google_available"
+        },
+        latest_received_attempt: {
+          run_id: "00000000-0000-4000-8000-000000000401",
+          finished_at: "2026-07-15T09:50:00Z",
+          release_verdict: "pass"
+        },
+        latest_eligible_run: {
+          run_id: "00000000-0000-4000-8000-000000000401",
+          finished_at: "2026-07-15T09:50:00Z",
+          release_verdict: "pass"
+        },
+        nodes: [
+          {
+            node_code: "nl",
+            status: "ok",
+            sampled_at: "2026-07-15T09:50:00Z",
+            age_seconds: 600,
+            threshold_seconds: 25200,
+            reason_code: "target_pass"
+          }
+        ]
+      });
       return;
     }
 

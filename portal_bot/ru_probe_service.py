@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import copy
+import base64
 import ipaddress
 import json
 import os
 import re
+import struct
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -41,6 +43,10 @@ MAX_MANIFEST_MAX_CACHE_AGE_SECONDS = 24 * 60 * 60
 DEFAULT_RU_PROBE_RETENTION_DAYS = 180
 MIN_RU_PROBE_RETENTION_DAYS = 1
 MAX_RU_PROBE_RETENTION_DAYS = 3650
+RU_RUN_STALE_AFTER_SECONDS = 7 * 60 * 60
+RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS = 45 * 60
+RU_HISTORY_DEFAULT_LIMIT = 50
+RU_HISTORY_MAX_LIMIT = 200
 
 _CANONICAL_CONFIG_ENV = "RU_PROBE_CANONICAL_TARGETS_JSON"
 _RESERVE_CONFIG_ENV = "RU_PROBE_RESERVE_TARGETS_JSON"
@@ -132,6 +138,12 @@ class RuProbeServiceError(RuntimeError):
 class RuProbePayloadConflict(RuProbeServiceError):
     def __init__(self) -> None:
         super().__init__("payload_conflict")
+
+
+class RuProbeReadModelError(ValueError):
+    def __init__(self, code: str) -> None:
+        self.code = str(code)
+        super().__init__(self.code)
 
 
 @dataclass(frozen=True)
@@ -1414,3 +1426,588 @@ def store_ru_heartbeat(
             raise
         return _existing_heartbeat_result(winner, heartbeat=heartbeat)
     return StoredRuHeartbeat(created=True)
+
+
+def _read_model_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _read_model_iso(value: datetime | None) -> str | None:
+    normalized = _read_model_utc(value)
+    if normalized is None:
+        return None
+    return normalized.isoformat().replace("+00:00", "Z")
+
+
+def _read_model_now(value: datetime) -> datetime:
+    normalized = _read_model_utc(value)
+    if normalized is None:
+        raise RuProbeReadModelError("invalid_now")
+    return normalized
+
+
+def _read_model_age_seconds(*, now: datetime, sampled_at: datetime | None) -> int | None:
+    normalized = _read_model_utc(sampled_at)
+    if normalized is None:
+        return None
+    return max(0, int((now - normalized).total_seconds()))
+
+
+def _target_result_summary(row: RuProbeTargetResult) -> dict[str, object]:
+    metadata = (
+        copy.deepcopy(row.transport_metadata_json)
+        if isinstance(row.transport_metadata_json, dict)
+        else {}
+    )
+    address_family_status = metadata.get("address_family_status")
+    if not isinstance(address_family_status, dict):
+        address_family_status = {
+            "ipv4": str(row.ipv4_status or "not_run"),
+            "ipv6": str(row.ipv6_status or "not_run"),
+        }
+    transport = metadata.get("transport")
+    if not isinstance(transport, dict):
+        transport = {
+            "handshake_status": str(
+                row.reported_transport_handshake_status or "not_run"
+            ),
+            "classification": str(
+                row.reported_transport_classification or "unknown"
+            ),
+        }
+    return {
+        "target_id": str(row.target_id or ""),
+        "target_kind": str(row.target_kind or ""),
+        "scope": str(row.scope or ""),
+        "node_code": str(row.node_code or "") or None,
+        "observed_at": _read_model_iso(row.observed_at),
+        "overall_status": str(row.overall_status or ""),
+        "current_eligible": bool(row.current_eligible),
+        "ineligible_reason": str(row.ineligible_reason or "") or None,
+        "reason_code": str(row.server_reason_code or "") or None,
+        "stages": {
+            "dns": {
+                "status": str(row.dns_status or "not_run"),
+                "latency_ms": row.dns_latency_ms,
+            },
+            "tcp": {
+                "status": str(row.tcp_status or "not_run"),
+                "latency_ms": row.tcp_latency_ms,
+            },
+            "tls": {
+                "status": str(row.tls_status or "not_run"),
+                "latency_ms": row.tls_latency_ms,
+            },
+            "http_large_body": {
+                "status": str(row.http_large_body_status or "not_run"),
+                "latency_ms": row.http_large_body_latency_ms,
+            },
+            "transport_handshake": {
+                "status": str(row.transport_handshake_status or "not_run"),
+                "latency_ms": row.transport_handshake_latency_ms,
+            },
+        },
+        "address_family_status": {
+            "ipv4": str(address_family_status.get("ipv4") or "not_run"),
+            "ipv6": str(address_family_status.get("ipv6") or "not_run"),
+        },
+        "transport": {
+            "profile": str(row.transport_profile or ""),
+            "probe_mode": str(row.probe_mode or ""),
+            "handshake_status": str(
+                transport.get("handshake_status")
+                or row.reported_transport_handshake_status
+                or "not_run"
+            ),
+            "classification": str(
+                transport.get("classification")
+                or row.reported_transport_classification
+                or "unknown"
+            ),
+        },
+    }
+
+
+def _run_summary(
+    row: RuProbeRun | None,
+    *,
+    targets: list[RuProbeTargetResult] | None = None,
+) -> dict[str, object] | None:
+    if row is None:
+        return None
+    payload: dict[str, object] = {
+        "run_db_id": int(row.id),
+        "run_id": str(row.run_id or ""),
+        "origin": str(row.origin or ""),
+        "probe_host_id": str(row.probe_host_id or ""),
+        "probe_host_label": str(row.probe_host_label or ""),
+        "runner_version": str(row.runner_version or ""),
+        "started_at": _read_model_iso(row.started_at),
+        "finished_at": _read_model_iso(row.finished_at),
+        "received_at": _read_model_iso(row.received_at),
+        "manifest_revision": str(row.manifest_revision or ""),
+        "execution_status": str(row.execution_status or ""),
+        "evidence_code": str(row.evidence_code or "") or None,
+        "environment_verdict": str(row.environment_verdict or ""),
+        "release_verdict": str(row.release_verdict or ""),
+        "current_eligible": bool(row.current_eligible),
+        "ineligible_reason": str(row.ineligible_reason or "") or None,
+        "google_reachable": row.google_reachable,
+        "xhttp_alive": row.xhttp_alive,
+        "hysteria_alive": row.hysteria_alive,
+        "server_reason": str(row.server_reason or "") or None,
+        "server_summary": str(row.server_summary or "") or None,
+    }
+    if targets is not None:
+        payload["targets"] = [_target_result_summary(target) for target in targets]
+    return payload
+
+
+def _ru_status_from_target(value: str) -> tuple[str, str]:
+    normalized = str(value or "").strip().lower()
+    if normalized == "pass":
+        return "ok", "target_pass"
+    if normalized == "failed":
+        return "failed", "target_failed"
+    if normalized == "incomplete":
+        return "degraded", "target_incomplete"
+    if normalized == "unavailable_probe_host":
+        return "unavailable", "google_unavailable"
+    if normalized == "superseded_manifest":
+        return "degraded", "superseded_manifest"
+    return "degraded", "target_unknown"
+
+
+def _ru_source_row(
+    *,
+    status: str,
+    sampled_at: datetime | None,
+    now: datetime,
+    threshold_seconds: int,
+    reason_code: str,
+    extra: dict[str, object] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "status": status,
+        "sampled_at": _read_model_iso(sampled_at),
+        "age_seconds": _read_model_age_seconds(now=now, sampled_at=sampled_at),
+        "threshold_seconds": int(threshold_seconds),
+        "reason_code": reason_code,
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def get_latest_ru_status(session, *, now: datetime) -> dict[str, object]:
+    normalized_now = _read_model_now(now)
+    latest_received = (
+        session.query(RuProbeRun)
+        .order_by(RuProbeRun.received_at.desc(), RuProbeRun.id.desc())
+        .first()
+    )
+    latest_eligible = (
+        session.query(RuProbeRun)
+        .filter(RuProbeRun.current_eligible == True)
+        .order_by(RuProbeRun.finished_at.desc(), RuProbeRun.id.desc())
+        .first()
+    )
+    target_rows: list[RuProbeTargetResult] = []
+    if latest_eligible is not None:
+        target_rows = (
+            session.query(RuProbeTargetResult)
+            .filter(RuProbeTargetResult.run_db_id == int(latest_eligible.id))
+            .order_by(RuProbeTargetResult.target_id.asc(), RuProbeTargetResult.id.asc())
+            .all()
+        )
+    target_by_node = {
+        str(row.node_code or "").strip().lower(): row
+        for row in target_rows
+        if str(row.node_code or "").strip()
+        and str(row.target_kind or "") == "delivery_node"
+    }
+    known_nodes = session.query(Node).order_by(Node.code.asc(), Node.id.asc()).all()
+    sampled_at = (
+        _read_model_utc(latest_eligible.finished_at)
+        if latest_eligible is not None
+        else None
+    )
+    age_seconds = _read_model_age_seconds(
+        now=normalized_now,
+        sampled_at=sampled_at,
+    )
+    stale = bool(
+        age_seconds is not None and age_seconds > RU_RUN_STALE_AFTER_SECONDS
+    )
+
+    if latest_eligible is None:
+        overall_status = "missing"
+        overall_reason = "eligible_run_missing"
+    elif stale:
+        overall_status = "stale"
+        overall_reason = "eligible_run_stale"
+    elif str(latest_eligible.environment_verdict or "") == "unavailable":
+        overall_status = "unavailable"
+        overall_reason = "google_unavailable"
+    elif str(latest_eligible.release_verdict or "") == "pass":
+        overall_status = "ok"
+        overall_reason = "current_ru_run"
+    elif str(latest_eligible.release_verdict or "") == "fail":
+        overall_status = "failed"
+        overall_reason = str(latest_eligible.server_reason or "") or "release_failed"
+    else:
+        overall_status = "degraded"
+        overall_reason = (
+            str(latest_eligible.server_reason or "")
+            or str(latest_eligible.ineligible_reason or "")
+            or "release_incomplete"
+        )
+
+    environment_verdict = (
+        str(latest_eligible.environment_verdict or "")
+        if latest_eligible is not None
+        else "unknown"
+    )
+    if latest_eligible is None:
+        environment_status = "missing"
+        environment_reason = "eligible_run_missing"
+    elif stale:
+        environment_status = "stale"
+        environment_reason = "eligible_run_stale"
+    elif environment_verdict == "available":
+        environment_status = "ok"
+        environment_reason = "google_available"
+    elif environment_verdict == "unavailable":
+        environment_status = "unavailable"
+        environment_reason = "google_unavailable"
+    else:
+        environment_status = "missing"
+        environment_reason = "environment_unknown"
+    environment = _ru_source_row(
+        status=environment_status,
+        sampled_at=sampled_at,
+        now=normalized_now,
+        threshold_seconds=RU_RUN_STALE_AFTER_SECONDS,
+        reason_code=environment_reason,
+        extra={"verdict": environment_verdict},
+    )
+
+    nodes: list[dict[str, object]] = []
+    for node in known_nodes:
+        code = str(node.code or "").strip().lower()
+        target = target_by_node.get(code)
+        if latest_eligible is None:
+            node_status = "missing"
+            node_reason = "eligible_run_missing"
+        elif stale and target is not None:
+            node_status = "stale"
+            node_reason = "eligible_run_stale"
+        elif environment_verdict == "unavailable":
+            node_status = "unavailable"
+            node_reason = "google_unavailable"
+        elif target is None:
+            node_status = "missing"
+            node_reason = "target_not_in_run"
+        else:
+            node_status, node_reason = _ru_status_from_target(
+                str(target.overall_status or "")
+            )
+            if target.server_reason_code:
+                node_reason = str(target.server_reason_code)
+        row = _ru_source_row(
+            status=node_status,
+            sampled_at=sampled_at if target is not None else None,
+            now=normalized_now,
+            threshold_seconds=RU_RUN_STALE_AFTER_SECONDS,
+            reason_code=node_reason,
+            extra={
+                "node_code": code,
+                "run_id": str(latest_eligible.run_id)
+                if latest_eligible is not None and target is not None
+                else None,
+                "target": _target_result_summary(target)
+                if target is not None
+                else None,
+            },
+        )
+        nodes.append(row)
+
+    reserve: dict[str, dict[str, object]] = {}
+    for key, target_kind in (
+        ("xhttp", "reserve_xhttp"),
+        ("hysteria", "reserve_hysteria"),
+    ):
+        target = next(
+            (
+                row
+                for row in target_rows
+                if str(row.target_kind or "") == target_kind
+            ),
+            None,
+        )
+        if latest_eligible is None or target is None:
+            reserve_status = "missing"
+            reserve_reason = "reserve_target_missing"
+            reserve_sampled_at = None
+        elif stale:
+            reserve_status = "stale"
+            reserve_reason = "eligible_run_stale"
+            reserve_sampled_at = sampled_at
+        else:
+            reserve_status, reserve_reason = _ru_status_from_target(
+                str(target.overall_status or "")
+            )
+            reserve_sampled_at = sampled_at
+        reserve[key] = _ru_source_row(
+            status=reserve_status,
+            sampled_at=reserve_sampled_at,
+            now=normalized_now,
+            threshold_seconds=RU_RUN_STALE_AFTER_SECONDS,
+            reason_code=reserve_reason,
+            extra={
+                "alive": (
+                    bool(latest_eligible.xhttp_alive)
+                    if key == "xhttp" and latest_eligible is not None
+                    else bool(latest_eligible.hysteria_alive)
+                    if latest_eligible is not None
+                    else None
+                )
+            },
+        )
+
+    latest_eligible_summary = _run_summary(
+        latest_eligible,
+        targets=target_rows if latest_eligible is not None else None,
+    )
+    return {
+        "ok": True,
+        "generated_at": _read_model_iso(normalized_now),
+        "status": overall_status,
+        "sampled_at": _read_model_iso(sampled_at),
+        "age_seconds": age_seconds,
+        "threshold_seconds": RU_RUN_STALE_AFTER_SECONDS,
+        "reason_code": overall_reason,
+        "environment_verdict": environment_verdict,
+        "environment": environment,
+        "reserve": reserve,
+        "latest_received_attempt": _run_summary(latest_received),
+        "latest_eligible_run": latest_eligible_summary,
+        "eligible_run": latest_eligible_summary,
+        "nodes": nodes,
+    }
+
+
+def _encode_history_cursor(*, finished_at: datetime, row_id: int) -> str:
+    normalized = _read_model_utc(finished_at)
+    if normalized is None or int(row_id) <= 0:
+        raise RuProbeReadModelError("invalid_cursor")
+    micros = int(normalized.timestamp() * 1_000_000)
+    raw = struct.pack(">qQ", micros, int(row_id))
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _decode_history_cursor(value: str) -> tuple[datetime, int]:
+    raw_value = str(value or "").strip()
+    if not raw_value or len(raw_value) > 128 or re.fullmatch(
+        r"[A-Za-z0-9_-]+", raw_value
+    ) is None:
+        raise RuProbeReadModelError("invalid_cursor")
+    try:
+        padding = "=" * (-len(raw_value) % 4)
+        raw = base64.urlsafe_b64decode(raw_value + padding)
+        if len(raw) != 16:
+            raise ValueError("wrong cursor length")
+        micros, row_id = struct.unpack(">qQ", raw)
+        if row_id <= 0:
+            raise ValueError("invalid row id")
+        finished_at = datetime.fromtimestamp(
+            micros / 1_000_000,
+            tz=timezone.utc,
+        )
+    except (ValueError, OverflowError, struct.error) as exc:
+        raise RuProbeReadModelError("invalid_cursor") from exc
+    return finished_at, int(row_id)
+
+
+def _history_filter_datetime(
+    value: datetime | None,
+    *,
+    code: str,
+) -> datetime | None:
+    if value is None:
+        return None
+    normalized = _read_model_utc(value)
+    if normalized is None:
+        raise RuProbeReadModelError(code)
+    return normalized
+
+
+def get_ru_run_history(
+    session,
+    *,
+    node_code: str | None = None,
+    from_at: datetime | None = None,
+    to_at: datetime | None = None,
+    verdict: str | None = None,
+    limit: int = RU_HISTORY_DEFAULT_LIMIT,
+    cursor: str | None = None,
+) -> dict[str, object]:
+    try:
+        normalized_limit = int(limit)
+    except (TypeError, ValueError) as exc:
+        raise RuProbeReadModelError("invalid_limit") from exc
+    if not 1 <= normalized_limit <= RU_HISTORY_MAX_LIMIT:
+        raise RuProbeReadModelError("invalid_limit")
+    normalized_from = _history_filter_datetime(from_at, code="invalid_from")
+    normalized_to = _history_filter_datetime(to_at, code="invalid_to")
+    if (
+        normalized_from is not None
+        and normalized_to is not None
+        and normalized_from > normalized_to
+    ):
+        raise RuProbeReadModelError("invalid_range")
+    normalized_verdict = str(verdict or "").strip().lower()
+    allowed_verdicts = {
+        "",
+        "pass",
+        "fail",
+        "incomplete",
+        "superseded_manifest",
+        "blocked_by_access",
+    }
+    if normalized_verdict not in allowed_verdicts:
+        raise RuProbeReadModelError("invalid_verdict")
+    wanted_node = str(node_code or "").strip().lower()
+    if len(wanted_node) > 32:
+        raise RuProbeReadModelError("invalid_node_code")
+
+    query = session.query(RuProbeRun)
+    if wanted_node:
+        run_ids = (
+            session.query(RuProbeTargetResult.run_db_id)
+            .filter(func.lower(RuProbeTargetResult.node_code) == wanted_node)
+            .distinct()
+        )
+        query = query.filter(RuProbeRun.id.in_(run_ids))
+    if normalized_from is not None:
+        query = query.filter(RuProbeRun.finished_at >= normalized_from)
+    if normalized_to is not None:
+        query = query.filter(RuProbeRun.finished_at <= normalized_to)
+    if normalized_verdict:
+        query = query.filter(RuProbeRun.release_verdict == normalized_verdict)
+    if cursor:
+        cursor_finished_at, cursor_id = _decode_history_cursor(cursor)
+        query = query.filter(
+            (RuProbeRun.finished_at < cursor_finished_at)
+            | (
+                (RuProbeRun.finished_at == cursor_finished_at)
+                & (RuProbeRun.id < cursor_id)
+            )
+        )
+    rows = (
+        query.order_by(RuProbeRun.finished_at.desc(), RuProbeRun.id.desc())
+        .limit(normalized_limit + 1)
+        .all()
+    )
+    has_more = len(rows) > normalized_limit
+    page_rows = rows[:normalized_limit]
+    run_ids = [int(row.id) for row in page_rows]
+    targets_by_run: dict[int, list[RuProbeTargetResult]] = {
+        run_id: [] for run_id in run_ids
+    }
+    if run_ids:
+        targets = (
+            session.query(RuProbeTargetResult)
+            .filter(RuProbeTargetResult.run_db_id.in_(run_ids))
+            .order_by(
+                RuProbeTargetResult.run_db_id.asc(),
+                RuProbeTargetResult.target_id.asc(),
+                RuProbeTargetResult.id.asc(),
+            )
+            .all()
+        )
+        for target in targets:
+            if wanted_node and str(target.node_code or "").strip().lower() != wanted_node:
+                continue
+            targets_by_run.setdefault(int(target.run_db_id), []).append(target)
+    items = [
+        _run_summary(row, targets=targets_by_run.get(int(row.id), []))
+        for row in page_rows
+    ]
+    next_cursor = None
+    if has_more and page_rows:
+        boundary = page_rows[-1]
+        next_cursor = _encode_history_cursor(
+            finished_at=boundary.finished_at,
+            row_id=int(boundary.id),
+        )
+    return {
+        "items": items,
+        "next_cursor": next_cursor,
+        "limit": normalized_limit,
+    }
+
+
+def get_ru_uploader_status(session, *, now: datetime) -> dict[str, object]:
+    normalized_now = _read_model_now(now)
+    heartbeat = (
+        session.query(RuProbeUploaderHeartbeat)
+        .order_by(
+            RuProbeUploaderHeartbeat.observed_at.desc(),
+            RuProbeUploaderHeartbeat.id.desc(),
+        )
+        .first()
+    )
+    if heartbeat is None:
+        return {
+            "ok": True,
+            "generated_at": _read_model_iso(normalized_now),
+            "status": "missing",
+            "sampled_at": None,
+            "age_seconds": None,
+            "threshold_seconds": RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS,
+            "reason_code": "uploader_heartbeat_missing",
+            "heartbeat": None,
+        }
+    observed_at = _read_model_utc(heartbeat.observed_at)
+    age_seconds = _read_model_age_seconds(
+        now=normalized_now,
+        sampled_at=observed_at,
+    )
+    stale = bool(
+        age_seconds is not None
+        and age_seconds > RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS
+    )
+    return {
+        "ok": True,
+        "generated_at": _read_model_iso(normalized_now),
+        "status": "stale" if stale else "ok",
+        "sampled_at": _read_model_iso(observed_at),
+        "age_seconds": age_seconds,
+        "threshold_seconds": RU_UPLOADER_HEARTBEAT_STALE_AFTER_SECONDS,
+        "reason_code": (
+            "uploader_heartbeat_stale" if stale else "uploader_heartbeat_fresh"
+        ),
+        "heartbeat": {
+            "probe_host_id": str(heartbeat.probe_host_id or ""),
+            "observed_at": _read_model_iso(heartbeat.observed_at),
+            "received_at": _read_model_iso(heartbeat.received_at),
+            "service_version": str(heartbeat.service_version or ""),
+            "pending_count": int(heartbeat.pending_count or 0),
+            "blocked_count": int(heartbeat.blocked_count or 0),
+            "quarantine_count": int(heartbeat.quarantine_count or 0),
+            "oldest_pending_at": _read_model_iso(heartbeat.oldest_pending_at),
+            "archive_write_ok": bool(heartbeat.archive_write_ok),
+            "disk_free_bytes": (
+                int(heartbeat.disk_free_bytes)
+                if heartbeat.disk_free_bytes is not None
+                else None
+            ),
+            "disk_state": str(heartbeat.disk_state or "unknown"),
+            "last_error_code": str(heartbeat.last_error_code or "") or None,
+        },
+    }

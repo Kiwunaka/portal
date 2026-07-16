@@ -9,7 +9,7 @@ import { Badge, Button, Card, SectionTitle, type Tone } from "@/components/ui";
 import { ErrorState, EmptyState } from "@/components/ui/states";
 import { SourceRow } from "@/components/ui/source-row";
 import { AdminApiError } from "@/lib/admin-api/client";
-import { fetchAlerts, fetchOpsOverview } from "@/lib/admin-api/overview";
+import { fetchAlerts, fetchOpsOverview, fetchRuLatest, type RuLatestStatus } from "@/lib/admin-api/overview";
 import type { OpsAlert, OpsOverview } from "@/lib/admin-api/types";
 import type { OpsStatusCode } from "@/lib/ops-status/types";
 import { useRouteResource } from "@/lib/use-route-resource";
@@ -49,6 +49,8 @@ function metricsStatus(status: unknown): OpsStatusCode {
   if (["stale", "old"].includes(value)) return "stale";
   if (["failed", "error", "critical"].includes(value)) return "failed";
   if (["degraded", "warning"].includes(value)) return "degraded";
+  if (["unavailable", "unavailable_probe_host"].includes(value)) return "unavailable";
+  if (value === "blocked_by_access") return "BLOCKED_BY_ACCESS";
   return "missing";
 }
 
@@ -104,8 +106,59 @@ function NodeContour({ overview }: { overview: OpsOverview }) {
   );
 }
 
-function FreshnessRows({ overview }: { overview: OpsOverview }) {
+function formatThreshold(seconds: number | null): string {
+  if (seconds === null) return "Порог не получен от backend";
+  if (seconds % 3600 === 0) return `Порог свежести: ${seconds / 3600} ч`;
+  if (seconds % 60 === 0) return `Порог свежести: ${seconds / 60} мин`;
+  return `Порог свежести: ${seconds} сек`;
+}
+
+const RU_REASON_TEXT: Record<string, string> = {
+  current_ru_run: "Текущий пригодный запуск",
+  eligible_run_stale: "Последний пригодный запуск устарел",
+  eligible_run_missing: "Пригодный запуск ещё не получен",
+  google_unavailable: "Среда RU-пробы недоступна",
+  release_failed: "Обязательная RU-проверка завершилась сбоем",
+  release_incomplete: "Последняя RU-проверка неполная",
+  blocked_by_access: "Проверка заблокирована подтверждённым отсутствием доступа"
+};
+
+function ruReason(reasonCode: unknown): string {
+  const code = String(reasonCode || "").trim();
+  return RU_REASON_TEXT[code] || (code ? `Причина: ${code}` : "Причина не указана");
+}
+
+function FreshnessRows({
+  overview,
+  ruLatest,
+  ruLoading,
+  ruError
+}: {
+  overview: OpsOverview;
+  ruLatest: RuLatestStatus | null;
+  ruLoading: boolean;
+  ruError: AdminApiError | null;
+}) {
   const brainAge = finiteNumber(overview.metrics?.age_seconds);
+  const metrics = overview.metrics as OpsOverview["metrics"] & {
+    last_sample_at?: string | null;
+    stale_after_seconds?: number | null;
+  };
+  const brainThreshold = finiteNumber(metrics.stale_after_seconds);
+  const ruThreshold = finiteNumber(ruLatest?.threshold_seconds);
+  const ruSampledAt = ruLatest?.sampled_at || ruLatest?.latest_eligible_run?.finished_at || null;
+  const ruStatus: OpsStatusCode = ruError
+    ? "unavailable"
+    : ruLatest
+      ? metricsStatus(ruLatest.status)
+      : "missing";
+  const ruDetail = ruError
+    ? "Источник RU-origin не ответил"
+    : ruLatest
+      ? ruReason(ruLatest.reason_code)
+      : ruLoading
+        ? "Запрашиваем отдельный RU-снимок"
+        : "Пригодный RU-снимок ещё не получен";
   return (
     <Card>
       <SectionTitle title="Свежесть контуров" description="Brain и RU-origin показаны раздельно: один источник не подтверждает другой." />
@@ -113,20 +166,20 @@ function FreshnessRows({ overview }: { overview: OpsOverview }) {
         <SourceRow
           source="Brain-origin"
           status={metricsStatus(overview.metrics?.status)}
-          sampledAt={overview.generated_at || null}
+          sampledAt={metrics.last_sample_at || overview.generated_at || null}
           detail={brainAge === null ? null : `Возраст метрик: ${formatCount(brainAge)} сек`}
-          threshold="Порог свежести задаёт backend-снимок метрик"
+          threshold={formatThreshold(brainThreshold)}
         />
         <SourceRow
           source="RU-origin"
-          status="missing"
-          sampledAt={null}
-          detail={null}
-          threshold="Сигнал RU-origin ещё не подключён к этой главной"
+          status={ruStatus}
+          sampledAt={ruSampledAt}
+          detail={ruDetail}
+          threshold={formatThreshold(ruThreshold)}
         />
       </div>
       <p className="mt-3 text-xs text-[color:var(--atlas-text-soft)]">
-        Первый подтверждённый сигнал из РФ ещё не получен. До появления отдельного источника доступность RU-origin не считается проверенной.
+        Brain-origin показывает измерения control plane. RU-origin подтверждается только отдельной внешней пробой из РФ.
       </p>
     </Card>
   );
@@ -161,46 +214,67 @@ function RecentAdminEvents({ overview }: { overview: OpsOverview }) {
 export function OverviewPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
   const loadOverview = useCallback((signal: AbortSignal) => fetchOpsOverview({ signal }), []);
   const loadAlerts = useCallback((signal: AbortSignal) => fetchAlerts("active", { signal }), []);
+  const loadRuLatest = useCallback((signal: AbortSignal) => fetchRuLatest({ signal }), []);
   const overview = useRouteResource("overview", loadOverview, { pollMs: OVERVIEW_POLL_MS, enabled: true });
   const alerts = useRouteResource("overview-alerts", loadAlerts, { pollMs: OVERVIEW_POLL_MS, enabled: true });
+  const ruLatest = useRouteResource("overview-ru-latest", loadRuLatest, { pollMs: OVERVIEW_POLL_MS, enabled: true });
 
   useEffect(() => {
-    const successCount = Number(overview.data !== null) + Number(alerts.data !== null);
-    const errors = [overview.error, alerts.error].filter((error): error is AdminApiError => error !== null);
-    const loading = overview.loading || alerts.loading;
+    const successCount = Number(overview.data !== null) + Number(alerts.data !== null) + Number(ruLatest.data !== null);
+    const errors = [overview.error, alerts.error, ruLatest.error].filter((error): error is AdminApiError => error !== null);
+    const loading = overview.loading || alerts.loading || ruLatest.loading;
     const api = errors.length
       ? successCount > 0 ? "degraded" : "failed"
-      : loading && successCount < 2 ? "missing" : "ok";
+      : loading && successCount < 3 ? "missing" : "ok";
     const session = errors.some(isAccessDenied)
       ? "failed"
       : successCount > 0 ? "ok" : errors.length ? "unavailable" : "missing";
+    const requiredSourceTimes = [
+      overview.data?.generated_at,
+      ruLatest.data?.sampled_at,
+      ruLatest.data?.latest_eligible_run?.finished_at
+    ].filter((value): value is string => Boolean(value)).sort();
     onShellStatus?.({
       api,
       session,
-      oldestRequiredSourceAt: overview.data?.generated_at || null
+      oldestRequiredSourceAt: requiredSourceTimes.at(0) || null
     });
-  }, [alerts.data, alerts.error, alerts.loading, onShellStatus, overview.data, overview.error, overview.loading]);
+  }, [
+    alerts.data,
+    alerts.error,
+    alerts.loading,
+    onShellStatus,
+    overview.data,
+    overview.error,
+    overview.loading,
+    ruLatest.data,
+    ruLatest.error,
+    ruLatest.loading
+  ]);
 
   const activeAlerts = useMemo<OpsAlert[]>(() => alerts.data ?? overview.data?.alerts?.active ?? [], [alerts.data, overview.data]);
   const overviewRefreshing = overview.refreshing;
   const alertsRefreshing = alerts.refreshing;
-  const refreshing = overviewRefreshing || alertsRefreshing;
-  const lastUpdated = [overview.updatedAt, alerts.updatedAt].filter((value): value is string => Boolean(value)).sort().at(0) || null;
+  const ruRefreshing = ruLatest.refreshing;
+  const refreshing = overviewRefreshing || alertsRefreshing || ruRefreshing;
+  const lastUpdated = [overview.updatedAt, alerts.updatedAt, ruLatest.updatedAt].filter((value): value is string => Boolean(value)).sort().at(0) || null;
+  const hasSourceError = Boolean(overview.error || alerts.error || ruLatest.error);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
-          <Badge tone={overview.error || alerts.error ? "warning" : "success"}>{overview.error || alerts.error ? "Есть сбой источника" : "Источники отвечают"}</Badge>
+          <Badge tone={hasSourceError ? "warning" : "success"}>{hasSourceError ? "Есть сбой источника" : "Источники отвечают"}</Badge>
           <span>{lastUpdated ? `Обновлено ${new Date(lastUpdated).toLocaleString("ru-RU")}` : "Данные ещё не получены"}</span>
           {refreshing ? <Badge tone="info">Обновляем</Badge> : null}
         </div>
         <Button
           tone="secondary"
-          disabled={overview.loading || alerts.loading || refreshing}
+          disabled={overview.loading || alerts.loading || ruLatest.loading || refreshing}
           onClick={() => {
             overview.reload();
             alerts.reload();
+            ruLatest.reload();
           }}
         >
           <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Обновить
@@ -214,6 +288,15 @@ export function OverviewPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
           title="Алерты не загрузились"
           description={`${adminApiErrorText(alerts.error, "Повторите запрос алертов.")} Остальные блоки overview сохранены.`}
           action={<Button tone="secondary" onClick={alerts.reload}>Повторить загрузку алертов</Button>}
+          className="min-h-0"
+        />
+      ) : null}
+
+      {ruLatest.error ? (
+        <ErrorState
+          title="RU-origin не загрузился"
+          description={`${adminApiErrorText(ruLatest.error, "Повторите запрос RU-origin.")} Остальные блоки обзора сохранены.`}
+          action={<Button tone="secondary" onClick={ruLatest.reload}>Повторить загрузку RU-origin</Button>}
           className="min-h-0"
         />
       ) : null}
@@ -237,7 +320,12 @@ export function OverviewPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
               <CompactKpi label="Метрики Brain" value={finiteNumber(overview.data.metrics?.age_seconds) === null ? "Нет данных" : `${formatCount(overview.data.metrics.age_seconds)} сек`} detail="Возраст снимка" tone={toneForState(overview.data.metrics?.status)} />
             </div>
             <NodeContour overview={overview.data} />
-            <FreshnessRows overview={overview.data} />
+            <FreshnessRows
+              overview={overview.data}
+              ruLatest={ruLatest.data}
+              ruLoading={ruLatest.loading}
+              ruError={ruLatest.error}
+            />
             <RecentAdminEvents overview={overview.data} />
           </>
         ) : null}

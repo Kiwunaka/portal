@@ -81,7 +81,7 @@ test("верхняя панель показывает фактический с
 
   await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
-  await expect(page.getByRole("banner").locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
+  await expect(page.getByRole("banner").locator('time[datetime="2026-07-15T09:50:00Z"]')).toBeVisible();
   await expect(page.getByText(/Старейший источник:/)).not.toContainText("Нет данных");
 });
 
@@ -99,7 +99,7 @@ test("главная не загружает данные скрытых раз�
 test("каждый раздел запрашивает только собственные источники", async ({ page }) => {
   const api = await installAdminApiMock(page);
   const routes = [
-    { href: "/", label: "Главная", paths: ["/api/admin/ops/overview", "/api/admin/alerts?status=active"] },
+    { href: "/", label: "Главная", paths: ["/api/admin/ops/overview", "/api/admin/alerts?status=active", "/api/admin/probes/ru-origin/latest"] },
     { href: "/nodes", label: "Ноды", paths: ["/api/admin/nodes/health", "/api/admin/nodes/runtime", "/api/admin/nodes/timeseries", "/api/admin/online/users?limit=200"] },
     { href: "/traffic", label: "Трафик", paths: ["/api/admin/traffic/summary"] },
     { href: "/alerts", label: "Алерты", paths: ["/api/admin/alerts?status=active"] },
@@ -254,34 +254,68 @@ test("polling работает только на видимой активной
   });
   const api = await installAdminApiMock(page);
   const overviewCount = () => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length;
+  const ruLatestCount = () => api.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length;
 
   await page.goto("/");
   await page.clock.runFor(1);
   await expect.poll(overviewCount).toBe(1);
+  await expect.poll(ruLatestCount).toBe(1);
 
   await page.clock.fastForward(60_000);
   await expect.poll(overviewCount).toBe(2);
+  await expect.poll(ruLatestCount).toBe(2);
 
   await page.evaluate(() => {
     (window as typeof window & { __setAdminVisibility?: (next: DocumentVisibilityState) => void }).__setAdminVisibility?.("hidden");
   });
   const countBeforeHiddenWindow = overviewCount();
+  const ruCountBeforeHiddenWindow = ruLatestCount();
   await page.clock.fastForward(180_000);
   expect(overviewCount()).toBe(countBeforeHiddenWindow);
+  expect(ruLatestCount()).toBe(ruCountBeforeHiddenWindow);
 
   await page.evaluate(() => {
     (window as typeof window & { __setAdminVisibility?: (next: DocumentVisibilityState) => void }).__setAdminVisibility?.("visible");
   });
   await expect.poll(overviewCount).toBe(countBeforeHiddenWindow + 1);
+  await expect.poll(ruLatestCount).toBe(ruCountBeforeHiddenWindow + 1);
   await page.clock.fastForward(60_000);
   await expect.poll(overviewCount).toBe(countBeforeHiddenWindow + 2);
+  await expect.poll(ruLatestCount).toBe(ruCountBeforeHiddenWindow + 2);
 
   await page.getByRole("link", { name: "Ноды", exact: true }).click();
   await expect(page).toHaveURL(/\/nodes$/);
   await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/nodes/health")).toBe(true);
   const countAfterUnmount = overviewCount();
+  const ruCountAfterUnmount = ruLatestCount();
   await page.clock.fastForward(180_000);
   expect(overviewCount()).toBe(countAfterUnmount);
+  expect(ruLatestCount()).toBe(ruCountAfterUnmount);
+});
+
+test("главная показывает отдельную свежесть RU-origin с временем, причиной и порогом", async ({ page }) => {
+  const api = await installAdminApiMock(page);
+  await page.goto("/");
+
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/probes/ru-origin/latest")).toBe(true);
+  const ruRow = page.locator("span", { hasText: /^RU-origin$/ }).locator("xpath=../../..");
+  await expect(ruRow).toContainText("Текущий пригодный запуск");
+  await expect(ruRow.locator('time[datetime="2026-07-15T09:50:00Z"]').first()).toBeVisible();
+  await ruRow.getByRole("button", { name: "Показать пояснение" }).focus();
+  await expect(page.getByRole("tooltip").filter({ hasText: "ИсточникRU-origin" })).toContainText("7 ч");
+});
+
+test("сбой RU-origin не скрывает overview и имеет локальный повтор", async ({ page }) => {
+  const api = await installAdminApiMock(page, { ruLatestStatus: 503 });
+  await page.goto("/");
+
+  await expect(page.getByText("Активные пользователи", { exact: true })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "RU-origin не загрузился" })).toBeVisible();
+  const retry = page.getByRole("button", { name: "Повторить загрузку RU-origin" });
+  await expect(retry).toBeVisible();
+  const beforeRetry = api.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length;
+  await retry.click();
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length).toBeGreaterThan(beforeRetry);
 });
 
 test("очередь действий сортируется детерминированно и не подменяет пропуски нулём", async ({ page }) => {
