@@ -73,6 +73,9 @@ def _load_api(monkeypatch, tmp_path: Path):
         "shared_surface_facts",
         "transport_catalog",
         "node_policy",
+        "internal_request_auth",
+        "ru_probe_contract",
+        "ru_probe_service",
         "worker",
     ]:
         sys.modules.pop(name, None)

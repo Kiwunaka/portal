@@ -33,7 +33,7 @@ import aiohttp
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func
 from sqlalchemy.exc import IntegrityError
@@ -243,6 +243,21 @@ from admin_ops_service import (
     refresh_ops_alerts_for_current_state as _ops_refresh_alerts_for_current_state,
     refresh_ops_alerts as _ops_refresh_alerts,
     traffic_summary_rows as _ops_traffic_summary_rows,
+)
+from internal_request_auth import (
+    InternalAuthError,
+    authenticate_internal_request,
+    load_internal_service_key_registry,
+)
+from ru_probe_contract import RuProbeContractError, validate_run_payload
+from ru_probe_service import (
+    RuProbeConfigurationError,
+    RuProbePayloadConflict,
+    build_ru_manifest,
+    evaluate_ru_run,
+    store_evaluated_ru_run,
+    store_ru_heartbeat,
+    validate_ru_heartbeat,
 )
 
 
@@ -5026,6 +5041,302 @@ async def _read_limited_request_body(request: Request, *, max_bytes: int, scope:
             raise HTTPException(status_code=413, detail=f"{scope} body is too large")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+_RU_MANIFEST_PATH = "/api/internal/probes/ru-origin/manifest"
+_RU_RUNS_PATH = "/api/internal/probes/ru-origin/runs"
+_RU_HEARTBEAT_PATH = "/api/internal/probes/ru-origin/heartbeat"
+_RU_RUN_MAX_BODY_BYTES = 512 * 1024
+_RU_HEARTBEAT_MAX_BODY_BYTES = 64 * 1024
+_RU_CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+class _RuProbeHttpError(RuntimeError):
+    def __init__(self, status_code: int, code: str) -> None:
+        self.status_code = int(status_code)
+        self.code = str(code)
+        super().__init__(self.code)
+
+
+def _ru_probe_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _ru_probe_correlation_id(request: Request) -> str:
+    supplied = str(request.headers.get("x-correlation-id") or "")
+    if _RU_CORRELATION_RE.fullmatch(supplied) is not None:
+        return supplied
+    return uuid.uuid4().hex
+
+
+def _ru_probe_headers(request: Request) -> dict[str, str]:
+    required = {
+        "x-internal-key-id",
+        "x-internal-timestamp",
+        "x-internal-nonce",
+        "x-internal-signature",
+    }
+    headers: dict[str, str] = {}
+    for raw_name, raw_value in request.scope.get("headers", []):
+        name = raw_name.decode("latin-1").lower()
+        if name not in required:
+            continue
+        if name in headers:
+            raise InternalAuthError(401, "malformed_auth_header")
+        headers[name] = raw_value.decode("latin-1")
+    return headers
+
+
+def _ru_probe_unique_json_object(
+    pairs: list[tuple[str, object]],
+) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate JSON member")
+        result[name] = value
+    return result
+
+
+def _ru_probe_reject_json_constant(_value: str) -> object:
+    raise ValueError("non-finite JSON number")
+
+
+def _ru_probe_json(raw_body: bytes) -> object:
+    if not raw_body:
+        raise _RuProbeHttpError(422, "invalid_payload")
+    try:
+        return json.loads(
+            raw_body.decode("utf-8"),
+            object_pairs_hook=_ru_probe_unique_json_object,
+            parse_constant=_ru_probe_reject_json_constant,
+        )
+    except (UnicodeError, ValueError, RecursionError):
+        raise _RuProbeHttpError(422, "invalid_payload") from None
+
+
+def _ru_probe_error_response(
+    *,
+    status_code: int,
+    code: str,
+    correlation_id: str,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=int(status_code),
+        content={
+            "code": str(code)[:64],
+            "correlation_id": correlation_id,
+        },
+    )
+
+
+def _ru_probe_auth_error(error: InternalAuthError) -> tuple[int, str]:
+    if error.status_code == 409 and error.code == "replayed_nonce":
+        return 409, "replayed_nonce"
+    if error.status_code == 413:
+        return 413, "request_too_large"
+    if error.status_code == 403:
+        return 403, "key_scope_forbidden"
+    if error.status_code == 401:
+        return 401, "key_disabled"
+    if error.status_code == 400:
+        return 400, "invalid_request"
+    return 500, "temporary"
+
+
+def _ru_probe_http_exception(error: HTTPException) -> tuple[int, str]:
+    if int(error.status_code) == 413:
+        return 413, "request_too_large"
+    if 400 <= int(error.status_code) < 500:
+        return 400, "invalid_request"
+    return 500, "temporary"
+
+
+def _ru_probe_contract_error(error: RuProbeContractError) -> tuple[int, str]:
+    if error.code == "unsupported_schema_version":
+        return 422, "unsupported_schema"
+    return 422, "invalid_payload"
+
+
+def _ru_probe_response_for_exception(
+    error: Exception,
+    *,
+    correlation_id: str,
+) -> JSONResponse:
+    if isinstance(error, _RuProbeHttpError):
+        return _ru_probe_error_response(
+            status_code=error.status_code,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    if isinstance(error, InternalAuthError):
+        status_code, code = _ru_probe_auth_error(error)
+    elif isinstance(error, HTTPException):
+        status_code, code = _ru_probe_http_exception(error)
+    elif isinstance(error, RuProbeContractError):
+        status_code, code = _ru_probe_contract_error(error)
+    elif isinstance(error, RuProbePayloadConflict):
+        status_code, code = 409, "payload_conflict"
+    elif isinstance(error, RuProbeConfigurationError):
+        status_code, code = 500, "temporary"
+    else:
+        status_code, code = 500, "temporary"
+    return _ru_probe_error_response(
+        status_code=status_code,
+        code=code,
+        correlation_id=correlation_id,
+    )
+
+
+def _authenticate_ru_probe_request(
+    session,
+    request: Request,
+    *,
+    raw_body: bytes,
+    required_scope: str,
+    now: datetime,
+):
+    if request.url.query:
+        raise InternalAuthError(400, "invalid_signed_path")
+    return authenticate_internal_request(
+        session,
+        load_internal_service_key_registry(),
+        method=request.method,
+        path=request.url.path,
+        raw_body=raw_body,
+        headers=_ru_probe_headers(request),
+        required_scope=required_scope,
+        required_origin="ru",
+        now=now,
+    )
+
+
+@app.get(_RU_MANIFEST_PATH)
+async def internal_ru_probe_manifest(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=0,
+            scope="RU probe manifest",
+        )
+        now = _ru_probe_now()
+        _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:manifest",
+            now=now,
+        )
+        manifest = build_ru_manifest(session, now=now)
+        session.commit()
+        return JSONResponse(status_code=200, content=manifest)
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+@app.post(_RU_RUNS_PATH)
+async def internal_ru_probe_run(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RU_RUN_MAX_BODY_BYTES,
+            scope="RU probe run",
+        )
+        now = _ru_probe_now()
+        authenticated = _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:ingest",
+            now=now,
+        )
+        payload = _ru_probe_json(raw_body)
+        validated = validate_run_payload(payload)
+        if authenticated.subject != validated["probe_host"]["id"]:
+            raise _RuProbeHttpError(403, "key_scope_forbidden")
+        evaluated = evaluate_ru_run(session, validated, now=now)
+        stored = store_evaluated_ru_run(
+            session,
+            evaluated,
+            artifact_sha256=hashlib.sha256(raw_body).hexdigest(),
+            ingest_key_id=authenticated.key_id,
+            received_at=now,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created",
+                "run_db_id": stored.run_db_id,
+                "run_id": stored.run_id,
+                "created": stored.created,
+                "current_eligible": stored.current_eligible,
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+@app.post(_RU_HEARTBEAT_PATH)
+async def internal_ru_probe_heartbeat(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RU_HEARTBEAT_MAX_BODY_BYTES,
+            scope="RU probe heartbeat",
+        )
+        now = _ru_probe_now()
+        authenticated = _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:heartbeat",
+            now=now,
+        )
+        heartbeat = validate_ru_heartbeat(_ru_probe_json(raw_body), now=now)
+        if authenticated.subject != heartbeat.probe_host_id:
+            raise _RuProbeHttpError(403, "key_scope_forbidden")
+        stored = store_ru_heartbeat(
+            session,
+            heartbeat,
+            received_at=now,
+            ingest_key_id=authenticated.key_id,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created",
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
 
 
 def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: bytes) -> tuple[str, str, str]:

@@ -9,8 +9,15 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
-from models import Node, UserNode
+from models import (
+    Node,
+    RuProbeRun,
+    RuProbeTargetResult,
+    RuProbeUploaderHeartbeat,
+    UserNode,
+)
 from ru_probe_contract import (
     ALLOWED_ADDRESS_FAMILIES,
     ALLOWED_STAGES,
@@ -31,12 +38,20 @@ from transport_catalog import enabled_transport_profiles
 DEFAULT_MANIFEST_MAX_CACHE_AGE_SECONDS = 6 * 60 * 60
 MIN_MANIFEST_MAX_CACHE_AGE_SECONDS = 5 * 60
 MAX_MANIFEST_MAX_CACHE_AGE_SECONDS = 24 * 60 * 60
+DEFAULT_RU_PROBE_RETENTION_DAYS = 180
+MIN_RU_PROBE_RETENTION_DAYS = 1
+MAX_RU_PROBE_RETENTION_DAYS = 3650
 
 _CANONICAL_CONFIG_ENV = "RU_PROBE_CANONICAL_TARGETS_JSON"
 _RESERVE_CONFIG_ENV = "RU_PROBE_RESERVE_TARGETS_JSON"
 _CACHE_AGE_ENV = "RU_PROBE_MANIFEST_MAX_CACHE_AGE_SECONDS"
+_RETENTION_DAYS_ENV = "RU_PROBE_RETENTION_DAYS"
 _CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
 _TARGET_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$")
+_HEARTBEAT_HOST_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
+_UTC_TIMESTAMP_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
+)
 _DNS_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 _SECRET_FIELD_RE = re.compile(
     r"(?i)(?:secret|password|passwd|token|credential|private|reality[_-]?(?:pbk|sid)|"
@@ -65,6 +80,39 @@ _RESERVE_FIELDS = {
     "local_probe_profile_id",
     "http_path",
 }
+_HEARTBEAT_FIELDS = {
+    "schema_version",
+    "probe_host_id",
+    "observed_at",
+    "service_version",
+    "pending_count",
+    "blocked_count",
+    "quarantine_count",
+    "oldest_pending_at",
+    "archive_write_ok",
+    "disk_free_bytes",
+    "disk_state",
+    "last_error_code",
+}
+_HEARTBEAT_DISK_STATES = frozenset({"ok", "low", "critical", "unknown"})
+_HEARTBEAT_LAST_ERROR_CODES = frozenset(
+    {
+        "archive_write_failed",
+        "artifact_hash_mismatch",
+        "artifact_invalid",
+        "blocked_key",
+        "disk_critical",
+        "disk_low",
+        "heartbeat_failed",
+        "invalid_success_response",
+        "network_error",
+        "quarantine_present",
+        "response_too_large",
+        "spool_recovery_failed",
+        "spool_transition_failed",
+        "unexpected_response",
+    }
+)
 
 
 class RuProbeConfigurationError(ValueError):
@@ -73,6 +121,17 @@ class RuProbeConfigurationError(ValueError):
         self.path = path
         self.message = message or code
         super().__init__(f"{code} at {path}: {self.message}")
+
+
+class RuProbeServiceError(RuntimeError):
+    def __init__(self, code: str) -> None:
+        self.code = str(code)
+        super().__init__(self.code)
+
+
+class RuProbePayloadConflict(RuProbeServiceError):
+    def __init__(self) -> None:
+        super().__init__("payload_conflict")
 
 
 @dataclass(frozen=True)
@@ -125,6 +184,34 @@ class EvaluatedRuRun:
     server_summary: str
     target_results: tuple[EvaluatedRuTargetResult, ...]
     validated_payload: dict[str, object]
+
+
+@dataclass(frozen=True)
+class StoredRuRun:
+    run_db_id: int
+    run_id: str
+    created: bool
+    current_eligible: bool
+
+
+@dataclass(frozen=True)
+class ValidatedRuHeartbeat:
+    probe_host_id: str
+    observed_at: datetime
+    service_version: str
+    pending_count: int
+    blocked_count: int
+    quarantine_count: int
+    oldest_pending_at: datetime | None
+    archive_write_ok: bool
+    disk_free_bytes: int | None
+    disk_state: str
+    last_error_code: str | None
+
+
+@dataclass(frozen=True)
+class StoredRuHeartbeat:
+    created: bool
 
 
 def _config_fail(code: str, path: str, message: str | None = None) -> None:
@@ -558,6 +645,20 @@ def _parse_utc(value: str) -> datetime:
     return datetime.fromisoformat(value[:-1] + "+00:00").astimezone(timezone.utc)
 
 
+def _normalized_utc(value: datetime, *, path: str) -> datetime:
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise RuProbeContractError("invalid_timestamp", path=path)
+    return value.astimezone(timezone.utc)
+
+
+def _database_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def _same_endpoint(left: dict[str, object], right: dict[str, object]) -> bool:
     return canonical_json_bytes(left) == canonical_json_bytes(right)
 
@@ -838,3 +939,478 @@ def evaluate_ru_run(
         target_results=tuple(target_results),
         validated_payload=validated,
     )
+
+
+def _retention_days() -> int:
+    raw = (os.environ.get(_RETENTION_DAYS_ENV) or "").strip()
+    if not raw:
+        return DEFAULT_RU_PROBE_RETENTION_DAYS
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuProbeConfigurationError(
+            "invalid_retention_days",
+            path=_RETENTION_DAYS_ENV,
+        ) from exc
+    if not MIN_RU_PROBE_RETENTION_DAYS <= value <= MAX_RU_PROBE_RETENTION_DAYS:
+        _config_fail("invalid_retention_days", _RETENTION_DAYS_ENV)
+    return value
+
+
+def _is_run_id_integrity_error(error: IntegrityError) -> bool:
+    original = getattr(error, "orig", None)
+    diagnostic = getattr(original, "diag", None)
+    constraint_name = getattr(diagnostic, "constraint_name", None)
+    if constraint_name is not None:
+        return constraint_name == "uq_ru_probe_runs_run_id"
+    return str(original) == "UNIQUE constraint failed: ru_probe_runs.run_id"
+
+
+def _is_heartbeat_identity_integrity_error(error: IntegrityError) -> bool:
+    original = getattr(error, "orig", None)
+    diagnostic = getattr(original, "diag", None)
+    constraint_name = getattr(diagnostic, "constraint_name", None)
+    if constraint_name is not None:
+        return constraint_name == "uq_ru_probe_uploader_heartbeat_host_observed"
+    return str(original) == (
+        "UNIQUE constraint failed: ru_probe_uploader_heartbeats.probe_host_id, "
+        "ru_probe_uploader_heartbeats.observed_at"
+    )
+
+
+def _existing_run_result(
+    row: RuProbeRun,
+    *,
+    artifact_sha256: str,
+) -> StoredRuRun:
+    if row.artifact_sha256 != artifact_sha256:
+        raise RuProbePayloadConflict()
+    return StoredRuRun(
+        run_db_id=int(row.id),
+        run_id=str(row.run_id),
+        created=False,
+        current_eligible=bool(row.current_eligible),
+    )
+
+
+def _run_row_and_targets(
+    evaluated: EvaluatedRuRun,
+    *,
+    artifact_sha256: str,
+    ingest_key_id: str,
+    received_at: datetime,
+    outside_retention_window: bool,
+) -> tuple[RuProbeRun, list[RuProbeTargetResult]]:
+    run_current_eligible = (
+        bool(evaluated.current_eligible) and not outside_retention_window
+    )
+    run_ineligible_reason = (
+        "outside_retention_window"
+        if outside_retention_window
+        else evaluated.ineligible_reason
+    )
+    run = RuProbeRun(
+        run_id=evaluated.run_id,
+        schema_version=evaluated.schema_version,
+        origin=evaluated.origin,
+        probe_host_id=evaluated.probe_host_id,
+        probe_host_label=evaluated.probe_host_label,
+        probe_public_ip=evaluated.probe_public_ip,
+        runner_version=evaluated.runner_version,
+        started_at=evaluated.started_at,
+        finished_at=evaluated.finished_at,
+        received_at=received_at,
+        manifest_revision=evaluated.manifest_revision,
+        execution_status=evaluated.execution_status,
+        evidence_code=evaluated.evidence_code,
+        environment_verdict=evaluated.environment_verdict,
+        release_verdict=evaluated.release_verdict,
+        current_eligible=run_current_eligible,
+        ineligible_reason=run_ineligible_reason,
+        google_reachable=evaluated.google_reachable,
+        xhttp_alive=evaluated.xhttp_alive,
+        hysteria_alive=evaluated.hysteria_alive,
+        server_reason=evaluated.server_reason,
+        server_summary=evaluated.server_summary,
+        artifact_sha256=artifact_sha256,
+        ingest_key_id=ingest_key_id,
+        retention_hold=False,
+        retention_hold_reason=None,
+        retention_held_at=None,
+    )
+    targets: list[RuProbeTargetResult] = []
+    for evaluated_target in evaluated.target_results:
+        endpoint = evaluated_target.endpoint
+        stages = evaluated_target.stages
+        outside_required = (
+            outside_retention_window
+            and evaluated_target.scope == "release_required"
+        )
+        target_current_eligible = (
+            bool(evaluated_target.current_eligible)
+            and not outside_retention_window
+        )
+        target_ineligible_reason = (
+            "outside_retention_window"
+            if outside_required
+            else evaluated_target.ineligible_reason
+        )
+        targets.append(
+            RuProbeTargetResult(
+                target_id=evaluated_target.target_id,
+                target_kind=evaluated_target.target_kind,
+                scope=evaluated_target.scope,
+                node_code=evaluated_target.node_code,
+                endpoint_fingerprint=evaluated_target.endpoint_fingerprint,
+                endpoint_host=str(endpoint["host"]),
+                endpoint_port=int(endpoint["port"]),
+                endpoint_sni=(
+                    str(endpoint["sni"]) if endpoint["sni"] is not None else None
+                ),
+                requested_address_families_json=copy.deepcopy(
+                    endpoint["address_families"]
+                ),
+                transport_metadata_json={
+                    "address_family_status": copy.deepcopy(
+                        evaluated_target.address_family_status
+                    ),
+                    "transport": copy.deepcopy(evaluated_target.transport),
+                },
+                transport_profile=str(endpoint["transport_profile"]),
+                probe_mode=str(endpoint["probe_mode"]),
+                http_path=(
+                    str(endpoint["http_path"])
+                    if endpoint["http_path"] is not None
+                    else None
+                ),
+                min_body_bytes=(
+                    int(endpoint["min_body_bytes"])
+                    if endpoint["min_body_bytes"] is not None
+                    else None
+                ),
+                local_probe_profile_id=(
+                    str(endpoint["local_probe_profile_id"])
+                    if endpoint["local_probe_profile_id"] is not None
+                    else None
+                ),
+                observed_at=evaluated_target.observed_at,
+                overall_status=evaluated_target.overall_status,
+                current_eligible=target_current_eligible,
+                ineligible_reason=target_ineligible_reason,
+                dns_status=str(stages["dns"]["status"]),
+                dns_latency_ms=stages["dns"]["latency_ms"],
+                tcp_status=str(stages["tcp"]["status"]),
+                tcp_latency_ms=stages["tcp"]["latency_ms"],
+                tls_status=str(stages["tls"]["status"]),
+                tls_latency_ms=stages["tls"]["latency_ms"],
+                http_large_body_status=str(stages["http_large_body"]["status"]),
+                http_large_body_latency_ms=stages["http_large_body"]["latency_ms"],
+                transport_handshake_status=str(
+                    stages["transport_handshake"]["status"]
+                ),
+                transport_handshake_latency_ms=stages["transport_handshake"][
+                    "latency_ms"
+                ],
+                ipv4_status=str(evaluated_target.address_family_status["ipv4"]),
+                ipv6_status=str(evaluated_target.address_family_status["ipv6"]),
+                reported_transport_handshake_status=str(
+                    evaluated_target.transport["handshake_status"]
+                ),
+                reported_transport_classification=str(
+                    evaluated_target.transport["classification"]
+                ),
+                server_reason_code=evaluated_target.reason_code,
+                server_detail=evaluated_target.detail,
+            )
+        )
+    return run, targets
+
+
+def store_evaluated_ru_run(
+    session,
+    evaluated: EvaluatedRuRun,
+    *,
+    artifact_sha256: str,
+    ingest_key_id: str,
+    received_at: datetime,
+) -> StoredRuRun:
+    if not isinstance(evaluated, EvaluatedRuRun):
+        raise TypeError("evaluated must be EvaluatedRuRun")
+    if not isinstance(artifact_sha256, str) or re.fullmatch(
+        r"[0-9a-f]{64}", artifact_sha256
+    ) is None:
+        raise ValueError("invalid artifact_sha256")
+    if (
+        not isinstance(ingest_key_id, str)
+        or not 1 <= len(ingest_key_id) <= 128
+        or _TARGET_ID_RE.fullmatch(ingest_key_id) is None
+    ):
+        raise ValueError("invalid ingest_key_id")
+    normalized_received_at = _normalized_utc(
+        received_at,
+        path="$.received_at",
+    )
+    existing = (
+        session.query(RuProbeRun)
+        .filter(RuProbeRun.run_id == evaluated.run_id)
+        .one_or_none()
+    )
+    if existing is not None:
+        return _existing_run_result(existing, artifact_sha256=artifact_sha256)
+
+    outside_retention_window = evaluated.finished_at < (
+        normalized_received_at - timedelta(days=_retention_days())
+    )
+    run, target_rows = _run_row_and_targets(
+        evaluated,
+        artifact_sha256=artifact_sha256,
+        ingest_key_id=ingest_key_id,
+        received_at=normalized_received_at,
+        outside_retention_window=outside_retention_window,
+    )
+    try:
+        with session.begin_nested():
+            session.add(run)
+            session.flush()
+            for target_row in target_rows:
+                target_row.run_db_id = int(run.id)
+            session.add_all(target_rows)
+            session.flush()
+    except IntegrityError as error:
+        if not _is_run_id_integrity_error(error):
+            raise
+        session.expire_all()
+        winner = (
+            session.query(RuProbeRun)
+            .filter(RuProbeRun.run_id == evaluated.run_id)
+            .one_or_none()
+        )
+        if winner is None:
+            raise
+        return _existing_run_result(winner, artifact_sha256=artifact_sha256)
+    return StoredRuRun(
+        run_db_id=int(run.id),
+        run_id=evaluated.run_id,
+        created=True,
+        current_eligible=bool(run.current_eligible),
+    )
+
+
+def _heartbeat_fail(code: str, path: str) -> None:
+    raise RuProbeContractError(code, path=path)
+
+
+def _heartbeat_timestamp(value: object, *, path: str) -> datetime:
+    if not isinstance(value, str) or _UTC_TIMESTAMP_RE.fullmatch(value) is None:
+        _heartbeat_fail("invalid_timestamp", path)
+    try:
+        return datetime.fromisoformat(value[:-1] + "+00:00").astimezone(timezone.utc)
+    except (ValueError, OverflowError):
+        _heartbeat_fail("invalid_timestamp", path)
+    raise AssertionError("unreachable")
+
+
+def _heartbeat_count(value: object, *, path: str) -> int:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value <= 10_000_000
+    ):
+        _heartbeat_fail("invalid_count", path)
+    return value
+
+
+def validate_ru_heartbeat(
+    payload: object,
+    *,
+    now: datetime,
+) -> ValidatedRuHeartbeat:
+    normalized_now = _normalized_utc(now, path="$.now")
+    if not isinstance(payload, dict) or set(payload) != _HEARTBEAT_FIELDS:
+        _heartbeat_fail("invalid_heartbeat", "$")
+    if type(payload["schema_version"]) is not int:
+        _heartbeat_fail("invalid_schema_version", "$.schema_version")
+    if payload["schema_version"] != 1:
+        _heartbeat_fail("unsupported_schema_version", "$.schema_version")
+    probe_host_id = payload["probe_host_id"]
+    if (
+        not isinstance(probe_host_id, str)
+        or _HEARTBEAT_HOST_RE.fullmatch(probe_host_id) is None
+    ):
+        _heartbeat_fail("invalid_probe_host_id", "$.probe_host_id")
+    observed_at = _heartbeat_timestamp(
+        payload["observed_at"],
+        path="$.observed_at",
+    )
+    if observed_at > normalized_now + timedelta(minutes=5):
+        _heartbeat_fail("future_timestamp", "$.observed_at")
+    service_version = payload["service_version"]
+    if (
+        not isinstance(service_version, str)
+        or not 1 <= len(service_version) <= 64
+        or any(
+            ord(character) < 33 or ord(character) > 126
+            for character in service_version
+        )
+    ):
+        _heartbeat_fail("invalid_service_version", "$.service_version")
+    pending_count = _heartbeat_count(
+        payload["pending_count"],
+        path="$.pending_count",
+    )
+    blocked_count = _heartbeat_count(
+        payload["blocked_count"],
+        path="$.blocked_count",
+    )
+    quarantine_count = _heartbeat_count(
+        payload["quarantine_count"],
+        path="$.quarantine_count",
+    )
+    oldest_pending_raw = payload["oldest_pending_at"]
+    oldest_pending_at = (
+        None
+        if oldest_pending_raw is None
+        else _heartbeat_timestamp(
+            oldest_pending_raw,
+            path="$.oldest_pending_at",
+        )
+    )
+    if pending_count == 0 and oldest_pending_at is not None:
+        _heartbeat_fail("invalid_oldest_pending", "$.oldest_pending_at")
+    if pending_count > 0 and oldest_pending_at is None:
+        _heartbeat_fail("invalid_oldest_pending", "$.oldest_pending_at")
+    if oldest_pending_at is not None and oldest_pending_at > observed_at:
+        _heartbeat_fail("invalid_oldest_pending", "$.oldest_pending_at")
+    archive_write_ok = payload["archive_write_ok"]
+    if not isinstance(archive_write_ok, bool):
+        _heartbeat_fail("invalid_archive_state", "$.archive_write_ok")
+    disk_free_bytes = payload["disk_free_bytes"]
+    if disk_free_bytes is not None and (
+        isinstance(disk_free_bytes, bool)
+        or not isinstance(disk_free_bytes, int)
+        or not 0 <= disk_free_bytes <= 9_223_372_036_854_775_807
+    ):
+        _heartbeat_fail("invalid_disk_free", "$.disk_free_bytes")
+    disk_state = payload["disk_state"]
+    if not isinstance(disk_state, str) or disk_state not in _HEARTBEAT_DISK_STATES:
+        _heartbeat_fail("invalid_disk_state", "$.disk_state")
+    if disk_state == "unknown" and disk_free_bytes is not None:
+        _heartbeat_fail("invalid_disk_state", "$.disk_free_bytes")
+    if disk_state != "unknown" and disk_free_bytes is None:
+        _heartbeat_fail("invalid_disk_state", "$.disk_free_bytes")
+    last_error_code = payload["last_error_code"]
+    if last_error_code is not None and (
+        not isinstance(last_error_code, str)
+        or last_error_code not in _HEARTBEAT_LAST_ERROR_CODES
+    ):
+        _heartbeat_fail("invalid_last_error_code", "$.last_error_code")
+    return ValidatedRuHeartbeat(
+        probe_host_id=probe_host_id,
+        observed_at=observed_at,
+        service_version=service_version,
+        pending_count=pending_count,
+        blocked_count=blocked_count,
+        quarantine_count=quarantine_count,
+        oldest_pending_at=oldest_pending_at,
+        archive_write_ok=archive_write_ok,
+        disk_free_bytes=disk_free_bytes,
+        disk_state=disk_state,
+        last_error_code=last_error_code,
+    )
+
+
+def _heartbeat_matches(
+    row: RuProbeUploaderHeartbeat,
+    heartbeat: ValidatedRuHeartbeat,
+) -> bool:
+    return (
+        row.probe_host_id == heartbeat.probe_host_id
+        and _database_utc(row.observed_at) == heartbeat.observed_at
+        and row.service_version == heartbeat.service_version
+        and int(row.pending_count) == heartbeat.pending_count
+        and int(row.blocked_count) == heartbeat.blocked_count
+        and int(row.quarantine_count) == heartbeat.quarantine_count
+        and _database_utc(row.oldest_pending_at) == heartbeat.oldest_pending_at
+        and bool(row.archive_write_ok) is heartbeat.archive_write_ok
+        and row.disk_free_bytes == heartbeat.disk_free_bytes
+        and row.disk_state == heartbeat.disk_state
+        and row.last_error_code == heartbeat.last_error_code
+    )
+
+
+def _existing_heartbeat_result(
+    row: RuProbeUploaderHeartbeat,
+    *,
+    heartbeat: ValidatedRuHeartbeat,
+) -> StoredRuHeartbeat:
+    if not _heartbeat_matches(row, heartbeat):
+        raise RuProbePayloadConflict()
+    return StoredRuHeartbeat(created=False)
+
+
+def store_ru_heartbeat(
+    session,
+    heartbeat: ValidatedRuHeartbeat,
+    *,
+    received_at: datetime,
+    ingest_key_id: str,
+) -> StoredRuHeartbeat:
+    if not isinstance(heartbeat, ValidatedRuHeartbeat):
+        raise TypeError("heartbeat must be ValidatedRuHeartbeat")
+    normalized_received_at = _normalized_utc(
+        received_at,
+        path="$.received_at",
+    )
+    if (
+        not isinstance(ingest_key_id, str)
+        or not 1 <= len(ingest_key_id) <= 128
+        or _TARGET_ID_RE.fullmatch(ingest_key_id) is None
+    ):
+        raise ValueError("invalid ingest_key_id")
+    existing = (
+        session.query(RuProbeUploaderHeartbeat)
+        .filter(
+            RuProbeUploaderHeartbeat.probe_host_id == heartbeat.probe_host_id,
+            RuProbeUploaderHeartbeat.observed_at == heartbeat.observed_at,
+        )
+        .one_or_none()
+    )
+    if existing is not None:
+        return _existing_heartbeat_result(existing, heartbeat=heartbeat)
+
+    row = RuProbeUploaderHeartbeat(
+        probe_host_id=heartbeat.probe_host_id,
+        observed_at=heartbeat.observed_at,
+        received_at=normalized_received_at,
+        service_version=heartbeat.service_version,
+        pending_count=heartbeat.pending_count,
+        blocked_count=heartbeat.blocked_count,
+        quarantine_count=heartbeat.quarantine_count,
+        oldest_pending_at=heartbeat.oldest_pending_at,
+        archive_write_ok=heartbeat.archive_write_ok,
+        disk_free_bytes=heartbeat.disk_free_bytes,
+        disk_state=heartbeat.disk_state,
+        last_error_code=heartbeat.last_error_code,
+        ingest_key_id=ingest_key_id,
+    )
+    try:
+        with session.begin_nested():
+            session.add(row)
+            session.flush()
+    except IntegrityError as error:
+        if not _is_heartbeat_identity_integrity_error(error):
+            raise
+        session.expire_all()
+        winner = (
+            session.query(RuProbeUploaderHeartbeat)
+            .filter(
+                RuProbeUploaderHeartbeat.probe_host_id
+                == heartbeat.probe_host_id,
+                RuProbeUploaderHeartbeat.observed_at == heartbeat.observed_at,
+            )
+            .one_or_none()
+        )
+        if winner is None:
+            raise
+        return _existing_heartbeat_result(winner, heartbeat=heartbeat)
+    return StoredRuHeartbeat(created=True)
