@@ -85,6 +85,7 @@ _RETRYABLE_CODES = {
     "network_error",
     "response_too_large",
     "temporary",
+    "unexpected_response",
 }
 _ALLOWED_LAST_ERROR_CODES = {
     "archive_write_failed",
@@ -100,6 +101,7 @@ _ALLOWED_LAST_ERROR_CODES = {
     "response_too_large",
     "spool_recovery_failed",
     "spool_transition_failed",
+    "unexpected_response",
 }
 _THREAD_LOCKS: dict[str, threading.RLock] = {}
 _THREAD_LOCKS_GUARD = threading.Lock()
@@ -706,14 +708,14 @@ def _read_artifact_pair(
     return raw, sidecar_raw, digest == hashlib.sha256(raw).hexdigest()
 
 
-def _response_status(response: object) -> int:
+def _response_status(response: object) -> int | None:
     status = getattr(response, "status", None)
     if (
         isinstance(status, bool)
         or not isinstance(status, int)
         or not 100 <= status <= 599
     ):
-        return 0
+        return None
     return status
 
 
@@ -779,23 +781,11 @@ def _parse_heartbeat_success_response(response: object) -> str | None:
     return _safe_correlation_id(payload["correlation_id"])
 
 
-def _fallback_error_code(status: int) -> str:
-    if status in {408, 425, 429} or 500 <= status <= 599:
-        return "temporary"
-    if status in {401, 403}:
-        return "key_disabled"
-    if status == 413:
-        return "request_too_large"
-    if status == 422:
-        return "invalid_payload"
-    return "invalid_request"
-
-
 def _parse_error_response(
     response: object,
     *,
     status: int,
-) -> tuple[str, str | None]:
+) -> tuple[str | None, str | None]:
     payload = _strict_response_object(response)
     allowed_codes = (
         {"temporary"}
@@ -806,16 +796,42 @@ def _parse_error_response(
         {"code"},
         {"code", "correlation_id"},
     ):
-        return _fallback_error_code(status), None
+        return None, None
     code = payload["code"]
     if not isinstance(code, str) or code not in allowed_codes:
-        return _fallback_error_code(status), None
+        return None, None
     if "correlation_id" not in payload:
         return code, None
     correlation_id = _safe_correlation_id(payload["correlation_id"])
     if correlation_id is None:
-        return _fallback_error_code(status), None
+        return None, None
     return code, correlation_id
+
+
+def _retryable_http_status(status: int) -> bool:
+    return status in {408, 425, 429} or 500 <= status <= 599
+
+
+def _terminal_destination(status: int, code: str) -> str | None:
+    if (
+        status in {401, 403}
+        and code in {"key_disabled", "key_scope_forbidden"}
+    ):
+        return "blocked"
+    if (
+        (status == 400 and code == "invalid_request")
+        or (
+            status == 409
+            and code in {"payload_conflict", "replayed_nonce"}
+        )
+        or (status == 413 and code == "request_too_large")
+        or (
+            status == 422
+            and code in {"invalid_payload", "unsupported_schema"}
+        )
+    ):
+        return "quarantine"
+    return None
 
 
 def _reason_bytes(
@@ -1710,31 +1726,63 @@ def upload_one(
                         jitter=jitter,
                     )
                 code = "created"
+                destination = "archive"
             else:
+                if status is None:
+                    return _retryable_pending_outcome(
+                        artifact_path=artifact_path,
+                        root=root,
+                        code="unexpected_response",
+                        status=None,
+                        correlation_id=None,
+                        attempts=attempts,
+                        previous_attempts=previous_attempts,
+                        now=now,
+                        jitter=jitter,
+                    )
                 code, correlation_id = _parse_error_response(
                     response,
                     status=status,
                 )
-            if status == 409 and code == "replayed_nonce" and attempts == 1:
-                continue
-            if status in {200, 201}:
-                destination = "archive"
-            elif status in {408, 425, 429} or 500 <= status <= 599:
-                return _retryable_pending_outcome(
-                    artifact_path=artifact_path,
-                    root=root,
-                    code=code,
-                    status=status,
-                    correlation_id=correlation_id,
-                    attempts=attempts,
-                    previous_attempts=previous_attempts,
-                    now=now,
-                    jitter=jitter,
-                )
-            elif status in {401, 403}:
-                destination = "blocked"
-            else:
-                destination = "quarantine"
+                if code is None:
+                    return _retryable_pending_outcome(
+                        artifact_path=artifact_path,
+                        root=root,
+                        code="unexpected_response",
+                        status=status,
+                        correlation_id=None,
+                        attempts=attempts,
+                        previous_attempts=previous_attempts,
+                        now=now,
+                        jitter=jitter,
+                    )
+                if status == 409 and code == "replayed_nonce" and attempts == 1:
+                    continue
+                if _retryable_http_status(status):
+                    return _retryable_pending_outcome(
+                        artifact_path=artifact_path,
+                        root=root,
+                        code=code,
+                        status=status,
+                        correlation_id=correlation_id,
+                        attempts=attempts,
+                        previous_attempts=previous_attempts,
+                        now=now,
+                        jitter=jitter,
+                    )
+                destination = _terminal_destination(status, code)
+                if destination is None:
+                    return _retryable_pending_outcome(
+                        artifact_path=artifact_path,
+                        root=root,
+                        code="unexpected_response",
+                        status=status,
+                        correlation_id=None,
+                        attempts=attempts,
+                        previous_attempts=previous_attempts,
+                        now=now,
+                        jitter=jitter,
+                    )
             reason = (
                 None
                 if destination == "archive"
@@ -1943,10 +1991,15 @@ def send_heartbeat(
             )
         code = "created"
     else:
-        code, correlation_id = _parse_error_response(
-            response,
-            status=status,
-        )
+        if status is None:
+            code, correlation_id = "unexpected_response", None
+        else:
+            code, correlation_id = _parse_error_response(
+                response,
+                status=status,
+            )
+            if code is None:
+                code, correlation_id = "unexpected_response", None
     return UploadOutcome(
         destination="sent" if status in {200, 201} else "failed",
         status=status,

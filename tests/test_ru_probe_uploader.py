@@ -80,7 +80,7 @@ class FakeTransport:
     def respond(
         self,
         *,
-        status: int,
+        status: object,
         body: dict[str, object] | bytes | None = None,
     ) -> None:
         if body is None:
@@ -260,7 +260,9 @@ def test_concurrent_writers_never_mix_artifact_and_sidecar(
         (200, "created", "archive"),
         (503, "temporary", "pending"),
         (401, "key_disabled", "blocked"),
+        (401, "key_scope_forbidden", "blocked"),
         (403, "key_disabled", "blocked"),
+        (403, "key_scope_forbidden", "blocked"),
         (400, "invalid_request", "quarantine"),
         (413, "request_too_large", "quarantine"),
         (422, "invalid_payload", "quarantine"),
@@ -294,9 +296,21 @@ def test_upload_transition_matrix(
     )
 
     assert outcome.destination == destination
+    assert outcome.code == code
     if destination != "pending":
         assert (tmp_path / destination / pending.name).exists()
     assert pending.exists() is (destination == "pending")
+    if destination in {"blocked", "quarantine"}:
+        assert _reason(tmp_path / destination / pending.name) == {
+            "status": status,
+            "code": code,
+            "correlation_id": "corr-1",
+            "observed_at": "2026-07-16T06:30:00Z",
+        }
+    elif destination == "archive":
+        assert not (
+            tmp_path / destination / f"{RUN_ID}.reason.json"
+        ).exists()
 
 
 @pytest.mark.parametrize(
@@ -409,6 +423,181 @@ def test_valid_success_response_archives_only_consistent_run_dto(
 
     assert outcome.destination == "archive"
     assert outcome.code == "created"
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (202, _run_success_body(status=202)),
+        (204, b""),
+        (206, _run_success_body(status=206)),
+        (301, b""),
+        (302, b"<html>moved</html>"),
+        (307, b""),
+        (308, b""),
+        (404, {"code": "invalid_request", "correlation_id": "corr-404"}),
+        (405, {"code": "invalid_request", "correlation_id": "corr-405"}),
+        (418, {"code": "invalid_request", "correlation_id": "corr-418"}),
+        (0, b""),
+        (99, b""),
+        (600, b""),
+        (999, b""),
+        (True, b""),
+        ("201", _run_success_body(status=201)),
+        (None, b""),
+    ],
+    ids=[
+        "202",
+        "204",
+        "206",
+        "301",
+        "302",
+        "307",
+        "308",
+        "404",
+        "405",
+        "418",
+        "zero",
+        "below-http",
+        "above-http",
+        "large-odd",
+        "bool",
+        "string-201",
+        "none",
+    ],
+)
+def test_unsupported_http_status_keeps_pending_with_durable_retry(
+    tmp_path: Path,
+    status: object,
+    body: dict[str, object] | bytes,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(status=status, body=body)
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "unexpected_response"
+    assert outcome.retry_after_seconds == 60
+    assert pending.exists()
+    assert not any(
+        (tmp_path / state / pending.name).exists()
+        for state in ("archive", "blocked", "quarantine")
+    )
+    retry = json.loads(
+        pending.with_suffix(".retry.json").read_text(encoding="utf-8")
+    )
+    assert retry["attempt"] == 1
+    assert retry["next_attempt_at"] == "2026-07-16T06:31:00Z"
+    assert retry["last_code"] == "unexpected_response"
+    assert retry["last_http_status"] == (
+        status
+        if isinstance(status, int)
+        and not isinstance(status, bool)
+        and 100 <= status <= 599
+        else None
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "code"),
+    [
+        (400, "key_disabled"),
+        (401, "invalid_payload"),
+        (403, "payload_conflict"),
+        (409, "invalid_payload"),
+        (413, "invalid_payload"),
+        (422, "key_disabled"),
+        (503, "payload_conflict"),
+    ],
+)
+def test_status_code_contradiction_is_retryable_not_terminal(
+    tmp_path: Path,
+    status: int,
+    code: str,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=status,
+        body={"code": code, "correlation_id": "corr-contradiction"},
+    )
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "unexpected_response"
+    assert pending.exists()
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (204, b""),
+        (302, b"<html>moved</html>"),
+        (404, {"code": "invalid_request", "correlation_id": "corr-route"}),
+        (0, b""),
+    ],
+    ids=["204", "302", "404", "zero"],
+)
+def test_unexpected_status_retry_attempt_advances_across_invocations(
+    tmp_path: Path,
+    status: object,
+    body: dict[str, object] | bytes,
+) -> None:
+    pending = _pending(tmp_path)
+    first_transport = FakeTransport()
+    first_transport.respond(
+        status=status,
+        body=body,
+    )
+
+    first = upload_one(
+        pending,
+        transport=first_transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert first.retry_after_seconds == 60
+    second_transport = FakeTransport()
+    second_transport.respond(
+        status=status,
+        body=body,
+    )
+    second = upload_one(
+        pending,
+        transport=second_transport,
+        now=NOW.replace(minute=31, second=1),
+        jitter=lambda _upper: 0,
+    )
+
+    assert second.destination == "pending"
+    assert second.code == "unexpected_response"
+    assert second.retry_after_seconds == 120
+    retry = json.loads(
+        pending.with_suffix(".retry.json").read_text(encoding="utf-8")
+    )
+    assert retry["attempt"] == 2
+    assert retry["next_attempt_at"] == "2026-07-16T06:33:01Z"
+    assert retry["last_http_status"] == (
+        status
+        if isinstance(status, int)
+        and not isinstance(status, bool)
+        and 100 <= status <= 599
+        else None
+    )
 
 
 def test_shared_client_oversized_response_is_retryable_not_blocked(
@@ -547,15 +736,18 @@ def test_duplicate_error_members_cannot_trigger_nonce_replay(
 
     outcome = upload_one(pending, transport=transport, now=NOW)
 
-    assert outcome.destination == "quarantine"
-    assert outcome.code == "invalid_request"
+    assert outcome.destination == "pending"
+    assert outcome.code == "unexpected_response"
     assert outcome.attempts == 1
     assert len(transport.calls) == 1
-    reason = _reason(tmp_path / "quarantine" / pending.name)
-    assert reason["correlation_id"] is None
+    retry_raw = pending.with_suffix(".retry.json").read_text(
+        encoding="utf-8"
+    )
+    assert "corr-unsafe" not in retry_raw
+    assert json.loads(retry_raw)["last_code"] == "unexpected_response"
 
 
-def test_oversized_error_body_uses_status_only_and_never_persists_body(
+def test_oversized_error_body_is_unexpected_and_never_persists_body(
     tmp_path: Path,
 ) -> None:
     pending = _pending(tmp_path)
@@ -573,12 +765,12 @@ def test_oversized_error_body_uses_status_only_and_never_persists_body(
     )
 
     assert outcome.destination == "pending"
-    assert outcome.code == "temporary"
+    assert outcome.code == "unexpected_response"
     retry_raw = pending.with_suffix(".retry.json").read_text(
         encoding="utf-8"
     )
     assert "x" * 100 not in retry_raw
-    assert json.loads(retry_raw)["last_code"] == "temporary"
+    assert json.loads(retry_raw)["last_code"] == "unexpected_response"
 
 
 def test_replayed_nonce_rechecks_sidecar_before_second_send(
@@ -629,8 +821,6 @@ def test_reason_sidecar_is_allowlisted_and_does_not_copy_response_payload(
         body={
             "code": "invalid_payload",
             "correlation_id": "corr-safe",
-            "detail": "secret-token-provider-payload",
-            "signature": "must-not-copy",
         },
     )
 
@@ -646,9 +836,42 @@ def test_reason_sidecar_is_allowlisted_and_does_not_copy_response_payload(
     }
     assert "secret-token" not in raw
     assert "signature" not in raw
-    assert json.loads(raw)["correlation_id"] is None
+    assert json.loads(raw)["correlation_id"] == "corr-safe"
     if os.name != "nt":
         assert reason_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_error_response_with_extra_fields_stays_pending_without_payload_leak(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=422,
+        body={
+            "code": "invalid_payload",
+            "correlation_id": "corr-safe",
+            "detail": "secret-token-provider-payload",
+            "signature": "must-not-copy",
+        },
+    )
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "unexpected_response"
+    retry_raw = pending.with_suffix(".retry.json").read_text(
+        encoding="utf-8"
+    )
+    assert "secret-token" not in retry_raw
+    assert "signature" not in retry_raw
+    assert "corr-safe" not in retry_raw
+    assert not (tmp_path / "quarantine" / pending.name).exists()
 
 
 def test_complete_quarantine_triplet_resumes_without_network(
@@ -1007,6 +1230,44 @@ def test_heartbeat_success_requires_strict_bounded_response(
 
     assert outcome.destination == "failed"
     assert outcome.code == "invalid_success_response"
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (204, b""),
+        (302, b"<html>moved</html>"),
+        (404, {"code": "invalid_request", "correlation_id": "corr-404"}),
+        (503, {"code": "payload_conflict", "correlation_id": "corr-503"}),
+        (None, b""),
+    ],
+    ids=["204", "302", "404", "503-contradiction", "none"],
+)
+def test_heartbeat_unsupported_or_contradictory_response_is_unexpected(
+    tmp_path: Path,
+    status: object,
+    body: dict[str, object] | bytes,
+) -> None:
+    transport = FakeTransport()
+    transport.respond(status=status, body=body)
+
+    outcome = send_heartbeat(
+        tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert outcome.destination == "failed"
+    assert outcome.code == "unexpected_response"
+    assert outcome.status == (
+        status
+        if isinstance(status, int)
+        and not isinstance(status, bool)
+        and 100 <= status <= 599
+        else None
+    )
+    assert outcome.correlation_id is None
 
 
 def test_recovery_failure_reaches_outcome_heartbeat_and_exit(
