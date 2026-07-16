@@ -212,6 +212,16 @@ def _normalized_default(value) -> str | None:
     return str(value).strip().strip("()").strip().lower()
 
 
+def _assert_sqlite_autoincrement_contract(table_sql: dict[str, str]) -> None:
+    assert set(table_sql) == RU_TABLES
+    for table_name, create_sql in table_sql.items():
+        normalized = " ".join(create_sql.split()).upper()
+        assert "ID INTEGER PRIMARY KEY AUTOINCREMENT" in normalized, (
+            f"Explicit SQLite migration lost AUTOINCREMENT for {table_name}: "
+            f"{create_sql}"
+        )
+
+
 def _insert(conn, table: str, values: dict):
     columns = ", ".join(values)
     binds = ", ".join(f":{column}" for column in values)
@@ -464,3 +474,25 @@ def test_sqlite_ru_probe_ddl_immediately_follows_admin_ops(migrated_engine) -> N
         if "CREATE TABLE IF NOT EXISTS ru_probe_runs" in sql
     )
     assert ru_first == admin_last + 1
+
+
+def test_sqlite_autoincrement_guard_rejects_missing_keyword(migrated_engine) -> None:
+    with migrated_engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT name, sql FROM sqlite_master "
+                "WHERE type = 'table' AND name IN "
+                "('ru_probe_runs', 'ru_probe_target_results', "
+                "'ru_probe_uploader_heartbeats', 'internal_ingest_nonces')"
+            )
+        ).fetchall()
+    table_sql = {str(row[0]): str(row[1]) for row in rows}
+    mutated_table_sql = dict(table_sql)
+    mutated_table_sql["ru_probe_runs"] = mutated_table_sql[
+        "ru_probe_runs"
+    ].replace(" AUTOINCREMENT", "", 1)
+    assert mutated_table_sql != table_sql
+
+    _assert_sqlite_autoincrement_contract(table_sql)
+    with pytest.raises(AssertionError):
+        _assert_sqlite_autoincrement_contract(mutated_table_sql)
