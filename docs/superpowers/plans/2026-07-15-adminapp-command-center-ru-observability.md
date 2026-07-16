@@ -538,8 +538,8 @@ git commit -m "refactor(adminapp): load only the active operations route"
 | Table | Required key/constraints |
 |---|---|
 | `ru_probe_runs` | unique `run_id`; indexed `finished_at`, `release_verdict`, `current_eligible`, `probe_host_label`; raw body is represented only by `artifact_sha256`, never stored as secret-bearing log text |
-| `ru_probe_target_results` | FK `run_db_id → ru_probe_runs.id ON DELETE CASCADE`; unique `(run_db_id,target_id)`; indexes `node_code`, `target_kind`, `verdict` |
-| `ru_probe_uploader_heartbeats` | unique `(probe_host_id,observed_at)`; indexes `received_at`, `probe_host_id`; DTO fields are allowlisted columns/JSON only |
+| `ru_probe_target_results` | FK `run_db_id → ru_probe_runs.id ON DELETE CASCADE`; unique `(run_db_id,target_id)`; server verdict column `overall_status`; indexes `node_code`, `target_kind`, `overall_status`, `(node_code,observed_at)` and `(run_db_id,node_code)` |
+| `ru_probe_uploader_heartbeats` | unique `(probe_host_id,observed_at)`; indexes `received_at`, `probe_host_id` and `(probe_host_id,observed_at)`; DTO fields are allowlisted columns/JSON only |
 | `internal_ingest_nonces` | unique `(key_scope,key_id,nonce_hash)`; index `expires_at`; stores nonce SHA-256 plus path/timestamp/body hash for audit, never raw nonce, secret or signature |
 
 - [ ] **Step 1: Write failing SQLite model/migration assertions**
