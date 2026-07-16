@@ -4,6 +4,7 @@ import argparse
 import contextlib
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -13,7 +14,7 @@ import sys
 import threading
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterator
 
@@ -42,9 +43,7 @@ _CODE_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _HOST_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
 _KNOWN_RESPONSE_CODES = {
-    "accepted",
     "created",
-    "idempotent",
     "invalid_payload",
     "invalid_request",
     "key_disabled",
@@ -55,6 +54,38 @@ _KNOWN_RESPONSE_CODES = {
     "temporary",
     "unsupported_schema",
 }
+_RUN_SUCCESS_KEYS = {
+    "code",
+    "run_db_id",
+    "run_id",
+    "created",
+    "current_eligible",
+    "correlation_id",
+}
+_HEARTBEAT_SUCCESS_KEYS = {"code", "correlation_id"}
+_ERROR_RESPONSE_CODES_BY_STATUS = {
+    400: {"invalid_request"},
+    401: {"key_disabled", "key_scope_forbidden"},
+    403: {"key_disabled", "key_scope_forbidden"},
+    408: {"temporary"},
+    409: {"payload_conflict", "replayed_nonce"},
+    413: {"request_too_large"},
+    422: {"invalid_payload", "unsupported_schema"},
+    425: {"temporary"},
+    429: {"temporary"},
+}
+_RETRY_STATE_KEYS = {
+    "attempt",
+    "next_attempt_at",
+    "last_http_status",
+    "last_code",
+}
+_RETRYABLE_CODES = {
+    "invalid_success_response",
+    "network_error",
+    "response_too_large",
+    "temporary",
+}
 _ALLOWED_LAST_ERROR_CODES = {
     "archive_write_failed",
     "artifact_hash_mismatch",
@@ -63,8 +94,11 @@ _ALLOWED_LAST_ERROR_CODES = {
     "disk_critical",
     "disk_low",
     "heartbeat_failed",
+    "invalid_success_response",
     "network_error",
     "quarantine_present",
+    "response_too_large",
+    "spool_recovery_failed",
     "spool_transition_failed",
 }
 _THREAD_LOCKS: dict[str, threading.RLock] = {}
@@ -95,6 +129,14 @@ class UploadOutcome:
     retry_after_seconds: int | None = None
     path: Path | None = None
     disk_state: str | None = None
+
+
+@dataclass(frozen=True)
+class RetryState:
+    attempt: int
+    next_attempt_at: datetime
+    last_http_status: int | None
+    last_code: str
 
 
 def _utc_text(value: datetime) -> str:
@@ -471,12 +513,19 @@ def write_pending_artifact(
     return artifact_path
 
 
-def recover_pending(spool_root: str | Path) -> list[RecoveryIssue]:
+def recover_pending(
+    spool_root: str | Path,
+    *,
+    now: datetime | None = None,
+) -> list[RecoveryIssue]:
     root = ensure_spool_layout(spool_root)
+    observed_now = now or datetime.now(timezone.utc)
     pending = root / "pending"
     issues: list[RecoveryIssue] = []
     with _spool_lock(root):
         for artifact_path in sorted(pending.glob("*.json")):
+            if artifact_path.name.endswith(".retry.json"):
+                continue
             try:
                 run_id = _validate_run_id(artifact_path.stem)
                 raw = _read_regular_file(
@@ -504,20 +553,91 @@ def recover_pending(spool_root: str | Path) -> list[RecoveryIssue]:
                 issues.append(
                     RecoveryIssue("sidecar_without_artifact", sidecar_path)
                 )
+        for retry_path in sorted(pending.glob("*.retry.json")):
+            try:
+                run_id = _retry_run_id(retry_path)
+                artifact_path = pending / f"{run_id}.json"
+                if not artifact_path.exists():
+                    issues.append(
+                        RecoveryIssue("retry_without_artifact", retry_path)
+                    )
+                    continue
+                _read_retry_state(artifact_path, now=observed_now)
+            except SpoolError:
+                issues.append(
+                    RecoveryIssue("retry_state_invalid", retry_path)
+                )
     return issues
 
 
-def scan_pending(spool_root: str | Path) -> list[Path]:
+def scan_pending(
+    spool_root: str | Path,
+    *,
+    now: datetime | None = None,
+) -> list[Path]:
     root = ensure_spool_layout(spool_root)
-    recover_pending(root)
+    observed_now = now or datetime.now(timezone.utc)
+    recovery_issues = recover_pending(root, now=observed_now)
+    return _scan_complete_pending(
+        root,
+        now=observed_now,
+        excluded_run_ids=_recovery_issue_run_ids(recovery_issues),
+    )
+
+
+def _spool_member_run_id(path: Path) -> str | None:
+    for suffix in (".retry.json", ".reason.json", ".sha256", ".json"):
+        if not path.name.endswith(suffix):
+            continue
+        try:
+            return _validate_run_id(path.name[: -len(suffix)])
+        except SpoolError:
+            return None
+    return None
+
+
+def _recovery_issue_run_ids(
+    issues: list[RecoveryIssue],
+) -> set[str]:
+    return {
+        run_id
+        for issue in issues
+        if (run_id := _spool_member_run_id(issue.path)) is not None
+    }
+
+
+def _scan_complete_pending(
+    root: Path,
+    *,
+    now: datetime,
+    excluded_run_ids: set[str] | None = None,
+) -> list[Path]:
+    excluded = excluded_run_ids or set()
     result: list[Path] = []
     for artifact_path in sorted((root / "pending").glob("*.json")):
+        if artifact_path.name.endswith((".reason.json", ".retry.json")):
+            continue
         try:
-            _validate_run_id(artifact_path.stem)
+            run_id = _validate_run_id(artifact_path.stem)
         except SpoolError:
             continue
-        if artifact_path.with_suffix(".sha256").is_file():
-            result.append(artifact_path)
+        if run_id in excluded:
+            continue
+        if not artifact_path.with_suffix(".sha256").is_file():
+            continue
+        try:
+            retry_state, _ = _read_retry_state(
+                artifact_path,
+                now=now,
+            )
+        except SpoolError:
+            continue
+        if (
+            retry_state is not None
+            and _retry_seconds_remaining(retry_state, now=now) > 0
+        ):
+            continue
+        result.append(artifact_path)
     return result
 
 
@@ -586,51 +706,116 @@ def _read_artifact_pair(
     return raw, sidecar_raw, digest == hashlib.sha256(raw).hexdigest()
 
 
-def _safe_response_metadata(response: object) -> tuple[int, str, str | None]:
-    try:
-        status_value = int(getattr(response, "status"))
-    except (TypeError, ValueError, AttributeError):
-        status_value = 0
+def _response_status(response: object) -> int:
+    status = getattr(response, "status", None)
+    if (
+        isinstance(status, bool)
+        or not isinstance(status, int)
+        or not 100 <= status <= 599
+    ):
+        return 0
+    return status
+
+
+def _strict_response_object(response: object) -> dict[str, object] | None:
     raw = getattr(response, "body", b"")
-    if not isinstance(raw, bytes) or len(raw) > MAX_RESPONSE_METADATA_BYTES:
-        raw = b""
-    payload: object = {}
+    if (
+        not isinstance(raw, bytes)
+        or not raw
+        or len(raw) > MAX_RESPONSE_METADATA_BYTES
+    ):
+        return None
     try:
         payload = json.loads(
             raw.decode("utf-8"),
             object_pairs_hook=_unique_json_object,
         )
     except (UnicodeError, ValueError):
-        payload = {}
-    code: str | None = None
-    correlation_id: str | None = None
-    if isinstance(payload, dict):
-        reported_code = payload.get("code")
-        if (
-            isinstance(reported_code, str)
-            and reported_code in _KNOWN_RESPONSE_CODES
-        ):
-            code = reported_code
-        reported_correlation = payload.get("correlation_id")
-        if (
-            isinstance(reported_correlation, str)
-            and _CORRELATION_RE.fullmatch(reported_correlation) is not None
-        ):
-            correlation_id = reported_correlation
-    if code is None:
-        if status_value in {200, 201}:
-            code = "accepted"
-        elif status_value in {408, 425, 429} or 500 <= status_value <= 599:
-            code = "temporary"
-        elif status_value in {401, 403}:
-            code = "key_disabled"
-        elif status_value == 413:
-            code = "request_too_large"
-        elif status_value == 422:
-            code = "invalid_payload"
-        else:
-            code = "invalid_request"
-    return status_value, code, correlation_id
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _safe_correlation_id(value: object) -> str | None:
+    if (
+        isinstance(value, str)
+        and _CORRELATION_RE.fullmatch(value) is not None
+    ):
+        return value
+    return None
+
+
+def _parse_run_success_response(
+    response: object,
+    *,
+    status: int,
+    expected_run_id: str,
+) -> str | None:
+    payload = _strict_response_object(response)
+    if payload is None or set(payload) != _RUN_SUCCESS_KEYS:
+        return None
+    run_db_id = payload["run_db_id"]
+    expected_created = status == 201
+    if (
+        payload["code"] != "created"
+        or isinstance(run_db_id, bool)
+        or not isinstance(run_db_id, int)
+        or run_db_id <= 0
+        or run_db_id > 9_223_372_036_854_775_807
+        or payload["run_id"] != expected_run_id
+        or not isinstance(payload["created"], bool)
+        or payload["created"] is not expected_created
+        or not isinstance(payload["current_eligible"], bool)
+    ):
+        return None
+    return _safe_correlation_id(payload["correlation_id"])
+
+
+def _parse_heartbeat_success_response(response: object) -> str | None:
+    payload = _strict_response_object(response)
+    if payload is None or set(payload) != _HEARTBEAT_SUCCESS_KEYS:
+        return None
+    if payload["code"] != "created":
+        return None
+    return _safe_correlation_id(payload["correlation_id"])
+
+
+def _fallback_error_code(status: int) -> str:
+    if status in {408, 425, 429} or 500 <= status <= 599:
+        return "temporary"
+    if status in {401, 403}:
+        return "key_disabled"
+    if status == 413:
+        return "request_too_large"
+    if status == 422:
+        return "invalid_payload"
+    return "invalid_request"
+
+
+def _parse_error_response(
+    response: object,
+    *,
+    status: int,
+) -> tuple[str, str | None]:
+    payload = _strict_response_object(response)
+    allowed_codes = (
+        {"temporary"}
+        if 500 <= status <= 599
+        else _ERROR_RESPONSE_CODES_BY_STATUS.get(status, set())
+    )
+    if payload is None or set(payload) not in (
+        {"code"},
+        {"code", "correlation_id"},
+    ):
+        return _fallback_error_code(status), None
+    code = payload["code"]
+    if not isinstance(code, str) or code not in allowed_codes:
+        return _fallback_error_code(status), None
+    if "correlation_id" not in payload:
+        return code, None
+    correlation_id = _safe_correlation_id(payload["correlation_id"])
+    if correlation_id is None:
+        return _fallback_error_code(status), None
+    return code, correlation_id
 
 
 def _reason_bytes(
@@ -657,6 +842,268 @@ def _reason_bytes(
     )
 
 
+def _parse_utc_text(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    normalized = parsed.astimezone(timezone.utc)
+    if normalized.utcoffset() != timezone.utc.utcoffset(normalized):
+        return None
+    return normalized
+
+
+def _retry_path(artifact_path: Path) -> Path:
+    return artifact_path.with_suffix(".retry.json")
+
+
+def _retry_run_id(path: Path) -> str:
+    suffix = ".retry.json"
+    if not path.name.endswith(suffix):
+        raise SpoolError("retry_state_invalid")
+    return _validate_run_id(path.name[: -len(suffix)])
+
+
+def _retry_state_bytes(
+    *,
+    attempt: int,
+    next_attempt_at: datetime,
+    last_http_status: int | None,
+    last_code: str,
+) -> bytes:
+    return _canonical_json_bytes(
+        {
+            "attempt": attempt,
+            "next_attempt_at": _utc_text(next_attempt_at),
+            "last_http_status": last_http_status,
+            "last_code": last_code,
+        }
+    )
+
+
+def _parse_retry_state(
+    raw: bytes,
+    *,
+    now: datetime | None = None,
+) -> RetryState:
+    if not raw or len(raw) > 512:
+        raise SpoolError("retry_state_invalid")
+    try:
+        payload = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_unique_json_object,
+        )
+    except (UnicodeError, ValueError) as exc:
+        raise SpoolError("retry_state_invalid") from exc
+    if not isinstance(payload, dict) or set(payload) != _RETRY_STATE_KEYS:
+        raise SpoolError("retry_state_invalid")
+    attempt = payload["attempt"]
+    status = payload["last_http_status"]
+    code = payload["last_code"]
+    next_attempt_at = _parse_utc_text(payload["next_attempt_at"])
+    if (
+        isinstance(attempt, bool)
+        or not isinstance(attempt, int)
+        or not 1 <= attempt <= 63
+        or (
+            status is not None
+            and (
+                isinstance(status, bool)
+                or not isinstance(status, int)
+                or not 100 <= status <= 599
+            )
+        )
+        or not isinstance(code, str)
+        or code not in _RETRYABLE_CODES
+        or next_attempt_at is None
+    ):
+        raise SpoolError("retry_state_invalid")
+    status_is_retryable = (
+        status in {408, 425, 429}
+        or (
+            isinstance(status, int)
+            and not isinstance(status, bool)
+            and 500 <= status <= 599
+        )
+    )
+    if (
+        (code in {"network_error", "response_too_large"} and status is not None)
+        or (
+            code == "invalid_success_response"
+            and status not in {200, 201}
+        )
+        or (code == "temporary" and not status_is_retryable)
+    ):
+        raise SpoolError("retry_state_invalid")
+    if now is not None:
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise SpoolError("invalid_clock")
+        if (
+            next_attempt_at
+            > now.astimezone(timezone.utc) + timedelta(seconds=3660)
+        ):
+            raise SpoolError("retry_state_invalid")
+    return RetryState(
+        attempt=attempt,
+        next_attempt_at=next_attempt_at,
+        last_http_status=status,
+        last_code=code,
+    )
+
+
+def _read_retry_state(
+    artifact_path: Path,
+    *,
+    now: datetime | None = None,
+) -> tuple[RetryState | None, bytes | None]:
+    path = _retry_path(artifact_path)
+    if not _path_exists(path):
+        return None, None
+    try:
+        raw = _read_regular_file(
+            path,
+            maximum=512,
+            symlink_code="retry_state_symlink",
+            invalid_code="retry_state_invalid",
+        )
+    except SpoolError as exc:
+        if exc.code == "artifact_missing":
+            return None, None
+        raise
+    return _parse_retry_state(raw, now=now), raw
+
+
+def _persist_retry_state(
+    *,
+    artifact_path: Path,
+    root: Path,
+    previous_attempts: int,
+    now: datetime,
+    status: int | None,
+    code: str,
+    jitter: Callable[[int], int] | None,
+) -> int:
+    if code not in _RETRYABLE_CODES:
+        raise SpoolError("retry_state_invalid")
+    delay = calculate_backoff(previous_attempts, jitter=jitter)
+    next_attempt_at = now.astimezone(timezone.utc) + timedelta(
+        seconds=delay
+    )
+    raw = _retry_state_bytes(
+        attempt=min(63, previous_attempts + 1),
+        next_attempt_at=next_attempt_at,
+        last_http_status=status,
+        last_code=code,
+    )
+    with _spool_lock(root):
+        if not artifact_path.exists():
+            raise SpoolError("artifact_missing")
+        _atomic_write_private(_retry_path(artifact_path), raw)
+    return delay
+
+
+def _retry_seconds_remaining(state: RetryState, *, now: datetime) -> int:
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise SpoolError("invalid_clock")
+    remaining = (
+        state.next_attempt_at - now.astimezone(timezone.utc)
+    ).total_seconds()
+    return max(0, int(math.ceil(remaining)))
+
+
+def _reason_metadata(raw: bytes) -> dict[str, object] | None:
+    if not raw or len(raw) > 1024:
+        return None
+    try:
+        payload = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_unique_json_object,
+        )
+    except (UnicodeError, ValueError):
+        return None
+    if not isinstance(payload, dict) or set(payload) != {
+        "status",
+        "code",
+        "correlation_id",
+        "observed_at",
+    }:
+        return None
+    status = payload["status"]
+    if (
+        status is not None
+        and (
+            isinstance(status, bool)
+            or not isinstance(status, int)
+            or not 100 <= status <= 599
+        )
+    ):
+        return None
+    code = payload["code"]
+    if (
+        not isinstance(code, str)
+        or code not in _KNOWN_RESPONSE_CODES | _ALLOWED_LAST_ERROR_CODES
+    ):
+        return None
+    correlation_id = payload["correlation_id"]
+    if (
+        correlation_id is not None
+        and _safe_correlation_id(correlation_id) is None
+    ):
+        return None
+    if _parse_utc_text(payload["observed_at"]) is None:
+        return None
+    return payload
+
+
+def _reason_is_compatible(existing_raw: bytes, requested_raw: bytes) -> bool:
+    existing = _reason_metadata(existing_raw)
+    requested = _reason_metadata(requested_raw)
+    return (
+        existing is not None
+        and requested is not None
+        and existing["status"] == requested["status"]
+        and existing["code"] == requested["code"]
+    )
+
+
+def _path_exists(path: Path) -> bool:
+    return path.exists() or path.is_symlink()
+
+
+def _read_transition_member(path: Path, *, maximum: int) -> bytes:
+    return _read_regular_file(
+        path,
+        maximum=maximum,
+        symlink_code="destination_symlink",
+        invalid_code="destination_invalid",
+    )
+
+
+def _cleanup_created_members(
+    members: list[tuple[Path, bytes]],
+    *,
+    directory: Path,
+) -> None:
+    for path, expected_raw in reversed(members):
+        try:
+            existing = _read_transition_member(
+                path,
+                maximum=max(len(expected_raw), 128),
+            )
+            if existing == expected_raw:
+                path.unlink()
+        except (OSError, SpoolError):
+            pass
+    try:
+        _fsync_directory(directory)
+    except OSError:
+        pass
+
+
 def _transition_pair(
     *,
     artifact_path: Path,
@@ -674,12 +1121,16 @@ def _transition_pair(
     destination_sidecar = destination_dir / f"{run_id}.sha256"
     destination_reason = destination_dir / f"{run_id}.reason.json"
     source_sidecar = artifact_path.with_suffix(".sha256")
-    destination_members = [
-        (destination_artifact, artifact_raw),
-        (destination_sidecar, sidecar_raw),
-    ]
+    source_retry = _retry_path(artifact_path)
+    destination_members: list[tuple[Path, bytes, bool]] = []
     if reason_raw is not None:
-        destination_members.append((destination_reason, reason_raw))
+        destination_members.append((destination_reason, reason_raw, True))
+    destination_members.extend(
+        [
+            (destination_artifact, artifact_raw, False),
+            (destination_sidecar, sidecar_raw, False),
+        ]
+    )
     with _spool_lock(root):
         current_artifact = _read_regular_file(
             artifact_path,
@@ -695,39 +1146,69 @@ def _transition_pair(
         )
         if current_artifact != artifact_raw or current_sidecar != sidecar_raw:
             raise SpoolError("source_changed")
+        retry_raw: bytes | None = None
+        if _path_exists(source_retry):
+            retry_raw = _read_regular_file(
+                source_retry,
+                maximum=512,
+                symlink_code="retry_state_symlink",
+                invalid_code="retry_state_invalid",
+            )
+        created_members: list[tuple[Path, bytes]] = []
         try:
-            for destination_path, destination_raw in destination_members:
-                _ensure_exact_file(destination_path, destination_raw)
+            for (
+                destination_path,
+                destination_raw,
+                is_reason,
+            ) in destination_members:
+                existed = _path_exists(destination_path)
+                if existed:
+                    existing = _read_transition_member(
+                        destination_path,
+                        maximum=max(len(destination_raw), 1024),
+                    )
+                    if is_reason:
+                        if not _reason_is_compatible(
+                            existing,
+                            destination_raw,
+                        ):
+                            raise SpoolError("destination_reason_conflict")
+                    elif existing != destination_raw:
+                        raise SpoolError("destination_conflict")
+                    continue
+                try:
+                    _atomic_write_private(
+                        destination_path,
+                        destination_raw,
+                    )
+                except SpoolError:
+                    if _path_exists(destination_path):
+                        created_members.append(
+                            (destination_path, destination_raw)
+                        )
+                    raise
+                created_members.append((destination_path, destination_raw))
             _fsync_directory(destination_dir)
         except (OSError, SpoolError) as exc:
-            for destination_path, destination_raw in reversed(
-                destination_members
-            ):
-                try:
-                    existing = _read_regular_file(
-                        destination_path,
-                        maximum=max(len(destination_raw), 128),
-                        symlink_code="artifact_symlink",
-                        invalid_code="artifact_invalid",
-                    )
-                    if existing == destination_raw:
-                        destination_path.unlink()
-                except (OSError, SpoolError):
-                    pass
-            try:
-                _fsync_directory(destination_dir)
-            except OSError:
-                pass
+            _cleanup_created_members(
+                created_members,
+                directory=destination_dir,
+            )
             raise SpoolError("destination_durability_failed") from exc
         try:
+            if retry_raw is not None:
+                source_retry.unlink()
             source_sidecar.unlink()
             artifact_path.unlink()
             _fsync_directory(artifact_path.parent)
         except OSError as exc:
-            for source_path, source_raw in (
+            restore_members = [
                 (artifact_path, artifact_raw),
                 (source_sidecar, sidecar_raw),
-            ):
+            ]
+            if retry_raw is not None:
+                restore_members.append((source_retry, retry_raw))
+            for source_path, source_raw in restore_members:
                 try:
                     _ensure_exact_file(source_path, source_raw)
                 except SpoolError:
@@ -738,6 +1219,124 @@ def _transition_pair(
                 pass
             raise SpoolError("transition_cleanup_failed") from exc
     return destination_artifact
+
+
+def _terminal_reason_matches_destination(
+    destination: str,
+    metadata: dict[str, object],
+) -> bool:
+    status = metadata["status"]
+    code = metadata["code"]
+    if destination == "blocked":
+        return (
+            status in {401, 403}
+            or (status is None and code == "blocked_key")
+        )
+    if destination == "quarantine":
+        return not (
+            status in {200, 201, 401, 403, 408, 425, 429}
+            or (isinstance(status, int) and 500 <= status <= 599)
+        )
+    return False
+
+
+def _resume_terminal_transition(
+    *,
+    artifact_path: Path,
+    root: Path,
+    run_id: str,
+    artifact_raw: bytes,
+    sidecar_raw: bytes,
+) -> UploadOutcome | None:
+    existing_states: list[
+        tuple[str, Path, Path, Path, bytes | None]
+    ] = []
+    for destination in ("archive", "blocked", "quarantine"):
+        destination_dir = root / destination
+        destination_artifact = destination_dir / f"{run_id}.json"
+        destination_sidecar = destination_dir / f"{run_id}.sha256"
+        destination_reason = destination_dir / f"{run_id}.reason.json"
+        members_exist = any(
+            _path_exists(path)
+            for path in (
+                destination_artifact,
+                destination_sidecar,
+                destination_reason,
+            )
+        )
+        if not members_exist:
+            continue
+        reason_raw: bytes | None = None
+        if destination == "archive":
+            if _path_exists(destination_reason):
+                raise SpoolError("archive_reason_conflict")
+        else:
+            if not _path_exists(destination_reason):
+                raise SpoolError("terminal_reason_missing")
+            reason_raw = _read_transition_member(
+                destination_reason,
+                maximum=1024,
+            )
+            metadata = _reason_metadata(reason_raw)
+            if (
+                metadata is None
+                or not _terminal_reason_matches_destination(
+                    destination,
+                    metadata,
+                )
+            ):
+                raise SpoolError("terminal_reason_invalid")
+        existing_states.append(
+            (
+                destination,
+                destination_artifact,
+                destination_sidecar,
+                destination_reason,
+                reason_raw,
+            )
+        )
+    if not existing_states:
+        return None
+    if len(existing_states) != 1:
+        raise SpoolError("multiple_terminal_states")
+    destination, _, _, _, reason_raw = existing_states[0]
+    destination_path = _transition_pair(
+        artifact_path=artifact_path,
+        root=root,
+        run_id=run_id,
+        artifact_raw=artifact_raw,
+        sidecar_raw=sidecar_raw,
+        destination=destination,
+        reason_raw=reason_raw,
+    )
+    if reason_raw is None:
+        return UploadOutcome(
+            destination=destination,
+            status=None,
+            code="created",
+            correlation_id=None,
+            attempts=0,
+            path=destination_path,
+        )
+    metadata = _reason_metadata(reason_raw)
+    if metadata is None:  # pragma: no cover - checked above
+        raise SpoolError("terminal_reason_invalid")
+    return UploadOutcome(
+        destination=destination,
+        status=(
+            int(metadata["status"])
+            if metadata["status"] is not None
+            else None
+        ),
+        code=str(metadata["code"]),
+        correlation_id=(
+            str(metadata["correlation_id"])
+            if metadata["correlation_id"] is not None
+            else None
+        ),
+        attempts=0,
+        path=destination_path,
+    )
 
 
 def _invoke_transport(
@@ -790,6 +1389,48 @@ def _pending_outcome(
     )
 
 
+def _retryable_pending_outcome(
+    *,
+    artifact_path: Path,
+    root: Path,
+    code: str,
+    status: int | None,
+    correlation_id: str | None,
+    attempts: int,
+    previous_attempts: int,
+    now: datetime,
+    jitter: Callable[[int], int] | None,
+) -> UploadOutcome:
+    try:
+        delay = _persist_retry_state(
+            artifact_path=artifact_path,
+            root=root,
+            previous_attempts=previous_attempts,
+            now=now,
+            status=status,
+            code=code,
+            jitter=jitter,
+        )
+    except SpoolError:
+        return UploadOutcome(
+            destination="pending",
+            status=status,
+            code="spool_recovery_failed",
+            correlation_id=correlation_id,
+            attempts=attempts,
+            path=artifact_path,
+        )
+    return UploadOutcome(
+        destination="pending",
+        status=status,
+        code=code,
+        correlation_id=correlation_id,
+        attempts=attempts,
+        retry_after_seconds=delay,
+        path=artifact_path,
+    )
+
+
 def upload_one(
     pending_artifact: str | Path,
     *,
@@ -802,6 +1443,7 @@ def upload_one(
     secret_file: str | Path = DEFAULT_SECRET_FILE,
     timeout_sec: float = DEFAULT_TIMEOUT_SEC,
 ) -> UploadOutcome:
+    _utc_text(now)
     artifact_path, root, run_id = _validate_pending_artifact_path(
         pending_artifact
     )
@@ -867,6 +1509,57 @@ def upload_one(
                 attempts=0,
                 path=destination_path,
             )
+
+        try:
+            resumed = _resume_terminal_transition(
+                artifact_path=artifact_path,
+                root=root,
+                run_id=run_id,
+                artifact_raw=artifact_raw,
+                sidecar_raw=sidecar_raw,
+            )
+        except SpoolError:
+            return _pending_outcome(
+                code="spool_transition_failed",
+                status=None,
+                correlation_id=None,
+                attempts=0,
+                attempt=attempt,
+                jitter=jitter,
+                path=artifact_path,
+            )
+        if resumed is not None:
+            return resumed
+
+        try:
+            retry_state, _ = _read_retry_state(
+                artifact_path,
+                now=now,
+            )
+        except SpoolError:
+            return UploadOutcome(
+                destination="pending",
+                status=None,
+                code="spool_recovery_failed",
+                correlation_id=None,
+                attempts=0,
+                path=artifact_path,
+            )
+        if retry_state is not None:
+            remaining = _retry_seconds_remaining(retry_state, now=now)
+            if remaining > 0:
+                return UploadOutcome(
+                    destination="pending",
+                    status=retry_state.last_http_status,
+                    code="retry_not_due",
+                    correlation_id=None,
+                    attempts=0,
+                    retry_after_seconds=remaining,
+                    path=artifact_path,
+                )
+            previous_attempts = retry_state.attempt
+        else:
+            previous_attempts = attempt
 
         original_artifact = artifact_raw
         attempts = 0
@@ -938,7 +1631,19 @@ def upload_one(
                     raw_body=original_artifact,
                     timeout_sec=timeout_sec,
                 )
-            except internal_hmac_client.InternalHmacClientError:
+            except internal_hmac_client.InternalHmacClientError as exc:
+                if exc.code == "response_too_large":
+                    return _retryable_pending_outcome(
+                        artifact_path=artifact_path,
+                        root=root,
+                        code="response_too_large",
+                        status=None,
+                        correlation_id=None,
+                        attempts=attempts,
+                        previous_attempts=previous_attempts,
+                        now=now,
+                        jitter=jitter,
+                    )
                 reason = _reason_bytes(
                     status=None,
                     code="blocked_key",
@@ -974,29 +1679,57 @@ def upload_one(
                     path=destination_path,
                 )
             except (OSError, TimeoutError):
-                return _pending_outcome(
+                return _retryable_pending_outcome(
+                    artifact_path=artifact_path,
+                    root=root,
                     code="network_error",
                     status=None,
                     correlation_id=None,
                     attempts=attempts,
-                    attempt=attempt,
+                    previous_attempts=previous_attempts,
+                    now=now,
                     jitter=jitter,
-                    path=artifact_path,
                 )
-            status, code, correlation_id = _safe_response_metadata(response)
+            status = _response_status(response)
+            if status in {200, 201}:
+                correlation_id = _parse_run_success_response(
+                    response,
+                    status=status,
+                    expected_run_id=run_id,
+                )
+                if correlation_id is None:
+                    return _retryable_pending_outcome(
+                        artifact_path=artifact_path,
+                        root=root,
+                        code="invalid_success_response",
+                        status=status,
+                        correlation_id=None,
+                        attempts=attempts,
+                        previous_attempts=previous_attempts,
+                        now=now,
+                        jitter=jitter,
+                    )
+                code = "created"
+            else:
+                code, correlation_id = _parse_error_response(
+                    response,
+                    status=status,
+                )
             if status == 409 and code == "replayed_nonce" and attempts == 1:
                 continue
             if status in {200, 201}:
                 destination = "archive"
             elif status in {408, 425, 429} or 500 <= status <= 599:
-                return _pending_outcome(
+                return _retryable_pending_outcome(
+                    artifact_path=artifact_path,
+                    root=root,
                     code=code,
                     status=status,
                     correlation_id=correlation_id,
                     attempts=attempts,
-                    attempt=attempt,
+                    previous_attempts=previous_attempts,
+                    now=now,
                     jitter=jitter,
-                    path=artifact_path,
                 )
             elif status in {401, 403}:
                 destination = "blocked"
@@ -1048,7 +1781,12 @@ def upload_one(
     raise SpoolError("upload_state_unreachable")
 
 
-def _state_artifacts(root: Path, state: str) -> list[Path]:
+def _state_artifacts(
+    root: Path,
+    state: str,
+    *,
+    require_sidecar: bool = True,
+) -> list[Path]:
     result: list[Path] = []
     for path in sorted((root / state).glob("*.json")):
         if path.name.endswith(".reason.json"):
@@ -1057,8 +1795,15 @@ def _state_artifacts(root: Path, state: str) -> list[Path]:
             _validate_run_id(path.stem)
         except SpoolError:
             continue
-        if path.with_suffix(".sha256").is_file() and path.is_file():
-            result.append(path)
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+            continue
+        if require_sidecar and not path.with_suffix(".sha256").is_file():
+            continue
+        result.append(path)
     return result
 
 
@@ -1071,6 +1816,7 @@ def build_heartbeat(
     archive_write_ok: bool = True,
     last_error_code: str | None = None,
     disk_usage: Callable[[str | Path], object] = shutil.disk_usage,
+    recovery_failed: bool = False,
 ) -> dict[str, object]:
     if (
         not isinstance(probe_host_id, str)
@@ -1084,8 +1830,9 @@ def build_heartbeat(
     ):
         raise SpoolError("invalid_service_version")
     root = ensure_spool_layout(spool_root)
-    recover_pending(root)
-    pending = _state_artifacts(root, "pending")
+    recovery_issues = recover_pending(root, now=now)
+    recovery_failed = recovery_failed or bool(recovery_issues)
+    pending = _state_artifacts(root, "pending", require_sidecar=False)
     blocked = _state_artifacts(root, "blocked")
     quarantine = _state_artifacts(root, "quarantine")
     oldest_pending_at: str | None = None
@@ -1112,6 +1859,9 @@ def build_heartbeat(
         and last_error_code in _ALLOWED_LAST_ERROR_CODES
         else None
     )
+    if recovery_failed:
+        archive_write_ok = False
+        safe_last_error = "spool_recovery_failed"
     return {
         "schema_version": 1,
         "probe_host_id": probe_host_id,
@@ -1142,6 +1892,7 @@ def send_heartbeat(
     secret_file: str | Path = DEFAULT_SECRET_FILE,
     timeout_sec: float = DEFAULT_TIMEOUT_SEC,
     disk_usage: Callable[[str | Path], object] = shutil.disk_usage,
+    recovery_failed: bool = False,
 ) -> UploadOutcome:
     heartbeat = build_heartbeat(
         spool_root,
@@ -1151,6 +1902,7 @@ def send_heartbeat(
         archive_write_ok=archive_write_ok,
         last_error_code=last_error_code,
         disk_usage=disk_usage,
+        recovery_failed=recovery_failed,
     )
     disk_state = str(heartbeat["disk_state"])
     raw = _canonical_json_bytes(heartbeat)
@@ -1177,7 +1929,24 @@ def send_heartbeat(
             attempts=1,
             disk_state=disk_state,
         )
-    status, code, correlation_id = _safe_response_metadata(response)
+    status = _response_status(response)
+    if status in {200, 201}:
+        correlation_id = _parse_heartbeat_success_response(response)
+        if correlation_id is None:
+            return UploadOutcome(
+                destination="failed",
+                status=status,
+                code="invalid_success_response",
+                correlation_id=None,
+                attempts=1,
+                disk_state=disk_state,
+            )
+        code = "created"
+    else:
+        code, correlation_id = _parse_error_response(
+            response,
+            status=status,
+        )
     return UploadOutcome(
         destination="sent" if status in {200, 201} else "failed",
         status=status,
@@ -1199,11 +1968,30 @@ def run_uploader_once(
     secret_file: str | Path = DEFAULT_SECRET_FILE,
     timeout_sec: float = DEFAULT_TIMEOUT_SEC,
     disk_usage: Callable[[str | Path], object] = shutil.disk_usage,
+    jitter: Callable[[int], int] | None = None,
 ) -> tuple[list[UploadOutcome], UploadOutcome]:
-    outcomes: list[UploadOutcome] = []
-    archive_write_ok = True
-    last_error_code: str | None = None
-    for artifact_path in scan_pending(spool_root):
+    root = ensure_spool_layout(spool_root)
+    recovery_issues = recover_pending(root, now=now)
+    outcomes: list[UploadOutcome] = [
+        UploadOutcome(
+            destination="pending",
+            status=None,
+            code="spool_recovery_failed",
+            correlation_id=None,
+            attempts=0,
+            path=issue.path,
+        )
+        for issue in recovery_issues
+    ]
+    archive_write_ok = not recovery_issues
+    last_error_code: str | None = (
+        "spool_recovery_failed" if recovery_issues else None
+    )
+    for artifact_path in _scan_complete_pending(
+        root,
+        now=now,
+        excluded_run_ids=_recovery_issue_run_ids(recovery_issues),
+    ):
         try:
             outcome = upload_one(
                 artifact_path,
@@ -1213,6 +2001,7 @@ def run_uploader_once(
                 key_id=key_id,
                 secret_file=secret_file,
                 timeout_sec=timeout_sec,
+                jitter=jitter,
             )
         except SpoolError:
             outcome = UploadOutcome(
@@ -1244,6 +2033,7 @@ def run_uploader_once(
         secret_file=secret_file,
         timeout_sec=timeout_sec,
         disk_usage=disk_usage,
+        recovery_failed=bool(recovery_issues),
     )
     return outcomes, heartbeat
 
@@ -1257,7 +2047,12 @@ def _local_service_failed(
     if heartbeat.disk_state in {"critical", "unknown"}:
         return True
     return any(
-        outcome.code in {"archive_write_failed", "spool_transition_failed"}
+        outcome.code
+        in {
+            "archive_write_failed",
+            "spool_recovery_failed",
+            "spool_transition_failed",
+        }
         for outcome in outcomes
     )
 

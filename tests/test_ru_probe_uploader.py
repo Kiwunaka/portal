@@ -46,6 +46,31 @@ def _artifact(run_id: str = RUN_ID) -> bytes:
     )
 
 
+def _run_success_body(
+    *,
+    status: int,
+    run_id: str = RUN_ID,
+    **overrides: object,
+) -> dict[str, object]:
+    body: dict[str, object] = {
+        "code": "created",
+        "run_db_id": 17,
+        "run_id": run_id,
+        "created": status == 201,
+        "current_eligible": True,
+        "correlation_id": "corr-created",
+    }
+    body.update(overrides)
+    return body
+
+
+def _heartbeat_success_body() -> dict[str, object]:
+    return {
+        "code": "created",
+        "correlation_id": "corr-heartbeat",
+    }
+
+
 class FakeTransport:
     def __init__(self) -> None:
         self.responses: list[object] = []
@@ -232,7 +257,7 @@ def test_concurrent_writers_never_mix_artifact_and_sidecar(
     ("status", "code", "destination"),
     [
         (201, "created", "archive"),
-        (200, "idempotent", "archive"),
+        (200, "created", "archive"),
         (503, "temporary", "pending"),
         (401, "key_disabled", "blocked"),
         (403, "key_disabled", "blocked"),
@@ -251,9 +276,14 @@ def test_upload_transition_matrix(
 ) -> None:
     pending = _pending(tmp_path)
     transport = FakeTransport()
+    response_body = (
+        _run_success_body(status=status)
+        if status in {200, 201}
+        else {"code": code, "correlation_id": "corr-1"}
+    )
     transport.respond(
         status=status,
-        body={"code": code, "correlation_id": "corr-1"},
+        body=response_body,
     )
 
     outcome = upload_one(
@@ -267,6 +297,142 @@ def test_upload_transition_matrix(
     if destination != "pending":
         assert (tmp_path / destination / pending.name).exists()
     assert pending.exists() is (destination == "pending")
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (200, b"<html>proxy login</html>"),
+        (201, {"code": "invalid_payload"}),
+        (
+            201,
+            b'{"code":"created","run_db_id":17,"run_id":"'
+            + RUN_ID.encode("ascii")
+            + b'","created":true,"current_eligible":true,'
+            + b'"correlation_id":"corr","code":"created"}',
+        ),
+        (
+            201,
+            {
+                **_run_success_body(status=201),
+                "unexpected": "field",
+            },
+        ),
+        (
+            201,
+            _run_success_body(status=201, run_id=OTHER_RUN_ID),
+        ),
+        (
+            201,
+            _run_success_body(status=201, run_db_id=0),
+        ),
+        (
+            201,
+            _run_success_body(status=201, run_db_id=True),
+        ),
+        (
+            201,
+            _run_success_body(status=201, run_db_id=2**63),
+        ),
+        (
+            201,
+            _run_success_body(status=201, created=False),
+        ),
+        (
+            200,
+            _run_success_body(status=200, created=True),
+        ),
+        (
+            201,
+            _run_success_body(status=201, current_eligible=1),
+        ),
+        (
+            201,
+            _run_success_body(status=201, correlation_id="bad correlation"),
+        ),
+        (
+            201,
+            b"{" + b'"padding":"' + b"x" * (64 * 1024) + b'"}',
+        ),
+    ],
+    ids=[
+        "html",
+        "wrong-code",
+        "duplicate-code",
+        "additional-field",
+        "wrong-run-id",
+        "zero-db-id",
+        "bool-db-id",
+        "oversized-db-id",
+        "201-created-false",
+        "200-created-true",
+        "non-bool-eligibility",
+        "unsafe-correlation",
+        "oversized",
+    ],
+)
+def test_success_response_must_be_strict_and_bound_to_pending_run(
+    tmp_path: Path,
+    status: int,
+    body: dict[str, object] | bytes,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(status=status, body=body)
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "invalid_success_response"
+    assert pending.exists()
+    assert not (tmp_path / "archive" / pending.name).exists()
+
+
+@pytest.mark.parametrize("status", [200, 201])
+def test_valid_success_response_archives_only_consistent_run_dto(
+    tmp_path: Path,
+    status: int,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=status,
+        body=_run_success_body(status=status),
+    )
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "archive"
+    assert outcome.code == "created"
+
+
+def test_shared_client_oversized_response_is_retryable_not_blocked(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    import ru_probe_uploader
+
+    class OversizedTransport:
+        def send(self, **_kwargs):
+            raise ru_probe_uploader.internal_hmac_client.InternalHmacClientError(
+                "response_too_large"
+            )
+
+    outcome = upload_one(
+        pending,
+        transport=OversizedTransport(),
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "response_too_large"
+    assert not (tmp_path / "blocked" / pending.name).exists()
 
 
 @pytest.mark.parametrize("status", [408, 425, 429, 500, 502, 599])
@@ -322,7 +488,10 @@ def test_replayed_nonce_resigns_once_with_exact_same_artifact_bytes(
     )
     transport.respond(
         status=201,
-        body={"code": "created", "correlation_id": "corr-2"},
+        body=_run_success_body(
+            status=201,
+            correlation_id="corr-2",
+        ),
     )
 
     outcome = upload_one(pending, transport=transport, now=NOW)
@@ -362,6 +531,56 @@ def test_replayed_nonce_twice_is_quarantined(
     }
 
 
+def test_duplicate_error_members_cannot_trigger_nonce_replay(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=409,
+        body=(
+            b'{"code":"replayed_nonce",'
+            b'"code":"payload_conflict",'
+            b'"correlation_id":"corr-unsafe"}'
+        ),
+    )
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "quarantine"
+    assert outcome.code == "invalid_request"
+    assert outcome.attempts == 1
+    assert len(transport.calls) == 1
+    reason = _reason(tmp_path / "quarantine" / pending.name)
+    assert reason["correlation_id"] is None
+
+
+def test_oversized_error_body_uses_status_only_and_never_persists_body(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=503,
+        body=b"x" * (64 * 1024 + 1),
+    )
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "temporary"
+    retry_raw = pending.with_suffix(".retry.json").read_text(
+        encoding="utf-8"
+    )
+    assert "x" * 100 not in retry_raw
+    assert json.loads(retry_raw)["last_code"] == "temporary"
+
+
 def test_replayed_nonce_rechecks_sidecar_before_second_send(
     tmp_path: Path,
 ) -> None:
@@ -375,7 +594,7 @@ def test_replayed_nonce_rechecks_sidecar_before_second_send(
 
     transport = TamperingTransport()
     transport.respond(status=409, body={"code": "replayed_nonce"})
-    transport.respond(status=201, body={"code": "created"})
+    transport.respond(status=201, body=_run_success_body(status=201))
 
     outcome = upload_one(pending, transport=transport, now=NOW)
 
@@ -390,7 +609,7 @@ def test_sidecar_is_verified_before_send_and_mismatch_is_quarantined(
     pending = _pending(tmp_path)
     pending.with_suffix(".sha256").write_text("0" * 64 + "\n", encoding="ascii")
     transport = FakeTransport()
-    transport.respond(status=201, body={"code": "created"})
+    transport.respond(status=201, body=_run_success_body(status=201))
 
     outcome = upload_one(pending, transport=transport, now=NOW)
 
@@ -427,8 +646,124 @@ def test_reason_sidecar_is_allowlisted_and_does_not_copy_response_payload(
     }
     assert "secret-token" not in raw
     assert "signature" not in raw
+    assert json.loads(raw)["correlation_id"] is None
     if os.name != "nt":
         assert reason_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_complete_quarantine_triplet_resumes_without_network(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    quarantine = tmp_path / "quarantine"
+    destination = quarantine / pending.name
+    destination.write_bytes(_artifact())
+    destination.with_suffix(".sha256").write_bytes(
+        pending.with_suffix(".sha256").read_bytes()
+    )
+    reason_path = quarantine / f"{RUN_ID}.reason.json"
+    reason_raw = json.dumps(
+        {
+            "status": 422,
+            "code": "invalid_payload",
+            "correlation_id": "corr-old",
+            "observed_at": "2026-07-16T06:00:00Z",
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    reason_path.write_bytes(reason_raw)
+    retry_path = pending.with_suffix(".retry.json")
+    retry_path.write_text(
+        '{"attempt":1,"next_attempt_at":"2026-07-16T06:31:00Z",'
+        '"last_http_status":201,"last_code":"invalid_success_response"}',
+        encoding="utf-8",
+    )
+    transport = FakeTransport()
+    transport.respond(
+        status=422,
+        body={"code": "invalid_payload", "correlation_id": "corr-new"},
+    )
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "quarantine"
+    assert outcome.code == "invalid_payload"
+    assert transport.calls == []
+    assert destination.read_bytes() == _artifact()
+    assert reason_path.read_bytes() == reason_raw
+    assert not pending.exists()
+    assert not retry_path.exists()
+
+
+def test_terminal_conflict_never_deletes_preexisting_destination_pair(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    quarantine = tmp_path / "quarantine"
+    destination = quarantine / pending.name
+    destination.write_bytes(_artifact())
+    destination_hash = destination.with_suffix(".sha256")
+    destination_hash.write_bytes(pending.with_suffix(".sha256").read_bytes())
+    (quarantine / f"{RUN_ID}.reason.json").write_text(
+        '{"status":403,"code":"key_disabled",'
+        '"correlation_id":"corr-old",'
+        '"observed_at":"2026-07-16T06:00:00Z"}',
+        encoding="utf-8",
+    )
+    transport = FakeTransport()
+    transport.respond(
+        status=422,
+        body={"code": "invalid_payload", "correlation_id": "corr-new"},
+    )
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "spool_transition_failed"
+    assert destination.read_bytes() == _artifact()
+    assert destination_hash.exists()
+    assert pending.exists()
+
+
+def test_orphan_terminal_reason_recovers_pair_without_network(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    quarantine = tmp_path / "quarantine"
+    reason_path = quarantine / f"{RUN_ID}.reason.json"
+    reason_path.write_text(
+        '{"status":422,"code":"invalid_payload",'
+        '"correlation_id":"corr-old",'
+        '"observed_at":"2026-07-16T06:00:00Z"}',
+        encoding="utf-8",
+    )
+    transport = FakeTransport()
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "quarantine"
+    assert transport.calls == []
+    assert (quarantine / pending.name).read_bytes() == _artifact()
+    assert (quarantine / pending.with_suffix(".sha256").name).exists()
+    assert not pending.exists()
+
+
+def test_partial_archive_pair_recovers_without_network(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    archive = tmp_path / "archive"
+    archived_artifact = archive / pending.name
+    archived_artifact.write_bytes(_artifact())
+    transport = FakeTransport()
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "archive"
+    assert transport.calls == []
+    assert archived_artifact.with_suffix(".sha256").exists()
+    assert not pending.exists()
 
 
 def test_archive_fsync_failure_keeps_complete_pending_pair(
@@ -437,7 +772,7 @@ def test_archive_fsync_failure_keeps_complete_pending_pair(
 ) -> None:
     pending = _pending(tmp_path)
     transport = FakeTransport()
-    transport.respond(status=201, body={"code": "created"})
+    transport.respond(status=201, body=_run_success_body(status=201))
     import ru_probe_uploader
 
     original = ru_probe_uploader._fsync_directory
@@ -467,7 +802,7 @@ def test_pending_fsync_failure_restores_both_source_files(
 ) -> None:
     pending = _pending(tmp_path)
     transport = FakeTransport()
-    transport.respond(status=201, body={"code": "created"})
+    transport.respond(status=201, body=_run_success_body(status=201))
     import ru_probe_uploader
 
     original = ru_probe_uploader._fsync_directory
@@ -504,7 +839,10 @@ def test_concurrent_upload_claim_sends_artifact_at_most_once(
             assert release.wait(5)
             return SimpleNamespace(
                 status=201,
-                body=b'{"code":"created"}',
+                body=json.dumps(
+                    _run_success_body(status=201),
+                    separators=(",", ":"),
+                ).encode("utf-8"),
                 headers={},
             )
 
@@ -618,7 +956,7 @@ def test_send_heartbeat_uses_distinct_body_and_endpoint(
     pending = _pending(tmp_path)
     before = pending.read_bytes()
     transport = FakeTransport()
-    transport.respond(status=201, body={"code": "created"})
+    transport.respond(status=201, body=_heartbeat_success_body())
 
     outcome = send_heartbeat(
         tmp_path,
@@ -636,11 +974,136 @@ def test_send_heartbeat_uses_distinct_body_and_endpoint(
     assert pending.read_bytes() == before
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"",
+        b"<html>ok</html>",
+        {"code": "created"},
+        {"code": "created", "correlation_id": "corr", "extra": True},
+        b"{" + b'"padding":"' + b"x" * (64 * 1024) + b'"}',
+    ],
+    ids=[
+        "empty",
+        "html",
+        "missing-correlation",
+        "additional-field",
+        "oversized",
+    ],
+)
+def test_heartbeat_success_requires_strict_bounded_response(
+    tmp_path: Path,
+    body: dict[str, object] | bytes,
+) -> None:
+    transport = FakeTransport()
+    transport.respond(status=201, body=body)
+
+    outcome = send_heartbeat(
+        tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert outcome.destination == "failed"
+    assert outcome.code == "invalid_success_response"
+
+
+def test_recovery_failure_reaches_outcome_heartbeat_and_exit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = tmp_path / "pending"
+    pending.mkdir(mode=0o700)
+    artifact = pending / f"{RUN_ID}.json"
+    artifact.write_bytes(_artifact())
+    import ru_probe_uploader
+
+    original = ru_probe_uploader._atomic_write_private
+
+    def fail_sidecar(path: Path, raw: bytes) -> None:
+        if path.suffix == ".sha256":
+            raise SpoolError("atomic_write_failed")
+        original(path, raw)
+
+    monkeypatch.setattr(
+        ru_probe_uploader,
+        "_atomic_write_private",
+        fail_sidecar,
+    )
+    transport = FakeTransport()
+    transport.respond(status=201, body=_heartbeat_success_body())
+
+    outcomes, heartbeat = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert [outcome.code for outcome in outcomes] == [
+        "spool_recovery_failed"
+    ]
+    assert heartbeat.destination == "sent"
+    assert ru_probe_uploader._local_service_failed(outcomes, heartbeat)
+    assert len(transport.calls) == 1
+    sent_heartbeat = json.loads(transport.calls[0]["raw_body"])
+    assert sent_heartbeat["pending_count"] == 1
+    assert sent_heartbeat["archive_write_ok"] is False
+    assert sent_heartbeat["last_error_code"] == "spool_recovery_failed"
+    assert artifact.exists()
+
+
+def test_recovery_fsync_failure_does_not_upload_repaired_pair_same_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = tmp_path / "pending"
+    pending.mkdir(mode=0o700)
+    artifact = pending / f"{RUN_ID}.json"
+    artifact.write_bytes(_artifact())
+    import ru_probe_uploader
+
+    original = ru_probe_uploader._fsync_directory
+    failures = 0
+
+    def fail_first_pending(directory: Path) -> None:
+        nonlocal failures
+        if directory.name == "pending" and failures == 0:
+            failures += 1
+            raise OSError("synthetic recovery fsync failure")
+        original(directory)
+
+    monkeypatch.setattr(
+        ru_probe_uploader,
+        "_fsync_directory",
+        fail_first_pending,
+    )
+    transport = FakeTransport()
+    transport.respond(status=201, body=_heartbeat_success_body())
+
+    outcomes, heartbeat = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert [outcome.code for outcome in outcomes] == [
+        "spool_recovery_failed"
+    ]
+    assert heartbeat.destination == "sent"
+    assert artifact.with_suffix(".sha256").exists()
+    assert [call["path"] for call in transport.calls] == [
+        ru_probe_uploader.HEARTBEAT_PATH
+    ]
+
+
 def test_critical_disk_heartbeat_marks_local_service_failed(
     tmp_path: Path,
 ) -> None:
     transport = FakeTransport()
-    transport.respond(status=201, body={"code": "created"})
+    transport.respond(status=201, body=_heartbeat_success_body())
     import ru_probe_uploader
 
     outcome = send_heartbeat(
@@ -654,6 +1117,286 @@ def test_critical_disk_heartbeat_marks_local_service_failed(
     assert outcome.destination == "sent"
     assert outcome.disk_state == "critical"
     assert ru_probe_uploader._local_service_failed([], outcome)
+
+
+def test_retry_state_persists_and_enforces_due_time_across_invocations(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    retry_path = pending.with_suffix(".retry.json")
+    artifact_before = pending.read_bytes()
+    hash_before = pending.with_suffix(".sha256").read_bytes()
+    first_transport = FakeTransport()
+    first_transport.respond(
+        status=503,
+        body={"code": "temporary", "correlation_id": "corr-1"},
+    )
+    first_transport.respond(status=201, body=_heartbeat_success_body())
+    import ru_probe_uploader
+
+    first, first_heartbeat = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=first_transport,
+        jitter=lambda _upper: 0,
+    )
+
+    assert first[0].retry_after_seconds == 60
+    assert first_heartbeat.destination == "sent"
+    assert json.loads(retry_path.read_text(encoding="utf-8")) == {
+        "attempt": 1,
+        "next_attempt_at": "2026-07-16T06:31:00Z",
+        "last_http_status": 503,
+        "last_code": "temporary",
+    }
+    assert pending.read_bytes() == artifact_before
+    assert pending.with_suffix(".sha256").read_bytes() == hash_before
+    assert not list(tmp_path.rglob("*.tmp"))
+    if os.name != "nt":
+        assert retry_path.stat().st_mode & 0o777 == 0o600
+
+    early_transport = FakeTransport()
+    early_transport.respond(status=201, body=_heartbeat_success_body())
+    early, early_heartbeat = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW.replace(second=30),
+        transport=early_transport,
+        jitter=lambda _upper: 0,
+    )
+
+    assert early == []
+    assert early_heartbeat.destination == "sent"
+    assert [call["path"] for call in early_transport.calls] == [
+        ru_probe_uploader.HEARTBEAT_PATH
+    ]
+
+    second_transport = FakeTransport()
+    second_transport.respond(
+        status=503,
+        body={"code": "temporary", "correlation_id": "corr-2"},
+    )
+    second_transport.respond(status=201, body=_heartbeat_success_body())
+    second_now = NOW.replace(minute=31, second=1)
+    second, _ = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=second_now,
+        transport=second_transport,
+        jitter=lambda _upper: 0,
+    )
+
+    assert second[0].retry_after_seconds == 120
+    assert json.loads(retry_path.read_text(encoding="utf-8")) == {
+        "attempt": 2,
+        "next_attempt_at": "2026-07-16T06:33:01Z",
+        "last_http_status": 503,
+        "last_code": "temporary",
+    }
+
+    terminal_transport = FakeTransport()
+    terminal_transport.respond(
+        status=201,
+        body=_run_success_body(status=201),
+    )
+    terminal_transport.respond(status=201, body=_heartbeat_success_body())
+    terminal, terminal_heartbeat = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW.replace(minute=33, second=2),
+        transport=terminal_transport,
+        jitter=lambda _upper: 0,
+    )
+
+    assert terminal[0].destination == "archive"
+    assert terminal_heartbeat.destination == "sent"
+    assert not retry_path.exists()
+    assert (tmp_path / "archive" / pending.name).exists()
+
+
+def test_malformed_retry_state_fails_closed_without_reset_or_upload(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    retry_path = pending.with_suffix(".retry.json")
+    retry_path.write_text(
+        '{"attempt":-1,"next_attempt_at":"secret",'
+        '"last_http_status":503,"last_code":"temporary"}',
+        encoding="utf-8",
+    )
+    raw_before = retry_path.read_bytes()
+    transport = FakeTransport()
+    transport.respond(status=201, body=_heartbeat_success_body())
+    import ru_probe_uploader
+
+    outcomes, heartbeat = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert [outcome.code for outcome in outcomes] == [
+        "spool_recovery_failed"
+    ]
+    assert heartbeat.destination == "sent"
+    assert retry_path.read_bytes() == raw_before
+    assert [call["path"] for call in transport.calls] == [
+        ru_probe_uploader.HEARTBEAT_PATH
+    ]
+
+
+def test_retry_state_symlink_fails_closed_without_touching_target(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    outside = tmp_path / "outside-retry.json"
+    outside.write_text(
+        '{"attempt":1,"next_attempt_at":"2026-07-16T06:31:00Z",'
+        '"last_http_status":503,"last_code":"temporary"}',
+        encoding="utf-8",
+    )
+    retry_path = pending.with_suffix(".retry.json")
+    try:
+        retry_path.symlink_to(outside)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+    outside_before = outside.read_bytes()
+    transport = FakeTransport()
+    transport.respond(status=201, body=_heartbeat_success_body())
+    import ru_probe_uploader
+
+    outcomes, heartbeat = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert [outcome.code for outcome in outcomes] == [
+        "spool_recovery_failed"
+    ]
+    assert heartbeat.destination == "sent"
+    assert outside.read_bytes() == outside_before
+    assert [call["path"] for call in transport.calls] == [
+        ru_probe_uploader.HEARTBEAT_PATH
+    ]
+
+
+def test_retry_state_far_future_is_tampered_and_fails_closed(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    retry_path = pending.with_suffix(".retry.json")
+    retry_path.write_text(
+        '{"attempt":1,"next_attempt_at":"2026-07-17T06:30:00Z",'
+        '"last_http_status":503,"last_code":"temporary"}',
+        encoding="utf-8",
+    )
+    transport = FakeTransport()
+    transport.respond(status=201, body=_heartbeat_success_body())
+    import ru_probe_uploader
+
+    outcomes, _ = ru_probe_uploader.run_uploader_once(
+        spool_root=tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert [outcome.code for outcome in outcomes] == [
+        "spool_recovery_failed"
+    ]
+    assert [call["path"] for call in transport.calls] == [
+        ru_probe_uploader.HEARTBEAT_PATH
+    ]
+
+
+def test_retry_state_fsync_failure_keeps_artifact_and_reports_local_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = _pending(tmp_path)
+    artifact_before = pending.read_bytes()
+    hash_before = pending.with_suffix(".sha256").read_bytes()
+    transport = FakeTransport()
+    transport.respond(status=503, body={"code": "temporary"})
+    import ru_probe_uploader
+
+    original = ru_probe_uploader._fsync_directory
+
+    def fail_pending(directory: Path) -> None:
+        if directory.name == "pending":
+            raise OSError("synthetic retry fsync failure")
+        original(directory)
+
+    monkeypatch.setattr(ru_probe_uploader, "_fsync_directory", fail_pending)
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "spool_recovery_failed"
+    assert pending.read_bytes() == artifact_before
+    assert pending.with_suffix(".sha256").read_bytes() == hash_before
+    assert pending.with_suffix(".retry.json").exists()
+
+
+def test_concurrent_retry_writers_advance_state_once(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    entered = threading.Event()
+    release = threading.Event()
+
+    class BlockingRetryTransport(FakeTransport):
+        def send(self, **kwargs):
+            with self._lock:
+                self.calls.append(dict(kwargs))
+            entered.set()
+            assert release.wait(5)
+            return SimpleNamespace(
+                status=503,
+                body=b'{"code":"temporary"}',
+                headers={},
+            )
+
+    transport = BlockingRetryTransport()
+    outcomes: list[object] = []
+
+    def worker() -> None:
+        outcomes.append(
+            upload_one(
+                pending,
+                transport=transport,
+                now=NOW,
+                jitter=lambda _upper: 0,
+            )
+        )
+
+    first = threading.Thread(target=worker)
+    second = threading.Thread(target=worker)
+    first.start()
+    assert entered.wait(5)
+    second.start()
+    second.join(5)
+    release.set()
+    first.join(5)
+
+    assert len(transport.calls) == 1
+    assert sorted(outcome.code for outcome in outcomes) == [
+        "temporary",
+        "upload_in_progress",
+    ]
+    retry = json.loads(
+        pending.with_suffix(".retry.json").read_text(encoding="utf-8")
+    )
+    assert retry["attempt"] == 1
 
 
 def test_runner_defaults_to_pending_spool_and_explicit_out_stays_manual(
@@ -766,7 +1509,14 @@ def test_default_transport_delegates_each_attempt_to_shared_hmac_client(
             body=b'{"code":"replayed_nonce"}',
             headers={},
         ),
-        SimpleNamespace(status=201, body=b'{"code":"created"}', headers={}),
+        SimpleNamespace(
+            status=201,
+            body=json.dumps(
+                _run_success_body(status=201),
+                separators=(",", ":"),
+            ).encode("utf-8"),
+            headers={},
+        ),
     ]
     import ru_probe_uploader
 
