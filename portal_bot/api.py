@@ -15900,6 +15900,7 @@ async def admin_ru_probe_uploader_status(
 @app.get("/api/admin/nodes/{node_code}/observability")
 async def admin_node_observability(
     node_code: str,
+    include_ru_history: bool = Query(default=True),
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     _require_admin(x_telegram_init_data)
@@ -15913,6 +15914,7 @@ async def admin_node_observability(
                 300,
                 int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")),
             ),
+            include_ru_history=include_ru_history,
         )
         if payload is None:
             raise HTTPException(status_code=404, detail="Node not found")
@@ -17785,6 +17787,7 @@ def _serialize_admin_node(
     return {
         "code": n.code,
         "name": n.name,
+        "country_code": _node_country_code(str(n.code or "")).upper(),
         "enabled": bool(n.enabled),
         "accepting_new_clients": bool(getattr(n, "accepting_new_clients", True)),
         "is_draining": bool(getattr(n, "is_draining", False)),

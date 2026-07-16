@@ -7,6 +7,7 @@ export type NodeFreshnessFilter = "all" | "fresh" | "stale" | "missing";
 export type NodeAlertFilter = "all" | "with" | "without";
 export type NodeDetailTab = "overview" | "ru" | "load" | "clients" | "transport" | "alerts" | "technical";
 export type RuHistoryRange = "24h" | "7d" | "30d" | "180d";
+export type NodeCapacityState = "healthy" | "warm" | "drain" | "hard_reject" | "unknown";
 
 export type RuSourceStatus =
   | "ok"
@@ -16,6 +17,7 @@ export type RuSourceStatus =
   | "unavailable"
   | "missing"
   | "BLOCKED_BY_ACCESS"
+  | "blocked_by_access"
   | "not_in_scope";
 
 export type RuStageStatus = "pass" | "fail" | "not_run" | "not_applicable";
@@ -40,7 +42,7 @@ export type NodeListRow = {
   mapped_users: number | null;
   is_healthy: boolean | null;
   health_score: number | null;
-  capacity_state: string | null;
+  capacity_state: NodeCapacityState | string | null;
   capacity_reject_reason: string | null;
   cpu_percent: number | null;
   network_utilization_percent: number | null;
@@ -245,7 +247,7 @@ export type NodeObservability = {
     last_probe_error_kind: string | null;
   };
   transports: NodeTransportProfile[];
-  ru: { latest: RuNodeStatus; history: RuRunHistory };
+  ru: { latest: RuNodeStatus; history?: RuRunHistory };
   alerts: Array<{
     id: number;
     fingerprint: string;
@@ -261,9 +263,78 @@ export type NodeObservability = {
   }>;
 };
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function nullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nullableBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function textOrNull(value: unknown): string | null {
+  const valueText = typeof value === "string" ? value.trim() : "";
+  return valueText || null;
+}
+
+function transportRows(value: unknown): NodeTransportProfile[] {
+  const entries: Array<[string, unknown]> = Array.isArray(value)
+    ? value.map((item, index) => [String(index), item])
+    : Object.entries(asRecord(value));
+  return entries.flatMap(([key, item]) => {
+    const row = asRecord(item);
+    const name = textOrNull(row.name) || textOrNull(key);
+    if (!name) return [];
+    return [{
+      name,
+      enabled: row.enabled === true,
+      kind: textOrNull(row.kind) || "unknown",
+      port: nullableNumber(row.port),
+      has_inbound: typeof row.has_inbound === "boolean" ? row.has_inbound : undefined
+    }];
+  });
+}
+
+function adaptNodeListRow(value: unknown): NodeListRow | null {
+  const row = asRecord(value);
+  const code = textOrNull(row.code);
+  if (!code) return null;
+  const hasTelemetry = Boolean(textOrNull(row.last_health_at)) || nullableNumber(row.freshness_age_seconds) !== null;
+  return {
+    code,
+    name: textOrNull(row.name),
+    country_code: textOrNull(row.country_code)?.toUpperCase() || null,
+    enabled: row.enabled === true,
+    accepting_new_clients: row.accepting_new_clients === true,
+    is_draining: row.is_draining === true,
+    mapped_users: nullableNumber(row.mapped_users),
+    is_healthy: hasTelemetry ? nullableBoolean(row.is_healthy) : null,
+    health_score: hasTelemetry ? nullableNumber(row.health_score) : null,
+    capacity_state: textOrNull(row.capacity_state),
+    capacity_reject_reason: textOrNull(row.capacity_reject_reason),
+    cpu_percent: hasTelemetry ? nullableNumber(row.cpu_percent) : null,
+    network_utilization_percent: hasTelemetry ? nullableNumber(row.network_utilization_percent) : null,
+    provisioned_clients_count: hasTelemetry ? nullableNumber(row.provisioned_clients_count) : null,
+    online_connections_hint: hasTelemetry ? nullableNumber(row.online_connections_hint) : null,
+    freshness_status: hasTelemetry ? textOrNull(row.freshness_status) : "missing",
+    freshness_age_seconds: hasTelemetry ? nullableNumber(row.freshness_age_seconds) : null,
+    last_health_at: textOrNull(row.last_health_at),
+    hoster_family: textOrNull(row.hoster_family),
+    hoster_asn: textOrNull(row.hoster_asn),
+    subnet: textOrNull(row.subnet),
+    alert_kinds: Array.isArray(row.alert_kinds) ? row.alert_kinds.map(textOrNull).filter((item): item is string => item !== null) : [],
+    transport_profiles: transportRows(row.transport_profiles)
+  };
+}
+
 export async function fetchNodeList(init?: ApiRequestInit): Promise<NodeListRow[]> {
-  const payload = await apiFetch<{ nodes: NodeListRow[] }>("/api/admin/nodes/health", init);
-  return Array.isArray(payload.nodes) ? payload.nodes : [];
+  const payload = await apiFetch<{ nodes?: unknown[] }>("/api/admin/nodes/health", init);
+  return Array.isArray(payload.nodes)
+    ? payload.nodes.map(adaptNodeListRow).filter((row): row is NodeListRow => row !== null)
+    : [];
 }
 
 export function fetchRuLatest(init?: ApiRequestInit): Promise<RuLatest> {
@@ -271,7 +342,7 @@ export function fetchRuLatest(init?: ApiRequestInit): Promise<RuLatest> {
 }
 
 export function fetchNodeObservability(nodeCode: string, init?: ApiRequestInit): Promise<NodeObservability> {
-  return apiFetch<NodeObservability>(`/api/admin/nodes/${encodeURIComponent(nodeCode)}/observability`, init);
+  return apiFetch<NodeObservability>(`/api/admin/nodes/${encodeURIComponent(nodeCode)}/observability?include_ru_history=false`, init);
 }
 
 const RANGE_SECONDS: Record<RuHistoryRange, number> = {
@@ -281,11 +352,12 @@ const RANGE_SECONDS: Record<RuHistoryRange, number> = {
   "180d": 180 * 24 * 60 * 60
 };
 
-export function fetchRuHistory(nodeCode: string, range: RuHistoryRange, init?: ApiRequestInit): Promise<RuRunHistory> {
+export function fetchRuHistory(nodeCode: string, range: RuHistoryRange, cursor?: string | null, init?: ApiRequestInit): Promise<RuRunHistory> {
   const query = new URLSearchParams();
   query.set("node_code", nodeCode);
   query.set("from", new Date(Date.now() - RANGE_SECONDS[range] * 1000).toISOString());
   query.set("limit", "50");
+  if (cursor) query.set("cursor", cursor);
   return apiFetch<RuRunHistory>(`/api/admin/probes/ru-origin/runs?${query.toString()}`, init);
 }
 

@@ -23,7 +23,10 @@ export type RuScenario =
   | "superseded-manifest"
   | "incomplete-latest-with-last-good"
   | "uploader-backlog"
-  | "uploader-heartbeat-stale";
+  | "uploader-heartbeat-stale"
+  | "uploader-fresh-failure"
+  | "selected-missing"
+  | "review-findings";
 
 const nodeRows = [
   {
@@ -44,11 +47,14 @@ const nodeRows = [
     online_connections_hint: 19,
     freshness_status: "fresh",
     freshness_age_seconds: 420,
+    last_health_at: "2026-07-15T09:53:00Z",
     hoster_family: "timeweb",
     hoster_asn: "AS209024",
     subnet: "198.51.100.0/24",
     alert_kinds: ["panel_latency"],
-    transport_profiles: [{ name: "legacy_reality_fallback", kind: "xray", enabled: true, port: 443 }]
+    transport_profiles: {
+      legacy_reality_fallback: { name: "legacy_reality_fallback", kind: "xray", enabled: true, port: 443 }
+    }
   },
   {
     code: "de",
@@ -58,21 +64,47 @@ const nodeRows = [
     accepting_new_clients: false,
     is_draining: false,
     mapped_users: 0,
-    is_healthy: false,
-    health_score: null,
+    is_healthy: true,
+    health_score: 0,
     capacity_state: "unknown",
     capacity_reject_reason: null,
-    cpu_percent: null,
-    network_utilization_percent: null,
-    provisioned_clients_count: null,
-    online_connections_hint: null,
-    freshness_status: "stale",
-    freshness_age_seconds: 32000,
+    cpu_percent: 0,
+    network_utilization_percent: 0,
+    provisioned_clients_count: 0,
+    online_connections_hint: 0,
+    freshness_status: "missing",
+    freshness_age_seconds: null,
+    last_health_at: null,
     hoster_family: null,
     hoster_asn: null,
     subnet: null,
     alert_kinds: [],
-    transport_profiles: []
+    transport_profiles: {}
+  },
+  {
+    code: "brain",
+    name: "Brain",
+    country_code: "DE",
+    enabled: true,
+    accepting_new_clients: true,
+    is_draining: false,
+    mapped_users: 0,
+    is_healthy: null,
+    health_score: 0,
+    capacity_state: "warm",
+    capacity_reject_reason: null,
+    cpu_percent: 0,
+    network_utilization_percent: 0,
+    provisioned_clients_count: 0,
+    online_connections_hint: 0,
+    freshness_status: "missing",
+    freshness_age_seconds: null,
+    last_health_at: null,
+    hoster_family: "brain-host",
+    hoster_asn: "AS64500",
+    subnet: null,
+    alert_kinds: [],
+    transport_profiles: {}
   }
 ];
 
@@ -217,7 +249,24 @@ function ruLatestPayload(scenario: RuScenario) {
     sampledAt = "2026-07-15T04:00:00Z";
     ageSeconds = 22200;
     node = ruNode("ok", "target_pass", sampledAt);
+  } else if (scenario === "review-findings") {
+    status = "failed";
+    reasonCode = "required_target_failed";
+    latestReceived = runSummary({ release_verdict: "fail", current_eligible: false, ineligible_reason: "required_target_failed" });
+    latestEligible = null;
+    node = ruNode("failed", "target_failed");
   }
+
+  const fallbackNode = {
+    node_code: "de",
+    status: "not_in_scope",
+    sampled_at: null,
+    age_seconds: null,
+    threshold_seconds: 25200,
+    reason_code: "not_in_scope",
+    run_id: null,
+    target: null
+  };
 
   return {
     ok: true,
@@ -239,31 +288,19 @@ function ruLatestPayload(scenario: RuScenario) {
     latest_received_attempt: latestReceived,
     latest_eligible_run: latestEligible,
     eligible_run: latestEligible,
-    nodes: [
-      node,
-      {
-        node_code: "de",
-        status: "not_in_scope",
-        sampled_at: null,
-        age_seconds: null,
-        threshold_seconds: 25200,
-        reason_code: "not_in_scope",
-        run_id: null,
-        target: null
-      }
-    ]
+    nodes: scenario === "selected-missing" ? [fallbackNode] : [node, fallbackNode]
   };
 }
 
 function observabilityPayload(scenario: RuScenario) {
   const latest = ruLatestPayload(scenario);
-  const ru = latest.nodes[0];
+  const ru = scenario === "selected-missing" ? ruNode("ok", "target_pass") : latest.nodes[0];
   return {
     ok: true,
     generated_at: generatedAt,
     node: { code: "nl", name: "Нидерланды", hoster_family: "timeweb", hoster_asn: "AS209024", subnet: "198.51.100.0/24", weight: 100 },
     lifecycle: { enabled: true, accepting_new_clients: true, is_draining: false, mapped_users: 31 },
-    capacity: { state: "ok", score: 91, reject_reason: null, tx_mbps: 412, tx_ratio: 0.412, capacity_mbps: 1000, provisioned_clients_count: 46, online_connections_hint: 19 },
+    capacity: { state: scenario === "review-findings" ? "hard_reject" : "healthy", score: 91, reject_reason: null, tx_mbps: 412, tx_ratio: 0.412, capacity_mbps: 1000, provisioned_clients_count: 46, online_connections_hint: 19 },
     sources: {
       brain_metrics: {
         status: "ok",
@@ -294,28 +331,29 @@ function observabilityPayload(scenario: RuScenario) {
     network: { ipv4_health: "ok", ipv6_health: "unknown", dataplane_ok: true, dataplane_rtt_ms: 42, packet_loss_percent: 0.2, tcp_retrans_percent: 0.1, probe_classification: "ok", last_probe_stage: "tls", last_probe_error_kind: null },
     transports: [{ name: "legacy_reality_fallback", enabled: true, kind: "xray", port: 443, has_inbound: true }],
     ru: { latest: ru, history: { items: [], next_cursor: null, limit: 10 } },
-    alerts: [{ id: 31, fingerprint: "node:nl:latency", source: "node_health", severity: "warning", status: "active", title: "Задержка панели выше обычной", first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:55:00Z", resolved_at: null, acknowledged_at: null, silence_until: null }]
+    alerts: [{ id: 31, fingerprint: "node_metrics:nl:panel_latency", source: "node_metrics", severity: "warning", status: "active", title: "Node nl metric alert: panel_latency", first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:55:00Z", resolved_at: null, acknowledged_at: null, silence_until: null }]
   };
 }
 
-function historyPayload(scenario: RuScenario) {
+function historyPayload(scenario: RuScenario, cursor: string | null = null) {
   if (scenario === "missing") return { items: [], next_cursor: null, limit: 50 };
   const summary = runSummary({
-    run_db_id: 390,
-    run_id: "00000000-0000-4000-8000-000000000390",
-    finished_at: "2026-07-14T22:00:00Z",
-    received_at: "2026-07-14T22:01:00Z",
+    run_db_id: cursor ? 389 : 390,
+    run_id: cursor ? "00000000-0000-4000-8000-000000000389" : "00000000-0000-4000-8000-000000000390",
+    finished_at: cursor ? "2026-07-14T16:00:00Z" : "2026-07-14T22:00:00Z",
+    received_at: cursor ? "2026-07-14T16:01:00Z" : "2026-07-14T22:01:00Z",
     release_verdict: "fail",
     current_eligible: false,
     ineligible_reason: "required_target_failed",
     targets: [{ ...ruNode("degraded", "target_failed").target, overall_status: "failed", current_eligible: false, stages: baselineStages }]
   });
-  return { items: [summary], next_cursor: null, limit: 50 };
+  return { items: [summary], next_cursor: scenario === "review-findings" && !cursor ? "cursor-safe-next" : null, limit: 50 };
 }
 
 function uploaderPayload(scenario: RuScenario) {
   const stale = scenario === "uploader-heartbeat-stale";
   const backlog = scenario === "uploader-backlog";
+  const freshFailure = scenario === "uploader-fresh-failure";
   return {
     ok: true,
     generated_at: generatedAt,
@@ -333,10 +371,10 @@ function uploaderPayload(scenario: RuScenario) {
       blocked_count: backlog || stale ? 1 : 0,
       quarantine_count: backlog || stale ? 2 : 0,
       oldest_pending_at: backlog || stale ? "2026-07-15T06:00:00Z" : null,
-      archive_write_ok: !stale,
-      disk_free_bytes: stale ? 1024 : 10_000_000_000,
-      disk_state: stale ? "critical" : "ok",
-      last_error_code: stale ? "archive_write_failed" : null
+      archive_write_ok: !stale && !freshFailure,
+      disk_free_bytes: stale ? 1024 : freshFailure ? 512_000_000 : 10_000_000_000,
+      disk_state: stale ? "critical" : freshFailure ? "warning" : "ok",
+      last_error_code: stale || freshFailure ? "archive_write_failed" : null
     }
   };
 }
@@ -521,6 +559,10 @@ type AdminApiMockOptions = {
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
   ruLatestStatus?: number;
+  ruHistoryStatus?: number;
+  ruUploaderStatus?: number;
+  nodeObservabilityStatus?: number;
+  nodeObservabilityDelayMs?: number;
   ruLatestReasonCodes?: string[];
   searchStatus?: number;
   trafficStatus?: number;
@@ -779,17 +821,32 @@ export async function installAdminApiMock(
     }
 
     if (url.pathname === "/api/admin/probes/ru-origin/runs") {
-      await fulfillJson(route, historyPayload(options.ruScenario || "fresh-pass"));
+      if (options.ruHistoryStatus && options.ruHistoryStatus !== 200) {
+        await fulfillJson(route, { detail: "История RU-origin временно недоступна", code: "ru_history_unavailable" }, options.ruHistoryStatus);
+        return;
+      }
+      await fulfillJson(route, historyPayload(options.ruScenario || "fresh-pass", url.searchParams.get("cursor")));
       return;
     }
 
     if (url.pathname === "/api/admin/probes/ru-origin/uploader-status") {
+      if (options.ruUploaderStatus && options.ruUploaderStatus !== 200) {
+        await fulfillJson(route, { detail: "Статус загрузчика временно недоступен", code: "ru_uploader_unavailable" }, options.ruUploaderStatus);
+        return;
+      }
       await fulfillJson(route, uploaderPayload(options.ruScenario || "fresh-pass"));
       return;
     }
 
     if (isNodeObservabilityPath(url.pathname)) {
       const code = decodeURIComponent(url.pathname.split("/").at(-2) || "").toLowerCase();
+      if (options.nodeObservabilityDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, options.nodeObservabilityDelayMs));
+      }
+      if (options.nodeObservabilityStatus && options.nodeObservabilityStatus !== 200) {
+        await fulfillJson(route, { detail: options.nodeObservabilityStatus === 404 ? "Node not found" : "Node unavailable" }, options.nodeObservabilityStatus);
+        return;
+      }
       if (code !== "nl") {
         await fulfillJson(route, { detail: "Node not found" }, 404);
         return;

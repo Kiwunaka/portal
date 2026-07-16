@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, type KeyboardEvent } from "react";
+import { useId, useMemo } from "react";
 
+import { Badge } from "@/components/ui";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { OpsTooltip } from "@/components/ui/tooltip";
 import type {
   NodeAlertFilter,
   NodeFreshnessFilter,
@@ -35,9 +37,7 @@ function formatNumber(value: number | null | undefined, suffix = ""): string {
 
 function countryOf(row: NodeListRow): string {
   const explicit = String(row.country_code || "").trim().toUpperCase();
-  if (explicit) return explicit;
-  const inferred = String(row.code || "").split(/[-_]/, 1)[0].slice(0, 2).toUpperCase();
-  return inferred || "—";
+  return explicit || "—";
 }
 
 function lifecycleOf(row: NodeListRow): Exclude<NodeLifecycleFilter, "all"> {
@@ -61,11 +61,23 @@ function brainStatus(row: NodeListRow) {
   return "missing" as const;
 }
 
-function worstReason(row: NodeListRow): string {
-  if (row.alert_kinds.length) return `${row.alert_kinds.length} активн. сигнал`;
+function worstReason(row: NodeListRow, ru: RuNodeStatus | null): string {
   if (row.is_healthy === false) return "Проверка здоровья не пройдена";
+  const ruStatus = String(ru?.status || "missing").toLowerCase();
+  if (ruStatus === "failed" || ruStatus === "fail") return "RU-проверка завершилась сбоем";
+  if (ruStatus === "blocked_by_access") return "Доступ к RU-проверке заблокирован";
+  if (ruStatus === "unavailable") return "Среда RU-проверки недоступна";
+  if (ruStatus === "degraded") return "RU-проверка требует внимания";
+  if (ruStatus === "stale") return "Результат RU-проверки устарел";
+  if (ruStatus === "missing") return "Нет результата RU-проверки";
+  const capacity = String(row.capacity_state || "unknown").toLowerCase();
+  if (capacity === "hard_reject") return "Ёмкость запрещает новые размещения";
+  if (capacity === "drain") return "Ёмкость выводит ноду из размещения";
+  if (capacity === "warm") return "Ёмкость приближается к порогу";
   if (row.capacity_reject_reason) return "Ёмкость ограничивает размещение";
+  if (row.alert_kinds.length) return `${row.alert_kinds.length} активн. сигнал`;
   if (row.freshness_status === "stale") return "Обязательные данные устарели";
+  if (ruStatus === "not_in_scope") return "RU-проверка не входит в контур";
   return "Обязательные сигналы без отклонений";
 }
 
@@ -81,10 +93,14 @@ function ageText(seconds: number | null): string {
   return `${Math.floor(seconds / 3600)} ч`;
 }
 
-function selectOnKeyboard(event: KeyboardEvent<HTMLTableRowElement>, code: string, onSelect: (code: string) => void) {
-  if (event.key !== "Enter" && event.key !== " ") return;
-  event.preventDefault();
-  onSelect(code);
+function MetricHeader({ label, explanation, source, threshold = null }: { label: string; explanation: string; source: string; threshold?: string | null }) {
+  const id = useId();
+  return (
+    <div className="flex items-center gap-1">
+      <span>{label}</span>
+      <OpsTooltip id={`${id}-header`} content={explanation} source={source} sampledAt={null} threshold={threshold} />
+    </div>
+  );
 }
 
 export function NodeList({
@@ -154,12 +170,12 @@ export function NodeList({
               <th className="px-3 py-2">Нода</th>
               <th className="px-3 py-2">Состояние</th>
               <th className="px-3 py-2">Худший сигнал</th>
-              <th className="px-3 py-2">Brain</th>
-              <th className="px-3 py-2">RU</th>
-              <th className="px-3 py-2">CPU</th>
-              <th className="px-3 py-2">Порт</th>
-              <th className="px-3 py-2">Клиенты</th>
-              <th className="px-3 py-2">Старейший источник</th>
+              <th className="px-3 py-2"><MetricHeader label="Brain" explanation="Свежесть и результат последней серверной проверки Brain-origin." source="Brain-origin" threshold="Серверное окно свежести" /></th>
+              <th className="px-3 py-2"><MetricHeader label="RU" explanation="Результат независимой проверки из РФ; обновляется из RU latest." source="RU-origin" threshold="7 часов" /></th>
+              <th className="px-3 py-2"><MetricHeader label="CPU" explanation="Последняя измеренная загрузка процессора. Прочерк означает отсутствие измерения." source="Brain-origin" /></th>
+              <th className="px-3 py-2"><MetricHeader label="Порт" explanation="Доля текущего сетевого потока от политики пропускной способности." source="Brain-origin / политика ёмкости" /></th>
+              <th className="px-3 py-2"><MetricHeader label="Клиенты" explanation="Подготовленные клиенты и отдельная оперативная оценка соединений онлайн." source="Текущий контур" /></th>
+              <th className="px-3 py-2"><MetricHeader label="Старейший источник" explanation="Максимальный возраст среди обязательных Brain- и RU-сигналов." source="Brain-origin / RU-origin" threshold="Зависит от источника" /></th>
             </tr>
           </thead>
           <tbody>
@@ -170,23 +186,29 @@ export function NodeList({
               return (
                 <tr
                   key={code}
-                  tabIndex={0}
-                  aria-selected={isSelected}
                   onClick={() => onSelect(code)}
-                  onKeyDown={(event) => selectOnKeyboard(event, code, onSelect)}
                   className={`cursor-pointer border-t border-[color:var(--pokrov-table-divider)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--atlas-focus)] ${isSelected ? "bg-[color:var(--pokrov-nav-active-bg)]" : "hover:bg-[color:var(--pokrov-table-row-hover-bg)]"}`}
                 >
                   <td className="px-3 py-2">
-                    <div className="font-mono text-sm font-semibold uppercase">{row.code}</div>
-                    <div className="mt-1 text-[11px] text-[color:var(--atlas-text-soft)]">{countryOf(row)} · {row.name || "Без названия"}</div>
+                    <button
+                      type="button"
+                      aria-label={`Открыть ноду ${row.code.toUpperCase()}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelect(code);
+                      }}
+                      className="block w-full rounded-[var(--pokrov-radius-control)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--atlas-focus)]"
+                    >
+                      <span className="block font-mono text-sm font-semibold uppercase">{row.code}</span>
+                      <span className="mt-1 block text-[11px] text-[color:var(--atlas-text-soft)]">{countryOf(row)} · {row.name || "Без названия"}</span>
+                    </button>
                   </td>
                   <td className="px-3 py-2"><span className="font-semibold">{lifecycleText(row)}</span></td>
-                  <td className="max-w-48 px-3 py-2 text-[color:var(--atlas-text-soft)]">{worstReason(row)}</td>
+                  <td className="max-w-48 px-3 py-2 text-[color:var(--atlas-text-soft)]">{worstReason(row, ru)}</td>
                   <td className="px-3 py-2"><StatusBadge status={brainStatus(row)} /></td>
                   <td className="px-3 py-2">
                     <div className="flex flex-col items-start gap-1">
-                      <StatusBadge status={opsStatusFromSource(ru?.status)} />
-                      {ru?.status === "not_in_scope" ? <span className="text-[10px] text-[color:var(--atlas-text-muted)]">не в контуре</span> : null}
+                      {ru?.status === "not_in_scope" ? <Badge tone="neutral">Не в контуре</Badge> : <StatusBadge status={opsStatusFromSource(ru?.status)} />}
                     </div>
                   </td>
                   <td className="px-3 py-2 tabular-nums">{formatNumber(row.cpu_percent, "%")}</td>

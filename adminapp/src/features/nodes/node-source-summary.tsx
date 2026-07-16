@@ -2,9 +2,10 @@
 
 import { useId, type ReactNode } from "react";
 
+import { Badge } from "@/components/ui";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { OpsTooltip } from "@/components/ui/tooltip";
-import type { NodeObservability, RuSourceStatus } from "@/lib/admin-api/nodes";
+import type { NodeObservability, RuNodeStatus, RuSourceStatus } from "@/lib/admin-api/nodes";
 import { formatSourceAge } from "@/lib/ops-status/presentation";
 import type { OpsStatusCode } from "@/lib/ops-status/types";
 
@@ -35,8 +36,41 @@ const REASON_TEXT: Record<string, string> = {
   release_incomplete: "Проверка завершилась не полностью",
   release_failed: "Проверка завершилась сбоем",
   not_in_scope: "Нода сейчас не входит в обязательный RU-контур",
-  blocked_by_access: "Есть подписанное доказательство отсутствия доступа"
+  blocked_by_access: "Есть подписанное доказательство отсутствия доступа",
+  ru_latest_unavailable: "Свежая сводка RU-origin сейчас недоступна",
+  selected_target_missing: "В последнем RU-снимке нет результата выбранной ноды"
 };
+
+const CAPACITY_TEXT: Record<string, string> = {
+  healthy: "Норма",
+  ok: "Норма",
+  warm: "Нагрузка приближается к порогу",
+  drain: "Вывод из новых размещений",
+  hard_reject: "Запрет новых размещений",
+  unknown: "Нет данных"
+};
+
+export function capacityText(state: string | null | undefined): string {
+  return CAPACITY_TEXT[String(state || "unknown").toLowerCase()] || "Неизвестное состояние";
+}
+
+export function sourceStatusText(status: RuSourceStatus | string | null | undefined): string {
+  const normalized = String(status || "missing").toLowerCase();
+  const labels: Record<string, string> = {
+    ok: "Норма",
+    pass: "Норма",
+    healthy: "Норма",
+    degraded: "Требует внимания",
+    failed: "Сбой",
+    fail: "Сбой",
+    stale: "Устарело",
+    unavailable: "Недоступно",
+    missing: "Нет данных",
+    not_in_scope: "Не входит в контур",
+    blocked_by_access: "Доступ заблокирован"
+  };
+  return labels[normalized] || "Нет данных";
+}
 
 export function reasonText(reasonCode: string | null | undefined): string {
   const code = String(reasonCode || "").trim();
@@ -61,22 +95,24 @@ export function formatThreshold(seconds: number | null | undefined): string {
   return `Порог свежести: ${seconds} сек`;
 }
 
-function NodeSourceRow({ source, status, sampledAt, reason, threshold, action }: {
+function NodeSourceRow({ source, status, sampledAt, reason, threshold, action, badge, preserveMissingReason = false }: {
   source: string;
   status: OpsStatusCode;
   sampledAt: string | null;
   reason: ReactNode;
   threshold: string;
   action: ReactNode;
+  badge?: ReactNode;
+  preserveMissingReason?: boolean;
 }) {
   const id = useId();
-  const safeReason = status === "missing" ? "Нет данных" : status === "unavailable" ? "Недоступно" : reason;
+  const safeReason = status === "missing" && !preserveMissingReason ? "Нет данных" : status === "unavailable" ? "Недоступно" : reason;
   return (
     <div className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[color:var(--atlas-border)] px-3 py-2 last:border-b-0">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate text-xs font-semibold text-[color:var(--atlas-text)]">{source}</span>
-          <StatusBadge status={status} />
+          {badge || <StatusBadge status={status} />}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[color:var(--atlas-text-muted)]">
           <span className="text-[color:var(--atlas-text-soft)]">{safeReason}</span>
@@ -88,10 +124,10 @@ function NodeSourceRow({ source, status, sampledAt, reason, threshold, action }:
   );
 }
 
-export function NodeSourceSummary({ data }: { data: NodeObservability }) {
+export function NodeSourceSummary({ data, ruStatus }: { data: NodeObservability; ruStatus: RuNodeStatus | null }) {
   const current = data.sources.runtime;
   const brain = data.sources.brain_metrics;
-  const ru = data.sources.ru_origin;
+  const ru = ruStatus;
 
   return (
     <section aria-labelledby="node-sources-title" className="overflow-hidden rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)]">
@@ -116,18 +152,20 @@ export function NodeSourceSummary({ data }: { data: NodeObservability }) {
       />
       <NodeSourceRow
         source="RU-origin"
-        status={opsStatusFromSource(ru.status)}
-        sampledAt={ru.sampled_at}
-        reason={reasonText(ru.reason_code)}
-        threshold={formatThreshold(ru.threshold_seconds)}
+        status={opsStatusFromSource(ru?.status || "unavailable")}
+        sampledAt={ru?.sampled_at || null}
+        reason={reasonText(ru?.reason_code || "ru_latest_unavailable")}
+        threshold={formatThreshold(ru?.threshold_seconds)}
         action="Откройте вкладку «Проверки из РФ» и сравните попытку со стадиями."
+        badge={ru?.status === "not_in_scope" ? <Badge tone="neutral">Не входит в контур</Badge> : undefined}
+        preserveMissingReason={ru?.status === "not_in_scope"}
       />
       <details className="border-t border-[color:var(--atlas-border)] px-3 py-2 text-xs text-[color:var(--atlas-text-soft)]">
         <summary className="cursor-pointer select-none font-semibold text-[color:var(--atlas-text)]">Технические коды источников</summary>
         <dl className="mt-2 grid gap-1 font-mono text-[11px]">
           <div><dt className="inline text-[color:var(--atlas-text-muted)]">current: </dt><dd className="inline">{current.reason_code}</dd></div>
           <div><dt className="inline text-[color:var(--atlas-text-muted)]">brain: </dt><dd className="inline">{brain.reason_code}</dd></div>
-          <div><dt className="inline text-[color:var(--atlas-text-muted)]">ru: </dt><dd className="inline">{ru.reason_code}</dd></div>
+          <div><dt className="inline text-[color:var(--atlas-text-muted)]">ru: </dt><dd className="inline">{ru?.reason_code || "ru_latest_unavailable"}</dd></div>
         </dl>
       </details>
     </section>

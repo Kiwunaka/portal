@@ -11,7 +11,7 @@ import type {
 } from "@/lib/admin-api/nodes";
 import { formatSourceAge } from "@/lib/ops-status/presentation";
 
-import { opsStatusFromSource, reasonText } from "./node-source-summary";
+import { opsStatusFromSource, reasonText, sourceStatusText } from "./node-source-summary";
 
 const RANGE_OPTIONS: Array<{ value: RuHistoryRange; label: string }> = [
   { value: "24h", label: "24 часа" },
@@ -77,6 +77,14 @@ function latestNotice(latest: RuLatest, nodeStatus: RuNodeStatus): { title: stri
     return { title: "Последний пригодный результат старше 7 часов", detail: "Нужен новый независимый запуск из РФ; частое обновление UI не меняет этот порог." };
   }
   return { title: reasonText(nodeStatus.reason_code), detail: "Текущий статус вычислен сервером по обязательным стадиям и действующей конфигурации целей." };
+}
+
+function nodeTone(status: RuNodeStatus["status"]): "success" | "warning" | "danger" | "neutral" {
+  const normalized = opsStatusFromSource(status);
+  if (normalized === "ok") return "success";
+  if (normalized === "failed" || normalized === "BLOCKED_BY_ACCESS") return "danger";
+  if (normalized === "degraded" || normalized === "stale") return "warning";
+  return "neutral";
 }
 
 function AttemptSummary({ title, run }: { title: string; run: RuRunSummary | null }) {
@@ -158,34 +166,42 @@ export function RuHistory({
   nodeStatus,
   history,
   range,
-  onRangeChange
+  onRangeChange,
+  loadingMore,
+  loadMoreError,
+  onLoadMore
 }: {
-  latest: RuLatest;
-  nodeStatus: RuNodeStatus;
-  history: RuRunHistory;
+  latest: RuLatest | null;
+  nodeStatus: RuNodeStatus | null;
+  history: RuRunHistory | null;
   range: RuHistoryRange;
   onRangeChange: (range: RuHistoryRange) => void;
+  loadingMore: boolean;
+  loadMoreError: string | null;
+  onLoadMore: () => void;
 }) {
-  const notice = latestNotice(latest, nodeStatus);
+  const notice = latest && nodeStatus ? latestNotice(latest, nodeStatus) : null;
   return (
     <div className="space-y-3">
-      <Card className="min-h-0">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">Текущий RU-origin</h3>
-          <Badge tone={opsStatusFromSource(nodeStatus.status) === "ok" ? "success" : opsStatusFromSource(nodeStatus.status) === "failed" ? "danger" : "warning"}>
-            {nodeStatus.status === "ok" ? "Пригоден" : nodeStatus.status === "stale" ? "Устарело" : nodeStatus.status === "missing" ? "Нет данных" : "Требует внимания"}
-          </Badge>
-        </div>
-        <p className="mt-3 text-sm font-semibold">{notice.title}</p>
-        <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-soft)]">{notice.detail}</p>
-      </Card>
+      {latest && nodeStatus && notice ? (
+        <>
+          <Card className="min-h-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">Текущий RU-origin</h3>
+              <Badge tone={nodeTone(nodeStatus.status)}>{nodeStatus.status === "ok" ? "Пригоден" : sourceStatusText(nodeStatus.status)}</Badge>
+            </div>
+            <p className="mt-3 text-sm font-semibold">{notice.title}</p>
+            <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-soft)]">{notice.detail}</p>
+          </Card>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <AttemptSummary title="Последняя полученная попытка" run={latest.latest_received_attempt} />
-        <AttemptSummary title="Последний пригодный результат" run={latest.latest_eligible_run} />
-      </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <AttemptSummary title="Последняя полученная попытка" run={latest.latest_received_attempt} />
+            <AttemptSummary title="Последний пригодный результат" run={latest.latest_eligible_run} />
+          </div>
+        </>
+      ) : null}
 
-      <section aria-label="История проверок из РФ" className="overflow-hidden rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] shadow-[var(--atlas-shadow-soft)]">
+      {history ? <section aria-label="История проверок из РФ" className="overflow-hidden rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] shadow-[var(--atlas-shadow-soft)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--atlas-border)] px-3 py-3">
           <div>
             <h3 className="text-sm font-semibold">История проверок из РФ</h3>
@@ -207,7 +223,13 @@ export function RuHistory({
         {history.items.length ? history.items.map((run) => <HistoryRun key={run.run_id} run={run} />) : (
           <div className="p-3"><EmptyState description="В выбранном диапазоне нет сохранённых запусков этой ноды." className="min-h-24" /></div>
         )}
-      </section>
+        {history.next_cursor || loadMoreError ? (
+          <div className="border-t border-[color:var(--atlas-border)] p-3">
+            {loadMoreError ? <p className="mb-2 text-xs text-[color:var(--command-status-danger-text)]">{loadMoreError}</p> : null}
+            <Button tone="secondary" disabled={loadingMore} onClick={onLoadMore}>{loadingMore ? "Загружаем…" : "Показать ещё"}</Button>
+          </div>
+        ) : null}
+      </section> : null}
     </div>
   );
 }

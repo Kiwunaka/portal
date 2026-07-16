@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
-import { ArrowLeft, Boxes, Cpu, Gauge, Network, Radio, ShieldCheck } from "lucide-react";
+import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { Boxes, Cpu, Gauge, Network, Radio, ShieldCheck } from "lucide-react";
 
 import { Badge, Button, Card, SectionTitle } from "@/components/ui";
 import { ErrorState, LoadingState } from "@/components/ui/states";
@@ -11,11 +11,12 @@ import type {
   NodeObservability,
   RuHistoryRange,
   RuLatest,
+  RuNodeStatus,
   RuRunHistory,
   RuUploaderStatus
 } from "@/lib/admin-api/nodes";
 
-import { NodeSourceSummary, opsStatusFromSource, reasonText } from "./node-source-summary";
+import { capacityText, NodeSourceSummary, opsStatusFromSource, reasonText, sourceStatusText } from "./node-source-summary";
 import { RuHistory } from "./ru-history";
 import { UploaderStatus } from "./uploader-status";
 
@@ -65,6 +66,11 @@ function healthText(value: string | null): string {
   if (["degraded", "warning"].includes(normalized)) return "Требует внимания";
   if (normalized === "stale") return "Устарело";
   if (normalized === "unavailable") return "Недоступно";
+  if (normalized === "not_in_scope") return "Не входит в контур";
+  if (normalized === "blocked_by_access") return "Доступ заблокирован";
+  if (normalized === "warm") return "Нагрузка приближается к порогу";
+  if (normalized === "drain") return "Вывод из новых размещений";
+  if (normalized === "hard_reject") return "Запрет новых размещений";
   return "Нет данных";
 }
 
@@ -108,10 +114,12 @@ function Definition({ label, value, mono = false }: { label: string; value: stri
   );
 }
 
-function OverviewTab({ data }: { data: NodeObservability }) {
+function OverviewTab({ data, ruStatus }: { data: NodeObservability; ruStatus: RuNodeStatus | null }) {
+  const observer = data.sources.observer;
+  const observerDetails = observer.details;
   return (
     <div className="space-y-3">
-      <NodeSourceSummary data={data} />
+      <NodeSourceSummary data={data} ruStatus={ruStatus} />
       <Card className="min-h-0">
         <SectionTitle title="Паспорт ноды" description="Публичные операционные признаки и текущее состояние ноды." />
         <DefinitionGrid>
@@ -125,9 +133,12 @@ function OverviewTab({ data }: { data: NodeObservability }) {
       </Card>
       <Card className="min-h-0">
         <SectionTitle title="Текущий контур и наблюдатель" description="Наблюдатель показан отдельно: зелёная панель не скрывает устаревший пакет данных." />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Metric label="Состояние ёмкости" value={healthText(data.capacity.state)} explanation="Рассчитанная сервером возможность принимать новые размещения." sampledAt={data.sources.runtime.sampled_at} icon={<Gauge size={15} />} />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Metric label="Состояние ёмкости" value={capacityText(data.capacity.state)} explanation="Рассчитанная сервером возможность принимать новые размещения." sampledAt={data.sources.runtime.sampled_at} icon={<Gauge size={15} />} />
           <Metric label="Наблюдатель" value={reasonText(data.sources.observer.reason_code)} explanation="Свежесть последнего обработанного пакета наблюдателя." sampledAt={data.sources.observer.sampled_at} threshold={`Порог: ${data.sources.observer.threshold_seconds} сек`} icon={<Radio size={15} />} />
+          <Metric label="Последний пакет Observer" value={observerDetails.last_batch_id || "—"} explanation="Идентификатор последнего обработанного пакета Observer; значение безопасно для операторского сопоставления." sampledAt={observer.sampled_at} threshold={`Порог: ${observer.threshold_seconds} сек`} icon={<Radio size={15} />} />
+          <Metric label="Сопоставление Observer" value={`Не сопоставлено: ${numberText(observerDetails.unmatched_count, "", 0)}`} explanation="Количество строк последнего пакета, которые не удалось сопоставить с известными сущностями." sampledAt={observer.sampled_at} threshold="Ожидается 0" />
+          <Metric label="Разбор Observer" value={`Ошибки разбора: ${numberText(observerDetails.parse_error_count, "", 0)}`} explanation="Количество ошибок разбора в последнем пакете Observer." sampledAt={observer.sampled_at} threshold="Ожидается 0" />
         </div>
       </Card>
     </div>
@@ -137,6 +148,8 @@ function OverviewTab({ data }: { data: NodeObservability }) {
 function LoadTab({ data }: { data: NodeObservability }) {
   const brain = data.sources.brain_metrics;
   const details = brain.details;
+  const runtime = data.sources.runtime;
+  const runtimeDetails = runtime.details;
   return (
     <div className="space-y-3">
       <Card className="min-h-0">
@@ -148,10 +161,22 @@ function LoadTab({ data }: { data: NodeObservability }) {
         </div>
       </Card>
       <Card className="min-h-0">
+        <SectionTitle title="Панель" description="Задержка и доля ошибок относятся к тому же снимку Brain-origin и не подменяют dataplane." />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Metric label="Задержка панели" value={numberText(details.panel_latency_ms, " мс")} explanation="Время ответа панели в последней проверке Brain-origin." sampledAt={brain.sampled_at} />
+          <Metric label="Ошибки панели" value={numberText(details.panel_error_rate, "%")} explanation="Доля ошибок панели из последнего пригодного снимка." sampledAt={brain.sampled_at} threshold="Ожидается 0%" />
+        </div>
+      </Card>
+      <Card className="min-h-0">
         <SectionTitle title="Сеть и политика порта" description="Текущие скорости и серверная доля от политики порта." />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <Metric label="Приём" value={numberText(details.network_rx_mbps, " Мбит/с")} explanation="Текущая входящая скорость из Brain-origin." sampledAt={brain.sampled_at} icon={<Network size={15} />} />
           <Metric label="Передача" value={numberText(details.network_tx_mbps, " Мбит/с")} explanation="Текущая исходящая скорость из Brain-origin." sampledAt={brain.sampled_at} icon={<Network size={15} />} />
+          <Metric label="Суммарно" value={numberText(details.network_total_mbps, " Мбит/с")} explanation="Сумма текущих входящего и исходящего потоков Brain-origin." sampledAt={brain.sampled_at} icon={<Network size={15} />} />
+          <Metric label="Приём · 1 мин" value={numberText(runtimeDetails.network_rx_mbps_1m, " Мбит/с")} explanation="Средняя входящая скорость за одну минуту из current-origin." sampledAt={runtime.sampled_at} icon={<Network size={15} />} />
+          <Metric label="Передача · 1 мин" value={numberText(runtimeDetails.network_tx_mbps_1m, " Мбит/с")} explanation="Средняя исходящая скорость за одну минуту из current-origin." sampledAt={runtime.sampled_at} icon={<Network size={15} />} />
+          <Metric label="Приём · 5 мин" value={numberText(runtimeDetails.network_rx_mbps_5m, " Мбит/с")} explanation="Средняя входящая скорость за пять минут из current-origin." sampledAt={runtime.sampled_at} icon={<Network size={15} />} />
+          <Metric label="Передача · 5 мин" value={numberText(runtimeDetails.network_tx_mbps_5m, " Мбит/с")} explanation="Средняя исходящая скорость за пять минут из current-origin." sampledAt={runtime.sampled_at} icon={<Network size={15} />} />
           <Metric label="Загрузка порта" value={data.capacity.tx_ratio === null ? "—" : numberText(data.capacity.tx_ratio * 100, "%")} explanation="Доля исходящей скорости от индивидуальной либо серверной политики порта." sampledAt={data.sources.runtime.sampled_at} icon={<Gauge size={15} />} />
         </div>
       </Card>
@@ -209,6 +234,30 @@ function TransportTab({ data }: { data: NodeObservability }) {
   );
 }
 
+function alertTitle(alert: NodeObservability["alerts"][number]): string {
+  const stable = `${alert.source}:${alert.fingerprint}`.toLowerCase();
+  if (stable.includes("panel_latency")) return "Высокая задержка панели";
+  if (stable.includes("panel_error")) return "Ошибки панели выше порога";
+  if (stable.includes("cpu")) return "Высокая загрузка процессора";
+  if (stable.includes("memory")) return "Высокая загрузка памяти";
+  if (stable.includes("disk")) return "Недостаточно свободного места";
+  if (stable.includes("capacity")) return "Ограничение ёмкости ноды";
+  if (stable.includes("observer")) return "Отклонение Observer";
+  return "Операционный сигнал ноды";
+}
+
+function alertSource(source: string): string {
+  const normalized = String(source || "").toLowerCase();
+  const labels: Record<string, string> = {
+    node_metrics: "метрики ноды",
+    node_health: "проверка здоровья",
+    node_capacity: "политика ёмкости",
+    observer: "Observer",
+    ru_origin: "RU-origin"
+  };
+  return labels[normalized] || "операционный контур";
+}
+
 function AlertsTab({ data }: { data: NodeObservability }) {
   return (
     <Card className="min-h-0">
@@ -218,7 +267,8 @@ function AlertsTab({ data }: { data: NodeObservability }) {
           {data.alerts.map((alert) => (
             <article key={alert.id} className="grid gap-2 px-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
               <div>
-                <h3 className="text-sm font-semibold">{alert.title}</h3>
+                <h3 className="text-sm font-semibold">{alertTitle(alert)}</h3>
+                <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Источник: {alertSource(alert.source)}</p>
                 <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">Последний сигнал: {alert.last_seen_at ? new Date(alert.last_seen_at).toLocaleString("ru-RU") : "Нет данных"}</p>
               </div>
               <Badge tone={alert.severity === "critical" ? "danger" : "warning"}>{alert.severity === "critical" ? "Критично" : "Предупреждение"}</Badge>
@@ -230,7 +280,7 @@ function AlertsTab({ data }: { data: NodeObservability }) {
   );
 }
 
-function TechnicalTab({ data }: { data: NodeObservability }) {
+function TechnicalTab({ data, ruStatus }: { data: NodeObservability; ruStatus: RuNodeStatus | null }) {
   return (
     <Card className="min-h-0">
       <SectionTitle title="Технические детали" description="Машинные коды скрыты по умолчанию и нужны только для точного расследования." />
@@ -241,7 +291,7 @@ function TechnicalTab({ data }: { data: NodeObservability }) {
           <Definition label="brain_reason" value={data.sources.brain_metrics.reason_code} mono />
           <Definition label="runtime_reason" value={data.sources.runtime.reason_code} mono />
           <Definition label="observer_reason" value={data.sources.observer.reason_code} mono />
-          <Definition label="ru_reason" value={data.sources.ru_origin.reason_code} mono />
+          <Definition label="ru_reason" value={ruStatus?.reason_code || "ru_latest_unavailable"} mono />
           <Definition label="probe_stage" value={data.network.last_probe_stage || "—"} mono />
           <Definition label="probe_error_kind" value={data.network.last_probe_error_kind || "—"} mono />
           <Definition label="probe_classification" value={data.network.probe_classification || "—"} mono />
@@ -255,40 +305,72 @@ export function NodeDetail({
   data,
   tab,
   onTabChange,
-  onBack,
   ruLatest,
+  ruStatus,
+  latestLoading,
+  latestError,
+  onLatestRetry,
   history,
   historyLoading,
   historyError,
+  onHistoryRetry,
+  historyMoreLoading,
+  historyMoreError,
+  onHistoryLoadMore,
   uploader,
   uploaderLoading,
   uploaderError,
+  onUploaderRetry,
   range,
   onRangeChange
 }: {
   data: NodeObservability;
   tab: NodeDetailTab;
   onTabChange: (tab: NodeDetailTab) => void;
-  onBack: () => void;
   ruLatest: RuLatest | null;
+  ruStatus: RuNodeStatus | null;
+  latestLoading: boolean;
+  latestError: string | null;
+  onLatestRetry: () => void;
   history: RuRunHistory | null;
   historyLoading: boolean;
   historyError: string | null;
+  onHistoryRetry: () => void;
+  historyMoreLoading: boolean;
+  historyMoreError: string | null;
+  onHistoryLoadMore: () => void;
   uploader: RuUploaderStatus | null;
   uploaderLoading: boolean;
   uploaderError: string | null;
+  onUploaderRetry: () => void;
   range: RuHistoryRange;
   onRangeChange: (range: RuHistoryRange) => void;
 }) {
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  function moveTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let next = index;
+    if (event.key === "ArrowRight") next = (index + 1) % TABS.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + TABS.length) % TABS.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = TABS.length - 1;
+    else return;
+    event.preventDefault();
+    onTabChange(TABS[next].id);
+    tabRefs.current[next]?.focus();
+  }
+
+  const ruOpsStatus = opsStatusFromSource(ruStatus?.status || "unavailable");
+  const ruTone = ruOpsStatus === "ok" ? "success" : ruOpsStatus === "failed" || ruOpsStatus === "BLOCKED_BY_ACCESS" ? "danger" : ruOpsStatus === "degraded" || ruOpsStatus === "stale" ? "warning" : "neutral";
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Button tone="ghost" className="mb-2 lg:hidden" onClick={onBack}><ArrowLeft size={15} /> Назад к нодам</Button>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold tracking-tight">Нода {data.node.code.toUpperCase()}</h2>
             <Badge tone={data.lifecycle.enabled ? data.lifecycle.is_draining ? "warning" : "success" : "neutral"}>{lifecycleText(data)}</Badge>
-            <Badge tone={opsStatusFromSource(data.sources.ru_origin.status) === "ok" ? "success" : opsStatusFromSource(data.sources.ru_origin.status) === "failed" ? "danger" : "warning"}>RU: {healthText(data.sources.ru_origin.status)}</Badge>
+            <Badge tone={ruTone}>RU: {sourceStatusText(ruStatus?.status || "unavailable")}</Badge>
           </div>
           <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{data.node.name || "Без названия"} · снимок {new Date(data.generated_at).toLocaleString("ru-RU")}</p>
         </div>
@@ -296,13 +378,18 @@ export function NodeDetail({
       </div>
 
       <div role="tablist" aria-label="Разделы карточки ноды" className="ops-scrollbar flex gap-1 overflow-x-auto border-b border-[color:var(--atlas-border)] pb-2">
-        {TABS.map((item) => (
+        {TABS.map((item, index) => (
           <button
             key={item.id}
+            ref={(element) => { tabRefs.current[index] = element; }}
+            id={`node-tab-${item.id}`}
             type="button"
             role="tab"
             aria-selected={tab === item.id}
+            aria-controls={`node-panel-${item.id}`}
+            tabIndex={tab === item.id ? 0 : -1}
             onClick={() => onTabChange(item.id)}
+            onKeyDown={(event) => moveTab(event, index)}
             className={`shrink-0 rounded-[var(--pokrov-radius-control)] border px-3 text-xs font-semibold ${tab === item.id ? "border-[color:var(--atlas-border-strong)] bg-[color:var(--pokrov-nav-active-bg)] text-[color:var(--atlas-text)]" : "border-transparent text-[color:var(--atlas-text-soft)] hover:bg-[color:var(--pokrov-table-row-hover-bg)]"}`}
           >
             {item.label}
@@ -310,22 +397,34 @@ export function NodeDetail({
         ))}
       </div>
 
-      <div role="tabpanel">
-        {tab === "overview" ? <OverviewTab data={data} /> : null}
+      <div id={`node-panel-${tab}`} role="tabpanel" aria-labelledby={`node-tab-${tab}`}>
+        {tab === "overview" ? <OverviewTab data={data} ruStatus={ruStatus} /> : null}
         {tab === "load" ? <LoadTab data={data} /> : null}
         {tab === "clients" ? <ClientsTab data={data} /> : null}
         {tab === "transport" ? <TransportTab data={data} /> : null}
         {tab === "alerts" ? <AlertsTab data={data} /> : null}
-        {tab === "technical" ? <TechnicalTab data={data} /> : null}
+        {tab === "technical" ? <TechnicalTab data={data} ruStatus={ruStatus} /> : null}
         {tab === "ru" ? (
           <div className="space-y-3">
-            {ruLatest && history ? <RuHistory latest={ruLatest} nodeStatus={data.sources.ru_origin} history={history} range={range} onRangeChange={onRangeChange} /> : null}
+            {ruLatest || history ? (
+              <RuHistory
+                latest={ruLatest}
+                nodeStatus={ruStatus}
+                history={history}
+                range={range}
+                onRangeChange={onRangeChange}
+                loadingMore={historyMoreLoading}
+                loadMoreError={historyMoreError}
+                onLoadMore={onHistoryLoadMore}
+              />
+            ) : null}
+            {latestLoading && !ruLatest ? <LoadingState title="Загружаем текущий RU-origin" description="Текущий статус и карточки попыток запрашиваются отдельно от сохранённой истории." className="min-h-24" /> : null}
+            {latestError ? <ErrorState title="Текущий RU-origin недоступен" description={latestError} action={<Button tone="secondary" onClick={onLatestRetry}>Повторить текущий RU-origin</Button>} className="min-h-24" /> : null}
             {historyLoading && !history ? <LoadingState title="Загружаем историю RU-origin" description="История запрашивается только для выбранной ноды и активной вкладки." /> : null}
-            {historyError ? <ErrorState title="История RU-origin недоступна" description={historyError} /> : null}
-            {!ruLatest && !historyLoading && !historyError ? <ErrorState title="RU-origin недоступен" description="Сводный источник не ответил; Brain и текущий контур остаются отдельными." /> : null}
+            {historyError ? <ErrorState title="История RU-origin недоступна" description={historyError} action={<Button tone="secondary" onClick={onHistoryRetry}>Повторить историю</Button>} /> : null}
             {uploader ? <UploaderStatus data={uploader} /> : null}
             {uploaderLoading && !uploader ? <LoadingState title="Проверяем доставку результатов" description="Ждём отдельный служебный сигнал загрузчика." className="min-h-24" /> : null}
-            {uploaderError ? <ErrorState title="Статус загрузчика недоступен" description={uploaderError} className="min-h-24" /> : null}
+            {uploaderError ? <ErrorState title="Статус загрузчика недоступен" description={uploaderError} action={<Button tone="secondary" onClick={onUploaderRetry}>Повторить статус загрузчика</Button>} className="min-h-24" /> : null}
           </div>
         ) : null}
       </div>

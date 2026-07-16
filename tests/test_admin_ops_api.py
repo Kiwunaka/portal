@@ -954,6 +954,18 @@ def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
     now = _utcnow()
     _seed_ops_fixture(api, now=now)
     _seed_ru_read_fixture(api, now=now)
+
+    class FakeControlPanel:
+        async def login(self):
+            return None
+
+        async def get_node_online_summaries(self, *, node_codes=None):
+            return {}
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(api, "ControlPanel", FakeControlPanel)
     client = TestClient(api.app)
     paths = [
         "/api/admin/probes/ru-origin/latest",
@@ -1008,6 +1020,61 @@ def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
         "source_ip_raw",
     ):
         assert forbidden not in serialized
+
+    s = api.SessionLocal()
+    try:
+        s.add(
+            api.Node(
+                code="brain",
+                name="Brain",
+                host="brain.example.test",
+                inbound_id=1,
+                enabled=True,
+                accepting_new_clients=True,
+                transport_profiles_json=json.dumps(
+                    [
+                        {
+                            "name": "legacy_reality_fallback",
+                            "enabled": True,
+                            "kind": "reality",
+                            "inbound_id": 1,
+                            "port": 443,
+                        }
+                    ]
+                ),
+            )
+        )
+        s.commit()
+    finally:
+        s.close()
+
+    health = client.get("/api/admin/nodes/health", headers=headers)
+    assert health.status_code == 200, health.text
+    brain_health = next(row for row in health.json()["nodes"] if row["code"] == "brain")
+    assert brain_health["country_code"] == "DE"
+    assert isinstance(brain_health["transport_profiles"], dict)
+    assert brain_health["transport_profiles"]["legacy_reality_fallback"]["enabled"] is True
+    assert brain_health["cpu_percent"] == 0.0  # legacy compatibility field remains numeric
+
+    service = importlib.import_module("admin_ops_service")
+
+    def reject_eager_history(*args, **kwargs):
+        raise AssertionError("RU history must not be queried when include_ru_history=false")
+
+    monkeypatch.setattr(service, "get_ru_run_history", reject_eager_history)
+    current_only = client.get(
+        "/api/admin/nodes/brain/observability?include_ru_history=false",
+        headers=headers,
+    )
+    assert current_only.status_code == 200, current_only.text
+    current_body = current_only.json()
+    assert "history" not in current_body["ru"]
+    assert current_body["sources"]["brain_metrics"]["details"]["cpu_percent"] is None
+    assert current_body["sources"]["brain_metrics"]["details"]["panel_error_rate"] is None
+    assert current_body["sources"]["runtime"]["details"]["provisioned_clients_count"] is None
+    assert current_body["sources"]["runtime"]["details"]["online_connections_hint"] is None
+    assert current_body["capacity"]["provisioned_clients_count"] is None
+    assert current_body["capacity"]["online_connections_hint"] is None
 
     missing_node = client.get(
         "/api/admin/nodes/does-not-exist/observability",

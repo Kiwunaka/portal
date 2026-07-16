@@ -8,6 +8,16 @@ function formatBytes(value: number | null): string {
   return `${gib.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} ГиБ`;
 }
 
+function uploaderErrorText(code: string | null): string {
+  const labels: Record<string, string> = {
+    archive_write_failed: "Ошибка записи в архив",
+    quarantine_present: "Есть результаты в карантине",
+    disk_low: "Мало свободного места",
+    disk_critical: "Свободное место почти исчерпано"
+  };
+  return labels[String(code || "").toLowerCase()] || "Загрузчик сообщил об ошибке";
+}
+
 export function UploaderStatus({ data }: { data: RuUploaderStatus }) {
   if (data.status === "stale") {
     return (
@@ -35,12 +45,31 @@ export function UploaderStatus({ data }: { data: RuUploaderStatus }) {
 
   const heartbeat = data.heartbeat;
   const hasQueue = heartbeat.pending_count > 0 || heartbeat.blocked_count > 0 || heartbeat.quarantine_count > 0;
+  const archiveIssue = !heartbeat.archive_write_ok;
+  const diskIssue = !["ok", "healthy"].includes(String(heartbeat.disk_state || "").toLowerCase());
+  const errorIssue = Boolean(heartbeat.last_error_code);
+  const hasIssue = hasQueue || archiveIssue || diskIssue || errorIssue || !["ok", "healthy"].includes(String(data.status || "").toLowerCase());
   return (
     <Card className="min-h-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Доставка результатов</h3>
-        <Badge tone={hasQueue ? "warning" : "success"}>{hasQueue ? "Есть очередь" : "Доставка в норме"}</Badge>
+        <Badge tone={hasIssue ? "warning" : "success"}>{hasIssue ? "Требует внимания" : "Доставка в норме"}</Badge>
       </div>
+      {archiveIssue || diskIssue || errorIssue ? (
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+          <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 py-2">
+            <span className="font-semibold">{archiveIssue ? "Архив не подтверждён" : "Архив подтверждён"}</span>
+          </div>
+          <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 py-2">
+            <span className="font-semibold">{diskIssue ? "Диск требует внимания" : "Диск в норме"}</span>
+            <span className="mt-1 block text-[color:var(--atlas-text-soft)]">Свободно {formatBytes(heartbeat.disk_free_bytes)}</span>
+          </div>
+          <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 py-2">
+            <span className="font-semibold">Последняя ошибка загрузчика</span>
+            <span className="mt-1 block text-[color:var(--atlas-text-soft)]">{errorIssue ? uploaderErrorText(heartbeat.last_error_code) : "Не зафиксирована"}</span>
+          </div>
+        </div>
+      ) : null}
       <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
         <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 py-2">
           <span className="font-semibold">Очередь отправки: {heartbeat.pending_count}</span>

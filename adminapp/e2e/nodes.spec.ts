@@ -5,9 +5,9 @@ import { installAdminApiMock, type RuScenario } from "./fixtures/admin-api";
 async function openScenario(browser: Browser, scenario: RuScenario, path = "/nodes?selected=nl&tab=ru") {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await installAdminApiMock(page, { ruScenario: scenario });
+  const api = await installAdminApiMock(page, { ruScenario: scenario });
   await page.goto(path);
-  return { context, page };
+  return { context, page, api };
 }
 
 async function openRuTab(page: Page) {
@@ -27,10 +27,11 @@ test("карточка ноды открывается за два действ�
   await row.click();
   await expect(page).toHaveURL(/selected=nl/);
   await expect(page.getByRole("heading", { name: "Нода NL" })).toBeVisible();
-  await expect(page.getByText("Текущий контур", { exact: true })).toBeVisible();
-  await expect(page.getByText("Brain-origin", { exact: true })).toBeVisible();
-  await expect(page.getByText("RU-origin", { exact: true })).toBeVisible();
-  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/nodes/nl/observability")).toBe(true);
+  const overview = page.getByRole("tabpanel", { name: "Обзор" });
+  await expect(overview.getByText("Текущий контур", { exact: true })).toBeVisible();
+  await expect(overview.getByText("Brain-origin", { exact: true })).toBeVisible();
+  await expect(overview.getByText("RU-origin", { exact: true })).toBeVisible();
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/nodes/nl/observability?include_ru_history=false")).toBe(true);
   expect(api.calls.some((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs"))).toBe(false);
 
   await openRuTab(page);
@@ -136,4 +137,98 @@ test("на мобильном детали открываются последо
   await page.getByRole("button", { name: "Назад к нодам" }).click();
   await expect(page).not.toHaveURL(/selected=/);
   await expect(table).toBeVisible();
+});
+
+test("review-контракт: live wire, независимые RU-блоки, полные данные и доступная навигация", async ({ browser }) => {
+  const review = await openScenario(browser, "review-findings", "/nodes");
+  const reviewApi = review.api;
+
+  const table = review.page.getByRole("table", { name: "Список нод" });
+  await expect(table).toBeVisible();
+  const brainRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду BRAIN" }) });
+  const deRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду DE" }) });
+  const nlRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду NL" }) });
+  await expect(brainRow).toContainText("DE");
+  await expect(deRow).toContainText("—");
+  await expect(nlRow).toContainText("RU-проверка завершилась сбоем");
+  await expect(review.page.getByRole("button", { name: "Открыть ноду NL" })).toBeVisible();
+
+  const headerHelp = review.page.getByRole("button", { name: "Показать пояснение" }).first();
+  await headerHelp.focus();
+  await expect(review.page.getByRole("tooltip").first()).toBeVisible();
+
+  await review.page.getByRole("button", { name: "Открыть ноду NL" }).click();
+  await expect(review.page.getByText("Запрет новых размещений", { exact: true })).toBeVisible();
+  await expect(review.page.getByText("Последний пакет Observer", { exact: true }).first()).toBeVisible();
+  await expect(review.page.getByText("Не сопоставлено: 1", { exact: true })).toBeVisible();
+  await expect(review.page.getByText("Ошибки разбора: 0", { exact: true })).toBeVisible();
+
+  const overviewTab = review.page.getByRole("tab", { name: "Обзор" });
+  await expect(overviewTab).toHaveAttribute("aria-controls", /node-panel-overview/);
+  await overviewTab.press("ArrowRight");
+  await expect(review.page).toHaveURL(/tab=ru/);
+  await expect(review.page.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", /node-tab-ru/);
+  await review.page.getByRole("button", { name: "Показать ещё" }).click();
+  await expect.poll(() => reviewApi.calls.some((call) => call.path.includes("cursor=cursor-safe-next"))).toBe(true);
+
+  await review.page.getByRole("tab", { name: "Нагрузка" }).click();
+  await expect(review.page.getByText("Задержка панели", { exact: true }).first()).toBeVisible();
+  await expect(review.page.getByText("Ошибки панели", { exact: true }).first()).toBeVisible();
+  await expect(review.page.getByText("Приём · 1 мин", { exact: true }).first()).toBeVisible();
+  await expect(review.page.getByText("Передача · 5 мин", { exact: true }).first()).toBeVisible();
+
+  await review.page.getByRole("tab", { name: "Алерты" }).click();
+  await expect(review.page.getByText("Высокая задержка панели", { exact: true })).toBeVisible();
+  await expect(review.page.getByText("Источник: метрики ноды", { exact: true })).toBeVisible();
+  await expect(review.page.getByText("Node nl metric alert: panel_latency", { exact: true })).toHaveCount(0);
+  await review.context.close();
+
+  const missing = await openScenario(browser, "selected-missing");
+  await expect(missing.page.getByText("В последнем RU-снимке нет результата выбранной ноды", { exact: true })).toBeVisible();
+  await expect(missing.page.getByText("RU: Норма", { exact: true })).toHaveCount(0);
+  await missing.context.close();
+
+  const partialContext = await browser.newContext();
+  const partialPage = await partialContext.newPage();
+  const partialApi = await installAdminApiMock(partialPage, { ruScenario: "fresh-pass", ruHistoryStatus: 503, ruUploaderStatus: 503 });
+  await partialPage.goto("/nodes?selected=nl&tab=ru");
+  await expect(partialPage.getByText("Последняя полученная попытка", { exact: true })).toBeVisible();
+  await expect(partialPage.getByText("История RU-origin недоступна", { exact: true })).toBeVisible();
+  await expect(partialPage.getByText("Статус загрузчика недоступен", { exact: true })).toBeVisible();
+  await partialPage.getByRole("button", { name: "Повторить историю" }).click();
+  await partialPage.getByRole("button", { name: "Повторить статус загрузчика" }).click();
+  await expect.poll(() => partialApi.calls.filter((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs")).length).toBeGreaterThan(1);
+  await expect.poll(() => partialApi.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/uploader-status").length).toBeGreaterThan(1);
+  await partialContext.close();
+
+  const latestContext = await browser.newContext();
+  const latestPage = await latestContext.newPage();
+  const latestApi = await installAdminApiMock(latestPage, { ruScenario: "fresh-pass", ruLatestStatus: 503 });
+  await latestPage.goto("/nodes?selected=nl&tab=ru");
+  await expect(latestPage.getByRole("region", { name: "История проверок из РФ" })).toBeVisible();
+  await latestPage.getByRole("button", { name: "Повторить текущий RU-origin" }).click();
+  await expect.poll(() => latestApi.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length).toBeGreaterThan(1);
+  await latestContext.close();
+
+  const uploader = await openScenario(browser, "uploader-fresh-failure");
+  await expect(uploader.page.getByText("Архив не подтверждён", { exact: true })).toBeVisible();
+  await expect(uploader.page.getByText("Диск требует внимания", { exact: true })).toBeVisible();
+  await expect(uploader.page.getByText("Последняя ошибка загрузчика", { exact: true })).toBeVisible();
+  await uploader.context.close();
+
+  const mobile404Context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobile404Page = await mobile404Context.newPage();
+  await installAdminApiMock(mobile404Page, { ruScenario: "fresh-pass", nodeObservabilityStatus: 404 });
+  await mobile404Page.goto("/nodes?selected=nl");
+  await mobile404Page.getByRole("button", { name: "Назад к нодам" }).click();
+  await expect(mobile404Page).not.toHaveURL(/selected=/);
+  await expect(mobile404Page.getByRole("table", { name: "Список нод" })).toBeVisible();
+  await mobile404Context.close();
+
+  const mobileLoadingContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobileLoadingPage = await mobileLoadingContext.newPage();
+  await installAdminApiMock(mobileLoadingPage, { ruScenario: "fresh-pass", nodeObservabilityDelayMs: 5_000 });
+  await mobileLoadingPage.goto("/nodes?selected=nl");
+  await expect(mobileLoadingPage.getByRole("button", { name: "Назад к нодам" })).toBeVisible();
+  await mobileLoadingContext.close();
 });

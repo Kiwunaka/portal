@@ -863,6 +863,7 @@ def build_node_observability(
     node_code: str,
     now: datetime,
     metrics_stale_after_seconds: int,
+    include_ru_history: bool = True,
 ) -> dict[str, Any] | None:
     wanted = str(node_code or "").strip().lower()
     node = s.query(Node).filter(func.lower(Node.code) == wanted).one_or_none()
@@ -900,75 +901,86 @@ def build_node_observability(
         brain_status, brain_reason = "failed", "brain_probe_failed"
     else:
         brain_status, brain_reason = "ok", "brain_metrics_fresh"
+    has_brain_source = sample_time is not None
     brain_details = {
         "cpu_percent": (
             float(latest_sample.cpu_percent)
             if latest_sample is not None and latest_sample.cpu_percent is not None
             else float(getattr(node, "cpu_percent", 0.0) or 0.0)
+            if has_brain_source
+            else None
         ),
         "memory_used_mb": (
             int(latest_sample.memory_used_mb)
             if latest_sample is not None
             and latest_sample.memory_used_mb is not None
-            else getattr(node, "memory_used_mb", None)
+            else getattr(node, "memory_used_mb", None) if has_brain_source else None
         ),
         "memory_total_mb": (
             int(latest_sample.memory_total_mb)
             if latest_sample is not None
             and latest_sample.memory_total_mb is not None
-            else getattr(node, "memory_total_mb", None)
+            else getattr(node, "memory_total_mb", None) if has_brain_source else None
         ),
         "disk_used_gb": (
             float(latest_sample.disk_used_gb)
             if latest_sample is not None
             and latest_sample.disk_used_gb is not None
-            else getattr(node, "disk_used_gb", None)
+            else getattr(node, "disk_used_gb", None) if has_brain_source else None
         ),
         "disk_total_gb": (
             float(latest_sample.disk_total_gb)
             if latest_sample is not None
             and latest_sample.disk_total_gb is not None
-            else getattr(node, "disk_total_gb", None)
+            else getattr(node, "disk_total_gb", None) if has_brain_source else None
         ),
         "network_rx_mbps": (
             latest_sample.network_rx_mbps
             if latest_sample is not None
-            else getattr(node, "network_rx_mbps", None)
+            else getattr(node, "network_rx_mbps", None) if has_brain_source else None
         ),
         "network_tx_mbps": (
             latest_sample.network_tx_mbps
             if latest_sample is not None
-            else getattr(node, "network_tx_mbps", None)
+            else getattr(node, "network_tx_mbps", None) if has_brain_source else None
         ),
         "network_total_mbps": (
             latest_sample.network_total_mbps
             if latest_sample is not None
-            else getattr(node, "network_total_mbps", None)
+            else getattr(node, "network_total_mbps", None) if has_brain_source else None
         ),
         "panel_latency_ms": (
             latest_sample.panel_latency_ms
             if latest_sample is not None
-            else getattr(node, "panel_latency_ms", None)
+            else getattr(node, "panel_latency_ms", None) if has_brain_source else None
         ),
         "panel_error_rate": (
             float(latest_sample.panel_error_rate or 0.0)
             if latest_sample is not None
             else float(getattr(node, "panel_error_rate", 0.0) or 0.0)
+            if has_brain_source
+            else None
         ),
         "probe_stage": (
             str(latest_sample.probe_stage or "") or None
             if latest_sample is not None
-            else str(getattr(node, "last_probe_stage", "") or "") or None
+            else (str(getattr(node, "last_probe_stage", "") or "") or None)
+            if has_brain_source
+            else None
         ),
         "probe_error_kind": (
             str(latest_sample.probe_error_kind or "") or None
             if latest_sample is not None
-            else str(getattr(node, "last_probe_error_kind", "") or "") or None
+            else (str(getattr(node, "last_probe_error_kind", "") or "") or None)
+            if has_brain_source
+            else None
         ),
         "probe_classification": (
             str(latest_sample.probe_classification or "") or None
             if latest_sample is not None
-            else str(getattr(node, "last_probe_classification", "") or "") or None
+            else (str(getattr(node, "last_probe_classification", "") or "") or None)
+            if has_brain_source
+            else None
         ),
     }
 
@@ -988,12 +1000,12 @@ def build_node_observability(
         "provisioned_clients_count": (
             int(latest_runtime.provisioned_clients_count or 0)
             if latest_runtime is not None
-            else int(getattr(node, "provisioned_clients_count", 0) or 0)
+            else None
         ),
         "online_connections_hint": (
             int(latest_runtime.online_connections_hint or 0)
             if latest_runtime is not None
-            else int(getattr(node, "online_connections_hint", 0) or 0)
+            else None
         ),
         "network_rx_mbps_1m": getattr(latest_runtime, "network_rx_mbps_1m", None),
         "network_tx_mbps_1m": getattr(latest_runtime, "network_tx_mbps_1m", None),
@@ -1041,7 +1053,11 @@ def build_node_observability(
             "reason_code": "ru_target_missing",
             "target": None,
         }
-    ru_history = get_ru_run_history(s, node_code=wanted, limit=10)
+    ru_history = (
+        get_ru_run_history(s, node_code=wanted, limit=10)
+        if include_ru_history
+        else None
+    )
     policy = _node_capacity_policy_by_code(s).get(wanted)
     capacity = node_capacity_status(node, policy=policy, now=normalized_now)
     mapped_users = int(
@@ -1082,12 +1098,8 @@ def build_node_observability(
             "tx_mbps": capacity.get("tx_mbps"),
             "tx_ratio": capacity.get("tx_ratio"),
             "capacity_mbps": capacity.get("capacity_mbps"),
-            "provisioned_clients_count": int(
-                capacity.get("provisioned_clients_count") or 0
-            ),
-            "online_connections_hint": int(
-                capacity.get("online_connections_hint") or 0
-            ),
+            "provisioned_clients_count": runtime_details["provisioned_clients_count"],
+            "online_connections_hint": runtime_details["online_connections_hint"],
         },
         "sources": {
             "brain_metrics": _source_row(
@@ -1135,7 +1147,7 @@ def build_node_observability(
         "transports": _safe_transport_rows(node),
         "ru": {
             "latest": dict(ru_node),
-            "history": ru_history,
+            **({"history": ru_history} if include_ru_history else {}),
         },
         "alerts": [_compact_node_alert(row, now=normalized_now) for row in alerts],
     }
