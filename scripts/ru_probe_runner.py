@@ -1554,24 +1554,20 @@ def _run_hysteria_target(
     profile_registry: dict[str, object],
     timeout_sec: float,
 ) -> None:
+    requested_families = [
+        family
+        for family in ALLOWED_ADDRESS_FAMILIES
+        if family in endpoint["address_families"]
+    ]
     try:
         dns = dataplane_probe._resolve_dns(
             str(endpoint["host"]),
             int(endpoint["port"]),
         )
-        resolved_ips = [str(item) for item in dns.get("resolved_ips", [])]
-        if not resolved_ips:
-            raise OSError
-        result["stages"]["dns"] = _stage("pass")
-        result["address_family_status"] = _family_status(
-            list(endpoint["address_families"]),
-            resolved_ips,
-            dns_status="pass",
-        )
     except (OSError, RuntimeError):
         result["stages"]["dns"] = _stage("fail", code="dns_lookup_failed")
         result["address_family_status"] = _family_status(
-            list(endpoint["address_families"]),
+            requested_families,
             [],
             dns_status="fail",
         )
@@ -1583,13 +1579,95 @@ def _run_hysteria_target(
         result["transport"]["classification"] = "prerequisite_failed"
         result["transport"]["detail_code"] = "prerequisite_failed"
         return
-    response = run_transport_adapter(
-        "hysteria_handshake",
-        endpoint,
-        profile_registry=profile_registry,
-        timeout_sec=timeout_sec,
+
+    resolved_by_family: dict[str, list[str]] = {
+        family: [] for family in ALLOWED_ADDRESS_FAMILIES
+    }
+    for raw_address in dns.get("resolved_ips", []):
+        address = str(raw_address)
+        family = _family_for_ip(address)
+        if (
+            family in requested_families
+            and address not in resolved_by_family[family]
+        ):
+            resolved_by_family[family].append(address)
+    for family in requested_families:
+        resolved_by_family[family].sort(
+            key=lambda address: int(ipaddress.ip_address(address))
+        )
+
+    if not any(resolved_by_family[family] for family in requested_families):
+        result["stages"]["dns"] = _stage(
+            "fail",
+            code="dns_requested_family_unavailable",
+        )
+        result["address_family_status"] = {
+            family: (
+                "fail" if family in requested_families else "not_applicable"
+            )
+            for family in ALLOWED_ADDRESS_FAMILIES
+        }
+        result["stages"]["transport_handshake"] = _stage(
+            "not_run",
+            code="prerequisite_failed",
+        )
+        result["transport"]["handshake_status"] = "not_run"
+        result["transport"]["classification"] = "prerequisite_failed"
+        result["transport"]["detail_code"] = "prerequisite_failed"
+        return
+
+    result["stages"]["dns"] = _stage("pass")
+    family_status = {
+        family: (
+            "not_run" if family in requested_families else "not_applicable"
+        )
+        for family in ALLOWED_ADDRESS_FAMILIES
+    }
+    attempts: list[
+        tuple[str, dict[str, object], dict[str, object]]
+    ] = []
+    for family in requested_families:
+        addresses = resolved_by_family[family]
+        if not addresses:
+            family_status[family] = "fail"
+            continue
+        adapter_endpoint = copy.deepcopy(endpoint)
+        adapter_endpoint["host"] = addresses[0]
+        adapter_endpoint["address_families"] = [family]
+        response = run_transport_adapter(
+            "hysteria_handshake",
+            adapter_endpoint,
+            profile_registry=profile_registry,
+            timeout_sec=timeout_sec,
+        )
+        stage = transport_stage_from_adapter("hysteria_handshake", response)
+        family_status[family] = str(stage["status"])
+        attempts.append((family, stage, response))
+
+    result["address_family_status"] = family_status
+    selected_attempt = next(
+        (
+            attempt
+            for desired_status in ("pass", "fail", "not_run")
+            for attempt in attempts
+            if attempt[1]["status"] == desired_status
+        ),
+        None,
     )
-    _apply_adapter_result(result, "hysteria_handshake", response)
+    if selected_attempt is None:
+        result["stages"]["transport_handshake"] = _stage(
+            "not_run",
+            code="prerequisite_failed",
+        )
+        result["transport"]["handshake_status"] = "not_run"
+        result["transport"]["classification"] = "prerequisite_failed"
+        result["transport"]["detail_code"] = "prerequisite_failed"
+        return
+    _apply_adapter_result(
+        result,
+        "hysteria_handshake",
+        selected_attempt[2],
+    )
 
 
 def run_manifest_target(

@@ -36,6 +36,7 @@ from ru_probe_contract import (  # noqa: E402
     manifest_revision,
     validate_run_payload,
 )
+import ru_probe_service as ru_probe_service_module  # noqa: E402
 
 
 def _load_module(name: str, path: Path):
@@ -307,6 +308,428 @@ def test_udp_send_without_valid_protocol_response_is_not_hysteria_pass(runner) -
         },
     )
     assert result["status"] == "not_run"
+
+
+def test_hysteria_ipv4_only_manifest_cannot_release_pass_via_ipv6_adapter(
+    runner,
+) -> None:
+    generated_at = datetime.now(timezone.utc).replace(microsecond=0)
+    google = _target(
+        mode="google_https",
+        target_id="environment:google",
+        target_kind="environment",
+        node_code=None,
+        profile="https",
+    )
+    google["endpoint"]["address_families"] = ["ipv4"]
+    google["endpoint_fingerprint"] = endpoint_fingerprint(google["endpoint"])
+    hysteria = _target(
+        mode="hysteria_handshake",
+        target_id="reserve:hysteria",
+        target_kind="reserve_hysteria",
+        node_code=None,
+        profile="hysteria2",
+        local_profile="reserve-hysteria",
+    )
+    hysteria["endpoint"]["address_families"] = ["ipv4"]
+    hysteria["endpoint_fingerprint"] = endpoint_fingerprint(hysteria["endpoint"])
+    targets = [google, hysteria]
+    manifest = {
+        "manifest_schema_version": 1,
+        "manifest_revision": manifest_revision(targets),
+        "generated_at": generated_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "max_cache_age_seconds": 3600,
+        "targets": targets,
+    }
+    https_result = {
+        "stages": {
+            "dns": {"status": "pass", "latency_ms": 1, "code": None},
+            "tcp": {"status": "pass", "latency_ms": 2, "code": None},
+            "tls": {"status": "pass", "latency_ms": 3, "code": None},
+            "http_large_body": {"status": "pass", "latency_ms": 4, "code": None},
+            "transport_handshake": {
+                "status": "not_applicable",
+                "latency_ms": None,
+                "code": None,
+            },
+        },
+        "address_family_status": {
+            "ipv4": "pass",
+            "ipv6": "not_applicable",
+        },
+    }
+    adapter_endpoints: list[dict[str, object]] = []
+
+    def adapter(mode, endpoint, **_kwargs):
+        adapter_endpoints.append(
+            {
+                "host": endpoint["host"],
+                "sni": endpoint["sni"],
+                "address_families": list(endpoint["address_families"]),
+            }
+        )
+        actual_family = (
+            "ipv6"
+            if endpoint["host"] == "reserve.example.net"
+            else runner._family_for_ip(endpoint["host"])
+        )
+        handshake_status = "pass" if actual_family == "ipv6" else "fail"
+        return {
+            "schema_version": 1,
+            "profile_id": endpoint["local_probe_profile_id"],
+            "protocol": "hysteria2",
+            "handshake_status": handshake_status,
+            "classification": "ok" if handshake_status == "pass" else "unreachable",
+            "detail_code": (
+                None if handshake_status == "pass" else "ipv4_probe_failed"
+            ),
+        }
+
+    with (
+        mock.patch.object(
+            runner,
+            "probe_https_large_body",
+            return_value=https_result,
+        ),
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["203.0.113.30", "2001:db8::30"],
+                "resolved_ipv4": ["203.0.113.30"],
+                "resolved_ipv6": ["2001:db8::30"],
+            },
+        ),
+        mock.patch.object(
+            runner,
+            "run_transport_adapter",
+            side_effect=adapter,
+        ),
+    ):
+        payload = runner.run_manifest(
+            manifest,
+            probe_host_id="mini",
+            probe_host_label="Мини",
+            probe_public_ip="203.0.113.10",
+            profile_registry={"profiles": {}},
+            timeout_sec=5.0,
+            started_at=generated_at - timedelta(minutes=2),
+            finished_at=generated_at - timedelta(minutes=1),
+        )
+
+    validated = validate_run_payload(payload)
+    with mock.patch.object(
+        ru_probe_service_module,
+        "build_ru_manifest",
+        return_value=manifest,
+    ):
+        evaluated = ru_probe_service_module.evaluate_ru_run(
+            object(),
+            validated,
+            now=generated_at,
+        )
+
+    hysteria_result = next(
+        item
+        for item in validated["targets"]
+        if item["target_id"] == "reserve:hysteria"
+    )
+    assert adapter_endpoints == [
+        {
+            "host": "203.0.113.30",
+            "sni": "reserve.example.net",
+            "address_families": ["ipv4"],
+        }
+    ]
+    assert hysteria_result["stages"]["transport_handshake"]["status"] != "pass"
+    assert hysteria_result["address_family_status"]["ipv4"] != "pass"
+    assert evaluated.release_verdict != "pass"
+    assert evaluated.hysteria_alive is False
+
+
+@pytest.mark.parametrize(
+    ("family", "resolved_address"),
+    [
+        ("ipv4", "203.0.113.30"),
+        ("ipv6", "2001:db8::30"),
+    ],
+)
+def test_hysteria_single_family_uses_matching_literal_and_preserves_sni(
+    runner,
+    family: str,
+    resolved_address: str,
+) -> None:
+    target = _target(
+        mode="hysteria_handshake",
+        target_id="reserve:hysteria",
+        target_kind="reserve_hysteria",
+        node_code=None,
+        profile="hysteria2",
+        local_profile="reserve-hysteria",
+    )
+    target["endpoint"]["address_families"] = [family]
+    target["endpoint_fingerprint"] = endpoint_fingerprint(target["endpoint"])
+    adapter_endpoints: list[dict[str, object]] = []
+
+    def adapter(mode, endpoint, **_kwargs):
+        adapter_endpoints.append(endpoint)
+        return {
+            "schema_version": 1,
+            "profile_id": "reserve-hysteria",
+            "protocol": "hysteria2",
+            "handshake_status": "pass",
+            "classification": "ok",
+            "detail_code": None,
+        }
+
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["2001:db8::30", "203.0.113.30"],
+                "resolved_ipv4": ["203.0.113.30"],
+                "resolved_ipv6": ["2001:db8::30"],
+            },
+        ),
+        mock.patch.object(
+            runner,
+            "run_transport_adapter",
+            side_effect=adapter,
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={"profiles": {}},
+        )
+
+    assert len(adapter_endpoints) == 1
+    assert adapter_endpoints[0]["host"] == resolved_address
+    assert adapter_endpoints[0]["sni"] == "reserve.example.net"
+    assert adapter_endpoints[0]["address_families"] == [family]
+    assert result["endpoint"] == target["endpoint"]
+    assert result["stages"]["transport_handshake"]["status"] == "pass"
+    assert result["address_family_status"][family] == "pass"
+
+
+def test_hysteria_dual_stack_attempts_each_family_in_stable_order(runner) -> None:
+    target = _target(
+        mode="hysteria_handshake",
+        target_id="reserve:hysteria",
+        target_kind="reserve_hysteria",
+        node_code=None,
+        profile="hysteria2",
+        local_profile="reserve-hysteria",
+    )
+    adapter_endpoints: list[tuple[str, tuple[str, ...]]] = []
+
+    def adapter(mode, endpoint, **_kwargs):
+        adapter_endpoints.append(
+            (str(endpoint["host"]), tuple(endpoint["address_families"]))
+        )
+        return {
+            "schema_version": 1,
+            "profile_id": "reserve-hysteria",
+            "protocol": "hysteria2",
+            "handshake_status": "pass",
+            "classification": "ok",
+            "detail_code": None,
+        }
+
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": [
+                    "2001:db8::31",
+                    "203.0.113.31",
+                    "2001:db8::30",
+                    "203.0.113.30",
+                ],
+            },
+        ),
+        mock.patch.object(
+            runner,
+            "run_transport_adapter",
+            side_effect=adapter,
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={"profiles": {}},
+        )
+
+    assert adapter_endpoints == [
+        ("203.0.113.30", ("ipv4",)),
+        ("2001:db8::30", ("ipv6",)),
+    ]
+    assert result["address_family_status"] == {
+        "ipv4": "pass",
+        "ipv6": "pass",
+    }
+    assert result["stages"]["transport_handshake"]["status"] == "pass"
+
+
+def test_hysteria_missing_requested_family_never_uses_forbidden_fallback(
+    runner,
+) -> None:
+    target = _target(
+        mode="hysteria_handshake",
+        target_id="reserve:hysteria",
+        target_kind="reserve_hysteria",
+        node_code=None,
+        profile="hysteria2",
+        local_profile="reserve-hysteria",
+    )
+    target["endpoint"]["address_families"] = ["ipv4"]
+    target["endpoint_fingerprint"] = endpoint_fingerprint(target["endpoint"])
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["2001:db8::30"],
+                "resolved_ipv4": [],
+                "resolved_ipv6": ["2001:db8::30"],
+            },
+        ),
+        mock.patch.object(runner, "run_transport_adapter") as adapter,
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={"profiles": {}},
+        )
+
+    adapter.assert_not_called()
+    assert result["stages"]["dns"] == {
+        "status": "fail",
+        "latency_ms": None,
+        "code": "dns_requested_family_unavailable",
+    }
+    assert result["stages"]["transport_handshake"]["status"] == "not_run"
+    assert result["address_family_status"] == {
+        "ipv4": "fail",
+        "ipv6": "not_applicable",
+    }
+
+
+def test_hysteria_family_status_uses_attempts_and_fail_beats_not_run(
+    runner,
+) -> None:
+    target = _target(
+        mode="hysteria_handshake",
+        target_id="reserve:hysteria",
+        target_kind="reserve_hysteria",
+        node_code=None,
+        profile="hysteria2",
+        local_profile="reserve-hysteria",
+    )
+
+    def adapter(mode, endpoint, **_kwargs):
+        status = "not_run" if endpoint["address_families"] == ["ipv4"] else "fail"
+        return {
+            "schema_version": 1,
+            "profile_id": "reserve-hysteria",
+            "protocol": "hysteria2",
+            "handshake_status": status,
+            "classification": (
+                "probe_material_unavailable"
+                if status == "not_run"
+                else "unreachable"
+            ),
+            "detail_code": (
+                "probe_material_unavailable"
+                if status == "not_run"
+                else "transport_handshake_failed"
+            ),
+        }
+
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["203.0.113.30", "2001:db8::30"],
+            },
+        ),
+        mock.patch.object(
+            runner,
+            "run_transport_adapter",
+            side_effect=adapter,
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={"profiles": {}},
+        )
+
+    assert result["address_family_status"] == {
+        "ipv4": "not_run",
+        "ipv6": "fail",
+    }
+    assert result["stages"]["transport_handshake"] == {
+        "status": "fail",
+        "latency_ms": None,
+        "code": "transport_handshake_failed",
+    }
+
+
+def test_hysteria_partial_family_success_promotes_allowed_handshake_pass(
+    runner,
+) -> None:
+    target = _target(
+        mode="hysteria_handshake",
+        target_id="reserve:hysteria",
+        target_kind="reserve_hysteria",
+        node_code=None,
+        profile="hysteria2",
+        local_profile="reserve-hysteria",
+    )
+
+    def adapter(mode, endpoint, **_kwargs):
+        status = "fail" if endpoint["address_families"] == ["ipv4"] else "pass"
+        return {
+            "schema_version": 1,
+            "profile_id": "reserve-hysteria",
+            "protocol": "hysteria2",
+            "handshake_status": status,
+            "classification": "unreachable" if status == "fail" else "ok",
+            "detail_code": (
+                "transport_handshake_failed" if status == "fail" else None
+            ),
+        }
+
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["203.0.113.30", "2001:db8::30"],
+            },
+        ),
+        mock.patch.object(
+            runner,
+            "run_transport_adapter",
+            side_effect=adapter,
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={"profiles": {}},
+        )
+
+    assert result["address_family_status"] == {
+        "ipv4": "fail",
+        "ipv6": "pass",
+    }
+    assert result["stages"]["transport_handshake"]["status"] == "pass"
+    assert result["transport"]["classification"] == "ok"
 
 
 def test_transport_pass_requires_valid_protocol_response_metadata(runner) -> None:
