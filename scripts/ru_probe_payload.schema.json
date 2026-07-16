@@ -363,7 +363,7 @@
         "detail": {
           "anyOf": [
             {"type": "null"},
-            {"type": "string", "maxLength": 500}
+            {"enum": ["TLS-проверка отклонена удалённой стороной"]}
           ]
         }
       }

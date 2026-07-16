@@ -626,6 +626,27 @@ def test_unknown_release_target_fails_closed(session) -> None:
     assert exc.value.code == "unknown_release_target"
 
 
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "auth_token=SYNTHETIC_REDACTED",
+        "Cookie: sessionid=SYNTHETIC_REDACTED",
+        "certificate names do not match expected reality target",
+    ],
+)
+def test_evaluator_never_copies_untrusted_runner_detail_to_result(
+    session, detail: str
+) -> None:
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    manifest = build_ru_manifest(session, now=now)
+    payload = _payload_from_manifest(manifest, now=now)
+    payload["targets"][0]["detail"] = detail
+
+    with pytest.raises(RuProbeContractError) as exc:
+        evaluate_ru_run(session, payload, now=now)
+    assert exc.value.code == "sensitive_detail"
+
+
 def test_google_failure_marks_environment_and_every_node_unavailable(session) -> None:
     session.add_all([_node("nl", enabled=True), _node("de", enabled=True)])
     session.commit()

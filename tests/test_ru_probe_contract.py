@@ -37,6 +37,7 @@ VECTOR = json.loads(
     )
 )
 SCHEMA_PATH = REPO_ROOT / "scripts" / "ru_probe_payload.schema.json"
+SAFE_OPERATOR_DETAIL = "TLS-проверка отклонена удалённой стороной"
 
 
 def _endpoint(*, mode: str = "delivery_tls") -> dict[str, object]:
@@ -280,29 +281,63 @@ def test_validation_returns_detached_normalized_payload() -> None:
 
 
 @pytest.mark.parametrize(
-    "detail",
+    ("detail", "code"),
     [
-        "Bearer SYNTHETIC_REDACTED",
-        "api_key=SYNTHETIC_REDACTED",
-        "panel_pass=SYNTHETIC_REDACTED",
-        "https://example.invalid/subscription/SYNTHETIC_REDACTED",
-        "subscription_url=https://example.invalid/SYNTHETIC_REDACTED",
+        ("Bearer SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("api_key=SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("panel_pass=SYNTHETIC_REDACTED", "sensitive_detail"),
+        (
+            "https://example.invalid/subscription/SYNTHETIC_REDACTED",
+            "sensitive_detail",
+        ),
+        (
+            "subscription_url=https://example.invalid/SYNTHETIC_REDACTED",
+            "sensitive_detail",
+        ),
+        ("auth_token=SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("accessToken=SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("credential=SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("Cookie: sessionid=SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("jwt=SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("AUTH TOKEN = SYNTHETIC_REDACTED", "sensitive_detail"),
+        ("hTTps : //example.invalid/SYNTHETIC_REDACTED", "sensitive_detail"),
+        (
+            "eyJhbGciOiJIUzI1NiJ9."
+            "eyJzdWIiOiJTWU5USEVUSUNfUkVEQUNURUQifQ."
+            "SYNTHETIC_REDACTED",
+            "sensitive_detail",
+        ),
+        ('{"credential":"SYNTHETIC_REDACTED"}', "sensitive_detail"),
+        (
+            "certificate names do not match expected reality target",
+            "sensitive_detail",
+        ),
+        ("cookie\u000bsessionid=SYNTHETIC_REDACTED", "invalid_detail"),
     ],
 )
-def test_detail_rejects_obvious_synthetic_credential_and_subscription_forms(
-    detail: str,
+def test_detail_is_fail_closed_to_server_owned_safe_text(
+    detail: str, code: str
 ) -> None:
     payload = valid_payload()
     payload["targets"][0]["detail"] = detail
-    _assert_error(payload, "sensitive_detail")
+    _assert_error(payload, code)
 
 
-def test_detail_accepts_short_sanitized_operator_reason() -> None:
+def test_detail_accepts_only_exact_server_owned_operator_reason() -> None:
     payload = valid_payload()
-    payload["targets"][0]["detail"] = "TLS-проверка отклонена удалённой стороной"
-    assert validate_run_payload(payload)["targets"][0]["detail"] == (
-        "TLS-проверка отклонена удалённой стороной"
+    payload["targets"][0]["detail"] = SAFE_OPERATOR_DETAIL
+    assert (
+        validate_run_payload(payload)["targets"][0]["detail"]
+        == SAFE_OPERATOR_DETAIL
     )
+
+    for mutation in (
+        SAFE_OPERATOR_DETAIL.lower(),
+        f" {SAFE_OPERATOR_DETAIL}",
+        f"{SAFE_OPERATOR_DETAIL} ",
+    ):
+        payload["targets"][0]["detail"] = mutation
+        _assert_error(payload, "sensitive_detail")
 
 
 def test_contract_module_is_stdlib_only() -> None:
@@ -354,7 +389,9 @@ def test_json_schema_mirrors_exact_nested_contract() -> None:
     assert endpoint["properties"]["address_families"]["items"]["enum"] == list(
         ALLOWED_ADDRESS_FAMILIES
     )
-    assert target["properties"]["detail"]["anyOf"][1]["maxLength"] == 500
+    assert target["properties"]["detail"]["anyOf"][1] == {
+        "enum": [SAFE_OPERATOR_DETAIL]
+    }
     assert target["properties"]["transport"]["properties"]["classification"] == {
         "$ref": "#/$defs/code64"
     }

@@ -59,7 +59,7 @@ _TIMESTAMP_RE = re.compile(
 )
 _DNS_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
-_SENSITIVE_DETAIL_RE = re.compile(
+_SENSITIVE_PUBLIC_PATH_RE = re.compile(
     r"(?ix)(?:"
     r"\bauthorization\b\s*['\"]?\s*:|"
     r"\bbearer\s+[A-Za-z0-9._~+/=-]+|"
@@ -69,6 +69,14 @@ _SENSITIVE_DETAIL_RE = re.compile(
     r"sub[_-]?url)\b\s*['\"]?\s*[=:]|"
     r"(?:https?|vless|vmess|trojan|ss|hysteria2?|tuic|wireguard)://"
     r")"
+)
+# Runner/provider free text is untrusted and can contain material that no
+# spelling denylist can reliably redact. Detail therefore accepts only exact
+# server-owned display text. Machine-readable diagnostics belong in code fields.
+_SERVER_OWNED_TARGET_DETAILS = frozenset(
+    {
+        "TLS-проверка отклонена удалённой стороной",
+    }
 )
 
 
@@ -298,7 +306,7 @@ def _validate_nullable_detail(value: object, *, path: str) -> str | None:
         maximum=500,
         code="invalid_detail",
     )
-    if _SENSITIVE_DETAIL_RE.search(detail):
+    if detail not in _SERVER_OWNED_TARGET_DETAILS:
         _fail("sensitive_detail", path)
     return detail
 
@@ -346,7 +354,9 @@ def _validate_endpoint(value: object, *, path: str) -> dict[str, object]:
             maximum=256,
             code="invalid_path",
         )
-        if not http_path.startswith("/") or _SENSITIVE_DETAIL_RE.search(http_path):
+        if not http_path.startswith("/") or _SENSITIVE_PUBLIC_PATH_RE.search(
+            http_path
+        ):
             _fail("invalid_path", f"{path}.http_path")
     min_body = endpoint["min_body_bytes"]
     if min_body is not None and (
