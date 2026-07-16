@@ -807,6 +807,7 @@ git commit -m "feat(ops): define RU probe manifest and verdict contract"
 - Create: `scripts/internal_hmac_client.py`
 - Modify: `scripts/ru_probe_runner.py`
 - Modify: `scripts/ru_probe_sample.json`
+- Modify: `scripts/render_ru_probe_report.py`
 - Modify: `tests/test_ru_probe_runner.py`
 - Modify: `tests/test_render_ru_probe_report.py`
 
