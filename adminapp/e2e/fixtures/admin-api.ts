@@ -15,6 +15,332 @@ export type AdminSearchResult = {
 
 const generatedAt = "2026-07-15T10:00:00Z";
 
+export type RuScenario =
+  | "fresh-pass"
+  | "google-down"
+  | "stale"
+  | "missing"
+  | "superseded-manifest"
+  | "incomplete-latest-with-last-good"
+  | "uploader-backlog"
+  | "uploader-heartbeat-stale";
+
+const nodeRows = [
+  {
+    code: "nl",
+    name: "Нидерланды",
+    country_code: "NL",
+    enabled: true,
+    accepting_new_clients: true,
+    is_draining: false,
+    mapped_users: 31,
+    is_healthy: true,
+    health_score: 97,
+    capacity_state: "ok",
+    capacity_reject_reason: null,
+    cpu_percent: 28.5,
+    network_utilization_percent: 41.2,
+    provisioned_clients_count: 46,
+    online_connections_hint: 19,
+    freshness_status: "fresh",
+    freshness_age_seconds: 420,
+    hoster_family: "timeweb",
+    hoster_asn: "AS209024",
+    subnet: "198.51.100.0/24",
+    alert_kinds: ["panel_latency"],
+    transport_profiles: [{ name: "legacy_reality_fallback", kind: "xray", enabled: true, port: 443 }]
+  },
+  {
+    code: "de",
+    name: "Германия",
+    country_code: "DE",
+    enabled: false,
+    accepting_new_clients: false,
+    is_draining: false,
+    mapped_users: 0,
+    is_healthy: false,
+    health_score: null,
+    capacity_state: "unknown",
+    capacity_reject_reason: null,
+    cpu_percent: null,
+    network_utilization_percent: null,
+    provisioned_clients_count: null,
+    online_connections_hint: null,
+    freshness_status: "stale",
+    freshness_age_seconds: 32000,
+    hoster_family: null,
+    hoster_asn: null,
+    subnet: null,
+    alert_kinds: [],
+    transport_profiles: []
+  }
+];
+
+const baselineStages = {
+  dns: { status: "pass", latency_ms: 18 },
+  tcp: { status: "fail", latency_ms: 41 },
+  tls: { status: "not_run", latency_ms: null },
+  http_large_body: { status: "not_applicable", latency_ms: null },
+  transport_handshake: { status: "pass", latency_ms: 72 }
+};
+
+function runSummary(overrides: Record<string, unknown> = {}) {
+  return {
+    run_db_id: 401,
+    run_id: "00000000-0000-4000-8000-000000000401",
+    origin: "ru",
+    probe_host_id: "mini",
+    probe_host_label: "mini",
+    runner_version: "2.1.0",
+    started_at: "2026-07-15T09:48:00Z",
+    finished_at: "2026-07-15T09:50:00Z",
+    received_at: "2026-07-15T09:51:00Z",
+    manifest_revision: "manifest-current-401",
+    execution_status: "completed",
+    evidence_code: null,
+    environment_verdict: "available",
+    release_verdict: "pass",
+    current_eligible: true,
+    ineligible_reason: null,
+    google_reachable: true,
+    xhttp_alive: true,
+    hysteria_alive: null,
+    server_reason: null,
+    server_summary: null,
+    ...overrides
+  };
+}
+
+function ruNode(status: string, reasonCode: string, sampledAt: string | null = "2026-07-15T09:50:00Z") {
+  return {
+    node_code: "nl",
+    status,
+    sampled_at: sampledAt,
+    age_seconds: sampledAt ? (status === "stale" ? 28860 : 600) : null,
+    threshold_seconds: 25200,
+    reason_code: reasonCode,
+    run_id: sampledAt ? "00000000-0000-4000-8000-000000000401" : null,
+    target: sampledAt
+      ? {
+          target_id: "node:nl",
+          target_kind: "delivery_node",
+          scope: "release_required",
+          node_code: "nl",
+          observed_at: sampledAt,
+          overall_status: status === "ok" ? "pass" : status === "unavailable" ? "unavailable_probe_host" : "incomplete",
+          current_eligible: status === "ok" || status === "stale",
+          ineligible_reason: status === "ok" || status === "stale" ? null : reasonCode,
+          reason_code: reasonCode,
+          stages: baselineStages,
+          address_family_status: { ipv4: "pass", ipv6: "not_run" },
+          transport: {
+            profile: "legacy_reality_fallback",
+            probe_mode: "delivery_tls",
+            handshake_status: "pass",
+            classification: "ok"
+          }
+        }
+      : null
+  };
+}
+
+function ruLatestPayload(scenario: RuScenario) {
+  let status = "ok";
+  let sampledAt: string | null = "2026-07-15T09:50:00Z";
+  let ageSeconds: number | null = 600;
+  let reasonCode = "current_ru_run";
+  let environmentVerdict = "available";
+  let environmentStatus = "ok";
+  let latestReceived: Record<string, unknown> | null = runSummary();
+  let latestEligible: Record<string, unknown> | null = runSummary();
+  let node = ruNode("ok", "target_pass");
+
+  if (scenario === "google-down") {
+    status = "unavailable";
+    reasonCode = "google_unavailable";
+    environmentVerdict = "unavailable";
+    environmentStatus = "unavailable";
+    latestReceived = runSummary({ environment_verdict: "unavailable", release_verdict: "incomplete", google_reachable: false, server_reason: "google_unavailable" });
+    latestEligible = latestReceived;
+    node = ruNode("unavailable", "google_unavailable");
+  } else if (scenario === "stale") {
+    status = "stale";
+    sampledAt = "2026-07-15T02:00:00Z";
+    ageSeconds = 28860;
+    reasonCode = "eligible_run_stale";
+    latestReceived = runSummary({ finished_at: sampledAt, received_at: "2026-07-15T02:01:00Z" });
+    latestEligible = latestReceived;
+    node = ruNode("stale", "eligible_run_stale", sampledAt);
+  } else if (scenario === "missing") {
+    status = "missing";
+    sampledAt = null;
+    ageSeconds = null;
+    reasonCode = "eligible_run_missing";
+    environmentVerdict = "unknown";
+    environmentStatus = "missing";
+    latestReceived = null;
+    latestEligible = null;
+    node = ruNode("missing", "eligible_run_missing", null);
+  } else if (scenario === "superseded-manifest") {
+    status = "degraded";
+    reasonCode = "superseded_manifest";
+    environmentVerdict = "unknown";
+    environmentStatus = "degraded";
+    latestReceived = runSummary({
+      run_db_id: 402,
+      run_id: "00000000-0000-4000-8000-000000000402",
+      manifest_revision: "manifest-old-402",
+      current_eligible: false,
+      ineligible_reason: "superseded_manifest",
+      release_verdict: "superseded_manifest"
+    });
+    latestEligible = null;
+    node = ruNode("degraded", "superseded_manifest");
+  } else if (scenario === "incomplete-latest-with-last-good") {
+    latestReceived = runSummary({
+      run_db_id: 403,
+      run_id: "00000000-0000-4000-8000-000000000403",
+      finished_at: "2026-07-15T09:58:00Z",
+      received_at: "2026-07-15T09:59:00Z",
+      execution_status: "partial",
+      release_verdict: "incomplete",
+      current_eligible: false,
+      ineligible_reason: "required_target_incomplete",
+      server_reason: "required_target_incomplete"
+    });
+    latestEligible = runSummary({
+      run_db_id: 400,
+      run_id: "00000000-0000-4000-8000-000000000400",
+      finished_at: "2026-07-15T04:00:00Z",
+      received_at: "2026-07-15T04:01:00Z"
+    });
+    sampledAt = "2026-07-15T04:00:00Z";
+    ageSeconds = 22200;
+    node = ruNode("ok", "target_pass", sampledAt);
+  }
+
+  return {
+    ok: true,
+    generated_at: generatedAt,
+    status,
+    sampled_at: sampledAt,
+    age_seconds: ageSeconds,
+    threshold_seconds: 25200,
+    reason_code: reasonCode,
+    environment_verdict: environmentVerdict,
+    environment: {
+      status: environmentStatus,
+      sampled_at: sampledAt,
+      age_seconds: ageSeconds,
+      threshold_seconds: 25200,
+      reason_code: environmentVerdict === "available" ? "google_available" : reasonCode,
+      verdict: environmentVerdict
+    },
+    latest_received_attempt: latestReceived,
+    latest_eligible_run: latestEligible,
+    eligible_run: latestEligible,
+    nodes: [
+      node,
+      {
+        node_code: "de",
+        status: "not_in_scope",
+        sampled_at: null,
+        age_seconds: null,
+        threshold_seconds: 25200,
+        reason_code: "not_in_scope",
+        run_id: null,
+        target: null
+      }
+    ]
+  };
+}
+
+function observabilityPayload(scenario: RuScenario) {
+  const latest = ruLatestPayload(scenario);
+  const ru = latest.nodes[0];
+  return {
+    ok: true,
+    generated_at: generatedAt,
+    node: { code: "nl", name: "Нидерланды", hoster_family: "timeweb", hoster_asn: "AS209024", subnet: "198.51.100.0/24", weight: 100 },
+    lifecycle: { enabled: true, accepting_new_clients: true, is_draining: false, mapped_users: 31 },
+    capacity: { state: "ok", score: 91, reject_reason: null, tx_mbps: 412, tx_ratio: 0.412, capacity_mbps: 1000, provisioned_clients_count: 46, online_connections_hint: 19 },
+    sources: {
+      brain_metrics: {
+        status: "ok",
+        sampled_at: "2026-07-15T09:53:00Z",
+        age_seconds: 420,
+        threshold_seconds: 900,
+        reason_code: "brain_metrics_fresh",
+        details: { cpu_percent: 28.5, memory_used_mb: 2048, memory_total_mb: 4096, disk_used_gb: 24, disk_total_gb: 80, network_rx_mbps: 91, network_tx_mbps: 321, network_total_mbps: 412, panel_latency_ms: 83, panel_error_rate: 0, probe_stage: "tls", probe_error_kind: null, probe_classification: "ok" }
+      },
+      runtime: {
+        status: "ok",
+        sampled_at: "2026-07-15T09:54:00Z",
+        age_seconds: 360,
+        threshold_seconds: 900,
+        reason_code: "runtime_fresh",
+        details: { source: "control_panel", provisioned_clients_count: 46, online_connections_hint: 19, network_rx_mbps_1m: 89, network_tx_mbps_1m: 318, network_rx_mbps_5m: 84, network_tx_mbps_5m: 306, capacity_score: 91, capacity_state: "ok", reject_reason: null }
+      },
+      observer: {
+        status: "ok",
+        sampled_at: "2026-07-15T09:52:00Z",
+        age_seconds: 480,
+        threshold_seconds: 900,
+        reason_code: "observer_fresh",
+        details: { last_batch_id: "batch-safe-401", unmatched_count: 1, parse_error_count: 0 }
+      },
+      ru_origin: ru
+    },
+    network: { ipv4_health: "ok", ipv6_health: "unknown", dataplane_ok: true, dataplane_rtt_ms: 42, packet_loss_percent: 0.2, tcp_retrans_percent: 0.1, probe_classification: "ok", last_probe_stage: "tls", last_probe_error_kind: null },
+    transports: [{ name: "legacy_reality_fallback", enabled: true, kind: "xray", port: 443, has_inbound: true }],
+    ru: { latest: ru, history: { items: [], next_cursor: null, limit: 10 } },
+    alerts: [{ id: 31, fingerprint: "node:nl:latency", source: "node_health", severity: "warning", status: "active", title: "Задержка панели выше обычной", first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:55:00Z", resolved_at: null, acknowledged_at: null, silence_until: null }]
+  };
+}
+
+function historyPayload(scenario: RuScenario) {
+  if (scenario === "missing") return { items: [], next_cursor: null, limit: 50 };
+  const summary = runSummary({
+    run_db_id: 390,
+    run_id: "00000000-0000-4000-8000-000000000390",
+    finished_at: "2026-07-14T22:00:00Z",
+    received_at: "2026-07-14T22:01:00Z",
+    release_verdict: "fail",
+    current_eligible: false,
+    ineligible_reason: "required_target_failed",
+    targets: [{ ...ruNode("degraded", "target_failed").target, overall_status: "failed", current_eligible: false, stages: baselineStages }]
+  });
+  return { items: [summary], next_cursor: null, limit: 50 };
+}
+
+function uploaderPayload(scenario: RuScenario) {
+  const stale = scenario === "uploader-heartbeat-stale";
+  const backlog = scenario === "uploader-backlog";
+  return {
+    ok: true,
+    generated_at: generatedAt,
+    status: stale ? "stale" : "ok",
+    sampled_at: stale ? "2026-07-15T08:40:00Z" : "2026-07-15T09:55:00Z",
+    age_seconds: stale ? 4800 : 300,
+    threshold_seconds: 2700,
+    reason_code: stale ? "uploader_heartbeat_stale" : "uploader_heartbeat_fresh",
+    heartbeat: {
+      probe_host_id: "mini",
+      observed_at: stale ? "2026-07-15T08:40:00Z" : "2026-07-15T09:55:00Z",
+      received_at: stale ? "2026-07-15T08:41:00Z" : "2026-07-15T09:55:10Z",
+      service_version: "2.1.0",
+      pending_count: backlog || stale ? 4 : 0,
+      blocked_count: backlog || stale ? 1 : 0,
+      quarantine_count: backlog || stale ? 2 : 0,
+      oldest_pending_at: backlog || stale ? "2026-07-15T06:00:00Z" : null,
+      archive_write_ok: !stale,
+      disk_free_bytes: stale ? 1024 : 10_000_000_000,
+      disk_state: stale ? "critical" : "ok",
+      last_error_code: stale ? "archive_write_failed" : null
+    }
+  };
+}
+
 const searchResults: AdminSearchResult[] = [
   {
     kind: "node",
@@ -191,6 +517,7 @@ const unsafeSearchResults: Array<Record<string, unknown>> = [
 ];
 
 type AdminApiMockOptions = {
+  ruScenario?: RuScenario;
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
   ruLatestStatus?: number;
@@ -227,6 +554,17 @@ const LEGACY_GET_PATHS = new Set([
 ]);
 
 const FOCUSED_GET_PATHS = new Set([...LEGACY_GET_PATHS, "/api/admin/search"]);
+
+function isNodeObservabilityPath(pathname: string): boolean {
+  return /^\/api\/admin\/nodes\/[^/]+\/observability$/.test(pathname);
+}
+
+function isFocusedGetPath(pathname: string): boolean {
+  return FOCUSED_GET_PATHS.has(pathname)
+    || pathname === "/api/admin/probes/ru-origin/runs"
+    || pathname === "/api/admin/probes/ru-origin/uploader-status"
+    || isNodeObservabilityPath(pathname);
+}
 
 function fulfillJson(route: Route, data: unknown, status = 200) {
   const origin = route.request().headers().origin || "http://127.0.0.1:3107";
@@ -265,9 +603,9 @@ export async function installAdminApiMock(
     const method = request.method();
     calls.push({ method, path: `${url.pathname}${url.search}` });
 
-    const knownPath = FOCUSED_GET_PATHS.has(url.pathname) || url.pathname === "/api/admin/auth/session" || url.pathname === "/api/admin/broadcast";
+    const knownPath = isFocusedGetPath(url.pathname) || url.pathname === "/api/admin/auth/session" || url.pathname === "/api/admin/broadcast";
     const knownRequest =
-      (method === "GET" && FOCUSED_GET_PATHS.has(url.pathname)) ||
+      (method === "GET" && isFocusedGetPath(url.pathname)) ||
       (method === "POST" && url.pathname === "/api/admin/auth/session") ||
       (method === "POST" && url.pathname === "/api/admin/broadcast") ||
       (method === "OPTIONS" && knownPath);
@@ -386,6 +724,10 @@ export async function installAdminApiMock(
         );
         return;
       }
+      if (options.ruScenario) {
+        await fulfillJson(route, ruLatestPayload(options.ruScenario));
+        return;
+      }
       const configuredReasons = options.ruLatestReasonCodes || [];
       const reasonCode = configuredReasons.length
         ? configuredReasons[Math.min(ruLatestRequestCount, configuredReasons.length - 1)]
@@ -433,6 +775,26 @@ export async function installAdminApiMock(
           }
         ]
       });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/probes/ru-origin/runs") {
+      await fulfillJson(route, historyPayload(options.ruScenario || "fresh-pass"));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/probes/ru-origin/uploader-status") {
+      await fulfillJson(route, uploaderPayload(options.ruScenario || "fresh-pass"));
+      return;
+    }
+
+    if (isNodeObservabilityPath(url.pathname)) {
+      const code = decodeURIComponent(url.pathname.split("/").at(-2) || "").toLowerCase();
+      if (code !== "nl") {
+        await fulfillJson(route, { detail: "Node not found" }, 404);
+        return;
+      }
+      await fulfillJson(route, observabilityPayload(options.ruScenario || "fresh-pass"));
       return;
     }
 
@@ -495,7 +857,7 @@ export async function installAdminApiMock(
       "/api/admin/free-tier/users": { users: [] },
       "/api/admin/nodes/timeseries": { rows: [] },
       "/api/admin/provider-quotas": { quotas: [] },
-      "/api/admin/nodes/health": { nodes: [] },
+      "/api/admin/nodes/health": { nodes: options.ruScenario ? nodeRows : [] },
       "/api/admin/nodes/runtime": { ok: true, nodes: [] },
       "/api/admin/online/users": { ok: true, generated_at: generatedAt, rows: [] },
       "/api/admin/payments/orders": { orders: [] },

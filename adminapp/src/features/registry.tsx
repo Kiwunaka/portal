@@ -2,6 +2,7 @@ import { Fragment, type ReactNode } from "react";
 
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { LegacySection } from "@/features/legacy/legacy-section";
+import { NodesPage } from "@/features/nodes/nodes-page";
 import { OverviewPage } from "@/features/overview/overview-page";
 import type { OpsSectionId } from "@/lib/sections";
 
@@ -13,7 +14,7 @@ type RouteRenderer = (props: RouteProps) => ReactNode;
 
 export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
   dashboard: ({ onShellStatus }) => <OverviewPage onShellStatus={onShellStatus} />,
-  nodes: ({ onShellStatus }) => <LegacySection section="nodes" onShellStatus={onShellStatus} />,
+  nodes: ({ onShellStatus }) => <NodesPage onShellStatus={onShellStatus} />,
   traffic: ({ onShellStatus }) => <LegacySection section="traffic" onShellStatus={onShellStatus} />,
   alerts: ({ onShellStatus }) => <LegacySection section="alerts" onShellStatus={onShellStatus} />,
   "provider-caps": ({ onShellStatus }) => <LegacySection section="provider-caps" onShellStatus={onShellStatus} />,
