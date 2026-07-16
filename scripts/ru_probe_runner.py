@@ -29,6 +29,7 @@ for import_path in (SCRIPT_DIR, PORTAL_DIR):
 
 import internal_hmac_client  # noqa: E402
 import node_dataplane_probe as dataplane_probe  # noqa: E402
+import ru_probe_uploader  # noqa: E402
 from ru_probe_contract import (  # noqa: E402
     ALLOWED_ADDRESS_FAMILIES,
     ALLOWED_PROBE_MODES,
@@ -1886,6 +1887,27 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def write_run_artifact(
+    payload: dict[str, object],
+    *,
+    spool_root: str | Path,
+    out_path: str | Path | None,
+) -> Path:
+    raw = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    if out_path is not None:
+        destination = Path(out_path)
+        _write_private_bytes(destination, raw)
+        return destination
+    run_id = payload.get("run_id")
+    if not isinstance(run_id, str):
+        raise ValueError("run_id_required")
+    return ru_probe_uploader.write_pending_artifact(
+        spool_root,
+        run_id,
+        raw,
+    )
+
+
 def main() -> int:
     args = build_parser().parse_args()
     try:
@@ -1914,12 +1936,17 @@ def main() -> int:
         code = getattr(exc, "code", "runner_error")
         print(str(code), file=sys.stderr)
         return 1
-    raw = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
-    if args.out:
-        _write_private_bytes(Path(args.out), raw)
-        print(str(Path(args.out)))
-    else:
-        sys.stdout.buffer.write(raw + b"\n")
+    try:
+        artifact_path = write_run_artifact(
+            payload,
+            spool_root=Path(args.spool_root),
+            out_path=Path(args.out) if args.out else None,
+        )
+    except (OSError, ValueError, ru_probe_uploader.SpoolError) as exc:
+        code = getattr(exc, "code", "artifact_write_failed")
+        print(str(code), file=sys.stderr)
+        return 1
+    print(str(artifact_path))
     return 0 if payload["execution_status"] == "completed" else 2
 
 

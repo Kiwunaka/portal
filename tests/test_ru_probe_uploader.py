@@ -1,0 +1,792 @@
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+import os
+import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
+
+import pytest
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from ru_probe_uploader import (  # noqa: E402
+    RUNS_PATH,
+    SpoolError,
+    build_heartbeat,
+    calculate_backoff,
+    recover_pending,
+    scan_pending,
+    send_heartbeat,
+    upload_one,
+    write_pending_artifact,
+)
+
+
+NOW = datetime(2026, 7, 16, 6, 30, tzinfo=timezone.utc)
+RUN_ID = "00000000-0000-4000-8000-000000000001"
+OTHER_RUN_ID = "00000000-0000-4000-8000-000000000002"
+
+
+def _artifact(run_id: str = RUN_ID) -> bytes:
+    return (
+        b'{"schema_version":2,"run_id":"'
+        + run_id.encode("ascii")
+        + b'","origin":"ru"}'
+    )
+
+
+class FakeTransport:
+    def __init__(self) -> None:
+        self.responses: list[object] = []
+        self.calls: list[dict[str, object]] = []
+        self._lock = threading.Lock()
+
+    def respond(
+        self,
+        *,
+        status: int,
+        body: dict[str, object] | bytes | None = None,
+    ) -> None:
+        if body is None:
+            raw = b"{}"
+        elif isinstance(body, bytes):
+            raw = body
+        else:
+            raw = json.dumps(body, separators=(",", ":")).encode("utf-8")
+        self.responses.append(
+            SimpleNamespace(status=status, body=raw, headers={})
+        )
+
+    def send(self, **kwargs):
+        with self._lock:
+            self.calls.append(dict(kwargs))
+            if not self.responses:
+                raise OSError("network unavailable")
+            response = self.responses.pop(0)
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
+
+def _pending(tmp_path: Path, raw: bytes | None = None) -> Path:
+    return write_pending_artifact(
+        tmp_path,
+        RUN_ID,
+        _artifact() if raw is None else raw,
+    )
+
+
+def _reason(path: Path) -> dict[str, object]:
+    return json.loads(
+        path.with_name(f"{RUN_ID}.reason.json").read_text(encoding="utf-8")
+    )
+
+
+def _load_runner():
+    module_path = SCRIPTS_DIR / "ru_probe_runner.py"
+    spec = importlib.util.spec_from_file_location("ru_probe_runner_task8", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_write_artifact_is_atomic_and_hash_matches_exact_bytes(
+    tmp_path: Path,
+) -> None:
+    artifact = _artifact()
+
+    path = write_pending_artifact(tmp_path, RUN_ID, artifact)
+
+    assert path.read_bytes() == artifact
+    if os.name != "nt":
+        assert path.stat().st_mode & 0o777 == 0o600
+        assert path.parent.stat().st_mode & 0o777 == 0o700
+    assert (
+        path.with_suffix(".sha256").read_text(encoding="ascii").strip()
+        == hashlib.sha256(artifact).hexdigest()
+    )
+    assert not list(tmp_path.rglob("*.tmp"))
+
+
+def test_same_run_same_bytes_is_idempotent_and_different_bytes_fail_closed(
+    tmp_path: Path,
+) -> None:
+    first = write_pending_artifact(tmp_path, RUN_ID, _artifact())
+    second = write_pending_artifact(tmp_path, RUN_ID, _artifact())
+
+    assert second == first
+    with pytest.raises(SpoolError, match="run_id_conflict"):
+        write_pending_artifact(tmp_path, RUN_ID, _artifact() + b"\n")
+    assert first.read_bytes() == _artifact()
+
+
+@pytest.mark.parametrize(
+    "run_id",
+    [
+        "../escape",
+        "00000000-0000-4000-8000-000000000001.json",
+        "00000000-0000-4000-8000-00000000000Z",
+    ],
+)
+def test_write_rejects_noncanonical_or_traversal_run_id(
+    tmp_path: Path,
+    run_id: str,
+) -> None:
+    with pytest.raises(SpoolError, match="invalid_run_id"):
+        write_pending_artifact(tmp_path, run_id, _artifact())
+
+
+def test_recovery_repairs_artifact_only_and_ignores_partial_temp(
+    tmp_path: Path,
+) -> None:
+    pending = tmp_path / "pending"
+    pending.mkdir(mode=0o700)
+    artifact = pending / f"{RUN_ID}.json"
+    artifact.write_bytes(_artifact())
+    artifact.chmod(0o600)
+    partial = pending / f".{OTHER_RUN_ID}.json.crash.tmp"
+    partial.write_bytes(b'{"partial":')
+
+    issues = recover_pending(tmp_path)
+
+    assert artifact.with_suffix(".sha256").read_text(encoding="ascii").strip() == (
+        hashlib.sha256(_artifact()).hexdigest()
+    )
+    assert scan_pending(tmp_path) == [artifact]
+    assert all(issue.code != "artifact_without_sidecar" for issue in issues)
+    assert partial.exists()
+
+
+def test_recovery_does_not_upload_or_delete_sidecar_without_artifact(
+    tmp_path: Path,
+) -> None:
+    pending = tmp_path / "pending"
+    pending.mkdir(mode=0o700)
+    orphan = pending / f"{RUN_ID}.sha256"
+    orphan.write_text("a" * 64 + "\n", encoding="ascii")
+    orphan.chmod(0o600)
+
+    issues = recover_pending(tmp_path)
+
+    assert orphan.exists()
+    assert scan_pending(tmp_path) == []
+    assert [issue.code for issue in issues] == ["sidecar_without_artifact"]
+
+
+def test_conflicting_orphan_sidecar_cannot_create_partial_artifact(
+    tmp_path: Path,
+) -> None:
+    pending = tmp_path / "pending"
+    pending.mkdir(mode=0o700)
+    sidecar = pending / f"{RUN_ID}.sha256"
+    sidecar.write_bytes(b"0" * 64 + b"\n")
+
+    with pytest.raises(SpoolError, match="run_id_conflict"):
+        write_pending_artifact(tmp_path, RUN_ID, _artifact())
+
+    assert sidecar.exists()
+    assert not sidecar.with_suffix(".json").exists()
+
+
+def test_concurrent_writers_never_mix_artifact_and_sidecar(
+    tmp_path: Path,
+) -> None:
+    first_raw = _artifact()
+    second_raw = _artifact() + b" "
+    barrier = threading.Barrier(2)
+
+    def writer(raw: bytes) -> str:
+        barrier.wait()
+        try:
+            write_pending_artifact(tmp_path, RUN_ID, raw)
+            return "written"
+        except SpoolError as exc:
+            return exc.code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(writer, (first_raw, second_raw)))
+
+    assert sorted(results) == ["run_id_conflict", "written"]
+    artifact = tmp_path / "pending" / f"{RUN_ID}.json"
+    raw = artifact.read_bytes()
+    assert raw in {first_raw, second_raw}
+    assert artifact.with_suffix(".sha256").read_text(encoding="ascii").strip() == (
+        hashlib.sha256(raw).hexdigest()
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "code", "destination"),
+    [
+        (201, "created", "archive"),
+        (200, "idempotent", "archive"),
+        (503, "temporary", "pending"),
+        (401, "key_disabled", "blocked"),
+        (403, "key_disabled", "blocked"),
+        (400, "invalid_request", "quarantine"),
+        (413, "request_too_large", "quarantine"),
+        (422, "invalid_payload", "quarantine"),
+        (422, "unsupported_schema", "quarantine"),
+        (409, "payload_conflict", "quarantine"),
+    ],
+)
+def test_upload_transition_matrix(
+    tmp_path: Path,
+    status: int,
+    code: str,
+    destination: str,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=status,
+        body={"code": code, "correlation_id": "corr-1"},
+    )
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == destination
+    if destination != "pending":
+        assert (tmp_path / destination / pending.name).exists()
+    assert pending.exists() is (destination == "pending")
+
+
+@pytest.mark.parametrize("status", [408, 425, 429, 500, 502, 599])
+def test_retryable_status_keeps_pending_and_returns_exponential_delay(
+    tmp_path: Path,
+    status: int,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(status=status, body={"code": "temporary"})
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        attempt=3,
+        jitter=lambda upper: upper,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.retry_after_seconds == 480 + 30
+    assert pending.exists()
+
+
+def test_network_failure_keeps_pending_without_response_leak(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.responses.append(OSError("https://token:secret@example.test"))
+
+    outcome = upload_one(
+        pending,
+        transport=transport,
+        now=NOW,
+        jitter=lambda _upper: 0,
+    )
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "network_error"
+    assert "secret" not in repr(outcome)
+    assert pending.exists()
+
+
+def test_replayed_nonce_resigns_once_with_exact_same_artifact_bytes(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=409,
+        body={"code": "replayed_nonce", "correlation_id": "corr-1"},
+    )
+    transport.respond(
+        status=201,
+        body={"code": "created", "correlation_id": "corr-2"},
+    )
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "archive"
+    assert outcome.attempts == 2
+    assert [call["raw_body"] for call in transport.calls] == [
+        _artifact(),
+        _artifact(),
+    ]
+    assert all(call["path"] == RUNS_PATH for call in transport.calls)
+
+
+def test_replayed_nonce_twice_is_quarantined(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    for correlation_id in ("corr-1", "corr-2"):
+        transport.respond(
+            status=409,
+            body={
+                "code": "replayed_nonce",
+                "correlation_id": correlation_id,
+            },
+        )
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "quarantine"
+    assert outcome.attempts == 2
+    assert _reason(tmp_path / "quarantine" / pending.name) == {
+        "status": 409,
+        "code": "replayed_nonce",
+        "correlation_id": "corr-2",
+        "observed_at": "2026-07-16T06:30:00Z",
+    }
+
+
+def test_replayed_nonce_rechecks_sidecar_before_second_send(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+
+    class TamperingTransport(FakeTransport):
+        def send(self, **kwargs):
+            response = super().send(**kwargs)
+            pending.with_suffix(".sha256").write_bytes(b"0" * 64 + b"\n")
+            return response
+
+    transport = TamperingTransport()
+    transport.respond(status=409, body={"code": "replayed_nonce"})
+    transport.respond(status=201, body={"code": "created"})
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "quarantine"
+    assert outcome.code == "artifact_hash_mismatch"
+    assert len(transport.calls) == 1
+
+
+def test_sidecar_is_verified_before_send_and_mismatch_is_quarantined(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    pending.with_suffix(".sha256").write_text("0" * 64 + "\n", encoding="ascii")
+    transport = FakeTransport()
+    transport.respond(status=201, body={"code": "created"})
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "quarantine"
+    assert outcome.code == "artifact_hash_mismatch"
+    assert transport.calls == []
+    assert (tmp_path / "quarantine" / pending.name).read_bytes() == _artifact()
+
+
+def test_reason_sidecar_is_allowlisted_and_does_not_copy_response_payload(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(
+        status=422,
+        body={
+            "code": "invalid_payload",
+            "correlation_id": "corr-safe",
+            "detail": "secret-token-provider-payload",
+            "signature": "must-not-copy",
+        },
+    )
+
+    upload_one(pending, transport=transport, now=NOW)
+
+    reason_path = tmp_path / "quarantine" / f"{RUN_ID}.reason.json"
+    raw = reason_path.read_text(encoding="utf-8")
+    assert set(json.loads(raw)) == {
+        "status",
+        "code",
+        "correlation_id",
+        "observed_at",
+    }
+    assert "secret-token" not in raw
+    assert "signature" not in raw
+    if os.name != "nt":
+        assert reason_path.stat().st_mode & 0o777 == 0o600
+
+
+def test_archive_fsync_failure_keeps_complete_pending_pair(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(status=201, body={"code": "created"})
+    import ru_probe_uploader
+
+    original = ru_probe_uploader._fsync_directory
+
+    def fail_archive(directory: Path) -> None:
+        if directory.name == "archive":
+            raise OSError("synthetic archive fsync failure")
+        original(directory)
+
+    monkeypatch.setattr(ru_probe_uploader, "_fsync_directory", fail_archive)
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "archive_write_failed"
+    assert pending.read_bytes() == _artifact()
+    assert pending.with_suffix(".sha256").exists()
+    assert not (tmp_path / "archive" / pending.name).exists()
+    assert not (
+        tmp_path / "archive" / pending.with_suffix(".sha256").name
+    ).exists()
+
+
+def test_pending_fsync_failure_restores_both_source_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = _pending(tmp_path)
+    transport = FakeTransport()
+    transport.respond(status=201, body={"code": "created"})
+    import ru_probe_uploader
+
+    original = ru_probe_uploader._fsync_directory
+
+    def fail_pending(directory: Path) -> None:
+        if directory.name == "pending":
+            raise OSError("synthetic pending fsync failure")
+        original(directory)
+
+    monkeypatch.setattr(ru_probe_uploader, "_fsync_directory", fail_pending)
+
+    outcome = upload_one(pending, transport=transport, now=NOW)
+
+    assert outcome.destination == "pending"
+    assert outcome.code == "archive_write_failed"
+    assert pending.read_bytes() == _artifact()
+    assert pending.with_suffix(".sha256").read_text(
+        encoding="ascii"
+    ).strip() == hashlib.sha256(_artifact()).hexdigest()
+
+
+def test_concurrent_upload_claim_sends_artifact_at_most_once(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    entered = threading.Event()
+    release = threading.Event()
+
+    class BlockingTransport(FakeTransport):
+        def send(self, **kwargs):
+            with self._lock:
+                self.calls.append(dict(kwargs))
+            entered.set()
+            assert release.wait(5)
+            return SimpleNamespace(
+                status=201,
+                body=b'{"code":"created"}',
+                headers={},
+            )
+
+    transport = BlockingTransport()
+    outcomes: list[object] = []
+
+    def worker() -> None:
+        outcomes.append(upload_one(pending, transport=transport, now=NOW))
+
+    first = threading.Thread(target=worker)
+    second = threading.Thread(target=worker)
+    first.start()
+    assert entered.wait(5)
+    second.start()
+    second.join(5)
+    release.set()
+    first.join(5)
+
+    assert len(transport.calls) == 1
+    assert sorted(outcome.destination for outcome in outcomes) == [
+        "archive",
+        "pending",
+    ]
+
+
+def test_calculate_backoff_is_capped_and_jitter_is_bounded() -> None:
+    assert calculate_backoff(0, jitter=lambda upper: upper) == 90
+    assert calculate_backoff(12, jitter=lambda upper: upper) == 3600
+    with pytest.raises(SpoolError, match="invalid_retry_attempt"):
+        calculate_backoff(-1)
+
+
+def test_build_heartbeat_is_separate_redacted_allowlisted_dto(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    os.utime(pending, (NOW.timestamp() - 300, NOW.timestamp() - 300))
+    write_pending_artifact(tmp_path, OTHER_RUN_ID, _artifact(OTHER_RUN_ID))
+    (tmp_path / "blocked" / "ignore.secret").write_text(
+        "provider-token",
+        encoding="utf-8",
+    )
+
+    heartbeat = build_heartbeat(
+        tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        service_version="2.0.0",
+        archive_write_ok=False,
+        last_error_code="archive_write_failed",
+        disk_usage=lambda _path: SimpleNamespace(free=9 * 1024 * 1024 * 1024),
+    )
+
+    assert set(heartbeat) == {
+        "schema_version",
+        "probe_host_id",
+        "observed_at",
+        "service_version",
+        "pending_count",
+        "blocked_count",
+        "quarantine_count",
+        "oldest_pending_at",
+        "archive_write_ok",
+        "disk_free_bytes",
+        "disk_state",
+        "last_error_code",
+    }
+    assert heartbeat["pending_count"] == 2
+    assert heartbeat["blocked_count"] == 0
+    assert heartbeat["oldest_pending_at"] == "2026-07-16T06:25:00Z"
+    assert heartbeat["disk_state"] == "ok"
+    serialized = json.dumps(heartbeat)
+    assert "provider-token" not in serialized
+    assert "ignore.secret" not in serialized
+
+
+def test_heartbeat_recovers_and_counts_complete_artifact_only_crash(
+    tmp_path: Path,
+) -> None:
+    pending = tmp_path / "pending"
+    pending.mkdir(mode=0o700)
+    artifact = pending / f"{RUN_ID}.json"
+    artifact.write_bytes(_artifact())
+
+    heartbeat = build_heartbeat(
+        tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+    )
+
+    assert heartbeat["pending_count"] == 1
+    assert artifact.with_suffix(".sha256").exists()
+
+
+def test_invalid_last_error_is_not_reflected_into_heartbeat(
+    tmp_path: Path,
+) -> None:
+    heartbeat = build_heartbeat(
+        tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        last_error_code="secret=/etc/pokrov-ru-probe/hmac.key",
+    )
+
+    assert heartbeat["last_error_code"] is None
+
+
+def test_send_heartbeat_uses_distinct_body_and_endpoint(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    before = pending.read_bytes()
+    transport = FakeTransport()
+    transport.respond(status=201, body={"code": "created"})
+
+    outcome = send_heartbeat(
+        tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+    )
+
+    assert outcome.destination == "sent"
+    assert len(transport.calls) == 1
+    call = transport.calls[0]
+    assert call["path"].endswith("/heartbeat")
+    assert call["raw_body"] != before
+    assert json.loads(call["raw_body"])["schema_version"] == 1
+    assert pending.read_bytes() == before
+
+
+def test_critical_disk_heartbeat_marks_local_service_failed(
+    tmp_path: Path,
+) -> None:
+    transport = FakeTransport()
+    transport.respond(status=201, body={"code": "created"})
+    import ru_probe_uploader
+
+    outcome = send_heartbeat(
+        tmp_path,
+        probe_host_id="mini",
+        now=NOW,
+        transport=transport,
+        disk_usage=lambda _path: SimpleNamespace(free=0),
+    )
+
+    assert outcome.destination == "sent"
+    assert outcome.disk_state == "critical"
+    assert ru_probe_uploader._local_service_failed([], outcome)
+
+
+def test_runner_defaults_to_pending_spool_and_explicit_out_stays_manual(
+    tmp_path: Path,
+) -> None:
+    runner = _load_runner()
+    payload = {
+        "schema_version": 2,
+        "run_id": RUN_ID,
+        "origin": "ru",
+    }
+
+    spooled = runner.write_run_artifact(
+        payload,
+        spool_root=tmp_path,
+        out_path=None,
+    )
+    manual = runner.write_run_artifact(
+        {**payload, "run_id": OTHER_RUN_ID},
+        spool_root=tmp_path,
+        out_path=tmp_path / "manual.json",
+    )
+
+    assert spooled == tmp_path / "pending" / f"{RUN_ID}.json"
+    assert spooled.with_suffix(".sha256").exists()
+    assert manual == tmp_path / "manual.json"
+    assert not (tmp_path / "pending" / f"{OTHER_RUN_ID}.json").exists()
+
+
+def test_uploader_rejects_pending_symlink_without_sending(
+    tmp_path: Path,
+) -> None:
+    pending_dir = tmp_path / "pending"
+    pending_dir.mkdir(mode=0o700)
+    target = tmp_path / "outside.json"
+    target.write_bytes(_artifact())
+    symlink = pending_dir / f"{RUN_ID}.json"
+    try:
+        symlink.symlink_to(target)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+    symlink.with_suffix(".sha256").write_text(
+        hashlib.sha256(_artifact()).hexdigest() + "\n",
+        encoding="ascii",
+    )
+    transport = FakeTransport()
+
+    with pytest.raises(SpoolError, match="artifact_symlink"):
+        upload_one(symlink, transport=transport, now=NOW)
+    assert transport.calls == []
+
+
+def test_systemd_templates_are_hardened_and_schedules_are_exact() -> None:
+    probe_service = (REPO_ROOT / "infra" / "pokrov-ru-probe.service").read_text(
+        encoding="utf-8"
+    )
+    probe_timer = (REPO_ROOT / "infra" / "pokrov-ru-probe.timer").read_text(
+        encoding="utf-8"
+    )
+    uploader_service = (
+        REPO_ROOT / "infra" / "pokrov-ru-probe-uploader.service"
+    ).read_text(encoding="utf-8")
+    uploader_timer = (
+        REPO_ROOT / "infra" / "pokrov-ru-probe-uploader.timer"
+    ).read_text(encoding="utf-8")
+
+    assert "OnCalendar=*-*-* 00,06,12,18:00:00" in probe_timer
+    assert "Persistent=true" in probe_timer
+    assert "RandomizedDelaySec=5m" in probe_timer
+    assert "OnBootSec=2m" in uploader_timer
+    assert "OnUnitActiveSec=15m" in uploader_timer
+    assert "Persistent=true" in uploader_timer
+    for service in (probe_service, uploader_service):
+        assert "User=pokrov-ru-probe" in service
+        assert "StateDirectory=pokrov-ru-probe" in service
+        assert "StateDirectoryMode=0700" in service
+        assert "UMask=0077" in service
+        assert "NoNewPrivileges=true" in service
+        assert "PrivateTmp=true" in service
+        assert "ProtectSystem=strict" in service
+        assert "ReadWritePaths=/var/lib/pokrov-ru-probe" in service
+        assert "EnvironmentFile=/etc/pokrov-ru-probe/" in service
+        assert "secret=" not in service.lower()
+        assert "token=" not in service.lower()
+
+
+def test_static_task8_files_are_registered_in_manifest() -> None:
+    manifest = json.loads(
+        (SCRIPTS_DIR / "manifest.yaml").read_text(encoding="utf-8")
+    )
+    active = set(manifest["active"])
+    assert {
+        "scripts/ru_probe_runner.py",
+        "scripts/ru_probe_uploader.py",
+        "scripts/ru_probe_payload.schema.json",
+        "infra/pokrov-ru-probe.service",
+        "infra/pokrov-ru-probe.timer",
+        "infra/pokrov-ru-probe-uploader.service",
+        "infra/pokrov-ru-probe-uploader.timer",
+    }.issubset(active)
+
+
+def test_default_transport_delegates_each_attempt_to_shared_hmac_client(
+    tmp_path: Path,
+) -> None:
+    pending = _pending(tmp_path)
+    responses = [
+        SimpleNamespace(
+            status=409,
+            body=b'{"code":"replayed_nonce"}',
+            headers={},
+        ),
+        SimpleNamespace(status=201, body=b'{"code":"created"}', headers={}),
+    ]
+    import ru_probe_uploader
+
+    with mock.patch.object(
+        ru_probe_uploader.internal_hmac_client,
+        "signed_request",
+        side_effect=responses,
+    ) as signed:
+        outcome = upload_one(
+            pending,
+            transport=None,
+            now=NOW,
+            api_base_url="https://api.example.test",
+            key_id="mini-v1",
+            secret_file=tmp_path / "hmac.key",
+        )
+
+    assert outcome.destination == "archive"
+    assert signed.call_count == 2
+    assert [call.kwargs["raw_body"] for call in signed.call_args_list] == [
+        _artifact(),
+        _artifact(),
+    ]

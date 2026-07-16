@@ -1,0 +1,11 @@
+[Unit]
+Description=Upload POKROV RU-origin spool every fifteen minutes
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=15m
+Persistent=true
+Unit=pokrov-ru-probe-uploader.service
+
+[Install]
+WantedBy=timers.target
