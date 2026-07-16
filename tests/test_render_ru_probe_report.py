@@ -78,6 +78,17 @@ class RenderRuProbeReportTests(unittest.TestCase):
         self.assertIn("canonical_host_problem", report)
         self.assertIn("pokrov-space", report)
 
+    def test_status_keeps_boolean_and_stage_states_distinct(self) -> None:
+        self.assertEqual(self.module._status(True), "ok")
+        self.assertEqual(self.module._status(False), "fail")
+        self.assertEqual(self.module._status("pass"), "pass")
+        self.assertEqual(self.module._status("fail"), "fail")
+        self.assertEqual(self.module._status("not_run"), "not_run")
+        self.assertEqual(
+            self.module._status("not_applicable"),
+            "not_applicable",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
