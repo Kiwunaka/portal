@@ -5087,6 +5087,19 @@ def _ru_probe_headers(request: Request) -> dict[str, str]:
     return headers
 
 
+def _require_exact_ru_probe_route(
+    request: Request,
+    expected_path: str,
+) -> None:
+    expected_raw_path = expected_path.encode("ascii")
+    if (
+        request.scope.get("path") != expected_path
+        or request.scope.get("raw_path") != expected_raw_path
+        or request.scope.get("query_string", b"") != b""
+    ):
+        raise InternalAuthError(400, "invalid_signed_path")
+
+
 def _ru_probe_unique_json_object(
     pairs: list[tuple[str, object]],
 ) -> dict[str, object]:
@@ -5194,15 +5207,14 @@ def _authenticate_ru_probe_request(
     *,
     raw_body: bytes,
     required_scope: str,
+    expected_path: str,
     now: datetime,
 ):
-    if request.url.query:
-        raise InternalAuthError(400, "invalid_signed_path")
     return authenticate_internal_request(
         session,
         load_internal_service_key_registry(),
         method=request.method,
-        path=request.url.path,
+        path=expected_path,
         raw_body=raw_body,
         headers=_ru_probe_headers(request),
         required_scope=required_scope,
@@ -5211,9 +5223,44 @@ def _authenticate_ru_probe_request(
     )
 
 
+async def _reject_ru_probe_route_alias(request: Request) -> JSONResponse:
+    return _ru_probe_error_response(
+        status_code=400,
+        code="invalid_request",
+        correlation_id=_ru_probe_correlation_id(request),
+    )
+
+
+app.add_api_route(
+    f"{_RU_MANIFEST_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["GET"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    f"{_RU_RUNS_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    f"{_RU_HEARTBEAT_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+
+
 @app.get(_RU_MANIFEST_PATH)
 async def internal_ru_probe_manifest(request: Request):
     correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_MANIFEST_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
     session = SessionLocal()
     try:
         raw_body = await _read_limited_request_body(
@@ -5227,6 +5274,7 @@ async def internal_ru_probe_manifest(request: Request):
             request,
             raw_body=raw_body,
             required_scope="ru_probe:manifest",
+            expected_path=_RU_MANIFEST_PATH,
             now=now,
         )
         manifest = build_ru_manifest(session, now=now)
@@ -5245,6 +5293,13 @@ async def internal_ru_probe_manifest(request: Request):
 @app.post(_RU_RUNS_PATH)
 async def internal_ru_probe_run(request: Request):
     correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_RUNS_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
     session = SessionLocal()
     try:
         raw_body = await _read_limited_request_body(
@@ -5258,6 +5313,7 @@ async def internal_ru_probe_run(request: Request):
             request,
             raw_body=raw_body,
             required_scope="ru_probe:ingest",
+            expected_path=_RU_RUNS_PATH,
             now=now,
         )
         payload = _ru_probe_json(raw_body)
@@ -5297,6 +5353,13 @@ async def internal_ru_probe_run(request: Request):
 @app.post(_RU_HEARTBEAT_PATH)
 async def internal_ru_probe_heartbeat(request: Request):
     correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_HEARTBEAT_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
     session = SessionLocal()
     try:
         raw_body = await _read_limited_request_body(
@@ -5310,6 +5373,7 @@ async def internal_ru_probe_heartbeat(request: Request):
             request,
             raw_body=raw_body,
             required_scope="ru_probe:heartbeat",
+            expected_path=_RU_HEARTBEAT_PATH,
             now=now,
         )
         heartbeat = validate_ru_heartbeat(_ru_probe_json(raw_body), now=now)

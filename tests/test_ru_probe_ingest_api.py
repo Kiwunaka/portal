@@ -339,6 +339,79 @@ def _post_heartbeat(client: TestClient, raw_body: bytes, *, nonce: str):
     )
 
 
+def _ru_persistence_counts(api) -> tuple[int, int, int, int]:
+    from models import (
+        InternalIngestNonce,
+        RuProbeRun,
+        RuProbeTargetResult,
+        RuProbeUploaderHeartbeat,
+    )
+
+    session = api.SessionLocal()
+    try:
+        return (
+            session.query(InternalIngestNonce).count(),
+            session.query(RuProbeRun).count(),
+            session.query(RuProbeTargetResult).count(),
+            session.query(RuProbeUploaderHeartbeat).count(),
+        )
+    finally:
+        session.close()
+
+
+def _route_request(
+    api,
+    route_name: str,
+    *,
+    nonce: str,
+    observed_offset_seconds: int = 0,
+) -> tuple[str, str, bytes, dict[str, str]]:
+    if route_name == "manifest":
+        method = "GET"
+        path = MANIFEST_PATH
+        raw_body = b""
+    elif route_name == "runs":
+        method = "POST"
+        path = RUNS_PATH
+        raw_body = _json_bytes(_payload_from_manifest(_manifest(api)))
+    elif route_name == "heartbeat":
+        method = "POST"
+        path = HEARTBEAT_PATH
+        raw_body = _json_bytes(
+            _heartbeat_payload(
+                observed_at=(
+                    _utc_now()
+                    - timedelta(seconds=5 + observed_offset_seconds)
+                )
+            )
+        )
+    else:  # pragma: no cover - test helper guard
+        raise AssertionError(f"unknown route {route_name}")
+    return (
+        method,
+        path,
+        raw_body,
+        _signed_headers(
+            method=method,
+            path=path,
+            raw_body=raw_body,
+            nonce=nonce,
+        ),
+    )
+
+
+def _noncanonical_route(path: str, alias_kind: str) -> str:
+    if alias_kind == "encoded_segment_character":
+        return f"{path[:-1]}%{ord(path[-1]):02X}"
+    if alias_kind == "encoded_slash":
+        return path.replace("/probes/", "/probes%2F", 1)
+    if alias_kind == "mixed_case_encoding":
+        return path.replace("/probes/", "/probes%2f", 1)
+    if alias_kind == "query":
+        return f"{path}?alias=1"
+    raise AssertionError(f"unknown alias {alias_kind}")
+
+
 def test_manifest_get_authenticates_exact_empty_body_and_returns_server_manifest(
     api, client: TestClient
 ) -> None:
@@ -475,31 +548,87 @@ def test_endpoint_scopes_are_not_interchangeable(client: TestClient) -> None:
     assert heartbeat_key_on_manifest.json()["code"] == "key_scope_forbidden"
 
 
-def test_signed_internal_routes_reject_query_string_alias(
+@pytest.mark.parametrize("route_name", ["manifest", "runs", "heartbeat"])
+@pytest.mark.parametrize(
+    "alias_kind",
+    [
+        "encoded_segment_character",
+        "encoded_slash",
+        "mixed_case_encoding",
+        "query",
+    ],
+)
+def test_signed_internal_routes_reject_noncanonical_raw_target_before_commit(
+    api,
     client: TestClient,
+    route_name: str,
+    alias_kind: str,
 ) -> None:
-    headers = _signed_headers(
-        method="GET",
-        path=MANIFEST_PATH,
-        raw_body=b"",
-        nonce="manifest-query",
+    method, canonical_path, raw_body, headers = _route_request(
+        api,
+        route_name,
+        nonce=f"alias-{route_name}-{alias_kind}",
     )
     rejected = client.request(
-        "GET",
-        f"{MANIFEST_PATH}?cache=1",
-        content=b"",
+        method,
+        _noncanonical_route(canonical_path, alias_kind),
+        content=raw_body,
         headers=headers,
+        follow_redirects=False,
     )
     assert rejected.status_code == 400
-    assert rejected.json()["code"] == "invalid_request"
+    assert rejected.json() == {
+        "code": "invalid_request",
+        "correlation_id": SAFE_CORRELATION_ID,
+    }
+    assert _ru_persistence_counts(api) == (0, 0, 0, 0)
 
-    accepted = client.request(
-        "GET",
-        MANIFEST_PATH,
-        content=b"",
-        headers=headers,
+
+@pytest.mark.parametrize("route_name", ["manifest", "runs", "heartbeat"])
+@pytest.mark.parametrize("follow_redirects", [False, True])
+def test_signed_internal_trailing_slash_is_never_redirected_or_committed(
+    api,
+    client: TestClient,
+    route_name: str,
+    follow_redirects: bool,
+) -> None:
+    method, canonical_path, raw_body, headers = _route_request(
+        api,
+        route_name,
+        nonce=f"trailing-{route_name}-{follow_redirects}",
     )
-    assert accepted.status_code == 200
+    rejected = client.request(
+        method,
+        f"{canonical_path}/",
+        content=raw_body,
+        headers=headers,
+        follow_redirects=follow_redirects,
+    )
+    assert rejected.status_code == 400
+    assert rejected.history == []
+    assert rejected.json() == {
+        "code": "invalid_request",
+        "correlation_id": SAFE_CORRELATION_ID,
+    }
+    assert _ru_persistence_counts(api) == (0, 0, 0, 0)
+
+
+def test_exact_public_route_remains_valid_with_asgi_root_path(api) -> None:
+    method, path, raw_body, headers = _route_request(
+        api,
+        "manifest",
+        nonce="manifest-root-path",
+    )
+    with TestClient(api.app, root_path="/edge") as root_client:
+        response = root_client.request(
+            method,
+            path,
+            content=raw_body,
+            headers=headers,
+            follow_redirects=False,
+        )
+    assert response.status_code == 200
+    assert _ru_persistence_counts(api) == (1, 0, 0, 0)
 
 
 @pytest.mark.parametrize(
