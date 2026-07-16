@@ -680,19 +680,73 @@ def test_protocol_adapter_uses_safe_fixed_argv_and_validates_response(
     registry = _python_adapter_registry("reserve-hysteria", script)
     real_popen = subprocess.Popen
     captured: dict[str, object] = {}
+    events: list[str] = []
 
     def popen(command, **kwargs):
         captured["command"] = command
         captured["kwargs"] = kwargs
-        return real_popen(command, **kwargs)
+        events.append("popen")
+        process = real_popen(command, **kwargs)
+        if os.name == "nt":
+            real_stdin = process.stdin
+            assert real_stdin is not None
 
-    with mock.patch.object(runner.subprocess, "Popen", side_effect=popen):
-        result = runner.run_transport_adapter(
-            "hysteria_handshake",
-            endpoint,
-            profile_registry=registry,
-            timeout_sec=5.0,
-        )
+            class RecordingStdin:
+                def write(self, data):
+                    events.append("gate_write")
+                    return real_stdin.write(data)
+
+                def flush(self):
+                    return real_stdin.flush()
+
+                def close(self):
+                    return real_stdin.close()
+
+            process.stdin = RecordingStdin()
+        return process
+
+    if os.name == "nt":
+        real_assign = runner._WindowsJobObject.assign
+        real_bootstrap = runner._windows_adapter_bootstrap
+
+        def assign(job, process):
+            events.append("assign")
+            return real_assign(job, process)
+
+        def bootstrap(command, request_bytes):
+            captured["adapter_command"] = command
+            captured["adapter_input"] = request_bytes
+            events.append("bootstrap")
+            return real_bootstrap(command, request_bytes)
+
+        with (
+            mock.patch.object(runner.subprocess, "Popen", side_effect=popen),
+            mock.patch.object(
+                runner._WindowsJobObject,
+                "assign",
+                autospec=True,
+                side_effect=assign,
+            ),
+            mock.patch.object(
+                runner,
+                "_windows_adapter_bootstrap",
+                side_effect=bootstrap,
+            ),
+        ):
+            result = runner.run_transport_adapter(
+                "hysteria_handshake",
+                endpoint,
+                profile_registry=registry,
+                timeout_sec=5.0,
+            )
+    else:
+        with mock.patch.object(runner.subprocess, "Popen", side_effect=popen):
+            result = runner.run_transport_adapter(
+                "hysteria_handshake",
+                endpoint,
+                profile_registry=registry,
+                timeout_sec=5.0,
+            )
 
     assert result == response
     command = captured["command"]
@@ -703,9 +757,131 @@ def test_protocol_adapter_uses_safe_fixed_argv_and_validates_response(
     assert kwargs["stderr"] is subprocess.PIPE
     if os.name == "nt":
         assert kwargs["creationflags"] & subprocess.CREATE_NEW_PROCESS_GROUP
+        assert command == [
+            str(Path(sys.executable).resolve()),
+            "-I",
+            "-c",
+            runner._WINDOWS_ADAPTER_WRAPPER,
+        ]
+        assert captured["adapter_command"] == [
+            str(Path(sys.executable).resolve()),
+            "-c",
+            script,
+        ]
+        assert captured["adapter_input"] == expected_input
+        assert events.index("assign") < events.index("gate_write")
     else:
         assert kwargs["start_new_session"] is True
-    assert command == [str(Path(sys.executable).resolve()), "-c", script]
+        assert command == [str(Path(sys.executable).resolve()), "-c", script]
+
+
+def test_protocol_adapter_accepts_chunked_partial_stdout(
+    runner,
+) -> None:
+    endpoint = _endpoint(
+        mode="xhttp_handshake",
+        profile="reserve_xhttp_cdn",
+        local_profile="reserve-xhttp",
+    )
+    expected = {
+        "schema_version": 1,
+        "profile_id": "reserve-xhttp",
+        "protocol": "xhttp",
+        "handshake_status": "pass",
+        "classification": "ok",
+        "detail_code": None,
+    }
+    response_bytes = canonical_json_bytes(expected)
+    script = "\n".join(
+        [
+            "import sys,time",
+            "sys.stdin.buffer.read()",
+            f"payload={response_bytes!r}",
+            "for offset in range(0,len(payload),7):",
+            "    sys.stdout.buffer.write(payload[offset:offset+7])",
+            "    sys.stdout.buffer.flush()",
+            "    time.sleep(0.002)",
+        ]
+    )
+
+    response = runner.run_transport_adapter(
+        "xhttp_handshake",
+        endpoint,
+        profile_registry=_python_adapter_registry("reserve-xhttp", script),
+        timeout_sec=5.0,
+    )
+
+    assert response == expected
+
+
+@pytest.mark.skipif(
+    os.name != "nt",
+    reason="Windows handle-leak regression",
+)
+def test_protocol_adapter_normal_exit_does_not_leak_process_handles(
+    runner,
+) -> None:
+    import ctypes
+    import gc
+    from ctypes import wintypes
+
+    endpoint = _endpoint(
+        mode="xhttp_handshake",
+        profile="reserve_xhttp_cdn",
+        local_profile="reserve-xhttp",
+    )
+    response = {
+        "schema_version": 1,
+        "profile_id": "reserve-xhttp",
+        "protocol": "xhttp",
+        "handshake_status": "pass",
+        "classification": "ok",
+        "detail_code": None,
+    }
+    script = (
+        "import sys;"
+        "sys.stdin.buffer.read();"
+        f"sys.stdout.buffer.write({canonical_json_bytes(response)!r})"
+    )
+    registry = _python_adapter_registry("reserve-xhttp", script)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_current_process = kernel32.GetCurrentProcess
+    get_current_process.restype = wintypes.HANDLE
+    get_process_handle_count = kernel32.GetProcessHandleCount
+    get_process_handle_count.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    get_process_handle_count.restype = wintypes.BOOL
+
+    def handle_count() -> int:
+        count = wintypes.DWORD()
+        assert get_process_handle_count(
+            get_current_process(),
+            ctypes.byref(count),
+        )
+        return int(count.value)
+
+    assert runner.run_transport_adapter(
+        "xhttp_handshake",
+        endpoint,
+        profile_registry=registry,
+        timeout_sec=5.0,
+    ) == response
+    gc.collect()
+    before = handle_count()
+    for _ in range(8):
+        assert runner.run_transport_adapter(
+            "xhttp_handshake",
+            endpoint,
+            profile_registry=registry,
+            timeout_sec=5.0,
+        ) == response
+    gc.collect()
+    time.sleep(0.05)
+    after = handle_count()
+
+    assert after <= before + 2
 
 
 def test_profile_registry_file_can_directly_map_allowlisted_profile_ids(
@@ -808,30 +984,106 @@ def test_protocol_adapter_timeout_kills_spawned_process_tree(
         profile="reserve_xhttp_cdn",
         local_profile="reserve-xhttp",
     )
+    ready = tmp_path / "timeout-child-ready.txt"
     sentinel = tmp_path / "orphan.txt"
     child = (
-        "import pathlib,time;"
-        "time.sleep(0.8);"
-        f"pathlib.Path({str(sentinel)!r}).write_text('orphan',encoding='utf-8')"
+        "import os,pathlib,time;"
+        "p=pathlib.Path;"
+        "p(os.environ['P7TR']).write_text('ready',encoding='utf-8');"
+        "time.sleep(1.4);"
+        "p(os.environ['P7TS']).write_text('orphan',encoding='utf-8')"
     )
-    script = (
-        "import subprocess,sys,time;"
-        "sys.stdin.buffer.read();"
-        f"subprocess.Popen([sys.executable,'-c',{child!r}]);"
-        "time.sleep(10)"
+    script = "\n".join(
+        [
+            "import os,pathlib,subprocess,sys,time",
+            "sys.stdin.buffer.read()",
+            f"subprocess.Popen([sys.executable,'-c',{child!r}])",
+            "ready=pathlib.Path(os.environ['P7TR'])",
+            "deadline=time.monotonic()+2.0",
+            "while not ready.exists() and time.monotonic()<deadline:",
+            "    time.sleep(0.01)",
+            "time.sleep(10)",
+        ]
     )
 
-    response = runner.run_transport_adapter(
-        "xhttp_handshake",
-        endpoint,
-        profile_registry=_python_adapter_registry("reserve-xhttp", script),
-        timeout_sec=0.2,
+    with mock.patch.dict(
+        os.environ,
+        {"P7TR": str(ready), "P7TS": str(sentinel)},
+    ):
+        response = runner.run_transport_adapter(
+            "xhttp_handshake",
+            endpoint,
+            profile_registry=_python_adapter_registry("reserve-xhttp", script),
+            timeout_sec=1.0,
+        )
+    deadline = time.monotonic() + 1.8
+    while time.monotonic() < deadline and not sentinel.exists():
+        time.sleep(0.05)
+
+    assert ready.exists(), "adapter child must start before timeout"
+    assert response["detail_code"] == "adapter_timeout"
+    assert not sentinel.exists()
+
+
+@pytest.mark.skipif(
+    os.name != "nt",
+    reason="Windows Job Object regression",
+)
+@pytest.mark.parametrize("stream_name", ["stdout", "stderr"])
+def test_protocol_adapter_overflow_kills_child_after_parent_exits(
+    runner,
+    tmp_path: Path,
+    stream_name: str,
+) -> None:
+    endpoint = _endpoint(
+        mode="xhttp_handshake",
+        profile="reserve_xhttp_cdn",
+        local_profile="reserve-xhttp",
     )
+    ready = tmp_path / f"{stream_name}-child-ready.txt"
+    sentinel = tmp_path / f"{stream_name}-orphan.txt"
+    child = (
+        "import os,pathlib,time;"
+        "p=pathlib.Path;"
+        "p(os.environ['P7R']).write_text('ready',encoding='utf-8');"
+        "time.sleep(0.8);"
+        "p(os.environ['P7S']).write_text('orphan',encoding='utf-8')"
+    )
+    stream = "sys.stdout.buffer" if stream_name == "stdout" else "sys.stderr.buffer"
+    script = "\n".join(
+        [
+            "import os,pathlib,subprocess,sys,time",
+            "sys.stdin.buffer.read()",
+            f"subprocess.Popen([sys.executable,'-c',{child!r}])",
+            "ready=pathlib.Path(os.environ['P7R'])",
+            "deadline=time.monotonic()+2.0",
+            "while not ready.exists() and time.monotonic()<deadline:",
+            "    time.sleep(0.01)",
+            f"{stream}.write(b'x'*131072)",
+            f"{stream}.flush()",
+            "os._exit(0)",
+        ]
+    )
+
+    with mock.patch.dict(
+        os.environ,
+        {"P7R": str(ready), "P7S": str(sentinel)},
+    ):
+        response = runner.run_transport_adapter(
+            "xhttp_handshake",
+            endpoint,
+            profile_registry=_python_adapter_registry("reserve-xhttp", script),
+            timeout_sec=2.0,
+        )
     deadline = time.monotonic() + 1.5
     while time.monotonic() < deadline and not sentinel.exists():
         time.sleep(0.05)
 
-    assert response["detail_code"] == "adapter_timeout"
+    assert ready.exists(), (
+        "adapter child must start before overflow; "
+        f"response={response!r}"
+    )
+    assert response["detail_code"] == "adapter_output_too_large"
     assert not sentinel.exists()
 
 
@@ -1121,35 +1373,66 @@ def test_secret_reader_rejects_symlink(hmac_client, tmp_path: Path) -> None:
     assert error.value.code == "secret_file_symlink"
 
 
-def test_secret_reader_detects_replace_between_metadata_check_and_open(
+@pytest.mark.skipif(
+    os.name != "nt",
+    reason="Windows reparse-point regression",
+)
+def test_secret_reader_rejects_raced_symlink_to_same_file(
     hmac_client,
     tmp_path: Path,
 ) -> None:
-    original = b"0123456789abcdef0123456789abcdef"
-    replacement = b"fedcba9876543210fedcba9876543210"
+    secret = b"0123456789abcdef0123456789abcdef"
     secret_file = tmp_path / "hmac.key"
-    replacement_file = tmp_path / "replacement.key"
-    secret_file.write_bytes(original)
+    backup_file = tmp_path / "hmac-backup.key"
+    secret_file.write_bytes(secret)
     secret_file.chmod(0o600)
-    replacement_file.write_bytes(replacement)
-    replacement_file.chmod(0o600)
-    real_open = os.open
+    symlink_probe = tmp_path / "symlink-probe.key"
+    try:
+        symlink_probe.symlink_to(secret_file)
+    except OSError as exc:
+        pytest.skip(f"symlink unavailable on this host: {exc}")
+    else:
+        symlink_probe.unlink()
 
-    def racing_open(path, flags, mode=0o777):
-        os.replace(replacement_file, secret_file)
-        return real_open(path, flags, mode)
+    def replace_path_with_same_file_symlink() -> None:
+        os.replace(secret_file, backup_file)
+        secret_file.symlink_to(backup_file)
 
-    with mock.patch.object(
-        hmac_client.os,
-        "open",
-        side_effect=racing_open,
-    ) as opened:
+    windows_open = getattr(
+        hmac_client,
+        "_open_windows_secret_descriptor",
+        None,
+    )
+    if callable(windows_open):
+        def racing_windows_open(path):
+            replace_path_with_same_file_symlink()
+            return windows_open(path)
+
+        patcher = mock.patch.object(
+            hmac_client,
+            "_open_windows_secret_descriptor",
+            side_effect=racing_windows_open,
+        )
+    else:
+        real_open = os.open
+
+        def racing_os_open(path, flags, mode=0o777):
+            replace_path_with_same_file_symlink()
+            return real_open(path, flags, mode)
+
+        patcher = mock.patch.object(
+            hmac_client.os,
+            "open",
+            side_effect=racing_os_open,
+        )
+
+    with patcher:
         with pytest.raises(hmac_client.InternalHmacClientError) as error:
             hmac_client.read_secret_file(secret_file)
 
-    assert opened.call_count == 1
-    assert error.value.code == "secret_file_changed"
-    assert secret_file.read_bytes() == replacement
+    assert secret_file.is_symlink(), "race must replace the opened path"
+    assert backup_file.stat().st_ino == secret_file.stat().st_ino
+    assert error.value.code == "secret_file_symlink"
 
 
 def test_secret_reader_contains_posix_nofollow_guard() -> None:

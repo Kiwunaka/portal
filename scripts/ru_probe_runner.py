@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import http.client
 import ipaddress
@@ -57,6 +58,22 @@ MAX_PROFILE_REGISTRY_BYTES = 64 * 1024
 MAX_ADAPTER_STDOUT_BYTES = 64 * 1024
 MAX_ADAPTER_STDERR_BYTES = 8 * 1024
 MAX_MANIFEST_FUTURE_SKEW_SECONDS = 5 * 60
+_WINDOWS_ADAPTER_WRAPPER = "\n".join(
+    [
+        "import base64,json,subprocess,sys",
+        "try:",
+        "    payload=json.loads(sys.stdin.buffer.read().decode('utf-8'))",
+        "    command=payload['command']",
+        "    request=base64.b64decode(payload['request_b64'],validate=True)",
+        "    child=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=sys.stdout.buffer,stderr=sys.stderr.buffer,shell=False,close_fds=True)",
+        "    child.communicate(request)",
+        "    raise SystemExit(child.returncode)",
+        "except SystemExit:",
+        "    raise",
+        "except BaseException:",
+        "    raise SystemExit(127)",
+    ]
+)
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _PROFILE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")
@@ -1015,6 +1032,169 @@ def _adapter_failure(
     )
 
 
+class _WindowsJobObject:
+    def __init__(self) -> None:
+        import ctypes
+        from ctypes import wintypes
+
+        class BasicLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("per_process_user_time_limit", ctypes.c_longlong),
+                ("per_job_user_time_limit", ctypes.c_longlong),
+                ("limit_flags", wintypes.DWORD),
+                ("minimum_working_set_size", ctypes.c_size_t),
+                ("maximum_working_set_size", ctypes.c_size_t),
+                ("active_process_limit", wintypes.DWORD),
+                ("affinity", ctypes.c_size_t),
+                ("priority_class", wintypes.DWORD),
+                ("scheduling_class", wintypes.DWORD),
+            ]
+
+        class IoCounters(ctypes.Structure):
+            _fields_ = [
+                ("read_operation_count", ctypes.c_ulonglong),
+                ("write_operation_count", ctypes.c_ulonglong),
+                ("other_operation_count", ctypes.c_ulonglong),
+                ("read_transfer_count", ctypes.c_ulonglong),
+                ("write_transfer_count", ctypes.c_ulonglong),
+                ("other_transfer_count", ctypes.c_ulonglong),
+            ]
+
+        class ExtendedLimitInformation(ctypes.Structure):
+            _fields_ = [
+                ("basic_limit_information", BasicLimitInformation),
+                ("io_info", IoCounters),
+                ("process_memory_limit", ctypes.c_size_t),
+                ("job_memory_limit", ctypes.c_size_t),
+                ("peak_process_memory_used", ctypes.c_size_t),
+                ("peak_job_memory_used", ctypes.c_size_t),
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        create_job_object = kernel32.CreateJobObjectW
+        create_job_object.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        create_job_object.restype = wintypes.HANDLE
+        set_information = kernel32.SetInformationJobObject
+        set_information.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+        ]
+        set_information.restype = wintypes.BOOL
+        assign_process = kernel32.AssignProcessToJobObject
+        assign_process.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        assign_process.restype = wintypes.BOOL
+        terminate_job = kernel32.TerminateJobObject
+        terminate_job.argtypes = [wintypes.HANDLE, wintypes.UINT]
+        terminate_job.restype = wintypes.BOOL
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = [wintypes.HANDLE]
+        close_handle.restype = wintypes.BOOL
+
+        handle = create_job_object(None, None)
+        if not handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        limits = ExtendedLimitInformation()
+        limits.basic_limit_information.limit_flags = 0x00002000
+        if not set_information(
+            handle,
+            9,
+            ctypes.byref(limits),
+            ctypes.sizeof(limits),
+        ):
+            error = ctypes.get_last_error()
+            close_handle(handle)
+            raise ctypes.WinError(error)
+        self._ctypes = ctypes
+        self._wintypes = wintypes
+        self._assign_process = assign_process
+        self._terminate_job = terminate_job
+        self._close_handle = close_handle
+        self._handle = handle
+
+    def assign(self, process: subprocess.Popen[bytes]) -> None:
+        if self._handle is None:
+            raise OSError("job object is closed")
+        if not self._assign_process(
+            self._handle,
+            self._wintypes.HANDLE(int(process._handle)),
+        ):
+            raise self._ctypes.WinError(self._ctypes.get_last_error())
+
+    def terminate(self) -> None:
+        if self._handle is not None:
+            self._terminate_job(self._handle, 1)
+
+    def close(self) -> None:
+        if self._handle is not None:
+            self._close_handle(self._handle)
+            self._handle = None
+
+
+def _windows_adapter_bootstrap(
+    command: list[str],
+    request_bytes: bytes,
+) -> bytes:
+    return json.dumps(
+        {
+            "command": command,
+            "request_b64": base64.b64encode(request_bytes).decode("ascii"),
+        },
+        ensure_ascii=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _start_adapter_process(
+    command: list[str],
+    *,
+    request_bytes: bytes,
+) -> tuple[
+    subprocess.Popen[bytes],
+    _WindowsJobObject | None,
+    bytes,
+]:
+    popen_kwargs: dict[str, object] = {
+        "stdin": subprocess.PIPE,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "shell": False,
+        "close_fds": True,
+    }
+    if os.name != "nt":
+        popen_kwargs["start_new_session"] = True
+        return (
+            subprocess.Popen(command, **popen_kwargs),
+            None,
+            request_bytes,
+        )
+
+    job = _WindowsJobObject()
+    process = None
+    try:
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        process = subprocess.Popen(
+            [str(Path(sys.executable).resolve()), "-I", "-c", _WINDOWS_ADAPTER_WRAPPER],
+            **popen_kwargs,
+        )
+        job.assign(process)
+        return (
+            process,
+            job,
+            _windows_adapter_bootstrap(command, request_bytes),
+        )
+    except BaseException:
+        if process is not None:
+            try:
+                process.kill()
+                process.wait(timeout=5.0)
+            except (OSError, subprocess.SubprocessError):
+                pass
+        job.close()
+        raise
+
+
 def _read_bounded_pipe(
     pipe,
     *,
@@ -1023,18 +1203,25 @@ def _read_bounded_pipe(
     overflow: threading.Event,
 ) -> None:
     total = 0
+    discarding = False
     try:
         while True:
-            remaining = limit - total
-            chunk = pipe.read(min(8192, remaining + 1))
+            chunk = pipe.read(8192)
             if not chunk:
                 return
+            if discarding:
+                continue
+            remaining = limit - total
             if len(chunk) > remaining:
+                if remaining:
+                    chunks.append(chunk[:remaining])
+                    total += remaining
                 overflow.set()
-                return
-            chunks.append(chunk)
-            total += len(chunk)
-    except OSError:
+                discarding = True
+            else:
+                chunks.append(chunk)
+                total += len(chunk)
+    except (OSError, ValueError):
         return
     finally:
         try:
@@ -1043,25 +1230,12 @@ def _read_bounded_pipe(
             pass
 
 
-def _terminate_adapter_process(process: subprocess.Popen[bytes]) -> None:
-    if os.name == "nt":
-        try:
-            subprocess.run(
-                [
-                    "taskkill.exe",
-                    "/PID",
-                    str(process.pid),
-                    "/T",
-                    "/F",
-                ],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=5.0,
-                check=False,
-            )
-        except (OSError, subprocess.SubprocessError):
-            pass
+def _terminate_adapter_process(
+    process: subprocess.Popen[bytes],
+    windows_job: _WindowsJobObject | None,
+) -> None:
+    if windows_job is not None:
+        windows_job.terminate()
     else:
         try:
             os.killpg(process.pid, signal.SIGKILL)
@@ -1084,18 +1258,10 @@ def _run_bounded_adapter_process(
     request_bytes: bytes,
     timeout_sec: float,
 ) -> tuple[str, int | None, bytes, bytes]:
-    popen_kwargs: dict[str, object] = {
-        "stdin": subprocess.PIPE,
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.PIPE,
-        "shell": False,
-        "close_fds": True,
-    }
-    if os.name == "nt":
-        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-    else:
-        popen_kwargs["start_new_session"] = True
-    process = subprocess.Popen(command, **popen_kwargs)
+    process, windows_job, process_input = _start_adapter_process(
+        command,
+        request_bytes=request_bytes,
+    )
     assert process.stdin is not None
     assert process.stdout is not None
     assert process.stderr is not None
@@ -1127,7 +1293,7 @@ def _run_bounded_adapter_process(
     for reader in readers:
         reader.start()
     try:
-        process.stdin.write(request_bytes)
+        process.stdin.write(process_input)
         process.stdin.flush()
     except (BrokenPipeError, OSError):
         pass
@@ -1142,30 +1308,34 @@ def _run_bounded_adapter_process(
     while True:
         if overflow.is_set():
             outcome = "overflow"
-            _terminate_adapter_process(process)
+            _terminate_adapter_process(process, windows_job)
             break
         readers_done = all(not reader.is_alive() for reader in readers)
         if process.poll() is not None and readers_done:
             break
         if time.monotonic() >= deadline:
             outcome = "timeout"
-            _terminate_adapter_process(process)
+            _terminate_adapter_process(process, windows_job)
             break
         overflow.wait(0.01)
 
     for reader in readers:
         reader.join(timeout=1.0)
     if any(reader.is_alive() for reader in readers):
-        _terminate_adapter_process(process)
+        _terminate_adapter_process(process, windows_job)
         outcome = "timeout" if outcome == "ok" else outcome
         for reader in readers:
             reader.join(timeout=1.0)
-    return (
-        outcome,
-        process.poll(),
-        b"".join(stdout_chunks),
-        b"".join(stderr_chunks),
-    )
+    try:
+        return (
+            outcome,
+            process.poll(),
+            b"".join(stdout_chunks),
+            b"".join(stderr_chunks),
+        )
+    finally:
+        if windows_job is not None:
+            windows_job.close()
 
 
 def run_transport_adapter(

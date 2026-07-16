@@ -55,28 +55,104 @@ class _RejectRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def _open_windows_secret_descriptor(path: Path) -> int:
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    generic_read = 0x80000000
+    file_share_read = 0x00000001
+    open_existing = 3
+    file_attribute_directory = 0x00000010
+    file_attribute_reparse_point = 0x00000400
+    file_flag_open_reparse_point = 0x00200000
+    file_flag_backup_semantics = 0x02000000
+    file_attribute_tag_info_class = 9
+    invalid_handle_value = ctypes.c_void_p(-1).value
+
+    class FileAttributeTagInfo(ctypes.Structure):
+        _fields_ = [
+            ("file_attributes", wintypes.DWORD),
+            ("reparse_tag", wintypes.DWORD),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    create_file.restype = wintypes.HANDLE
+    get_file_information = kernel32.GetFileInformationByHandleEx
+    get_file_information.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+    ]
+    get_file_information.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = [wintypes.HANDLE]
+    close_handle.restype = wintypes.BOOL
+
+    handle_value = create_file(
+        os.fspath(path),
+        generic_read,
+        file_share_read,
+        None,
+        open_existing,
+        file_flag_open_reparse_point | file_flag_backup_semantics,
+        None,
+    )
+    if handle_value == invalid_handle_value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        attribute_info = FileAttributeTagInfo()
+        if not get_file_information(
+            handle_value,
+            file_attribute_tag_info_class,
+            ctypes.byref(attribute_info),
+            ctypes.sizeof(attribute_info),
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if attribute_info.file_attributes & file_attribute_reparse_point:
+            raise InternalHmacClientError("secret_file_symlink")
+        if attribute_info.file_attributes & file_attribute_directory:
+            raise InternalHmacClientError("secret_file_not_regular")
+        descriptor = msvcrt.open_osfhandle(
+            int(handle_value),
+            os.O_RDONLY | getattr(os, "O_BINARY", 0),
+        )
+        handle_value = None
+        return descriptor
+    finally:
+        if handle_value is not None:
+            close_handle(handle_value)
+
+
+def _open_secret_descriptor(path: Path) -> int:
+    if os.name == "nt":
+        return _open_windows_secret_descriptor(path)
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    if not nofollow:
+        raise InternalHmacClientError("secret_file_no_follow_unavailable")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | nofollow
+    return os.open(path, flags)
+
+
 def read_secret_file(secret_file: str | Path) -> bytes:
     path = Path(secret_file)
     descriptor: int | None = None
-    nofollow = getattr(os, "O_NOFOLLOW", 0)
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_BINARY", 0)
-    preopen_metadata = None
     try:
-        if nofollow:
-            flags |= nofollow
-        else:
-            preopen_metadata = os.lstat(path)
-            if stat.S_ISLNK(preopen_metadata.st_mode):
-                raise InternalHmacClientError("secret_file_symlink")
-        descriptor = os.open(path, flags)
+        descriptor = _open_secret_descriptor(path)
         metadata = os.fstat(descriptor)
         if not stat.S_ISREG(metadata.st_mode):
             raise InternalHmacClientError("secret_file_not_regular")
-        if preopen_metadata is not None and (
-            preopen_metadata.st_dev,
-            preopen_metadata.st_ino,
-        ) != (metadata.st_dev, metadata.st_ino):
-            raise InternalHmacClientError("secret_file_changed")
         if os.name != "nt" and stat.S_IMODE(metadata.st_mode) & 0o077:
             raise InternalHmacClientError("secret_file_permissions")
         chunks: list[bytes] = []
