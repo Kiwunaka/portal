@@ -10,17 +10,22 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Identity,
     Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
     text as sql_text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
 
 Base = declarative_base()
+
+_RU_PROBE_SNAPSHOT_JSON = JSON().with_variant(JSONB(), "postgresql")
 
 
 def _utcnow() -> datetime:
@@ -746,7 +751,7 @@ class OpsAlert(Base):
 class RuProbeRun(Base):
     __tablename__ = "ru_probe_runs"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, Identity(), primary_key=True)
     run_id = Column(String(36), nullable=False)
     schema_version = Column(Integer, nullable=False)
     origin = Column(String(16), nullable=False)
@@ -798,7 +803,7 @@ class RuProbeRun(Base):
 class RuProbeTargetResult(Base):
     __tablename__ = "ru_probe_target_results"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, Identity(), primary_key=True)
     run_db_id = Column(
         Integer,
         ForeignKey(
@@ -816,8 +821,11 @@ class RuProbeTargetResult(Base):
     endpoint_host = Column(String(255), nullable=False)
     endpoint_port = Column(Integer, nullable=False)
     endpoint_sni = Column(String(255), nullable=True)
-    requested_address_families_json = Column(Text, nullable=False)
-    transport_metadata_json = Column(Text, nullable=False)
+    requested_address_families_json = Column(
+        _RU_PROBE_SNAPSHOT_JSON,
+        nullable=False,
+    )
+    transport_metadata_json = Column(_RU_PROBE_SNAPSHOT_JSON, nullable=False)
     transport_profile = Column(String(64), nullable=False)
     probe_mode = Column(String(64), nullable=False)
     http_path = Column(String(512), nullable=True)
@@ -871,7 +879,7 @@ class RuProbeTargetResult(Base):
 class RuProbeUploaderHeartbeat(Base):
     __tablename__ = "ru_probe_uploader_heartbeats"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, Identity(), primary_key=True)
     probe_host_id = Column(String(64), nullable=False)
     observed_at = Column(DateTime(timezone=True), nullable=False)
     received_at = Column(DateTime(timezone=True), nullable=False)
@@ -926,7 +934,7 @@ class RuProbeUploaderHeartbeat(Base):
 class InternalIngestNonce(Base):
     __tablename__ = "internal_ingest_nonces"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, Identity(), primary_key=True)
     key_scope = Column(String(64), nullable=False)
     key_id = Column(String(128), nullable=False)
     nonce_hash = Column(String(64), nullable=False)
