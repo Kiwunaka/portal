@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 MANIFEST_SCHEMA_VERSION = 1
 RUN_SCHEMA_VERSION = 2
+MAX_RUN_TARGETS = 256
 ALLOWED_ADDRESS_FAMILIES = ("ipv4", "ipv6")
 ALLOWED_STAGES = (
     "dns",
@@ -59,8 +60,15 @@ _TIMESTAMP_RE = re.compile(
 _DNS_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 _SENSITIVE_DETAIL_RE = re.compile(
-    r"(?i)(?:authorization\s*:|(?:password|passwd|secret|token|private[_-]?key|"
-    r"reality[_-]?pbk|reality[_-]?sid|uuid)\s*[=:]|(?:vless|hysteria2?)://)"
+    r"(?ix)(?:"
+    r"\bauthorization\b\s*['\"]?\s*:|"
+    r"\bbearer\s+[A-Za-z0-9._~+/=-]+|"
+    r"\b(?:api[_-]?key|access[_-]?key|client[_-]?secret|session[_-]?token|"
+    r"refresh[_-]?token|panel[_-]?(?:pass|user)|password|passwd|secret|token|"
+    r"private[_-]?key|reality[_-]?(?:pbk|sid)|uuid|subscription(?:[_-]?url)?|"
+    r"sub[_-]?url)\b\s*['\"]?\s*[=:]|"
+    r"(?:https?|vless|vmess|trojan|ss|hysteria2?|tuic|wireguard)://"
+    r")"
 )
 
 
@@ -370,6 +378,11 @@ def _validate_endpoint(value: object, *, path: str) -> dict[str, object]:
     return endpoint
 
 
+def validate_manifest_endpoint(endpoint: object) -> dict[str, object]:
+    validated = _validate_endpoint(endpoint, path="$.endpoint")
+    return json.loads(canonical_json_bytes(validated).decode("utf-8"))
+
+
 def _validate_stage(value: object, *, path: str) -> dict[str, object]:
     stage = _require_object(
         value,
@@ -485,7 +498,6 @@ def _validate_target(value: object, *, path: str) -> dict[str, object]:
         transport["classification"],
         path=f"{path}.transport.classification",
         maximum=64,
-        nullable=True,
     )
     _validate_code(
         transport["detail_code"],
@@ -581,7 +593,7 @@ def validate_run_payload(payload: object) -> dict[str, object]:
         _fail("invalid_targets", "$.targets")
     if not targets:
         _fail("missing_target", "$.targets")
-    if len(targets) > 256:
+    if len(targets) > MAX_RUN_TARGETS:
         _fail("too_many_targets", "$.targets")
     seen_target_ids: set[str] = set()
     validated_targets: list[dict[str, object]] = []

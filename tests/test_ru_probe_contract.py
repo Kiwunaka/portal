@@ -195,6 +195,10 @@ def test_canonical_json_is_exact_utf8_and_rejects_non_json_values() -> None:
         (lambda p: p["targets"][0]["stages"].pop("dns"), "missing_field"),
         (lambda p: p["targets"][0]["stages"]["tcp"].update(extra=True), "unknown_field"),
         (lambda p: p["targets"][0]["stages"]["tcp"].update(latency_ms=-1), "invalid_latency"),
+        (
+            lambda p: p["targets"][0]["transport"].update(classification=None),
+            "invalid_code",
+        ),
         (lambda p: p["targets"][0].update(detail="x" * 501), "invalid_detail"),
     ],
 )
@@ -275,6 +279,32 @@ def test_validation_returns_detached_normalized_payload() -> None:
     assert validated["targets"] is not payload["targets"]
 
 
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "Bearer SYNTHETIC_REDACTED",
+        "api_key=SYNTHETIC_REDACTED",
+        "panel_pass=SYNTHETIC_REDACTED",
+        "https://example.invalid/subscription/SYNTHETIC_REDACTED",
+        "subscription_url=https://example.invalid/SYNTHETIC_REDACTED",
+    ],
+)
+def test_detail_rejects_obvious_synthetic_credential_and_subscription_forms(
+    detail: str,
+) -> None:
+    payload = valid_payload()
+    payload["targets"][0]["detail"] = detail
+    _assert_error(payload, "sensitive_detail")
+
+
+def test_detail_accepts_short_sanitized_operator_reason() -> None:
+    payload = valid_payload()
+    payload["targets"][0]["detail"] = "TLS-проверка отклонена удалённой стороной"
+    assert validate_run_payload(payload)["targets"][0]["detail"] == (
+        "TLS-проверка отклонена удалённой стороной"
+    )
+
+
 def test_contract_module_is_stdlib_only() -> None:
     source = (PORTAL_DIR / "ru_probe_contract.py").read_text(encoding="utf-8")
     imports = {
@@ -325,6 +355,9 @@ def test_json_schema_mirrors_exact_nested_contract() -> None:
         ALLOWED_ADDRESS_FAMILIES
     )
     assert target["properties"]["detail"]["anyOf"][1]["maxLength"] == 500
+    assert target["properties"]["transport"]["properties"]["classification"] == {
+        "$ref": "#/$defs/code64"
+    }
     assert schema["properties"]["started_at"]["pattern"].endswith("Z$")
     assert {branch.get("format") for branch in schema["$defs"]["host"]["anyOf"]} == {
         "hostname",

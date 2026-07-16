@@ -355,7 +355,7 @@
           "properties": {
             "profile_code": {"$ref": "#/$defs/code64"},
             "handshake_status": {"enum": ["pass", "fail", "not_run", "not_applicable"]},
-            "classification": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/code64"}]},
+            "classification": {"$ref": "#/$defs/code64"},
             "detail_code": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/code64"}]}
           }
         },

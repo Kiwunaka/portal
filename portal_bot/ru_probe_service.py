@@ -15,12 +15,15 @@ from ru_probe_contract import (
     ALLOWED_ADDRESS_FAMILIES,
     ALLOWED_STAGES,
     MANIFEST_SCHEMA_VERSION,
+    MAX_RUN_TARGETS,
     RuProbeContractError,
     canonical_json_bytes,
     endpoint_fingerprint,
     manifest_revision,
+    validate_manifest_endpoint,
     validate_run_payload,
 )
+from transport_catalog import enabled_transport_profiles
 
 
 # One scheduled six-hour interval. Operators may shorten it, but an offline
@@ -253,13 +256,19 @@ def _target(
     endpoint: dict[str, object],
     required_stages: list[str],
 ) -> dict[str, object]:
+    try:
+        validated_endpoint = validate_manifest_endpoint(endpoint)
+    except RuProbeContractError as exc:
+        raise RuProbeConfigurationError(
+            exc.code, path=exc.path, message=exc.message
+        ) from exc
     return {
         "target_id": target_id,
         "target_kind": target_kind,
         "scope": scope,
         "node_code": node_code,
-        "endpoint": endpoint,
-        "endpoint_fingerprint": endpoint_fingerprint(endpoint),
+        "endpoint": validated_endpoint,
+        "endpoint_fingerprint": endpoint_fingerprint(validated_endpoint),
         "required_stages": [stage for stage in ALLOWED_STAGES if stage in required_stages],
     }
 
@@ -443,6 +452,20 @@ def classify_delivery_node_scope(
     return DeliveryNodeScopeDecision(included=False, reason="not_in_scope")
 
 
+def _delivery_transport_profile_name(node) -> str:
+    profiles = enabled_transport_profiles(node)
+    if not profiles:
+        _config_fail(
+            "no_active_transport_profile",
+            f"nodes[{getattr(node, 'id', None)}].transport_profiles",
+        )
+    return _safe_code(
+        profiles[0].get("name"),
+        path=f"nodes[{getattr(node, 'id', None)}].transport_profiles[0].name",
+        maximum=64,
+    )
+
+
 def _delivery_targets(session) -> list[dict[str, object]]:
     nodes = session.query(Node).order_by(Node.code.asc()).all()
     node_ids = [int(node.id) for node in nodes if node.id is not None]
@@ -467,20 +490,26 @@ def _delivery_targets(session) -> list[dict[str, object]]:
             continue
         code = _safe_code(node.code, path=f"nodes[{node.id}].code", maximum=20)
         host = _safe_host(node.host, path=f"nodes[{node.id}].host")
-        port = int(node.vless_port or 443)
-        if not 1 <= port <= 65535:
+        raw_port = node.vless_port
+        port = 443 if raw_port is None else raw_port
+        if (
+            isinstance(port, bool)
+            or not isinstance(port, int)
+            or not 1 <= port <= 65535
+        ):
             _config_fail("invalid_endpoint", f"nodes[{node.id}].vless_port")
         sni = _safe_host(
             node.reality_sni,
             path=f"nodes[{node.id}].reality_sni",
             nullable=True,
         )
+        transport_profile = _delivery_transport_profile_name(node)
         endpoint = _endpoint(
             host=str(host),
             port=port,
             sni=str(sni) if sni is not None else None,
             address_families=list(ALLOWED_ADDRESS_FAMILIES),
-            transport_profile="legacy_reality_fallback",
+            transport_profile=transport_profile,
             probe_mode="delivery_tls",
             http_path=None,
             min_body_bytes=None,
@@ -507,6 +536,8 @@ def build_ru_manifest(session, *, now: datetime) -> dict[str, object]:
         *_delivery_targets(session),
         *_reserve_config_targets(),
     ]
+    if len(targets) > MAX_RUN_TARGETS:
+        _config_fail("too_many_targets", "$.targets")
     targets.sort(key=lambda item: str(item["target_id"]))
     seen: set[str] = set()
     for target in targets:
@@ -528,14 +559,7 @@ def _parse_utc(value: str) -> datetime:
 
 
 def _same_endpoint(left: dict[str, object], right: dict[str, object]) -> bool:
-    left_copy = copy.deepcopy(left)
-    right_copy = copy.deepcopy(right)
-    for endpoint in (left_copy, right_copy):
-        families = endpoint.get("address_families", [])
-        endpoint["address_families"] = [
-            family for family in ALLOWED_ADDRESS_FAMILIES if family in families
-        ]
-    return canonical_json_bytes(left_copy) == canonical_json_bytes(right_copy)
+    return canonical_json_bytes(left) == canonical_json_bytes(right)
 
 
 def _stage_verdict(

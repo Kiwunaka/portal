@@ -73,6 +73,7 @@ def _node(
         reality_sid=f"SECRET-SID-{code}",
         panel_user=f"secret-user-{code}",
         panel_pass=f"secret-pass-{code}",
+        inbound_id=1,
         enabled=enabled,
         is_draining=draining,
         provisioned_clients_count=provisioned,
@@ -224,6 +225,9 @@ def test_manifest_has_exact_google_and_default_canonical_targets_without_secrets
         "local_probe_profile_id": None,
     }
     assert google["required_stages"] == ["dns", "tcp", "tls", "http_large_body"]
+    assert targets["node:nl"]["endpoint"]["transport_profile"] == (
+        "legacy_reality_fallback"
+    )
     assert {
         targets[key]["endpoint"]["host"]
         for key in targets
@@ -312,6 +316,39 @@ def test_manifest_config_is_deterministic_public_strict_and_timestamp_independen
 
 
 @pytest.mark.parametrize(
+    ("field", "value", "code"),
+    [
+        ("sni", "203.0.113.10", "invalid_sni"),
+        ("http_path", "/probe\nnext", "invalid_path"),
+    ],
+)
+def test_manifest_config_cannot_publish_endpoint_rejected_by_payload_contract(
+    session,
+    monkeypatch: pytest.MonkeyPatch,
+    field: str,
+    value: str,
+    code: str,
+) -> None:
+    target = {
+        "target_id": "canonical:self-check",
+        "host": "self-check.example.net",
+        "port": 443,
+        "sni": "self-check.example.net",
+        "address_families": ["ipv4", "ipv6"],
+        "transport_profile": "https",
+        "http_path": "/probe",
+        "min_body_bytes": 65536,
+    }
+    target[field] = value
+    monkeypatch.setenv("RU_PROBE_CANONICAL_TARGETS_JSON", json.dumps([target]))
+    with pytest.raises(RuProbeConfigurationError) as exc:
+        build_ru_manifest(
+            session, now=datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+        )
+    assert exc.value.code == code
+
+
+@pytest.mark.parametrize(
     ("env_name", "value", "code"),
     [
         ("RU_PROBE_CANONICAL_TARGETS_JSON", "not-json", "invalid_json"),
@@ -356,6 +393,80 @@ def test_manifest_rejects_node_code_outside_public_code_allowlist(session) -> No
     assert exc.value.code == "invalid_code"
 
 
+def test_manifest_rejects_explicit_zero_delivery_port(session) -> None:
+    node = _node("zero-port", enabled=True)
+    node.vless_port = 0
+    session.add(node)
+    session.commit()
+    with pytest.raises(RuProbeConfigurationError) as exc:
+        build_ru_manifest(
+            session, now=datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+        )
+    assert exc.value.code == "invalid_endpoint"
+
+
+def test_delivery_target_uses_first_normalized_active_transport_profile_without_material(
+    session,
+) -> None:
+    node = _node("grpc", enabled=True)
+    node.inbound_id = 0
+    node.transport_profiles_json = json.dumps(
+        [
+            {
+                "name": "grpc_443_primary",
+                "enabled": True,
+                "kind": "grpc",
+                "grpc_service_name": "synthetic-grpc-service",
+                "token": "SYNTHETIC-SECRET-NOT-FOR-MANIFEST",
+            }
+        ]
+    )
+    session.add(node)
+    session.commit()
+
+    manifest = build_ru_manifest(
+        session, now=datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    )
+    target = _targets_by_id(manifest)["node:grpc"]
+    assert target["endpoint"]["transport_profile"] == "grpc_443_primary"
+    serialized = json.dumps(target, ensure_ascii=False)
+    assert "synthetic-grpc-service" not in serialized
+    assert "SYNTHETIC-SECRET-NOT-FOR-MANIFEST" not in serialized
+
+
+def test_delivery_target_without_active_transport_profile_fails_closed(session) -> None:
+    node = _node("inactive", enabled=True)
+    node.inbound_id = 0
+    node.transport_profiles_json = json.dumps(
+        [{"name": "grpc_443_primary", "enabled": False, "kind": "grpc"}]
+    )
+    session.add(node)
+    session.commit()
+    with pytest.raises(RuProbeConfigurationError) as exc:
+        build_ru_manifest(
+            session, now=datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+        )
+    assert exc.value.code == "no_active_transport_profile"
+
+
+def test_manifest_rejects_more_targets_than_payload_contract_can_return(session) -> None:
+    nodes = [_node(f"n{index:03d}", enabled=True) for index in range(253)]
+    session.add_all(nodes[:252])
+    session.commit()
+    at_limit = build_ru_manifest(
+        session, now=datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+    )
+    assert len(at_limit["targets"]) == 256
+
+    session.add(nodes[252])
+    session.commit()
+    with pytest.raises(RuProbeConfigurationError) as exc:
+        build_ru_manifest(
+            session, now=datetime(2026, 7, 16, 9, 0, tzinfo=timezone.utc)
+        )
+    assert exc.value.code == "too_many_targets"
+
+
 def test_evaluate_exact_current_run_ignores_client_aggregates(session) -> None:
     session.add(_node("nl", enabled=True))
     session.commit()
@@ -395,6 +506,21 @@ def test_old_revision_or_changed_endpoint_is_superseded(session, mutation: str) 
     assert result.current_eligible is False
     assert result.ineligible_reason == "superseded_manifest"
     assert all(item.current_eligible is False for item in result.target_results)
+
+
+def test_reordered_address_families_is_not_exact_current_endpoint(session) -> None:
+    session.add(_node("nl", enabled=True))
+    session.commit()
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    manifest = build_ru_manifest(session, now=now)
+    payload = _payload_from_manifest(manifest, now=now)
+    node = next(item for item in payload["targets"] if item["target_id"] == "node:nl")
+    node["endpoint"]["address_families"].reverse()
+    node["endpoint_fingerprint"] = endpoint_fingerprint(node["endpoint"])
+
+    result = evaluate_ru_run(session, payload, now=now)
+    assert result.release_verdict == "superseded_manifest"
+    assert result.current_eligible is False
 
 
 def test_missing_target_is_incomplete_and_extra_diagnostic_never_changes_release(session) -> None:
