@@ -30,6 +30,7 @@ import {
 import { DataTable } from "@/components/data-table";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, Progress, SectionTitle, type Tone } from "@/components/ui";
+import { ErrorState } from "@/components/ui/states";
 import {
   AdminApiError,
   ackAlert,
@@ -72,7 +73,7 @@ import {
   type TrafficSummaryRow
 } from "@/lib/api";
 import { formatGb, formatInt, formatPct, shortDateTime } from "@/lib/format";
-import type { OpsSectionId } from "@/lib/sections";
+import { OPS_SECTIONS, type OpsSectionId } from "@/lib/sections";
 import { useRouteResource } from "@/lib/use-route-resource";
 import { URL_STATE_CHANGE_EVENT } from "@/lib/url-state";
 
@@ -774,6 +775,7 @@ export function LegacySection({
     [routeResource.data, routeResource.error]
   );
   const error = routeErrors.map((reason) => errorMessage(reason, "Запрос не выполнен")).slice(0, 2).join(" | ");
+  const sectionLabel = OPS_SECTIONS.find((item) => item.id === section)?.label || section;
   const loading = routeResource.loading || routeResource.refreshing;
   const lastLoadedAt = routeResource.updatedAt || "";
 
@@ -792,7 +794,7 @@ export function LegacySection({
       : errors.length === 0 ? "ok" : succeeded > 0 ? "degraded" : "failed";
     const session = accessDenied
       ? "failed"
-      : requested === 0 || succeeded > 0 ? "ok" : errors.length ? "unavailable" : "missing";
+      : requested === 0 ? "missing" : succeeded > 0 ? "ok" : errors.length ? "unavailable" : "missing";
     onShellStatus?.({
       api,
       session,
@@ -1607,7 +1609,18 @@ export function LegacySection({
   return (
     <div className="space-y-4">
       {renderTopBar}
-      {error ? <Badge tone="warning">{error}</Badge> : null}
+      {error ? (
+        <ErrorState
+          title={`Не удалось загрузить раздел «${sectionLabel}»`}
+          description={error}
+          action={(
+            <Button tone="secondary" onClick={() => void load()}>
+              {`Повторить загрузку раздела «${sectionLabel}»`}
+            </Button>
+          )}
+          className="min-h-0"
+        />
+      ) : null}
       {loading && !overview ? (
         <Card>
           <div className="flex items-center gap-2 text-sm text-[color:var(--atlas-text-soft)]">

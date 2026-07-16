@@ -59,7 +59,16 @@ export function useRouteResource<T>(
     if (!enabled) {
       queueMicrotask(() => {
         if (generation !== generationRef.current) return;
-        setState((current) => ({ ...current, error: null, loading: false, refreshing: false }));
+        setState((current) => {
+          const keepLastSuccess = successfulKeyRef.current === key;
+          return {
+            data: keepLastSuccess ? current.data : null,
+            error: null,
+            loading: false,
+            refreshing: false,
+            updatedAt: keepLastSuccess ? current.updatedAt : null
+          };
+        });
       });
       return () => {
         controller.abort();

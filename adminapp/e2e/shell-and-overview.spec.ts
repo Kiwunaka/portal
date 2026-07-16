@@ -4,7 +4,9 @@ import { installAdminApiMock } from "./fixtures/admin-api";
 
 const apiCorsHeaders = {
   "access-control-allow-origin": "http://127.0.0.1:3107",
-  "access-control-allow-credentials": "true"
+  "access-control-allow-credentials": "true",
+  "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
+  "access-control-allow-headers": "authorization,content-type,x-telegram-init-data,x-web-auth-token"
 };
 
 const expectedGroups = [
@@ -130,6 +132,156 @@ test("каждый раздел запрашивает только собств
     expect(calls, `лишние GET на ${route.href}`).toEqual(expect.arrayContaining([...route.paths]));
     expect(calls.every((path) => route.paths.includes(path as never)), `скрытый GET на ${route.href}: ${calls.join(", ")}`).toBe(true);
   }
+});
+
+test("клиентская навигация из промо изолирует сбой рефералов и старое состояние", async ({ page }) => {
+  await installAdminApiMock(page, {
+    promoRows: [{ id: 701, code: "PROMO-ONLY-701", status: "active", promo_type: "days" }],
+    referralsStatus: 503
+  });
+  await page.goto("/promos");
+  await expect(page.getByText("PROMO-ONLY-701", { exact: true }).first()).toBeVisible();
+  await page.evaluate(() => {
+    document.documentElement.dataset.task3ShellInstance = "preserved";
+  });
+
+  await page.getByRole("link", { name: "Рефералы", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/referrals$/);
+  expect(await page.evaluate(() => document.documentElement.dataset.task3ShellInstance)).toBe("preserved");
+  await expect(page.getByRole("heading", { name: "Рефералы", exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByText("PROMO-ONLY-701", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("alert").filter({ hasText: "Не удалось загрузить раздел «Рефералы»" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Повторить загрузку раздела «Рефералы»" })).toBeVisible();
+});
+
+test("раздел без чтений не подтверждает сессию даже после локального 401", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
+  });
+  const api = await installAdminApiMock(page, { broadcastStatus: 401 });
+  await page.goto("/broadcast");
+  await expect(page.getByText("Данные свежие", { exact: true })).toHaveCount(1);
+
+  await expect(page.getByLabel("Состояние API: Нет данных")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Нет данных")).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Норма")).toHaveCount(0);
+  await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
+
+  await page.getByPlaceholder("Текст рассылки").fill("Проверка локального отказа");
+  await page.getByRole("button", { name: "Dry-run" }).click();
+  await expect(page.getByText("Сессия рассылки отклонена", { exact: true })).toBeVisible();
+  await expect.poll(() => api.calls.some((call) => call.method === "POST" && call.path === "/api/admin/broadcast")).toBe(true);
+  await expect(page.getByLabel("Состояние API: Нет данных")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Нет данных")).toBeVisible();
+  await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
+});
+
+test("отключённый ресурс не показывает карточку предыдущего ключа", async ({ page }) => {
+  const userQueries: string[] = [];
+  await installAdminApiMock(page);
+  await page.route("**/api/admin/users**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers: apiCorsHeaders, body: "" });
+      return;
+    }
+    if (url.pathname === "/api/admin/users/1001") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: apiCorsHeaders,
+        body: JSON.stringify({
+          user: { tg_id: 1001, display_name: "Тестовый пользователь", status: "active", sub_type: "paid" },
+          summary: {},
+          keys: [],
+          observer: { recent_ips: [] },
+          risk: {},
+          tickets: [],
+          payment_orders: [],
+          key_history: [],
+          admin_actions: []
+        })
+      });
+      return;
+    }
+    if (url.pathname === "/api/admin/users") {
+      const query = url.searchParams.get("q") || "";
+      userQueries.push(query);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: apiCorsHeaders,
+        body: JSON.stringify({
+          page: 1,
+          page_size: 80,
+          total: query ? 0 : 1,
+          sort: "created_desc",
+          users: query ? [] : [{ tg_id: 1001, display_name: "Тестовый пользователь", status: "active", sub_type: "paid" }]
+        })
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.goto("/users");
+  await expect(page.getByRole("heading", { name: "Пользователь 1001" })).toBeVisible();
+  await page.getByPlaceholder("tg_id, username, install_id, order_id, key/email").fill("nobody");
+  await expect.poll(() => userQueries.includes("nobody")).toBe(true);
+
+  await expect(page.getByText("Выбери пользователя в таблице.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Пользователь 1001" })).toHaveCount(0);
+});
+
+test("polling работает только на видимой активной главной и очищается при уходе", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-07-16T00:00:00Z") });
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
+    let visibility: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibility
+    });
+    const controlledWindow = window as typeof window & {
+      __setAdminVisibility?: (next: DocumentVisibilityState) => void;
+    };
+    controlledWindow.__setAdminVisibility = (next) => {
+      visibility = next;
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+  });
+  const api = await installAdminApiMock(page);
+  const overviewCount = () => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length;
+
+  await page.goto("/");
+  await page.clock.runFor(1);
+  await expect.poll(overviewCount).toBe(1);
+
+  await page.clock.fastForward(60_000);
+  await expect.poll(overviewCount).toBe(2);
+
+  await page.evaluate(() => {
+    (window as typeof window & { __setAdminVisibility?: (next: DocumentVisibilityState) => void }).__setAdminVisibility?.("hidden");
+  });
+  const countBeforeHiddenWindow = overviewCount();
+  await page.clock.fastForward(180_000);
+  expect(overviewCount()).toBe(countBeforeHiddenWindow);
+
+  await page.evaluate(() => {
+    (window as typeof window & { __setAdminVisibility?: (next: DocumentVisibilityState) => void }).__setAdminVisibility?.("visible");
+  });
+  await expect.poll(overviewCount).toBe(countBeforeHiddenWindow + 1);
+  await page.clock.fastForward(60_000);
+  await expect.poll(overviewCount).toBe(countBeforeHiddenWindow + 2);
+
+  await page.getByRole("link", { name: "Ноды", exact: true }).click();
+  await expect(page).toHaveURL(/\/nodes$/);
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/nodes/health")).toBe(true);
+  const countAfterUnmount = overviewCount();
+  await page.clock.fastForward(180_000);
+  expect(overviewCount()).toBe(countAfterUnmount);
 });
 
 test("очередь действий сортируется детерминированно и не подменяет пропуски нулём", async ({ page }) => {

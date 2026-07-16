@@ -195,6 +195,9 @@ type AdminApiMockOptions = {
   overviewStatus?: number;
   searchStatus?: number;
   trafficStatus?: number;
+  promoRows?: Array<Record<string, unknown>>;
+  referralsStatus?: number;
+  broadcastStatus?: number;
   failAllLegacyRequests?: boolean;
   delayFirstOverviewFailure?: boolean;
 };
@@ -258,10 +261,11 @@ export async function installAdminApiMock(
     const method = request.method();
     calls.push({ method, path: `${url.pathname}${url.search}` });
 
-    const knownPath = FOCUSED_GET_PATHS.has(url.pathname) || url.pathname === "/api/admin/auth/session";
+    const knownPath = FOCUSED_GET_PATHS.has(url.pathname) || url.pathname === "/api/admin/auth/session" || url.pathname === "/api/admin/broadcast";
     const knownRequest =
       (method === "GET" && FOCUSED_GET_PATHS.has(url.pathname)) ||
       (method === "POST" && url.pathname === "/api/admin/auth/session") ||
+      (method === "POST" && url.pathname === "/api/admin/broadcast") ||
       (method === "OPTIONS" && knownPath);
     if (!knownRequest) {
       await fulfillJson(
@@ -290,6 +294,20 @@ export async function installAdminApiMock(
         expires_in: 3600,
         user: { id: 9999, username: "owner", role: "superadmin" }
       });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/broadcast") {
+      const status = options.broadcastStatus ?? 200;
+      if (status !== 200) {
+        await fulfillJson(
+          route,
+          { detail: "Сессия рассылки отклонена", code: "broadcast_session_rejected", correlation_id: "broadcast-test-id" },
+          status
+        );
+        return;
+      }
+      await fulfillJson(route, { ok: true, attempted: 0, sent: 0, failed: 0 });
       return;
     }
 
@@ -396,6 +414,15 @@ export async function installAdminApiMock(
       return;
     }
 
+    if (url.pathname === "/api/admin/referrals/pending" && options.referralsStatus && options.referralsStatus !== 200) {
+      await fulfillJson(
+        route,
+        { detail: "Источник рефералов временно недоступен", code: "referrals_unavailable" },
+        options.referralsStatus
+      );
+      return;
+    }
+
     const minimalPayloads: Record<string, unknown> = {
       "/api/admin/alerts": { alerts: [] },
       "/api/admin/free-tier/users": { users: [] },
@@ -410,7 +437,7 @@ export async function installAdminApiMock(
       "/api/admin/live-updates": { updates: [] },
       "/api/admin/funnel/summary": { stages: [], sources: [] },
       "/api/admin/users": { page: 1, page_size: 80, total: 0, sort: "created_desc", users: [] },
-      "/api/admin/promos": { promos: [] },
+      "/api/admin/promos": { promos: options.promoRows ?? [] },
       "/api/admin/referrals/pending": { rows: [] }
     };
     const payload = minimalPayloads[url.pathname];

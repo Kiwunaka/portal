@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { LegacySection } from "@/features/legacy/legacy-section";
@@ -30,5 +30,5 @@ export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
 };
 
 export function ActiveOpsRoute({ section, onShellStatus }: { section: OpsSectionId; onShellStatus?: (status: OpsShellStatus) => void }) {
-  return OPS_FEATURE_REGISTRY[section]({ onShellStatus });
+  return <Fragment key={section}>{OPS_FEATURE_REGISTRY[section]({ onShellStatus })}</Fragment>;
 }
