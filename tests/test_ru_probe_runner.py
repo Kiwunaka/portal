@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import socket
 import stat
 import subprocess
 import sys
+import threading
+import time
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -163,6 +169,20 @@ def _passing_dataplane_result() -> dict[str, object]:
     }
 
 
+def _python_adapter_registry(
+    profile_id: str,
+    script: str,
+) -> dict[str, object]:
+    return {
+        "profiles": {
+            profile_id: {
+                "executable": str(Path(sys.executable).resolve()),
+                "argv": ["-c", script],
+            }
+        }
+    }
+
+
 def test_delivery_tcp_success_does_not_mask_tls_failure(runner) -> None:
     with mock.patch.object(
         runner.dataplane_probe,
@@ -185,6 +205,96 @@ def test_delivery_tcp_success_does_not_mask_tls_failure(runner) -> None:
 
     assert result["stages"]["tcp"]["status"] == "pass"
     assert result["stages"]["tls"]["status"] == "fail"
+
+
+def test_delivery_forbidden_connected_family_cannot_pass_required_stages(
+    runner,
+) -> None:
+    target = _target()
+    target["endpoint"]["address_families"] = ["ipv4"]
+    target["endpoint_fingerprint"] = endpoint_fingerprint(target["endpoint"])
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["2001:db8::20"],
+                "resolved_ipv4": [],
+                "resolved_ipv6": ["2001:db8::20"],
+            },
+        ),
+        mock.patch.object(
+            runner.dataplane_probe,
+            "probe_node_endpoint",
+            return_value={
+                **_passing_dataplane_result(),
+                "resolved_ips": ["2001:db8::20"],
+                "connected_ip": "2001:db8::20",
+            },
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={},
+        )
+
+    assert result["address_family_status"]["ipv4"] == "fail"
+    assert result["address_family_status"]["ipv6"] == "not_applicable"
+    assert result["stages"]["tcp"]["status"] != "pass"
+    assert result["stages"]["tls"]["status"] != "pass"
+
+
+def test_delivery_attempts_each_requested_family_and_reports_actual_outcome(
+    runner,
+) -> None:
+    target = _target()
+    calls: list[str] = []
+
+    def probe(*, host, port, sni, timeout_sec):
+        calls.append(host)
+        if host == "203.0.113.20":
+            return _passing_dataplane_result()
+        return {
+            "ok": False,
+            "stage": "tls",
+            "error_kind": "tls_handshake_failed",
+            "error_message": "private",
+            "resolved_ips": ["2001:db8::20"],
+            "latency_ms": 25,
+            "tls_protocol": "",
+            "tls_cipher": "",
+            "connected_ip": "2001:db8::20",
+        }
+
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["203.0.113.20", "2001:db8::20"],
+                "resolved_ipv4": ["203.0.113.20"],
+                "resolved_ipv6": ["2001:db8::20"],
+            },
+        ),
+        mock.patch.object(
+            runner.dataplane_probe,
+            "probe_node_endpoint",
+            side_effect=probe,
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={},
+        )
+
+    assert set(calls) == {"203.0.113.20", "2001:db8::20"}
+    assert result["address_family_status"] == {
+        "ipv4": "pass",
+        "ipv6": "fail",
+    }
+    assert result["stages"]["tls"]["status"] == "pass"
 
 
 def test_udp_send_without_valid_protocol_response_is_not_hysteria_pass(runner) -> None:
@@ -302,6 +412,65 @@ def test_large_body_probe_connects_only_to_manifest_allowed_family(runner) -> No
         )
 
     assert connection_factory.call_args.kwargs["host"] == "203.0.113.20"
+
+
+def test_large_body_probe_attempts_each_requested_family(runner) -> None:
+    calls: list[str] = []
+
+    def connection_factory(*, host, port, sni, timeout_sec):
+        calls.append(host)
+        connection = mock.Mock()
+        if ":" in host:
+            connection.connect.side_effect = OSError("ipv6 unavailable")
+            return connection
+        response = mock.Mock(status=200)
+        response.read.side_effect = [b"x" * 65536]
+        connection.getresponse.return_value = response
+        return connection
+
+    with (
+        mock.patch.object(
+            runner.socket,
+            "getaddrinfo",
+            return_value=[
+                (
+                    socket.AF_INET,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP,
+                    "",
+                    ("203.0.113.20", 443),
+                ),
+                (
+                    socket.AF_INET6,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP,
+                    "",
+                    ("2001:db8::20", 443, 0, 0),
+                ),
+            ],
+        ),
+        mock.patch.object(
+            runner,
+            "_verified_https_connection",
+            side_effect=connection_factory,
+        ),
+    ):
+        result = runner.probe_https_large_body(
+            host="canonical.example.net",
+            port=443,
+            sni="canonical.example.net",
+            path="/download",
+            min_body_bytes=65536,
+            address_families=["ipv4", "ipv6"],
+            timeout_sec=5.0,
+        )
+
+    assert set(calls) == {"203.0.113.20", "2001:db8::20"}
+    assert result["address_family_status"] == {
+        "ipv4": "pass",
+        "ipv6": "fail",
+    }
+    assert result["stages"]["http_large_body"]["status"] == "pass"
 
 
 def test_https_probe_uses_default_verifying_tls_context(runner) -> None:
@@ -422,12 +591,69 @@ def test_missing_profile_is_not_run_probe_material_unavailable(runner) -> None:
     assert result["transport"]["handshake_status"] == "not_run"
 
 
+def test_xhttp_adapter_receives_selected_allowed_family_address(runner) -> None:
+    target = _target(
+        mode="xhttp_handshake",
+        target_id="reserve:xhttp",
+        target_kind="reserve_xhttp",
+        node_code=None,
+        profile="reserve_xhttp_cdn",
+        local_profile="reserve-xhttp",
+    )
+    target["endpoint"]["address_families"] = ["ipv4"]
+    target["endpoint_fingerprint"] = endpoint_fingerprint(target["endpoint"])
+    adapter_endpoints: list[dict[str, object]] = []
+
+    def adapter(mode, endpoint, **_kwargs):
+        adapter_endpoints.append(endpoint)
+        return {
+            "schema_version": 1,
+            "profile_id": "reserve-xhttp",
+            "protocol": "xhttp",
+            "handshake_status": "pass",
+            "classification": "ok",
+            "detail_code": None,
+        }
+
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["203.0.113.30"],
+                "resolved_ipv4": ["203.0.113.30"],
+                "resolved_ipv6": [],
+            },
+        ),
+        mock.patch.object(
+            runner.dataplane_probe,
+            "probe_node_endpoint",
+            return_value={
+                **_passing_dataplane_result(),
+                "resolved_ips": ["203.0.113.30"],
+                "connected_ip": "203.0.113.30",
+            },
+        ),
+        mock.patch.object(
+            runner,
+            "run_transport_adapter",
+            side_effect=adapter,
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={"profiles": {}},
+        )
+
+    assert result["stages"]["transport_handshake"]["status"] == "pass"
+    assert adapter_endpoints[0]["host"] == "203.0.113.30"
+    assert adapter_endpoints[0]["address_families"] == ["ipv4"]
+
+
 def test_protocol_adapter_uses_safe_fixed_argv_and_validates_response(
-    runner, tmp_path: Path
+    runner,
 ) -> None:
-    executable = tmp_path / ("probe.exe" if os.name == "nt" else "probe")
-    executable.write_bytes(b"synthetic executable")
-    executable.chmod(0o700)
     endpoint = _endpoint(
         mode="hysteria_handshake",
         host="reserve.example.net",
@@ -435,14 +661,6 @@ def test_protocol_adapter_uses_safe_fixed_argv_and_validates_response(
         profile="hysteria2",
         local_profile="reserve-hysteria",
     )
-    registry = {
-        "profiles": {
-            "reserve-hysteria": {
-                "executable": str(executable.resolve()),
-                "argv": ["--mode", "probe"],
-            }
-        }
-    }
     response = {
         "schema_version": 1,
         "profile_id": "reserve-hysteria",
@@ -451,13 +669,24 @@ def test_protocol_adapter_uses_safe_fixed_argv_and_validates_response(
         "classification": "ok",
         "detail_code": None,
     }
-    completed = subprocess.CompletedProcess(
-        args=[],
-        returncode=0,
-        stdout=canonical_json_bytes(response),
-        stderr=b"",
+    expected_input = canonical_json_bytes(endpoint)
+    response_bytes = canonical_json_bytes(response)
+    script = (
+        "import sys;"
+        "payload=sys.stdin.buffer.read();"
+        f"sys.exit(9) if payload!={expected_input!r} else None;"
+        f"sys.stdout.buffer.write({response_bytes!r})"
     )
-    with mock.patch.object(runner.subprocess, "run", return_value=completed) as run:
+    registry = _python_adapter_registry("reserve-hysteria", script)
+    real_popen = subprocess.Popen
+    captured: dict[str, object] = {}
+
+    def popen(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return real_popen(command, **kwargs)
+
+    with mock.patch.object(runner.subprocess, "Popen", side_effect=popen):
         result = runner.run_transport_adapter(
             "hysteria_handshake",
             endpoint,
@@ -466,17 +695,17 @@ def test_protocol_adapter_uses_safe_fixed_argv_and_validates_response(
         )
 
     assert result == response
-    _, kwargs = run.call_args
+    command = captured["command"]
+    kwargs = captured["kwargs"]
     assert kwargs["shell"] is False
-    assert kwargs["check"] is False
-    assert kwargs["capture_output"] is True
-    assert kwargs["input"] == canonical_json_bytes(endpoint)
-    assert kwargs["timeout"] == 5.0
-    assert run.call_args.args[0] == [
-        str(executable.resolve()),
-        "--mode",
-        "probe",
-    ]
+    assert kwargs["stdin"] is subprocess.PIPE
+    assert kwargs["stdout"] is subprocess.PIPE
+    assert kwargs["stderr"] is subprocess.PIPE
+    if os.name == "nt":
+        assert kwargs["creationflags"] & subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        assert kwargs["start_new_session"] is True
+    assert command == [str(Path(sys.executable).resolve()), "-c", script]
 
 
 def test_profile_registry_file_can_directly_map_allowlisted_profile_ids(
@@ -503,50 +732,107 @@ def test_profile_registry_file_can_directly_map_allowlisted_profile_ids(
 
 
 @pytest.mark.parametrize(
-    ("completed", "expected_code"),
+    ("script", "expected_code"),
     [
         (
-            subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=b"not-json", stderr=b""
-            ),
+            "import sys;sys.stdin.buffer.read();sys.stdout.write('not-json')",
             "adapter_malformed_response",
         ),
         (
-            subprocess.CompletedProcess(args=[], returncode=2, stdout=b"", stderr=b"x"),
+            "import sys;sys.stdin.buffer.read();sys.exit(2)",
             "adapter_exit_nonzero",
         ),
     ],
 )
 def test_protocol_adapter_malformed_or_failed_process_is_fail(
-    runner, tmp_path: Path, completed, expected_code: str
+    runner,
+    script: str,
+    expected_code: str,
 ) -> None:
-    executable = tmp_path / ("probe.exe" if os.name == "nt" else "probe")
-    executable.write_bytes(b"synthetic executable")
-    executable.chmod(0o700)
     endpoint = _endpoint(
         mode="xhttp_handshake",
         profile="reserve_xhttp_cdn",
         local_profile="reserve-xhttp",
     )
-    registry = {
-        "profiles": {
-            "reserve-xhttp": {
-                "executable": str(executable.resolve()),
-                "argv": [],
-            }
-        }
-    }
-    with mock.patch.object(runner.subprocess, "run", return_value=completed):
-        response = runner.run_transport_adapter(
-            "xhttp_handshake",
-            endpoint,
-            profile_registry=registry,
-            timeout_sec=5.0,
-        )
+    response = runner.run_transport_adapter(
+        "xhttp_handshake",
+        endpoint,
+        profile_registry=_python_adapter_registry("reserve-xhttp", script),
+        timeout_sec=5.0,
+    )
 
     stage = runner.transport_stage_from_adapter("xhttp_handshake", response)
     assert stage["status"] == "fail"
     assert stage["code"] == expected_code
+
+
+@pytest.mark.parametrize("stream_name", ["stdout", "stderr"])
+def test_protocol_adapter_stops_on_stream_overflow_before_timeout(
+    runner,
+    stream_name: str,
+) -> None:
+    endpoint = _endpoint(
+        mode="xhttp_handshake",
+        profile="reserve_xhttp_cdn",
+        local_profile="reserve-xhttp",
+    )
+    stream = "sys.stdout.buffer" if stream_name == "stdout" else "sys.stderr.buffer"
+    script = (
+        "import sys,time;"
+        "sys.stdin.buffer.read();"
+        f"{stream}.write(b'x'*131072);"
+        f"{stream}.flush();"
+        "time.sleep(10)"
+    )
+
+    started = time.monotonic()
+    response = runner.run_transport_adapter(
+        "xhttp_handshake",
+        endpoint,
+        profile_registry=_python_adapter_registry("reserve-xhttp", script),
+        timeout_sec=1.0,
+    )
+    elapsed = time.monotonic() - started
+
+    assert response["handshake_status"] == "fail"
+    assert response["detail_code"] == "adapter_output_too_large"
+    assert elapsed < 1.0
+
+
+def test_protocol_adapter_timeout_kills_spawned_process_tree(
+    runner,
+    tmp_path: Path,
+) -> None:
+    endpoint = _endpoint(
+        mode="xhttp_handshake",
+        profile="reserve_xhttp_cdn",
+        local_profile="reserve-xhttp",
+    )
+    sentinel = tmp_path / "orphan.txt"
+    child = (
+        "import pathlib,time;"
+        "time.sleep(0.8);"
+        f"pathlib.Path({str(sentinel)!r}).write_text('orphan',encoding='utf-8')"
+    )
+    script = (
+        "import subprocess,sys,time;"
+        "sys.stdin.buffer.read();"
+        f"subprocess.Popen([sys.executable,'-c',{child!r}]);"
+        "time.sleep(10)"
+    )
+
+    response = runner.run_transport_adapter(
+        "xhttp_handshake",
+        endpoint,
+        profile_registry=_python_adapter_registry("reserve-xhttp", script),
+        timeout_sec=0.2,
+    )
+    deadline = time.monotonic() + 1.5
+    while time.monotonic() < deadline and not sentinel.exists():
+        time.sleep(0.05)
+
+    assert response["detail_code"] == "adapter_timeout"
+    assert not sentinel.exists()
 
 
 def test_manifest_cache_is_atomic_mode_0600_and_freshness_bounded(
@@ -572,6 +858,97 @@ def test_manifest_cache_is_atomic_mode_0600_and_freshness_bounded(
         runner.load_cached_manifest(
             cache, now=generated_at + timedelta(seconds=3601)
         )
+
+
+def test_manifest_cache_rejects_materially_future_generated_at(
+    runner,
+    tmp_path: Path,
+) -> None:
+    observed_at = datetime(2026, 7, 16, 8, 0, tzinfo=timezone.utc)
+    manifest = _manifest(
+        generated_at=observed_at + timedelta(minutes=6),
+    )
+    cache = tmp_path / "manifest-cache.json"
+    runner.write_manifest_cache(cache, manifest)
+
+    with pytest.raises(runner.ManifestCacheUnavailable) as error:
+        runner.load_cached_manifest(cache, now=observed_at)
+
+    assert error.value.code == "manifest_cache_from_future"
+
+
+def test_corrupt_manifest_cache_is_unavailable(runner, tmp_path: Path) -> None:
+    cache = tmp_path / "manifest-cache.json"
+    cache.write_bytes(b'{"manifest_schema_version":1')
+    cache.chmod(0o600)
+
+    with pytest.raises(runner.ManifestCacheUnavailable):
+        runner.load_cached_manifest(
+            cache,
+            now=datetime(2026, 7, 16, 8, 0, tzinfo=timezone.utc),
+        )
+
+
+def test_manifest_cache_concurrent_writers_never_share_temp_file(
+    runner,
+    tmp_path: Path,
+) -> None:
+    generated_at = datetime(2026, 7, 16, 8, 0, tzinfo=timezone.utc)
+    manifests = [
+        _manifest(generated_at=generated_at),
+        _manifest(generated_at=generated_at + timedelta(seconds=1)),
+    ]
+    cache = tmp_path / "manifest-cache.json"
+    workers = 16
+    barrier = threading.Barrier(workers)
+
+    def write(index: int) -> None:
+        barrier.wait()
+        runner.write_manifest_cache(cache, manifests[index % 2])
+
+    errors: list[BaseException] = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(write, index) for index in range(workers)]
+        for future in futures:
+            try:
+                future.result()
+            except BaseException as exc:  # pragma: no cover - assertion evidence
+                errors.append(exc)
+
+    assert errors == []
+    final = runner.load_cached_manifest(
+        cache,
+        now=generated_at + timedelta(seconds=2),
+    )
+    assert final in manifests
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_private_output_concurrent_writers_leave_one_exact_artifact(
+    runner,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "run.json"
+    candidates = [b'{"run_id":"a"}', b'{"run_id":"b"}']
+    workers = 16
+    barrier = threading.Barrier(workers)
+
+    def write(index: int) -> None:
+        barrier.wait()
+        runner._write_private_bytes(output, candidates[index % 2])
+
+    errors: list[BaseException] = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(write, index) for index in range(workers)]
+        for future in futures:
+            try:
+                future.result()
+            except BaseException as exc:  # pragma: no cover - assertion evidence
+                errors.append(exc)
+
+    assert errors == []
+    assert output.read_bytes() in candidates
+    assert not list(tmp_path.glob("*.tmp"))
 
 
 def test_fetch_manifest_signs_get_with_empty_body_and_preserves_revision(
@@ -637,6 +1014,165 @@ def test_fetch_manifest_uses_only_fresh_cache_on_network_error(
                 timeout_sec=5.0,
                 now=generated_at + timedelta(hours=2),
             )
+
+
+@pytest.mark.parametrize("status_code", [301, 302, 303, 307, 308])
+def test_signed_request_redirect_handler_rejects_every_redirect_without_copying(
+    hmac_client,
+    status_code: int,
+) -> None:
+    handler_type = getattr(hmac_client, "_RejectRedirectHandler", None)
+    assert handler_type is not None
+    request = urllib.request.Request(
+        "https://api.example.net/api/internal/probes/ru-origin/runs",
+        data=b'{"private":"body"}',
+        headers={
+            "X-Internal-Key-Id": "ru-mini-v1",
+            "X-Internal-Signature": "a" * 64,
+        },
+        method="POST",
+    )
+
+    redirected = handler_type().redirect_request(
+        request,
+        io.BytesIO(b""),
+        status_code,
+        "redirect",
+        {"Location": "http://evil.example/collect"},
+        "http://evil.example/collect",
+    )
+
+    assert redirected is None
+
+
+@pytest.mark.parametrize(
+    ("method", "raw_body"),
+    [
+        ("GET", b""),
+        ("POST", b'{"schema_version":2}'),
+    ],
+)
+def test_signed_request_uses_no_redirect_opener(
+    hmac_client,
+    tmp_path: Path,
+    method: str,
+    raw_body: bytes,
+) -> None:
+    secret_file = tmp_path / "hmac.key"
+    secret_file.write_bytes(b"0123456789abcdef0123456789abcdef")
+    secret_file.chmod(0o600)
+
+    class RedirectResponse:
+        def open(self, request, *, timeout):
+            raise urllib.error.HTTPError(
+                request.full_url,
+                302,
+                "redirect",
+                {"Location": "http://evil.example/collect"},
+                io.BytesIO(b"redirect"),
+            )
+
+    built_handlers: list[object] = []
+
+    def build_opener(*handlers):
+        built_handlers.extend(handlers)
+        return RedirectResponse()
+
+    with (
+        mock.patch.object(
+            hmac_client.urllib.request,
+            "build_opener",
+            side_effect=build_opener,
+        ),
+        mock.patch.object(
+            hmac_client.urllib.request,
+            "urlopen",
+            side_effect=AssertionError("default redirecting opener used"),
+        ),
+    ):
+        response = hmac_client.signed_request(
+            api_base_url="https://api.example.net",
+            method=method,
+            path="/api/internal/probes/ru-origin/runs",
+            key_id="ru-mini-v1",
+            secret_file=secret_file,
+            raw_body=raw_body,
+            timeout_sec=5.0,
+        )
+
+    assert response.status == 302
+    assert len(built_handlers) == 1
+    assert isinstance(built_handlers[0], hmac_client._RejectRedirectHandler)
+
+
+def test_secret_reader_rejects_symlink(hmac_client, tmp_path: Path) -> None:
+    target = tmp_path / "real.key"
+    target.write_bytes(b"0123456789abcdef0123456789abcdef")
+    target.chmod(0o600)
+    link = tmp_path / "hmac.key"
+    try:
+        link.symlink_to(target)
+    except OSError as exc:
+        pytest.skip(f"symlink unavailable on this host: {exc}")
+
+    with pytest.raises(hmac_client.InternalHmacClientError) as error:
+        hmac_client.read_secret_file(link)
+
+    assert error.value.code == "secret_file_symlink"
+
+
+def test_secret_reader_detects_replace_between_metadata_check_and_open(
+    hmac_client,
+    tmp_path: Path,
+) -> None:
+    original = b"0123456789abcdef0123456789abcdef"
+    replacement = b"fedcba9876543210fedcba9876543210"
+    secret_file = tmp_path / "hmac.key"
+    replacement_file = tmp_path / "replacement.key"
+    secret_file.write_bytes(original)
+    secret_file.chmod(0o600)
+    replacement_file.write_bytes(replacement)
+    replacement_file.chmod(0o600)
+    real_open = os.open
+
+    def racing_open(path, flags, mode=0o777):
+        os.replace(replacement_file, secret_file)
+        return real_open(path, flags, mode)
+
+    with mock.patch.object(
+        hmac_client.os,
+        "open",
+        side_effect=racing_open,
+    ) as opened:
+        with pytest.raises(hmac_client.InternalHmacClientError) as error:
+            hmac_client.read_secret_file(secret_file)
+
+    assert opened.call_count == 1
+    assert error.value.code == "secret_file_changed"
+    assert secret_file.read_bytes() == replacement
+
+
+def test_secret_reader_contains_posix_nofollow_guard() -> None:
+    source = (SCRIPTS_DIR / "internal_hmac_client.py").read_text(encoding="utf-8")
+    assert "O_NOFOLLOW" in source
+
+
+def test_secret_reader_handles_bounded_partial_descriptor_reads(
+    hmac_client,
+    tmp_path: Path,
+) -> None:
+    secret = b"0123456789abcdef0123456789abcdef"
+    secret_file = tmp_path / "hmac.key"
+    secret_file.write_bytes(secret)
+    secret_file.chmod(0o600)
+    with mock.patch.object(
+        hmac_client.os,
+        "read",
+        side_effect=[secret[:8], secret[8:], b""],
+    ):
+        loaded = hmac_client.read_secret_file(secret_file)
+
+    assert loaded == secret
 
 
 def test_shared_hmac_client_signs_exact_get_and_refreshes_nonce(
@@ -712,7 +1248,14 @@ def test_shared_hmac_get_sends_no_body_and_never_exposes_secret(
         captured["timeout"] = timeout
         return FakeResponse()
 
-    with mock.patch.object(hmac_client.urllib.request, "urlopen", fake_urlopen):
+    class FakeOpener:
+        open = staticmethod(fake_urlopen)
+
+    with mock.patch.object(
+        hmac_client.urllib.request,
+        "build_opener",
+        return_value=FakeOpener(),
+    ):
         response = hmac_client.signed_request(
             api_base_url="https://api.example.net",
             method="GET",
@@ -760,6 +1303,9 @@ def test_shared_hmac_post_signs_and_sends_exact_body_bytes(
         captured["timeout"] = timeout
         return FakeResponse()
 
+    class FakeOpener:
+        open = staticmethod(fake_urlopen)
+
     with (
         mock.patch.object(hmac_client.time, "time", return_value=1784160000),
         mock.patch.object(
@@ -767,7 +1313,11 @@ def test_shared_hmac_post_signs_and_sends_exact_body_bytes(
             "token_urlsafe",
             return_value="post-nonce",
         ),
-        mock.patch.object(hmac_client.urllib.request, "urlopen", fake_urlopen),
+        mock.patch.object(
+            hmac_client.urllib.request,
+            "build_opener",
+            return_value=FakeOpener(),
+        ),
     ):
         response = hmac_client.signed_request(
             api_base_url="https://api.example.net",
@@ -977,18 +1527,8 @@ def test_failed_required_stage_is_completed_even_when_dependents_are_not_run(
     manifest = _manifest(generated_at=generated_at)
     with mock.patch.object(
         runner.dataplane_probe,
-        "probe_node_endpoint",
-        return_value={
-            "ok": False,
-            "stage": "dns",
-            "error_kind": "dns_lookup_failed",
-            "error_message": "private provider text",
-            "resolved_ips": [],
-            "latency_ms": None,
-            "tls_protocol": "",
-            "tls_cipher": "",
-            "connected_ip": "",
-        },
+        "_resolve_dns",
+        side_effect=OSError("private provider text"),
     ):
         payload = runner.run_manifest(
             manifest,
@@ -1004,6 +1544,122 @@ def test_failed_required_stage_is_completed_even_when_dependents_are_not_run(
     assert payload["execution_status"] == "completed"
     assert payload["targets"][0]["stages"]["dns"]["status"] == "fail"
     assert payload["targets"][0]["stages"]["tcp"]["status"] == "not_run"
+
+
+def test_diagnostic_exception_stays_local_to_diagnostic_target(runner) -> None:
+    generated_at = datetime.now(timezone.utc).replace(microsecond=0)
+    release_target = _target()
+    diagnostic_target = _target(
+        target_id="diagnostic:delivery",
+        target_kind="diagnostic",
+        node_code=None,
+    )
+    diagnostic_target["scope"] = "diagnostic"
+    targets = [release_target, diagnostic_target]
+    manifest = {
+        "manifest_schema_version": 1,
+        "manifest_revision": manifest_revision(targets),
+        "generated_at": generated_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "max_cache_age_seconds": 3600,
+        "targets": targets,
+    }
+    with mock.patch.object(
+        runner.dataplane_probe,
+        "probe_node_endpoint",
+        return_value=_passing_dataplane_result(),
+    ):
+        release_result = runner.run_manifest_target(
+            release_target,
+            timeout_sec=5.0,
+            profile_registry={},
+        )
+
+    with mock.patch.object(
+        runner,
+        "run_manifest_target",
+        side_effect=[
+            release_result,
+            RuntimeError("private diagnostic adapter state"),
+        ],
+    ):
+        payload = runner.run_manifest(
+            manifest,
+            probe_host_id="mini",
+            probe_host_label="Мини",
+            probe_public_ip=None,
+            profile_registry={},
+            timeout_sec=5.0,
+            started_at=generated_at - timedelta(minutes=2),
+            finished_at=generated_at - timedelta(minutes=1),
+        )
+
+    assert payload["execution_status"] == "completed"
+    diagnostic = next(
+        target
+        for target in payload["targets"]
+        if target["scope"] == "diagnostic"
+    )
+    assert diagnostic["detail_code"] == "runner_error"
+    assert "private diagnostic adapter state" not in json.dumps(
+        payload,
+        ensure_ascii=False,
+    )
+
+
+def test_diagnostic_required_not_run_does_not_make_release_partial(runner) -> None:
+    generated_at = datetime.now(timezone.utc).replace(microsecond=0)
+    release_target = _target()
+    diagnostic_target = _target(
+        mode="hysteria_handshake",
+        target_id="diagnostic:hysteria",
+        target_kind="diagnostic",
+        node_code=None,
+        profile="hysteria2",
+        local_profile="diagnostic-hysteria",
+    )
+    diagnostic_target["scope"] = "diagnostic"
+    targets = [release_target, diagnostic_target]
+    manifest = {
+        "manifest_schema_version": 1,
+        "manifest_revision": manifest_revision(targets),
+        "generated_at": generated_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "max_cache_age_seconds": 3600,
+        "targets": targets,
+    }
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["203.0.113.20"],
+                "resolved_ipv4": ["203.0.113.20"],
+                "resolved_ipv6": [],
+            },
+        ),
+        mock.patch.object(
+            runner.dataplane_probe,
+            "probe_node_endpoint",
+            return_value=_passing_dataplane_result(),
+        ),
+    ):
+        payload = runner.run_manifest(
+            manifest,
+            probe_host_id="mini",
+            probe_host_label="Мини",
+            probe_public_ip=None,
+            profile_registry={"profiles": {}},
+            timeout_sec=5.0,
+            started_at=generated_at - timedelta(minutes=2),
+            finished_at=generated_at - timedelta(minutes=1),
+        )
+
+    assert payload["execution_status"] == "completed"
+    diagnostic = next(
+        target
+        for target in payload["targets"]
+        if target["scope"] == "diagnostic"
+    )
+    assert diagnostic["stages"]["transport_handshake"]["status"] == "not_run"
 
 
 def test_runner_emits_valid_runner_error_envelope_on_target_exception(runner) -> None:

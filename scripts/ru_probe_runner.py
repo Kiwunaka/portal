@@ -7,10 +7,13 @@ import ipaddress
 import json
 import os
 import re
+import secrets
+import signal
 import socket
 import ssl
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -53,6 +56,7 @@ MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_PROFILE_REGISTRY_BYTES = 64 * 1024
 MAX_ADAPTER_STDOUT_BYTES = 64 * 1024
 MAX_ADAPTER_STDERR_BYTES = 8 * 1024
+MAX_MANIFEST_FUTURE_SKEW_SECONDS = 5 * 60
 _HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 _PROFILE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")
@@ -85,6 +89,8 @@ _PROTOCOL_BY_MODE = {
     "xhttp_handshake": "xhttp",
     "hysteria_handshake": "hysteria2",
 }
+_PRIVATE_WRITE_LOCKS: dict[str, threading.Lock] = {}
+_PRIVATE_WRITE_LOCKS_GUARD = threading.Lock()
 
 
 class ManifestError(RuntimeError):
@@ -240,32 +246,63 @@ def _fsync_directory(directory: Path) -> None:
         os.close(descriptor)
 
 
+def _private_write_lock(path: Path) -> threading.Lock:
+    key = str(path.resolve())
+    with _PRIVATE_WRITE_LOCKS_GUARD:
+        return _PRIVATE_WRITE_LOCKS.setdefault(key, threading.Lock())
+
+
+def _replace_private_file(source: Path, destination: Path) -> None:
+    deadline = time.monotonic() + 2.0
+    while True:
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError:
+            if os.name != "nt" or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.01)
+
+
 def _write_private_bytes(path: Path, raw: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
+    temporary: Path | None = None
     descriptor: int | None = None
     try:
-        descriptor = os.open(
-            str(temporary),
-            os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-            0o600,
-        )
+        for _attempt in range(16):
+            candidate = path.with_name(
+                f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
+            )
+            try:
+                descriptor = os.open(
+                    str(candidate),
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                    0o600,
+                )
+            except FileExistsError:
+                continue
+            temporary = candidate
+            break
+        if descriptor is None or temporary is None:
+            raise OSError("private temporary file unavailable")
         os.chmod(temporary, 0o600)
         with os.fdopen(descriptor, "wb") as handle:
             descriptor = None
             handle.write(raw)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        os.chmod(path, 0o600)
-        _fsync_directory(path.parent)
+        with _private_write_lock(path):
+            _replace_private_file(temporary, path)
+            temporary = None
+            _fsync_directory(path.parent)
     finally:
         if descriptor is not None:
             os.close(descriptor)
-        try:
-            temporary.unlink()
-        except FileNotFoundError:
-            pass
+        if temporary is not None:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
 
 
 def write_manifest_cache(path: str | Path, manifest: dict[str, object]) -> None:
@@ -286,10 +323,15 @@ def load_cached_manifest(
             raw = handle.read(MAX_MANIFEST_BYTES + 1)
         manifest = _decode_manifest(raw)
         generated_at = _parse_utc(manifest["generated_at"])
+        normalized_now = now.astimezone(timezone.utc)
+        if generated_at > normalized_now + timedelta(
+            seconds=MAX_MANIFEST_FUTURE_SKEW_SECONDS
+        ):
+            raise ManifestCacheUnavailable("manifest_cache_from_future")
         expires_at = generated_at + timedelta(
             seconds=int(manifest["max_cache_age_seconds"])
         )
-        if now.astimezone(timezone.utc) > expires_at:
+        if normalized_now > expires_at:
             raise ManifestCacheUnavailable("manifest_cache_stale")
         return manifest
     except ManifestCacheUnavailable:
@@ -418,6 +460,110 @@ def _verified_https_connection(
     )
 
 
+def _probe_https_address(
+    *,
+    address: str,
+    port: int,
+    sni: str,
+    path: str,
+    min_body_bytes: int,
+    timeout_sec: float,
+) -> dict[str, object]:
+    stages = {
+        "tcp": _stage("not_run"),
+        "tls": _stage("not_run"),
+        "http_large_body": _stage("not_run"),
+    }
+    result: dict[str, object] = {
+        "stages": stages,
+        "http_status": None,
+        "body_bytes": 0,
+    }
+    connection = None
+    connected = False
+    connect_started = time.perf_counter()
+    try:
+        connection = _verified_https_connection(
+            host=address,
+            port=port,
+            sni=sni,
+            timeout_sec=timeout_sec,
+        )
+        connection.connect()
+        connected = True
+        connect_latency = int((time.perf_counter() - connect_started) * 1000)
+        stages["tcp"] = _stage("pass", latency_ms=connect_latency)
+        stages["tls"] = _stage("pass", latency_ms=connect_latency)
+        connection.request(
+            "GET",
+            path,
+            body=None,
+            headers={
+                "Host": sni,
+                "User-Agent": "pokrov-ru-probe/2.0",
+                "Accept": "*/*",
+                "Connection": "close",
+            },
+        )
+        response = connection.getresponse()
+        result["http_status"] = int(response.status)
+        if not 200 <= int(response.status) < 400:
+            stages["http_large_body"] = _stage(
+                "fail",
+                code="http_status_unaccepted",
+            )
+            return result
+        required_bytes = max(65536, int(min_body_bytes))
+        body_bytes = 0
+        http_started = time.perf_counter()
+        while body_bytes < required_bytes:
+            chunk = response.read(min(64 * 1024, required_bytes - body_bytes))
+            if not chunk:
+                break
+            body_bytes += len(chunk)
+        result["body_bytes"] = body_bytes
+        http_latency = int((time.perf_counter() - http_started) * 1000)
+        stages["http_large_body"] = _stage(
+            "pass" if body_bytes >= required_bytes else "fail",
+            latency_ms=http_latency,
+            code=None if body_bytes >= required_bytes else "http_body_too_short",
+        )
+        return result
+    except ssl.SSLError:
+        stages["tcp"] = _stage("pass")
+        stages["tls"] = _stage("fail", code="tls_handshake_failed")
+        return result
+    except (TimeoutError, socket.timeout):
+        if connected:
+            stages["http_large_body"] = _stage("fail", code="http_timeout")
+        else:
+            stages["tcp"] = _stage("fail", code="tcp_connect_timeout")
+        return result
+    except http.client.HTTPException:
+        stages["http_large_body"] = _stage("fail", code="http_protocol_error")
+        return result
+    except OSError:
+        if connected:
+            stages["http_large_body"] = _stage("fail", code="http_request_failed")
+        else:
+            stages["tcp"] = _stage("fail", code="tcp_connect_failed")
+        return result
+    finally:
+        if connection is not None:
+            connection.close()
+
+
+def _https_attempt_score(attempt: dict[str, object]) -> int:
+    stages = attempt["stages"]
+    if stages["http_large_body"]["status"] in {"pass", "fail"}:
+        return 3
+    if stages["tls"]["status"] in {"pass", "fail"}:
+        return 2
+    if stages["tcp"]["status"] in {"pass", "fail"}:
+        return 1
+    return 0
+
+
 def probe_https_large_body(
     *,
     host: str,
@@ -450,28 +596,6 @@ def probe_https_large_body(
     dns_started = time.perf_counter()
     try:
         infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
-        resolved_ips: list[str] = []
-        for info in infos:
-            address = str(info[4][0])
-            family = _family_for_ip(address)
-            if (
-                address
-                and address not in resolved_ips
-                and family in address_families
-            ):
-                resolved_ips.append(address)
-        if not resolved_ips:
-            raise socket.gaierror("no requested address families")
-        result["resolved_ips"] = resolved_ips
-        stages["dns"] = _stage(
-            "pass",
-            latency_ms=int((time.perf_counter() - dns_started) * 1000),
-        )
-        result["address_family_status"] = _family_status(
-            address_families,
-            resolved_ips,
-            dns_status="pass",
-        )
     except (socket.gaierror, OSError):
         stages["dns"] = _stage("fail", code="dns_lookup_failed")
         result["address_family_status"] = _family_status(
@@ -480,85 +604,94 @@ def probe_https_large_body(
             dns_status="fail",
         )
         return result
+    addresses: dict[str, list[str]] = {
+        family: [] for family in ALLOWED_ADDRESS_FAMILIES
+    }
+    for info in infos:
+        address = str(info[4][0])
+        family = _family_for_ip(address)
+        if (
+            family in address_families
+            and address
+            and address not in addresses[family]
+        ):
+            addresses[family].append(address)
+    resolved_ips = [
+        address
+        for family in address_families
+        for address in addresses[family]
+    ]
+    if not resolved_ips:
+        stages["dns"] = _stage("fail", code="dns_lookup_failed")
+        result["address_family_status"] = _family_status(
+            address_families,
+            [],
+            dns_status="fail",
+        )
+        return result
+    result["resolved_ips"] = resolved_ips
+    stages["dns"] = _stage(
+        "pass",
+        latency_ms=int((time.perf_counter() - dns_started) * 1000),
+    )
 
-    connection = None
-    connected = False
-    connect_started = time.perf_counter()
-    try:
-        connection = _verified_https_connection(
-            host=str(result["resolved_ips"][0]),
-            port=port,
-            sni=sni,
-            timeout_sec=timeout_sec,
+    family_attempts: dict[str, dict[str, object]] = {}
+    for family in address_families:
+        if not addresses[family]:
+            result["address_family_status"][family] = "fail"
+            continue
+        attempts = [
+            _probe_https_address(
+                address=address,
+                port=port,
+                sni=sni,
+                path=path,
+                min_body_bytes=min_body_bytes,
+                timeout_sec=timeout_sec,
+            )
+            for address in addresses[family]
+        ]
+        selected = next(
+            (
+                attempt
+                for attempt in attempts
+                if attempt["stages"]["http_large_body"]["status"] == "pass"
+            ),
+            max(attempts, key=_https_attempt_score),
         )
-        connection.connect()
-        connected = True
-        connect_latency = int((time.perf_counter() - connect_started) * 1000)
-        stages["tcp"] = _stage("pass", latency_ms=connect_latency)
-        stages["tls"] = _stage("pass", latency_ms=connect_latency)
-        connection.request(
-            "GET",
-            path,
-            body=None,
-            headers={
-                "Host": sni or host,
-                "User-Agent": "pokrov-ru-probe/2.0",
-                "Accept": "*/*",
-                "Connection": "close",
-            },
-        )
-        response = connection.getresponse()
-        result["http_status"] = int(response.status)
-        if not 200 <= int(response.status) < 400:
-            stages["http_large_body"] = _stage(
-                "fail",
-                code="http_status_unaccepted",
-            )
-            return result
-        required_bytes = max(65536, int(min_body_bytes))
-        body_bytes = 0
-        http_started = time.perf_counter()
-        while body_bytes < required_bytes:
-            chunk = response.read(min(64 * 1024, required_bytes - body_bytes))
-            if not chunk:
-                break
-            body_bytes += len(chunk)
-        result["body_bytes"] = body_bytes
-        http_latency = int((time.perf_counter() - http_started) * 1000)
-        if body_bytes >= required_bytes:
-            stages["http_large_body"] = _stage(
-                "pass",
-                latency_ms=http_latency,
-            )
+        family_attempts[family] = selected
+        statuses = {
+            selected["stages"][stage_name]["status"]
+            for stage_name in ("tcp", "tls", "http_large_body")
+        }
+        if selected["stages"]["http_large_body"]["status"] == "pass":
+            family_status = "pass"
+        elif "fail" in statuses:
+            family_status = "fail"
         else:
-            stages["http_large_body"] = _stage(
-                "fail",
-                latency_ms=http_latency,
-                code="http_body_too_short",
-            )
-        return result
-    except ssl.SSLError:
-        stages["tcp"] = _stage("pass")
-        stages["tls"] = _stage("fail", code="tls_handshake_failed")
-        return result
-    except (TimeoutError, socket.timeout):
-        if connected:
-            stages["http_large_body"] = _stage("fail", code="http_timeout")
-        else:
-            stages["tcp"] = _stage("fail", code="tcp_connect_timeout")
-        return result
-    except http.client.HTTPException:
-        stages["http_large_body"] = _stage("fail", code="http_protocol_error")
-        return result
-    except OSError:
-        if connected:
-            stages["http_large_body"] = _stage("fail", code="http_request_failed")
-        else:
-            stages["tcp"] = _stage("fail", code="tcp_connect_failed")
-        return result
-    finally:
-        if connection is not None:
-            connection.close()
+            family_status = "not_run"
+        result["address_family_status"][family] = family_status
+
+    selected_attempt = next(
+        (
+            family_attempts[family]
+            for family in address_families
+            if family in family_attempts
+            and family_attempts[family]["stages"]["http_large_body"]["status"]
+            == "pass"
+        ),
+        (
+            max(family_attempts.values(), key=_https_attempt_score)
+            if family_attempts
+            else None
+        ),
+    )
+    if selected_attempt is not None:
+        for stage_name in ("tcp", "tls", "http_large_body"):
+            stages[stage_name] = selected_attempt["stages"][stage_name]
+        result["http_status"] = selected_attempt["http_status"]
+        result["body_bytes"] = selected_attempt["body_bytes"]
+    return result
 
 
 def _empty_target_result(target: dict[str, object]) -> dict[str, object]:
@@ -663,6 +796,182 @@ def _apply_dataplane_result(
         )
 
 
+def _dataplane_attempt_score(result: dict[str, object]) -> int:
+    stages = result["stages"]
+    if stages["tls"]["status"] in {"pass", "fail"}:
+        return 3
+    if stages["tcp"]["status"] in {"pass", "fail"}:
+        return 2
+    if stages["dns"]["status"] in {"pass", "fail"}:
+        return 1
+    return 0
+
+
+def _dataplane_attempt(
+    endpoint: dict[str, object],
+    payload: dict[str, object],
+) -> dict[str, object]:
+    attempt: dict[str, object] = {
+        "stages": {
+            "dns": _stage("not_run"),
+            "tcp": _stage("not_run"),
+            "tls": _stage("not_run"),
+            "http_large_body": _stage("not_applicable"),
+            "transport_handshake": _stage("not_applicable"),
+        },
+        "address_family_status": {
+            family: (
+                "not_run"
+                if family in endpoint["address_families"]
+                else "not_applicable"
+            )
+            for family in ALLOWED_ADDRESS_FAMILIES
+        },
+    }
+    _apply_dataplane_result(attempt, endpoint, payload)
+    return attempt
+
+
+def _probe_delivery_families(
+    result: dict[str, object],
+    endpoint: dict[str, object],
+    *,
+    timeout_sec: float,
+) -> tuple[str | None, str | None]:
+    requested_families = list(endpoint["address_families"])
+    try:
+        dns = dataplane_probe._resolve_dns(
+            str(endpoint["host"]),
+            int(endpoint["port"]),
+        )
+    except (OSError, RuntimeError):
+        result["stages"]["dns"] = _stage("fail", code="dns_lookup_failed")
+        result["address_family_status"] = _family_status(
+            requested_families,
+            [],
+            dns_status="fail",
+        )
+        return None, None
+    resolved_by_family: dict[str, list[str]] = {
+        family: [] for family in ALLOWED_ADDRESS_FAMILIES
+    }
+    for raw_address in dns.get("resolved_ips", []):
+        address = str(raw_address)
+        family = _family_for_ip(address)
+        if (
+            family in requested_families
+            and address not in resolved_by_family[family]
+        ):
+            resolved_by_family[family].append(address)
+    if not any(resolved_by_family[family] for family in requested_families):
+        result["stages"]["dns"] = _stage(
+            "fail",
+            code="dns_requested_family_unavailable",
+        )
+        result["address_family_status"] = {
+            family: (
+                "fail" if family in requested_families else "not_applicable"
+            )
+            for family in ALLOWED_ADDRESS_FAMILIES
+        }
+        return None, None
+
+    family_attempts: dict[str, tuple[str, dict[str, object]]] = {}
+    family_status = {
+        family: (
+            "not_run" if family in requested_families else "not_applicable"
+        )
+        for family in ALLOWED_ADDRESS_FAMILIES
+    }
+    for family in requested_families:
+        addresses = resolved_by_family[family]
+        if not addresses:
+            family_status[family] = "fail"
+            continue
+        attempts: list[tuple[str, dict[str, object]]] = []
+        for address in addresses:
+            payload = dataplane_probe.probe_node_endpoint(
+                host=address,
+                port=int(endpoint["port"]),
+                sni=(
+                    str(endpoint["sni"])
+                    if endpoint["sni"] is not None
+                    else None
+                ),
+                timeout_sec=timeout_sec,
+            )
+            connected_ip = str(payload.get("connected_ip") or "")
+            connected_family = _family_for_ip(connected_ip)
+            reached_connection = (
+                bool(payload.get("ok"))
+                or payload.get("latency_ms") is not None
+                or bool(payload.get("tls_protocol"))
+            )
+            if reached_connection and connected_family != family:
+                payload = {
+                    **payload,
+                    "ok": False,
+                    "stage": "tcp_forbidden_family",
+                    "error_kind": "forbidden_address_family",
+                    "resolved_ips": [address],
+                    "latency_ms": None,
+                    "tls_protocol": "",
+                    "connected_ip": connected_ip,
+                }
+            else:
+                payload = {**payload, "resolved_ips": [address]}
+            attempts.append((address, _dataplane_attempt(endpoint, payload)))
+        selected = next(
+            (
+                attempt
+                for attempt in attempts
+                if attempt[1]["stages"]["tls"]["status"] == "pass"
+            ),
+            max(attempts, key=lambda item: _dataplane_attempt_score(item[1])),
+        )
+        family_attempts[family] = selected
+        statuses = {
+            selected[1]["stages"][stage_name]["status"]
+            for stage_name in ("dns", "tcp", "tls")
+        }
+        if selected[1]["stages"]["tls"]["status"] == "pass":
+            family_status[family] = "pass"
+        elif "fail" in statuses:
+            family_status[family] = "fail"
+        else:
+            family_status[family] = "not_run"
+
+    selected_family = next(
+        (
+            family
+            for family in requested_families
+            if family in family_attempts
+            and family_attempts[family][1]["stages"]["tls"]["status"] == "pass"
+        ),
+        None,
+    )
+    if selected_family is None and family_attempts:
+        selected_family = max(
+            family_attempts,
+            key=lambda family: _dataplane_attempt_score(
+                family_attempts[family][1]
+            ),
+        )
+    result["address_family_status"] = family_status
+    if selected_family is None:
+        result["stages"]["dns"] = _stage(
+            "fail",
+            code="dns_requested_family_unavailable",
+        )
+        return None, None
+    selected_address, selected_attempt = family_attempts[selected_family]
+    for stage_name in ("dns", "tcp", "tls"):
+        result["stages"][stage_name] = selected_attempt["stages"][stage_name]
+    if selected_attempt["stages"]["tls"]["status"] != "pass":
+        return None, None
+    return selected_address, selected_family
+
+
 def _adapter_result(
     *,
     profile_id: str,
@@ -703,6 +1012,159 @@ def _adapter_failure(
             else "adapter_failure"
         ),
         detail_code=code,
+    )
+
+
+def _read_bounded_pipe(
+    pipe,
+    *,
+    limit: int,
+    chunks: list[bytes],
+    overflow: threading.Event,
+) -> None:
+    total = 0
+    try:
+        while True:
+            remaining = limit - total
+            chunk = pipe.read(min(8192, remaining + 1))
+            if not chunk:
+                return
+            if len(chunk) > remaining:
+                overflow.set()
+                return
+            chunks.append(chunk)
+            total += len(chunk)
+    except OSError:
+        return
+    finally:
+        try:
+            pipe.close()
+        except OSError:
+            pass
+
+
+def _terminate_adapter_process(process: subprocess.Popen[bytes]) -> None:
+    if os.name == "nt":
+        try:
+            subprocess.run(
+                [
+                    "taskkill.exe",
+                    "/PID",
+                    str(process.pid),
+                    "/T",
+                    "/F",
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5.0,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            pass
+    else:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    if process.poll() is None:
+        try:
+            process.kill()
+        except OSError:
+            pass
+    try:
+        process.wait(timeout=5.0)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def _run_bounded_adapter_process(
+    command: list[str],
+    *,
+    request_bytes: bytes,
+    timeout_sec: float,
+) -> tuple[str, int | None, bytes, bytes]:
+    popen_kwargs: dict[str, object] = {
+        "stdin": subprocess.PIPE,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "shell": False,
+        "close_fds": True,
+    }
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        popen_kwargs["start_new_session"] = True
+    process = subprocess.Popen(command, **popen_kwargs)
+    assert process.stdin is not None
+    assert process.stdout is not None
+    assert process.stderr is not None
+    overflow = threading.Event()
+    stdout_chunks: list[bytes] = []
+    stderr_chunks: list[bytes] = []
+    readers = [
+        threading.Thread(
+            target=_read_bounded_pipe,
+            kwargs={
+                "pipe": process.stdout,
+                "limit": MAX_ADAPTER_STDOUT_BYTES,
+                "chunks": stdout_chunks,
+                "overflow": overflow,
+            },
+            daemon=True,
+        ),
+        threading.Thread(
+            target=_read_bounded_pipe,
+            kwargs={
+                "pipe": process.stderr,
+                "limit": MAX_ADAPTER_STDERR_BYTES,
+                "chunks": stderr_chunks,
+                "overflow": overflow,
+            },
+            daemon=True,
+        ),
+    ]
+    for reader in readers:
+        reader.start()
+    try:
+        process.stdin.write(request_bytes)
+        process.stdin.flush()
+    except (BrokenPipeError, OSError):
+        pass
+    finally:
+        try:
+            process.stdin.close()
+        except OSError:
+            pass
+
+    deadline = time.monotonic() + float(timeout_sec)
+    outcome = "ok"
+    while True:
+        if overflow.is_set():
+            outcome = "overflow"
+            _terminate_adapter_process(process)
+            break
+        readers_done = all(not reader.is_alive() for reader in readers)
+        if process.poll() is not None and readers_done:
+            break
+        if time.monotonic() >= deadline:
+            outcome = "timeout"
+            _terminate_adapter_process(process)
+            break
+        overflow.wait(0.01)
+
+    for reader in readers:
+        reader.join(timeout=1.0)
+    if any(reader.is_alive() for reader in readers):
+        _terminate_adapter_process(process)
+        outcome = "timeout" if outcome == "ok" else outcome
+        for reader in readers:
+            reader.join(timeout=1.0)
+    return (
+        outcome,
+        process.poll(),
+        b"".join(stdout_chunks),
+        b"".join(stderr_chunks),
     )
 
 
@@ -777,20 +1239,10 @@ def run_transport_adapter(
         )
     command = [str(executable_path.resolve()), *argv]
     try:
-        completed = subprocess.run(
+        outcome, return_code, stdout, _stderr = _run_bounded_adapter_process(
             command,
-            input=canonical_json_bytes(endpoint),
-            capture_output=True,
-            shell=False,
-            timeout=float(timeout_sec),
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        return _adapter_failure(
-            endpoint,
-            mode,
-            status="fail",
-            code="adapter_timeout",
+            request_bytes=canonical_json_bytes(endpoint),
+            timeout_sec=float(timeout_sec),
         )
     except OSError:
         return _adapter_failure(
@@ -799,21 +1251,21 @@ def run_transport_adapter(
             status="not_run",
             code="probe_material_unavailable",
         )
-    stdout = completed.stdout
-    stderr = completed.stderr
-    if (
-        not isinstance(stdout, bytes)
-        or not isinstance(stderr, bytes)
-        or len(stdout) > MAX_ADAPTER_STDOUT_BYTES
-        or len(stderr) > MAX_ADAPTER_STDERR_BYTES
-    ):
+    if outcome == "overflow":
         return _adapter_failure(
             endpoint,
             mode,
             status="fail",
             code="adapter_output_too_large",
         )
-    if completed.returncode != 0:
+    if outcome == "timeout":
+        return _adapter_failure(
+            endpoint,
+            mode,
+            status="fail",
+            code="adapter_timeout",
+        )
+    if return_code != 0:
         return _adapter_failure(
             endpoint,
             mode,
@@ -995,22 +1447,19 @@ def run_manifest_target(
             result["stages"][stage_name] = https_result["stages"][stage_name]
         result["address_family_status"] = https_result["address_family_status"]
     elif mode in {"delivery_tls", "xhttp_handshake"}:
-        payload = dataplane_probe.probe_node_endpoint(
-            host=str(endpoint["host"]),
-            port=int(endpoint["port"]),
-            sni=(
-                str(endpoint["sni"])
-                if endpoint["sni"] is not None
-                else None
-            ),
+        selected_address, selected_family = _probe_delivery_families(
+            result,
+            endpoint,
             timeout_sec=timeout_sec,
         )
-        _apply_dataplane_result(result, endpoint, payload)
         if mode == "xhttp_handshake":
-            if result["stages"]["tls"]["status"] == "pass":
+            if selected_address is not None and selected_family is not None:
+                adapter_endpoint = copy.deepcopy(endpoint)
+                adapter_endpoint["host"] = selected_address
+                adapter_endpoint["address_families"] = [selected_family]
                 response = run_transport_adapter(
                     mode,
-                    endpoint,
+                    adapter_endpoint,
                     profile_registry=profile_registry,
                     timeout_sec=timeout_sec,
                 )
@@ -1096,7 +1545,8 @@ def run_manifest(
                 profile_registry=profile_registry,
             )
         except Exception:
-            target_runner_error = True
+            if target["scope"] == "release_required":
+                target_runner_error = True
             result = _runner_error_target(target)
         results.append(result)
     observed_finish = finished_at or datetime.now(timezone.utc)
@@ -1110,6 +1560,7 @@ def run_manifest(
             for stage in target["required_stages"]
         )
         for target, result in zip(validated_manifest["targets"], results)
+        if target["scope"] == "release_required"
     )
     payload = {
         "schema_version": 2,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import os
 import re
 import secrets
@@ -41,20 +42,61 @@ class InternalResponse:
     headers: Mapping[str, str]
 
 
+class _RejectRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        request,
+        fp,
+        code,
+        message,
+        headers,
+        new_url,
+    ):
+        return None
+
+
 def read_secret_file(secret_file: str | Path) -> bytes:
     path = Path(secret_file)
+    descriptor: int | None = None
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_BINARY", 0)
+    preopen_metadata = None
     try:
-        with path.open("rb") as handle:
-            metadata = os.fstat(handle.fileno())
-            if not stat.S_ISREG(metadata.st_mode):
-                raise InternalHmacClientError("secret_file_not_regular")
-            if os.name != "nt" and stat.S_IMODE(metadata.st_mode) & 0o077:
-                raise InternalHmacClientError("secret_file_permissions")
-            secret = handle.read(MAX_SECRET_BYTES + 1)
+        if nofollow:
+            flags |= nofollow
+        else:
+            preopen_metadata = os.lstat(path)
+            if stat.S_ISLNK(preopen_metadata.st_mode):
+                raise InternalHmacClientError("secret_file_symlink")
+        descriptor = os.open(path, flags)
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise InternalHmacClientError("secret_file_not_regular")
+        if preopen_metadata is not None and (
+            preopen_metadata.st_dev,
+            preopen_metadata.st_ino,
+        ) != (metadata.st_dev, metadata.st_ino):
+            raise InternalHmacClientError("secret_file_changed")
+        if os.name != "nt" and stat.S_IMODE(metadata.st_mode) & 0o077:
+            raise InternalHmacClientError("secret_file_permissions")
+        chunks: list[bytes] = []
+        remaining = MAX_SECRET_BYTES + 1
+        while remaining:
+            chunk = os.read(descriptor, remaining)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        secret = b"".join(chunks)
     except InternalHmacClientError:
         raise
     except OSError as exc:
+        if exc.errno in {errno.ELOOP, errno.EMLINK}:
+            raise InternalHmacClientError("secret_file_symlink") from exc
         raise InternalHmacClientError("secret_file_unavailable") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
     if not MIN_SECRET_BYTES <= len(secret) <= MAX_SECRET_BYTES:
         raise InternalHmacClientError("invalid_secret_length")
     return secret
@@ -165,8 +207,9 @@ def signed_request(
         headers=headers,
         method=canonical_method,
     )
+    opener = urllib.request.build_opener(_RejectRedirectHandler())
     try:
-        with urllib.request.urlopen(request, timeout=float(timeout_sec)) as response:
+        with opener.open(request, timeout=float(timeout_sec)) as response:
             status_value = getattr(response, "status", None)
             if status_value is None:
                 status_value = response.getcode()
