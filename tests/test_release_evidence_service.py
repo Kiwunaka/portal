@@ -20,7 +20,9 @@ if str(PORTAL_DIR) not in sys.path:
 
 import migrations  # noqa: E402
 import models  # noqa: E402
+import release_evidence_service as release_service  # noqa: E402
 from release_evidence_service import (  # noqa: E402
+    REQUIRED_CHECK_MATRIX_VERSION,
     ReleaseEvidenceConflict,
     ReleaseEvidenceValidationError,
     compute_candidate_id,
@@ -31,10 +33,52 @@ from release_evidence_service import (  # noqa: E402
 
 
 NOW = datetime(2026, 7, 15, 12, 10, tzinfo=timezone.utc)
+CURRENT_MANIFEST_REVISION = "d" * 64
+CURRENT_ENDPOINT = {
+    "host": "nl.example.test",
+    "port": 443,
+    "sni": None,
+    "address_families": ["ipv4"],
+    "transport_profile": "legacy_reality_fallback",
+    "probe_mode": "delivery_tls",
+    "http_path": None,
+    "min_body_bytes": None,
+    "local_probe_profile_id": None,
+}
+CURRENT_TARGET = {
+    "target_id": "node:nl",
+    "target_kind": "delivery_node",
+    "scope": "release_required",
+    "node_code": "nl",
+    "endpoint": CURRENT_ENDPOINT,
+    "endpoint_fingerprint": hashlib.sha256(
+        json.dumps(
+            CURRENT_ENDPOINT,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest(),
+    "required_stages": ["dns", "tcp", "tls"],
+}
+CURRENT_MANIFEST = {
+    "manifest_revision": CURRENT_MANIFEST_REVISION,
+    "targets": [CURRENT_TARGET],
+}
+REQUIRED_CHECK_NAMES = {
+    "current": "current_origin_reachability",
+    "brain": "brain_origin_reachability",
+    "ru": "ru_origin_reachability",
+}
 
 
 @pytest.fixture
-def session(tmp_path: Path):
+def session(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        release_service,
+        "build_ru_manifest",
+        lambda _session, *, now: CURRENT_MANIFEST,
+    )
     engine = create_engine(f"sqlite:///{(tmp_path / 'release-evidence.db').as_posix()}")
     models.Base.metadata.create_all(engine)
     migrations.run_migrations(engine)
@@ -62,10 +106,11 @@ def _evidence(
     marker: str,
     *,
     run_id: str | None = None,
+    check_name: str | None = None,
 ) -> dict:
     result = {
         "origin": origin,
-        "check_name": f"{origin}_release_check",
+        "check_name": check_name or REQUIRED_CHECK_NAMES[origin],
         "status": status,
         "observed_at": "2026-07-15T12:00:00Z",
         "evidence_sha256": marker * 64,
@@ -85,7 +130,15 @@ def _payload(candidate: dict, evidence: list[dict]) -> dict:
     }
 
 
-def _full_ru_run(session, *, release_verdict: str = "pass", eligible: bool = True):
+def _full_ru_run(
+    session,
+    *,
+    release_verdict: str = "pass",
+    eligible: bool = True,
+    manifest_revision: str = CURRENT_MANIFEST_REVISION,
+    endpoint_fingerprint: str | None = None,
+    include_target: bool = True,
+):
     run = models.RuProbeRun(
         run_id=str(uuid.uuid4()),
         schema_version=2,
@@ -96,7 +149,7 @@ def _full_ru_run(session, *, release_verdict: str = "pass", eligible: bool = Tru
         started_at=NOW - timedelta(minutes=2),
         finished_at=NOW - timedelta(minutes=1),
         received_at=NOW,
-        manifest_revision="a" * 64,
+        manifest_revision=manifest_revision,
         execution_status="completed",
         environment_verdict="available",
         release_verdict=release_verdict,
@@ -107,34 +160,38 @@ def _full_ru_run(session, *, release_verdict: str = "pass", eligible: bool = Tru
     )
     session.add(run)
     session.flush()
-    session.add(
-        models.RuProbeTargetResult(
-            run_db_id=run.id,
-            target_id="node:nl",
-            target_kind="delivery_node",
-            scope="release_required",
-            node_code="nl",
-            endpoint_fingerprint="c" * 64,
-            endpoint_host="nl.example.test",
-            endpoint_port=443,
-            requested_address_families_json=["ipv4"],
-            transport_metadata_json={},
-            transport_profile="legacy_reality_fallback",
-            probe_mode="delivery_tls",
-            observed_at=run.finished_at,
-            overall_status="pass",
-            current_eligible=eligible,
-            dns_status="pass",
-            tcp_status="pass",
-            tls_status="pass",
-            http_large_body_status="not_applicable",
-            transport_handshake_status="pass",
-            ipv4_status="pass",
-            ipv6_status="not_applicable",
-            reported_transport_handshake_status="pass",
-            reported_transport_classification="ok",
+    if include_target:
+        session.add(
+            models.RuProbeTargetResult(
+                run_db_id=run.id,
+                target_id="node:nl",
+                target_kind="delivery_node",
+                scope="release_required",
+                node_code="nl",
+                endpoint_fingerprint=(
+                    endpoint_fingerprint
+                    or str(CURRENT_TARGET["endpoint_fingerprint"])
+                ),
+                endpoint_host="nl.example.test",
+                endpoint_port=443,
+                requested_address_families_json=["ipv4"],
+                transport_metadata_json={},
+                transport_profile="legacy_reality_fallback",
+                probe_mode="delivery_tls",
+                observed_at=run.finished_at,
+                overall_status="pass",
+                current_eligible=eligible,
+                dns_status="pass",
+                tcp_status="pass",
+                tls_status="pass",
+                http_large_body_status="not_applicable",
+                transport_handshake_status="pass",
+                ipv4_status="pass",
+                ipv6_status="not_applicable",
+                reported_transport_handshake_status="pass",
+                reported_transport_classification="ok",
+            )
         )
-    )
     session.flush()
     return run
 
@@ -214,6 +271,115 @@ def test_candidate_hash_idempotency_isolation_and_status_honesty(session) -> Non
         )
 
 
+def test_required_matrix_emits_missing_and_unknown_checks_are_diagnostics(session) -> None:
+    run = _full_ru_run(session)
+    payload = _payload(
+        _candidate(),
+        [
+            _evidence(
+                "current",
+                "PASS",
+                "a",
+                check_name="invented_current_check",
+            ),
+            _evidence(
+                "brain",
+                "PASS",
+                "b",
+                check_name="invented_brain_check",
+            ),
+            _evidence(
+                "ru",
+                "PASS",
+                "c",
+                run_id=run.run_id,
+                check_name="invented_ru_check",
+            ),
+        ],
+    )
+    import_release_evidence(
+        session,
+        payload,
+        ingest_key_id="release-v1",
+        imported_at=NOW,
+    )
+
+    readiness = get_release_readiness(session, payload["candidate_id"], now=NOW)
+
+    assert readiness["required_check_matrix_version"] == REQUIRED_CHECK_MATRIX_VERSION
+    assert readiness["status"] == "MISSING"
+    assert [origin["checks"][0]["check_name"] for origin in readiness["origins"]] == [
+        REQUIRED_CHECK_NAMES["current"],
+        REQUIRED_CHECK_NAMES["brain"],
+        REQUIRED_CHECK_NAMES["ru"],
+    ]
+    assert all(origin["checks"][0]["status"] == "MISSING" for origin in readiness["origins"])
+    assert all(origin["diagnostics"][0]["required"] is False for origin in readiness["origins"])
+
+
+def test_evidence_hash_cannot_rebind_to_another_candidate(session) -> None:
+    first = _payload(_candidate(), [_evidence("current", "PASS", "d")])
+    second = _payload(
+        _candidate(artifact="e" * 64),
+        [_evidence("current", "PASS", "d")],
+    )
+    import_release_evidence(
+        session,
+        first,
+        ingest_key_id="release-v1",
+        imported_at=NOW,
+    )
+
+    with pytest.raises(ReleaseEvidenceConflict, match="evidence_conflict"):
+        import_release_evidence(
+            session,
+            second,
+            ingest_key_id="release-v1",
+            imported_at=NOW,
+        )
+    session.rollback()
+
+
+@pytest.mark.parametrize(
+    "unsafe_detail",
+    [
+        {"api_key": "leak"},
+        {"access_token": "leak"},
+        {"note": "raw-provider-text"},
+        {"data": {"payload": "raw"}},
+        {"source": {"nested": "raw"}},
+    ],
+)
+def test_detail_uses_closed_safe_schema_and_readback_revalidates(
+    session,
+    unsafe_detail: dict,
+) -> None:
+    rejected = _payload(_candidate(), [_evidence("current", "PASS", "f")])
+    rejected["evidence"][0]["detail"] = unsafe_detail
+    with pytest.raises(ReleaseEvidenceValidationError):
+        import_release_evidence(
+            session,
+            rejected,
+            ingest_key_id="release-v1",
+            imported_at=NOW,
+        )
+    session.rollback()
+
+    accepted = _payload(_candidate(), [_evidence("current", "PASS", "f")])
+    import_release_evidence(
+        session,
+        accepted,
+        ingest_key_id="release-v1",
+        imported_at=NOW,
+    )
+    row = session.query(models.ReleaseOriginEvidence).one()
+    assert row.detail_json == '{"source":"retained-run"}'
+    row.detail_json = '{"note":"legacy raw text"}'
+    session.flush()
+    readiness = get_release_readiness(session, accepted["candidate_id"], now=NOW)
+    assert readiness["origins"][0]["checks"][0]["detail"] == {}
+
+
 def test_ru_pass_atomically_holds_exact_full_run_and_fk_restricts_delete(session) -> None:
     run = _full_ru_run(session)
     payload = _payload(
@@ -237,7 +403,7 @@ def test_ru_pass_atomically_holds_exact_full_run_and_fk_restricts_delete(session
     assert run.retention_hold is True
     assert run.retention_held_at.replace(tzinfo=timezone.utc) == NOW
     assert payload["candidate_id"] in run.retention_hold_reason
-    assert "ru_release_check" in run.retention_hold_reason
+    assert "ru_origin_reachability" in run.retention_hold_reason
     assert get_release_readiness(session, payload["candidate_id"], now=NOW)["status"] == "PASS"
 
     session.delete(run)
@@ -289,3 +455,33 @@ def test_ineligible_ru_pass_rolls_back_candidate_and_cursor_is_deterministic(ses
         newer["candidate_id"],
         older["candidate_id"],
     ]
+
+
+@pytest.mark.parametrize(
+    ("run_kwargs", "error_code"),
+    [
+        ({"manifest_revision": "e" * 64}, "ru_probe_run_superseded"),
+        ({"endpoint_fingerprint": "e" * 64}, "ru_probe_run_superseded"),
+        ({"include_target": False}, "ru_probe_run_incomplete"),
+    ],
+)
+def test_ru_pass_recomputes_current_manifest_and_required_targets(
+    session,
+    run_kwargs: dict,
+    error_code: str,
+) -> None:
+    run = _full_ru_run(session, **run_kwargs)
+    session.commit()
+    payload = _payload(
+        _candidate(),
+        [_evidence("ru", "PASS", "1", run_id=run.run_id)],
+    )
+
+    with pytest.raises(ReleaseEvidenceConflict, match=error_code):
+        import_release_evidence(
+            session,
+            payload,
+            ingest_key_id="release-v1",
+            imported_at=NOW,
+        )
+    session.rollback()

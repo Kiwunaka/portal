@@ -998,7 +998,7 @@ class ReleaseOriginEvidence(Base):
         ForeignKey(
             "release_candidates.candidate_id",
             name="fk_release_origin_evidence_candidate",
-            ondelete="CASCADE",
+            ondelete="RESTRICT",
         ),
         nullable=False,
     )
@@ -1025,11 +1025,8 @@ class ReleaseOriginEvidence(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "candidate_id",
-            "origin",
-            "check_name",
             "evidence_sha256",
-            name="uq_release_origin_evidence_candidate_origin_check_hash",
+            name="uq_release_origin_evidence_hash",
         ),
         Index(
             "ix_release_origin_evidence_candidate_origin",

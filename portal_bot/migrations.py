@@ -1353,12 +1353,12 @@ def _ensure_release_evidence_domain_sqlite(conn) -> None:
               imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               CONSTRAINT fk_release_origin_evidence_candidate
                 FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id)
-                ON DELETE CASCADE,
+                ON DELETE RESTRICT,
               CONSTRAINT fk_release_origin_evidence_ru_probe_run
                 FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id)
                 ON DELETE RESTRICT,
-              CONSTRAINT uq_release_origin_evidence_candidate_origin_check_hash
-                UNIQUE (candidate_id, origin, check_name, evidence_sha256)
+              CONSTRAINT uq_release_origin_evidence_hash
+                UNIQUE (evidence_sha256)
             );
             """
         )
@@ -1410,12 +1410,12 @@ def _ensure_release_evidence_domain_postgres(conn) -> None:
               imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
               CONSTRAINT fk_release_origin_evidence_candidate
                 FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id)
-                ON DELETE CASCADE,
+                ON DELETE RESTRICT,
               CONSTRAINT fk_release_origin_evidence_ru_probe_run
                 FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id)
                 ON DELETE RESTRICT,
-              CONSTRAINT uq_release_origin_evidence_candidate_origin_check_hash
-                UNIQUE (candidate_id, origin, check_name, evidence_sha256)
+              CONSTRAINT uq_release_origin_evidence_hash
+                UNIQUE (evidence_sha256)
             );
             """
         )

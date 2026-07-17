@@ -18,12 +18,20 @@ try:
         RuProbeRun,
         RuProbeTargetResult,
     )
+    from ru_probe_service import (
+        _current_run_candidate_validation,
+        build_ru_manifest,
+    )
 except ImportError:  # pragma: no cover - package import
     from .models import (
         ReleaseCandidate,
         ReleaseOriginEvidence,
         RuProbeRun,
         RuProbeTargetResult,
+    )
+    from .ru_probe_service import (
+        _current_run_candidate_validation,
+        build_ru_manifest,
     )
 
 
@@ -40,6 +48,14 @@ ALLOWED_STATUSES = frozenset(
     }
 )
 REQUIRED_ORIGINS = ("current", "brain", "ru")
+REQUIRED_CHECK_MATRIX_VERSION = 1
+# Syntactically valid unknown checks are retained as non-required diagnostics.
+# Only this versioned matrix can contribute to readiness.
+REQUIRED_CHECK_MATRIX = {
+    "current": ("current_origin_reachability",),
+    "brain": ("brain_origin_reachability",),
+    "ru": ("ru_origin_reachability",),
+}
 DEFAULT_PAGE_LIMIT = 50
 MAX_PAGE_LIMIT = 100
 
@@ -47,28 +63,14 @@ _SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 _COMPONENT_RE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}\Z")
 _REVISION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _CHECK_RE = re.compile(r"[a-z0-9][a-z0-9._:-]{0,127}\Z")
-_DETAIL_KEY_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,63}\Z")
+_DETAIL_CODE_RE = re.compile(r"[a-z0-9][a-z0-9._:-]{0,63}\Z")
+_DETAIL_REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 _CURSOR_RE = re.compile(r"[A-Za-z0-9_-]+\Z")
-_UNSAFE_DETAIL_KEYS = frozenset(
-    {
-        "authorization",
-        "client_secret",
-        "cookie",
-        "credential",
-        "credentials",
-        "password",
-        "payload",
-        "private_key",
-        "provider_payload",
-        "raw",
-        "raw_body",
-        "raw_payload",
-        "secret",
-        "signature",
-        "signing_key",
-        "token",
-    }
+_DETAIL_CODE_FIELDS = frozenset({"source", "code", "reason_code", "result_code"})
+_DETAIL_HASH_FIELDS = frozenset(
+    {"sha256", "artifact_sha256", "descriptor_sha256", "manifest_revision"}
 )
+_DETAIL_REF_FIELDS = frozenset({"evidence_ref", "run_ref", "artifact_ref"})
 _STATUS_PRECEDENCE = {
     "FAIL": 0,
     "BLOCKED_BY_ACCESS": 1,
@@ -156,35 +158,34 @@ def _timestamp(value: object, *, code: str) -> datetime:
     return _utc(parsed, code=code)
 
 
-def _normalize_detail(value: object, *, depth: int = 0) -> object:
-    if depth > 4:
+def _validated_detail(value: object) -> dict[str, str]:
+    if not isinstance(value, dict) or len(value) > 12:
         _fail("invalid_detail")
-    if value is None or isinstance(value, (bool, int, float)):
-        if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))):
+    allowed = _DETAIL_CODE_FIELDS | _DETAIL_HASH_FIELDS | _DETAIL_REF_FIELDS
+    if not set(value).issubset(allowed):
+        _fail("unsafe_detail")
+    result: dict[str, str] = {}
+    for key, item in value.items():
+        if not isinstance(item, str):
             _fail("invalid_detail")
-        return value
-    if isinstance(value, str):
-        if len(value) > 500 or any(ord(character) < 0x20 and character not in "\t\n\r" for character in value):
+        if key in _DETAIL_CODE_FIELDS:
+            pattern = _DETAIL_CODE_RE
+        elif key in _DETAIL_HASH_FIELDS:
+            pattern = _SHA256_RE
+        else:
+            pattern = _DETAIL_REF_RE
+        if pattern.fullmatch(item) is None:
             _fail("invalid_detail")
-        return value
-    if isinstance(value, list):
-        if len(value) > 32:
-            _fail("invalid_detail")
-        return [_normalize_detail(item, depth=depth + 1) for item in value]
-    if isinstance(value, dict):
-        if len(value) > 32:
-            _fail("invalid_detail")
-        result: dict[str, object] = {}
-        for key, item in value.items():
-            if not isinstance(key, str) or _DETAIL_KEY_RE.fullmatch(key) is None:
-                _fail("invalid_detail")
-            normalized_key = key.lower().replace("-", "_")
-            if normalized_key in _UNSAFE_DETAIL_KEYS or normalized_key.endswith("_secret"):
-                _fail("unsafe_detail")
-            result[key] = _normalize_detail(item, depth=depth + 1)
-        return result
-    _fail("invalid_detail")
-    raise AssertionError("unreachable")
+        result[key] = item
+    return result
+
+
+def _safe_detail_from_json(value: object) -> dict[str, str]:
+    try:
+        parsed = json.loads(str(value or "{}"))
+        return _validated_detail(parsed)
+    except (TypeError, ValueError, ReleaseEvidenceValidationError):
+        return {}
 
 
 def _validated_candidate(value: object) -> tuple[dict[str, str], str, str]:
@@ -258,9 +259,9 @@ def _validated_evidence(value: object) -> dict[str, object]:
         _fail("invalid_evidence")
     if origin != "ru" and ru_probe_run_id is not None:
         _fail("invalid_ru_probe_binding")
-    detail = _normalize_detail(value.get("detail", {}))
+    detail = _validated_detail(value.get("detail", {}))
     detail_json = canonical_json(detail)
-    if len(detail_json.encode("utf-8")) > 4096:
+    if len(detail_json.encode("utf-8")) > 1024:
         _fail("invalid_detail")
     return {
         "origin": origin,
@@ -318,11 +319,9 @@ def _evidence_unique_error(error: IntegrityError) -> bool:
     diagnostic = getattr(original, "diag", None)
     constraint_name = getattr(diagnostic, "constraint_name", None)
     if constraint_name is not None:
-        return constraint_name == "uq_release_origin_evidence_candidate_origin_check_hash"
+        return constraint_name == "uq_release_origin_evidence_hash"
     return str(original) == (
-        "UNIQUE constraint failed: release_origin_evidence.candidate_id, "
-        "release_origin_evidence.origin, release_origin_evidence.check_name, "
-        "release_origin_evidence.evidence_sha256"
+        "UNIQUE constraint failed: release_origin_evidence.evidence_sha256"
     )
 
 
@@ -349,22 +348,40 @@ def _resolve_ru_run(session, reference: object) -> RuProbeRun | None:
     return query.filter(RuProbeRun.run_id == reference).one_or_none()
 
 
-def _require_ru_pass_run(session, row: RuProbeRun | None) -> None:
+def _require_ru_pass_run(
+    session,
+    row: RuProbeRun | None,
+    *,
+    now: datetime,
+) -> None:
     if row is None:
         raise ReleaseEvidenceConflict("ru_probe_run_not_found")
+    target_rows = (
+        session.query(RuProbeTargetResult)
+        .filter(RuProbeTargetResult.run_db_id == row.id)
+        .all()
+    )
+    current_manifest = build_ru_manifest(session, now=now)
+    current_eligible, current_reason = _current_run_candidate_validation(
+        row,
+        target_rows=target_rows,
+        current_manifest=current_manifest,
+    )
+    if not current_eligible:
+        if current_reason == "superseded_manifest":
+            raise ReleaseEvidenceConflict("ru_probe_run_superseded")
+        if current_reason == "current_target_missing":
+            raise ReleaseEvidenceConflict("ru_probe_run_incomplete")
+        raise ReleaseEvidenceConflict("ru_probe_run_ineligible")
     if (
-        not bool(row.current_eligible)
-        or str(row.execution_status or "").lower() != "completed"
+        str(row.execution_status or "").lower() != "completed"
         or str(row.environment_verdict or "").lower() not in {"pass", "available"}
         or str(row.release_verdict or "").lower() != "pass"
     ):
         raise ReleaseEvidenceConflict("ru_probe_run_ineligible")
-    required_targets = (
-        session.query(RuProbeTargetResult)
-        .filter(RuProbeTargetResult.run_db_id == row.id)
-        .filter(RuProbeTargetResult.scope == "release_required")
-        .all()
-    )
+    required_targets = [
+        target for target in target_rows if target.scope == "release_required"
+    ]
     if not required_targets or any(
         not bool(target.current_eligible)
         or str(target.overall_status or "").lower() != "pass"
@@ -377,10 +394,15 @@ def _evidence_matches(
     row: ReleaseOriginEvidence,
     entry: Mapping[str, object],
     *,
+    candidate_id: str,
     run_db_id: int | None,
 ) -> bool:
     return bool(
-        row.status == entry["status"]
+        row.candidate_id == candidate_id
+        and row.origin == entry["origin"]
+        and row.check_name == entry["check_name"]
+        and row.evidence_sha256 == entry["evidence_sha256"]
+        and row.status == entry["status"]
         and _as_utc(row.observed_at) == entry["observed_at"]
         and row.detail_json == entry["detail_json"]
         and row.ru_probe_run_id == run_db_id
@@ -448,20 +470,22 @@ def import_release_evidence(
         if entry["origin"] == "ru" and entry["status"] == "PASS":
             if entry["ru_probe_run_ref"] is None:
                 raise ReleaseEvidenceConflict("ru_probe_run_required")
-            _require_ru_pass_run(session, run)
+            _require_ru_pass_run(session, run, now=now)
         run_db_id = int(run.id) if run is not None else None
         existing = (
             session.query(ReleaseOriginEvidence)
-            .filter(ReleaseOriginEvidence.candidate_id == candidate_id)
-            .filter(ReleaseOriginEvidence.origin == entry["origin"])
-            .filter(ReleaseOriginEvidence.check_name == entry["check_name"])
             .filter(
                 ReleaseOriginEvidence.evidence_sha256 == entry["evidence_sha256"]
             )
             .one_or_none()
         )
         if existing is not None:
-            if not _evidence_matches(existing, entry, run_db_id=run_db_id):
+            if not _evidence_matches(
+                existing,
+                entry,
+                candidate_id=candidate_id,
+                run_db_id=run_db_id,
+            ):
                 raise ReleaseEvidenceConflict("evidence_conflict")
         else:
             evidence_row = ReleaseOriginEvidence(
@@ -486,9 +510,6 @@ def import_release_evidence(
                 session.expire_all()
                 existing = (
                     session.query(ReleaseOriginEvidence)
-                    .filter(ReleaseOriginEvidence.candidate_id == candidate_id)
-                    .filter(ReleaseOriginEvidence.origin == entry["origin"])
-                    .filter(ReleaseOriginEvidence.check_name == entry["check_name"])
                     .filter(
                         ReleaseOriginEvidence.evidence_sha256
                         == entry["evidence_sha256"]
@@ -496,7 +517,10 @@ def import_release_evidence(
                     .one_or_none()
                 )
                 if existing is None or not _evidence_matches(
-                    existing, entry, run_db_id=run_db_id
+                    existing,
+                    entry,
+                    candidate_id=candidate_id,
+                    run_db_id=run_db_id,
                 ):
                     raise ReleaseEvidenceConflict("evidence_conflict") from None
         if run is not None:
@@ -626,6 +650,33 @@ def _aggregate_status(statuses: list[str]) -> str:
     return min(statuses or ["MISSING"], key=lambda item: _STATUS_PRECEDENCE[item])
 
 
+def _readiness_evidence_row(
+    row: ReleaseOriginEvidence,
+    *,
+    run_refs: Mapping[int, str],
+    required: bool,
+) -> dict[str, object]:
+    status = str(row.status)
+    return {
+        "origin": str(row.origin),
+        "check_name": str(row.check_name),
+        "required": required,
+        "status": status,
+        "observed_at": _iso(row.observed_at),
+        "evidence_ref": str(row.evidence_sha256),
+        "evidence_sha256": str(row.evidence_sha256),
+        "ru_probe_run_id": (
+            run_refs.get(int(row.ru_probe_run_id))
+            if row.ru_probe_run_id is not None
+            else None
+        ),
+        "detail": _safe_detail_from_json(row.detail_json),
+        "reason": (
+            "evidence_pass" if status == "PASS" else f"reported_{status.lower()}"
+        ),
+    }
+
+
 def get_release_readiness(
     session,
     candidate_id: str,
@@ -670,56 +721,49 @@ def get_release_readiness(
     }
     origins: list[dict[str, object]] = []
     for origin in REQUIRED_ORIGINS:
-        origin_rows = [
-            row for (row_origin, _check), row in latest.items() if row_origin == origin
-        ]
-        origin_rows.sort(key=lambda row: (str(row.check_name), int(row.id)))
+        required_names = REQUIRED_CHECK_MATRIX[origin]
         checks: list[dict[str, object]] = []
-        if not origin_rows:
-            checks.append(
-                {
-                    "origin": origin,
-                    "check_name": "origin_evidence",
-                    "status": "MISSING",
-                    "observed_at": None,
-                    "evidence_ref": None,
-                    "evidence_sha256": None,
-                    "ru_probe_run_id": None,
-                    "detail": {},
-                    "reason": "missing_origin_evidence",
-                }
+        for check_name in required_names:
+            row = latest.get((origin, check_name))
+            if row is None:
+                checks.append(
+                    {
+                        "origin": origin,
+                        "check_name": check_name,
+                        "required": True,
+                        "status": "MISSING",
+                        "observed_at": None,
+                        "evidence_ref": None,
+                        "evidence_sha256": None,
+                        "ru_probe_run_id": None,
+                        "detail": {},
+                        "reason": "missing_required_evidence",
+                    }
+                )
+            else:
+                checks.append(
+                    _readiness_evidence_row(
+                        row,
+                        run_refs=run_refs,
+                        required=True,
+                    )
+                )
+        diagnostics = [
+            _readiness_evidence_row(
+                row,
+                run_refs=run_refs,
+                required=False,
             )
-        for row in origin_rows:
-            try:
-                detail = json.loads(str(row.detail_json or "{}"))
-            except (TypeError, ValueError):
-                detail = {}
-            checks.append(
-                {
-                    "origin": origin,
-                    "check_name": str(row.check_name),
-                    "status": str(row.status),
-                    "observed_at": _iso(row.observed_at),
-                    "evidence_ref": str(row.evidence_sha256),
-                    "evidence_sha256": str(row.evidence_sha256),
-                    "ru_probe_run_id": (
-                        run_refs.get(int(row.ru_probe_run_id))
-                        if row.ru_probe_run_id is not None
-                        else None
-                    ),
-                    "detail": detail if isinstance(detail, dict) else {},
-                    "reason": (
-                        "evidence_pass"
-                        if str(row.status) == "PASS"
-                        else f"reported_{str(row.status).lower()}"
-                    ),
-                }
-            )
+            for (row_origin, check_name), row in latest.items()
+            if row_origin == origin and check_name not in required_names
+        ]
+        diagnostics.sort(key=lambda item: str(item["check_name"]))
         origins.append(
             {
                 "origin": origin,
                 "status": _aggregate_status([str(check["status"]) for check in checks]),
                 "checks": checks,
+                "diagnostics": diagnostics,
             }
         )
     overall_status = _aggregate_status([str(item["status"]) for item in origins])
@@ -728,6 +772,7 @@ def get_release_readiness(
     return {
         "candidate": _candidate_summary(candidate, now=normalized_now),
         "candidate_id": candidate_id,
+        "required_check_matrix_version": REQUIRED_CHECK_MATRIX_VERSION,
         "status": overall_status,
         "ready": overall_status == "PASS",
         "generated_at": _iso(normalized_now),

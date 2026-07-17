@@ -175,12 +175,7 @@ EXPECTED_UNIQUES = {
         "uq_release_candidates_candidate_id": ("candidate_id",),
     },
     "release_origin_evidence": {
-        "uq_release_origin_evidence_candidate_origin_check_hash": (
-            "candidate_id",
-            "origin",
-            "check_name",
-            "evidence_sha256",
-        ),
+        "uq_release_origin_evidence_hash": ("evidence_sha256",),
     },
 }
 
@@ -449,7 +444,7 @@ def test_models_and_explicit_sqlite_ddl_match(migrated_engine) -> None:
     candidate_fk = next(iter(release_table.c.candidate_id.foreign_keys))
     assert candidate_fk.name == "fk_release_origin_evidence_candidate"
     assert candidate_fk.target_fullname == "release_candidates.candidate_id"
-    assert candidate_fk.ondelete == "CASCADE"
+    assert candidate_fk.ondelete == "RESTRICT"
     run_fk = next(iter(release_table.c.ru_probe_run_id.foreign_keys))
     assert run_fk.name == "fk_release_origin_evidence_ru_probe_run"
     assert run_fk.target_fullname == "ru_probe_runs.id"
@@ -468,7 +463,7 @@ def test_models_and_explicit_sqlite_ddl_match(migrated_engine) -> None:
             ("candidate_id",),
             "release_candidates",
             ("candidate_id",),
-            "CASCADE",
+            "RESTRICT",
         ),
         "fk_release_origin_evidence_ru_probe_run": (
             ("ru_probe_run_id",),
@@ -513,6 +508,55 @@ def test_required_unique_constraints_are_enforced(migrated_engine) -> None:
         _insert(conn, "internal_ingest_nonces", nonce)
         with pytest.raises(IntegrityError):
             _insert(conn, "internal_ingest_nonces", nonce)
+
+        candidate_a = {
+            "candidate_id": "1" * 64,
+            "component": "adminapp",
+            "version": "2026.07.15.1",
+            "revision": "a" * 40,
+            "artifact_sha256": "2" * 64,
+            "canonical_descriptor_json": "{}",
+            "descriptor_sha256": "1" * 64,
+            "ingest_key_id": "release-v1",
+        }
+        candidate_b = {
+            **candidate_a,
+            "candidate_id": "3" * 64,
+            "artifact_sha256": "4" * 64,
+            "descriptor_sha256": "3" * 64,
+        }
+        _insert(conn, "release_candidates", candidate_a)
+        _insert(conn, "release_candidates", candidate_b)
+        evidence = {
+            "candidate_id": candidate_a["candidate_id"],
+            "origin": "current",
+            "check_name": "current_origin_reachability",
+            "status": "PASS",
+            "evidence_sha256": "5" * 64,
+            "observed_at": "2026-07-15T12:02:00+00:00",
+            "detail_json": '{"source":"retained-run"}',
+        }
+        _insert(conn, "release_origin_evidence", evidence)
+        with pytest.raises(IntegrityError):
+            _insert(
+                conn,
+                "release_origin_evidence",
+                {**evidence, "candidate_id": candidate_b["candidate_id"]},
+            )
+
+    with migrated_engine.begin() as conn:
+        with pytest.raises(IntegrityError):
+            conn.execute(
+                text("DELETE FROM release_candidates WHERE candidate_id = :candidate_id"),
+                {"candidate_id": candidate_a["candidate_id"]},
+            )
+        assert conn.execute(
+            text(
+                "SELECT count(*) FROM release_origin_evidence "
+                "WHERE candidate_id = :candidate_id"
+            ),
+            {"candidate_id": candidate_a["candidate_id"]},
+        ).scalar_one() == 1
 
 
 def test_sqlite_foreign_key_is_enabled_and_cascades(migrated_engine) -> None:
@@ -613,8 +657,8 @@ def test_release_evidence_postgres_ddl_keeps_named_constraints_and_indexes() -> 
     assert "CONSTRAINT uq_release_candidates_candidate_id" in sql
     assert "CONSTRAINT fk_release_origin_evidence_candidate" in sql
     assert "CONSTRAINT fk_release_origin_evidence_ru_probe_run" in sql
-    assert "ON DELETE RESTRICT" in sql
-    assert "CONSTRAINT uq_release_origin_evidence_candidate_origin_check_hash" in sql
+    assert sql.count("ON DELETE RESTRICT") == 2
+    assert "CONSTRAINT uq_release_origin_evidence_hash" in sql
     assert "ix_release_candidates_imported_at" in sql
     assert "ix_release_origin_evidence_candidate_origin" in sql
     assert "ix_release_origin_evidence_ru_probe_run_id" in sql
