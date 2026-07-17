@@ -45,6 +45,7 @@ type HistoryContinuation = {
   key: string;
   items: RuRunSummary[];
   nextCursor: string | null;
+  loaded: boolean;
   loading: boolean;
   error: string | null;
 };
@@ -53,9 +54,26 @@ const EMPTY_HISTORY_CONTINUATION: HistoryContinuation = {
   key: "",
   items: [],
   nextCursor: null,
+  loaded: false,
   loading: false,
   error: null
 };
+
+function historyRunIdentity(run: RuRunSummary): string {
+  return Number.isFinite(run.run_db_id) ? `db:${run.run_db_id}` : `run:${run.run_id}`;
+}
+
+function mergeHistoryRuns(...pages: RuRunSummary[][]): RuRunSummary[] {
+  const seen = new Set<string>();
+  const merged: RuRunSummary[] = [];
+  for (const run of pages.flat()) {
+    const identity = historyRunIdentity(run);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    merged.push(run);
+  }
+  return merged;
+}
 
 function cleanEnumCodec<T extends string>(values: readonly T[], defaultValue: T): UrlStateCodec<T> {
   const approved = new Set(values);
@@ -128,7 +146,11 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
     };
   }, [latest.data, ruByCode, selected]);
 
-  const historyKey = `${selected || "none"}:${urlState.range}`;
+  const historyScopeKey = `${selected || "none"}:${urlState.range}`;
+  const firstPageIdentity = history.data
+    ? `${history.data.items.map(historyRunIdentity).join(",")}|${history.data.next_cursor || "end"}`
+    : "pending";
+  const historyKey = `${historyScopeKey}:${firstPageIdentity}`;
   const [historyContinuation, setHistoryContinuation] = useState<HistoryContinuation>(EMPTY_HISTORY_CONTINUATION);
   const activeHistoryContinuation = historyContinuation.key === historyKey ? historyContinuation : EMPTY_HISTORY_CONTINUATION;
   const historyMoreController = useRef<AbortController | null>(null);
@@ -141,8 +163,15 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
 
   useEffect(() => () => historyMoreController.current?.abort(), []);
 
+  const resetHistoryContinuation = useCallback(() => {
+    historyMoreController.current?.abort();
+    historyMoreController.current = null;
+    historyMoreInFlight.current = false;
+    setHistoryContinuation({ ...EMPTY_HISTORY_CONTINUATION, key: historyKey });
+  }, [historyKey]);
+
   const loadMoreHistory = useCallback(async () => {
-    const cursor = activeHistoryContinuation.items.length ? activeHistoryContinuation.nextCursor : history.data?.next_cursor;
+    const cursor = activeHistoryContinuation.loaded ? activeHistoryContinuation.nextCursor : history.data?.next_cursor;
     if (!selected || !cursor || activeHistoryContinuation.loading || historyMoreInFlight.current) return;
     historyMoreController.current?.abort();
     const controller = new AbortController();
@@ -154,8 +183,9 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
       if (controller.signal.aborted) return;
       setHistoryContinuation((current) => current.key === historyKey ? {
         ...current,
-        items: [...current.items, ...page.items],
+        items: mergeHistoryRuns(current.items, page.items),
         nextCursor: page.next_cursor,
+        loaded: true,
         loading: false,
         error: null
       } : current);
@@ -169,16 +199,20 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
       } : current);
     } finally {
       if (historyMoreController.current === controller) {
+        historyMoreController.current = null;
         historyMoreInFlight.current = false;
+        setHistoryContinuation((current) => current.key === historyKey && current.loading
+          ? { ...current, loading: false }
+          : current);
       }
     }
   }, [activeHistoryContinuation, history.data?.next_cursor, historyKey, selected, urlState.range]);
 
   const visibleHistory = useMemo(() => history.data ? {
     ...history.data,
-    items: [...history.data.items, ...activeHistoryContinuation.items],
-    next_cursor: activeHistoryContinuation.items.length ? activeHistoryContinuation.nextCursor : history.data.next_cursor
-  } : null, [activeHistoryContinuation.items, activeHistoryContinuation.nextCursor, history.data]);
+    items: mergeHistoryRuns(history.data.items, activeHistoryContinuation.items),
+    next_cursor: activeHistoryContinuation.loaded ? activeHistoryContinuation.nextCursor : history.data.next_cursor
+  } : null, [activeHistoryContinuation.items, activeHistoryContinuation.loaded, activeHistoryContinuation.nextCursor, history.data]);
 
   useEffect(() => {
     const errors = [list.error, latest.error, detail.error, history.error, uploader.error].filter((error): error is AdminApiError => error !== null);
@@ -220,6 +254,7 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
             latest.reload();
             if (selected) detail.reload();
             if (ruTabActive) {
+              resetHistoryContinuation();
               history.reload();
               uploader.reload();
             }
@@ -250,7 +285,10 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
                   filters={urlState}
                   selected={selected}
                   onFiltersChange={updateFilters}
-                  onSelect={(code) => pushUrlState<NodeUrlState>({ selected: code }, NODE_URL_CODECS)}
+                  onSelect={(code) => {
+                    resetHistoryContinuation();
+                    pushUrlState<NodeUrlState>({ selected: code }, NODE_URL_CODECS);
+                  }}
                 />
               ) : list.data ? <EmptyState description="Сервер вернул пустой список нод. Это не считается нулевой нагрузкой." /> : null}
             </RouteBoundary>
@@ -264,7 +302,10 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
             </Card>
           ) : null}
           {selected ? (
-            <Button tone="ghost" className="mb-2 lg:hidden" onClick={() => pushUrlState<NodeUrlState>({ selected: null }, NODE_URL_CODECS)}>
+            <Button tone="ghost" className="mb-2 lg:hidden" onClick={() => {
+              resetHistoryContinuation();
+              pushUrlState<NodeUrlState>({ selected: null }, NODE_URL_CODECS);
+            }}>
               <ArrowLeft size={15} /> Назад к нодам
             </Button>
           ) : null}
@@ -286,7 +327,7 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
               historyLoading={history.loading}
               historyError={errorText(history.error, "Повторите загрузку истории.")}
               onHistoryRetry={() => {
-                setHistoryContinuation({ ...EMPTY_HISTORY_CONTINUATION, key: historyKey });
+                resetHistoryContinuation();
                 history.reload();
               }}
               historyMoreLoading={activeHistoryContinuation.loading}
@@ -297,7 +338,10 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
               uploaderError={errorText(uploader.error, "Повторите загрузку служебного сигнала.")}
               onUploaderRetry={uploader.reload}
               range={urlState.range}
-              onRangeChange={(range) => pushUrlState<NodeUrlState>({ range }, NODE_URL_CODECS)}
+              onRangeChange={(range) => {
+                resetHistoryContinuation();
+                pushUrlState<NodeUrlState>({ range }, NODE_URL_CODECS);
+              }}
             />
           ) : null}
         </section>

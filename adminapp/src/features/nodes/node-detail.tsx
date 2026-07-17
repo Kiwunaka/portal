@@ -15,6 +15,7 @@ import type {
   RuRunHistory,
   RuUploaderStatus
 } from "@/lib/admin-api/nodes";
+import { formatSourceAge } from "@/lib/ops-status/presentation";
 
 import { capacityText, NodeSourceSummary, opsStatusFromSource, reasonText, sourceStatusText } from "./node-source-summary";
 import { RuHistory } from "./ru-history";
@@ -45,6 +46,14 @@ function ratioText(used: number | null | undefined, total: number | null | undef
   const totalValue = finiteNumber(total);
   if (usedValue === null || totalValue === null || totalValue <= 0) return "—";
   return `${numberText(usedValue, ` ${unit}`)} / ${numberText(totalValue, ` ${unit}`)}`;
+}
+
+function sampledTimeText(value: string | null): string {
+  if (!value) return "—";
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) return "—";
+  const exact = new Date(timestamp).toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
+  return `${exact} · ${formatSourceAge(value)}`;
 }
 
 function yesNoUnknown(value: boolean | null | undefined): string {
@@ -136,7 +145,7 @@ function OverviewTab({ data, ruStatus }: { data: NodeObservability; ruStatus: Ru
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <Metric label="Состояние ёмкости" value={capacityText(data.capacity.state)} explanation="Рассчитанная сервером возможность принимать новые размещения." sampledAt={data.sources.runtime.sampled_at} icon={<Gauge size={15} />} />
           <Metric label="Наблюдатель" value={reasonText(data.sources.observer.reason_code)} explanation="Свежесть последнего обработанного пакета наблюдателя." sampledAt={data.sources.observer.sampled_at} threshold={`Порог: ${data.sources.observer.threshold_seconds} сек`} icon={<Radio size={15} />} />
-          <Metric label="Последний пакет Observer" value={observerDetails.last_batch_id || "—"} explanation="Идентификатор последнего обработанного пакета Observer; значение безопасно для операторского сопоставления." sampledAt={observer.sampled_at} threshold={`Порог: ${observer.threshold_seconds} сек`} icon={<Radio size={15} />} />
+          <Metric label="Последний пакет Observer" value={sampledTimeText(observer.sampled_at)} explanation="Время и возраст последнего обработанного пакета Observer. Идентификатор доступен в технических деталях." sampledAt={observer.sampled_at} threshold={`Порог: ${observer.threshold_seconds} сек`} icon={<Radio size={15} />} />
           <Metric label="Сопоставление Observer" value={`Не сопоставлено: ${numberText(observerDetails.unmatched_count, "", 0)}`} explanation="Количество строк последнего пакета, которые не удалось сопоставить с известными сущностями." sampledAt={observer.sampled_at} threshold="Ожидается 0" />
           <Metric label="Разбор Observer" value={`Ошибки разбора: ${numberText(observerDetails.parse_error_count, "", 0)}`} explanation="Количество ошибок разбора в последнем пакете Observer." sampledAt={observer.sampled_at} threshold="Ожидается 0" />
         </div>
@@ -164,7 +173,7 @@ function LoadTab({ data }: { data: NodeObservability }) {
         <SectionTitle title="Панель" description="Задержка и доля ошибок относятся к тому же снимку Brain-origin и не подменяют dataplane." />
         <div className="grid gap-3 sm:grid-cols-2">
           <Metric label="Задержка панели" value={numberText(details.panel_latency_ms, " мс")} explanation="Время ответа панели в последней проверке Brain-origin." sampledAt={brain.sampled_at} />
-          <Metric label="Ошибки панели" value={numberText(details.panel_error_rate, "%")} explanation="Доля ошибок панели из последнего пригодного снимка." sampledAt={brain.sampled_at} threshold="Ожидается 0%" />
+          <Metric label="Ошибки панели" value={details.panel_error_rate === null || details.panel_error_rate === undefined ? "—" : numberText(details.panel_error_rate * 100, "%")} explanation="Сервер передаёт долю ошибок как отношение от 0 до 1; интерфейс показывает её в процентах." sampledAt={brain.sampled_at} threshold="Порог сервера: 20%" />
         </div>
       </Card>
       <Card className="min-h-0">
@@ -234,16 +243,23 @@ function TransportTab({ data }: { data: NodeObservability }) {
   );
 }
 
+const NODE_ALERT_TITLES: Record<string, string> = {
+  stale_metrics: "Метрики ноды устарели",
+  cpu_high: "Высокая загрузка процессора",
+  memory_high: "Высокая загрузка памяти",
+  disk_high: "Высокая загрузка диска",
+  network_high: "Высокая загрузка сети",
+  latency_high: "Высокая задержка панели",
+  error_rate_high: "Ошибки панели выше порога",
+  client_density_high: "Высокая плотность клиентов",
+  observer_push_stale: "Данные Observer устарели"
+};
+
 function alertTitle(alert: NodeObservability["alerts"][number]): string {
-  const stable = `${alert.source}:${alert.fingerprint}`.toLowerCase();
-  if (stable.includes("panel_latency")) return "Высокая задержка панели";
-  if (stable.includes("panel_error")) return "Ошибки панели выше порога";
-  if (stable.includes("cpu")) return "Высокая загрузка процессора";
-  if (stable.includes("memory")) return "Высокая загрузка памяти";
-  if (stable.includes("disk")) return "Недостаточно свободного места";
-  if (stable.includes("capacity")) return "Ограничение ёмкости ноды";
-  if (stable.includes("observer")) return "Отклонение Observer";
-  return "Операционный сигнал ноды";
+  const source = String(alert.source || "").trim().toLowerCase();
+  if (source === "node_capacity") return "Ограничение ёмкости ноды";
+  const kind = String(alert.fingerprint || "").trim().toLowerCase().split(":").at(-1) || "";
+  return NODE_ALERT_TITLES[kind] || "Операционный сигнал ноды";
 }
 
 function alertSource(source: string): string {
@@ -291,6 +307,7 @@ function TechnicalTab({ data, ruStatus }: { data: NodeObservability; ruStatus: R
           <Definition label="brain_reason" value={data.sources.brain_metrics.reason_code} mono />
           <Definition label="runtime_reason" value={data.sources.runtime.reason_code} mono />
           <Definition label="observer_reason" value={data.sources.observer.reason_code} mono />
+          <Definition label="observer_batch_id" value={data.sources.observer.details.last_batch_id || "—"} mono />
           <Definition label="ru_reason" value={ruStatus?.reason_code || "ru_latest_unavailable"} mono />
           <Definition label="probe_stage" value={data.network.last_probe_stage || "—"} mono />
           <Definition label="probe_error_kind" value={data.network.last_probe_error_kind || "—"} mono />
@@ -386,7 +403,7 @@ export function NodeDetail({
             type="button"
             role="tab"
             aria-selected={tab === item.id}
-            aria-controls={`node-panel-${item.id}`}
+            aria-controls="node-detail-panel"
             tabIndex={tab === item.id ? 0 : -1}
             onClick={() => onTabChange(item.id)}
             onKeyDown={(event) => moveTab(event, index)}
@@ -397,7 +414,7 @@ export function NodeDetail({
         ))}
       </div>
 
-      <div id={`node-panel-${tab}`} role="tabpanel" aria-labelledby={`node-tab-${tab}`}>
+      <div id="node-detail-panel" role="tabpanel" aria-labelledby={`node-tab-${tab}`}>
         {tab === "overview" ? <OverviewTab data={data} ruStatus={ruStatus} /> : null}
         {tab === "load" ? <LoadTab data={data} /> : null}
         {tab === "clients" ? <ClientsTab data={data} /> : null}

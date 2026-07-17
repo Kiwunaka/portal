@@ -148,9 +148,15 @@ test("review-контракт: live wire, независимые RU-блоки, 
   const brainRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду BRAIN" }) });
   const deRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду DE" }) });
   const nlRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду NL" }) });
+  const probeOnlyRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду PROBE-ONLY" }) });
+  const capacityUnknownRow = table.getByRole("row").filter({ has: review.page.getByRole("button", { name: "Открыть ноду CAPACITY-UNKNOWN" }) });
   await expect(brainRow).toContainText("DE");
   await expect(deRow).toContainText("—");
   await expect(nlRow).toContainText("RU-проверка завершилась сбоем");
+  await expect(probeOnlyRow).toContainText("Нет данных Brain-origin");
+  await expect(probeOnlyRow).not.toContainText("Обязательные сигналы без отклонений");
+  await expect(capacityUnknownRow).toContainText("Нет данных о ёмкости");
+  await expect(capacityUnknownRow).not.toContainText("Обязательные сигналы без отклонений");
   await expect(review.page.getByRole("button", { name: "Открыть ноду NL" })).toBeVisible();
 
   const headerHelp = review.page.getByRole("button", { name: "Показать пояснение" }).first();
@@ -159,28 +165,82 @@ test("review-контракт: live wire, независимые RU-блоки, 
 
   await review.page.getByRole("button", { name: "Открыть ноду NL" }).click();
   await expect(review.page.getByText("Запрет новых размещений", { exact: true })).toBeVisible();
-  await expect(review.page.getByText("Последний пакет Observer", { exact: true }).first()).toBeVisible();
+  const observerMetric = review.page.getByText("Последний пакет Observer", { exact: true }).first().locator("..").locator("..");
+  await expect(observerMetric).toBeVisible();
+  await expect(observerMetric).toContainText(/15\.07/);
+  await expect(observerMetric).not.toContainText("batch-safe-401");
   await expect(review.page.getByText("Не сопоставлено: 1", { exact: true })).toBeVisible();
   await expect(review.page.getByText("Ошибки разбора: 0", { exact: true })).toBeVisible();
 
   const overviewTab = review.page.getByRole("tab", { name: "Обзор" });
-  await expect(overviewTab).toHaveAttribute("aria-controls", /node-panel-overview/);
+  for (const tabName of ["Обзор", "Проверки из РФ", "Нагрузка", "Клиенты", "Транспорт", "Алерты", "Технические детали"]) {
+    await expect(review.page.getByRole("tab", { name: tabName })).toHaveAttribute("aria-controls", "node-detail-panel");
+  }
+  await expect(review.page.locator("#node-detail-panel")).toHaveCount(1);
   await overviewTab.press("ArrowRight");
   await expect(review.page).toHaveURL(/tab=ru/);
   await expect(review.page.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", /node-tab-ru/);
+  await expect.poll(() => reviewApi.calls.filter((call) => call.path.includes("cursor=")).length).toBe(0);
   await review.page.getByRole("button", { name: "Показать ещё" }).click();
   await expect.poll(() => reviewApi.calls.some((call) => call.path.includes("cursor=cursor-safe-next"))).toBe(true);
+  const historyRegion = review.page.getByRole("region", { name: "История проверок из РФ" });
+  const run390 = "00000000-0000-4000-8000-000000000390";
+  const run389 = "00000000-0000-4000-8000-000000000389";
+  const run388 = "00000000-0000-4000-8000-000000000388";
+  const run391 = "00000000-0000-4000-8000-000000000391";
+  await expect(historyRegion.getByText(run390, { exact: false })).toHaveCount(1);
+  await expect(historyRegion.getByText(run389, { exact: false })).toHaveCount(1);
+
+  await review.page.getByRole("button", { name: "Показать ещё" }).click();
+  await expect.poll(() => reviewApi.calls.some((call) => call.path.includes("cursor=cursor-abort-next"))).toBe(true);
+  await review.page.getByRole("button", { name: "Обновить", exact: true }).click();
+  await expect.poll(() => reviewApi.calls.filter((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs?") && !call.path.includes("cursor=")).length).toBeGreaterThan(1);
+  reviewApi.releaseHistoryContinuation();
+  await expect(historyRegion.getByText(run391, { exact: false })).toHaveCount(1);
+  await expect(historyRegion.getByText(run389, { exact: false })).toHaveCount(0);
+  await expect(historyRegion.getByText(run388, { exact: false })).toHaveCount(0);
+  await expect(review.page.getByRole("button", { name: "Показать ещё" })).toBeEnabled();
+  await expect.poll(() => reviewApi.calls.some((call) => call.path.includes("cursor=cursor-refreshed-next"))).toBe(false);
+  await review.page.getByRole("button", { name: "Показать ещё" }).click();
+  await expect.poll(() => reviewApi.calls.some((call) => call.path.includes("cursor=cursor-refreshed-next"))).toBe(true);
+  await expect(historyRegion.getByText(run391, { exact: false })).toHaveCount(1);
+  await expect(historyRegion.getByText(run390, { exact: false })).toHaveCount(1);
+  await expect(historyRegion.getByText(run389, { exact: false })).toHaveCount(1);
+  await expect(historyRegion.getByText(run388, { exact: false })).toHaveCount(0);
 
   await review.page.getByRole("tab", { name: "Нагрузка" }).click();
   await expect(review.page.getByText("Задержка панели", { exact: true }).first()).toBeVisible();
-  await expect(review.page.getByText("Ошибки панели", { exact: true }).first()).toBeVisible();
+  const panelErrorLabel = review.page.getByText("Ошибки панели", { exact: true }).first();
+  const panelErrorHeader = panelErrorLabel.locator("..");
+  await expect(panelErrorLabel).toBeVisible();
+  await expect(panelErrorHeader.locator("..")).toContainText("31%");
+  await panelErrorHeader.getByRole("button", { name: "Показать пояснение" }).click();
+  await expect(panelErrorHeader.getByRole("tooltip")).toContainText("Порог сервера: 20%");
   await expect(review.page.getByText("Приём · 1 мин", { exact: true }).first()).toBeVisible();
   await expect(review.page.getByText("Передача · 5 мин", { exact: true }).first()).toBeVisible();
 
   await review.page.getByRole("tab", { name: "Алерты" }).click();
-  await expect(review.page.getByText("Высокая задержка панели", { exact: true })).toBeVisible();
-  await expect(review.page.getByText("Источник: метрики ноды", { exact: true })).toBeVisible();
-  await expect(review.page.getByText("Node nl metric alert: panel_latency", { exact: true })).toHaveCount(0);
+  for (const title of [
+    "Метрики ноды устарели",
+    "Высокая загрузка процессора",
+    "Высокая загрузка памяти",
+    "Высокая загрузка диска",
+    "Высокая загрузка сети",
+    "Высокая задержка панели",
+    "Ошибки панели выше порога",
+    "Высокая плотность клиентов",
+    "Данные Observer устарели",
+    "Ограничение ёмкости ноды"
+  ]) {
+    await expect(review.page.getByText(title, { exact: true })).toBeVisible();
+  }
+  await expect(review.page.getByText("Источник: метрики ноды", { exact: true }).first()).toBeVisible();
+  await expect(review.page.getByText("Node nl metric alert: latency_high", { exact: true })).toHaveCount(0);
+
+  await review.page.getByRole("tab", { name: "Технические детали" }).click();
+  await expect(review.page.getByText("batch-safe-401", { exact: true })).not.toBeVisible();
+  await review.page.getByText("Показать технические коды ноды", { exact: true }).click();
+  await expect(review.page.getByText("batch-safe-401", { exact: true })).toBeVisible();
   await review.context.close();
 
   const missing = await openScenario(browser, "selected-missing");

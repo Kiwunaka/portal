@@ -302,7 +302,7 @@ function adaptNodeListRow(value: unknown): NodeListRow | null {
   const row = asRecord(value);
   const code = textOrNull(row.code);
   if (!code) return null;
-  const hasTelemetry = Boolean(textOrNull(row.last_health_at)) || nullableNumber(row.freshness_age_seconds) !== null;
+  const hasTelemetry = Boolean(textOrNull(row.last_health_at));
   return {
     code,
     name: textOrNull(row.name),

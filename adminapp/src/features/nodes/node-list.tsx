@@ -63,6 +63,7 @@ function brainStatus(row: NodeListRow) {
 
 function worstReason(row: NodeListRow, ru: RuNodeStatus | null): string {
   if (row.is_healthy === false) return "Проверка здоровья не пройдена";
+  const brain = brainStatus(row);
   const ruStatus = String(ru?.status || "missing").toLowerCase();
   if (ruStatus === "failed" || ruStatus === "fail") return "RU-проверка завершилась сбоем";
   if (ruStatus === "blocked_by_access") return "Доступ к RU-проверке заблокирован";
@@ -76,7 +77,9 @@ function worstReason(row: NodeListRow, ru: RuNodeStatus | null): string {
   if (capacity === "warm") return "Ёмкость приближается к порогу";
   if (row.capacity_reject_reason) return "Ёмкость ограничивает размещение";
   if (row.alert_kinds.length) return `${row.alert_kinds.length} активн. сигнал`;
-  if (row.freshness_status === "stale") return "Обязательные данные устарели";
+  if (brain === "stale") return "Обязательные данные устарели";
+  if (brain === "missing") return "Нет данных Brain-origin";
+  if (capacity === "unknown") return "Нет данных о ёмкости";
   if (ruStatus === "not_in_scope") return "RU-проверка не входит в контур";
   return "Обязательные сигналы без отклонений";
 }

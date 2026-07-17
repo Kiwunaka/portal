@@ -371,7 +371,7 @@ def _seed_ru_read_fixture(api, *, now: datetime) -> None:
                 probe_classification="ok",
                 ipv4_health="ok",
                 ipv6_health="missing",
-                transport_health_json=json.dumps({"status": "ok"}),
+                transport_health_json="{malformed-json",
             )
         )
         s.add(
@@ -391,6 +391,7 @@ def _seed_ru_read_fixture(api, *, now: datetime) -> None:
                 memory_total_mb=4096,
                 capacity_score=88.0,
                 capacity_state="ok",
+                meta_json="{malformed-json",
             )
         )
         s.flush()
@@ -1004,7 +1005,11 @@ def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
     assert body["node"]["code"] == "de"
     assert body["sources"]["brain_metrics"]["sampled_at"]
     assert body["sources"]["brain_metrics"]["threshold_seconds"] >= 300
+    assert body["sources"]["brain_metrics"]["status"] == "ok"
+    assert body["sources"]["brain_metrics"]["details"]["cpu_percent"] == 23.5
     assert body["sources"]["runtime"]["sampled_at"]
+    assert body["sources"]["runtime"]["status"] == "ok"
+    assert body["sources"]["runtime"]["details"]["provisioned_clients_count"] == 7
     assert body["sources"]["observer"]["sampled_at"]
     assert body["sources"]["ru_origin"]["sampled_at"]
     assert body["ru"]["history"]["items"]
@@ -1023,6 +1028,8 @@ def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
 
     s = api.SessionLocal()
     try:
+        from models import NodeHealthSample, NodeRuntimeMetric
+
         s.add(
             api.Node(
                 code="brain",
@@ -1031,6 +1038,7 @@ def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
                 inbound_id=1,
                 enabled=True,
                 accepting_new_clients=True,
+                last_probe_at=now - timedelta(seconds=30),
                 transport_profiles_json=json.dumps(
                     [
                         {
@@ -1041,6 +1049,60 @@ def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
                             "port": 443,
                         }
                     ]
+                ),
+            )
+        )
+        s.add(
+            api.Node(
+                code="panel-down",
+                name="Panel down",
+                host="panel-down.example.test",
+                inbound_id=1,
+                enabled=True,
+                accepting_new_clients=True,
+                is_healthy=False,
+                last_health_at=now - timedelta(seconds=20),
+                last_probe_at=now - timedelta(seconds=10),
+                cpu_percent=0.0,
+                provisioned_clients_count=0,
+                online_connections_hint=0,
+            )
+        )
+        s.add(
+            NodeHealthSample(
+                node_code="panel-down",
+                sampled_at=now - timedelta(seconds=20),
+                panel_latency_ms=125,
+                panel_error_rate=0.5,
+                active_clients=0,
+                cpu_percent=0.0,
+                is_healthy=False,
+                score=10.0,
+                source="collector",
+                probe_at=now - timedelta(seconds=10),
+                probe_stage="panel_login",
+                probe_error_kind="panel_login_failed",
+                transport_health_json=json.dumps(
+                    {
+                        "panel_state": "failed",
+                        "dataplane_state": "healthy",
+                    }
+                ),
+            )
+        )
+        s.add(
+            NodeRuntimeMetric(
+                node_code="panel-down",
+                sampled_at=now - timedelta(seconds=15),
+                source="collector",
+                provisioned_clients_count=0,
+                online_connections_hint=0,
+                capacity_state="unknown",
+                meta_json=json.dumps(
+                    {
+                        "panel_state": "failed",
+                        "dataplane_state": "healthy",
+                    }
                 ),
             )
         )
@@ -1069,12 +1131,31 @@ def test_ru_read_endpoints_require_admin_and_return_stable_dtos(
     assert current_only.status_code == 200, current_only.text
     current_body = current_only.json()
     assert "history" not in current_body["ru"]
+    assert current_body["sources"]["brain_metrics"]["status"] == "missing"
+    assert current_body["sources"]["brain_metrics"]["sampled_at"] is None
     assert current_body["sources"]["brain_metrics"]["details"]["cpu_percent"] is None
     assert current_body["sources"]["brain_metrics"]["details"]["panel_error_rate"] is None
     assert current_body["sources"]["runtime"]["details"]["provisioned_clients_count"] is None
     assert current_body["sources"]["runtime"]["details"]["online_connections_hint"] is None
     assert current_body["capacity"]["provisioned_clients_count"] is None
     assert current_body["capacity"]["online_connections_hint"] is None
+
+    panel_down = client.get(
+        "/api/admin/nodes/panel-down/observability?include_ru_history=false",
+        headers=headers,
+    )
+    assert panel_down.status_code == 200, panel_down.text
+    panel_body = panel_down.json()
+    assert panel_body["sources"]["runtime"]["status"] == "failed"
+    assert panel_body["sources"]["runtime"]["reason_code"] == "runtime_panel_failed"
+    assert panel_body["sources"]["runtime"]["sampled_at"]
+    assert panel_body["sources"]["runtime"]["details"]["provisioned_clients_count"] is None
+    assert panel_body["sources"]["runtime"]["details"]["online_connections_hint"] is None
+    assert panel_body["sources"]["brain_metrics"]["status"] == "failed"
+    assert panel_body["sources"]["brain_metrics"]["reason_code"] == "brain_panel_failed"
+    assert panel_body["sources"]["brain_metrics"]["details"]["cpu_percent"] is None
+    assert panel_body["capacity"]["provisioned_clients_count"] is None
+    assert panel_body["capacity"]["online_connections_hint"] is None
 
     missing_node = client.get(
         "/api/admin/nodes/does-not-exist/observability",

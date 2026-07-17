@@ -51,7 +51,7 @@ const nodeRows = [
     hoster_family: "timeweb",
     hoster_asn: "AS209024",
     subnet: "198.51.100.0/24",
-    alert_kinds: ["panel_latency"],
+    alert_kinds: ["latency_high"],
     transport_profiles: {
       legacy_reality_fallback: { name: "legacy_reality_fallback", kind: "xray", enabled: true, port: 443 }
     }
@@ -105,6 +105,56 @@ const nodeRows = [
     subnet: null,
     alert_kinds: [],
     transport_profiles: {}
+  },
+  {
+    code: "probe-only",
+    name: "Только dataplane",
+    country_code: "DE",
+    enabled: true,
+    accepting_new_clients: true,
+    is_draining: false,
+    mapped_users: 0,
+    is_healthy: true,
+    health_score: 0,
+    capacity_state: "healthy",
+    capacity_reject_reason: null,
+    cpu_percent: 0,
+    network_utilization_percent: 0,
+    provisioned_clients_count: 0,
+    online_connections_hint: 0,
+    freshness_status: "fresh",
+    freshness_age_seconds: 30,
+    last_health_at: null,
+    hoster_family: "probe-host",
+    hoster_asn: "AS64501",
+    subnet: null,
+    alert_kinds: [],
+    transport_profiles: {}
+  },
+  {
+    code: "capacity-unknown",
+    name: "Неизвестная ёмкость",
+    country_code: "DE",
+    enabled: true,
+    accepting_new_clients: true,
+    is_draining: false,
+    mapped_users: 0,
+    is_healthy: true,
+    health_score: 100,
+    capacity_state: "unknown",
+    capacity_reject_reason: null,
+    cpu_percent: 12,
+    network_utilization_percent: 5,
+    provisioned_clients_count: 3,
+    online_connections_hint: 1,
+    freshness_status: "fresh",
+    freshness_age_seconds: 30,
+    last_health_at: "2026-07-15T09:59:30Z",
+    hoster_family: "capacity-host",
+    hoster_asn: "AS64502",
+    subnet: null,
+    alert_kinds: [],
+    transport_profiles: {}
   }
 ];
 
@@ -143,9 +193,9 @@ function runSummary(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function ruNode(status: string, reasonCode: string, sampledAt: string | null = "2026-07-15T09:50:00Z") {
+function ruNode(status: string, reasonCode: string, sampledAt: string | null = "2026-07-15T09:50:00Z", nodeCode = "nl") {
   return {
-    node_code: "nl",
+    node_code: nodeCode,
     status,
     sampled_at: sampledAt,
     age_seconds: sampledAt ? (status === "stale" ? 28860 : 600) : null,
@@ -154,10 +204,10 @@ function ruNode(status: string, reasonCode: string, sampledAt: string | null = "
     run_id: sampledAt ? "00000000-0000-4000-8000-000000000401" : null,
     target: sampledAt
       ? {
-          target_id: "node:nl",
+          target_id: `node:${nodeCode}`,
           target_kind: "delivery_node",
           scope: "release_required",
-          node_code: "nl",
+          node_code: nodeCode,
           observed_at: sampledAt,
           overall_status: status === "ok" ? "pass" : status === "unavailable" ? "unavailable_probe_host" : "incomplete",
           current_eligible: status === "ok" || status === "stale",
@@ -288,13 +338,65 @@ function ruLatestPayload(scenario: RuScenario) {
     latest_received_attempt: latestReceived,
     latest_eligible_run: latestEligible,
     eligible_run: latestEligible,
-    nodes: scenario === "selected-missing" ? [fallbackNode] : [node, fallbackNode]
+    nodes: scenario === "selected-missing"
+      ? [fallbackNode]
+      : [
+          node,
+          fallbackNode,
+          ...(scenario === "review-findings"
+            ? [
+                ruNode("ok", "target_pass", "2026-07-15T09:59:30Z", "probe-only"),
+                ruNode("ok", "target_pass", "2026-07-15T09:59:30Z", "capacity-unknown")
+              ]
+            : [])
+        ]
   };
 }
 
 function observabilityPayload(scenario: RuScenario) {
   const latest = ruLatestPayload(scenario);
   const ru = scenario === "selected-missing" ? ruNode("ok", "target_pass") : latest.nodes[0];
+  const metricAlertKinds = [
+    "stale_metrics",
+    "cpu_high",
+    "memory_high",
+    "disk_high",
+    "network_high",
+    "latency_high",
+    "error_rate_high",
+    "client_density_high",
+    "observer_push_stale"
+  ];
+  const alerts = scenario === "review-findings"
+    ? [
+        ...metricAlertKinds.map((kind, index) => ({
+          id: 31 + index,
+          fingerprint: `node_metrics:nl:${kind}`,
+          source: "node_metrics",
+          severity: kind === "stale_metrics" || kind === "network_high" || kind === "error_rate_high" ? "critical" : "warning",
+          status: "active",
+          title: `Node nl metric alert: ${kind}`,
+          first_seen_at: "2026-07-15T08:00:00Z",
+          last_seen_at: "2026-07-15T09:55:00Z",
+          resolved_at: null,
+          acknowledged_at: null,
+          silence_until: null
+        })),
+        {
+          id: 50,
+          fingerprint: "node_capacity:nl",
+          source: "node_capacity",
+          severity: "critical",
+          status: "active",
+          title: "Node nl capacity: hard_reject",
+          first_seen_at: "2026-07-15T08:00:00Z",
+          last_seen_at: "2026-07-15T09:55:00Z",
+          resolved_at: null,
+          acknowledged_at: null,
+          silence_until: null
+        }
+      ]
+    : [];
   return {
     ok: true,
     generated_at: generatedAt,
@@ -308,7 +410,7 @@ function observabilityPayload(scenario: RuScenario) {
         age_seconds: 420,
         threshold_seconds: 900,
         reason_code: "brain_metrics_fresh",
-        details: { cpu_percent: 28.5, memory_used_mb: 2048, memory_total_mb: 4096, disk_used_gb: 24, disk_total_gb: 80, network_rx_mbps: 91, network_tx_mbps: 321, network_total_mbps: 412, panel_latency_ms: 83, panel_error_rate: 0, probe_stage: "tls", probe_error_kind: null, probe_classification: "ok" }
+        details: { cpu_percent: 28.5, memory_used_mb: 2048, memory_total_mb: 4096, disk_used_gb: 24, disk_total_gb: 80, network_rx_mbps: 91, network_tx_mbps: 321, network_total_mbps: 412, panel_latency_ms: 83, panel_error_rate: scenario === "review-findings" ? 0.31 : 0, probe_stage: "tls", probe_error_kind: null, probe_classification: "ok" }
       },
       runtime: {
         status: "ok",
@@ -331,23 +433,45 @@ function observabilityPayload(scenario: RuScenario) {
     network: { ipv4_health: "ok", ipv6_health: "unknown", dataplane_ok: true, dataplane_rtt_ms: 42, packet_loss_percent: 0.2, tcp_retrans_percent: 0.1, probe_classification: "ok", last_probe_stage: "tls", last_probe_error_kind: null },
     transports: [{ name: "legacy_reality_fallback", enabled: true, kind: "xray", port: 443, has_inbound: true }],
     ru: { latest: ru, history: { items: [], next_cursor: null, limit: 10 } },
-    alerts: [{ id: 31, fingerprint: "node_metrics:nl:panel_latency", source: "node_metrics", severity: "warning", status: "active", title: "Node nl metric alert: panel_latency", first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:55:00Z", resolved_at: null, acknowledged_at: null, silence_until: null }]
+    alerts
   };
 }
 
-function historyPayload(scenario: RuScenario, cursor: string | null = null) {
+function historyPayload(scenario: RuScenario, cursor: string | null = null, pageOneRequest = 0) {
   if (scenario === "missing") return { items: [], next_cursor: null, limit: 50 };
-  const summary = runSummary({
-    run_db_id: cursor ? 389 : 390,
-    run_id: cursor ? "00000000-0000-4000-8000-000000000389" : "00000000-0000-4000-8000-000000000390",
-    finished_at: cursor ? "2026-07-14T16:00:00Z" : "2026-07-14T22:00:00Z",
-    received_at: cursor ? "2026-07-14T16:01:00Z" : "2026-07-14T22:01:00Z",
+  const summary = (runDbId: number, finishedAt: string) => runSummary({
+    run_db_id: runDbId,
+    run_id: `00000000-0000-4000-8000-${String(runDbId).padStart(12, "0")}`,
+    finished_at: finishedAt,
+    received_at: new Date(Date.parse(finishedAt) + 60_000).toISOString(),
     release_verdict: "fail",
     current_eligible: false,
     ineligible_reason: "required_target_failed",
     targets: [{ ...ruNode("degraded", "target_failed").target, overall_status: "failed", current_eligible: false, stages: baselineStages }]
   });
-  return { items: [summary], next_cursor: scenario === "review-findings" && !cursor ? "cursor-safe-next" : null, limit: 50 };
+  if (scenario === "review-findings") {
+    if (cursor === "cursor-safe-next") {
+      return {
+        items: [summary(390, "2026-07-14T22:00:00Z"), summary(389, "2026-07-14T16:00:00Z")],
+        next_cursor: "cursor-abort-next",
+        limit: 50
+      };
+    }
+    if (cursor === "cursor-abort-next") {
+      return { items: [summary(388, "2026-07-14T10:00:00Z")], next_cursor: null, limit: 50 };
+    }
+    if (cursor === "cursor-refreshed-next") {
+      return {
+        items: [summary(390, "2026-07-14T22:00:00Z"), summary(389, "2026-07-14T16:00:00Z")],
+        next_cursor: null,
+        limit: 50
+      };
+    }
+    return pageOneRequest > 0
+      ? { items: [summary(391, "2026-07-15T00:00:00Z")], next_cursor: "cursor-refreshed-next", limit: 50 }
+      : { items: [summary(390, "2026-07-14T22:00:00Z")], next_cursor: "cursor-safe-next", limit: 50 };
+  }
+  return { items: [summary(cursor ? 389 : 390, cursor ? "2026-07-14T16:00:00Z" : "2026-07-14T22:00:00Z")], next_cursor: null, limit: 50 };
 }
 
 function uploaderPayload(scenario: RuScenario) {
@@ -630,6 +754,7 @@ export async function installAdminApiMock(
   calls: AdminApiCall[];
   overviewResponses: number[];
   releaseFirstOverview: () => void;
+  releaseHistoryContinuation: () => void;
 }> {
   const calls: AdminApiCall[] = [];
   const overviewResponses: number[] = [];
@@ -637,8 +762,13 @@ export async function installAdminApiMock(
   const firstOverviewGate = new Promise<void>((resolve) => {
     releaseFirstOverview = () => resolve();
   });
+  let releaseHistoryContinuation: () => void = () => undefined;
+  const historyContinuationGate = new Promise<void>((resolve) => {
+    releaseHistoryContinuation = () => resolve();
+  });
   let overviewRequestCount = 0;
   let ruLatestRequestCount = 0;
+  let historyPageOneRequestCount = 0;
   await page.route("**/api/admin/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -825,7 +955,15 @@ export async function installAdminApiMock(
         await fulfillJson(route, { detail: "История RU-origin временно недоступна", code: "ru_history_unavailable" }, options.ruHistoryStatus);
         return;
       }
-      await fulfillJson(route, historyPayload(options.ruScenario || "fresh-pass", url.searchParams.get("cursor")));
+      const cursor = url.searchParams.get("cursor");
+      const payload = historyPayload(options.ruScenario || "fresh-pass", cursor, historyPageOneRequestCount);
+      if (!cursor) historyPageOneRequestCount += 1;
+      if (options.ruScenario === "review-findings" && cursor === "cursor-abort-next") {
+        await historyContinuationGate;
+        await fulfillJson(route, payload).catch(() => undefined);
+        return;
+      }
+      await fulfillJson(route, payload);
       return;
     }
 
@@ -939,5 +1077,5 @@ export async function installAdminApiMock(
     );
   });
 
-  return { calls, overviewResponses, releaseFirstOverview };
+  return { calls, overviewResponses, releaseFirstOverview, releaseHistoryContinuation };
 }

@@ -97,6 +97,16 @@ def _json_loads(value: str | None, fallback: Any) -> Any:
         return fallback
 
 
+def _json_object(value: str | None) -> dict[str, Any]:
+    parsed = _json_loads(value, {})
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _panel_state_from_json(value: str | None) -> str | None:
+    state = str(_json_object(value).get("panel_state") or "").strip().lower()
+    return state or None
+
+
 def _month_boundary(*, year: int, month: int, day: int, tz: ZoneInfo) -> datetime:
     last_day = calendar.monthrange(year, month)[1]
     return datetime(year, month, min(max(1, int(day or 1)), last_day), tzinfo=tz)
@@ -884,10 +894,11 @@ def build_node_observability(
         .order_by(NodeRuntimeMetric.sampled_at.desc(), NodeRuntimeMetric.id.desc())
         .first()
     )
-    sample_time = (
-        getattr(latest_sample, "sampled_at", None)
-        or getattr(node, "last_health_at", None)
-        or getattr(node, "last_probe_at", None)
+    brain_panel_state = _panel_state_from_json(
+        getattr(latest_sample, "transport_health_json", None)
+    )
+    sample_time = getattr(latest_sample, "sampled_at", None) or getattr(
+        node, "last_health_at", None
     )
     sample_age = _source_age_seconds(
         now=normalized_now,
@@ -897,6 +908,10 @@ def build_node_observability(
         brain_status, brain_reason = "missing", "brain_metrics_missing"
     elif sample_age is not None and sample_age > stale_threshold:
         brain_status, brain_reason = "stale", "brain_metrics_stale"
+    elif brain_panel_state == "unavailable":
+        brain_status, brain_reason = "unavailable", "brain_panel_unavailable"
+    elif brain_panel_state in {"failed", "error"}:
+        brain_status, brain_reason = "failed", "brain_panel_failed"
     elif latest_sample is not None and not bool(latest_sample.is_healthy):
         brain_status, brain_reason = "failed", "brain_probe_failed"
     else:
@@ -904,8 +919,13 @@ def build_node_observability(
     has_brain_source = sample_time is not None
     brain_details = {
         "cpu_percent": (
-            float(latest_sample.cpu_percent)
-            if latest_sample is not None and latest_sample.cpu_percent is not None
+            None
+            if latest_sample is not None
+            and brain_panel_state in {"failed", "error", "unavailable"}
+            and float(latest_sample.cpu_percent or 0.0) == 0.0
+            else float(latest_sample.cpu_percent)
+            if latest_sample is not None
+            and latest_sample.cpu_percent is not None
             else float(getattr(node, "cpu_percent", 0.0) or 0.0)
             if has_brain_source
             else None
@@ -985,6 +1005,9 @@ def build_node_observability(
     }
 
     runtime_time = getattr(latest_runtime, "sampled_at", None)
+    runtime_panel_state = _panel_state_from_json(
+        getattr(latest_runtime, "meta_json", None)
+    )
     runtime_age = _source_age_seconds(
         now=normalized_now,
         sampled_at=runtime_time,
@@ -993,18 +1016,27 @@ def build_node_observability(
         runtime_status, runtime_reason = "missing", "runtime_missing"
     elif runtime_age is not None and runtime_age > stale_threshold:
         runtime_status, runtime_reason = "stale", "runtime_stale"
+    elif runtime_panel_state == "unavailable":
+        runtime_status, runtime_reason = "unavailable", "runtime_panel_unavailable"
+    elif runtime_panel_state in {"failed", "error"}:
+        runtime_status, runtime_reason = "failed", "runtime_panel_failed"
     else:
         runtime_status, runtime_reason = "ok", "runtime_fresh"
+    runtime_panel_available = runtime_panel_state not in {
+        "failed",
+        "error",
+        "unavailable",
+    }
     runtime_details = {
         "source": str(getattr(latest_runtime, "source", "") or "") or None,
         "provisioned_clients_count": (
             int(latest_runtime.provisioned_clients_count or 0)
-            if latest_runtime is not None
+            if latest_runtime is not None and runtime_panel_available
             else None
         ),
         "online_connections_hint": (
             int(latest_runtime.online_connections_hint or 0)
-            if latest_runtime is not None
+            if latest_runtime is not None and runtime_panel_available
             else None
         ),
         "network_rx_mbps_1m": getattr(latest_runtime, "network_rx_mbps_1m", None),
