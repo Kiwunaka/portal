@@ -764,6 +764,7 @@ def test_admin_online_users_aggregate_omits_raw_ips(monkeypatch, tmp_path) -> No
     assert "observer:watch" in known["risk_flags"]
     assert "203.0.113.77" not in response.text
     assert "198.51.100.42" not in response.text
+    assert "source_ip_raw" not in response.text
 
 
 def test_admin_broadcast_dry_run_does_not_send(monkeypatch, tmp_path) -> None:

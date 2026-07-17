@@ -14,10 +14,21 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping
 
-from sqlalchemy import func, text
+from sqlalchemy import and_, func, or_, text
 from sqlalchemy.exc import IntegrityError
 
-from models import AdminActionIntent, AdminAudit, Node, User, UserNode
+from models import (
+    AccessKey,
+    AdminActionIntent,
+    AdminAudit,
+    RewardClaim,
+    SupportTicket,
+    SupportTicketMessage,
+    User,
+    UserKeyPolicy,
+    UserNode,
+    Node,
+)
 from node_policy import canonical_free_node_code, node_is_free, user_uses_free_pool
 from nodes_repo import enabled_nodes
 from ru_probe_contract import canonical_json_bytes
@@ -34,9 +45,32 @@ _TARGET_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _EXTERNAL_RESULT_CODE_RE = re.compile(r"^[a-z][a-z0-9._-]{0,63}$")
 _TERMINAL_STATUSES = frozenset({"completed", "failed", "uncertain"})
 _EXTERNAL_RESULT_KEYS = frozenset(
-    {"ok", "code", "count", "changed", "failed", "skipped", "job_id"}
+    {
+        "ok",
+        "code",
+        "count",
+        "changed",
+        "failed",
+        "skipped",
+        "job_id",
+        "tg_id",
+        "key_id",
+        "ticket_id",
+        "node_code",
+        "preset",
+        "action",
+        "users",
+        "tier_days",
+        "sync_ok",
+        "is_active",
+        "enabled",
+        "applied",
+        "panel_deleted",
+        "dry_run",
+        "requires_force",
+    }
 )
-_EXTERNAL_COUNT_KEYS = ("count", "changed", "failed", "skipped")
+_EXTERNAL_COUNT_KEYS = ("count", "changed", "failed", "skipped", "users", "tier_days")
 _MAX_EXTERNAL_COUNT = 1_000_000
 _MAX_EXTERNAL_REFERENCE_LENGTH = 128
 _constant_time_compare = hmac.compare_digest
@@ -80,7 +114,16 @@ EntityStateBuilder = Callable[[Any, str, Mapping[str, Any], bool], EntityState]
 PreviewBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
 ChallengeBuilder = Callable[[EntityState, Mapping[str, Any]], str]
 DbExecutor = Callable[[Any, EntityState, Mapping[str, Any]], dict[str, Any]]
+RuntimeDbExecutor = Callable[
+    [Any, EntityState, Mapping[str, Any], Mapping[str, Any]],
+    dict[str, Any],
+]
 ExternalContextBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
+ExecutorKindBuilder = Callable[[Mapping[str, Any]], str]
+AuditTargetBuilder = Callable[[EntityState, Mapping[str, Any]], int | None]
+AuditMetaBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
+AuditActionBuilder = Callable[[Mapping[str, Any]], str]
+PostCommitContextBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any] | None]
 
 
 @dataclass(frozen=True)
@@ -97,6 +140,12 @@ class ActionPolicy:
     audit_action: str
     db_executor: DbExecutor | None = None
     external_context_builder: ExternalContextBuilder | None = None
+    runtime_payload_normalizer: PayloadNormalizer | None = None
+    executor_kind_builder: ExecutorKindBuilder | None = None
+    audit_target_builder: AuditTargetBuilder | None = None
+    audit_meta_builder: AuditMetaBuilder | None = None
+    audit_action_builder: AuditActionBuilder | None = None
+    post_commit_context_builder: PostCommitContextBuilder | None = None
 
 
 def _utcnow() -> datetime:
@@ -270,7 +319,10 @@ def _normalize_target(
     if (
         not target_type
         or not target_id
-        or not _TARGET_ID_RE.fullmatch(target_id)
+        or not (
+            _TARGET_ID_RE.fullmatch(target_id)
+            or re.fullmatch(r"-[0-9]{1,19}", target_id)
+        )
         or (expected_type is not None and target_type != expected_type)
     ):
         raise ActionIntentError(
@@ -279,6 +331,1128 @@ def _normalize_target(
             message="Цель действия указана неверно.",
         )
     return {"type": target_type, "id": target_id}
+
+
+def _reject_extra_payload_fields(
+    payload: Mapping[str, Any],
+    allowed: set[str],
+) -> None:
+    if set(payload) - allowed:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Тело запроса содержит неподдерживаемые поля.",
+        )
+
+
+def _bounded_text(
+    value: object,
+    *,
+    field: str,
+    minimum: int = 0,
+    maximum: int,
+    strip: bool = True,
+) -> str:
+    if not isinstance(value, str):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} должно быть строкой.",
+        )
+    normalized = unicodedata.normalize("NFC", value)
+    if strip:
+        normalized = normalized.strip()
+    if not minimum <= len(normalized) <= maximum:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} имеет недопустимую длину.",
+        )
+    return normalized
+
+
+def _redacted_text(value: str) -> dict[str, Any]:
+    encoded = unicodedata.normalize("NFC", value).encode("utf-8")
+    return {
+        "sha256": hashlib.sha256(encoded).hexdigest(),
+        "length": len(value),
+    }
+
+
+def _safe_iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat()
+
+
+def _normalize_empty_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, set())
+    return {}
+
+
+def _normalize_manual_create_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"display_name", "days"})
+    display_name = _bounded_text(
+        payload.get("display_name"),
+        field="display_name",
+        minimum=2,
+        maximum=100,
+    )
+    days = payload.get("days", 30)
+    if type(days) is not int or not 1 <= int(days) <= 3650:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле days должно быть целым числом от 1 до 3650.",
+        )
+    return {"display_name": display_name, "days": int(days)}
+
+
+def _normalize_manual_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_manual_create_runtime(payload)
+    return {
+        "display_name": _redacted_text(runtime["display_name"]),
+        "days": runtime["days"],
+    }
+
+
+def _normalize_extend_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"days", "delta_days", "allow_deactivate"})
+    days = payload.get("days", 30)
+    delta = payload.get("delta_days")
+    if days is not None and (type(days) is not int or not 1 <= int(days) <= 3650):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле days должно быть целым числом от 1 до 3650.",
+        )
+    if delta is not None and (
+        type(delta) is not int or not -3650 <= int(delta) <= 3650
+    ):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле delta_days должно быть целым числом от -3650 до 3650.",
+        )
+    resolved = int(delta if delta is not None else (days or 0))
+    if resolved == 0:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="delta_days не может быть равен нулю.",
+        )
+    allow_deactivate = payload.get("allow_deactivate", False)
+    if type(allow_deactivate) is not bool:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле allow_deactivate должно быть логическим значением.",
+        )
+    return {
+        "delta_days": resolved,
+        "allow_deactivate": bool(allow_deactivate),
+    }
+
+
+def _normalize_block_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"blocked"})
+    blocked = payload.get("blocked", True)
+    if type(blocked) is not bool:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле blocked должно быть логическим значением.",
+        )
+    return {"blocked": bool(blocked)}
+
+
+def _normalize_safe_delete_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"confirm"})
+    confirm = payload.get("confirm", False)
+    if type(confirm) is not bool or not confirm:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Для удаления нужно передать confirm=true.",
+        )
+    return {"confirm": True}
+
+
+def _normalize_node_code(value: object) -> str:
+    code = _bounded_text(value, field="node_code", minimum=1, maximum=32).lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,31}", code):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Код ноды указан неверно.",
+        )
+    return code
+
+
+def _normalize_user_key_toggle_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"node_code", "enable"})
+    enable = payload.get("enable")
+    if type(enable) is not bool:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле enable должно быть логическим значением.",
+        )
+    return {"node_code": _normalize_node_code(payload.get("node_code")), "enable": enable}
+
+
+def _normalize_user_key_node_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"node_code"})
+    return {"node_code": _normalize_node_code(payload.get("node_code"))}
+
+
+def _optional_bounded_int(
+    value: object,
+    *,
+    field: str,
+    minimum: int,
+    maximum: int,
+) -> int | None:
+    if value is None:
+        return None
+    if type(value) is not int or not minimum <= int(value) <= maximum:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} имеет недопустимое значение.",
+        )
+    return int(value)
+
+
+def _normalize_key_limits_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    allowed = {
+        "node_code",
+        "burst_mbps",
+        "soft_cap_gb",
+        "hard_cap_gb",
+        "notify_soft",
+        "notify_hard",
+        "auto_disable_on_hard",
+        "apply_now",
+    }
+    _reject_extra_payload_fields(payload, allowed)
+    soft_cap = _optional_bounded_int(
+        payload.get("soft_cap_gb"), field="soft_cap_gb", minimum=1, maximum=1_000_000
+    )
+    hard_cap = _optional_bounded_int(
+        payload.get("hard_cap_gb"), field="hard_cap_gb", minimum=1, maximum=1_000_000
+    )
+    if soft_cap is not None and hard_cap is not None and hard_cap < soft_cap:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="hard_cap_gb должен быть не меньше soft_cap_gb.",
+        )
+    normalized: dict[str, Any] = {
+        "node_code": _normalize_node_code(payload.get("node_code")),
+        "burst_mbps": _optional_bounded_int(
+            payload.get("burst_mbps"), field="burst_mbps", minimum=1, maximum=5000
+        ),
+        "soft_cap_gb": soft_cap,
+        "hard_cap_gb": hard_cap,
+    }
+    for field, default in (
+        ("notify_soft", True),
+        ("notify_hard", True),
+        ("auto_disable_on_hard", True),
+        ("apply_now", True),
+    ):
+        value = payload.get(field, default)
+        if type(value) is not bool:
+            raise ActionIntentError(
+                "invalid_payload",
+                status_code=422,
+                message=f"Поле {field} должно быть логическим значением.",
+            )
+        normalized[field] = value
+    return normalized
+
+
+def _normalize_loyalty_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"tier_days"})
+    tier_days = payload.get("tier_days")
+    if type(tier_days) is not int or not 1 <= int(tier_days) <= 3650:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле tier_days должно быть целым числом от 1 до 3650.",
+        )
+    return {"tier_days": int(tier_days)}
+
+
+def _normalize_preset_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"preset"})
+    preset = _bounded_text(payload.get("preset"), field="preset", minimum=2, maximum=64).lower()
+    if preset not in {"reset_key", "rotate_link", "extend_1d", "send_guide"}:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Сценарий не поддерживается.",
+        )
+    return {"preset": preset}
+
+
+def _normalize_bulk_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    allowed = {"action", "segment", "node_codes", "tg_ids", "q", "limit", "dry_run", "force"}
+    _reject_extra_payload_fields(payload, allowed)
+    action = _bounded_text(payload.get("action"), field="action", minimum=3, maximum=24).lower()
+    if action not in {"disable", "enable", "reset", "resync"}:
+        raise ActionIntentError(
+            "invalid_payload", status_code=422, message="Массовое действие не поддерживается."
+        )
+    segment = _bounded_text(
+        payload.get("segment", "all_active"), field="segment", minimum=2, maximum=32
+    ).lower()
+    if segment not in {"all", "all_active", "active", "inactive", "expired", "blocked", "paid", "free", "manual", "manual_test", "custom"}:
+        raise ActionIntentError(
+            "invalid_payload", status_code=422, message="Сегмент не поддерживается."
+        )
+    raw_nodes = payload.get("node_codes", [])
+    raw_ids = payload.get("tg_ids", [])
+    if not isinstance(raw_nodes, list) or len(raw_nodes) > 64:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Список нод указан неверно.")
+    if not isinstance(raw_ids, list) or len(raw_ids) > 500 or any(type(value) is not int for value in raw_ids):
+        raise ActionIntentError("invalid_payload", status_code=422, message="Список Telegram ID указан неверно.")
+    node_codes: list[str] = []
+    for value in raw_nodes:
+        code = _normalize_node_code(value)
+        if code not in node_codes:
+            node_codes.append(code)
+    tg_ids = sorted({int(value) for value in raw_ids})
+    q = _bounded_text(payload.get("q", ""), field="q", maximum=120, strip=True)
+    limit = payload.get("limit", 100)
+    if type(limit) is not int or not 1 <= int(limit) <= 500:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Поле limit указано неверно.")
+    dry_run = payload.get("dry_run", False)
+    force = payload.get("force", False)
+    if type(dry_run) is not bool or type(force) is not bool:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Флаги массового действия указаны неверно.")
+    return {
+        "action": action,
+        "segment": segment,
+        "node_codes": node_codes,
+        "tg_ids": tg_ids,
+        "q": q,
+        "limit": int(limit),
+        "dry_run": dry_run,
+        "force": force,
+    }
+
+
+def _normalize_bulk_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_bulk_runtime(payload)
+    return {
+        "action": runtime["action"],
+        "segment": runtime["segment"],
+        "node_codes": runtime["node_codes"],
+        "tg_ids_hash": _semantic_hash("admin-bulk-requested-tg-ids", runtime["tg_ids"]),
+        "tg_ids_count": len(runtime["tg_ids"]),
+        "q": _redacted_text(runtime["q"]),
+        "limit": runtime["limit"],
+        "dry_run": runtime["dry_run"],
+        "force": runtime["force"],
+    }
+
+
+def _normalize_message_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"text"})
+    return {"text": _bounded_text(payload.get("text"), field="text", minimum=1, maximum=4000, strip=False)}
+
+
+def _normalize_message_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_message_runtime(payload)
+    return {"text": _redacted_text(runtime["text"])}
+
+
+def _normalize_ticket_reply_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    allowed = {"body", "media_type", "media_file_id", "media_payload"}
+    _reject_extra_payload_fields(payload, allowed)
+    body = _bounded_text(payload.get("body"), field="body", minimum=1, maximum=2000, strip=False)
+    media_type_raw = payload.get("media_type")
+    media_type = None
+    if media_type_raw is not None:
+        media_type = _bounded_text(media_type_raw, field="media_type", maximum=32) or None
+    out: dict[str, Any] = {"body": body, "media_type": media_type}
+    for field, maximum in (("media_file_id", 256), ("media_payload", 2000)):
+        value = payload.get(field)
+        out[field] = (
+            _bounded_text(value, field=field, maximum=maximum, strip=False)
+            if value is not None
+            else None
+        )
+    return out
+
+
+def _normalize_ticket_reply_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_ticket_reply_runtime(payload)
+    return {
+        "body": _redacted_text(runtime["body"]),
+        "media_type": runtime["media_type"],
+        "media_file_id": _redacted_text(runtime["media_file_id"] or ""),
+        "media_payload": _redacted_text(runtime["media_payload"] or ""),
+    }
+
+
+def _normalize_ticket_status_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"status"})
+    status = _bounded_text(payload.get("status"), field="status", minimum=2, maximum=20).lower()
+    if status not in {"open", "in_progress", "closed"}:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Статус обращения не поддерживается.")
+    return {"status": status}
+
+
+def _normalize_key_rotate_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"reason", "dry_run"})
+    reason = _bounded_text(payload.get("reason", "manual_review"), field="reason", maximum=160)
+    if not reason:
+        reason = "manual_review"
+    dry_run = payload.get("dry_run", False)
+    if type(dry_run) is not bool:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Поле dry_run должно быть логическим значением.")
+    return {"reason": reason, "dry_run": dry_run}
+
+
+def _normalize_key_rotate_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_key_rotate_runtime(payload)
+    return {"reason": _redacted_text(runtime["reason"]), "dry_run": runtime["dry_run"]}
+
+
+def _integer_target(target_id: str, *, positive: bool = False) -> int:
+    try:
+        value = int(str(target_id))
+    except (TypeError, ValueError):
+        raise ActionIntentError(
+            "invalid_target", status_code=422, message="Идентификатор цели указан неверно."
+        ) from None
+    if not -(2**63) <= value < 2**63 or (positive and value <= 0):
+        raise ActionIntentError(
+            "invalid_target", status_code=422, message="Идентификатор цели указан неверно."
+        )
+    return value
+
+
+def _manual_test_user(user: User) -> bool:
+    return bool(
+        bool(getattr(user, "is_manual", False))
+        or int(user.tg_id) < 0
+        or str(user.sub_type or "").strip().upper() == "MANUAL"
+        or getattr(user, "created_by_admin", None) is not None
+    )
+
+
+def _user_entity_state(
+    session,
+    target_id: str,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    tg_id = _integer_target(target_id)
+    query = session.query(User).filter(User.tg_id == tg_id)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    user = query.first()
+    if user is None:
+        raise ActionIntentError("target_not_found", status_code=404, message="Пользователь не найден.")
+    mappings = (
+        session.query(UserNode)
+        .filter(UserNode.tg_id == tg_id)
+        .order_by(UserNode.id.asc())
+        .all()
+    )
+    policies = (
+        session.query(UserKeyPolicy)
+        .filter(UserKeyPolicy.tg_id == tg_id)
+        .order_by(UserKeyPolicy.node_code.asc(), UserKeyPolicy.id.asc())
+        .all()
+    )
+    claims = (
+        session.query(RewardClaim)
+        .filter(RewardClaim.tg_id == tg_id)
+        .order_by(RewardClaim.reward_key.asc(), RewardClaim.id.asc())
+        .all()
+    )
+    version_snapshot = {
+        "tg_id": tg_id,
+        "is_active": bool(user.is_active),
+        "expiry_at": _safe_iso(user.expiry_at),
+        "sub_type": str(user.sub_type or ""),
+        "sub_token_hash": _semantic_hash("admin-user-sub-token", str(user.sub_token or "")),
+        "uuid_hash": _semantic_hash("admin-user-uuid", str(user.uuid or "")),
+        "mappings": [
+            {
+                "id": int(row.id),
+                "node_id": int(row.node_id),
+                "client_hash": _semantic_hash(
+                    "admin-user-mapping-client",
+                    [str(row.client_uuid or ""), str(row.panel_email or "")],
+                ),
+            }
+            for row in mappings
+        ],
+        "key_policies": [
+            {
+                "id": int(row.id),
+                "node_code": str(row.node_code or "").strip().lower(),
+                "burst_mbps": row.burst_mbps,
+                "soft_cap_gb": row.soft_cap_gb,
+                "hard_cap_gb": row.hard_cap_gb,
+                "notify_soft": bool(row.notify_soft),
+                "notify_hard": bool(row.notify_hard),
+                "auto_disable_on_hard": bool(row.auto_disable_on_hard),
+                "updated_at": _safe_iso(row.updated_at),
+            }
+            for row in policies
+        ],
+        "reward_claims": [
+            {
+                "reward_key": str(row.reward_key or ""),
+                "claimed_at": _safe_iso(row.claimed_at),
+            }
+            for row in claims
+        ],
+    }
+    public_snapshot = {
+        "tg_id": tg_id,
+        "sub_type": _subscription_type_title(str(user.sub_type or "")),
+        "is_active": bool(user.is_active),
+        "expiry_at": _safe_iso(user.expiry_at),
+        "manual_test": _manual_test_user(user),
+        "key_count": len(mappings),
+    }
+    return EntityState(
+        entity=user,
+        version_snapshot=version_snapshot,
+        public_snapshot=public_snapshot,
+        context={
+            "tg_id": tg_id,
+            "user_uuid": str(user.uuid or ""),
+            "sub_token": str(user.sub_token or ""),
+            "mappings": mappings,
+            "key_policies": policies,
+            "reward_claims": claims,
+        },
+    )
+
+
+def _manual_delete_user_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    state = _user_entity_state(session, target_id, payload, for_update)
+    if not _manual_test_user(state.entity):
+        raise ActionIntentError(
+            "target_not_deletable",
+            status_code=409,
+            message="Удалять можно только явно созданного ручного/тестового пользователя.",
+        )
+    return state
+
+
+def _manual_create_entity_state(
+    session,
+    target_id: str,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    if str(target_id) != "manual":
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель создания указана неверно.")
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        session.execute(
+            text("SELECT pg_advisory_xact_lock(:namespace, :entity_id)"),
+            {"namespace": NODE_MAPPING_LOCK_NAMESPACE, "entity_id": -10_001},
+        )
+    minimum = session.query(func.min(User.tg_id)).filter(User.tg_id < 0).scalar()
+    candidate = -10_001 if minimum is None else int(minimum) - 1
+    manual_count = int(
+        session.query(func.count(User.tg_id))
+        .filter(
+            or_(
+                User.is_manual == True,
+                User.tg_id < 0,
+                func.upper(func.coalesce(User.sub_type, "")) == "MANUAL",
+                User.created_by_admin.isnot(None),
+            )
+        )
+        .scalar()
+        or 0
+    )
+    return EntityState(
+        entity=None,
+        version_snapshot={"next_tg_id": candidate, "manual_count": manual_count},
+        public_snapshot={"manual_users": manual_count},
+        context={"candidate_tg_id": candidate},
+    )
+
+
+def _ticket_entity_state(
+    session,
+    target_id: str,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    ticket_id = _integer_target(target_id, positive=True)
+    query = session.query(SupportTicket).filter(SupportTicket.id == ticket_id)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    ticket = query.first()
+    if ticket is None:
+        raise ActionIntentError("target_not_found", status_code=404, message="Обращение не найдено.")
+    messages = (
+        session.query(SupportTicketMessage.id, SupportTicketMessage.created_at)
+        .filter(SupportTicketMessage.ticket_id == ticket_id)
+        .order_by(SupportTicketMessage.id.asc())
+        .all()
+    )
+    snapshot = {
+        "ticket_id": ticket_id,
+        "user_tg_id": int(ticket.user_tg_id),
+        "status": str(ticket.status or ""),
+        "assigned_admin_tg_id": (
+            int(ticket.assigned_admin_tg_id)
+            if ticket.assigned_admin_tg_id is not None
+            else None
+        ),
+        "updated_at": _safe_iso(ticket.updated_at),
+        "closed_at": _safe_iso(ticket.closed_at),
+        "message_ids": [int(row[0]) for row in messages],
+    }
+    return EntityState(
+        entity=ticket,
+        version_snapshot=snapshot,
+        public_snapshot={
+            "ticket_id": ticket_id,
+            "status": _ticket_status_title(str(ticket.status or "")),
+            "messages": len(messages),
+        },
+        context={"ticket_id": ticket_id, "user_tg_id": int(ticket.user_tg_id)},
+    )
+
+
+def _key_entity_state(
+    session,
+    target_id: str,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    key_id = _integer_target(target_id, positive=True)
+    query = session.query(AccessKey).filter(AccessKey.id == key_id)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    key = query.first()
+    if key is None:
+        raise ActionIntentError("target_not_found", status_code=404, message="Ключ не найден.")
+    snapshot = {
+        "key_id": key_id,
+        "tg_id": int(key.tg_id),
+        "node_code": str(key.node_code or "").strip().lower() or None,
+        "pool_code": str(key.pool_code or ""),
+        "state": str(key.state or ""),
+        "updated_at": _safe_iso(key.updated_at),
+    }
+    return EntityState(
+        entity=key,
+        version_snapshot=snapshot,
+        public_snapshot={
+            "key_id": key_id,
+            "tg_id": int(key.tg_id),
+            "node_code": str(key.node_code or "").strip().upper() or "Не назначена",
+            "state": _key_state_title(str(key.state or "")),
+        },
+        context={"key_id": key_id, "tg_id": int(key.tg_id)},
+    )
+
+
+def _manual_user_filter():
+    return or_(
+        User.is_manual == True,
+        User.tg_id < 0,
+        func.upper(func.coalesce(User.sub_type, "")) == "MANUAL",
+        User.created_by_admin.isnot(None),
+    )
+
+
+def _bulk_user_query(session, payload: Mapping[str, Any]):
+    segment = str(payload["segment"])
+    now = _utcnow().replace(tzinfo=None)
+    manual = _manual_user_filter()
+    active = and_(~manual, User.is_active == True, User.expiry_at.isnot(None), User.expiry_at > now)
+    blocked = and_(~manual, User.is_active == False, User.expiry_at.isnot(None), User.expiry_at > now)
+    expired = and_(~manual, or_(User.expiry_at.is_(None), User.expiry_at <= now))
+    query = session.query(User)
+    if segment == "all":
+        query = query.filter(User.tg_id > 0, ~manual)
+    elif segment in {"all_active", "active"}:
+        query = query.filter(active)
+    elif segment == "inactive":
+        query = query.filter(or_(blocked, expired))
+    elif segment == "blocked":
+        query = query.filter(blocked)
+    elif segment == "expired":
+        query = query.filter(expired)
+    elif segment == "paid":
+        query = query.filter(User.tg_id > 0, ~manual, func.upper(User.sub_type) == "PAID")
+    elif segment == "free":
+        query = query.filter(User.tg_id > 0, ~manual, func.upper(User.sub_type) == "FREE")
+    elif segment in {"manual", "manual_test"}:
+        query = query.filter(manual)
+    elif segment == "custom":
+        if not payload["tg_ids"]:
+            raise ActionIntentError(
+                "empty_selection", status_code=409, message="Список пользователей пуст."
+            )
+        query = query.filter(User.tg_id.in_(list(payload["tg_ids"])))
+    q = str(payload.get("q") or "").strip()
+    if q:
+        filters = [
+            User.username.ilike(f"%{q}%"),
+            User.display_name.ilike(f"%{q}%"),
+            User.email.ilike(f"%{q}%"),
+            User.linked_telegram_username.ilike(f"%{q}%"),
+            User.app_install_id.ilike(f"%{q}%"),
+        ]
+        if q.isdigit():
+            filters.extend([User.tg_id == int(q), User.linked_telegram_id == int(q)])
+        query = query.filter(or_(*filters))
+    return query.order_by(User.created_at.desc(), User.tg_id.desc()).limit(int(payload["limit"]))
+
+
+def _bulk_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    if str(target_id) != "bulk":
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель массового действия указана неверно.")
+    query = _bulk_user_query(session, payload)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    users = query.all()
+    if not users:
+        raise ActionIntentError("empty_selection", status_code=409, message="Под выбранные условия пользователи не найдены.")
+    selection = [int(user.tg_id) for user in users]
+    selection_hash = _semantic_hash("admin-bulk-selected-users", selection)
+    anchor_tg_id = int(selection[0])
+    return EntityState(
+        entity=None,
+        version_snapshot={
+            "selection_hash": selection_hash,
+            "selected_count": len(selection),
+        },
+        public_snapshot={
+            "selected_count": len(selection),
+            "selection_hash": selection_hash,
+        },
+        context={
+            "selected_tg_ids": selection,
+            "selected_count": len(selection),
+            "selection_hash": selection_hash,
+            "anchor_tg_id": anchor_tg_id,
+        },
+    )
+
+
+def _l2_challenge(_state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return "ПОДТВЕРДИТЬ"
+
+
+def _send_challenge(_state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return "ОТПРАВИТЬ"
+
+
+def _user_challenge(state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return str(int(state.context["tg_id"]))
+
+
+def _key_challenge(state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return str(int(state.context["key_id"]))
+
+
+def _bulk_challenge(state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return str(int(state.context["anchor_tg_id"]))
+
+
+def _simple_preview(summary: str, before: object, after: object, warnings: list[str] | None = None) -> dict[str, Any]:
+    return {
+        "title": summary.rstrip(". "),
+        "summary": summary,
+        "before": before,
+        "after": after,
+        "warnings": list(warnings or []),
+    }
+
+
+def _preset_title(value: str) -> str:
+    return {
+        "reset_key": "Сбросить трафик ключей",
+        "rotate_link": "Заменить ссылку подписки",
+        "extend_1d": "Продлить доступ на один день",
+        "send_guide": "Отправить инструкцию",
+    }[value]
+
+
+def _subscription_type_title(value: str) -> str:
+    return {
+        "PAID": "Платный",
+        "FREE": "Бесплатный",
+        "MANUAL": "Ручной",
+        "TRIAL": "Пробный",
+    }.get(value.strip().upper(), "Неизвестно")
+
+
+def _key_state_title(value: str) -> str:
+    return {
+        "active": "Активен",
+        "rotation_requested": "Ожидает ротации",
+        "revoked": "Отозван",
+    }.get(value.strip().lower(), "Неизвестно")
+
+
+def _bulk_action_title(value: str) -> str:
+    return {
+        "disable": "Выключить ключи",
+        "enable": "Включить ключи",
+        "reset": "Сбросить трафик",
+        "resync": "Синхронизировать подписку",
+    }[value]
+
+
+def _ticket_status_title(value: str) -> str:
+    return {
+        "open": "Открыто",
+        "in_progress": "В работе",
+        "closed": "Закрыто",
+    }[value]
+
+
+def _manual_create_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        "Будет создан ручной пользователь.",
+        {"manual_users": int(state.public_snapshot["manual_users"])},
+        {
+            "manual_users": int(state.public_snapshot["manual_users"]) + 1,
+            "days": int(payload["days"]),
+            "display_name_length": int(payload["display_name"]["length"]),
+        },
+    )
+
+
+def _extend_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Срок доступа пользователя {state.context['tg_id']} изменится на {payload['delta_days']} дн.",
+        state.public_snapshot,
+        {"delta_days": int(payload["delta_days"]), "allow_deactivate": bool(payload["allow_deactivate"])},
+        ["Отрицательное продление может деактивировать доступ."] if int(payload["delta_days"]) < 0 else [],
+    )
+
+
+def _block_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    active = not bool(payload["blocked"])
+    return _simple_preview(
+        f"Доступ пользователя {state.context['tg_id']} будет {'заблокирован' if payload['blocked'] else 'разблокирован'}.",
+        state.public_snapshot,
+        {**state.public_snapshot, "is_active": active},
+        ["Изменение будет отправлено во внешнюю панель."],
+    )
+
+
+def _regenerate_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Токен подписки пользователя {state.context['tg_id']} будет заменён.",
+        state.public_snapshot,
+        {"token": "будет заменён", "panel_sync": "будет выполнена"},
+        ["Старая ссылка перестанет работать. Токен в предпросмотре не показывается."],
+    )
+
+
+def _delete_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Ручной/тестовый пользователь {state.context['tg_id']} будет удалён.",
+        state.public_snapshot,
+        {"exists": False},
+        ["Связанные привязки, правила и история ключей будут удалены."],
+    )
+
+
+def _key_toggle_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Ключ пользователя {state.context['tg_id']} на ноде {payload['node_code'].upper()} будет {'включён' if payload['enable'] else 'выключен'}.",
+        state.public_snapshot,
+        {"node_code": payload["node_code"], "enabled": bool(payload["enable"])},
+    )
+
+
+def _key_reset_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Трафик ключа пользователя {state.context['tg_id']} на ноде {payload['node_code'].upper()} будет сброшен.",
+        state.public_snapshot,
+        {"node_code": payload["node_code"], "traffic": "сброшен"},
+    )
+
+
+def _key_resync_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Идентификатор подписки (subId) ключа пользователя {state.context['tg_id']} на ноде {payload['node_code'].upper()} будет синхронизирован.",
+        state.public_snapshot,
+        {"node_code": payload["node_code"], "sub_id": "будет синхронизирован"},
+    )
+
+
+def _key_limits_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Лимиты ключа пользователя {state.context['tg_id']} на ноде {payload['node_code'].upper()} будут обновлены.",
+        state.public_snapshot,
+        {key: value for key, value in payload.items() if key != "node_code"},
+        ["После сохранения лимиты будут отправлены во внешнюю панель."] if payload["apply_now"] else [],
+    )
+
+
+def _loyalty_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Пользователю {state.context['tg_id']} будет начислена награда лояльности.",
+        state.public_snapshot,
+        {"tier_days": int(payload["tier_days"]), "expiry": "будет продлён"},
+    )
+
+
+def _preset_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    title = _preset_title(str(payload["preset"]))
+    return _simple_preview(
+        f"Для пользователя {state.context['tg_id']} будет выполнен сценарий «{title}».",
+        state.public_snapshot,
+        {"scenario": title},
+        ["Сценарий может изменить ключи или отправить сообщение пользователю."],
+    )
+
+
+def _bulk_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    action_title = _bulk_action_title(str(payload["action"]))
+    warnings = ["Выборка пользователей зафиксирована хэшем и количеством."]
+    if int(state.context["selected_count"]) > 50 and not bool(payload["force"]):
+        warnings.append("Для выборки больше 50 пользователей нужен force=true.")
+    return _simple_preview(
+        f"Массовое действие «{action_title}» затронет {state.context['selected_count']} пользователей.",
+        {
+            "selected_count": int(state.context["selected_count"]),
+            "selection_hash": str(state.context["selection_hash"]),
+        },
+        {"action_title": action_title, "dry_run": bool(payload["dry_run"])},
+        warnings,
+    )
+
+
+def _message_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Пользователю {state.context['tg_id']} будет отправлено сообщение.",
+        {"tg_id": int(state.context["tg_id"])},
+        {"message_length": int(payload["text"]["length"])},
+        ["Текст сообщения не хранится в защищённом намерении и аудите."],
+    )
+
+
+def _ticket_reply_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"В обращение #{state.context['ticket_id']} будет добавлен ответ оператора.",
+        state.public_snapshot,
+        {
+            "status": "В работе",
+            "body_length": int(payload["body"]["length"]),
+            "media_type": "Есть" if payload["media_type"] else "Нет",
+            "has_media_file_id": bool(payload["media_file_id"]["length"]),
+            "media_payload_length": int(payload["media_payload"]["length"]),
+        },
+        ["Текст и идентификаторы вложений не хранятся в защищённом намерении и аудите."],
+    )
+
+
+def _ticket_status_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    warnings = ["После сохранения пользователю будет отправлено уведомление."] if payload["status"] == "closed" else []
+    return _simple_preview(
+        f"Статус обращения #{state.context['ticket_id']} будет изменён.",
+        state.public_snapshot,
+        {
+            **state.public_snapshot,
+            "status": _ticket_status_title(str(payload["status"])),
+        },
+        warnings,
+    )
+
+
+def _key_rotate_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    before = dict(state.public_snapshot)
+    return _simple_preview(
+        f"Для ключа {state.context['key_id']} будет {'показан план ротации' if payload['dry_run'] else 'создана задача ротации'}.",
+        before,
+        {
+            "state": before["state"] if payload["dry_run"] else "Ожидает ротации",
+            "dry_run": payload["dry_run"],
+        },
+    )
+
+
+def _user_external_context(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    policies = {
+        str(row.node_code or "").strip().lower(): (
+            int(row.hard_cap_gb) if row.hard_cap_gb is not None else None
+        )
+        for row in state.context.get("key_policies", [])
+    }
+    return {
+        "tg_id": int(state.context["tg_id"]),
+        "user_uuid": str(state.context.get("user_uuid") or ""),
+        "sub_token": str(state.context.get("sub_token") or ""),
+        "hard_caps": policies,
+    }
+
+
+def _manual_create_external_context(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {"candidate_tg_id": int(state.context["candidate_tg_id"])}
+
+
+def _bulk_external_context(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "selected_tg_ids": list(state.context["selected_tg_ids"]),
+        "selection_hash": str(state.context["selection_hash"]),
+        "action": str(payload["action"]),
+        "node_codes": list(payload["node_codes"]),
+        "dry_run": bool(payload["dry_run"]),
+        "force": bool(payload["force"]),
+    }
+
+
+def _ticket_external_context(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "ticket_id": int(state.context["ticket_id"]),
+        "user_tg_id": int(state.context["user_tg_id"]),
+    }
+
+
+def _audit_user_target(state: EntityState, _payload: Mapping[str, Any]) -> int | None:
+    return int(state.context["tg_id"])
+
+
+def _audit_manual_create_target(state: EntityState, _payload: Mapping[str, Any]) -> int | None:
+    return int(state.context["candidate_tg_id"])
+
+
+def _manual_create_audit_meta(
+    _state: EntityState,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    display_name = payload["display_name"]
+    return {
+        "days": int(payload["days"]),
+        "display_name_sha256": str(display_name["sha256"]),
+        "display_name_length": int(display_name["length"]),
+    }
+
+
+def _audit_ticket_target(state: EntityState, _payload: Mapping[str, Any]) -> int | None:
+    return int(state.context["user_tg_id"])
+
+
+def _audit_key_target(state: EntityState, _payload: Mapping[str, Any]) -> int | None:
+    return int(state.context["tg_id"])
+
+
+def _safe_user_audit_meta(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    meta: dict[str, Any] = {"tg_id": int(state.context["tg_id"])}
+    for key in (
+        "node_code",
+        "preset",
+        "tier_days",
+        "delta_days",
+        "burst_mbps",
+        "soft_cap_gb",
+        "hard_cap_gb",
+        "notify_soft",
+        "notify_hard",
+        "auto_disable_on_hard",
+        "apply_now",
+        "blocked",
+        "enable",
+    ):
+        if key in payload:
+            meta[key] = payload[key]
+    return meta
+
+
+def _bulk_audit_meta(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "selection_hash": str(state.context["selection_hash"]),
+        "selected_count": int(state.context["selected_count"]),
+        "action": str(payload["action"]),
+        "dry_run": bool(payload["dry_run"]),
+        "forced": bool(payload["force"]),
+    }
+
+
+def _ticket_audit_meta(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    meta: dict[str, Any] = {
+        "ticket_id": int(state.context["ticket_id"]),
+        "user_tg_id": int(state.context["user_tg_id"]),
+    }
+    if "status" in payload:
+        meta["status"] = str(payload["status"])
+    for key in ("body", "media_file_id", "media_payload"):
+        value = payload.get(key)
+        if isinstance(value, Mapping):
+            meta[f"{key}_sha256"] = str(value.get("sha256") or "")
+            meta[f"{key}_length"] = int(value.get("length") or 0)
+    if "media_type" in payload:
+        meta["media_type"] = payload.get("media_type")
+    return meta
+
+
+def _message_audit_meta(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    text_meta = payload["text"]
+    return {
+        "tg_id": int(state.context["tg_id"]),
+        "message_sha256": str(text_meta["sha256"]),
+        "message_length": int(text_meta["length"]),
+    }
+
+
+def _key_audit_meta(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "key_id": int(state.context["key_id"]),
+        "tg_id": int(state.context["tg_id"]),
+        "dry_run": bool(payload["dry_run"]),
+        "reason_sha256": str(payload["reason"]["sha256"]),
+        "reason_length": int(payload["reason"]["length"]),
+    }
+
+
+def _key_limits_executor_kind(payload: Mapping[str, Any]) -> str:
+    return "external" if bool(payload["apply_now"]) else "db"
+
+
+def _preset_executor_kind(payload: Mapping[str, Any]) -> str:
+    return "db" if payload["preset"] == "extend_1d" else "external"
+
+
+def _bulk_executor_kind(payload: Mapping[str, Any]) -> str:
+    return "db" if bool(payload["dry_run"]) else "external"
+
+
+def _preset_audit_action(payload: Mapping[str, Any]) -> str:
+    return f"admin_operator_{payload['preset']}"
+
+
+def _ticket_status_post_commit(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any] | None:
+    if payload["status"] != "closed":
+        return None
+    return {
+        "ticket_id": int(state.context["ticket_id"]),
+        "user_tg_id": int(state.context["user_tg_id"]),
+    }
 
 
 def _normalize_node_lifecycle_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -924,7 +2098,268 @@ ACTION_POLICIES: dict[str, ActionPolicy] = {
         executor_kind="db",
         audit_action="admin_node_disable",
         db_executor=_execute_node_disable,
-    )
+    ),
+    "user.manual_create": ActionPolicy(
+        action="user.manual_create",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_manual_create_payload,
+        runtime_payload_normalizer=_normalize_manual_create_runtime,
+        entity_state_builder=_manual_create_entity_state,
+        preview_builder=_manual_create_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="external",
+        audit_action="admin_manual_create",
+        external_context_builder=_manual_create_external_context,
+        audit_target_builder=_audit_manual_create_target,
+        audit_meta_builder=_manual_create_audit_meta,
+    ),
+    "user.extend": ActionPolicy(
+        action="user.extend",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_extend_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_extend_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="db",
+        audit_action="admin_manual_extend",
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.key_toggle": ActionPolicy(
+        action="user.key_toggle",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_user_key_toggle_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_key_toggle_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="external",
+        audit_action="admin_user_key_toggle",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.key_limits": ActionPolicy(
+        action="user.key_limits",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_key_limits_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_key_limits_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="db",
+        executor_kind_builder=_key_limits_executor_kind,
+        audit_action="admin_user_key_limits_put",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.key_reset_traffic": ActionPolicy(
+        action="user.key_reset_traffic",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_user_key_node_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_key_reset_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="external",
+        audit_action="admin_user_key_reset_traffic",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.key_resync_subid": ActionPolicy(
+        action="user.key_resync_subid",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_user_key_node_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_key_resync_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="external",
+        audit_action="admin_user_key_resync_subid",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.loyalty_grant": ActionPolicy(
+        action="user.loyalty_grant",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_loyalty_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_loyalty_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="external",
+        audit_action="admin_user_loyalty_grant",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.preset_run": ActionPolicy(
+        action="user.preset_run",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_preset_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_preset_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="external",
+        executor_kind_builder=_preset_executor_kind,
+        audit_action="admin_user_preset_run",
+        audit_action_builder=_preset_audit_action,
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.block": ActionPolicy(
+        action="user.block",
+        target_type="user",
+        risk_level="L3",
+        payload_normalizer=_normalize_block_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_block_preview,
+        challenge_kind="exact_tg_id",
+        challenge_builder=_user_challenge,
+        executor_kind="external",
+        audit_action="admin_manual_block",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.regenerate_token": ActionPolicy(
+        action="user.regenerate_token",
+        target_type="user",
+        risk_level="L3",
+        payload_normalizer=_normalize_empty_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_regenerate_preview,
+        challenge_kind="exact_tg_id",
+        challenge_builder=_user_challenge,
+        executor_kind="external",
+        audit_action="admin_manual_regen_token",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.safe_delete": ActionPolicy(
+        action="user.safe_delete",
+        target_type="user",
+        risk_level="L3",
+        payload_normalizer=_normalize_safe_delete_payload,
+        entity_state_builder=_manual_delete_user_entity_state,
+        preview_builder=_delete_preview,
+        challenge_kind="exact_tg_id",
+        challenge_builder=_user_challenge,
+        executor_kind="external",
+        audit_action="admin_safe_delete_test_user",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.delete_test": ActionPolicy(
+        action="user.delete_test",
+        target_type="user",
+        risk_level="L3",
+        payload_normalizer=_normalize_empty_payload,
+        entity_state_builder=_manual_delete_user_entity_state,
+        preview_builder=_delete_preview,
+        challenge_kind="exact_tg_id",
+        challenge_builder=_user_challenge,
+        executor_kind="external",
+        audit_action="admin_safe_delete_test_user",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.bulk_key_action": ActionPolicy(
+        action="user.bulk_key_action",
+        target_type="users",
+        risk_level="L3",
+        payload_normalizer=_normalize_bulk_payload,
+        runtime_payload_normalizer=_normalize_bulk_runtime,
+        entity_state_builder=_bulk_entity_state,
+        preview_builder=_bulk_preview,
+        challenge_kind="exact_tg_id",
+        challenge_builder=_bulk_challenge,
+        executor_kind="external",
+        executor_kind_builder=_bulk_executor_kind,
+        audit_action="admin_bulk_key_action",
+        external_context_builder=_bulk_external_context,
+        audit_meta_builder=_bulk_audit_meta,
+    ),
+    "key.rotate": ActionPolicy(
+        action="key.rotate",
+        target_type="key",
+        risk_level="L3",
+        payload_normalizer=_normalize_key_rotate_payload,
+        runtime_payload_normalizer=_normalize_key_rotate_runtime,
+        entity_state_builder=_key_entity_state,
+        preview_builder=_key_rotate_preview,
+        challenge_kind="exact_key_id",
+        challenge_builder=_key_challenge,
+        executor_kind="db",
+        audit_action="admin_key_rotate_request",
+        audit_target_builder=_audit_key_target,
+        audit_meta_builder=_key_audit_meta,
+    ),
+    "user.message": ActionPolicy(
+        action="user.message",
+        target_type="user",
+        risk_level="L2",
+        payload_normalizer=_normalize_message_payload,
+        runtime_payload_normalizer=_normalize_message_runtime,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_message_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_send_challenge,
+        executor_kind="external",
+        audit_action="admin_user_message",
+        external_context_builder=_user_external_context,
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_message_audit_meta,
+    ),
+    "ticket.reply": ActionPolicy(
+        action="ticket.reply",
+        target_type="ticket",
+        risk_level="L2",
+        payload_normalizer=_normalize_ticket_reply_payload,
+        runtime_payload_normalizer=_normalize_ticket_reply_runtime,
+        entity_state_builder=_ticket_entity_state,
+        preview_builder=_ticket_reply_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_send_challenge,
+        executor_kind="external",
+        audit_action="admin_ticket_reply",
+        external_context_builder=_ticket_external_context,
+        audit_target_builder=_audit_ticket_target,
+        audit_meta_builder=_ticket_audit_meta,
+    ),
+    "ticket.status": ActionPolicy(
+        action="ticket.status",
+        target_type="ticket",
+        risk_level="L2",
+        payload_normalizer=_normalize_ticket_status_payload,
+        entity_state_builder=_ticket_entity_state,
+        preview_builder=_ticket_status_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="db",
+        audit_action="admin_ticket_status",
+        audit_target_builder=_audit_ticket_target,
+        audit_meta_builder=_ticket_audit_meta,
+        post_commit_context_builder=_ticket_status_post_commit,
+    ),
 }
 
 
@@ -938,6 +2373,30 @@ def _policy_for(action: str) -> ActionPolicy:
             message="Действие не входит в серверный allowlist.",
         )
     return policy
+
+
+def _executor_kind_for(policy: ActionPolicy, payload: Mapping[str, Any]) -> str:
+    kind = (
+        policy.executor_kind_builder(payload)
+        if policy.executor_kind_builder is not None
+        else policy.executor_kind
+    )
+    if kind not in {"db", "external"}:
+        raise ActionIntentError(
+            "executor_unavailable",
+            status_code=503,
+            message="Тип исполнителя действия указан неверно.",
+        )
+    return kind
+
+
+def _audit_action_for(policy: ActionPolicy, payload: Mapping[str, Any]) -> str:
+    action = (
+        policy.audit_action_builder(payload)
+        if policy.audit_action_builder is not None
+        else policy.audit_action
+    )
+    return str(action or "").strip()[:64]
 
 
 def _payload_hash(payload: Mapping[str, Any]) -> str:
@@ -975,10 +2434,15 @@ def prepare_action_intent(
     policy = _policy_for(action)
     normalized_target = _normalize_target(target, expected_type=policy.target_type)
     normalized_payload = policy.payload_normalizer(payload)
+    runtime_payload = (
+        policy.runtime_payload_normalizer(payload)
+        if policy.runtime_payload_normalizer is not None
+        else normalized_payload
+    )
     state = policy.entity_state_builder(
         session,
         normalized_target["id"],
-        normalized_payload,
+        runtime_payload,
         False,
     )
     preview = policy.preview_builder(state, normalized_payload)
@@ -996,7 +2460,7 @@ def prepare_action_intent(
         target_type=normalized_target["type"],
         target_id=normalized_target["id"],
         risk_level=policy.risk_level,
-        executor_kind=policy.executor_kind,
+        executor_kind=_executor_kind_for(policy, normalized_payload),
         canonical_payload_json=_canonical_json(normalized_payload),
         payload_hash=payload_hash,
         preview_snapshot_json=_canonical_json(preview),
@@ -1068,6 +2532,7 @@ def _verify_confirmation(intent: AdminActionIntent, supplied_hash: str) -> None:
 
 
 def _audit_meta(
+    policy: ActionPolicy,
     intent: AdminActionIntent,
     state: EntityState,
     payload: Mapping[str, Any],
@@ -1082,10 +2547,12 @@ def _audit_meta(
         "payload_hash": str(intent.payload_hash),
         "snapshot_hash": str(intent.snapshot_hash),
         "entity_version_hash": str(intent.entity_version_hash),
-        "mapped_users": int(state.context.get("mapped_users") or 0),
-        "forced": bool(payload.get("force", False)),
         "outcome": outcome,
     }
+    if "mapped_users" in state.context:
+        meta["mapped_users"] = int(state.context.get("mapped_users") or 0)
+    if "force" in payload:
+        meta["forced"] = bool(payload.get("force", False))
     selection_hash = state.context.get("selection_hash")
     if isinstance(selection_hash, str) and _HEX_SHA256_RE.fullmatch(selection_hash):
         meta.update(
@@ -1097,6 +2564,8 @@ def _audit_meta(
                 "dry_run": bool(payload.get("dry_run", False)),
             }
         )
+    if policy.audit_meta_builder is not None:
+        meta.update(policy.audit_meta_builder(state, payload))
     return meta
 
 
@@ -1111,7 +2580,14 @@ def _validate_execution(
     idempotency_key: str,
     confirmation_sha256_header: str,
     now: datetime,
-) -> tuple[ActionPolicy, dict[str, str], dict[str, Any], EntityState | None, dict[str, Any] | None]:
+) -> tuple[
+    ActionPolicy,
+    dict[str, str],
+    dict[str, Any],
+    dict[str, Any],
+    EntityState | None,
+    dict[str, Any] | None,
+]:
     if int(intent.actor_tg_id) != int(actor_tg_id) or str(intent.action) != str(action).strip().lower():
         raise ActionIntentError(
             "intent_mismatch",
@@ -1136,11 +2612,29 @@ def _validate_execution(
             status_code=409,
             message="Payload изменился после preview.",
         )
+    runtime_payload = (
+        policy.runtime_payload_normalizer(payload)
+        if policy.runtime_payload_normalizer is not None
+        else normalized_payload
+    )
+    if str(intent.executor_kind) != _executor_kind_for(policy, normalized_payload):
+        raise ActionIntentError(
+            "intent_mismatch",
+            status_code=409,
+            message="Тип исполнения изменился после preview.",
+        )
     _verify_confirmation(intent, confirmation_sha256_header)
 
     if intent.client_idempotency_key == idempotency_key:
         if intent.status in _TERMINAL_STATUSES or intent.status == "executing":
-            return policy, normalized_target, normalized_payload, None, _stored_result(intent)
+            return (
+                policy,
+                normalized_target,
+                normalized_payload,
+                runtime_payload,
+                None,
+                _stored_result(intent),
+            )
     elif intent.client_idempotency_key is not None or intent.status in _TERMINAL_STATUSES or intent.status == "executing":
         raise ActionIntentError(
             "intent_consumed",
@@ -1167,7 +2661,7 @@ def _validate_execution(
     state = policy.entity_state_builder(
         session,
         normalized_target["id"],
-        normalized_payload,
+        runtime_payload,
         True,
     )
     live_version = _entity_version_hash(policy, normalized_target, state)
@@ -1177,7 +2671,7 @@ def _validate_execution(
             status_code=409,
             message="Состояние сущности изменилось после preview.",
         )
-    return policy, normalized_target, normalized_payload, state, None
+    return policy, normalized_target, normalized_payload, runtime_payload, state, None
 
 
 def _read_idempotency_owner(session, idempotency_key: str) -> AdminActionIntent | None:
@@ -1331,6 +2825,74 @@ def _normalize_external_outcome(
                 intent_id=intent_id,
                 audit_id=audit_id,
             )
+        if "tg_id" in raw_result:
+            value = raw_result["tg_id"]
+            if type(value) is not int or not -(2**63) <= value < 2**63:
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts["tg_id"] = int(value)
+        for key in ("key_id", "ticket_id"):
+            if key not in raw_result:
+                continue
+            value = raw_result[key]
+            if type(value) is not int or not 1 <= value < 2**63:
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts[key] = int(value)
+        for key in (
+            "sync_ok",
+            "is_active",
+            "enabled",
+            "panel_deleted",
+            "dry_run",
+            "requires_force",
+        ):
+            if key not in raw_result:
+                continue
+            value = raw_result[key]
+            if type(value) is not bool:
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts[key] = value
+        if "applied" in raw_result:
+            value = raw_result["applied"]
+            if value is not None and type(value) is not bool:
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts["applied"] = value
+        bounded_strings = {
+            "node_code": (32, re.compile(r"^[a-z0-9][a-z0-9._-]{0,31}$")),
+            "preset": (64, re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")),
+            "action": (24, re.compile(r"^[a-z0-9][a-z0-9._-]{0,23}$")),
+        }
+        for key, (maximum, pattern) in bounded_strings.items():
+            if key not in raw_result:
+                continue
+            value = raw_result[key]
+            if (
+                not isinstance(value, str)
+                or not 1 <= len(value) <= maximum
+                or value != value.strip().lower()
+                or pattern.fullmatch(value) is None
+            ):
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts[key] = value
 
         if "job_id" in raw_result and raw_result["job_id"] is not None:
             reference = raw_result["job_id"]
@@ -1415,6 +2977,68 @@ def _terminal_audit_meta(
             safe[key] = int(value)
     if type(source.get("dry_run")) is bool:
         safe["dry_run"] = bool(source["dry_run"])
+    for key in (
+        "tg_id",
+        "user_tg_id",
+        "ticket_id",
+        "key_id",
+        "days",
+        "tier_days",
+        "delta_days",
+        "display_name_length",
+        "reason_length",
+        "message_length",
+        "body_length",
+        "media_file_id_length",
+        "media_payload_length",
+    ):
+        value = source.get(key)
+        if type(value) is int and -(2**63) <= value < 2**63:
+            safe[key] = int(value)
+    for key in (
+        "apply_now",
+        "notify_soft",
+        "notify_hard",
+        "auto_disable_on_hard",
+        "blocked",
+        "enable",
+        "sync_ok",
+        "is_active",
+        "enabled",
+        "panel_deleted",
+        "requires_force",
+    ):
+        if type(source.get(key)) is bool:
+            safe[key] = bool(source[key])
+    for key in ("burst_mbps", "soft_cap_gb", "hard_cap_gb"):
+        if key not in source:
+            continue
+        value = source[key]
+        if value is None:
+            safe[key] = None
+        elif type(value) is int and 1 <= value <= _MAX_EXTERNAL_COUNT:
+            safe[key] = int(value)
+    for key, limit in (
+        ("node_code", 32),
+        ("preset", 64),
+        ("action", 24),
+        ("status", 20),
+        ("media_type", 32),
+    ):
+        value = source.get(key)
+        if isinstance(value, str) and len(value) <= limit:
+            safe[key] = value
+    for key in (
+        "reason_sha256",
+        "display_name_sha256",
+        "message_sha256",
+        "body_sha256",
+        "media_file_id_sha256",
+        "media_payload_sha256",
+    ):
+        value = source.get(key)
+        if isinstance(value, str) and _HEX_SHA256_RE.fullmatch(value):
+            safe[key] = value
 
     safe.update(
         {
@@ -1431,6 +3055,28 @@ def _terminal_audit_meta(
             value = facts.get(key)
             if type(value) is int and 0 <= value <= _MAX_EXTERNAL_COUNT:
                 safe[key] = int(value)
+        for key in ("tg_id", "key_id", "ticket_id"):
+            value = facts.get(key)
+            if type(value) is int and -(2**63) <= value < 2**63:
+                safe[key] = int(value)
+        for key in (
+            "sync_ok",
+            "is_active",
+            "enabled",
+            "panel_deleted",
+            "dry_run",
+            "requires_force",
+        ):
+            if type(facts.get(key)) is bool:
+                safe[key] = bool(facts[key])
+        if "applied" in facts and (
+            facts["applied"] is None or type(facts["applied"]) is bool
+        ):
+            safe["applied"] = facts["applied"]
+        for key, limit in (("node_code", 32), ("preset", 64), ("action", 24)):
+            value = facts.get(key)
+            if isinstance(value, str) and len(value) <= limit:
+                safe[key] = value
         reference_hash = facts.get("external_reference_hash")
         if isinstance(reference_hash, str) and _HEX_SHA256_RE.fullmatch(reference_hash):
             safe["external_reference_hash"] = reference_hash
@@ -1581,7 +3227,9 @@ async def execute_action_intent(
     target: Mapping[str, Any],
     payload: Mapping[str, Any],
     audit_writer,
+    db_executor: RuntimeDbExecutor | None = None,
     external_executor: Callable[[dict[str, Any]], Any] | None = None,
+    post_commit_executor: Callable[[dict[str, Any]], Any] | None = None,
     external_timeout_seconds: float = EXTERNAL_EXECUTION_TIMEOUT_SECONDS,
     now: datetime | None = None,
 ) -> dict[str, Any]:
@@ -1613,7 +3261,14 @@ async def execute_action_intent(
                 status_code=409,
                 message="Intent не найден; создайте новый preview.",
             )
-        policy, normalized_target, normalized_payload, state, replay = _validate_execution(
+        (
+            policy,
+            normalized_target,
+            normalized_payload,
+            runtime_payload,
+            state,
+            replay,
+        ) = _validate_execution(
             session=session,
             intent=intent,
             actor_tg_id=actor_tg_id,
@@ -1641,21 +3296,36 @@ async def execute_action_intent(
         intent.consumed_at = execution_time
         intent.updated_at = execution_time
 
-        if policy.executor_kind == "db":
-            if policy.db_executor is None:
+        executor_kind = str(intent.executor_kind)
+        if executor_kind == "db":
+            if policy.db_executor is None and db_executor is None:
                 raise ActionIntentError(
                     "executor_unavailable",
                     status_code=503,
                     message="Исполнитель действия недоступен.",
                 )
-            domain_result = policy.db_executor(session, state, normalized_payload)
+            if policy.db_executor is not None:
+                domain_result = policy.db_executor(session, state, normalized_payload)
+            else:
+                assert db_executor is not None
+                domain_result = db_executor(
+                    session,
+                    state,
+                    normalized_payload,
+                    runtime_payload,
+                )
             try:
                 audit = audit_writer(
                     session=session,
                     actor_tg_id=int(actor_tg_id),
-                    action=policy.audit_action,
-                    target_tg_id=None,
+                    action=_audit_action_for(policy, normalized_payload),
+                    target_tg_id=(
+                        policy.audit_target_builder(state, normalized_payload)
+                        if policy.audit_target_builder is not None
+                        else None
+                    ),
                     meta=_audit_meta(
+                        policy,
                         intent,
                         state,
                         normalized_payload,
@@ -1682,9 +3352,36 @@ async def execute_action_intent(
             intent.result_summary_json = _canonical_json(result)
             intent.result_hash = _semantic_hash("admin-action-result", result)
             session.commit()
+            if (
+                policy.post_commit_context_builder is not None
+                and post_commit_executor is not None
+            ):
+                post_commit_context = policy.post_commit_context_builder(
+                    state,
+                    normalized_payload,
+                )
+                if post_commit_context is not None:
+                    try:
+                        await asyncio.wait_for(
+                            _invoke_external_executor(
+                                post_commit_executor,
+                                {
+                                    "action_intent_id": str(intent.id),
+                                    "actor_tg_id": int(actor_tg_id),
+                                    "action": policy.action,
+                                    "target": normalized_target,
+                                    "execution": post_commit_context,
+                                },
+                            ),
+                            timeout=_external_timeout_seconds(
+                                external_timeout_seconds
+                            ),
+                        )
+                    except Exception:
+                        pass
             return result
 
-        if policy.executor_kind != "external" or external_executor is None:
+        if executor_kind != "external" or external_executor is None:
             raise ActionIntentError(
                 "executor_unavailable",
                 status_code=503,
@@ -1694,9 +3391,14 @@ async def execute_action_intent(
             audit = audit_writer(
                 session=session,
                 actor_tg_id=int(actor_tg_id),
-                action=policy.audit_action,
-                target_tg_id=None,
+                action=_audit_action_for(policy, normalized_payload),
+                target_tg_id=(
+                    policy.audit_target_builder(state, normalized_payload)
+                    if policy.audit_target_builder is not None
+                    else None
+                ),
                 meta=_audit_meta(
+                    policy,
                     intent,
                     state,
                     normalized_payload,
@@ -1727,13 +3429,14 @@ async def execute_action_intent(
             "action": policy.action,
             "target": normalized_target,
             "payload": normalized_payload,
+            "runtime_payload": runtime_payload,
             "preview": json.loads(intent.preview_snapshot_json),
             "audit_id": int(audit.id),
         }
         if policy.external_context_builder is not None:
             external_context["execution"] = policy.external_context_builder(
                 state,
-                normalized_payload,
+                runtime_payload,
             )
         session.commit()
     except IntegrityError:

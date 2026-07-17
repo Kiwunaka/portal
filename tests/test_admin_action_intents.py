@@ -124,6 +124,7 @@ def _prepare(
     client: TestClient,
     *,
     action: str = "node.disable",
+    target_type: str = "node",
     target_id: str = "nl",
     payload: dict[str, object] | None = None,
     headers: dict[str, str] | None = None,
@@ -133,7 +134,7 @@ def _prepare(
         headers=headers or _admin_headers(),
         json={
             "action": action,
-            "target": {"type": "node", "id": target_id},
+            "target": {"type": target_type, "id": target_id},
             "payload": {"force": False} if payload is None else payload,
         },
     )
@@ -919,6 +920,7 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
     finally:
         session.close()
 
+
     stale_effect_calls: list[int] = []
 
     def stale_effect(_context):
@@ -977,5 +979,213 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
         assert provider_reference.lower() not in safe_text
         assert malformed_secret.lower() not in safe_text
         assert exception_secret.lower() not in safe_text
+    finally:
+        session.close()
+
+
+def test_client_and_ticket_mutation_routes_require_action_intent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    cases = (
+        ("POST", "/api/admin/users/manual", {"display_name": "Ручной пользователь", "days": 30}),
+        ("POST", "/api/admin/users/1001/manual/extend", {"days": 30}),
+        ("POST", "/api/admin/users/1001/manual-extend", {"days": 30}),
+        ("POST", "/api/admin/users/1001/manual/block", {"blocked": True}),
+        ("POST", "/api/admin/users/1001/manual/regenerate-token", {}),
+        ("POST", "/api/admin/users/1001/safe-delete", {"confirm": True}),
+        ("POST", "/api/admin/users/1001/delete-test-user", {}),
+        ("POST", "/api/admin/users/1001/keys/nl/toggle", {"enable": False}),
+        ("POST", "/api/admin/users/1001/keys/nl/reset-traffic", {}),
+        ("POST", "/api/admin/users/1001/keys/nl/resync-subid", {}),
+        ("PUT", "/api/admin/users/1001/key-limits/nl", {"hard_cap_gb": 100, "apply_now": False}),
+        ("POST", "/api/admin/users/1001/loyalty/grant", {"tier_days": 30}),
+        ("POST", "/api/admin/users/1001/presets/run", {"preset": "extend_1d"}),
+        (
+            "POST",
+            "/api/admin/users/keys/bulk-action",
+            {"action": "disable", "segment": "custom", "tg_ids": [1001], "dry_run": True},
+        ),
+        ("POST", "/api/admin/users/1001/message", {"text": "Проверка"}),
+        ("POST", "/api/admin/tickets/7/reply", {"body": "Проверили, доступ восстановлен."}),
+        ("POST", "/api/admin/tickets/7/status", {"status": "closed"}),
+        ("POST", "/api/admin/keys/17/rotate", {"reason": "operator"}),
+    )
+
+    for method, path, body in cases:
+        response = client.request(method, path, json=body, headers=_admin_headers())
+        assert response.status_code == 428, f"{method} {path}: {response.text}"
+        assert _detail_code(response) == "intent_required"
+
+
+def test_private_message_and_bulk_selection_persist_only_hashes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminActionIntent, AdminAudit, User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add_all(
+            [
+                User(
+                    tg_id=tg_id,
+                    uuid=f"00000000-0000-4000-8000-{tg_id:012d}",
+                    email=f"task14-{tg_id}@example.test",
+                    sub_type="PAID",
+                    current_plan_code="1_month",
+                    created_at=now,
+                    expiry_at=now + timedelta(days=30),
+                    is_active=True,
+                    sub_token=f"task14-token-{tg_id}",
+                )
+                for tg_id in (1001, 1002)
+            ]
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    client = TestClient(api.app)
+    private_message = "SYNTHETIC-PRIVATE-TASK14-MESSAGE"
+    prepared = _prepare(
+        client,
+        action="user.message",
+        target_type="user",
+        target_id="1001",
+        payload={"text": private_message},
+    )
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["confirmation_challenge"] == "ОТПРАВИТЬ"
+
+    attempts: list[tuple[int, str]] = []
+
+    async def uncertain_send(chat_id: int, text: str) -> bool:
+        attempts.append((chat_id, text))
+        raise RuntimeError(f"private provider failure: {private_message}")
+
+    monkeypatch.setattr(api, "_telegram_send_message", uncertain_send)
+    intent_id = str(prepared.json()["intent_id"])
+    idempotency_key = str(uuid.uuid4())
+    headers = _execute_headers(
+        intent_id,
+        idempotency_key=idempotency_key,
+        confirmation_hash=hashlib.sha256("ОТПРАВИТЬ".encode("utf-8")).hexdigest(),
+    )
+    mismatch = client.post(
+        "/api/admin/users/1001/message",
+        headers=headers,
+        json={"text": f"{private_message}-changed"},
+    )
+    assert mismatch.status_code == 409
+    assert _detail_code(mismatch) == "intent_mismatch"
+    assert attempts == []
+
+    uncertain = client.post(
+        "/api/admin/users/1001/message",
+        headers=headers,
+        json={"text": private_message},
+    )
+    assert uncertain.status_code == 200, uncertain.text
+    assert uncertain.json()["status"] == "uncertain"
+    assert uncertain.json()["result_code"] == "external_exception"
+    replay = client.post(
+        "/api/admin/users/1001/message",
+        headers=headers,
+        json={"text": private_message},
+    )
+    assert replay.json() == uncertain.json()
+    assert attempts == [(1001, private_message)]
+
+    bulk_payload = {
+        "action": "disable",
+        "segment": "all_active",
+        "tg_ids": [1001, 1002],
+        "q": "",
+        "limit": 100,
+        "dry_run": True,
+        "force": False,
+        "node_codes": [],
+    }
+    bulk = _prepare(
+        client,
+        action="user.bulk_key_action",
+        target_type="users",
+        target_id="bulk",
+        payload=bulk_payload,
+    )
+    assert bulk.status_code == 200, bulk.text
+    assert bulk.json()["confirmation_challenge"] == "1002"
+    assert bulk.json()["preview"]["before"]["selected_count"] == 2
+
+    session = api.SessionLocal()
+    try:
+        session.add(
+            User(
+                tg_id=1003,
+                uuid="00000000-0000-4000-8000-000000001003",
+                email="task14-1003@example.test",
+                sub_type="PAID",
+                current_plan_code="1_month",
+                created_at=now,
+                expiry_at=now + timedelta(days=30),
+                is_active=True,
+                sub_token="task14-token-1003",
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    db_calls: list[int] = []
+    original_db_executor = api._execute_admin_client_action_db
+
+    def tracked_db_executor(*args, **kwargs):
+        db_calls.append(1)
+        return original_db_executor(*args, **kwargs)
+
+    monkeypatch.setattr(api, "_execute_admin_client_action_db", tracked_db_executor)
+    stale_bulk = client.post(
+        "/api/admin/users/keys/bulk-action",
+        headers=_execute_headers(
+            str(bulk.json()["intent_id"]),
+            confirmation_hash=hashlib.sha256(b"1002").hexdigest(),
+        ),
+        json=bulk_payload,
+    )
+    assert stale_bulk.status_code == 409
+    assert _detail_code(stale_bulk) == "stale_intent"
+    assert db_calls == []
+
+    session = api.SessionLocal()
+    try:
+        message_intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
+        audit = session.query(AdminAudit).filter_by(id=message_intent.admin_audit_id).one()
+        persisted_message = " ".join(
+            (
+                message_intent.canonical_payload_json,
+                message_intent.preview_snapshot_json,
+                str(message_intent.result_summary_json or ""),
+                str(audit.meta or ""),
+            )
+        )
+        assert private_message not in persisted_message
+        canonical_message = json.loads(message_intent.canonical_payload_json)
+        assert canonical_message["text"]["length"] == len(private_message)
+        assert len(canonical_message["text"]["sha256"]) == 64
+
+        bulk_intent = session.query(AdminActionIntent).filter_by(id=bulk.json()["intent_id"]).one()
+        canonical_bulk = json.loads(bulk_intent.canonical_payload_json)
+        assert "tg_ids" not in canonical_bulk
+        assert canonical_bulk["tg_ids_count"] == 2
+        assert len(canonical_bulk["tg_ids_hash"]) == 64
+        persisted_preview = json.loads(bulk_intent.preview_snapshot_json)
+        assert set(persisted_preview["before"]) == {"selected_count", "selection_hash"}
+        assert persisted_preview["before"]["selected_count"] == 2
+        assert set(persisted_preview["after"]) == {"action_title", "dry_run"}
     finally:
         session.close()

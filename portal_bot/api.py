@@ -13312,265 +13312,112 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
 
 
 @app.post("/api/admin/users/manual")
-async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_create_manual_user(
+    payload: ManualUserCreateRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        tg_id = _next_manual_tg_id(s)
-        now = _utcnow()
-        user = User(
-            tg_id=tg_id,
-            username=None,
-            uuid=str(uuid.uuid4()),
-            email=f"MANUAL_{abs(tg_id)}",
-            sub_type="MANUAL",
-            current_plan_code="manual",
-            created_at=now,
-            expiry_at=now + timedelta(days=int(payload.days)),
-            is_active=True,
-            stars_paid=0,
-            total_gb=0,
-            trial_used=False,
-            tos_accepted=True,
-            first_purchase_done=True,
-            sub_token=_generate_sub_token(),
-            is_manual=True,
-            created_by_admin=actor,
-            display_name=payload.display_name.strip(),
-        )
-        s.add(user)
-        ensure_user_account_foundation(s, user, now=now)
-        s.commit()
-        s.refresh(user)
-        created = {
-            "tg_id": int(user.tg_id),
-            "uuid": str(user.uuid),
-            "email": str(user.email),
-            "sub_token": str(user.sub_token or ""),
-            "display_name": str(user.display_name or ""),
-            "sub_type": str(user.sub_type or ""),
-            "is_active": bool(user.is_active),
-            "expiry_at": _safe_iso(user.expiry_at),
-        }
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    sync_ok = False
-    try:
-        await panel.login()
-        res = await panel.ensure_user_on_all_nodes(
-            tg_id=int(created["tg_id"]),
-            client_uuid=str(created["uuid"]),
-            email=str(created["email"]),
-            sub_id=str(created["sub_token"] or created["tg_id"]),
-            enable=True,
-            only_node_codes=None,
-        )
-        sync_ok = bool(any(res.values())) if res else False
-    finally:
-        await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_manual_create",
-        target_tg_id=int(created["tg_id"]),
-        meta={"days": payload.days, "sync_ok": sync_ok},
+        action="user.manual_create",
+        target_type="user",
+        target_id="manual",
+        payload={"display_name": payload.display_name, "days": int(payload.days)},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(created["tg_id"]),
-        action="manual_create",
-        actor_tg_id=actor,
-        meta={"days": int(payload.days), "sync_ok": bool(sync_ok)},
-    )
-    return {
-        "ok": True,
-        "user": {
-            "tg_id": int(created["tg_id"]),
-            "display_name": created["display_name"],
-            "sub_type": created["sub_type"],
-            "is_active": bool(created["is_active"]),
-            "expiry_at": created["expiry_at"],
-            "subscription_url": build_subscription_url(str(created["sub_token"] or "")),
-        },
-        "sync_ok": sync_ok,
-    }
 
 
 @app.post("/api/admin/users/{tg_id}/manual/extend")
 @app.post("/api/admin/users/{tg_id}/manual-extend")
-async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_extend_manual_user(
+    tg_id: int,
+    payload: ManualUserExtendRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    delta_days = int(payload.delta_days if payload.delta_days is not None else (payload.days or 0))
-    if delta_days == 0:
-        raise HTTPException(status_code=400, detail="delta_days must be non-zero")
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        now = _utcnow()
-        cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        candidate_expiry = cur + timedelta(days=delta_days)
-        if candidate_expiry <= now:
-            if not bool(payload.allow_deactivate):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Operation would deactivate user; pass allow_deactivate=true to confirm",
-                )
-            user.expiry_at = now
-            user.is_active = False
-        else:
-            user.expiry_at = candidate_expiry
-            user.is_active = True
-        s.commit()
-        s.refresh(user)
-        expiry_iso = _safe_iso(user.expiry_at)
-        is_active = bool(user.is_active)
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_manual_extend",
-        target_tg_id=tg_id,
-        meta={"delta_days": int(delta_days), "allow_deactivate": bool(payload.allow_deactivate)},
+        action="user.extend",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={
+            "days": payload.days,
+            "delta_days": payload.delta_days,
+            "allow_deactivate": bool(payload.allow_deactivate),
+        },
+        request=request,
     )
-    return {"ok": True, "expiry_at": expiry_iso, "is_active": is_active, "delta_days": int(delta_days)}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/block")
-async def admin_block_manual_user(tg_id: int, payload: ManualUserBlockRequest, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_block_manual_user(
+    tg_id: int,
+    payload: ManualUserBlockRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user.is_active = not bool(payload.blocked)
-        s.commit()
-        user_uuid = str(user.uuid)
-        active = bool(user.is_active)
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        await panel.enable_client(user_uuid, enable=active)
-    finally:
-        await panel.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_manual_block", target_tg_id=tg_id, meta={"blocked": bool(payload.blocked)})
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="manual_block" if bool(payload.blocked) else "manual_unblock",
-        node_code=None,
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        meta={"blocked": bool(payload.blocked)},
+        action="user.block",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"blocked": bool(payload.blocked)},
+        request=request,
     )
-    return {"ok": True, "is_active": active}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/regenerate-token")
-async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_regenerate_manual_token(
+    tg_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user.sub_token = _generate_sub_token()
-        s.commit()
-        s.refresh(user)
-        _process_referral_bonus_queue(limit=100, force_without_activity=False)
-        sub_token = str(user.sub_token or "")
-        user_uuid = str(user.uuid or "")
-        is_active = bool(user.is_active)
-    finally:
-        s.close()
-
-    sync_ok = False
-    if user_uuid:
-        panel = ControlPanel()
-        try:
-            await panel.login()
-            sync_ok = bool(await panel.enable_client(user_uuid, enable=is_active))
-        finally:
-            await panel.close()
-    _audit_admin(actor_tg_id=actor, action="admin_manual_regen_token", target_tg_id=tg_id)
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="token_regenerate",
-        node_code=None,
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        meta={"sync_ok": bool(sync_ok)},
+        action="user.regenerate_token",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={},
+        request=request,
     )
-    return {
-        "ok": True,
-        "subscription_url": build_subscription_url(str(sub_token or "")),
-        "sync_ok": bool(sync_ok),
-    }
 
 
 @app.post("/api/admin/users/{tg_id}/safe-delete")
 async def admin_safe_delete_test_user(
     tg_id: int,
     payload: AdminUserSafeDeleteIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    if not bool(payload.confirm):
-        raise HTTPException(status_code=400, detail="confirm=true is required")
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        if not _is_manual_test_user(user):
-            raise HTTPException(status_code=400, detail="Only explicit manual/test users can be deleted")
-        target_meta = {
-            "tg_id": int(user.tg_id),
-            "display_name": str(getattr(user, "display_name", "") or ""),
-            "sub_type": str(getattr(user, "sub_type", "") or ""),
-        }
-        s.query(UserNode).filter(UserNode.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(KeyActionHistory).filter(KeyActionHistory.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(Event).filter(Event.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.delete(user)
-        s.commit()
-    finally:
-        s.close()
-
-    panel_deleted = False
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        panel_deleted = bool(await panel.delete_client(int(tg_id)))
-    except Exception as exc:
-        logger.warning("admin safe delete panel cleanup failed tg_id=%s err=%s", int(tg_id), exc)
-    finally:
-        await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_safe_delete_test_user",
-        target_tg_id=int(tg_id),
-        meta={**target_meta, "panel_deleted": bool(panel_deleted)},
+        action="user.safe_delete",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"confirm": bool(payload.confirm)},
+        request=request,
     )
-    return {"ok": True, "tg_id": int(tg_id), "panel_deleted": bool(panel_deleted)}
 
 
 @app.post("/api/admin/users/{tg_id}/delete-test-user")
 async def admin_delete_test_user_compat(
     tg_id: int,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    return await admin_safe_delete_test_user(
-        tg_id=tg_id,
-        payload=AdminUserSafeDeleteIn(confirm=True),
-        x_telegram_init_data=x_telegram_init_data,
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="user.delete_test",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={},
+        request=request,
     )
 
 
@@ -13579,147 +13426,54 @@ async def admin_user_key_toggle(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyToggleIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        hard_cap_gb = _get_user_node_hard_cap_gb(s=s, tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.set_user_key_enabled_on_node(
-            tg_id=int(tg_id),
-            node_code=str(node_code or ""),
-            enable=bool(payload.enable),
-            sub_id=expected_sub_id,
-            hard_cap_gb=hard_cap_gb,
-        )
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel update failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_toggle",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or ""), "enable": bool(payload.enable)},
+        action="user.key_toggle",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code, "enable": bool(payload.enable)},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_enable" if bool(payload.enable) else "key_disable",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-        meta={"enabled": bool(payload.enable)},
-    )
-    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or ""), "enabled": bool(payload.enable)}
 
 
 @app.post("/api/admin/users/{tg_id}/keys/{node_code}/reset-traffic")
 async def admin_user_key_reset_traffic(
     tg_id: int,
     node_code: str,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.reset_user_key_traffic_on_node(tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel reset failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_reset_traffic",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        action="user.key_reset_traffic",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_reset_traffic",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-    )
-    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or "")}
 
 
 @app.post("/api/admin/users/{tg_id}/keys/{node_code}/resync-subid")
 async def admin_user_key_resync_subid(
     tg_id: int,
     node_code: str,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        hard_cap_gb = _get_user_node_hard_cap_gb(s=s, tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.resync_user_key_subid_on_node(
-            tg_id=int(tg_id),
-            node_code=str(node_code or ""),
-            sub_id=expected_sub_id,
-            hard_cap_gb=hard_cap_gb,
-        )
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel subId sync failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_resync_subid",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        action="user.key_resync_subid",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_resync_subid",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-    )
-    return {
-        "ok": True,
-        "tg_id": int(tg_id),
-        "node_code": str(node_code or ""),
-        "expected_sub_id": expected_sub_id,
-    }
 
 
 @app.get("/api/admin/users/{tg_id}/key-history")
@@ -13774,76 +13528,27 @@ async def admin_user_key_limits_put(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyLimitsIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    node = str(node_code or "").strip().lower()
-    if not node:
-        raise HTTPException(status_code=400, detail="node_code is required")
-    if payload.soft_cap_gb is not None and payload.hard_cap_gb is not None and int(payload.hard_cap_gb) < int(payload.soft_cap_gb):
-        raise HTTPException(status_code=400, detail="hard_cap_gb must be >= soft_cap_gb")
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        row = (
-            s.query(UserKeyPolicy)
-            .filter(UserKeyPolicy.tg_id == int(tg_id), func.lower(UserKeyPolicy.node_code) == node)
-            .first()
-        )
-        if not row:
-            row = UserKeyPolicy(
-                tg_id=int(tg_id),
-                node_code=node,
-                updated_by=actor,
-                updated_at=_utcnow(),
-            )
-            s.add(row)
-        row.burst_mbps = int(payload.burst_mbps) if payload.burst_mbps is not None else None
-        row.soft_cap_gb = int(payload.soft_cap_gb) if payload.soft_cap_gb is not None else None
-        row.hard_cap_gb = int(payload.hard_cap_gb) if payload.hard_cap_gb is not None else None
-        row.notify_soft = bool(payload.notify_soft)
-        row.notify_hard = bool(payload.notify_hard)
-        row.auto_disable_on_hard = bool(payload.auto_disable_on_hard)
-        row.updated_by = actor
-        row.updated_at = _utcnow()
-        s.commit()
-        s.refresh(row)
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        row_payload = _serialize_key_policy(row)
-    finally:
-        s.close()
-
-    applied = None
-    if bool(payload.apply_now):
-        panel = ControlPanel()
-        try:
-            await panel.login()
-            applied = await panel.apply_user_key_limits_on_node(
-                tg_id=int(tg_id),
-                node_code=node,
-                hard_cap_gb=(int(payload.hard_cap_gb) if payload.hard_cap_gb is not None else None),
-                sub_id=expected_sub_id,
-            )
-        finally:
-            await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_limits_put",
-        target_tg_id=int(tg_id),
-        meta={"node_code": node, "policy": row_payload, "apply_now": bool(payload.apply_now), "applied": applied},
+        action="user.key_limits",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={
+            "node_code": node_code,
+            "burst_mbps": payload.burst_mbps,
+            "soft_cap_gb": payload.soft_cap_gb,
+            "hard_cap_gb": payload.hard_cap_gb,
+            "notify_soft": bool(payload.notify_soft),
+            "notify_hard": bool(payload.notify_hard),
+            "auto_disable_on_hard": bool(payload.auto_disable_on_hard),
+            "apply_now": bool(payload.apply_now),
+        },
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_limits_update",
-        node_code=node,
-        actor_tg_id=actor,
-        meta={"policy": row_payload, "apply_now": bool(payload.apply_now), "applied": applied},
-    )
-    return {"ok": True, "policy": row_payload, "applied": applied}
 
 
 @app.get("/api/admin/users/{tg_id}/risk")
@@ -13883,269 +13588,62 @@ async def admin_user_loyalty_get(tg_id: int, x_telegram_init_data: str = Header(
 async def admin_user_loyalty_grant(
     tg_id: int,
     payload: AdminLoyaltyGrantIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        loyalty = _user_loyalty_snapshot(s=s, user=user)
-        tier = next((x for x in loyalty.get("tiers", []) if int(x.get("days") or 0) == int(payload.tier_days)), None)
-        if not tier:
-            raise HTTPException(status_code=404, detail="Tier not found")
-        if not bool(tier.get("unlocked")):
-            raise HTTPException(status_code=400, detail="Tier is not unlocked yet")
-        reward_key = str(tier.get("reward_key") or "")
-        if bool(tier.get("claimed")):
-            raise HTTPException(status_code=400, detail="Tier already claimed")
-        bonus_days = int(tier.get("bonus_days") or 0)
-        now = _utcnow()
-        start = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = start + timedelta(days=max(1, bonus_days))
-        user.is_active = True
-        s.add(RewardClaim(tg_id=int(tg_id), reward_key=reward_key, meta=json.dumps({"tier": int(payload.tier_days)}, ensure_ascii=False)))
-        s.commit()
-        try:
-            sync_ok = bool(await _sync_user_after_paid_bonus(user))
-        except Exception as exc:
-            logger.warning("loyalty grant sync failed tg_id=%s err=%s", int(tg_id), exc)
-            sync_ok = False
-        expiry_at = _safe_iso(user.expiry_at)
-    except IntegrityError:
-        s.rollback()
-        raise HTTPException(status_code=400, detail="Tier already claimed")
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_loyalty_grant",
-        target_tg_id=int(tg_id),
-        meta={"tier_days": int(payload.tier_days), "sync_ok": bool(sync_ok)},
+        action="user.loyalty_grant",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"tier_days": int(payload.tier_days)},
+        request=request,
     )
-    return {"ok": True, "tier_days": int(payload.tier_days), "expiry_at": expiry_at, "sync_ok": bool(sync_ok)}
 
 
 @app.post("/api/admin/users/{tg_id}/presets/run")
 async def admin_user_preset_run(
     tg_id: int,
     payload: AdminUserPresetRunIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    preset = str(payload.preset or "").strip().lower()
-    if preset not in {"reset_key", "rotate_link", "extend_1d", "send_guide"}:
-        raise HTTPException(status_code=400, detail="Unsupported preset")
-
-    if preset == "extend_1d":
-        s = SessionLocal()
-        try:
-            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
-            now = _utcnow()
-            base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-            user.expiry_at = base + timedelta(days=1)
-            user.is_active = True
-            s.commit()
-            expiry_at = _safe_iso(user.expiry_at)
-        finally:
-            s.close()
-        _audit_admin(actor_tg_id=actor, action="admin_operator_extend_1d", target_tg_id=int(tg_id))
-        return {"ok": True, "preset": preset, "expiry_at": expiry_at}
-
-    if preset == "send_guide":
-        text = (
-            "Инструкция по подключению:\n"
-            "1) Откройте раздел Устройства.\n"
-            "2) Импортируйте ключ.\n"
-            "3) Проверьте статус и перезапустите приложение."
-        )
-        ok = await _telegram_send_message(int(tg_id), text)
-        _audit_admin(actor_tg_id=actor, action="admin_operator_send_guide", target_tg_id=int(tg_id), meta={"ok": bool(ok)})
-        if not ok:
-            raise HTTPException(status_code=502, detail="Telegram send failed")
-        return {"ok": True, "preset": preset}
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        nodes = enabled_nodes(s)
-    finally:
-        s.close()
-    keys_state = await _admin_user_keys_state(user, nodes=nodes)
-    keys = [k for k in (keys_state.get("keys") or []) if bool(k.get("exists"))]
-
-    panel = ControlPanel()
-    changed = 0
-    failed = 0
-    try:
-        await panel.login()
-        if preset == "reset_key":
-            for k in keys:
-                ok = await panel.reset_user_key_traffic_on_node(tg_id=int(tg_id), node_code=str(k.get("node_code") or ""))
-                if ok:
-                    changed += 1
-                else:
-                    failed += 1
-                    continue
-                _key_history_log(
-                    tg_id=int(tg_id),
-                    action="key_reset_traffic",
-                    node_code=str(k.get("node_code") or ""),
-                    actor_tg_id=actor,
-                    source="preset",
-                )
-        elif preset == "rotate_link":
-            s2 = SessionLocal()
-            try:
-                db_user = s2.query(User).filter(User.tg_id == int(tg_id)).first()
-                if not db_user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                db_user.sub_token = _generate_sub_token()
-                s2.commit()
-                s2.refresh(db_user)
-                expected_sub_id = str(db_user.sub_token or db_user.tg_id)
-            finally:
-                s2.close()
-            for k in keys:
-                code = str(k.get("node_code") or "")
-                hard_cap = None
-                s3 = SessionLocal()
-                try:
-                    hard_cap = _get_user_node_hard_cap_gb(s=s3, tg_id=int(tg_id), node_code=code)
-                finally:
-                    s3.close()
-                ok = await panel.resync_user_key_subid_on_node(
-                    tg_id=int(tg_id),
-                    node_code=code,
-                    sub_id=expected_sub_id,
-                    hard_cap_gb=hard_cap,
-                )
-                if ok:
-                    changed += 1
-                else:
-                    failed += 1
-                    continue
-                _key_history_log(tg_id=int(tg_id), action="key_resync_subid", node_code=code, actor_tg_id=actor, source="preset")
-            _key_history_log(tg_id=int(tg_id), action="token_regenerate", actor_tg_id=actor, source="preset")
-    finally:
-        await panel.close()
-    _audit_admin(actor_tg_id=actor, action=f"admin_operator_{preset}", target_tg_id=int(tg_id), meta={"changed": changed, "failed": failed})
-    return {
-        "ok": True,
-        "preset": preset,
-        "changed": int(changed),
-        "failed": int(failed),
-        "subscription_url": build_subscription_url(expected_sub_id),
-    }
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="user.preset_run",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"preset": payload.preset},
+        request=request,
+    )
 
 
 @app.post("/api/admin/users/keys/bulk-action")
-async def admin_users_keys_bulk_action(payload: AdminUserKeysBulkActionIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_users_keys_bulk_action(
+    payload: AdminUserKeysBulkActionIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    action = str(payload.action or "").strip().lower()
-    if action not in {"disable", "enable", "reset", "resync"}:
-        raise HTTPException(status_code=400, detail="Unsupported action")
-
-    s = SessionLocal()
-    try:
-        users = _admin_select_users_for_segment(
-            s=s,
-            segment=payload.segment,
-            q=payload.q,
-            tg_ids=payload.tg_ids,
-            limit=payload.limit,
-        )
-    finally:
-        s.close()
-    if not users:
-        return {"ok": True, "action": action, "dry_run": bool(payload.dry_run), "users": 0, "changed": 0, "failed": 0, "details": []}
-
-    if len(users) > 50 and not bool(payload.force) and not bool(payload.dry_run):
-        return {
-            "ok": False,
-            "requires_force": True,
-            "action": action,
-            "users": int(len(users)),
-            "message": "Bulk action over 50 users requires force=true",
-        }
-
-    if bool(payload.dry_run):
-        return {
-            "ok": True,
-            "action": action,
-            "dry_run": True,
-            "users": int(len(users)),
-            "preview_tg_ids": [int(u.tg_id) for u in users[:50]],
-        }
-
-    panel = ControlPanel()
-    changed = 0
-    failed = 0
-    details: list[dict[str, Any]] = []
-    try:
-        await panel.login()
-        for user in users:
-            tg_id = int(user.tg_id)
-            nodes = payload.node_codes or []
-            if not nodes:
-                snapshots = await panel.get_user_key_snapshots(tg_id=tg_id)
-                nodes = [str(r.get("node_code") or "") for r in snapshots if str(r.get("node_code") or "").strip()]
-            expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-            user_changed = 0
-            user_failed = 0
-            for node_code in nodes:
-                code = str(node_code or "").strip().lower()
-                if not code:
-                    continue
-                s2 = SessionLocal()
-                try:
-                    hard_cap_gb = _get_user_node_hard_cap_gb(s=s2, tg_id=tg_id, node_code=code)
-                finally:
-                    s2.close()
-                ok: bool | None
-                if action == "disable":
-                    ok = await panel.set_user_key_enabled_on_node(tg_id=tg_id, node_code=code, enable=False, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                elif action == "enable":
-                    ok = await panel.set_user_key_enabled_on_node(tg_id=tg_id, node_code=code, enable=True, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                elif action == "reset":
-                    ok = await panel.reset_user_key_traffic_on_node(tg_id=tg_id, node_code=code)
-                else:
-                    ok = await panel.resync_user_key_subid_on_node(tg_id=tg_id, node_code=code, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                if ok:
-                    changed += 1
-                    user_changed += 1
-                    hist_action = {
-                        "disable": "key_disable",
-                        "enable": "key_enable",
-                        "reset": "key_reset_traffic",
-                        "resync": "key_resync_subid",
-                    }[action]
-                    _key_history_log(tg_id=tg_id, action=hist_action, node_code=code, actor_tg_id=actor, source="bulk")
-                else:
-                    failed += 1
-                    user_failed += 1
-            details.append({"tg_id": tg_id, "changed": user_changed, "failed": user_failed})
-    finally:
-        await panel.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_bulk_key_action",
-        meta={
-            "action": action,
+        action="user.bulk_key_action",
+        target_type="users",
+        target_id="bulk",
+        payload={
+            "action": payload.action,
             "segment": payload.segment,
-            "users": len(users),
-            "changed": changed,
-            "failed": failed,
-            "forced": bool(payload.force),
+            "node_codes": list(payload.node_codes),
+            "tg_ids": list(payload.tg_ids),
+            "q": payload.q,
+            "limit": int(payload.limit),
+            "dry_run": bool(payload.dry_run),
+            "force": bool(payload.force),
         },
+        request=request,
     )
-    return {"ok": True, "action": action, "users": int(len(users)), "changed": int(changed), "failed": int(failed), "details": details}
 
 
 @app.get("/api/admin/audit")
@@ -14189,18 +13687,21 @@ async def admin_audit_log(
 
 
 @app.post("/api/admin/users/{tg_id}/message")
-async def admin_user_message(tg_id: int, payload: AdminMessageIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_user_message(
+    tg_id: int,
+    payload: AdminMessageIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    ok = await _telegram_send_message(tg_id, payload.text)
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_message",
-        target_tg_id=tg_id,
-        meta={"ok": ok, "length": len(payload.text)},
+        action="user.message",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"text": payload.text},
+        request=request,
     )
-    if not ok:
-        raise HTTPException(status_code=502, detail="Telegram send failed")
-    return {"ok": True}
 
 
 @app.post("/api/admin/broadcast")
@@ -15416,55 +14917,44 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
 
 
 @app.post("/api/admin/tickets/{ticket_id}/reply")
-async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_ticket_reply(
+    ticket_id: int,
+    payload: AdminTicketReplyIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=actor,
-            sender_role="admin",
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(s, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=actor)
-        s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
-    finally:
-        s.close()
-
-    await _telegram_send_message(int(ticket.user_tg_id), f"💬 Ответ оператора в обращении #{ticket.id}.")
-    _audit_admin(actor_tg_id=actor, action="admin_ticket_reply", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id})
-    return {"ticket": _ticket_row(ticket, msgs)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="ticket.reply",
+        target_type="ticket",
+        target_id=str(ticket_id),
+        payload={
+            "body": payload.body,
+            "media_type": payload.media_type,
+            "media_file_id": payload.media_file_id,
+            "media_payload": payload.media_payload,
+        },
+        request=request,
+    )
 
 
 @app.post("/api/admin/tickets/{ticket_id}/status")
-async def admin_ticket_status(ticket_id: int, payload: AdminTicketStatusIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_ticket_status(
+    ticket_id: int,
+    payload: AdminTicketStatusIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    new_status = (payload.status or "").strip().lower()
-    if new_status not in {STATUS_OPEN, STATUS_IN_PROGRESS, STATUS_CLOSED}:
-        raise HTTPException(status_code=400, detail="Unsupported status")
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        set_ticket_status(s, ticket=ticket, status=new_status, assigned_admin_tg_id=actor if new_status == STATUS_IN_PROGRESS else None)
-        s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_ticket_status", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id, "status": new_status})
-    if new_status == STATUS_CLOSED:
-        await _telegram_send_message(int(ticket.user_tg_id), f"✅ Обращение #{ticket.id} закрыто оператором.")
-    return {"ticket": _ticket_row(ticket, msgs)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="ticket.status",
+        target_type="ticket",
+        target_id=str(ticket_id),
+        payload={"status": payload.status},
+        request=request,
+    )
 
 
 @app.get("/api/admin/nodes/health")
@@ -16381,55 +15871,18 @@ async def admin_online_users(
 async def admin_key_rotate_request(
     key_id: int,
     payload: AdminKeyRotateIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        key_row = s.query(AccessKey).filter(AccessKey.id == int(key_id)).first()
-        if not key_row:
-            raise HTTPException(status_code=404, detail="Access key not found")
-        if bool(payload.dry_run):
-            return {
-                "ok": True,
-                "dry_run": True,
-                "key_id": int(key_id),
-                "tg_id": int(key_row.tg_id),
-                "node_code": str(key_row.node_code or "") or None,
-                "planned_job_type": "rotate_access_key",
-            }
-        key_row.state = "rotation_requested"
-        key_row.updated_at = _utcnow()
-        job = NodeProvisioningJob(
-            tg_id=int(key_row.tg_id),
-            key_id=int(key_row.id),
-            node_code=str(key_row.node_code or "") or None,
-            job_type="rotate_access_key",
-            status="queued",
-            desired_state_json=json.dumps(
-                {
-                    "reason": str(payload.reason or "manual_review").strip()[:160],
-                    "requested_by": int(actor),
-                    "pool_code": str(key_row.pool_code or ""),
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            ),
-            created_at=_utcnow(),
-            updated_at=_utcnow(),
-        )
-        s.add(job)
-        s.commit()
-        job_id = int(job.id)
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_key_rotate_request",
-        target_tg_id=int(getattr(key_row, "tg_id", 0) or 0),
-        meta={"key_id": int(key_id), "job_id": job_id, "reason": str(payload.reason or "")[:160]},
+        action="key.rotate",
+        target_type="key",
+        target_id=str(key_id),
+        payload={"reason": payload.reason, "dry_run": bool(payload.dry_run)},
+        request=request,
     )
-    return {"ok": True, "key_id": int(key_id), "job_id": job_id, "status": "queued"}
 
 
 @app.get("/api/admin/nodes/runtime")
@@ -16873,6 +16326,1108 @@ async def _execute_node_resync_external(context: dict[str, Any]) -> dict[str, An
         "failed": failed,
         "skipped": skipped,
     }
+
+
+def _execute_admin_client_action_db(
+    session,
+    state,
+    payload: dict[str, Any],
+    _runtime_payload: dict[str, Any],
+    *,
+    actor_tg_id: int,
+    action: str,
+) -> dict[str, Any]:
+    if action == "user.extend":
+        user = state.entity
+        now = _utcnow()
+        current = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+        candidate = current + timedelta(days=int(payload["delta_days"]))
+        if candidate <= now:
+            if not bool(payload["allow_deactivate"]):
+                raise ActionIntentError(
+                    "would_deactivate",
+                    status_code=409,
+                    message="Операция деактивирует пользователя; подтвердите allow_deactivate=true.",
+                )
+            user.expiry_at = now
+            user.is_active = False
+        else:
+            user.expiry_at = candidate
+            user.is_active = True
+        session.flush()
+        return {
+            "expiry_at": _safe_iso(user.expiry_at),
+            "is_active": bool(user.is_active),
+            "delta_days": int(payload["delta_days"]),
+        }
+
+    if action == "user.key_limits":
+        tg_id = int(state.context["tg_id"])
+        node = str(payload["node_code"])
+        row = (
+            session.query(UserKeyPolicy)
+            .filter(
+                UserKeyPolicy.tg_id == tg_id,
+                func.lower(UserKeyPolicy.node_code) == node,
+            )
+            .first()
+        )
+        if row is None:
+            row = UserKeyPolicy(tg_id=tg_id, node_code=node)
+            session.add(row)
+        row.burst_mbps = payload["burst_mbps"]
+        row.soft_cap_gb = payload["soft_cap_gb"]
+        row.hard_cap_gb = payload["hard_cap_gb"]
+        row.notify_soft = bool(payload["notify_soft"])
+        row.notify_hard = bool(payload["notify_hard"])
+        row.auto_disable_on_hard = bool(payload["auto_disable_on_hard"])
+        row.updated_by = int(actor_tg_id)
+        row.updated_at = _utcnow()
+        session.flush()
+        row_payload = _serialize_key_policy(row)
+        session.add(
+            KeyActionHistory(
+                tg_id=tg_id,
+                node_code=node,
+                action="key_limits_update",
+                actor_tg_id=int(actor_tg_id),
+                source="admin",
+                meta=json.dumps(
+                    {"policy": row_payload, "apply_now": False, "applied": None},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                created_at=_utcnow(),
+            )
+        )
+        return {"policy": row_payload, "applied": None}
+
+    if action == "user.preset_run" and payload["preset"] == "extend_1d":
+        user = state.entity
+        now = _utcnow()
+        base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+        user.expiry_at = base + timedelta(days=1)
+        user.is_active = True
+        session.flush()
+        return {
+            "preset": "extend_1d",
+            "expiry_at": _safe_iso(user.expiry_at),
+        }
+
+    if action == "user.bulk_key_action" and bool(payload["dry_run"]):
+        return {
+            "action": str(payload["action"]),
+            "dry_run": True,
+            "users": int(state.context["selected_count"]),
+            "selection_hash": str(state.context["selection_hash"]),
+        }
+
+    if action == "key.rotate":
+        key_row = state.entity
+        if bool(payload["dry_run"]):
+            return {
+                "dry_run": True,
+                "key_id": int(key_row.id),
+                "tg_id": int(key_row.tg_id),
+                "node_code": str(key_row.node_code or "") or None,
+                "planned_job_type": "rotate_access_key",
+            }
+        key_row.state = "rotation_requested"
+        key_row.updated_at = _utcnow()
+        job = NodeProvisioningJob(
+            tg_id=int(key_row.tg_id),
+            key_id=int(key_row.id),
+            node_code=str(key_row.node_code or "") or None,
+            job_type="rotate_access_key",
+            status="queued",
+            desired_state_json=json.dumps(
+                {
+                    "reason_sha256": str(payload["reason"]["sha256"]),
+                    "reason_length": int(payload["reason"]["length"]),
+                    "requested_by": int(actor_tg_id),
+                    "pool_code": str(key_row.pool_code or ""),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            created_at=_utcnow(),
+            updated_at=_utcnow(),
+        )
+        session.add(job)
+        session.flush()
+        return {
+            "key_id": int(key_row.id),
+            "job_id": int(job.id),
+            "job_status": "queued",
+        }
+
+    if action == "ticket.status":
+        ticket = state.entity
+        new_status = str(payload["status"])
+        set_ticket_status(
+            session,
+            ticket=ticket,
+            status=new_status,
+            assigned_admin_tg_id=(
+                int(actor_tg_id) if new_status == STATUS_IN_PROGRESS else None
+            ),
+        )
+        session.flush()
+        return {"ticket_id": int(ticket.id)}
+
+    raise ActionIntentError(
+        "executor_unavailable",
+        status_code=503,
+        message="DB-исполнитель действия недоступен.",
+    )
+
+
+async def _execute_admin_client_action_external(
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    action = str(context["action"])
+    actor = int(context["actor_tg_id"])
+    runtime = dict(context.get("runtime_payload") or {})
+    execution = dict(context.get("execution") or {})
+
+    if action == "user.manual_create":
+        tg_id = int(execution["candidate_tg_id"])
+        session = SessionLocal()
+        try:
+            if session.query(User).filter(User.tg_id == tg_id).first() is not None:
+                return {"ok": False, "code": "manual_id_conflict", "tg_id": tg_id}
+            now = _utcnow()
+            user = User(
+                tg_id=tg_id,
+                username=None,
+                uuid=str(uuid.uuid4()),
+                email=f"MANUAL_{abs(tg_id)}",
+                sub_type="MANUAL",
+                current_plan_code="manual",
+                created_at=now,
+                expiry_at=now + timedelta(days=int(runtime["days"])),
+                is_active=True,
+                stars_paid=0,
+                total_gb=0,
+                trial_used=False,
+                tos_accepted=True,
+                first_purchase_done=True,
+                sub_token=_generate_sub_token(),
+                is_manual=True,
+                created_by_admin=actor,
+                display_name=str(runtime["display_name"]),
+            )
+            session.add(user)
+            ensure_user_account_foundation(session, user, now=now)
+            session.commit()
+            session.refresh(user)
+            user_uuid = str(user.uuid or "")
+            email = str(user.email or "")
+            sub_token = str(user.sub_token or "")
+        except IntegrityError:
+            session.rollback()
+            return {"ok": False, "code": "manual_id_conflict", "tg_id": tg_id}
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            synced = await panel.ensure_user_on_all_nodes(
+                tg_id=tg_id,
+                client_uuid=user_uuid,
+                email=email,
+                sub_id=sub_token or str(tg_id),
+                enable=True,
+                only_node_codes=None,
+            )
+            sync_ok = bool(any(synced.values())) if synced else False
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="manual_create",
+            actor_tg_id=actor,
+            meta={"days": int(runtime["days"]), "sync_ok": sync_ok},
+        )
+        return {
+            "ok": True,
+            "code": "manual_created",
+            "tg_id": tg_id,
+            "sync_ok": sync_ok,
+        }
+
+    if action == "user.block":
+        tg_id = int(execution["tg_id"])
+        active = not bool(runtime["blocked"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            user.is_active = active
+            user_uuid = str(user.uuid or "")
+            session.commit()
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            await panel.enable_client(user_uuid, enable=active)
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="manual_block" if runtime["blocked"] else "manual_unblock",
+            actor_tg_id=actor,
+            meta={"blocked": bool(runtime["blocked"])},
+        )
+        return {
+            "ok": True,
+            "code": "user_block_updated",
+            "tg_id": tg_id,
+            "is_active": active,
+        }
+
+    if action == "user.regenerate_token":
+        tg_id = int(execution["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            user.sub_token = _generate_sub_token()
+            user_uuid = str(user.uuid or "")
+            active = bool(user.is_active)
+            session.commit()
+        finally:
+            session.close()
+        _process_referral_bonus_queue(limit=100, force_without_activity=False)
+        sync_ok = False
+        if user_uuid:
+            panel = ControlPanel()
+            try:
+                await panel.login()
+                sync_ok = bool(await panel.enable_client(user_uuid, enable=active))
+            finally:
+                await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="token_regenerate",
+            actor_tg_id=actor,
+            meta={"sync_ok": sync_ok},
+        )
+        return {
+            "ok": True,
+            "code": "token_regenerated",
+            "tg_id": tg_id,
+            "sync_ok": sync_ok,
+        }
+
+    if action in {"user.safe_delete", "user.delete_test"}:
+        tg_id = int(execution["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            if not _is_manual_test_user(user):
+                return {"ok": False, "code": "user_not_deletable", "tg_id": tg_id}
+            session.query(UserNode).filter(UserNode.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(KeyActionHistory).filter(KeyActionHistory.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(Event).filter(Event.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.delete(user)
+            session.commit()
+        finally:
+            session.close()
+        panel_deleted = False
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            panel_deleted = bool(await panel.delete_client(tg_id))
+        except Exception as exc:
+            logger.warning(
+                "admin guarded delete panel cleanup failed tg_id=%s error_type=%s intent_id=%s",
+                tg_id,
+                type(exc).__name__,
+                str(context.get("action_intent_id") or ""),
+            )
+        finally:
+            await panel.close()
+        return {
+            "ok": True,
+            "code": "user_deleted",
+            "tg_id": tg_id,
+            "panel_deleted": panel_deleted,
+        }
+
+    if action in {
+        "user.key_toggle",
+        "user.key_reset_traffic",
+        "user.key_resync_subid",
+    }:
+        tg_id = int(execution["tg_id"])
+        node_code = str(runtime["node_code"])
+        hard_cap = dict(execution.get("hard_caps") or {}).get(node_code)
+        sub_id = str(execution.get("sub_token") or tg_id)
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            if action == "user.key_toggle":
+                changed = await panel.set_user_key_enabled_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                    enable=bool(runtime["enable"]),
+                    sub_id=sub_id,
+                    hard_cap_gb=hard_cap,
+                )
+            elif action == "user.key_reset_traffic":
+                changed = await panel.reset_user_key_traffic_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                )
+            else:
+                changed = await panel.resync_user_key_subid_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                    sub_id=sub_id,
+                    hard_cap_gb=hard_cap,
+                )
+        finally:
+            await panel.close()
+        if changed is None:
+            return {
+                "ok": False,
+                "code": "key_not_found",
+                "tg_id": tg_id,
+                "node_code": node_code,
+            }
+        if not changed:
+            return {
+                "ok": False,
+                "code": "panel_update_failed",
+                "tg_id": tg_id,
+                "node_code": node_code,
+            }
+        history_action = {
+            "user.key_toggle": "key_enable" if runtime["enable"] else "key_disable",
+            "user.key_reset_traffic": "key_reset_traffic",
+            "user.key_resync_subid": "key_resync_subid",
+        }[action]
+        _key_history_log(
+            tg_id=tg_id,
+            action=history_action,
+            node_code=node_code,
+            actor_tg_id=actor,
+            meta=(
+                {"enabled": bool(runtime["enable"])}
+                if action == "user.key_toggle"
+                else None
+            ),
+        )
+        result: dict[str, Any] = {
+            "ok": True,
+            "code": "key_updated",
+            "tg_id": tg_id,
+            "node_code": node_code,
+        }
+        if action == "user.key_toggle":
+            result["enabled"] = bool(runtime["enable"])
+        return result
+
+    if action == "user.key_limits":
+        tg_id = int(execution["tg_id"])
+        node_code = str(runtime["node_code"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            row = (
+                session.query(UserKeyPolicy)
+                .filter(
+                    UserKeyPolicy.tg_id == tg_id,
+                    func.lower(UserKeyPolicy.node_code) == node_code,
+                )
+                .first()
+            )
+            if row is None:
+                row = UserKeyPolicy(tg_id=tg_id, node_code=node_code)
+                session.add(row)
+            row.burst_mbps = runtime["burst_mbps"]
+            row.soft_cap_gb = runtime["soft_cap_gb"]
+            row.hard_cap_gb = runtime["hard_cap_gb"]
+            row.notify_soft = bool(runtime["notify_soft"])
+            row.notify_hard = bool(runtime["notify_hard"])
+            row.auto_disable_on_hard = bool(runtime["auto_disable_on_hard"])
+            row.updated_by = actor
+            row.updated_at = _utcnow()
+            sub_id = str(user.sub_token or user.tg_id)
+            row_payload = _serialize_key_policy(row)
+            session.commit()
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            applied = await panel.apply_user_key_limits_on_node(
+                tg_id=tg_id,
+                node_code=node_code,
+                hard_cap_gb=runtime["hard_cap_gb"],
+                sub_id=sub_id,
+            )
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="key_limits_update",
+            node_code=node_code,
+            actor_tg_id=actor,
+            meta={"policy": row_payload, "apply_now": True, "applied": applied},
+        )
+        return {
+            "ok": True,
+            "code": "key_limits_updated",
+            "tg_id": tg_id,
+            "node_code": node_code,
+            "applied": applied,
+        }
+
+    if action == "user.loyalty_grant":
+        tg_id = int(execution["tg_id"])
+        tier_days = int(runtime["tier_days"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            loyalty = _user_loyalty_snapshot(s=session, user=user)
+            tier = next(
+                (
+                    row
+                    for row in loyalty.get("tiers", [])
+                    if int(row.get("days") or 0) == tier_days
+                ),
+                None,
+            )
+            if tier is None:
+                return {"ok": False, "code": "tier_not_found", "tg_id": tg_id}
+            if not bool(tier.get("unlocked")):
+                return {"ok": False, "code": "tier_locked", "tg_id": tg_id}
+            if bool(tier.get("claimed")):
+                return {"ok": False, "code": "tier_claimed", "tg_id": tg_id}
+            now = _utcnow()
+            base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+            user.expiry_at = base + timedelta(days=max(1, int(tier.get("bonus_days") or 0)))
+            user.is_active = True
+            session.add(
+                RewardClaim(
+                    tg_id=tg_id,
+                    reward_key=str(tier.get("reward_key") or ""),
+                    meta=json.dumps({"tier": tier_days}, ensure_ascii=False),
+                )
+            )
+            session.commit()
+            try:
+                sync_ok = bool(await _sync_user_after_paid_bonus(user))
+            except Exception as exc:
+                logger.warning(
+                    "loyalty grant sync failed tg_id=%s error_type=%s intent_id=%s",
+                    tg_id,
+                    type(exc).__name__,
+                    str(context.get("action_intent_id") or ""),
+                )
+                sync_ok = False
+        except IntegrityError:
+            session.rollback()
+            return {"ok": False, "code": "tier_claimed", "tg_id": tg_id}
+        finally:
+            session.close()
+        return {
+            "ok": True,
+            "code": "loyalty_granted",
+            "tg_id": tg_id,
+            "tier_days": tier_days,
+            "sync_ok": sync_ok,
+        }
+
+    if action == "user.preset_run":
+        tg_id = int(execution["tg_id"])
+        preset = str(runtime["preset"])
+        if preset == "send_guide":
+            ok = await _telegram_send_message(
+                tg_id,
+                "Инструкция по подключению:\n"
+                "1) Откройте раздел Устройства.\n"
+                "2) Импортируйте ключ.\n"
+                "3) Проверьте статус и перезапустите приложение.",
+            )
+            return {
+                "ok": bool(ok),
+                "code": "guide_sent" if ok else "telegram_failed",
+                "tg_id": tg_id,
+                "preset": preset,
+            }
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            nodes = enabled_nodes(session)
+        finally:
+            session.close()
+        keys_state = await _admin_user_keys_state(user, nodes=nodes)
+        keys = [row for row in keys_state.get("keys", []) if bool(row.get("exists"))]
+        expected_sub_id = str(user.sub_token or user.tg_id)
+        changed = 0
+        failed = 0
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            if preset == "reset_key":
+                for key in keys:
+                    code = str(key.get("node_code") or "")
+                    ok = await panel.reset_user_key_traffic_on_node(
+                        tg_id=tg_id,
+                        node_code=code,
+                    )
+                    if ok:
+                        changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action="key_reset_traffic",
+                            node_code=code,
+                            actor_tg_id=actor,
+                            source="preset",
+                        )
+                    else:
+                        failed += 1
+            elif preset == "rotate_link":
+                rotate_session = SessionLocal()
+                try:
+                    db_user = rotate_session.query(User).filter(User.tg_id == tg_id).first()
+                    if db_user is None:
+                        return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+                    db_user.sub_token = _generate_sub_token()
+                    rotate_session.commit()
+                    expected_sub_id = str(db_user.sub_token or db_user.tg_id)
+                finally:
+                    rotate_session.close()
+                for key in keys:
+                    code = str(key.get("node_code") or "")
+                    cap_session = SessionLocal()
+                    try:
+                        hard_cap = _get_user_node_hard_cap_gb(
+                            s=cap_session,
+                            tg_id=tg_id,
+                            node_code=code,
+                        )
+                    finally:
+                        cap_session.close()
+                    ok = await panel.resync_user_key_subid_on_node(
+                        tg_id=tg_id,
+                        node_code=code,
+                        sub_id=expected_sub_id,
+                        hard_cap_gb=hard_cap,
+                    )
+                    if ok:
+                        changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action="key_resync_subid",
+                            node_code=code,
+                            actor_tg_id=actor,
+                            source="preset",
+                        )
+                    else:
+                        failed += 1
+                _key_history_log(
+                    tg_id=tg_id,
+                    action="token_regenerate",
+                    actor_tg_id=actor,
+                    source="preset",
+                )
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "preset_completed" if failed == 0 else "preset_partial",
+            "tg_id": tg_id,
+            "preset": preset,
+            "changed": changed,
+            "failed": failed,
+        }
+
+    if action == "user.bulk_key_action":
+        selected = [int(value) for value in execution["selected_tg_ids"]]
+        bulk_action = str(execution["action"])
+        if len(selected) > 50 and not bool(execution["force"]):
+            return {
+                "ok": False,
+                "code": "force_required",
+                "action": bulk_action,
+                "users": len(selected),
+                "requires_force": True,
+            }
+        panel = ControlPanel()
+        changed = 0
+        failed = 0
+        try:
+            await panel.login()
+            for tg_id in selected:
+                session = SessionLocal()
+                try:
+                    user = session.query(User).filter(User.tg_id == tg_id).first()
+                    if user is None:
+                        failed += 1
+                        continue
+                    sub_id = str(user.sub_token or user.tg_id)
+                finally:
+                    session.close()
+                node_codes = list(execution["node_codes"])
+                if not node_codes:
+                    snapshots = await panel.get_user_key_snapshots(tg_id=tg_id)
+                    node_codes = [
+                        str(row.get("node_code") or "").strip().lower()
+                        for row in snapshots
+                        if str(row.get("node_code") or "").strip()
+                    ]
+                for node_code in node_codes:
+                    cap_session = SessionLocal()
+                    try:
+                        hard_cap = _get_user_node_hard_cap_gb(
+                            s=cap_session,
+                            tg_id=tg_id,
+                            node_code=node_code,
+                        )
+                    finally:
+                        cap_session.close()
+                    if bulk_action == "disable":
+                        ok = await panel.set_user_key_enabled_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            enable=False,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    elif bulk_action == "enable":
+                        ok = await panel.set_user_key_enabled_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            enable=True,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    elif bulk_action == "reset":
+                        ok = await panel.reset_user_key_traffic_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                        )
+                    else:
+                        ok = await panel.resync_user_key_subid_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    if ok:
+                        changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action={
+                                "disable": "key_disable",
+                                "enable": "key_enable",
+                                "reset": "key_reset_traffic",
+                                "resync": "key_resync_subid",
+                            }[bulk_action],
+                            node_code=node_code,
+                            actor_tg_id=actor,
+                            source="bulk",
+                        )
+                    else:
+                        failed += 1
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "bulk_completed" if failed == 0 else "bulk_partial",
+            "action": bulk_action,
+            "users": len(selected),
+            "changed": changed,
+            "failed": failed,
+        }
+
+    if action == "user.message":
+        tg_id = int(execution["tg_id"])
+        ok = await _telegram_send_message(tg_id, str(runtime["text"]))
+        return {
+            "ok": bool(ok),
+            "code": "message_sent" if ok else "telegram_failed",
+            "tg_id": tg_id,
+        }
+
+    if action == "ticket.reply":
+        ticket_id = int(execution["ticket_id"])
+        user_tg_id = int(execution["user_tg_id"])
+        session = SessionLocal()
+        try:
+            ticket = get_ticket_by_id(session, ticket_id)
+            if ticket is None:
+                return {"ok": False, "code": "ticket_not_found", "ticket_id": ticket_id}
+            add_ticket_message(
+                session,
+                ticket_id=ticket_id,
+                sender_tg_id=actor,
+                sender_role="admin",
+                body=str(runtime["body"]),
+                media_type=runtime.get("media_type"),
+                media_file_id=runtime.get("media_file_id"),
+                media_payload=runtime.get("media_payload"),
+            )
+            set_ticket_status(
+                session,
+                ticket=ticket,
+                status=STATUS_IN_PROGRESS,
+                assigned_admin_tg_id=actor,
+            )
+            session.commit()
+        finally:
+            session.close()
+        sent = await _telegram_send_message(
+            user_tg_id,
+            f"💬 Ответ оператора в обращении #{ticket_id}.",
+        )
+        return {
+            "ok": bool(sent),
+            "code": "ticket_replied" if sent else "telegram_failed",
+            "ticket_id": ticket_id,
+        }
+
+    raise RuntimeError("guarded external executor is unavailable")
+
+
+async def _execute_admin_post_commit(context: dict[str, Any]) -> dict[str, Any]:
+    if str(context.get("action") or "") != "ticket.status":
+        return {"ok": True, "code": "post_commit_not_required"}
+    execution = dict(context.get("execution") or {})
+    ticket_id = int(execution["ticket_id"])
+    user_tg_id = int(execution["user_tg_id"])
+    sent = await _telegram_send_message(
+        user_tg_id,
+        f"✅ Обращение #{ticket_id} закрыто оператором.",
+    )
+    return {"ok": bool(sent), "code": "ticket_close_notified" if sent else "telegram_failed"}
+
+
+def _admin_guarded_action_response(
+    *,
+    action: str,
+    target_id: str,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    known_status = str(result.get("status") or "")
+    if known_status not in {"completed", "failed"}:
+        return result
+    if known_status == "failed" and (
+        action,
+        str(result.get("result_code") or ""),
+    ) not in {
+        ("user.preset_run", "preset_partial"),
+        ("user.bulk_key_action", "bulk_partial"),
+        ("ticket.reply", "telegram_failed"),
+    }:
+        return result
+    facts = result.get("result") if isinstance(result.get("result"), dict) else {}
+    metadata = {
+        "status": result.get("status"),
+        "action_intent_id": result.get("action_intent_id"),
+        "audit_id": result.get("audit_id"),
+    }
+
+    def merged(legacy: dict[str, Any]) -> dict[str, Any]:
+        merged_result = {**result, **legacy, **metadata}
+        merged_result["ok"] = bool(
+            known_status == "completed" and legacy.get("ok", True)
+        )
+        return merged_result
+
+    if action == "user.manual_create":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "user": {
+                        "tg_id": tg_id,
+                        "display_name": str(user.display_name or ""),
+                        "sub_type": str(user.sub_type or ""),
+                        "is_active": bool(user.is_active),
+                        "expiry_at": _safe_iso(user.expiry_at),
+                        "subscription_url": build_subscription_url(str(user.sub_token or "")),
+                    },
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.block":
+        return merged({"ok": True, "is_active": bool(facts.get("is_active"))})
+
+    if action == "user.regenerate_token":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "subscription_url": build_subscription_url(str(user.sub_token or "")),
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action in {"user.safe_delete", "user.delete_test"}:
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "panel_deleted": bool(facts.get("panel_deleted")),
+            }
+        )
+
+    if action == "user.key_toggle":
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "node_code": str(facts["node_code"]),
+                "enabled": bool(facts.get("enabled")),
+            }
+        )
+
+    if action == "user.key_reset_traffic":
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "node_code": str(facts["node_code"]),
+            }
+        )
+
+    if action == "user.key_resync_subid":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "tg_id": tg_id,
+                    "node_code": str(facts["node_code"]),
+                    "expected_sub_id": str(user.sub_token or user.tg_id),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.key_limits":
+        tg_id = int(facts.get("tg_id") or target_id)
+        node_code = str(facts.get("node_code") or "")
+        session = SessionLocal()
+        try:
+            row = (
+                session.query(UserKeyPolicy)
+                .filter(
+                    UserKeyPolicy.tg_id == tg_id,
+                    func.lower(UserKeyPolicy.node_code) == node_code,
+                )
+                .first()
+            )
+            if row is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "policy": _serialize_key_policy(row),
+                    "applied": facts.get("applied"),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.loyalty_grant":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "tier_days": int(facts["tier_days"]),
+                    "expiry_at": _safe_iso(user.expiry_at),
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.preset_run" and facts:
+        preset = str(facts["preset"])
+        legacy: dict[str, Any] = {"ok": True, "preset": preset}
+        if preset in {"reset_key", "rotate_link"}:
+            tg_id = int(facts["tg_id"])
+            session = SessionLocal()
+            try:
+                user = session.query(User).filter(User.tg_id == tg_id).first()
+                if user is not None:
+                    legacy["subscription_url"] = build_subscription_url(
+                        str(user.sub_token or user.tg_id)
+                    )
+            finally:
+                session.close()
+            legacy["changed"] = int(facts.get("changed") or 0)
+            legacy["failed"] = int(facts.get("failed") or 0)
+        return merged(legacy)
+
+    if action == "user.bulk_key_action":
+        if facts:
+            requires_force = bool(facts.get("requires_force"))
+            return merged(
+                {
+                    "ok": not requires_force,
+                    "requires_force": requires_force or None,
+                    "action": str(facts.get("action") or ""),
+                    "users": int(facts.get("users") or 0),
+                    "changed": int(facts.get("changed") or 0),
+                    "failed": int(facts.get("failed") or 0),
+                    "details": [],
+                    **(
+                        {"message": "Для массового действия более чем над 50 пользователями нужен force=true"}
+                        if requires_force
+                        else {}
+                    ),
+                }
+            )
+        return merged(
+            {
+                "ok": True,
+                "action": str(result.get("action") or ""),
+                "dry_run": True,
+                "users": int(result.get("users") or 0),
+                "preview_tg_ids": [],
+            }
+        )
+
+    if action == "user.message":
+        return merged({"ok": True})
+
+    if action in {"ticket.reply", "ticket.status"}:
+        ticket_id = int(facts.get("ticket_id") or result.get("ticket_id") or target_id)
+        session = SessionLocal()
+        try:
+            ticket = get_ticket_by_id(session, ticket_id)
+            if ticket is None:
+                return result
+            messages = list_ticket_messages(session, ticket_id, limit=100)
+            return merged({"ticket": _ticket_row(ticket, messages)})
+        finally:
+            session.close()
+
+    return result
+
+
+async def _execute_admin_guarded_action(
+    *,
+    actor_tg_id: int,
+    action: str,
+    target_type: str,
+    target_id: str,
+    payload: dict[str, Any],
+    request: Request,
+) -> dict[str, Any]:
+    intent_id = str(request.headers.get("X-Admin-Intent-Id") or "")
+    idempotency_key = str(request.headers.get("X-Admin-Idempotency-Key") or "")
+    confirmation = str(request.headers.get("X-Admin-Confirmation-SHA256") or "")
+    if not intent_id.strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "intent_required",
+                "message": "Сначала создайте защищённое намерение через серверный предпросмотр.",
+            },
+        )
+    if not idempotency_key.strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="idempotency_required",
+            message="Нужен клиентский ключ идемпотентности.",
+        )
+    if not confirmation.strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="confirmation_required",
+            message="Нужно подтверждение серверной проверочной фразы.",
+        )
+    try:
+        result = await _execute_action_intent(
+            session_factory=SessionLocal,
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            idempotency_key=idempotency_key,
+            confirmation_sha256_header=confirmation,
+            action=action,
+            target={"type": target_type, "id": target_id},
+            payload=payload,
+            audit_writer=_add_admin_audit,
+            db_executor=lambda session, state, normalized, runtime: (
+                _execute_admin_client_action_db(
+                    session,
+                    state,
+                    dict(normalized),
+                    dict(runtime),
+                    actor_tg_id=actor_tg_id,
+                    action=action,
+                )
+            ),
+            external_executor=_execute_admin_client_action_external,
+            post_commit_executor=_execute_admin_post_commit,
+            external_timeout_seconds=(
+                300.0
+                if action in {"user.bulk_key_action", "user.preset_run"}
+                else 30.0
+            ),
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    return _admin_guarded_action_response(
+        action=action,
+        target_id=target_id,
+        result=result,
+    )
 
 
 async def _execute_admin_node_action(
@@ -18763,7 +19318,6 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "2096")))
-
 
 
 
