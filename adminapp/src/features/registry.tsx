@@ -8,6 +8,10 @@ import { ProviderLimitsPage } from "@/features/network/provider-limits-page";
 import { TrafficPage } from "@/features/network/traffic-page";
 import { NodesPage } from "@/features/nodes/nodes-page";
 import { OverviewPage } from "@/features/overview/overview-page";
+import { FunnelPage } from "@/features/revenue/funnel-page";
+import { PaymentsPage } from "@/features/revenue/payments-page";
+import { PromosPage } from "@/features/revenue/promos-page";
+import { ReferralsPage } from "@/features/revenue/referrals-page";
 import { OnlinePage } from "@/features/support/online-page";
 import { TicketsPage } from "@/features/support/tickets-page";
 import { UsersPage } from "@/features/users/users-page";
@@ -29,10 +33,10 @@ export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
   users: ({ onShellStatus }) => <UsersPage onShellStatus={onShellStatus} />,
   online: ({ onShellStatus }) => <OnlinePage onShellStatus={onShellStatus} />,
   tickets: ({ onShellStatus }) => <TicketsPage onShellStatus={onShellStatus} />,
-  payments: ({ onShellStatus }) => <LegacySection section="payments" onShellStatus={onShellStatus} />,
-  funnel: ({ onShellStatus }) => <LegacySection section="funnel" onShellStatus={onShellStatus} />,
-  promos: ({ onShellStatus }) => <LegacySection section="promos" onShellStatus={onShellStatus} />,
-  referrals: ({ onShellStatus }) => <LegacySection section="referrals" onShellStatus={onShellStatus} />,
+  payments: ({ onShellStatus }) => <PaymentsPage onShellStatus={onShellStatus} />,
+  funnel: ({ onShellStatus }) => <FunnelPage onShellStatus={onShellStatus} />,
+  promos: ({ onShellStatus }) => <PromosPage onShellStatus={onShellStatus} />,
+  referrals: ({ onShellStatus }) => <ReferralsPage onShellStatus={onShellStatus} />,
   release: ({ onShellStatus }) => <LegacySection section="release" onShellStatus={onShellStatus} />,
   broadcast: ({ onShellStatus }) => <LegacySection section="broadcast" onShellStatus={onShellStatus} />
 };

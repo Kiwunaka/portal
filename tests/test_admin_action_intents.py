@@ -120,6 +120,172 @@ def _seed_nodes(api) -> None:
         session.close()
 
 
+def test_revenue_promos_and_referrals_use_exact_server_previews_and_atomic_audit(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminAudit, Event, PromoCode, ReferralBonusQueue, User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add(
+            PromoCode(
+                code="WELCOME20",
+                promo_type="discount",
+                value=20,
+                uses_left=90,
+                expires_at=now + timedelta(days=14),
+            )
+        )
+        session.add_all(
+            [
+                User(
+                    tg_id=4101,
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=30),
+                    referral_count=0,
+                ),
+                User(
+                    tg_id=4102,
+                    sub_type="PAID",
+                    is_active=True,
+                    expiry_at=now + timedelta(days=30),
+                ),
+            ]
+        )
+        session.add(
+            ReferralBonusQueue(
+                order_id="safe-order-ref-4102",
+                referrer_tg_id=4101,
+                referred_tg_id=4102,
+                queued_at=now - timedelta(hours=8),
+                ready_at=now - timedelta(hours=1),
+                status="pending",
+                meta='{"provider_payload":"SYNTHETIC-RAW-REFERRAL-META"}',
+            )
+        )
+        session.add(
+            Event(
+                tg_id=4102,
+                event_name="connected_ok",
+                source="app",
+                created_at=now - timedelta(hours=2),
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    client = TestClient(api.app)
+    create_payload = {
+        "code": "SUMMER26",
+        "promo_type": "days",
+        "value": 7,
+        "uses_left": 100,
+        "expires_at": "2026-09-01T00:00:00",
+    }
+    direct_calls = [
+        client.post("/api/admin/promos", headers=_admin_headers(), json=create_payload),
+        client.patch(
+            "/api/admin/promos/WELCOME20",
+            headers=_admin_headers(),
+            json={"value": 25, "expires_at": "2026-09-15T00:00:00"},
+        ),
+        client.delete("/api/admin/promos/WELCOME20", headers=_admin_headers()),
+        client.post(
+            "/api/admin/referrals/process",
+            headers=_admin_headers(),
+            json={"limit": 100, "force_without_activity": False},
+        ),
+    ]
+    assert all(response.status_code == 428 for response in direct_calls)
+    assert all(_detail_code(response) == "intent_required" for response in direct_calls)
+
+    promo_payload = {"value": 25, "expires_at": "2026-09-15T00:00:00"}
+    promo = _prepare(
+        client,
+        action="promo.update",
+        target_type="promo",
+        target_id="WELCOME20",
+        payload=promo_payload,
+    )
+    assert promo.status_code == 200, promo.text
+    assert promo.json()["preview"]["before"]["promo_code"] == "WELCOME20"
+    assert promo.json()["preview"]["before"]["value"] == 20
+    assert promo.json()["preview"]["after"]["value"] == 25
+    assert promo.json()["preview"]["after"]["expires_at"] == "2026-09-15T00:00:00"
+
+    delete = _prepare(
+        client,
+        action="promo.delete",
+        target_type="promo",
+        target_id="WELCOME20",
+        payload={},
+    )
+    assert delete.status_code == 200, delete.text
+    assert delete.json()["risk_level"] == "L3"
+    assert delete.json()["confirmation_challenge"] == "WELCOME20"
+
+    referral_payload = {"limit": 100, "force_without_activity": False}
+    referral = _prepare(
+        client,
+        action="referral.process",
+        target_type="referral_queue",
+        target_id="ready",
+        payload=referral_payload,
+    )
+    assert referral.status_code == 200, referral.text
+    referral_body = referral.json()
+    assert referral_body["preview"]["before"]["selection_count"] == 1
+    assert referral_body["preview"]["before"]["decision_basis"] == "reward_ready"
+    assert referral_body["preview"]["before"]["order_id"] == "safe-order-ref-4102"
+    assert "SYNTHETIC-RAW-REFERRAL-META" not in json.dumps(referral_body, ensure_ascii=False)
+
+    confirmation_hash = hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest()
+    promo_done = client.patch(
+        "/api/admin/promos/WELCOME20",
+        headers=_execute_headers(
+            str(promo.json()["intent_id"]),
+            confirmation_hash=confirmation_hash,
+        ),
+        json=promo_payload,
+    )
+    assert promo_done.status_code == 200, promo_done.text
+    referral_done = client.post(
+        "/api/admin/referrals/process",
+        headers=_execute_headers(
+            str(referral_body["intent_id"]),
+            confirmation_hash=confirmation_hash,
+        ),
+        json=referral_payload,
+    )
+    assert referral_done.status_code == 200, referral_done.text
+    assert referral_done.json()["rewarded"] == 1
+
+    session = api.SessionLocal()
+    try:
+        promo_row = session.query(PromoCode).filter_by(code="WELCOME20").one()
+        assert promo_row.value == 25
+        queue = session.query(ReferralBonusQueue).one()
+        assert queue.status == "rewarded"
+        audits = {
+            row.action: json.loads(row.meta or "{}")
+            for row in session.query(AdminAudit)
+            .filter(AdminAudit.action.in_(["admin_promo_update", "admin_referrals_process"]))
+            .all()
+        }
+        assert set(audits) == {"admin_promo_update", "admin_referrals_process"}
+        assert audits["admin_promo_update"]["from_code"] == "WELCOME20"
+        assert audits["admin_referrals_process"]["queue_ids"] == [int(queue.id)]
+        assert "safe-order-ref-4102" not in json.dumps(audits["admin_referrals_process"])
+        assert "SYNTHETIC-RAW-REFERRAL-META" not in json.dumps(audits)
+    finally:
+        session.close()
+
+
 def _prepare(
     client: TestClient,
     *,

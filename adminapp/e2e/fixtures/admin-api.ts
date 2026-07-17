@@ -700,7 +700,44 @@ type AdminApiMockOptions = {
   ticketReplyOutcomes?: Array<"completed" | "failed" | "uncertain">;
   networkScenario?: "populated";
   networkDelayMs?: number;
+  revenueScenario?: "populated";
+  paymentOrdersStatus?: number;
+  funnelStatus?: number;
+  promosStatus?: number;
 };
+
+const revenueOrders = [
+  { id: 901, order_id: "order-review-901", provider: "freekassa", tg_id: 1001, user: { tg_id: 1001, username: "operator_test", display_name: "Иван Проверочный", status: "active" }, plan_code: "start_99", amount: 99, currency: "RUB", status: "manual_review", source: "checkout", campaign: "summer", promo_code: "WELCOME20", created_at: "2026-07-15T08:30:00Z", paid_at: null, event_count: 2, last_event: { id: 9901, provider: "freekassa", event_type: "result", external_id: "safe-event-9901", order_id: "order-review-901", signature_ok: true, processed_ok: false, created_at: "2026-07-15T08:31:00Z" } },
+  { id: 902, order_id: "order-paid-902", provider: "stars", tg_id: 1002, user: null, plan_code: "month", amount: 299, currency: "RUB", status: "paid", source: "bot", campaign: null, promo_code: null, created_at: "2026-07-15T07:00:00Z", paid_at: "2026-07-15T07:02:00Z", event_count: 1, last_event: { id: 9902, provider: "stars", event_type: "success", external_id: "safe-event-9902", order_id: "order-paid-902", signature_ok: true, processed_ok: true, created_at: "2026-07-15T07:02:00Z" } },
+];
+
+const revenueFunnel = {
+  period: { from: "2026-06-16", to: "2026-07-15" },
+  totals: { visitors: 1200, app_opens: 720, checkouts: 310, paid: 180, connected: 151 },
+  stages: [
+    { key: "site_to_app", label: "Сайт → кабинет или бот", entered: 1200, reached_next: 720, dropped: 480, conversion_pct: 60 },
+    { key: "app_to_checkout", label: "Кабинет/бот → оплата", entered: 720, reached_next: 310, dropped: 410, conversion_pct: 43.1 },
+    { key: "checkout_to_paid", label: "Оплата → подтверждение", entered: 310, reached_next: 180, dropped: 130, conversion_pct: 58.1 },
+    { key: "paid_to_connected", label: "Оплачено → подключение", entered: 180, reached_next: 151, dropped: 29, conversion_pct: 83.9 },
+  ],
+  drop_reasons: [{ reason: "Не начали оплату", count: 410 }, { reason: "Callback не подтверждён", count: 130 }],
+  by_source: [
+    { source: "site", visitors: 800, app_opens: 440, checkouts: 190, paid: 108, connected: 91 },
+    { source: "bot", visitors: null, app_opens: 280, checkouts: 120, paid: 72, connected: 60 },
+  ],
+  notes: ["Анонимные site sessions не содержат IP."]
+};
+
+const revenuePromos = [
+  { code: "WELCOME20", promo_type: "discount", value: 20, uses_left: 90, used_count: 10, expires_at: "2026-09-15T00:00:00Z", created_at: "2026-07-01T10:00:00Z" },
+  { code: "BONUS7", promo_type: "days", value: 7, uses_left: -1, used_count: 4, expires_at: null, created_at: "2026-07-02T10:00:00Z" },
+];
+
+const revenueReferrals = [
+  { id: 302, order_id: "ref-order-302", referrer_tg_id: 1102, referred_tg_id: 2102, queued_at: "2026-07-15T07:00:00Z", ready_at: "2026-07-15T09:00:00Z", status: "pending", processed_at: null, basis: "waiting_for_activity", meta_present: true, meta_sha256: "a".repeat(64) },
+  { id: 301, order_id: "ref-order-301", referrer_tg_id: 1101, referred_tg_id: 2101, queued_at: "2026-07-15T06:00:00Z", ready_at: "2026-07-15T08:00:00Z", status: "pending", processed_at: null, basis: "reward_ready", meta_present: false, meta_sha256: "b".repeat(64) },
+  { id: 299, order_id: "ref-order-299", referrer_tg_id: 1099, referred_tg_id: 2099, queued_at: "2026-07-14T06:00:00Z", ready_at: "2026-07-14T08:00:00Z", status: "rewarded", processed_at: "2026-07-14T09:00:00Z", basis: "rewarded", meta_present: false, meta_sha256: "c".repeat(64) },
+];
 
 const networkTrafficRows = [
   { date: "2026-07-13", node_code: "nl", pool_code: "paid_pool", traffic_bytes: 8053063680, traffic_gb: 7.5, samples: 18 },
@@ -1012,6 +1049,17 @@ function isProviderQuotaMutationPath(pathname: string): boolean {
   return pathname === "/api/admin/provider-quotas" || /^\/api\/admin\/provider-quotas\/[^/]+$/.test(pathname);
 }
 
+function isPaymentDetailPath(pathname: string): boolean {
+  return /^\/api\/admin\/payments\/orders\/[^/]+\/[^/]+$/.test(pathname);
+}
+
+function isRevenueMutationPath(pathname: string): boolean {
+  return /^\/api\/admin\/payments\/orders\/[^/]+\/[^/]+\/reconcile$/.test(pathname)
+    || pathname === "/api/admin/promos"
+    || /^\/api\/admin\/promos\/[^/]+$/.test(pathname)
+    || pathname === "/api/admin/referrals/process";
+}
+
 function isAlertActionPath(pathname: string): boolean {
   return /^\/api\/admin\/alerts\/[1-9]\d*\/(ack|silence)$/.test(pathname);
 }
@@ -1023,7 +1071,8 @@ function isFocusedGetPath(pathname: string): boolean {
     || isNodeObservabilityPath(pathname)
     || isUserDetailPath(pathname)
     || isUserInvestigationPath(pathname)
-    || isTicketDetailPath(pathname);
+    || isTicketDetailPath(pathname)
+    || isPaymentDetailPath(pathname);
 }
 
 function fulfillJson(route: Route, data: unknown, status = 200) {
@@ -1111,6 +1160,7 @@ export async function installAdminApiMock(
       || isUserActionPath(url.pathname)
       || isTicketActionPath(url.pathname)
       || isProviderQuotaMutationPath(url.pathname)
+      || isRevenueMutationPath(url.pathname)
       || isAlertActionPath(url.pathname);
     const knownRequest =
       (method === "GET" && isFocusedGetPath(url.pathname)) ||
@@ -1121,6 +1171,7 @@ export async function installAdminApiMock(
       ((method === "POST" || method === "PUT") && isUserActionPath(url.pathname)) ||
       (method === "POST" && isTicketActionPath(url.pathname)) ||
       ((method === "POST" || method === "PATCH" || method === "DELETE") && isProviderQuotaMutationPath(url.pathname)) ||
+      ((method === "POST" || method === "PATCH" || method === "DELETE") && isRevenueMutationPath(url.pathname)) ||
       (method === "POST" && isAlertActionPath(url.pathname)) ||
       (method === "OPTIONS" && knownPath);
     if (!knownRequest) {
@@ -1188,11 +1239,17 @@ export async function installAdminApiMock(
       };
       const nodeAction = action.startsWith("node.");
       const providerAction = action.startsWith("provider_quota.");
-      const l3Action = action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete" || action === "provider_quota.delete";
+      const paymentAction = action === "payment.reconcile";
+      const promoAction = action.startsWith("promo.");
+      const referralAction = action === "referral.process";
+      const revenueAction = paymentAction || promoAction || referralAction;
+      const l3Action = action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete" || action === "provider_quota.delete" || action === "promo.delete";
       const challenge = action === "node.disable"
         ? nodeCode.toUpperCase()
         : action === "provider_quota.delete"
           ? nodeCode.toUpperCase()
+        : action === "promo.delete"
+          ? targetId.toUpperCase()
         : action === "ticket.reply" || action === "user.message"
           ? "ОТПРАВИТЬ"
           : l3Action
@@ -1202,6 +1259,15 @@ export async function installAdminApiMock(
       const genericAfter = targetType === "ticket" ? { ticket_id: Number(targetId), status: action === "ticket.status" ? String((body.payload as Record<string, unknown> | undefined)?.status || "open") : "open" } : { tg_id: Number(targetId), status: action === "user.block" ? "blocked" : "active" };
       const providerBefore = { node_code: nodeCode.toUpperCase(), configured: true, node_status: "active", included_gb: 100, used_gb: 84.25, reset_day: 1, timezone: "UTC", warning_ratio: 0.8, critical_ratio: 0.95, enabled: true, notes_present: false, projected_exhaustion_at: "2026-07-18T12:00:00Z", updated_at: "2026-07-15T09:55:00Z" };
       const providerAfter = action === "provider_quota.delete" ? { ...providerBefore, configured: false, included_gb: null, reset_day: null, timezone: null, warning_ratio: null, critical_ratio: null, enabled: false, projected_exhaustion_at: null, updated_at: null } : { ...providerBefore, included_gb: Number((body.payload as Record<string, unknown> | undefined)?.included_gb || 100) };
+      const revenuePayload = body.payload && typeof body.payload === "object" && !Array.isArray(body.payload) ? body.payload as Record<string, unknown> : {};
+      const paymentBefore = { order_id: "order-review-901", provider: "freekassa", status: "manual_review", amount: 99, currency: "RUB", callback_events: 2, callback_state: "requires_review" };
+      const paymentAfter = { ...paymentBefore, status: String(revenuePayload.status || "manual_review"), operator_note_length: String(revenuePayload.note || "").length };
+      const promoBefore = { promo_code: targetId.toUpperCase(), promo_type: "discount", value: 20, uses_left: 90, used_count: 10, expires_at: "2026-09-15T00:00:00Z", exists: action !== "promo.create" };
+      const promoAfter = action === "promo.delete" ? { ...promoBefore, exists: false } : { ...promoBefore, promo_code: String(revenuePayload.new_code || revenuePayload.code || targetId).toUpperCase(), promo_type: String(revenuePayload.promo_type || promoBefore.promo_type), value: Number(revenuePayload.value ?? promoBefore.value), uses_left: Number(revenuePayload.uses_left ?? promoBefore.uses_left), expires_at: revenuePayload.expires_at ?? promoBefore.expires_at, exists: true };
+      const referralBefore = { selection_count: 2, queue_id: 301, order_id: "ref-order-301", referrer_tg_id: 1101, referred_tg_id: 2101, decision_basis: "reward_ready" };
+      const referralAfter = { ...referralBefore, status: "process" };
+      const revenueBefore = paymentAction ? paymentBefore : promoAction ? promoBefore : referralBefore;
+      const revenueAfter = paymentAction ? paymentAfter : promoAction ? promoAfter : referralAfter;
       await fulfillJson(route, {
         ok: true,
         intent_id: "00000000-0000-4000-8000-000000000713",
@@ -1209,17 +1275,18 @@ export async function installAdminApiMock(
         target: { type: targetType, id: nodeAction || providerAction ? nodeCode : targetId },
         risk_level: l3Action ? "L3" : "L2",
         preview: {
-          title: providerAction ? `Квота провайдера ${nodeCode.toUpperCase()}` : nodeAction ? action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}` : targetType === "ticket" ? `Действие с тикетом ${targetId}` : `Действие с пользователем ${targetId}`,
-          summary: providerAction ? "Сервер пересчитал конфигурацию и прогноз исчерпания." : nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер проверил текущее состояние и подготовил изменение.",
-          before: providerAction ? providerBefore : nodeAction ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 } : genericBefore,
-          after: providerAction ? providerAfter : nodeAction ? { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 } : genericAfter,
-          warnings: action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : providerAction ? ["Прогноз рассчитан сервером."] : [],
+          title: revenueAction ? paymentAction ? "Сверка платёжного заказа" : promoAction ? "Изменение промокода" : "Обработка реферальной очереди" : providerAction ? `Квота провайдера ${nodeCode.toUpperCase()}` : nodeAction ? action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}` : targetType === "ticket" ? `Действие с тикетом ${targetId}` : `Действие с пользователем ${targetId}`,
+          summary: revenueAction ? paymentAction ? "Сервер зафиксировал provider, order, status и callback version." : promoAction ? "Сервер показал точные before/after и срок промокода." : "Сервер зафиксировал очередь и основание решения." : providerAction ? "Сервер пересчитал конфигурацию и прогноз исчерпания." : nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер проверил текущее состояние и подготовил изменение.",
+          before: revenueAction ? revenueBefore : providerAction ? providerBefore : nodeAction ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 } : genericBefore,
+          after: revenueAction ? revenueAfter : providerAction ? providerAfter : nodeAction ? { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 } : genericAfter,
+          warnings: revenueAction ? paymentAction ? ["Callback evidence не изменяется."] : referralAction ? ["Новый платёж не создаётся."] : [] : action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : providerAction ? ["Прогноз рассчитан сервером."] : [],
+          ...(referralAction ? { selection: { selection_count: 2, selection_hash: "4".repeat(64) } } : {}),
         },
         payload_hash: "1".repeat(64),
         snapshot_hash: "2".repeat(64),
         entity_version_hash: "3".repeat(64),
         confirmation_challenge: challenge,
-        confirmation_challenge_kind: action === "node.disable" || action === "provider_quota.delete" ? "exact_node_code" : l3Action ? "exact_tg_id" : "exact_phrase",
+        confirmation_challenge_kind: action === "promo.delete" ? "exact_promo_code" : action === "node.disable" || action === "provider_quota.delete" ? "exact_node_code" : l3Action ? "exact_tg_id" : "exact_phrase",
         expires_at: "2099-07-15T10:10:00Z",
       });
       return;
@@ -1251,6 +1318,22 @@ export async function installAdminApiMock(
         action_intent_id: requestHeaders["x-admin-intent-id"],
         audit_id: 716,
         quota: networkQuotaConfig,
+      });
+      return;
+    }
+
+    if (method !== "GET" && isRevenueMutationPath(url.pathname)) {
+      if (!requestHeaders["x-admin-intent-id"] || !requestHeaders["x-admin-idempotency-key"] || !requestHeaders["x-admin-confirmation-sha256"]) {
+        await fulfillJson(route, { detail: { code: "intent_required", message: "Нужно защищённое намерение" } }, 428);
+        return;
+      }
+      await fulfillJson(route, {
+        ok: true,
+        status: "completed",
+        action_intent_id: requestHeaders["x-admin-intent-id"],
+        audit_id: 717,
+        processed: url.pathname === "/api/admin/referrals/process" ? 2 : undefined,
+        rewarded: url.pathname === "/api/admin/referrals/process" ? 1 : undefined,
       });
       return;
     }
@@ -1498,20 +1581,22 @@ export async function installAdminApiMock(
     }
 
     if (url.pathname === "/api/admin/payments/summary") {
+      const period = url.searchParams.get("period") || "7d";
+      const multiplier = period === "today" ? 1 : period === "30d" ? 8 : 3;
       await fulfillJson(route, {
         ok: true,
-        period: { key: url.searchParams.get("period") || "7d", from: generatedAt, to: generatedAt },
-        revenue: { currency: "RUB", paid_count: 0, amount: 0, by_currency: [] },
-        status_counts: { paid: 0, pending: 0, manual_review: 0, failed: 0 },
-        attention: { pending_count: 0, manual_review_count: 0, failed_count: 0, problem_count: 0 },
+        period: { key: period, from: generatedAt, to: generatedAt },
+        revenue: options.revenueScenario === "populated" ? { currency: "RUB", paid_count: 4 * multiplier, amount: 1295 * multiplier, by_currency: [{ currency: "RUB", paid_count: 4 * multiplier, revenue: 1295 * multiplier }] } : { currency: "RUB", paid_count: 0, amount: 0, by_currency: [] },
+        status_counts: options.revenueScenario === "populated" ? { paid: 4 * multiplier, pending: 1, manual_review: 1, failed: 1 } : { paid: 0, pending: 0, manual_review: 0, failed: 0 },
+        attention: options.revenueScenario === "populated" ? { pending_count: 1, manual_review_count: 1, failed_count: 1, problem_count: 3 } : { pending_count: 0, manual_review_count: 0, failed_count: 0, problem_count: 0 },
         abandoned: {
-          buy_clicks: 0,
-          checkout_started: 0,
-          paid: 0,
-          buy_click_not_paid: 0,
-          checkout_not_paid: 0
+          buy_clicks: options.revenueScenario === "populated" ? 12 * multiplier : 0,
+          checkout_started: options.revenueScenario === "populated" ? 8 * multiplier : 0,
+          paid: options.revenueScenario === "populated" ? 4 * multiplier : 0,
+          buy_click_not_paid: options.revenueScenario === "populated" ? 8 * multiplier : 0,
+          checkout_not_paid: options.revenueScenario === "populated" ? 4 * multiplier : 0
         },
-        problem_orders: []
+        problem_orders: options.revenueScenario === "populated" ? [revenueOrders[0]] : []
       });
       return;
     }
@@ -1571,12 +1656,58 @@ export async function installAdminApiMock(
       return;
     }
 
+    if (url.pathname === "/api/admin/payments/orders") {
+      if (options.paymentOrdersStatus && options.paymentOrdersStatus !== 200) {
+        await fulfillJson(route, { detail: "Реестр заказов временно недоступен", code: "payment_orders_unavailable" }, options.paymentOrdersStatus);
+        return;
+      }
+      const wantedStatus = url.searchParams.get("status") || "";
+      const q = (url.searchParams.get("q") || "").toLowerCase();
+      const rows = (options.revenueScenario === "populated" ? revenueOrders : []).filter((row) => (!wantedStatus || row.status === wantedStatus) && (!q || `${row.order_id} ${row.tg_id}`.toLowerCase().includes(q)));
+      await fulfillJson(route, { orders: rows, total: rows.length, limit: 80, offset: 0 });
+      return;
+    }
+
+    if (isPaymentDetailPath(url.pathname)) {
+      const parts = url.pathname.split("/");
+      const orderId = decodeURIComponent(parts.at(-1) || "");
+      const provider = decodeURIComponent(parts.at(-2) || "");
+      const order = revenueOrders.find((row) => row.order_id === orderId && row.provider === provider);
+      await fulfillJson(route, order ? { order } : { detail: "Order not found" }, order ? 200 : 404);
+      return;
+    }
+
+    if (url.pathname === "/api/admin/funnel/summary") {
+      if (options.funnelStatus && options.funnelStatus !== 200) {
+        await fulfillJson(route, { detail: "Воронка временно недоступна", code: "funnel_unavailable" }, options.funnelStatus);
+        return;
+      }
+      await fulfillJson(route, options.revenueScenario === "populated" ? revenueFunnel : { period: { from: null, to: null }, totals: {}, stages: [], drop_reasons: [], by_source: [], notes: [] });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/promos") {
+      if (options.promosStatus && options.promosStatus !== 200) {
+        await fulfillJson(route, { detail: "Промокоды временно недоступны", code: "promos_unavailable" }, options.promosStatus);
+        return;
+      }
+      await fulfillJson(route, { promos: options.promoRows ?? (options.revenueScenario === "populated" ? revenuePromos : []) });
+      return;
+    }
+
     if (url.pathname === "/api/admin/referrals/pending" && options.referralsStatus && options.referralsStatus !== 200) {
       await fulfillJson(
         route,
         { detail: "Источник рефералов временно недоступен", code: "referrals_unavailable" },
         options.referralsStatus
       );
+      return;
+    }
+
+    if (url.pathname === "/api/admin/referrals/pending") {
+      const wanted = url.searchParams.get("status") || "";
+      const rows = (options.revenueScenario === "populated" ? revenueReferrals : []).filter((row) => !wanted || row.status === wanted);
+      await fulfillJson(route, { rows });
       return;
     }
 

@@ -99,6 +99,22 @@ const FIELD_LABELS: Record<string, string> = {
   critical_ratio: "Критический порог",
   notes_present: "Есть примечание",
   projected_exhaustion_at: "Прогноз исчерпания",
+  order_id: "Заказ",
+  provider: "Провайдер",
+  amount: "Сумма",
+  currency: "Валюта",
+  callback_events: "Событий callback",
+  callback_state: "Состояние callback",
+  operator_note_length: "Длина примечания",
+  promo_code: "Промокод",
+  promo_type: "Тип промокода",
+  value: "Значение",
+  uses_left: "Осталось использований",
+  used_count: "Использовано",
+  queue_id: "Запись очереди",
+  referrer_tg_id: "Реферер",
+  referred_tg_id: "Приглашённый",
+  decision_basis: "Основание решения",
 };
 
 function valueText(value: unknown, field: string): string {

@@ -12924,11 +12924,38 @@ async def admin_payment_orders(
         s.close()
 
 
+@app.get("/api/admin/payments/orders/{provider}/{order_id}")
+async def admin_payment_order_detail(
+    provider: str,
+    order_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    provider_norm = _normalize_provider(provider)
+    order_norm = str(order_id or "").strip()
+    s = SessionLocal()
+    try:
+        order = (
+            s.query(ExternalOrder)
+            .filter(
+                ExternalOrder.provider == provider_norm,
+                ExternalOrder.order_id == order_norm,
+            )
+            .first()
+        )
+        if order is None:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return {"order": _admin_payment_order_payload(s=s, order=order)}
+    finally:
+        s.close()
+
+
 @app.post("/api/admin/payments/orders/{provider}/{order_id}/reconcile")
 async def admin_payment_order_reconcile(
     provider: str,
     order_id: str,
     payload: AdminPaymentReconcileIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
@@ -12936,10 +12963,16 @@ async def admin_payment_order_reconcile(
     order_norm = str(order_id or "").strip()
     if not provider_norm or not order_norm:
         raise HTTPException(status_code=400, detail="Provider and order_id are required")
-    status_norm = str(payload.status or "").strip().lower()
-    if status_norm and status_norm not in ADMIN_PAYMENT_RECONCILE_STATUSES:
-        raise HTTPException(status_code=400, detail="Unsupported payment status")
-    note = str(payload.note or "").strip()
+    guarded_payload = {"note": str(payload.note or ""), "status": payload.status}
+    if not str(request.headers.get("X-Admin-Intent-Id") or "").strip():
+        return await _execute_admin_guarded_action(
+            actor_tg_id=actor,
+            action="payment.reconcile",
+            target_type="payment",
+            target_id="0",
+            payload=guarded_payload,
+            request=request,
+        )
     s = SessionLocal()
     try:
         order = (
@@ -12949,30 +12982,17 @@ async def admin_payment_order_reconcile(
         )
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
-        from_status = str(order.status or "created")
-        if status_norm:
-            order.status = status_norm
-            if status_norm == "paid" and not order.paid_at:
-                order.paid_at = _utcnow()
-        s.commit()
-        s.refresh(order)
-        order_payload = _admin_payment_order_payload(s=s, order=order)
+        target_id = str(int(order.id))
     finally:
         s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_payment_reconcile",
-        target_tg_id=int(order_payload["tg_id"]) if order_payload.get("tg_id") is not None else None,
-        meta={
-            "provider": provider_norm,
-            "order_id": order_norm,
-            "from_status": from_status,
-            "to_status": status_norm or from_status,
-            "note": note,
-        },
+        action="payment.reconcile",
+        target_type="payment",
+        target_id=target_id,
+        payload=guarded_payload,
+        request=request,
     )
-    return {"ok": True, "order": order_payload}
 
 
 @app.get("/api/admin/users")
@@ -13975,87 +13995,58 @@ async def admin_promos(x_telegram_init_data: str = Header(default=""), limit: in
 
 
 @app.post("/api/admin/promos")
-async def admin_promos_create(payload: AdminPromoCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_create(
+    payload: AdminPromoCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = (payload.code or "").strip().upper()
-    promo_type = (payload.promo_type or "").strip().lower()
-    if promo_type not in {"discount", "days"}:
-        raise HTTPException(status_code=400, detail="promo_type must be discount or days")
-    s = SessionLocal()
-    try:
-        exists = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Promo code already exists")
-        row = PromoCode(
-            code=code,
-            promo_type=promo_type,
-            value=int(payload.value),
-            uses_left=int(payload.uses_left),
-            expires_at=_parse_optional_datetime(payload.expires_at),
-        )
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_promo_create", meta={"code": code, "promo_type": promo_type})
-    return {"ok": True, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.create",
+        target_type="promo",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/promos/{code}")
-async def admin_promos_update(code: str, payload: AdminPromoUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_update(
+    code: str,
+    payload: AdminPromoUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_code = (code or "").strip().upper()
-    s = SessionLocal()
-    try:
-        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Promo not found")
-
-        if payload.new_code is not None and payload.new_code.strip():
-            next_code = payload.new_code.strip().upper()
-            if next_code != src_code:
-                dup = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == next_code).first()
-                if dup:
-                    raise HTTPException(status_code=409, detail="Promo code already exists")
-                row.code = next_code
-
-        if payload.promo_type is not None:
-            ptype = (payload.promo_type or "").strip().lower()
-            if ptype not in {"discount", "days"}:
-                raise HTTPException(status_code=400, detail="promo_type must be discount or days")
-            row.promo_type = ptype
-        if payload.value is not None:
-            row.value = int(payload.value)
-        if payload.uses_left is not None:
-            row.uses_left = int(payload.uses_left)
-        if "expires_at" in payload.model_fields_set:
-            row.expires_at = _parse_optional_datetime(payload.expires_at)
-
-        s.commit()
-        out_code = row.code
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_promo_update", meta={"from": src_code, "to": out_code})
-    return {"ok": True, "code": out_code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.update",
+        target_type="promo",
+        target_id=src_code,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/promos/{code}")
-async def admin_promos_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_delete(
+    code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_code = (code or "").strip().upper()
-    s = SessionLocal()
-    try:
-        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Promo not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_promo_delete", meta={"code": src_code})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.delete",
+        target_type="promo",
+        target_id=src_code,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/plans")
@@ -14696,6 +14687,44 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
     }
 
 
+def _admin_referral_basis(session, row: ReferralBonusQueue, *, now: datetime) -> str:
+    status = str(row.status or "").strip().lower()
+    if status != "pending":
+        return status or "unknown"
+    if row.ready_at and row.ready_at > now:
+        return "waiting_ready_at"
+    referred = session.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+    referrer = session.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+    if referred is None or referrer is None:
+        return "rejected_missing_user"
+    has_activity = (
+        session.query(Event.id)
+        .filter(
+            Event.tg_id == int(referred.tg_id),
+            Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
+            Event.event_name.in_(["connected_ok", "clicked_connect"]),
+        )
+        .first()
+        is not None
+    )
+    if not has_activity:
+        queued_at = row.queued_at or now
+        age_hours = max(0, int((now - queued_at).total_seconds() // 3600))
+        return (
+            "rejected_no_activity"
+            if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS)
+            else "waiting_for_activity"
+        )
+    if not (
+        bool(referrer.is_active)
+        and str(referrer.sub_type or "").strip().upper() == "PAID"
+        and referrer.expiry_at is not None
+        and referrer.expiry_at > now
+    ):
+        return "rejected_referrer_inactive"
+    return "reward_ready"
+
+
 @app.get("/api/admin/referrals/pending")
 async def admin_referrals_pending(
     x_telegram_init_data: str = Header(default=""),
@@ -14703,13 +14732,18 @@ async def admin_referrals_pending(
     status: str = "",
 ) -> dict:
     _require_admin(x_telegram_init_data)
+    now = _utcnow()
     s = SessionLocal()
     try:
         q = s.query(ReferralBonusQueue)
         status_norm = str(status or "").strip().lower()
         if status_norm:
             q = q.filter(func.lower(ReferralBonusQueue.status) == status_norm)
-        rows = q.order_by(ReferralBonusQueue.id.desc()).limit(max(1, min(int(limit), 1000))).all()
+        rows = (
+            q.order_by(ReferralBonusQueue.ready_at.asc(), ReferralBonusQueue.id.asc())
+            .limit(max(1, min(int(limit), 1000)))
+            .all()
+        )
         return {
             "rows": [
                 {
@@ -14721,7 +14755,11 @@ async def admin_referrals_pending(
                     "ready_at": _safe_iso(r.ready_at),
                     "status": str(r.status or ""),
                     "processed_at": _safe_iso(r.processed_at),
-                    "meta": _json_obj(getattr(r, "meta", None)),
+                    "basis": _admin_referral_basis(s, r, now=now),
+                    "meta_present": bool(str(getattr(r, "meta", "") or "").strip()),
+                    "meta_sha256": hashlib.sha256(
+                        str(getattr(r, "meta", "") or "").encode("utf-8")
+                    ).hexdigest(),
                 }
                 for r in rows
             ]
@@ -14731,15 +14769,20 @@ async def admin_referrals_pending(
 
 
 @app.post("/api/admin/referrals/process")
-async def admin_referrals_process(payload: AdminReferralQueueProcessIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_referrals_process(
+    payload: AdminReferralQueueProcessIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    out = _process_referral_bonus_queue(limit=int(payload.limit), force_without_activity=bool(payload.force_without_activity))
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_referrals_process",
-        meta={"limit": int(payload.limit), "force_without_activity": bool(payload.force_without_activity), **out},
+        action="referral.process",
+        target_type="referral_queue",
+        target_id="ready",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, **out}
 
 
 @app.get("/api/admin/loyalty-config")
@@ -16512,6 +16555,139 @@ def _execute_admin_client_action_db(
     actor_tg_id: int,
     action: str,
 ) -> dict[str, Any]:
+    if action == "payment.reconcile":
+        order = state.entity
+        next_status = str(state.context["to_status"])
+        operator_note = str(_runtime_payload["note"])
+        order_meta = _json_obj(order.meta_json)
+        existing = order_meta.get("admin_reconciliations")
+        reconciliations = [
+            item
+            for item in (existing[-49:] if isinstance(existing, list) else [])
+            if isinstance(item, dict)
+        ]
+        reconciliations.append(
+            {
+                "at": _safe_iso(_utcnow()),
+                "actor_tg_id": int(actor_tg_id),
+                "from_status": str(state.context["from_status"]),
+                "to_status": next_status,
+                "note": operator_note,
+            }
+        )
+        order_meta["admin_reconciliations"] = reconciliations
+        order.meta_json = json.dumps(order_meta, ensure_ascii=False, separators=(",", ":"))
+        order.status = next_status
+        if next_status == "paid" and not order.paid_at:
+            order.paid_at = _utcnow()
+        session.flush()
+        return {
+            "order_db_id": int(order.id),
+            "provider": str(order.provider or ""),
+            "order_id": str(order.order_id or ""),
+            "status": str(order.status or ""),
+        }
+
+    if action in {"promo.create", "promo.update", "promo.delete"}:
+        promo = state.entity
+        if action == "promo.delete":
+            if promo is None:
+                raise ActionIntentError(
+                    "target_not_found",
+                    status_code=404,
+                    message="Промокод не найден.",
+                )
+            deleted_code = str(promo.code or "").upper()
+            session.delete(promo)
+            session.flush()
+            return {"code": deleted_code, "deleted": True}
+
+        after = dict(state.context["after_snapshot"])
+        if action == "promo.create":
+            if promo is not None:
+                raise ActionIntentError(
+                    "target_exists",
+                    status_code=409,
+                    message="Промокод уже существует.",
+                )
+            promo = PromoCode(created_at=_utcnow())
+            session.add(promo)
+        promo.code = str(after["promo_code"])
+        promo.promo_type = str(after["promo_type"])
+        promo.value = int(after["value"])
+        promo.uses_left = int(after["uses_left"])
+        promo.expires_at = (
+            datetime.fromisoformat(str(after["expires_at"]))
+            if after.get("expires_at")
+            else None
+        )
+        session.flush()
+        return {"code": str(promo.code or "").upper(), "deleted": False}
+
+    if action == "referral.process":
+        now = _utcnow()
+        processed = 0
+        rewarded = 0
+        waiting = 0
+        rejected = 0
+        queue_ids: list[int] = []
+        for row in list(state.entity):
+            processed += 1
+            queue_ids.append(int(row.id))
+            referred = session.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+            referrer = session.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+            if referred is None or referrer is None:
+                row.status = "rejected_missing_user"
+                row.processed_at = now
+                rejected += 1
+                continue
+            has_activity = (
+                session.query(Event.id)
+                .filter(
+                    Event.tg_id == int(referred.tg_id),
+                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
+                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
+                )
+                .first()
+                is not None
+            )
+            age_hours = max(
+                0,
+                int((now - (row.queued_at or now)).total_seconds() // 3600),
+            )
+            if not has_activity and not bool(payload["force_without_activity"]):
+                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
+                    row.status = "rejected_no_activity"
+                    row.processed_at = now
+                    rejected += 1
+                else:
+                    row.ready_at = now + timedelta(hours=6)
+                    waiting += 1
+                continue
+            ref_sub = str(referrer.sub_type or "").upper().strip()
+            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
+            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
+                row.status = "rejected_referrer_inactive"
+                row.processed_at = now
+                rejected += 1
+                continue
+            row_meta = _json_obj(getattr(row, "meta", None))
+            if not bool(row_meta.get("counted")):
+                referrer.referral_count = int(referrer.referral_count or 0) + 1
+            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
+            referrer.is_active = True
+            row.status = "rewarded"
+            row.processed_at = now
+            rewarded += 1
+        session.flush()
+        return {
+            "processed": processed,
+            "rewarded": rewarded,
+            "waiting": waiting,
+            "rejected": rejected,
+            "queue_ids": queue_ids,
+        }
+
     if action in {"provider_quota.create", "provider_quota.update"}:
         node_code = str(state.context["node_code"])
         row = state.entity
@@ -17465,6 +17641,21 @@ def _admin_guarded_action_response(
             known_status == "completed" and legacy.get("ok", True)
         )
         return merged_result
+
+    if action == "payment.reconcile":
+        session = SessionLocal()
+        try:
+            order = session.query(ExternalOrder).filter(ExternalOrder.id == int(target_id)).first()
+            if order is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "order": _admin_payment_order_payload(s=session, order=order),
+                }
+            )
+        finally:
+            session.close()
 
     if action == "user.manual_create":
         tg_id = int(facts["tg_id"])

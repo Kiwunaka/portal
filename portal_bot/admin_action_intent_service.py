@@ -27,6 +27,12 @@ from models import (
     AccessKey,
     AdminActionIntent,
     AdminAudit,
+    ExternalOrder,
+    ExternalPaymentEvent,
+    Event,
+    PromoCode,
+    PromoUsage,
+    ReferralBonusQueue,
     RewardClaim,
     SupportTicket,
     SupportTicketMessage,
@@ -401,6 +407,191 @@ def _safe_iso(value: datetime | None) -> str | None:
 def _normalize_empty_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     _reject_extra_payload_fields(payload, set())
     return {}
+
+
+_PAYMENT_RECONCILE_STATUSES = frozenset(
+    {
+        "created",
+        "pending",
+        "paid",
+        "failed",
+        "cancelled",
+        "refunded",
+        "chargeback",
+        "manual_review",
+        "pending_verification",
+    }
+)
+
+
+def _normalize_payment_reconcile_runtime(
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"note", "status"})
+    note = _bounded_text(
+        payload.get("note"),
+        field="note",
+        minimum=8,
+        maximum=1000,
+    )
+    status_value = payload.get("status")
+    status = str(status_value or "").strip().lower()
+    if status and status not in _PAYMENT_RECONCILE_STATUSES:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Статус платежа не поддерживается.",
+        )
+    return {"note": note, "status": status or None}
+
+
+def _normalize_payment_reconcile_payload(
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    runtime = _normalize_payment_reconcile_runtime(payload)
+    return {
+        "note": _redacted_text(runtime["note"]),
+        "status": runtime["status"],
+    }
+
+
+def _normalize_promo_code(value: object, *, field: str = "code") -> str:
+    code = _bounded_text(value, field=field, minimum=3, maximum=20).upper()
+    if re.fullmatch(r"[A-Z0-9][A-Z0-9_-]{2,19}", code) is None:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Промокод может содержать только A-Z, цифры, дефис и подчёркивание.",
+        )
+    return code
+
+
+def _normalize_promo_datetime(value: object) -> str | None:
+    if value is None or value == "":
+        return None
+    raw = _bounded_text(value, field="expires_at", maximum=64)
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Срок промокода указан неверно.",
+        ) from None
+    if parsed.tzinfo is not None and parsed.utcoffset() is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed.isoformat()
+
+
+def _normalize_promo_type(value: object) -> str:
+    promo_type = str(value or "").strip().lower()
+    if promo_type not in {"discount", "days"}:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Тип промокода должен быть discount или days.",
+        )
+    return promo_type
+
+
+def _normalize_promo_integer(
+    value: object,
+    *,
+    field: str,
+    minimum: int,
+    maximum: int,
+) -> int:
+    if type(value) is not int or not minimum <= int(value) <= maximum:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} указано неверно.",
+        )
+    return int(value)
+
+
+def _normalize_promo_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(
+        payload,
+        {"code", "promo_type", "value", "uses_left", "expires_at"},
+    )
+    return {
+        "code": _normalize_promo_code(payload.get("code")),
+        "promo_type": _normalize_promo_type(payload.get("promo_type")),
+        "value": _normalize_promo_integer(
+            payload.get("value"),
+            field="value",
+            minimum=1,
+            maximum=100000,
+        ),
+        "uses_left": _normalize_promo_integer(
+            payload.get("uses_left", -1),
+            field="uses_left",
+            minimum=-1,
+            maximum=1_000_000,
+        ),
+        "expires_at": _normalize_promo_datetime(payload.get("expires_at")),
+    }
+
+
+def _normalize_promo_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(
+        payload,
+        {"new_code", "promo_type", "value", "uses_left", "expires_at"},
+    )
+    if not payload:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Укажите хотя бы одно изменение промокода.",
+        )
+    normalized: dict[str, Any] = {}
+    if "new_code" in payload:
+        normalized["new_code"] = _normalize_promo_code(
+            payload.get("new_code"),
+            field="new_code",
+        )
+    if "promo_type" in payload:
+        normalized["promo_type"] = _normalize_promo_type(payload.get("promo_type"))
+    if "value" in payload:
+        normalized["value"] = _normalize_promo_integer(
+            payload.get("value"),
+            field="value",
+            minimum=1,
+            maximum=100000,
+        )
+    if "uses_left" in payload:
+        normalized["uses_left"] = _normalize_promo_integer(
+            payload.get("uses_left"),
+            field="uses_left",
+            minimum=-1,
+            maximum=1_000_000,
+        )
+    if "expires_at" in payload:
+        normalized["expires_at"] = _normalize_promo_datetime(payload.get("expires_at"))
+    return normalized
+
+
+def _normalize_referral_process_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"limit", "force_without_activity"})
+    limit = payload.get("limit", 100)
+    force_without_activity = payload.get("force_without_activity", False)
+    if type(limit) is not int or not 1 <= int(limit) <= 1000:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Лимит очереди должен быть от 1 до 1000.",
+        )
+    if type(force_without_activity) is not bool:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Флаг обработки без активности указан неверно.",
+        )
+    return {
+        "limit": int(limit),
+        "force_without_activity": bool(force_without_activity),
+    }
 
 
 def _normalize_manual_create_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -3243,6 +3434,538 @@ def _audit_meta(
     if policy.audit_meta_builder is not None:
         meta.update(policy.audit_meta_builder(state, payload))
     return meta
+
+
+def _payment_reconcile_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    order_db_id = _integer_target(target_id, positive=True)
+    query = session.query(ExternalOrder).filter(ExternalOrder.id == order_db_id)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    order = query.first()
+    if order is None:
+        raise ActionIntentError(
+            "target_not_found",
+            status_code=404,
+            message="Платёжный заказ не найден.",
+        )
+
+    event_rows = (
+        session.query(
+            ExternalPaymentEvent.id,
+            ExternalPaymentEvent.event_type,
+            ExternalPaymentEvent.external_id,
+            ExternalPaymentEvent.order_id,
+            ExternalPaymentEvent.signature_ok,
+            ExternalPaymentEvent.processed_ok,
+            ExternalPaymentEvent.created_at,
+        )
+        .filter(
+            func.lower(ExternalPaymentEvent.provider)
+            == str(order.provider or "").strip().lower(),
+            ExternalPaymentEvent.order_id == str(order.order_id or ""),
+        )
+        .order_by(ExternalPaymentEvent.id.asc())
+        .all()
+    )
+    event_versions = [
+        {
+            "id": int(row[0]),
+            "event_type": str(row[1] or ""),
+            "external_id_sha256": _semantic_hash(
+                "admin-payment-event-id",
+                str(row[2] or ""),
+            ),
+            "order_id": str(row[3] or ""),
+            "signature_ok": bool(row[4]),
+            "processed_ok": bool(row[5]),
+            "created_at": _safe_iso(row[6]),
+        }
+        for row in event_rows
+    ]
+    callback_version_hash = _semantic_hash(
+        "admin-payment-callback-version",
+        event_versions,
+    )
+    status = str(order.status or "created").strip().lower()
+    next_status = str(payload.get("status") or status).strip().lower()
+    before = {
+        "order_id": str(order.order_id or ""),
+        "provider": str(order.provider or ""),
+        "status": status,
+        "amount": float(order.amount) if order.amount is not None else None,
+        "currency": str(order.currency or "") or None,
+        "callback_events": len(event_versions),
+        "callback_state": (
+            "processed"
+            if event_versions and bool(event_versions[-1]["processed_ok"])
+            else "requires_review"
+            if event_versions
+            else "missing"
+        ),
+    }
+    after = {
+        **before,
+        "status": next_status,
+        "operator_note_length": len(str(payload.get("note") or "")),
+    }
+    return EntityState(
+        entity=order,
+        version_snapshot={
+            "id": int(order.id),
+            "provider": str(order.provider or ""),
+            "order_id": str(order.order_id or ""),
+            "tg_id": int(order.tg_id) if order.tg_id is not None else None,
+            "status": status,
+            "paid_at": _safe_iso(order.paid_at),
+            "amount": float(order.amount) if order.amount is not None else None,
+            "currency": str(order.currency or ""),
+            "meta_sha256": _semantic_hash(
+                "admin-payment-order-meta",
+                str(order.meta_json or ""),
+            ),
+            "callback_version_hash": callback_version_hash,
+            "callback_events": len(event_versions),
+        },
+        public_snapshot=before,
+        context={
+            "order_db_id": int(order.id),
+            "provider": str(order.provider or ""),
+            "order_id": str(order.order_id or ""),
+            "tg_id": int(order.tg_id) if order.tg_id is not None else None,
+            "from_status": status,
+            "to_status": next_status,
+            "callback_version_hash": callback_version_hash,
+            "after_snapshot": after,
+        },
+    )
+
+
+def _payment_reconcile_preview(
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    return _simple_preview(
+        f"Сверка заказа {state.context['order_id']} у {state.context['provider']}.",
+        state.public_snapshot,
+        dict(state.context["after_snapshot"]),
+        [
+            "Провайдер, номер заказа, статус и версия callback зафиксированы сервером.",
+            "Callback evidence не изменяется; новый платёж этим действием не создаётся.",
+        ],
+    )
+
+
+def _payment_reconcile_audit_target(
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> int | None:
+    value = state.context.get("tg_id")
+    return int(value) if value is not None else None
+
+
+def _payment_reconcile_audit_meta(
+    state: EntityState,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    note = payload.get("note") if isinstance(payload.get("note"), Mapping) else {}
+    return {
+        "order_db_id": int(state.context["order_db_id"]),
+        "provider": str(state.context["provider"]),
+        "order_id": str(state.context["order_id"]),
+        "from_status": str(state.context["from_status"]),
+        "to_status": str(state.context["to_status"]),
+        "callback_version_hash": str(state.context["callback_version_hash"]),
+        "note_sha256": str(note.get("sha256") or ""),
+        "note_length": int(note.get("length") or 0),
+    }
+
+
+ACTION_POLICIES["payment.reconcile"] = ActionPolicy(
+    action="payment.reconcile",
+    target_type="payment",
+    risk_level="L2",
+    payload_normalizer=_normalize_payment_reconcile_payload,
+    runtime_payload_normalizer=_normalize_payment_reconcile_runtime,
+    entity_state_builder=_payment_reconcile_entity_state,
+    preview_builder=_payment_reconcile_preview,
+    challenge_kind="exact_phrase",
+    challenge_builder=_l2_challenge,
+    executor_kind="db",
+    audit_action="admin_payment_reconcile",
+    audit_target_builder=_payment_reconcile_audit_target,
+    audit_meta_builder=_payment_reconcile_audit_meta,
+)
+
+
+def _promo_snapshot(session, promo: PromoCode) -> dict[str, Any]:
+    code = str(promo.code or "").upper()
+    used_count = int(
+        session.query(func.count(PromoUsage.id))
+        .filter(func.upper(PromoUsage.promo_code) == code)
+        .scalar()
+        or 0
+    )
+    return {
+        "promo_code": code,
+        "promo_type": str(promo.promo_type or ""),
+        "value": int(promo.value or 0),
+        "uses_left": int(promo.uses_left or 0),
+        "used_count": used_count,
+        "expires_at": _safe_iso(promo.expires_at),
+        "exists": True,
+    }
+
+
+def _promo_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    target_code = _normalize_promo_code(target_id, field="target")
+    if mode == "create" and str(payload.get("code") or "").upper() != target_code:
+        raise ActionIntentError(
+            "invalid_target",
+            status_code=422,
+            message="Цель должна совпадать с создаваемым промокодом.",
+        )
+    query = session.query(PromoCode).filter(func.upper(PromoCode.code) == target_code)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    promo = query.first()
+    if mode == "create" and promo is not None:
+        raise ActionIntentError(
+            "target_exists",
+            status_code=409,
+            message="Промокод уже существует.",
+        )
+    if mode != "create" and promo is None:
+        raise ActionIntentError(
+            "target_not_found",
+            status_code=404,
+            message="Промокод не найден.",
+        )
+
+    before = (
+        _promo_snapshot(session, promo)
+        if promo is not None
+        else {
+            "promo_code": target_code,
+            "promo_type": None,
+            "value": None,
+            "uses_left": None,
+            "used_count": None,
+            "expires_at": None,
+            "exists": False,
+        }
+    )
+    if mode == "create":
+        after = {
+            "promo_code": str(payload["code"]),
+            "promo_type": str(payload["promo_type"]),
+            "value": int(payload["value"]),
+            "uses_left": int(payload["uses_left"]),
+            "used_count": 0,
+            "expires_at": payload.get("expires_at"),
+            "exists": True,
+        }
+    elif mode == "delete":
+        after = {**before, "exists": False}
+    else:
+        after = {
+            **before,
+            "promo_code": str(payload.get("new_code") or before["promo_code"]),
+            "promo_type": str(payload.get("promo_type") or before["promo_type"]),
+            "value": int(payload.get("value", before["value"])),
+            "uses_left": int(payload.get("uses_left", before["uses_left"])),
+            "expires_at": (
+                payload.get("expires_at")
+                if "expires_at" in payload
+                else before["expires_at"]
+            ),
+        }
+        if str(after["promo_code"]).upper() != target_code:
+            duplicate = (
+                session.query(PromoCode.id)
+                .filter(func.upper(PromoCode.code) == str(after["promo_code"]).upper())
+                .first()
+            )
+            if duplicate is not None:
+                raise ActionIntentError(
+                    "target_exists",
+                    status_code=409,
+                    message="Новый промокод уже существует.",
+                )
+
+    version_snapshot = {
+        "mode": mode,
+        "promo_id": int(promo.id) if promo is not None else None,
+        "before": before,
+    }
+    return EntityState(
+        entity=promo,
+        version_snapshot=version_snapshot,
+        public_snapshot=before,
+        context={
+            "mode": mode,
+            "promo_id": int(promo.id) if promo is not None else None,
+            "from_code": target_code,
+            "to_code": str(after["promo_code"]).upper(),
+            "after_snapshot": after,
+            "promo_state_hash": _semantic_hash("admin-promo-state", version_snapshot),
+        },
+    )
+
+
+def _promo_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _promo_entity_state(session, target_id, payload, for_update, mode="create")
+
+
+def _promo_update_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _promo_entity_state(session, target_id, payload, for_update, mode="update")
+
+
+def _promo_delete_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _promo_entity_state(session, target_id, payload, for_update, mode="delete")
+
+
+def _promo_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    mode = str(state.context["mode"])
+    action_title = {"create": "создан", "update": "изменён", "delete": "удалён"}[mode]
+    return _simple_preview(
+        f"Промокод {state.context['from_code']} будет {action_title}.",
+        state.public_snapshot,
+        dict(state.context["after_snapshot"]),
+        ["Код, тип, значение, остаток использований и срок зафиксированы сервером."],
+    )
+
+
+def _promo_challenge(state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return str(state.context["from_code"])
+
+
+def _promo_audit_meta(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "promo_id": state.context.get("promo_id"),
+        "from_code": str(state.context["from_code"]),
+        "to_code": str(state.context["to_code"]),
+        "promo_state_hash": str(state.context["promo_state_hash"]),
+    }
+
+
+ACTION_POLICIES.update(
+    {
+        "promo.create": ActionPolicy(
+            action="promo.create",
+            target_type="promo",
+            risk_level="L2",
+            payload_normalizer=_normalize_promo_create_payload,
+            entity_state_builder=_promo_create_state,
+            preview_builder=_promo_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_promo_create",
+            audit_meta_builder=_promo_audit_meta,
+        ),
+        "promo.update": ActionPolicy(
+            action="promo.update",
+            target_type="promo",
+            risk_level="L2",
+            payload_normalizer=_normalize_promo_update_payload,
+            entity_state_builder=_promo_update_state,
+            preview_builder=_promo_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_promo_update",
+            audit_meta_builder=_promo_audit_meta,
+        ),
+        "promo.delete": ActionPolicy(
+            action="promo.delete",
+            target_type="promo",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_promo_delete_state,
+            preview_builder=_promo_preview,
+            challenge_kind="exact_promo_code",
+            challenge_builder=_promo_challenge,
+            executor_kind="db",
+            audit_action="admin_promo_delete",
+            audit_meta_builder=_promo_audit_meta,
+        ),
+    }
+)
+
+
+def _referral_wait_hours() -> int:
+    try:
+        return max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
+    except (TypeError, ValueError):
+        return 168
+
+
+def _referral_process_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    if str(target_id).strip().lower() != "ready":
+        raise ActionIntentError(
+            "invalid_target",
+            status_code=422,
+            message="Целью должна быть готовая реферальная очередь.",
+        )
+    now = _utcnow()
+    db_now = now.replace(tzinfo=None)
+    query = (
+        session.query(ReferralBonusQueue)
+        .filter(
+            ReferralBonusQueue.status == "pending",
+            ReferralBonusQueue.ready_at <= db_now,
+        )
+        .order_by(ReferralBonusQueue.ready_at.asc(), ReferralBonusQueue.id.asc())
+        .limit(int(payload["limit"]))
+    )
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    rows = query.all()
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        referred = session.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+        referrer = session.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+        queued_at = _as_utc(row.queued_at or now)
+        has_activity = bool(
+            referred
+            and session.query(Event.id)
+            .filter(
+                Event.tg_id == int(row.referred_tg_id),
+                Event.created_at >= (row.queued_at or (db_now - timedelta(days=1))),
+                Event.event_name.in_(["connected_ok", "clicked_connect"]),
+            )
+            .first()
+            is not None
+        )
+        age_hours = max(0, int((now - queued_at).total_seconds() // 3600))
+        if referred is None or referrer is None:
+            basis = "rejected_missing_user"
+        elif not has_activity and not bool(payload["force_without_activity"]):
+            basis = (
+                "rejected_no_activity"
+                if age_hours >= _referral_wait_hours()
+                else "waiting_for_activity"
+            )
+        elif not (
+            bool(referrer.is_active)
+            and str(referrer.sub_type or "").strip().upper() == "PAID"
+            and referrer.expiry_at is not None
+            and _as_utc(referrer.expiry_at) > now
+        ):
+            basis = "rejected_referrer_inactive"
+        else:
+            basis = "reward_ready"
+        items.append(
+            {
+                "queue_id": int(row.id),
+                "order_id": str(row.order_id or ""),
+                "referrer_tg_id": int(row.referrer_tg_id),
+                "referred_tg_id": int(row.referred_tg_id),
+                "queued_at": _safe_iso(row.queued_at),
+                "ready_at": _safe_iso(row.ready_at),
+                "status": str(row.status or ""),
+                "has_activity": has_activity,
+                "basis": basis,
+                "referrer_state_hash": _semantic_hash(
+                    "admin-referral-referrer-state",
+                    {
+                        "exists": referrer is not None,
+                        "active": bool(referrer.is_active) if referrer is not None else None,
+                        "sub_type": str(referrer.sub_type or "") if referrer is not None else None,
+                        "expiry_at": _safe_iso(referrer.expiry_at) if referrer is not None else None,
+                    },
+                ),
+                "referred_exists": referred is not None,
+            }
+        )
+    selection_hash = _semantic_hash("admin-referral-selection", items)
+    first = items[0] if items else None
+    before = {
+        "selection_count": len(items),
+        "queue_id": first["queue_id"] if first else None,
+        "order_id": first["order_id"] if first else None,
+        "referrer_tg_id": first["referrer_tg_id"] if first else None,
+        "referred_tg_id": first["referred_tg_id"] if first else None,
+        "decision_basis": first["basis"] if first else "missing",
+    }
+    return EntityState(
+        entity=rows,
+        version_snapshot={
+            "items": items,
+            "selection_hash": selection_hash,
+            "force_without_activity": bool(payload["force_without_activity"]),
+        },
+        public_snapshot=before,
+        context={
+            "items": items,
+            "selected_count": len(items),
+            "selection_hash": selection_hash,
+            "after_snapshot": {**before, "status": "process"},
+        },
+    )
+
+
+def _referral_process_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        **_simple_preview(
+            "Обработать зафиксированную реферальную очередь.",
+            state.public_snapshot,
+            dict(state.context["after_snapshot"]),
+            [
+                "Основание решения рассчитано сервером по пользователям и событиям активности.",
+                "Действие продлевает существующий доступ реферера и не создаёт платёж.",
+            ],
+        ),
+        "selection": {
+            "selection_count": int(state.context["selected_count"]),
+            "selection_hash": str(state.context["selection_hash"]),
+        },
+    }
+
+
+def _referral_process_audit_meta(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    items = list(state.context["items"])
+    return {
+        "queue_ids": [int(item["queue_id"]) for item in items],
+        "order_ids_hash": _semantic_hash(
+            "admin-referral-order-ids",
+            [str(item["order_id"]) for item in items],
+        ),
+        "selection_hash": str(state.context["selection_hash"]),
+        "selected_count": int(state.context["selected_count"]),
+    }
+
+
+ACTION_POLICIES["referral.process"] = ActionPolicy(
+    action="referral.process",
+    target_type="referral_queue",
+    risk_level="L2",
+    payload_normalizer=_normalize_referral_process_payload,
+    entity_state_builder=_referral_process_entity_state,
+    preview_builder=_referral_process_preview,
+    challenge_kind="exact_phrase",
+    challenge_builder=_l2_challenge,
+    executor_kind="db",
+    audit_action="admin_referrals_process",
+    audit_meta_builder=_referral_process_audit_meta,
+)
 
 
 def _validate_execution(
