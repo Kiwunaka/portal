@@ -69,6 +69,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
   const [statusIntentId, setStatusIntentId] = useState<string | null>(null);
   const [statusError, setStatusError] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [outcomeUncertain, setOutcomeUncertain] = useState(false);
   const clearStorageOnEmptyRef = useRef(false);
 
   useEffect(() => {
@@ -106,8 +107,14 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
     setLastResult(result);
     setStatusIntentId(result.action_intent_id || null);
     setStatusError("");
+    setOutcomeUncertain(result.status === "uncertain" || result.status === "executing");
     if (result.status === "completed" && result.ok) clearConfirmedDraft();
   }, [clearConfirmedDraft]);
+
+  const handleUncertainOutcome = useCallback(() => {
+    setOutcomeUncertain(true);
+    setStatusError("");
+  }, []);
 
   const handlePrepared = useCallback((intent: PreparedActionIntent) => {
     setStatusIntentId(intent.intent_id);
@@ -121,6 +128,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
     try {
       const result = await fetchActionIntentStatus(statusIntentId, { timeoutMs: 15_000 });
       setLastResult(result);
+      setOutcomeUncertain(result.status === "uncertain" || result.status === "executing");
       if (result.status === "completed" && result.ok) clearConfirmedDraft();
     } catch (error) {
       const apiError = error instanceof AdminApiError ? error : null;
@@ -137,6 +145,10 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
 
   function openPreview(event: FormEvent) {
     event.preventDefault();
+    if (outcomeUncertain) {
+      setFormError("Новая рассылка заблокирована, пока сервер не подтвердит итог предыдущей отправки.");
+      return;
+    }
     const limit = Number(draft.limit.trim());
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
       setFormError("Лимит должен быть целым числом от 1 до 1000.");
@@ -188,15 +200,16 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
         <Card>
           <SectionTitle title="Защищённая рассылка" description="Черновик → серверный предпросмотр → точная фраза «ОТПРАВИТЬ» → однократный внешний исполнитель. Изменение сообщения после предпросмотра блокируется." />
           <form className="space-y-4" onSubmit={openPreview}>
+            {outcomeUncertain ? <div role="status" className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3 text-xs leading-5 text-[color:var(--atlas-status-warning-text)]"><span className="font-semibold">Новая рассылка заблокирована.</span> Итог предыдущей отправки ещё не подтверждён сервером. Доступна только проверка статуса.</div> : null}
             {formError ? <div role="alert" className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] p-3 text-xs text-[color:var(--atlas-status-danger-text)]">{formError}</div> : null}
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-semibold">Сегмент<select aria-label="Сегмент рассылки" value={draft.segment} onChange={(event) => updateDraft({ segment: event.target.value as BroadcastSegment })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="all_active">Все активные</option><option value="paid">Платные</option><option value="free">Бесплатные</option><option value="expired">Истёкшие</option><option value="custom">Список Telegram ID</option></select></label>
-              <label className="block text-xs font-semibold">Лимит<input aria-label="Лимит рассылки" inputMode="numeric" value={draft.limit} onChange={(event) => updateDraft({ limit: event.target.value })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 tabular-nums" /></label>
+              <label className="block text-xs font-semibold">Сегмент<select aria-label="Сегмент рассылки" value={draft.segment} disabled={outcomeUncertain} onChange={(event) => updateDraft({ segment: event.target.value as BroadcastSegment })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="all_active">Все активные</option><option value="paid">Платные</option><option value="free">Бесплатные</option><option value="expired">Истёкшие</option><option value="custom">Список Telegram ID</option></select></label>
+              <label className="block text-xs font-semibold">Лимит<input aria-label="Лимит рассылки" inputMode="numeric" value={draft.limit} disabled={outcomeUncertain} onChange={(event) => updateDraft({ limit: event.target.value })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 tabular-nums" /></label>
             </div>
-            {draft.segment === "custom" ? <label className="block text-xs font-semibold">Telegram ID получателей<textarea aria-label="Telegram ID получателей" value={draft.customIds} onChange={(event) => updateDraft({ customIds: event.target.value })} placeholder="10001, 10002" className="mt-1 min-h-20 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 font-mono text-xs" /><span className="mt-1 block font-normal text-[color:var(--atlas-text-muted)]">Список не возвращается в UI и не попадает в intent/audit; сохраняются только count и SHA-256.</span></label> : null}
-            <label className="block text-xs font-semibold">Сообщение<textarea aria-label="Текст рассылки" value={draft.text} maxLength={4000} onChange={(event) => updateDraft({ text: event.target.value })} placeholder="Текст сообщения" className="mt-1 min-h-44 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 text-sm leading-6" /><span className="mt-1 flex justify-between font-normal text-[color:var(--atlas-text-muted)]"><span>Черновик хранится только в sessionStorage этого окна. Не вставляйте секреты.</span><span>{draft.text.length} / 4000</span></span></label>
+            {draft.segment === "custom" ? <label className="block text-xs font-semibold">Telegram ID получателей<textarea aria-label="Telegram ID получателей" value={draft.customIds} disabled={outcomeUncertain} onChange={(event) => updateDraft({ customIds: event.target.value })} placeholder="10001, 10002" className="mt-1 min-h-20 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 font-mono text-xs" /><span className="mt-1 block font-normal text-[color:var(--atlas-text-muted)]">Список не возвращается в UI и не попадает в intent/audit; сохраняются только count и SHA-256.</span></label> : null}
+            <label className="block text-xs font-semibold">Сообщение<textarea aria-label="Текст рассылки" value={draft.text} maxLength={4000} disabled={outcomeUncertain} onChange={(event) => updateDraft({ text: event.target.value })} placeholder="Текст сообщения" className="mt-1 min-h-44 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 text-sm leading-6" /><span className="mt-1 flex justify-between font-normal text-[color:var(--atlas-text-muted)]"><span>Черновик хранится только в sessionStorage этого окна. Не вставляйте секреты.</span><span>{draft.text.length} / 4000</span></span></label>
             <div className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3 text-xs leading-5 text-[color:var(--atlas-status-warning-text)]"><div className="flex items-center gap-2 font-semibold"><ShieldAlert size={15} /> После timeout итог считается неопределённым</div><p className="mt-1">Не создавайте новую отправку. Используйте только «Проверить статус» и сверку с аудитом.</p></div>
-            <Button tone="danger" type="submit"><Radio size={15} /> Подготовить защищённый предпросмотр</Button>
+            <Button tone="danger" type="submit" disabled={outcomeUncertain}><Radio size={15} /> Подготовить защищённый предпросмотр</Button>
           </form>
         </Card>
 
@@ -219,6 +232,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
         onOpenChange={(open) => { setDialogOpen(open); if (!open) setRequest(null); }}
         onKnownOutcome={() => undefined}
         onCheckState={() => { void checkStatus(); }}
+        onUncertainOutcome={handleUncertainOutcome}
         onResult={handleResult}
         onPrepared={handlePrepared}
       />

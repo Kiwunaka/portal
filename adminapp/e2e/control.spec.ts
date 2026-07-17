@@ -90,6 +90,7 @@ test("uncertain broadcast offers status check and never retry-send", async ({ pa
   await expect(page.getByText("Итог действия неясен", { exact: true })).toBeVisible();
   const statusCheck = page.getByRole("button", { name: "Проверить текущее состояние" });
   await expect(statusCheck).toBeVisible();
+  await expect(page.getByRole("button", { name: "Подготовить защищённый предпросмотр" })).toBeDisabled();
   await expect(page.getByRole("button", { name: /повтор/i })).toHaveCount(0);
   await statusCheck.click();
   await expect.poll(() => api.calls.filter((call) => call.method === "GET" && /\/api\/admin\/action-intents\//.test(call.path)).length).toBe(1);

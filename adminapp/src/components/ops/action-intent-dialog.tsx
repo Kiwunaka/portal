@@ -208,6 +208,7 @@ export function ActionIntentDialog({
   onOpenChange,
   onKnownOutcome,
   onCheckState,
+  onUncertainOutcome,
   onResult,
   onPrepared,
 }: {
@@ -216,6 +217,7 @@ export function ActionIntentDialog({
   onOpenChange: (open: boolean) => void;
   onKnownOutcome: () => void;
   onCheckState: () => void;
+  onUncertainOutcome?: () => void;
   onResult?: (result: AdminActionResult) => void;
   onPrepared?: (intent: PreparedActionIntent) => void;
 }) {
@@ -303,6 +305,7 @@ export function ActionIntentDialog({
         onKnownOutcome();
       } else if (completed.status === "uncertain" || completed.status === "executing") {
         setPhase("uncertain");
+        onUncertainOutcome?.();
       } else {
         setPhase("failed");
         onKnownOutcome();
@@ -313,12 +316,15 @@ export function ActionIntentDialog({
       if (apiError?.code === "expired_intent") setPhase("expired");
       else if (apiError?.code === "stale_intent") setPhase("stale");
       else if (apiError?.status === 428 || apiError?.code === "intent_required") setPhase("required");
-      else if (!apiError || apiError.status >= 500) setPhase("uncertain");
+      else if (!apiError || apiError.status >= 500) {
+        setPhase("uncertain");
+        onUncertainOutcome?.();
+      }
       else setPhase("failed");
     } finally {
       executingRef.current = false;
     }
-  }, [confirmation, confirmationMatches, intent, onKnownOutcome, onResult, previewSchemaSupported, request]);
+  }, [confirmation, confirmationMatches, intent, onKnownOutcome, onResult, onUncertainOutcome, previewSchemaSupported, request]);
 
   const prepareAgain = useCallback(() => {
     if (!request) return;
