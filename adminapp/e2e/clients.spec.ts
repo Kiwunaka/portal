@@ -50,7 +50,7 @@ test("блокировка и ответ проходят через намер�
   await dialog.getByLabel("Подтверждение").fill("1001");
   await dialog.getByRole("button", { name: "Выполнить" }).click();
   await expect(dialog.getByText("Действие выполнено", { exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Закрыть" }).click();
+  await dialog.getByRole("button", { name: "Закрыть", exact: true }).click();
 
   await page.goto("/tickets?selected=501");
   const draft = page.getByLabel("Текст ответа");

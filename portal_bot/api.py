@@ -16750,7 +16750,7 @@ def _execute_admin_client_action_db(
             "order_db_id": int(order.id),
             "provider": str(order.provider or ""),
             "order_id": str(order.order_id or ""),
-            "status": str(order.status or ""),
+            "order_status": str(order.status or ""),
         }
 
     if action in {"promo.create", "promo.update", "promo.delete"}:
@@ -20074,4 +20074,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "2096")))
-

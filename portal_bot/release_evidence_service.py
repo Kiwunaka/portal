@@ -422,6 +422,33 @@ def import_release_evidence(
         _fail("invalid_ingest_key")
     now = _utc(imported_at, code="invalid_imported_at")
     candidate_id = str(normalized["candidate_id"])
+    resolved_evidence = []
+    for entry in normalized["evidence"]:
+        assert isinstance(entry, dict)
+        run = _resolve_ru_run(session, entry["ru_probe_run_ref"])
+        if entry["ru_probe_run_ref"] is not None and run is None:
+            raise ReleaseEvidenceConflict("ru_probe_run_not_found")
+        if entry["origin"] == "ru" and entry["status"] == "PASS":
+            if entry["ru_probe_run_ref"] is None:
+                raise ReleaseEvidenceConflict("ru_probe_run_required")
+            _require_ru_pass_run(session, run, now=now)
+        run_db_id = int(run.id) if run is not None else None
+        existing = (
+            session.query(ReleaseOriginEvidence)
+            .filter(
+                ReleaseOriginEvidence.evidence_sha256 == entry["evidence_sha256"]
+            )
+            .one_or_none()
+        )
+        if existing is not None and not _evidence_matches(
+            existing,
+            entry,
+            candidate_id=candidate_id,
+            run_db_id=run_db_id,
+        ):
+            raise ReleaseEvidenceConflict("evidence_conflict")
+        resolved_evidence.append((entry, run, run_db_id, existing))
+
     candidate = (
         session.query(ReleaseCandidate)
         .filter(ReleaseCandidate.candidate_id == candidate_id)
@@ -462,32 +489,8 @@ def import_release_evidence(
         raise ReleaseEvidenceConflict("candidate_descriptor_conflict")
 
     evidence_created = 0
-    for entry in normalized["evidence"]:
-        assert isinstance(entry, dict)
-        run = _resolve_ru_run(session, entry["ru_probe_run_ref"])
-        if entry["ru_probe_run_ref"] is not None and run is None:
-            raise ReleaseEvidenceConflict("ru_probe_run_not_found")
-        if entry["origin"] == "ru" and entry["status"] == "PASS":
-            if entry["ru_probe_run_ref"] is None:
-                raise ReleaseEvidenceConflict("ru_probe_run_required")
-            _require_ru_pass_run(session, run, now=now)
-        run_db_id = int(run.id) if run is not None else None
-        existing = (
-            session.query(ReleaseOriginEvidence)
-            .filter(
-                ReleaseOriginEvidence.evidence_sha256 == entry["evidence_sha256"]
-            )
-            .one_or_none()
-        )
-        if existing is not None:
-            if not _evidence_matches(
-                existing,
-                entry,
-                candidate_id=candidate_id,
-                run_db_id=run_db_id,
-            ):
-                raise ReleaseEvidenceConflict("evidence_conflict")
-        else:
+    for entry, run, run_db_id, existing in resolved_evidence:
+        if existing is None:
             evidence_row = ReleaseOriginEvidence(
                 candidate_id=candidate_id,
                 origin=entry["origin"],

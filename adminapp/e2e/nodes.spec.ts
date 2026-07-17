@@ -48,7 +48,7 @@ test("карточка ноды открывается за два действ�
   const api = await installAdminApiMock(page, { ruScenario: "fresh-pass" });
   await page.goto("/nodes");
 
-  const row = page.getByRole("row", { name: /NL/ });
+  const row = page.getByRole("row", { name: /^Открыть ноду NL\b/ });
   await expect(row).toBeVisible();
   expect(api.calls.some((call) => call.path.includes("/observability"))).toBe(false);
   expect(api.calls.some((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs"))).toBe(false);
@@ -159,7 +159,7 @@ test("на мобильном детали открываются последо
 
   const table = page.getByRole("table", { name: "Список нод" });
   await expect(table).toBeVisible();
-  await page.getByRole("row", { name: /NL/ }).click();
+  await page.getByRole("row", { name: /^Открыть ноду NL\b/ }).click();
   await expect(page.getByRole("button", { name: "Назад к нодам" })).toBeVisible();
   await expect(table).not.toBeVisible();
 
@@ -222,7 +222,7 @@ test("review-контракт: live wire, независимые RU-блоки, 
 
   await review.page.getByRole("button", { name: "Показать ещё" }).click();
   await expect.poll(() => reviewApi.calls.some((call) => call.path.includes("cursor=cursor-abort-next"))).toBe(true);
-  await review.page.getByRole("button", { name: "Обновить", exact: true }).click();
+  await review.page.getByRole("main").getByRole("button", { name: "Обновить", exact: true }).click();
   await expect.poll(() => reviewApi.calls.filter((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs?") && !call.path.includes("cursor=")).length).toBeGreaterThan(1);
   reviewApi.releaseHistoryContinuation();
   await expect(historyRegion.getByText(run391, { exact: false })).toHaveCount(1);

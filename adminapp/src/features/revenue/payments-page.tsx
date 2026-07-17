@@ -91,7 +91,7 @@ export function PaymentsPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
     { header: "Пользователь", cell: ({ row }) => row.original.tg_id === null ? <MissingData /> : <span className="tabular-nums">{row.original.tg_id}</span> },
     { header: "Сумма", cell: ({ row }) => finite(row.original.amount) === null ? <MissingData /> : <span className="tabular-nums">{numberText(row.original.amount)} {row.original.currency || "—"}</span> },
     { header: "Статус заказа", cell: ({ row }) => row.original.status ? <Badge tone={statusTone(row.original.status)}>{statusLabel(row.original.status)}</Badge> : <MissingData /> },
-    { header: "Callback", cell: ({ row }) => row.original.last_event?.processed_ok === true ? <Badge tone="success">Обработан</Badge> : row.original.last_event?.processed_ok === false ? <Badge tone="warning">Требует проверки</Badge> : <MissingData /> },
+    { header: "Состояние callback", cell: ({ row }) => row.original.last_event?.processed_ok === true ? <Badge tone="success">Обработан</Badge> : row.original.last_event?.processed_ok === false ? <Badge tone="warning">Требует проверки</Badge> : <MissingData /> },
     { header: "Создан", cell: ({ row }) => row.original.created_at ? <span>{dateText(row.original.created_at)}</span> : <MissingData /> },
   ], []);
 

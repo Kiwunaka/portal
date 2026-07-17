@@ -29,6 +29,14 @@ type QuotaDraft = {
   operatorNote: string;
 };
 
+type QuotaEditState = {
+  nodeCode: string;
+  draft: QuotaDraft;
+  sourceVersion: string;
+  dirty: boolean;
+  error: string;
+};
+
 function tone(value: string): Tone {
   const normalized = value.toLowerCase();
   if (normalized === "critical") return "danger";
@@ -91,10 +99,7 @@ function quotaSourceVersion(config: ProviderQuotaConfig | null, status: Provider
 
 export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
   const [urlState, setUrlState] = useState<ProviderUrlState>(() => readUrlState(PROVIDER_URL_CODECS));
-  const [draft, setDraft] = useState<QuotaDraft | null>(null);
-  const [draftSourceVersion, setDraftSourceVersion] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [editState, setEditState] = useState<QuotaEditState | null>(null);
   const [request, setRequest] = useState<ActionIntentRequest | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   useEffect(() => subscribeToUrlState<ProviderUrlState>(PROVIDER_URL_CODECS, setUrlState), []);
@@ -105,24 +110,12 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
   const selectedConfig = resource.data?.configs.find((row) => row.node_code.toLowerCase() === selectedCode) || null;
   const selectedStatus = resource.data?.statuses.find((row) => row.node_code.toLowerCase() === selectedCode) || null;
   const selectedSourceVersion = quotaSourceVersion(selectedConfig, selectedStatus);
-
-  useEffect(() => {
-    if (!selectedCode) {
-      setDraft(null);
-      setDraftSourceVersion(null);
-      setDirty(false);
-      setFormError("");
-      return;
-    }
-    if (resource.data === null) return;
-    const changedNode = draft?.nodeCode !== selectedCode;
-    const safeServerRefresh = !dirty && draftSourceVersion !== selectedSourceVersion;
-    if (!changedNode && !safeServerRefresh) return;
-    setDraft(draftFor(selectedCode, selectedConfig, selectedStatus));
-    setDraftSourceVersion(selectedSourceVersion);
-    setDirty(false);
-    setFormError("");
-  }, [dirty, draft?.nodeCode, draftSourceVersion, resource.data, selectedCode, selectedConfig, selectedSourceVersion, selectedStatus]);
+  const activeEdit = editState?.nodeCode === selectedCode ? editState : null;
+  const serverDraft = selectedCode && resource.data !== null ? draftFor(selectedCode, selectedConfig, selectedStatus) : null;
+  const draft = activeEdit?.draft || serverDraft;
+  const draftSourceVersion = activeEdit?.sourceVersion || selectedSourceVersion;
+  const dirty = activeEdit?.dirty || false;
+  const formError = activeEdit?.error || "";
 
   useEffect(() => {
     onShellStatus?.({
@@ -145,22 +138,29 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
   ], []);
 
   function updateDraft(patch: Partial<QuotaDraft>) {
-    setDraft((current) => current ? { ...current, ...patch } : current);
-    setDirty(true);
-    setFormError("");
+    if (!selectedCode || !draft) return;
+    setEditState((current) => {
+      const base = current?.nodeCode === selectedCode
+        ? current
+        : { nodeCode: selectedCode, draft, sourceVersion: selectedSourceVersion, dirty: false, error: "" };
+      return { ...base, draft: { ...base.draft, ...patch }, dirty: true, error: "" };
+    });
+  }
+
+  function setCurrentError(error: string) {
+    if (!selectedCode || !draft) return;
+    setEditState((current) => current?.nodeCode === selectedCode
+      ? { ...current, error }
+      : { nodeCode: selectedCode, draft, sourceVersion: selectedSourceVersion, dirty: false, error });
   }
 
   function resetDraftFromServer() {
     if (!selectedCode || resource.data === null) return;
-    setDraft(draftFor(selectedCode, selectedConfig, selectedStatus));
-    setDraftSourceVersion(selectedSourceVersion);
-    setDirty(false);
-    setFormError("");
+    setEditState(null);
   }
 
   function handleKnownOutcome() {
-    setDirty(false);
-    setDraftSourceVersion(null);
+    setEditState(null);
     resource.reload();
   }
 
@@ -168,11 +168,11 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
     event.preventDefault();
     if (!draft) return;
     if (!draft.includedGb.trim()) {
-      setFormError("Введите лимит квоты в ГиБ: пустое значение нельзя сохранить.");
+      setCurrentError("Введите лимит квоты в ГиБ: пустое значение нельзя сохранить.");
       return;
     }
     if ([draft.resetDay, draft.warningRatio, draft.criticalRatio].some((value) => !value.trim())) {
-      setFormError("Заполните день сброса и оба порога квоты.");
+      setCurrentError("Заполните день сброса и оба порога квоты.");
       return;
     }
     const includedGb = Number(draft.includedGb.trim());
@@ -180,15 +180,15 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
     const warningRatio = Number(draft.warningRatio.trim());
     const criticalRatio = Number(draft.criticalRatio.trim());
     if (![includedGb, resetDay, warningRatio, criticalRatio].every(Number.isFinite) || includedGb < 0 || !Number.isInteger(resetDay) || resetDay < 1 || resetDay > 31) {
-      setFormError("Проверьте лимит и день сброса: нужны допустимые числовые значения.");
+      setCurrentError("Проверьте лимит и день сброса: нужны допустимые числовые значения.");
       return;
     }
     if (warningRatio >= criticalRatio || warningRatio < 0.01 || criticalRatio > 1) {
-      setFormError("Порог предупреждения должен быть ниже критического; оба значения — от 0.01 до 1.0.");
+      setCurrentError("Порог предупреждения должен быть ниже критического; оба значения — от 0.01 до 1.0.");
       return;
     }
     if (!draft.timezone.trim()) {
-      setFormError("Укажите часовой пояс квоты.");
+      setCurrentError("Укажите часовой пояс квоты.");
       return;
     }
     const operatorNote = draft.operatorNote.trim();
@@ -198,7 +198,7 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
     } else {
       basePayload.notes = operatorNote || null;
     }
-    setFormError("");
+    setCurrentError("");
     setRequest({
       action: selectedConfig ? "provider_quota.update" : "provider_quota.create",
       target: { type: "provider_quota", id: draft.nodeCode },

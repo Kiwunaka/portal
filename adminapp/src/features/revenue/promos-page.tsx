@@ -17,10 +17,11 @@ import { readUrlState, replaceUrlState, subscribeToUrlState, urlCodecs } from "@
 
 type PromoUrlState = { state: string; q: string; selected: string | null };
 type PromoDraft = { code: string; promoType: "discount" | "days"; value: string; usesLeft: string; expiresAt: string };
+type PromoEditState = { key: string; draft: PromoDraft; dirty: boolean; error: string };
 const PROMO_URL_CODECS = { state: urlCodecs.string(""), q: urlCodecs.string(""), selected: urlCodecs.optionalString() };
 
 function promoState(row: PromoRow): string {
-  if (row.value === null || row.uses_left === null || !["discount", "days"].includes(row.promo_type)) return "unknown";
+  if (row.value === null || row.uses_left === null || row.promo_type === null) return "unknown";
   if (row.expires_at && Number.isNaN(Date.parse(row.expires_at))) return "unknown";
   if (row.expires_at && Date.parse(row.expires_at) <= Date.now()) return "expired";
   if (row.uses_left === 0) return "depleted";
@@ -57,9 +58,7 @@ function isAccessDenied(error: AdminApiError | null): boolean {
 
 export function PromosPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
   const [urlState, setUrlState] = useState<PromoUrlState>(() => readUrlState(PROMO_URL_CODECS));
-  const [draft, setDraft] = useState<PromoDraft | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [editState, setEditState] = useState<PromoEditState | null>(null);
   const [request, setRequest] = useState<ActionIntentRequest | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   useEffect(() => subscribeToUrlState<PromoUrlState>(PROMO_URL_CODECS, setUrlState), []);
@@ -67,14 +66,12 @@ export function PromosPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
   const resource = useRouteResource("promos", load, { enabled: true, pollMs: 60_000 });
   const selected = urlState.selected && urlState.selected !== "new" ? resource.data?.find((row) => row.code.toUpperCase() === urlState.selected?.toUpperCase()) || null : null;
   const creating = urlState.selected === "new";
-
-  useEffect(() => {
-    if (!urlState.selected) {
-      setDraft(null); setDirty(false); setFormError(""); return;
-    }
-    if (dirty) return;
-    setDraft(draftFrom(selected));
-  }, [dirty, selected, urlState.selected]);
+  const selectionKey = urlState.selected?.toUpperCase() || null;
+  const activeEdit = editState?.key === selectionKey ? editState : null;
+  const serverDraft = creating ? draftFrom(null) : selected ? draftFrom(selected) : null;
+  const draft = activeEdit?.draft || serverDraft;
+  const dirty = activeEdit?.dirty || false;
+  const formError = activeEdit?.error || "";
   useEffect(() => {
     onShellStatus?.({ api: resource.error ? resource.data ? "degraded" : "failed" : resource.loading ? "missing" : "ok", session: isAccessDenied(resource.error) ? "failed" : resource.data ? "ok" : resource.error ? "unavailable" : "missing", oldestRequiredSourceAt: resource.data?.map((row) => row.created_at).filter((value): value is string => Boolean(value)).sort().at(0) || null });
   }, [onShellStatus, resource.data, resource.error, resource.loading]);
@@ -89,16 +86,28 @@ export function PromosPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
     { header: "Истекает", cell: ({ row }) => row.original.expires_at ? dateText(row.original.expires_at) : <span>Без срока</span> },
   ], []);
 
-  function updateDraft(patch: Partial<PromoDraft>) { setDraft((current) => current ? { ...current, ...patch } : current); setDirty(true); setFormError(""); }
-  function reload() { setDirty(false); resource.reload(); }
+  function updateDraft(patch: Partial<PromoDraft>) {
+    if (!selectionKey || !draft) return;
+    setEditState((current) => {
+      const base = current?.key === selectionKey ? current : { key: selectionKey, draft, dirty: false, error: "" };
+      return { ...base, draft: { ...base.draft, ...patch }, dirty: true, error: "" };
+    });
+  }
+  function setCurrentError(error: string) {
+    if (!selectionKey || !draft) return;
+    setEditState((current) => current?.key === selectionKey
+      ? { ...current, error }
+      : { key: selectionKey, draft, dirty: false, error });
+  }
+  function reload() { setEditState(null); resource.reload(); }
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!draft) return;
     const code = draft.code.trim().toUpperCase();
     const value = Number(draft.value);
     const usesLeft = Number(draft.usesLeft);
-    if (!/^[A-Z0-9][A-Z0-9_-]{2,19}$/.test(code)) { setFormError("Код: 3–20 символов A-Z, цифр, дефиса или подчёркивания."); return; }
-    if (!Number.isInteger(value) || value < 1 || !Number.isInteger(usesLeft) || usesLeft < -1) { setFormError("Значение и остаток должны быть допустимыми целыми числами; -1 означает безлимит."); return; }
+    if (!/^[A-Z0-9][A-Z0-9_-]{2,19}$/.test(code)) { setCurrentError("Код: 3–20 символов A-Z, цифр, дефиса или подчёркивания."); return; }
+    if (!Number.isInteger(value) || value < 1 || !Number.isInteger(usesLeft) || usesLeft < -1) { setCurrentError("Значение и остаток должны быть допустимыми целыми числами; -1 означает безлимит."); return; }
     const payload = creating ? { code, promo_type: draft.promoType, value, uses_left: usesLeft, expires_at: draft.expiresAt || null } : { new_code: code, promo_type: draft.promoType, value, uses_left: usesLeft, expires_at: draft.expiresAt || null };
     setRequest({ action: creating ? "promo.create" : "promo.update", target: { type: "promo", id: creating ? code : String(selected?.code) }, payload, endpoint: creating ? "/api/admin/promos" : `/api/admin/promos/${encodeURIComponent(String(selected?.code))}`, method: creating ? "POST" : "PATCH" });
     setDialogOpen(true);

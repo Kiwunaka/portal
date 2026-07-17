@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type RefObject } from "react";
+import { useId, type RefObject } from "react";
 import { Search } from "lucide-react";
 
 import { Badge, Button } from "@/components/ui";
@@ -75,29 +75,28 @@ export function UserList({
   onSelect: (tgId: number) => void;
   scrollRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [queryDraft, setQueryDraft] = useState(filters.q);
   const tooltipId = useId();
-
-  useEffect(() => setQueryDraft(filters.q), [filters.q]);
 
   return (
     <div className="space-y-3">
       <form
         role="search"
         aria-label="Поиск пользователей"
-        className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_160px_190px_auto]"
+        className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(220px,1fr)_160px_190px_auto]"
         onSubmit={(event) => {
           event.preventDefault();
-          onFiltersChange({ q: queryDraft.trim() });
+          const value = new FormData(event.currentTarget).get("q");
+          onFiltersChange({ q: typeof value === "string" ? value.trim() : "" });
         }}
       >
-        <label className="relative">
+        <label className="relative sm:col-span-2 2xl:col-span-1">
           <span className="sr-only">Поиск по пользователям</span>
           <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--atlas-text-muted)]" size={15} />
           <input
+            key={filters.q}
+            name="q"
             type="search"
-            value={queryDraft}
-            onChange={(event) => setQueryDraft(event.target.value)}
+            defaultValue={filters.q}
             placeholder="Telegram ID, имя, ID установки, почта"
             className="min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] pl-9 pr-3 text-sm text-[color:var(--atlas-text)] outline-none focus:border-[color:var(--atlas-focus)]"
           />
@@ -134,7 +133,7 @@ export function UserList({
             <option value="name_desc">Имя: Я—А</option>
           </select>
         </label>
-        <Button type="submit" tone="primary"><Search size={15} /> Найти</Button>
+        <Button type="submit" tone="primary" className="sm:col-span-2 2xl:col-span-1"><Search size={15} /> Найти</Button>
       </form>
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[color:var(--atlas-text-soft)]">

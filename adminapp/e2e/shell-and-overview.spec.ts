@@ -131,23 +131,23 @@ test("главная не загружает данные скрытых раз�
 
 test("каждый раздел запрашивает только собственные источники", async ({ page }) => {
   const api = await installAdminApiMock(page);
-  const routes = [
-    { href: "/", label: "Главная", paths: ["/api/admin/ops/overview", "/api/admin/alerts?status=active", "/api/admin/probes/ru-origin/latest"] },
-    { href: "/nodes", label: "Ноды", paths: ["/api/admin/nodes/health", "/api/admin/nodes/runtime", "/api/admin/nodes/timeseries", "/api/admin/online/users?limit=200"] },
-    { href: "/traffic", label: "Трафик", paths: ["/api/admin/traffic/summary"] },
-    { href: "/alerts", label: "Алерты", paths: ["/api/admin/alerts?status=active"] },
-    { href: "/provider-caps", label: "Лимиты провайдеров", paths: ["/api/admin/ops/overview", "/api/admin/provider-quotas"] },
-    { href: "/free-tier", label: "Бесплатный контур", paths: ["/api/admin/ops/overview", "/api/admin/free-tier/users?limit=500"] },
-    { href: "/users", label: "Пользователи", paths: ["/api/admin/users?page_size=80&offset=0&sort=created_desc", "/api/admin/online/users?limit=200"] },
-    { href: "/online", label: "Сейчас онлайн", paths: ["/api/admin/online/users?limit=200"] },
-    { href: "/tickets", label: "Тикеты", paths: ["/api/admin/tickets?status=&limit=100"] },
-    { href: "/payments", label: "Платежи", paths: ["/api/admin/payments/summary?period=today", "/api/admin/payments/summary?period=7d", "/api/admin/payments/summary?period=30d", "/api/admin/payments/orders?limit=80"] },
-    { href: "/funnel", label: "Воронка", paths: ["/api/admin/funnel/summary"] },
-    { href: "/promos", label: "Промо", paths: ["/api/admin/promos?limit=100"] },
-    { href: "/referrals", label: "Рефералы", paths: ["/api/admin/referrals/pending?limit=100&status="] },
-    { href: "/release", label: "Релиз", paths: ["/api/admin/live-updates?include_inactive=true"] },
+  const routes: ReadonlyArray<{ href: string; label: string; paths: readonly RegExp[] }> = [
+    { href: "/", label: "Главная", paths: [/^\/api\/admin\/ops\/overview$/, /^\/api\/admin\/alerts\?status=active$/, /^\/api\/admin\/probes\/ru-origin\/latest$/] },
+    { href: "/nodes", label: "Ноды", paths: [/^\/api\/admin\/nodes\/health$/, /^\/api\/admin\/probes\/ru-origin\/latest$/] },
+    { href: "/traffic", label: "Трафик", paths: [/^\/api\/admin\/traffic\/summary\?from=.+&to=.+$/] },
+    { href: "/alerts", label: "Алерты", paths: [/^\/api\/admin\/alerts\?status=active$/] },
+    { href: "/provider-caps", label: "Лимиты провайдеров", paths: [/^\/api\/admin\/provider-quotas$/, /^\/api\/admin\/provider-quotas\/status$/] },
+    { href: "/free-tier", label: "Бесплатный контур", paths: [/^\/api\/admin\/free-tier\/summary$/, /^\/api\/admin\/free-tier\/users\?limit=500$/] },
+    { href: "/users", label: "Пользователи", paths: [/^\/api\/admin\/users\?page_size=80&offset=0&sort=created_desc$/, /^\/api\/admin\/online\/users\?limit=200$/] },
+    { href: "/online", label: "Сейчас онлайн", paths: [/^\/api\/admin\/online\/users\?limit=200$/] },
+    { href: "/tickets", label: "Тикеты", paths: [/^\/api\/admin\/tickets\?status=&limit=100$/] },
+    { href: "/payments", label: "Платежи", paths: [/^\/api\/admin\/payments\/summary\?period=7d$/, /^\/api\/admin\/payments\/orders\?limit=80$/] },
+    { href: "/funnel", label: "Воронка", paths: [/^\/api\/admin\/funnel\/summary\?from=.+&to=.+$/] },
+    { href: "/promos", label: "Промо", paths: [/^\/api\/admin\/promos\?limit=100$/] },
+    { href: "/referrals", label: "Рефералы", paths: [/^\/api\/admin\/referrals\/pending\?limit=100&status=pending$/, /^\/api\/admin\/referrals\/pending\?limit=100&status=rewarded$/] },
+    { href: "/release", label: "Релиз", paths: [/^\/api\/admin\/releases\/candidates\?limit=50$/, /^\/api\/admin\/releases\/[a-f0-9]{64}\/readiness$/] },
     { href: "/broadcast", label: "Рассылка", paths: [] }
-  ] as const;
+  ];
 
   for (const route of routes) {
     const firstCall = api.calls.length;
@@ -156,14 +156,13 @@ test("каждый раздел запрашивает только собств
     if (route.paths.length) {
       await expect.poll(() => {
         const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET").map((call) => call.path);
-        return route.paths.every((path) => calls.includes(path));
+        return route.paths.every((pattern) => calls.some((path) => pattern.test(path)));
       }).toBe(true);
     } else {
       await page.waitForTimeout(150);
     }
     const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET").map((call) => call.path);
-    expect(calls, `лишние GET на ${route.href}`).toEqual(expect.arrayContaining([...route.paths]));
-    expect(calls.every((path) => route.paths.includes(path as never)), `скрытый GET на ${route.href}: ${calls.join(", ")}`).toBe(true);
+    expect(calls.every((path) => route.paths.some((pattern) => pattern.test(path))), `скрытый GET на ${route.href}: ${calls.join(", ")}`).toBe(true);
   }
 });
 
@@ -184,8 +183,8 @@ test("клиентская навигация из промо изолирует
   expect(await page.evaluate(() => document.documentElement.dataset.task3ShellInstance)).toBe("preserved");
   await expect(page.getByRole("heading", { name: "Рефералы", exact: true, level: 1 })).toBeVisible();
   await expect(page.getByText("PROMO-ONLY-701", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("alert").filter({ hasText: "Не удалось загрузить раздел «Рефералы»" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Повторить загрузку раздела «Рефералы»" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "referrals_unavailable" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Повторить очередь" })).toBeVisible();
 });
 
 test("раздел без чтений не подтверждает сессию даже после локального 401", async ({ page }) => {
@@ -194,16 +193,18 @@ test("раздел без чтений не подтверждает сесси�
   });
   const api = await installAdminApiMock(page, { broadcastStatus: 401 });
   await page.goto("/broadcast");
-  await expect(page.getByText("Данные свежие", { exact: true })).toHaveCount(1);
-
   await expect(page.getByLabel("Состояние API: Нет данных")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Нет данных")).toBeVisible();
   await expect(page.getByLabel("Состояние API: Норма")).toHaveCount(0);
   await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 
-  await page.getByPlaceholder("Текст рассылки").fill("Проверка локального отказа");
-  await page.getByRole("button", { name: "Dry-run" }).click();
-  await expect(page.getByText("Сессия рассылки отклонена", { exact: true })).toBeVisible();
+  await page.getByLabel("Текст рассылки").fill("Проверка локального отказа");
+  await page.getByRole("button", { name: "Подготовить защищённый предпросмотр" }).click();
+  const dialog = page.getByRole("dialog", { name: "Проверка действия" });
+  await dialog.getByLabel("Подтверждение").fill("ОТПРАВИТЬ");
+  await dialog.getByRole("button", { name: "Выполнить" }).click();
+  await expect(dialog.getByText("Действие завершилось с ошибкой", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("ID обращения: broadcast-test-id", { exact: true })).toBeVisible();
   await expect.poll(() => api.calls.some((call) => call.method === "POST" && call.path === "/api/admin/broadcast")).toBe(true);
   await expect(page.getByLabel("Состояние API: Нет данных")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Нет данных")).toBeVisible();
@@ -348,7 +349,7 @@ test("главная переводит реальные причины сбоя
 
   const ruRow = page.locator("span", { hasText: /^RU-origin$/ }).locator("xpath=../../..");
   await expect(ruRow).toContainText("Обязательная цель RU-проверки завершилась сбоем");
-  await page.getByRole("button", { name: "Обновить", exact: true }).click();
+  await page.getByRole("main").getByRole("button", { name: "Обновить", exact: true }).click();
   await expect(ruRow).toContainText("Обязательная цель RU-проверки проверена не полностью");
   await expect(ruRow).not.toContainText("required_target_");
 });
@@ -475,7 +476,7 @@ test("нулевой реальный успех не маскируется syn
 });
 
 test("прерванная старая загрузка не перезаписывает новый маршрут", async ({ page }) => {
-  const api = await installAdminApiMock(page, { delayFirstOverviewFailure: true });
+  const api = await installAdminApiMock(page, { delayFirstOverviewFailure: true, ruScenario: "fresh-pass" });
   const abortedOverview = page.waitForEvent("requestfailed", {
     predicate: (request) => new URL(request.url()).pathname === "/api/admin/ops/overview"
   });
@@ -497,7 +498,7 @@ test("прерванная старая загрузка не перезапис
 
   await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
-  await expect(page.getByRole("banner").locator('time[datetime="2026-07-15T10:00:00Z"]')).toBeVisible();
+  await expect(page.getByRole("banner").locator('time[datetime="2026-07-15T09:50:00Z"]')).toBeVisible();
   await expect(page.getByText("Сессия отклонена", { exact: true })).toHaveCount(0);
 });
 
@@ -605,7 +606,7 @@ test("назад и вперёд восстанавливают маршрут �
   await expect(page).toHaveURL(/\/users$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/nodes\?selected=nl&keep=yes$/);
-  await expect(page.getByRole("heading", { name: "Ноды", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ноды", exact: true, level: 1 })).toBeVisible();
   await page.goForward();
   await expect(page).toHaveURL(/\/users$/);
 });

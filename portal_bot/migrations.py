@@ -1331,8 +1331,7 @@ def _ensure_release_evidence_domain_sqlite(conn) -> None:
               descriptor_sha256 VARCHAR(64) NOT NULL,
               ingest_key_id VARCHAR(128) NOT NULL,
               imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              CONSTRAINT uq_release_candidates_candidate_id
-                UNIQUE (candidate_id)
+              CONSTRAINT uq_release_candidates_candidate_id UNIQUE (candidate_id)
             );
             """
         )
@@ -1351,14 +1350,9 @@ def _ensure_release_evidence_domain_sqlite(conn) -> None:
               detail_json TEXT NOT NULL,
               ru_probe_run_id INTEGER,
               imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              CONSTRAINT fk_release_origin_evidence_candidate
-                FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id)
-                ON DELETE RESTRICT,
-              CONSTRAINT fk_release_origin_evidence_ru_probe_run
-                FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id)
-                ON DELETE RESTRICT,
-              CONSTRAINT uq_release_origin_evidence_hash
-                UNIQUE (evidence_sha256)
+              CONSTRAINT fk_release_origin_evidence_candidate FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id) ON DELETE RESTRICT,
+              CONSTRAINT fk_release_origin_evidence_ru_probe_run FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id) ON DELETE RESTRICT,
+              CONSTRAINT uq_release_origin_evidence_hash UNIQUE (evidence_sha256)
             );
             """
         )

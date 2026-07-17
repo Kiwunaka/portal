@@ -88,14 +88,14 @@ test("Сеть: пустой лимит не открывает intent, а об�
   const limit = page.getByLabel("Лимит квоты в ГиБ");
   await limit.fill("   ");
   await page.getByRole("button", { name: "Проверить и сохранить" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Введите лимит квоты в ГиБ: пустое значение нельзя сохранить.");
+  await expect(page.getByRole("alert").filter({ hasText: "Введите лимит квоты в ГиБ" })).toHaveText("Введите лимит квоты в ГиБ: пустое значение нельзя сохранить.");
   expect(api.calls.filter((call) => call.path === "/api/admin/action-intents")).toHaveLength(0);
 
   await page.goto("/provider-caps?selected=nl");
   await limit.fill("123");
   await expect(page.getByText("Есть несохранённые изменения.", { exact: true })).toBeVisible();
   const initialReads = api.calls.filter((call) => call.path === "/api/admin/provider-quotas").length;
-  await page.getByRole("button", { name: "Обновить" }).click();
+  await page.getByRole("main").getByRole("button", { name: "Обновить" }).click();
   await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/provider-quotas").length).toBeGreaterThan(initialReads);
   await expect(limit).toHaveValue("123");
 });
@@ -106,8 +106,8 @@ test("Сеть: бесплатный контур показывает burn rate
 
   await expect(page.getByRole("heading", { name: "Бесплатный контур", level: 1 })).toBeVisible();
   await expect(page.getByText("Расход в день", { exact: true })).toBeVisible();
-  await expect(page.getByText("Анна Бесплатная", { exact: true })).toBeVisible();
-  await expect(page.getByText("Илья Бесплатный", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Анна Бесплатная(?:\s|$)/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Илья Бесплатный(?:\s|$)/ })).toBeVisible();
   await expect(page.getByText("Платный пул в расчёты и строки этого экрана не входит.", { exact: true })).toBeVisible();
   await expect(page.getByText("paid_pool", { exact: true })).toHaveCount(0);
 });
@@ -118,7 +118,7 @@ test("Деньги: платежи разделяют order status и callback, 
 
   await expect(page.getByRole("heading", { name: "Платежи", level: 1 })).toBeVisible();
   await expect(page.getByText("Зависшие", { exact: true })).toBeVisible();
-  await expect(page.getByText("Состояние callback", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Состояние callback", exact: true }).first()).toBeVisible();
   await page.getByLabel("Период платежей").selectOption("7d");
   await expect(page).toHaveURL(/period=7d/);
   await page.getByLabel("Период платежей").selectOption("30d");
@@ -147,8 +147,8 @@ test("Деньги: сбой реестра заказов не скрывает
 
   await expect(page.getByText("Часть источников недоступна", { exact: true })).toBeVisible();
   await expect(page.getByText("3 885 RUB", { exact: true })).toBeVisible();
-  await expect(page.getByText("order-review-901", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Реестр заказов временно недоступен", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^order-review-901\b/ })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "payment_orders_unavailable" })).toBeVisible();
 });
 
 test("Деньги: воронка применяет общий range/source/stage к графику и таблице", async ({ page }) => {
@@ -164,8 +164,8 @@ test("Деньги: воронка применяет общий range/source/st
   await expect(page).toHaveURL(/stage=paid/);
   await expect(chart).toHaveAttribute("data-source", "site");
   await expect(chart).toHaveAttribute("data-stage", "paid");
-  await expect(page.getByText("site", { exact: true })).toBeVisible();
-  await expect(page.getByText("bot", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "site", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "bot", exact: true })).toHaveCount(0);
   await expect(page.getByRole("columnheader", { name: "Оплатили" })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Посетители" })).toHaveCount(0);
   await expect(page.getByText("Оплата → подтверждение", { exact: true })).toBeVisible();
@@ -185,7 +185,7 @@ test("Деньги: promo edit и delete проходят через L2/L3 serve
   await dialog.getByLabel("Подтверждение").fill("ПОДТВЕРДИТЬ");
   await dialog.getByRole("button", { name: "Выполнить" }).click();
   await expect(dialog.getByText("ID аудита: 717", { exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Закрыть" }).click();
+  await dialog.getByRole("button", { name: "Закрыть", exact: true }).click();
 
   await page.getByRole("button", { name: "Удалить" }).click();
   dialog = page.getByRole("dialog", { name: "Проверка действия" });

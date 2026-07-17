@@ -41,7 +41,7 @@ test("все 15 маршрутов открываются напрямую с р
 
 test("подсказка и диалог управляются клавиатурой и возвращают фокус", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await installAdminApiMock(page);
+  await installAdminApiMock(page, { ruScenario: "fresh-pass" });
   await page.goto("/nodes");
 
   const tooltipTrigger = page.getByRole("button", { name: "Показать пояснение" }).first();

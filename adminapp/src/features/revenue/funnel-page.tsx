@@ -52,7 +52,7 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
     onShellStatus?.({ api: resource.error ? resource.data ? "degraded" : "failed" : resource.loading ? "missing" : "ok", session: isAccessDenied(resource.error) ? "failed" : resource.data ? "ok" : resource.error ? "unavailable" : "missing", oldestRequiredSourceAt: resource.data?.period.from || null });
   }, [onShellStatus, resource.data, resource.error, resource.loading]);
 
-  const sources = resource.data?.by_source || [];
+  const sources = useMemo(() => resource.data?.by_source || [], [resource.data?.by_source]);
   const filteredSources = useMemo(() => sources.filter((row) => !urlState.source || row.source === urlState.source), [sources, urlState.source]);
   const selectedMetric = STAGE_METRICS.find((item) => item.value === urlState.stage)
     || STAGE_METRICS.find((item) => item.value !== "visitors" && item.stageKey === urlState.stage)

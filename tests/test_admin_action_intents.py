@@ -937,6 +937,35 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
     api = _load_api(monkeypatch, tmp_path)
     _seed_nodes(api)
     import admin_action_intent_service as service
+    from models import Node
+
+    session = api.SessionLocal()
+    try:
+        session.add_all(
+            [
+                Node(
+                    code="pl",
+                    name="Польша",
+                    host="pl.example.test",
+                    inbound_id=1,
+                    enabled=True,
+                    accepting_new_clients=True,
+                    is_draining=False,
+                ),
+                Node(
+                    code="it",
+                    name="Италия",
+                    host="it.example.test",
+                    inbound_id=1,
+                    enabled=True,
+                    accepting_new_clients=True,
+                    is_draining=False,
+                ),
+            ]
+        )
+        session.commit()
+    finally:
+        session.close()
 
     external_action = "test.external"
     monkeypatch.setitem(
@@ -950,8 +979,12 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
     )
     client = TestClient(api.app)
 
-    def prepare_intent() -> str:
-        response = _prepare(client, action=external_action)
+    def prepare_intent(node_code: str = "nl") -> str:
+        response = _prepare(
+            client,
+            action=external_action,
+            target_id=node_code,
+        )
         assert response.status_code == 200, response.text
         return str(response.json()["intent_id"])
 
@@ -961,6 +994,7 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
         executor,
         *,
         timeout: float = 1.0,
+        node_code: str = "nl",
     ) -> dict:
         return _run(
             service.execute_action_intent(
@@ -968,9 +1002,11 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
                 actor_tg_id=9999,
                 intent_id=intent_id,
                 idempotency_key=idempotency_key,
-                confirmation_sha256_header=hashlib.sha256(b"NL").hexdigest(),
+                confirmation_sha256_header=hashlib.sha256(
+                    node_code.upper().encode("utf-8")
+                ).hexdigest(),
                 action=external_action,
-                target={"type": "node", "id": "nl"},
+                target={"type": "node", "id": node_code},
                 payload={"force": False},
                 audit_writer=api._add_admin_audit,
                 external_executor=executor,
@@ -1022,20 +1058,33 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
         await asyncio.sleep(1)
         return {"ok": True, "code": "too_late"}
 
-    timeout_id = prepare_intent()
+    timeout_id = prepare_intent("de")
     timeout_key = str(uuid.uuid4())
-    timed_out = execute(timeout_id, timeout_key, hangs, timeout=0.01)
+    timed_out = execute(
+        timeout_id,
+        timeout_key,
+        hangs,
+        timeout=0.01,
+        node_code="de",
+    )
     assert timed_out["status"] == "uncertain"
     assert timed_out["result_code"] == "external_timeout"
-    assert execute(timeout_id, timeout_key, hangs, timeout=0.01) == timed_out
+    assert execute(
+        timeout_id,
+        timeout_key,
+        hangs,
+        timeout=0.01,
+        node_code="de",
+    ) == timed_out
     assert timeout_attempts == [1]
 
     malformed_secret = "SYNTHETIC-PRIVATE-MALFORMED-BODY"
-    malformed_id = prepare_intent()
+    malformed_id = prepare_intent("pl")
     malformed = execute(
         malformed_id,
         str(uuid.uuid4()),
         lambda _context: {"message": malformed_secret},
+        node_code="pl",
     )
     assert malformed["status"] == "uncertain"
     assert malformed["result_code"] == "external_result_malformed"
@@ -1047,12 +1096,22 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
         exception_attempts.append(1)
         raise RuntimeError(exception_secret)
 
-    exception_id = prepare_intent()
+    exception_id = prepare_intent("it")
     exception_key = str(uuid.uuid4())
-    raised = execute(exception_id, exception_key, raises_private)
+    raised = execute(
+        exception_id,
+        exception_key,
+        raises_private,
+        node_code="it",
+    )
     assert raised["status"] == "uncertain"
     assert raised["result_code"] == "external_exception"
-    assert execute(exception_id, exception_key, raises_private) == raised
+    assert execute(
+        exception_id,
+        exception_key,
+        raises_private,
+        node_code="it",
+    ) == raised
     assert exception_attempts == [1]
 
     stale_id = prepare_intent()
@@ -1100,7 +1159,12 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
     assert stale_effect_calls == []
 
     with pytest.raises(service.ActionIntentError) as conflict:
-        execute(exception_id, str(uuid.uuid4()), raises_private)
+        execute(
+            exception_id,
+            str(uuid.uuid4()),
+            raises_private,
+            node_code="it",
+        )
     assert conflict.value.code == "intent_consumed"
     assert conflict.value.intent_id == exception_id
     assert conflict.value.audit_id == raised["audit_id"]
