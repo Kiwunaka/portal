@@ -88,6 +88,16 @@ const FIELD_LABELS: Record<string, string> = {
   hash: "Хэш выборки",
   enabled_count: "Включено ключей",
   online_count: "Ключей онлайн",
+  configured: "Квота настроена",
+  node_status: "Состояние ноды",
+  included_gb: "Лимит, ГиБ",
+  used_gb: "Использовано, ГиБ",
+  reset_day: "День сброса",
+  timezone: "Часовой пояс",
+  warning_ratio: "Порог предупреждения",
+  critical_ratio: "Критический порог",
+  notes_present: "Есть примечание",
+  projected_exhaustion_at: "Прогноз исчерпания",
 };
 
 function valueText(value: unknown, field: string): string {
@@ -112,6 +122,8 @@ function valueText(value: unknown, field: string): string {
     closed: "Закрыт",
     enabled: "Включён",
     disabled: "Выключен",
+    draining: "Выводится из контура",
+    missing: "Нет данных",
   };
   return labels[raw.trim().toLowerCase()] || raw;
 }

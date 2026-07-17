@@ -698,7 +698,63 @@ type AdminApiMockOptions = {
   failAllLegacyRequests?: boolean;
   delayFirstOverviewFailure?: boolean;
   ticketReplyOutcomes?: Array<"completed" | "failed" | "uncertain">;
+  networkScenario?: "populated";
 };
+
+const networkTrafficRows = [
+  { date: "2026-07-13", node_code: "nl", pool_code: "paid_pool", traffic_bytes: 8053063680, traffic_gb: 7.5, samples: 18 },
+  { date: "2026-07-14", node_code: "nl", pool_code: "paid_pool", traffic_bytes: null, traffic_gb: null, samples: null },
+  { date: "2026-07-15", node_code: "nl", pool_code: "paid_pool", traffic_bytes: 9932111872, traffic_gb: 9.25, samples: 22 },
+  { date: "2026-07-13", node_code: "nl-free", pool_code: "free_pool", traffic_bytes: 1610612736, traffic_gb: 1.5, samples: 7 },
+  { date: "2026-07-15", node_code: "nl-free", pool_code: "free_pool", traffic_bytes: 2147483648, traffic_gb: 2, samples: 9 },
+];
+
+const networkQuotaConfig = {
+  id: 71,
+  node_code: "nl",
+  included_bytes: 107374182400,
+  included_gb: 100,
+  reset_day: 1,
+  timezone: "UTC",
+  warning_ratio: 0.8,
+  critical_ratio: 0.95,
+  enabled: true,
+  notes: null,
+  created_at: "2026-07-01T10:00:00Z",
+  updated_at: "2026-07-15T09:55:00Z",
+};
+
+const networkQuotaStatuses = [
+  { node_code: "nl", node_name: "Нидерланды", configured: true, enabled: true, state: "warning", included_gb: 100, used_gb: 84.25, remaining_gb: 15.75, used_pct: 84.3, warning_ratio: 0.8, critical_ratio: 0.95, cycle_start: "2026-07-01T00:00:00Z", cycle_end: "2026-08-01T00:00:00Z", reset_day: 1, timezone: "UTC", sample_count: 120, source: "node_health_samples_total_counter_delta", updated_at: "2026-07-15T09:55:00Z" },
+  { node_code: "de", node_name: "Германия", configured: false, enabled: false, state: "unconfigured", included_gb: null, used_gb: null, remaining_gb: null, used_pct: null, warning_ratio: null, critical_ratio: null, cycle_start: null, cycle_end: null, reset_day: null, timezone: null, sample_count: null, source: "not_configured", updated_at: null },
+];
+
+const networkAlerts = [
+  { id: 81, fingerprint: "provider_quota:nl", source: "provider_quota", severity: "warning", status: "active", title: "Лимит NL приближается", body: "Использовано 84,3% текущего лимита.", node_code: "nl", tg_id: null, key_id: null, first_seen_at: "2026-07-15T07:00:00Z", last_seen_at: "2026-07-15T09:50:00Z", resolved_at: null, acknowledged_at: null, silence_until: null },
+  { id: 82, fingerprint: "free_tier:over_cap", source: "free_tier", severity: "warning", status: "active", title: "Есть пользователи сверх лимита", body: "Проверьте бесплатный контур.", node_code: null, tg_id: null, key_id: null, first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:45:00Z", resolved_at: null, acknowledged_at: null, silence_until: null },
+];
+
+const networkFreeSummary = {
+  generated_at: generatedAt,
+  free_users: 2,
+  sampled_users: 2,
+  limit_gb_per_user: 5,
+  cycle_days: 30,
+  used_gb: 6.7,
+  limit_gb_total: 10,
+  remaining_gb: 3.3,
+  used_pct: 67,
+  near_cap_users: 1,
+  over_cap_users: 1,
+  burn_rate_gb_per_day: 0.478,
+  source: "key_usage_rollups",
+};
+
+const networkFreeFacts = { node_pool: "NL-free", traffic_limit_gb: 5, cycle_days: 30, speed_limit_mbps: 50, device_limit: 1, monthly_reset: true, source: "shared_product_facts" };
+const networkFreeUsers = [
+  { tg_id: 2001, username: "free_one", display_name: "Анна Бесплатная", is_active: true, current_plan_code: "free", used_gb: 5.2, limit_gb: 5, remaining_gb: 0, used_pct: 104, state: "over_cap", cycle_start: "2026-07-01T00:00:00Z", cycle_end: "2026-07-31T00:00:00Z", next_reset_at: "2026-07-31T00:00:00Z", source: "key_usage_rollups", rollup_count: 12 },
+  { tg_id: 2002, username: "free_two", display_name: "Илья Бесплатный", is_active: true, current_plan_code: "free", used_gb: 1.5, limit_gb: 5, remaining_gb: 3.5, used_pct: 30, state: "ok", cycle_start: "2026-07-01T00:00:00Z", cycle_end: "2026-07-31T00:00:00Z", next_reset_at: "2026-07-31T00:00:00Z", source: "key_usage_rollups", rollup_count: 8 },
+];
 
 const clientUserRows = [
   {
@@ -903,6 +959,8 @@ const LEGACY_GET_PATHS = new Set([
   "/api/admin/traffic/summary",
   "/api/admin/nodes/timeseries",
   "/api/admin/provider-quotas",
+  "/api/admin/provider-quotas/status",
+  "/api/admin/free-tier/summary",
   "/api/admin/nodes/health",
   "/api/admin/nodes/runtime",
   "/api/admin/online/users",
@@ -945,6 +1003,14 @@ function isTicketDetailPath(pathname: string): boolean {
 
 function isTicketActionPath(pathname: string): boolean {
   return /^\/api\/admin\/tickets\/[1-9]\d*\/(reply|status)$/.test(pathname);
+}
+
+function isProviderQuotaMutationPath(pathname: string): boolean {
+  return pathname === "/api/admin/provider-quotas" || /^\/api\/admin\/provider-quotas\/[^/]+$/.test(pathname);
+}
+
+function isAlertActionPath(pathname: string): boolean {
+  return /^\/api\/admin\/alerts\/[1-9]\d*\/(ack|silence)$/.test(pathname);
 }
 
 function isFocusedGetPath(pathname: string): boolean {
@@ -1025,7 +1091,9 @@ export async function installAdminApiMock(
       || url.pathname === "/api/admin/action-intents"
       || isNodeActionPath(url.pathname)
       || isUserActionPath(url.pathname)
-      || isTicketActionPath(url.pathname);
+      || isTicketActionPath(url.pathname)
+      || isProviderQuotaMutationPath(url.pathname)
+      || isAlertActionPath(url.pathname);
     const knownRequest =
       (method === "GET" && isFocusedGetPath(url.pathname)) ||
       (method === "POST" && url.pathname === "/api/admin/auth/session") ||
@@ -1034,6 +1102,8 @@ export async function installAdminApiMock(
       (method === "POST" && isNodeActionPath(url.pathname)) ||
       ((method === "POST" || method === "PUT") && isUserActionPath(url.pathname)) ||
       (method === "POST" && isTicketActionPath(url.pathname)) ||
+      ((method === "POST" || method === "PATCH" || method === "DELETE") && isProviderQuotaMutationPath(url.pathname)) ||
+      (method === "POST" && isAlertActionPath(url.pathname)) ||
       (method === "OPTIONS" && knownPath);
     if (!knownRequest) {
       await fulfillJson(
@@ -1099,9 +1169,12 @@ export async function installAdminApiMock(
         "node.resync": { code: nodeCode.toUpperCase(), planned_moves: 31, without_target: 0, dry_run: false },
       };
       const nodeAction = action.startsWith("node.");
-      const l3Action = action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete";
+      const providerAction = action.startsWith("provider_quota.");
+      const l3Action = action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete" || action === "provider_quota.delete";
       const challenge = action === "node.disable"
         ? nodeCode.toUpperCase()
+        : action === "provider_quota.delete"
+          ? nodeCode.toUpperCase()
         : action === "ticket.reply" || action === "user.message"
           ? "ОТПРАВИТЬ"
           : l3Action
@@ -1109,24 +1182,26 @@ export async function installAdminApiMock(
             : "ПОДТВЕРДИТЬ";
       const genericBefore = targetType === "ticket" ? { ticket_id: Number(targetId), status: "open" } : { tg_id: Number(targetId), status: "active" };
       const genericAfter = targetType === "ticket" ? { ticket_id: Number(targetId), status: action === "ticket.status" ? String((body.payload as Record<string, unknown> | undefined)?.status || "open") : "open" } : { tg_id: Number(targetId), status: action === "user.block" ? "blocked" : "active" };
+      const providerBefore = { node_code: nodeCode.toUpperCase(), configured: true, node_status: "active", included_gb: 100, used_gb: 84.25, reset_day: 1, timezone: "UTC", warning_ratio: 0.8, critical_ratio: 0.95, enabled: true, notes_present: false, projected_exhaustion_at: "2026-07-18T12:00:00Z", updated_at: "2026-07-15T09:55:00Z" };
+      const providerAfter = action === "provider_quota.delete" ? { ...providerBefore, configured: false, included_gb: null, reset_day: null, timezone: null, warning_ratio: null, critical_ratio: null, enabled: false, projected_exhaustion_at: null, updated_at: null } : { ...providerBefore, included_gb: Number((body.payload as Record<string, unknown> | undefined)?.included_gb || 100) };
       await fulfillJson(route, {
         ok: true,
         intent_id: "00000000-0000-4000-8000-000000000713",
         action,
-        target: { type: targetType, id: nodeAction ? nodeCode : targetId },
+        target: { type: targetType, id: nodeAction || providerAction ? nodeCode : targetId },
         risk_level: l3Action ? "L3" : "L2",
         preview: {
-          title: nodeAction ? action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}` : targetType === "ticket" ? `Действие с тикетом ${targetId}` : `Действие с пользователем ${targetId}`,
-          summary: nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер проверил текущее состояние и подготовил изменение.",
-          before: nodeAction ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 } : genericBefore,
-          after: nodeAction ? { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 } : genericAfter,
-          warnings: action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : [],
+          title: providerAction ? `Квота провайдера ${nodeCode.toUpperCase()}` : nodeAction ? action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}` : targetType === "ticket" ? `Действие с тикетом ${targetId}` : `Действие с пользователем ${targetId}`,
+          summary: providerAction ? "Сервер пересчитал конфигурацию и прогноз исчерпания." : nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер проверил текущее состояние и подготовил изменение.",
+          before: providerAction ? providerBefore : nodeAction ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 } : genericBefore,
+          after: providerAction ? providerAfter : nodeAction ? { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 } : genericAfter,
+          warnings: action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : providerAction ? ["Прогноз рассчитан сервером."] : [],
         },
         payload_hash: "1".repeat(64),
         snapshot_hash: "2".repeat(64),
         entity_version_hash: "3".repeat(64),
         confirmation_challenge: challenge,
-        confirmation_challenge_kind: action === "node.disable" ? "exact_node_code" : l3Action ? "exact_tg_id" : "exact_phrase",
+        confirmation_challenge_kind: action === "node.disable" || action === "provider_quota.delete" ? "exact_node_code" : l3Action ? "exact_tg_id" : "exact_phrase",
         expires_at: "2099-07-15T10:10:00Z",
       });
       return;
@@ -1144,6 +1219,28 @@ export async function installAdminApiMock(
         audit_id: 713,
         node: { code: "NL", enabled: false, accepting_new_clients: false, is_draining: false },
       });
+      return;
+    }
+
+    if (method !== "GET" && isProviderQuotaMutationPath(url.pathname)) {
+      if (!requestHeaders["x-admin-intent-id"] || !requestHeaders["x-admin-idempotency-key"] || !requestHeaders["x-admin-confirmation-sha256"]) {
+        await fulfillJson(route, { detail: { code: "intent_required", message: "Нужно защищённое намерение" } }, 428);
+        return;
+      }
+      await fulfillJson(route, {
+        ok: true,
+        status: "completed",
+        action_intent_id: requestHeaders["x-admin-intent-id"],
+        audit_id: 716,
+        quota: networkQuotaConfig,
+      });
+      return;
+    }
+
+    if (isAlertActionPath(url.pathname)) {
+      const alertId = Number(url.pathname.split("/").at(-2));
+      const alert = networkAlerts.find((row) => row.id === alertId) || networkAlerts[0];
+      await fulfillJson(route, { ok: true, alert: { ...alert, acknowledged_at: generatedAt } });
       return;
     }
 
@@ -1410,7 +1507,36 @@ export async function installAdminApiMock(
         );
         return;
       }
-      await fulfillJson(route, { rows: [] });
+      await fulfillJson(route, options.networkScenario === "populated" ? { ok: true, from: "2026-07-13", to: "2026-07-15", rows: networkTrafficRows } : { rows: [] });
+      return;
+    }
+
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/alerts") {
+      const wanted = url.searchParams.get("status") || "active";
+      const rows = wanted === "resolved" ? [] : networkAlerts;
+      await fulfillJson(route, { ok: true, generated_at: generatedAt, alerts: rows });
+      return;
+    }
+
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/provider-quotas") {
+      await fulfillJson(route, { ok: true, quotas: [networkQuotaConfig] });
+      return;
+    }
+
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/provider-quotas/status") {
+      await fulfillJson(route, { ok: true, generated_at: generatedAt, nodes: networkQuotaStatuses });
+      return;
+    }
+
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/free-tier/summary") {
+      await fulfillJson(route, { ok: true, summary: networkFreeSummary, facts: networkFreeFacts });
+      return;
+    }
+
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/free-tier/users") {
+      const query = (url.searchParams.get("q") || "").toLowerCase();
+      const rows = networkFreeUsers.filter((row) => !query || `${row.tg_id} ${row.username} ${row.display_name}`.toLowerCase().includes(query));
+      await fulfillJson(route, { ok: true, generated_at: generatedAt, total: rows.length, facts: networkFreeFacts, users: rows });
       return;
     }
 
@@ -1439,8 +1565,10 @@ export async function installAdminApiMock(
     const minimalPayloads: Record<string, unknown> = {
       "/api/admin/alerts": { alerts: [] },
       "/api/admin/free-tier/users": { users: [] },
+      "/api/admin/free-tier/summary": { summary: { generated_at: generatedAt, free_users: null, sampled_users: null, limit_gb_per_user: null, cycle_days: null, used_gb: null, limit_gb_total: null, remaining_gb: null, used_pct: null, near_cap_users: null, over_cap_users: null, burn_rate_gb_per_day: null, source: null }, facts: { node_pool: null, traffic_limit_gb: null, cycle_days: null, speed_limit_mbps: null, device_limit: null, monthly_reset: null, source: null } },
       "/api/admin/nodes/timeseries": { rows: [] },
       "/api/admin/provider-quotas": { quotas: [] },
+      "/api/admin/provider-quotas/status": { generated_at: generatedAt, nodes: [] },
       "/api/admin/nodes/health": { nodes: options.ruScenario ? nodeRows : [] },
       "/api/admin/nodes/runtime": { ok: true, nodes: [] },
       "/api/admin/online/users": { ok: true, generated_at: generatedAt, rows: [] },

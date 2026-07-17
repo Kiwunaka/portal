@@ -1050,6 +1050,173 @@ def test_private_message_and_bulk_selection_persist_only_hashes(
     finally:
         session.close()
 
+
+def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_l1(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    _seed_nodes(api)
+    client = TestClient(api.app)
+    create_payload = {
+        "node_code": "de",
+        "included_gb": 80,
+        "reset_day": 1,
+        "timezone": "UTC",
+        "warning_ratio": 0.8,
+        "critical_ratio": 0.95,
+        "enabled": True,
+        "notes": None,
+    }
+    for method, path, body in (
+        ("POST", "/api/admin/provider-quotas", create_payload),
+        ("PATCH", "/api/admin/provider-quotas/nl", {"included_gb": 120}),
+        ("DELETE", "/api/admin/provider-quotas/nl", {}),
+    ):
+        unguarded = client.request(method, path, headers=_admin_headers(), json=body)
+        assert unguarded.status_code == 428, unguarded.text
+        assert _detail_code(unguarded) == "intent_required"
+
+    from models import AdminActionIntent, AdminAudit, NodeHealthSample, OpsAlert, ProviderTrafficQuota, ProviderTrafficQuotaAudit
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add(
+            ProviderTrafficQuota(
+                node_code="nl",
+                included_bytes=100 * (1024**3),
+                reset_day=1,
+                timezone="UTC",
+                warning_ratio=0.8,
+                critical_ratio=0.95,
+                enabled=True,
+                notes=None,
+                updated_by=9999,
+                created_at=now - timedelta(days=10),
+                updated_at=now - timedelta(days=1),
+            )
+        )
+        session.add_all(
+            [
+                NodeHealthSample(node_code="nl", sampled_at=now - timedelta(days=1), total_traffic_bytes=10 * (1024**3)),
+                NodeHealthSample(node_code="nl", sampled_at=now - timedelta(hours=1), total_traffic_bytes=40 * (1024**3)),
+            ]
+        )
+        session.add(
+            OpsAlert(
+                fingerprint="provider_quota:nl:test",
+                source="provider_quota",
+                severity="warning",
+                status="active",
+                title="Лимит NL",
+                body="Без сырых данных провайдера",
+                node_code="nl",
+                first_seen_at=now - timedelta(hours=2),
+                last_seen_at=now,
+                created_at=now - timedelta(hours=2),
+                updated_at=now,
+            )
+        )
+        session.commit()
+        alert_id = int(session.query(OpsAlert).filter_by(fingerprint="provider_quota:nl:test").one().id)
+    finally:
+        session.close()
+
+    private_note = "SYNTHETIC-PRIVATE-PROVIDER-NOTE"
+    update_payload = {
+        "included_gb": 120,
+        "reset_day": 1,
+        "timezone": "UTC",
+        "warning_ratio": 0.82,
+        "critical_ratio": 0.96,
+        "enabled": True,
+        "notes": private_note,
+    }
+    prepared = _prepare(
+        client,
+        action="provider_quota.update",
+        target_type="provider_quota",
+        target_id="nl",
+        payload=update_payload,
+    )
+    assert prepared.status_code == 200, prepared.text
+    preview = prepared.json()["preview"]
+    assert preview["before"]["included_gb"] == 100.0
+    assert preview["after"]["included_gb"] == 120.0
+    assert "projected_exhaustion_at" in preview["after"]
+    assert private_note not in prepared.text
+
+    session = api.SessionLocal()
+    try:
+        quota = session.query(ProviderTrafficQuota).filter_by(node_code="nl").one()
+        quota.included_bytes = 110 * (1024**3)
+        quota.updated_at = now + timedelta(seconds=1)
+        session.commit()
+    finally:
+        session.close()
+
+    confirmation_hash = hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest()
+    stale = client.patch(
+        "/api/admin/provider-quotas/nl",
+        headers=_execute_headers(str(prepared.json()["intent_id"]), confirmation_hash=confirmation_hash),
+        json=update_payload,
+    )
+    assert stale.status_code == 409, stale.text
+    assert _detail_code(stale) == "stale_intent"
+
+    fresh = _prepare(
+        client,
+        action="provider_quota.update",
+        target_type="provider_quota",
+        target_id="nl",
+        payload=update_payload,
+    )
+    completed = client.patch(
+        "/api/admin/provider-quotas/nl",
+        headers=_execute_headers(str(fresh.json()["intent_id"]), confirmation_hash=confirmation_hash),
+        json=update_payload,
+    )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["status"] == "completed"
+    assert completed.json()["quota"]["included_gb"] == 120.0
+
+    delete_preview = _prepare(
+        client,
+        action="provider_quota.delete",
+        target_type="provider_quota",
+        target_id="nl",
+        payload={},
+    )
+    assert delete_preview.status_code == 200, delete_preview.text
+    assert delete_preview.json()["risk_level"] == "L3"
+    assert delete_preview.json()["confirmation_challenge"] == "NL"
+    assert delete_preview.json()["preview"]["before"]["node_status"] == "active"
+
+    acknowledged = client.post(f"/api/admin/alerts/{alert_id}/ack", headers=_admin_headers())
+    silenced = client.post(
+        f"/api/admin/alerts/{alert_id}/silence",
+        headers=_admin_headers(),
+        json={"minutes": 60},
+    )
+    assert acknowledged.status_code == 200, acknowledged.text
+    assert silenced.status_code == 200, silenced.text
+
+    session = api.SessionLocal()
+    try:
+        quota = session.query(ProviderTrafficQuota).filter_by(node_code="nl").one()
+        assert quota.included_bytes == 120 * (1024**3)
+        assert quota.notes == private_note
+        assert session.query(ProviderTrafficQuotaAudit).filter_by(node_code="nl", action="update").count() == 1
+        assert session.query(AdminAudit).filter_by(action="admin_provider_quota_update").count() == 1
+        assert session.query(AdminAudit).filter_by(action="admin_ops_alert_ack").count() == 1
+        assert session.query(AdminAudit).filter_by(action="admin_ops_alert_silence").count() == 1
+        intent = session.query(AdminActionIntent).filter_by(id=fresh.json()["intent_id"]).one()
+        assert private_note not in intent.canonical_payload_json
+        assert json.loads(intent.canonical_payload_json)["included_bytes"] == 120 * (1024**3)
+    finally:
+        session.close()
+
     client = TestClient(api.app)
     private_message = "SYNTHETIC-PRIVATE-TASK14-MESSAGE"
     prepared = _prepare(

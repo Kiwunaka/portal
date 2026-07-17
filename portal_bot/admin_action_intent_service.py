@@ -13,10 +13,16 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, or_, text
 from sqlalchemy.exc import IntegrityError
 
+from admin_ops_service import (
+    bytes_to_gb as _quota_bytes_to_gb,
+    provider_quota_cycle_bounds,
+    provider_quota_usage_bytes,
+)
 from models import (
     AccessKey,
     AdminActionIntent,
@@ -28,6 +34,7 @@ from models import (
     UserKeyPolicy,
     UserNode,
     Node,
+    ProviderTrafficQuota,
 )
 from node_policy import canonical_free_node_code, node_is_free, user_uses_free_pool
 from nodes_repo import enabled_nodes
@@ -710,6 +717,229 @@ def _normalize_ticket_status_payload(payload: Mapping[str, Any]) -> dict[str, An
     if status not in {"open", "in_progress", "closed"}:
         raise ActionIntentError("invalid_payload", status_code=422, message="Статус обращения не поддерживается.")
     return {"status": status}
+
+
+def _normalize_provider_timezone(value: object) -> str:
+    timezone_name = _bounded_text(
+        value,
+        field="timezone",
+        minimum=1,
+        maximum=64,
+    )
+    try:
+        return str(ZoneInfo(timezone_name).key)
+    except Exception as exc:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Часовой пояс квоты указан неверно.",
+        ) from exc
+
+
+def _normalize_provider_ratio(value: object, *, field: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} должно быть числом.",
+        )
+    normalized = float(value)
+    if not math.isfinite(normalized) or not 0.01 <= normalized <= 1.0:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} должно быть от 0.01 до 1.0.",
+        )
+    return round(normalized, 6)
+
+
+def _normalize_provider_included_bytes(payload: Mapping[str, Any]) -> int:
+    included_bytes = payload.get("included_bytes")
+    included_gb = payload.get("included_gb")
+    if included_bytes is not None:
+        if type(included_bytes) is not int or not 0 <= int(included_bytes) <= 2**63 - 1:
+            raise ActionIntentError(
+                "invalid_payload",
+                status_code=422,
+                message="Поле included_bytes указано неверно.",
+            )
+        normalized = int(included_bytes)
+        if included_gb is not None:
+            if isinstance(included_gb, bool) or not isinstance(included_gb, (int, float)):
+                raise ActionIntentError(
+                    "invalid_payload",
+                    status_code=422,
+                    message="Поле included_gb должно быть числом.",
+                )
+            gb_value = float(included_gb)
+            if not math.isfinite(gb_value) or gb_value < 0:
+                raise ActionIntentError(
+                    "invalid_payload",
+                    status_code=422,
+                    message="Поле included_gb указано неверно.",
+                )
+            if int(gb_value * (1024**3)) != normalized:
+                raise ActionIntentError(
+                    "invalid_payload",
+                    status_code=422,
+                    message="included_bytes и included_gb описывают разные лимиты.",
+                )
+        return normalized
+    if included_gb is None:
+        return 0
+    if isinstance(included_gb, bool) or not isinstance(included_gb, (int, float)):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле included_gb должно быть числом.",
+        )
+    gb_value = float(included_gb)
+    if not math.isfinite(gb_value) or gb_value < 0:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле included_gb указано неверно.",
+        )
+    normalized = int(gb_value * (1024**3))
+    if normalized > 2**63 - 1:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Лимит провайдера слишком велик.",
+        )
+    return normalized
+
+
+def _normalize_provider_notes(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = _bounded_text(value, field="notes", maximum=1000)
+    return normalized or None
+
+
+def _normalize_provider_quota_create_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(
+        payload,
+        {
+            "node_code",
+            "included_bytes",
+            "included_gb",
+            "reset_day",
+            "timezone",
+            "warning_ratio",
+            "critical_ratio",
+            "enabled",
+            "notes",
+        },
+    )
+    reset_day = payload.get("reset_day", 1)
+    enabled = payload.get("enabled", True)
+    if type(reset_day) is not int or not 1 <= int(reset_day) <= 31:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="День сброса должен быть от 1 до 31.",
+        )
+    if type(enabled) is not bool:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле enabled должно быть логическим значением.",
+        )
+    warning_ratio = _normalize_provider_ratio(
+        payload.get("warning_ratio", 0.8),
+        field="warning_ratio",
+    )
+    critical_ratio = _normalize_provider_ratio(
+        payload.get("critical_ratio", 0.95),
+        field="critical_ratio",
+    )
+    if warning_ratio >= critical_ratio:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Порог предупреждения должен быть ниже критического.",
+        )
+    return {
+        "node_code": _normalize_node_code(payload.get("node_code")),
+        "included_bytes": _normalize_provider_included_bytes(payload),
+        "reset_day": int(reset_day),
+        "timezone": _normalize_provider_timezone(payload.get("timezone", "UTC")),
+        "warning_ratio": warning_ratio,
+        "critical_ratio": critical_ratio,
+        "enabled": bool(enabled),
+        "notes": _normalize_provider_notes(payload.get("notes")),
+    }
+
+
+def _provider_quota_safe_payload(runtime: Mapping[str, Any]) -> dict[str, Any]:
+    notes = runtime.get("notes")
+    return {
+        key: value
+        for key, value in runtime.items()
+        if key != "notes"
+    } | {
+        "notes": _redacted_text(str(notes)) if notes is not None else None,
+    }
+
+
+def _normalize_provider_quota_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _provider_quota_safe_payload(_normalize_provider_quota_create_runtime(payload))
+
+
+def _normalize_provider_quota_update_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(
+        payload,
+        {
+            "included_bytes",
+            "included_gb",
+            "reset_day",
+            "timezone",
+            "warning_ratio",
+            "critical_ratio",
+            "enabled",
+            "notes",
+        },
+    )
+    if not payload:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Укажите хотя бы одно изменение квоты.",
+        )
+    normalized: dict[str, Any] = {}
+    if "included_bytes" in payload or "included_gb" in payload:
+        normalized["included_bytes"] = _normalize_provider_included_bytes(payload)
+    if "reset_day" in payload:
+        reset_day = payload.get("reset_day")
+        if type(reset_day) is not int or not 1 <= int(reset_day) <= 31:
+            raise ActionIntentError(
+                "invalid_payload",
+                status_code=422,
+                message="День сброса должен быть от 1 до 31.",
+            )
+        normalized["reset_day"] = int(reset_day)
+    if "timezone" in payload:
+        normalized["timezone"] = _normalize_provider_timezone(payload.get("timezone"))
+    for field in ("warning_ratio", "critical_ratio"):
+        if field in payload:
+            normalized[field] = _normalize_provider_ratio(payload.get(field), field=field)
+    if "enabled" in payload:
+        enabled = payload.get("enabled")
+        if type(enabled) is not bool:
+            raise ActionIntentError(
+                "invalid_payload",
+                status_code=422,
+                message="Поле enabled должно быть логическим значением.",
+            )
+        normalized["enabled"] = bool(enabled)
+    if "notes" in payload:
+        normalized["notes"] = _normalize_provider_notes(payload.get("notes"))
+    return normalized
+
+
+def _normalize_provider_quota_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _provider_quota_safe_payload(_normalize_provider_quota_update_runtime(payload))
 
 
 def _normalize_key_rotate_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1452,6 +1682,248 @@ def _preset_audit_action(payload: Mapping[str, Any]) -> str:
     return f"admin_operator_{payload['preset']}"
 
 
+def _provider_quota_node_state(node: Node | None) -> str:
+    if node is None:
+        return "missing"
+    if not bool(node.enabled):
+        return "disabled"
+    if bool(node.is_draining) or not bool(node.accepting_new_clients):
+        return "draining"
+    return "active"
+
+
+def _provider_quota_projection(session, *, node_code: str, config: Mapping[str, Any]) -> dict[str, Any]:
+    now = _utcnow().astimezone(timezone.utc).replace(tzinfo=None)
+    cycle_start, cycle_end = provider_quota_cycle_bounds(
+        now=now,
+        reset_day=int(config["reset_day"]),
+        timezone_name=str(config["timezone"]),
+    )
+    used_bytes, sample_count, source = provider_quota_usage_bytes(
+        s=session,
+        node_code=node_code,
+        cycle_start=cycle_start,
+        cycle_end=cycle_end,
+    )
+    included_bytes = int(config["included_bytes"])
+    projected_at: str | None = None
+    elapsed_seconds = max(0.0, (now - cycle_start).total_seconds())
+    if included_bytes > 0 and used_bytes >= included_bytes:
+        projected_at = now.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+    elif used_bytes > 0 and sample_count >= 2 and elapsed_seconds > 0 and included_bytes > used_bytes:
+        rate = float(used_bytes) / elapsed_seconds
+        if rate > 0:
+            projected = now + timedelta(seconds=(included_bytes - used_bytes) / rate)
+            projected_at = projected.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+    return {
+        "used_bytes": int(used_bytes),
+        "used_gb": _quota_bytes_to_gb(used_bytes),
+        "sample_count": int(sample_count),
+        "source": source,
+        "cycle_start": cycle_start.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
+        "cycle_end": cycle_end.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
+        "projected_exhaustion_at": projected_at,
+    }
+
+
+def _provider_quota_config(row: ProviderTrafficQuota) -> dict[str, Any]:
+    return {
+        "included_bytes": max(0, int(row.included_bytes or 0)),
+        "reset_day": int(row.reset_day or 1),
+        "timezone": str(row.timezone or "UTC"),
+        "warning_ratio": round(float(row.warning_ratio or 0.8), 6),
+        "critical_ratio": round(float(row.critical_ratio or 0.95), 6),
+        "enabled": bool(row.enabled),
+        "notes": str(row.notes or "") or None,
+    }
+
+
+def _provider_quota_public_snapshot(
+    *,
+    node_code: str,
+    node: Node | None,
+    quota: ProviderTrafficQuota | None,
+    config: Mapping[str, Any] | None,
+    projection: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    return {
+        "node_code": node_code.upper(),
+        "configured": quota is not None,
+        "node_status": _provider_quota_node_state(node),
+        "included_gb": _quota_bytes_to_gb(int(config["included_bytes"])) if config is not None else None,
+        "used_gb": projection.get("used_gb") if projection is not None else None,
+        "reset_day": int(config["reset_day"]) if config is not None else None,
+        "timezone": str(config["timezone"]) if config is not None else None,
+        "warning_ratio": float(config["warning_ratio"]) if config is not None else None,
+        "critical_ratio": float(config["critical_ratio"]) if config is not None else None,
+        "enabled": bool(config["enabled"]) if config is not None else False,
+        "notes_present": bool(config and config.get("notes")),
+        "projected_exhaustion_at": projection.get("projected_exhaustion_at") if projection is not None else None,
+        "updated_at": _safe_iso(quota.updated_at) if quota is not None else None,
+    }
+
+
+def _provider_quota_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    node_code = _normalize_node_code(target_id)
+    query = session.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == node_code)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    quota = query.first()
+    if mode in {"update", "delete"} and quota is None:
+        raise ActionIntentError(
+            "target_not_found",
+            status_code=404,
+            message="Квота провайдера не найдена.",
+        )
+    node = session.query(Node).filter(func.lower(Node.code) == node_code).first()
+    current_config = _provider_quota_config(quota) if quota is not None else None
+    current_projection = (
+        _provider_quota_projection(session, node_code=node_code, config=current_config)
+        if current_config is not None
+        else None
+    )
+    before = _provider_quota_public_snapshot(
+        node_code=node_code,
+        node=node,
+        quota=quota,
+        config=current_config,
+        projection=current_projection,
+    )
+    proposed_config: dict[str, Any] | None = None
+    if mode == "delete":
+        after = {
+            **before,
+            "configured": False,
+            "included_gb": None,
+            "reset_day": None,
+            "timezone": None,
+            "warning_ratio": None,
+            "critical_ratio": None,
+            "enabled": False,
+            "notes_present": False,
+            "projected_exhaustion_at": None,
+            "updated_at": None,
+        }
+    else:
+        if mode == "create":
+            if str(payload.get("node_code") or "") != node_code:
+                raise ActionIntentError(
+                    "invalid_payload",
+                    status_code=422,
+                    message="Код ноды в теле не совпадает с целью действия.",
+                )
+            proposed_config = {
+                key: payload[key]
+                for key in (
+                    "included_bytes",
+                    "reset_day",
+                    "timezone",
+                    "warning_ratio",
+                    "critical_ratio",
+                    "enabled",
+                    "notes",
+                )
+            }
+        else:
+            assert current_config is not None
+            proposed_config = {**current_config, **dict(payload)}
+        if float(proposed_config["warning_ratio"]) >= float(proposed_config["critical_ratio"]):
+            raise ActionIntentError(
+                "invalid_payload",
+                status_code=422,
+                message="Порог предупреждения должен быть ниже критического.",
+            )
+        proposed_projection = _provider_quota_projection(session, node_code=node_code, config=proposed_config)
+        after = _provider_quota_public_snapshot(
+            node_code=node_code,
+            node=node,
+            quota=quota,
+            config=proposed_config,
+            projection=proposed_projection,
+        ) | {"configured": True}
+
+    return EntityState(
+        entity=quota,
+        version_snapshot={
+            "quota": (
+                {
+                    "id": int(quota.id),
+                    **{key: value for key, value in (current_config or {}).items() if key != "notes"},
+                    "notes_sha256": hashlib.sha256(str((current_config or {}).get("notes") or "").encode("utf-8")).hexdigest(),
+                    "updated_at": _safe_iso(quota.updated_at),
+                }
+                if quota is not None
+                else None
+            ),
+            "node": (
+                {
+                    "id": int(node.id),
+                    "enabled": bool(node.enabled),
+                    "accepting_new_clients": bool(node.accepting_new_clients),
+                    "is_draining": bool(node.is_draining),
+                }
+                if node is not None
+                else None
+            ),
+        },
+        public_snapshot=before,
+        context={
+            "node_code": node_code,
+            "quota_id": int(quota.id) if quota is not None else None,
+            "proposed_config": proposed_config,
+            "after_snapshot": after,
+        },
+    )
+
+
+def _provider_quota_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _provider_quota_entity_state(session, target_id, payload, for_update, mode="create")
+
+
+def _provider_quota_update_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _provider_quota_entity_state(session, target_id, payload, for_update, mode="update")
+
+
+def _provider_quota_delete_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _provider_quota_entity_state(session, target_id, payload, for_update, mode="delete")
+
+
+def _provider_quota_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    node_code = str(state.context["node_code"]).upper()
+    configured = bool(state.public_snapshot["configured"])
+    return _simple_preview(
+        f"Квота провайдера для ноды {node_code} будет {'обновлена' if configured else 'создана'}.",
+        state.public_snapshot,
+        dict(state.context["after_snapshot"]),
+        ["Прогноз исчерпания рассчитан сервером по доступным накопительным измерениям."],
+    )
+
+
+def _provider_quota_delete_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    node_code = str(state.context["node_code"]).upper()
+    return _simple_preview(
+        f"Квота провайдера для ноды {node_code} будет удалена.",
+        state.public_snapshot,
+        dict(state.context["after_snapshot"]),
+        ["Контроль лимита и предупреждения прекратятся; состояние самой ноды не изменится."],
+    )
+
+
+def _provider_quota_challenge(state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return str(state.context["node_code"]).upper()
+
+
+def _provider_quota_audit_meta(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {"node_code": str(state.context["node_code"]), "quota_id": state.context.get("quota_id")}
+
+
 def _ticket_status_post_commit(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any] | None:
     if payload["status"] != "closed":
         return None
@@ -2040,6 +2512,47 @@ def _node_resync_external_context(
 
 
 ACTION_POLICIES: dict[str, ActionPolicy] = {
+    "provider_quota.create": ActionPolicy(
+        action="provider_quota.create",
+        target_type="provider_quota",
+        risk_level="L2",
+        payload_normalizer=_normalize_provider_quota_create_payload,
+        runtime_payload_normalizer=_normalize_provider_quota_create_runtime,
+        entity_state_builder=_provider_quota_create_state,
+        preview_builder=_provider_quota_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="db",
+        audit_action="admin_provider_quota_create",
+        audit_meta_builder=_provider_quota_audit_meta,
+    ),
+    "provider_quota.update": ActionPolicy(
+        action="provider_quota.update",
+        target_type="provider_quota",
+        risk_level="L2",
+        payload_normalizer=_normalize_provider_quota_update_payload,
+        runtime_payload_normalizer=_normalize_provider_quota_update_runtime,
+        entity_state_builder=_provider_quota_update_state,
+        preview_builder=_provider_quota_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_l2_challenge,
+        executor_kind="db",
+        audit_action="admin_provider_quota_update",
+        audit_meta_builder=_provider_quota_audit_meta,
+    ),
+    "provider_quota.delete": ActionPolicy(
+        action="provider_quota.delete",
+        target_type="provider_quota",
+        risk_level="L3",
+        payload_normalizer=_normalize_empty_payload,
+        entity_state_builder=_provider_quota_delete_state,
+        preview_builder=_provider_quota_delete_preview,
+        challenge_kind="exact_node_code",
+        challenge_builder=_provider_quota_challenge,
+        executor_kind="db",
+        audit_action="admin_provider_quota_delete",
+        audit_meta_builder=_provider_quota_audit_meta,
+    ),
     "node.drain": ActionPolicy(
         action="node.drain",
         target_type="node",

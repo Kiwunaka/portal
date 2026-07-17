@@ -15308,107 +15308,58 @@ async def admin_provider_quotas(x_telegram_init_data: str = Header(default="")) 
 
 
 @app.post("/api/admin/provider-quotas")
-async def admin_provider_quota_create(payload: AdminProviderQuotaIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_create(
+    payload: AdminProviderQuotaIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     node_code = str(payload.node_code or "").strip().lower()
-    if not node_code:
-        raise HTTPException(status_code=400, detail="node_code is required")
-    if float(payload.warning_ratio or 0.0) >= float(payload.critical_ratio or 0.0):
-        raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == node_code).first()
-        before = _provider_quota_audit_payload(row)
-        now = _utcnow()
-        if not row:
-            row = ProviderTrafficQuota(node_code=node_code, created_at=now)
-            s.add(row)
-            action = "create"
-        else:
-            action = "update"
-        row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
-        row.reset_day = int(payload.reset_day or 1)
-        row.timezone = str(payload.timezone or "UTC").strip()[:64] or "UTC"
-        row.warning_ratio = float(payload.warning_ratio or 0.8)
-        row.critical_ratio = float(payload.critical_ratio or 0.95)
-        row.enabled = bool(payload.enabled)
-        row.notes = str(payload.notes or "").strip()[:1000] or None
-        row.updated_by = int(actor)
-        row.updated_at = now
-        s.flush()
-        after = _ops_provider_quota_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=node_code, actor=actor, action=action, before=before, after=after)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_upsert", meta={"node_code": node_code, "action": action})
-        return {"ok": True, "quota": after}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.create",
+        target_type="provider_quota",
+        target_id=node_code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/provider-quotas/{node_code}")
-async def admin_provider_quota_update(node_code: str, payload: AdminProviderQuotaPatchIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_update(
+    node_code: str,
+    payload: AdminProviderQuotaPatchIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Provider quota not found")
-        before = _provider_quota_audit_payload(row)
-        data = payload.model_dump(exclude_unset=True)
-        if "included_bytes" in data or "included_gb" in data:
-            row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
-        if data.get("reset_day") is not None:
-            row.reset_day = int(data["reset_day"])
-        if data.get("timezone") is not None:
-            row.timezone = str(data["timezone"] or "UTC").strip()[:64] or "UTC"
-        if data.get("warning_ratio") is not None:
-            row.warning_ratio = float(data["warning_ratio"])
-        if data.get("critical_ratio") is not None:
-            row.critical_ratio = float(data["critical_ratio"])
-        if float(row.warning_ratio or 0.0) >= float(row.critical_ratio or 0.0):
-            raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
-        if data.get("enabled") is not None:
-            row.enabled = bool(data["enabled"])
-        if "notes" in data:
-            row.notes = str(data.get("notes") or "").strip()[:1000] or None
-        row.updated_by = int(actor)
-        row.updated_at = _utcnow()
-        after = _ops_provider_quota_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="update", before=before, after=after)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_update", meta={"node_code": wanted})
-        return {"ok": True, "quota": after}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.update",
+        target_type="provider_quota",
+        target_id=wanted,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/provider-quotas/{node_code}")
-async def admin_provider_quota_delete(node_code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_delete(
+    node_code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Provider quota not found")
-        before = _provider_quota_audit_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="delete", before=before, after=None)
-        s.delete(row)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_delete", meta={"node_code": wanted})
-        return {"ok": True, "node_code": wanted}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.delete",
+        target_type="provider_quota",
+        target_id=wanted,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/provider-quotas/status")
@@ -16548,6 +16499,62 @@ def _execute_admin_client_action_db(
     actor_tg_id: int,
     action: str,
 ) -> dict[str, Any]:
+    if action in {"provider_quota.create", "provider_quota.update"}:
+        node_code = str(state.context["node_code"])
+        row = state.entity
+        before = _provider_quota_audit_payload(row)
+        quota_action = "update"
+        now = _utcnow()
+        if row is None:
+            row = ProviderTrafficQuota(node_code=node_code, created_at=now)
+            session.add(row)
+            quota_action = "create"
+        proposed = dict(state.context.get("proposed_config") or {})
+        row.included_bytes = int(proposed["included_bytes"])
+        row.reset_day = int(proposed["reset_day"])
+        row.timezone = str(proposed["timezone"])
+        row.warning_ratio = float(proposed["warning_ratio"])
+        row.critical_ratio = float(proposed["critical_ratio"])
+        row.enabled = bool(proposed["enabled"])
+        row.notes = proposed.get("notes")
+        row.updated_by = int(actor_tg_id)
+        row.updated_at = now
+        session.flush()
+        after = _ops_provider_quota_payload(row)
+        _add_provider_quota_audit(
+            s=session,
+            quota=row,
+            node_code=node_code,
+            actor=actor_tg_id,
+            action=quota_action,
+            before=before,
+            after=after,
+        )
+        return {"quota": after, "node_code": node_code}
+
+    if action == "provider_quota.delete":
+        row = state.entity
+        node_code = str(state.context["node_code"])
+        if row is None:
+            raise ActionIntentError(
+                "target_not_found",
+                status_code=404,
+                message="Квота провайдера не найдена.",
+            )
+        before = _provider_quota_audit_payload(row)
+        _add_provider_quota_audit(
+            s=session,
+            quota=row,
+            node_code=node_code,
+            actor=actor_tg_id,
+            action="delete",
+            before=before,
+            after=None,
+        )
+        session.delete(row)
+        session.flush()
+        return {"node_code": node_code, "deleted": True}
+
     if action == "user.extend":
         user = state.entity
         now = _utcnow()

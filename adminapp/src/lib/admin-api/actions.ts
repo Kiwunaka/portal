@@ -47,7 +47,7 @@ export type ActionIntentRequest = {
   target: { type: string; id: string };
   payload: Record<string, unknown>;
   endpoint: string;
-  method?: "POST" | "PUT";
+  method?: "POST" | "PUT" | "PATCH" | "DELETE";
 };
 
 export function prepareActionIntent(
@@ -84,7 +84,7 @@ export async function executeAdminAction({
   payload: Record<string, unknown>;
   intent: PreparedActionIntent;
   confirmation: string;
-  method?: "POST" | "PUT";
+  method?: "POST" | "PUT" | "PATCH" | "DELETE";
   idempotencyKey?: string;
 }): Promise<AdminActionResult> {
   const confirmationHash = await confirmationSha256(confirmation);
