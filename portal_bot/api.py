@@ -16420,6 +16420,10 @@ def _execute_admin_client_action_db(
             "dry_run": True,
             "users": int(state.context["selected_count"]),
             "selection_hash": str(state.context["selection_hash"]),
+            "preview_tg_ids": [
+                int(value)
+                for value in list(state.context["selected_tg_ids"])[:50]
+            ],
         }
 
     if action == "key.rotate":
@@ -16980,14 +16984,21 @@ async def _execute_admin_client_action_external(
         panel = ControlPanel()
         changed = 0
         failed = 0
+        details: list[dict[str, int]] = []
         try:
             await panel.login()
             for tg_id in selected:
+                user_changed = 0
+                user_failed = 0
                 session = SessionLocal()
                 try:
                     user = session.query(User).filter(User.tg_id == tg_id).first()
                     if user is None:
                         failed += 1
+                        user_failed += 1
+                        details.append(
+                            {"tg_id": tg_id, "changed": 0, "failed": user_failed}
+                        )
                         continue
                     sub_id = str(user.sub_token or user.tg_id)
                 finally:
@@ -17040,6 +17051,7 @@ async def _execute_admin_client_action_external(
                         )
                     if ok:
                         changed += 1
+                        user_changed += 1
                         _key_history_log(
                             tg_id=tg_id,
                             action={
@@ -17054,6 +17066,14 @@ async def _execute_admin_client_action_external(
                         )
                     else:
                         failed += 1
+                        user_failed += 1
+                details.append(
+                    {
+                        "tg_id": tg_id,
+                        "changed": user_changed,
+                        "failed": user_failed,
+                    }
+                )
         finally:
             await panel.close()
         return {
@@ -17063,6 +17083,7 @@ async def _execute_admin_client_action_external(
             "users": len(selected),
             "changed": changed,
             "failed": failed,
+            "details": details,
         }
 
     if action == "user.message":
@@ -17127,6 +17148,46 @@ async def _execute_admin_post_commit(context: dict[str, Any]) -> dict[str, Any]:
     return {"ok": bool(sent), "code": "ticket_close_notified" if sent else "telegram_failed"}
 
 
+def _saved_bulk_preview_ids(value: object) -> list[int]:
+    if not isinstance(value, list) or len(value) > 50:
+        return []
+    ids: list[int] = []
+    for item in value:
+        if type(item) is not int or not -(2**63) <= item < 2**63:
+            return []
+        ids.append(int(item))
+    return ids if len(set(ids)) == len(ids) else []
+
+
+def _saved_bulk_details(value: object) -> list[dict[str, int]]:
+    if not isinstance(value, list) or len(value) > 500:
+        return []
+    details: list[dict[str, int]] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"tg_id", "changed", "failed"}:
+            return []
+        tg_id = item["tg_id"]
+        changed = item["changed"]
+        failed = item["failed"]
+        if (
+            type(tg_id) is not int
+            or not -(2**63) <= tg_id < 2**63
+            or type(changed) is not int
+            or type(failed) is not int
+            or not 0 <= changed <= 1_000_000
+            or not 0 <= failed <= 1_000_000
+        ):
+            return []
+        details.append(
+            {"tg_id": int(tg_id), "changed": int(changed), "failed": int(failed)}
+        )
+    return (
+        details
+        if len({item["tg_id"] for item in details}) == len(details)
+        else []
+    )
+
+
 def _admin_guarded_action_response(
     *,
     action: str,
@@ -17142,6 +17203,7 @@ def _admin_guarded_action_response(
     ) not in {
         ("user.preset_run", "preset_partial"),
         ("user.bulk_key_action", "bulk_partial"),
+        ("user.bulk_key_action", "force_required"),
         ("ticket.reply", "telegram_failed"),
     }:
         return result
@@ -17321,7 +17383,7 @@ def _admin_guarded_action_response(
                     "users": int(facts.get("users") or 0),
                     "changed": int(facts.get("changed") or 0),
                     "failed": int(facts.get("failed") or 0),
-                    "details": [],
+                    "details": _saved_bulk_details(facts.get("details")),
                     **(
                         {"message": "Для массового действия более чем над 50 пользователями нужен force=true"}
                         if requires_force
@@ -17335,7 +17397,9 @@ def _admin_guarded_action_response(
                 "action": str(result.get("action") or ""),
                 "dry_run": True,
                 "users": int(result.get("users") or 0),
-                "preview_tg_ids": [],
+                "preview_tg_ids": _saved_bulk_preview_ids(
+                    result.get("preview_tg_ids")
+                ),
             }
         )
 
@@ -17392,7 +17456,7 @@ async def _execute_admin_guarded_action(
             message="Нужно подтверждение серверной проверочной фразы.",
         )
     try:
-        result = await _execute_action_intent(
+        execution_result = await _execute_action_intent(
             session_factory=SessionLocal,
             actor_tg_id=actor_tg_id,
             intent_id=intent_id,
@@ -17419,10 +17483,14 @@ async def _execute_admin_guarded_action(
                 if action in {"user.bulk_key_action", "user.preset_run"}
                 else 30.0
             ),
+            return_replay_state=True,
         )
     except ActionIntentError as error:
         _raise_action_intent_http(error)
         raise AssertionError("unreachable")
+    result, replayed = execution_result
+    if replayed:
+        return result
     return _admin_guarded_action_response(
         action=action,
         target_id=target_id,

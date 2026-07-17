@@ -68,11 +68,17 @@ _EXTERNAL_RESULT_KEYS = frozenset(
         "panel_deleted",
         "dry_run",
         "requires_force",
+        "preview_tg_ids",
+        "details",
     }
 )
 _EXTERNAL_COUNT_KEYS = ("count", "changed", "failed", "skipped", "users", "tier_days")
 _MAX_EXTERNAL_COUNT = 1_000_000
 _MAX_EXTERNAL_REFERENCE_LENGTH = 128
+_MAX_BULK_PREVIEW_IDS = 50
+_MAX_BULK_DETAILS = 500
+_INTERNAL_TARGET_CLAIMS_KEY = "_target_overlap_claims"
+_BULK_EXECUTION_LOCK_ENTITY_ID = -10_002
 _constant_time_compare = hmac.compare_digest
 
 
@@ -2508,6 +2514,7 @@ def _stored_result(intent: AdminActionIntent) -> dict[str, Any]:
         try:
             value = json.loads(intent.result_summary_json)
             if isinstance(value, dict):
+                value.pop(_INTERNAL_TARGET_CLAIMS_KEY, None)
                 return value
         except (TypeError, ValueError):
             pass
@@ -2517,6 +2524,156 @@ def _stored_result(intent: AdminActionIntent) -> dict[str, Any]:
         "action_intent_id": str(intent.id),
         "audit_id": int(intent.admin_audit_id) if intent.admin_audit_id else None,
     }
+
+
+def _execution_return(
+    result: dict[str, Any],
+    *,
+    replayed: bool,
+    return_replay_state: bool,
+) -> dict[str, Any] | tuple[dict[str, Any], bool]:
+    if return_replay_state:
+        return result, replayed
+    return result
+
+
+def _user_overlap_claim_token(tg_id: int) -> str:
+    return _semantic_hash("admin-action-target-user", int(tg_id))
+
+
+def _bulk_target_claims(state: EntityState) -> dict[str, Any]:
+    selected = [int(value) for value in state.context.get("selected_tg_ids", [])]
+    if not 1 <= len(selected) <= _MAX_BULK_DETAILS:
+        raise ActionIntentError(
+            "invalid_selection",
+            status_code=409,
+            message="Зафиксированная выборка пользователей недоступна.",
+        )
+    return {
+        "kind": "user_selection_v1",
+        "tokens": [_user_overlap_claim_token(tg_id) for tg_id in selected],
+    }
+
+
+def _persisted_bulk_claims(intent: AdminActionIntent) -> dict[str, Any] | None:
+    try:
+        stored = json.loads(str(intent.result_summary_json or ""))
+        claims = stored.get(_INTERNAL_TARGET_CLAIMS_KEY) if isinstance(stored, dict) else None
+        if not isinstance(claims, dict) or set(claims) != {"kind", "tokens"}:
+            return None
+        if claims.get("kind") != "user_selection_v1":
+            return None
+        values = claims.get("tokens")
+        if not isinstance(values, list) or not 1 <= len(values) <= _MAX_BULK_DETAILS:
+            return None
+        tokens = [str(value) for value in values]
+        if (
+            len(set(tokens)) != len(tokens)
+            or any(_HEX_SHA256_RE.fullmatch(value) is None for value in tokens)
+        ):
+            return None
+        return {"kind": "user_selection_v1", "tokens": tokens}
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def _persisted_bulk_claim_tokens(intent: AdminActionIntent) -> frozenset[str] | None:
+    claims = _persisted_bulk_claims(intent)
+    if claims is None:
+        return None
+    return frozenset(claims["tokens"])
+
+
+def _acquire_bulk_execution_lock(session) -> None:
+    if str(session.get_bind().dialect.name) != "postgresql":
+        return
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:namespace, :entity_id)"),
+        {
+            "namespace": NODE_MAPPING_LOCK_NAMESPACE,
+            "entity_id": _BULK_EXECUTION_LOCK_ENTITY_ID,
+        },
+    )
+
+
+def _raise_target_busy(
+    *,
+    conflicting_intent: AdminActionIntent,
+    now: datetime,
+) -> None:
+    if str(conflicting_intent.status) == "uncertain":
+        raise ActionIntentError(
+            "target_uncertain",
+            status_code=409,
+            message=(
+                "Результат предыдущего внешнего действия не определён. Сначала "
+                "вручную сверьте его и разрешите неопределённость."
+            ),
+        )
+    if _as_utc(conflicting_intent.updated_at) <= now - EXTERNAL_EXECUTION_STALE_AFTER:
+        # Never release a stale in-flight external effect implicitly. Replaying the
+        # original idempotency key reconciles that intent before a new effect.
+        raise ActionIntentError(
+            "target_busy_stale",
+            status_code=409,
+            message=(
+                "Предыдущее выполнение для этой цели зависло. Повторите исходный "
+                "запрос с тем же ключом идемпотентности для безопасной сверки результата."
+            ),
+        )
+    raise ActionIntentError(
+        "target_busy",
+        status_code=409,
+        message="Для этой цели уже выполняется другое защищённое действие.",
+    )
+
+
+def _assert_no_target_overlap(
+    *,
+    session,
+    intent: AdminActionIntent,
+    state: EntityState,
+    now: datetime,
+) -> None:
+    conflicts = session.query(AdminActionIntent).filter(
+        AdminActionIntent.status.in_(("executing", "uncertain")),
+        AdminActionIntent.id != str(intent.id),
+    )
+    direct = conflicts.filter(
+        AdminActionIntent.target_type == str(intent.target_type),
+        AdminActionIntent.target_id == str(intent.target_id),
+    ).first()
+    if direct is not None:
+        _raise_target_busy(conflicting_intent=direct, now=now)
+
+    if str(intent.target_type) == "user":
+        try:
+            target_tg_id = int(str(intent.target_id))
+        except (TypeError, ValueError):
+            return
+        token = _user_overlap_claim_token(target_tg_id)
+        active_bulks = conflicts.filter(
+            AdminActionIntent.target_type == "users",
+            AdminActionIntent.target_id == "bulk",
+        ).all()
+        for bulk_intent in active_bulks:
+            claims = _persisted_bulk_claim_tokens(bulk_intent)
+            if claims is None or token in claims:
+                _raise_target_busy(conflicting_intent=bulk_intent, now=now)
+        return
+
+    if str(intent.target_type) == "users":
+        selected = [str(int(value)) for value in state.context.get("selected_tg_ids", [])]
+        if selected:
+            conflicting_user_intent = conflicts.filter(
+                AdminActionIntent.target_type == "user",
+                AdminActionIntent.target_id.in_(selected),
+            ).first()
+            if conflicting_user_intent is not None:
+                _raise_target_busy(
+                    conflicting_intent=conflicting_user_intent,
+                    now=now,
+                )
 
 
 def _verify_confirmation(intent: AdminActionIntent, supplied_hash: str) -> None:
@@ -2658,6 +2815,12 @@ def _validate_execution(
             message="Intent уже использован.",
         )
 
+    if (
+        policy.action == "user.bulk_key_action"
+        and str(intent.executor_kind) == "external"
+    ):
+        _acquire_bulk_execution_lock(session)
+
     state = policy.entity_state_builder(
         session,
         normalized_target["id"],
@@ -2671,6 +2834,7 @@ def _validate_execution(
             status_code=409,
             message="Состояние сущности изменилось после preview.",
         )
+    _assert_no_target_overlap(session=session, intent=intent, state=state, now=now)
     return policy, normalized_target, normalized_payload, runtime_payload, state, None
 
 
@@ -2757,9 +2921,50 @@ def _malformed_external_outcome(
     )
 
 
+def _bounded_bulk_preview_ids(value: object) -> list[int]:
+    if not isinstance(value, list) or len(value) > _MAX_BULK_PREVIEW_IDS:
+        raise ValueError("invalid bulk preview ids")
+    ids: list[int] = []
+    for item in value:
+        if type(item) is not int or not -(2**63) <= item < 2**63:
+            raise ValueError("invalid bulk preview id")
+        ids.append(int(item))
+    if len(set(ids)) != len(ids):
+        raise ValueError("duplicate bulk preview id")
+    return ids
+
+
+def _bounded_bulk_details(value: object) -> list[dict[str, int]]:
+    if not isinstance(value, list) or len(value) > _MAX_BULK_DETAILS:
+        raise ValueError("invalid bulk details")
+    details: list[dict[str, int]] = []
+    for item in value:
+        if not isinstance(item, Mapping) or set(item) != {"tg_id", "changed", "failed"}:
+            raise ValueError("invalid bulk detail shape")
+        tg_id = item["tg_id"]
+        changed = item["changed"]
+        failed = item["failed"]
+        if type(tg_id) is not int or not -(2**63) <= tg_id < 2**63:
+            raise ValueError("invalid bulk detail target")
+        if (
+            type(changed) is not int
+            or type(failed) is not int
+            or not 0 <= changed <= _MAX_EXTERNAL_COUNT
+            or not 0 <= failed <= _MAX_EXTERNAL_COUNT
+        ):
+            raise ValueError("invalid bulk detail counters")
+        details.append(
+            {"tg_id": int(tg_id), "changed": int(changed), "failed": int(failed)}
+        )
+    if len({item["tg_id"] for item in details}) != len(details):
+        raise ValueError("duplicate bulk detail target")
+    return details
+
+
 def _normalize_external_outcome(
     *,
     raw_result: object,
+    action: str,
     intent_id: str,
     audit_id: int,
 ) -> ExternalOutcome:
@@ -2825,6 +3030,35 @@ def _normalize_external_outcome(
                 intent_id=intent_id,
                 audit_id=audit_id,
             )
+        has_bulk_diagnostics = any(
+            key in raw_result for key in ("preview_tg_ids", "details")
+        )
+        if has_bulk_diagnostics and action != "user.bulk_key_action":
+            return _malformed_external_outcome(
+                raw_result=raw_result,
+                intent_id=intent_id,
+                audit_id=audit_id,
+            )
+        if "preview_tg_ids" in raw_result:
+            facts["preview_tg_ids"] = _bounded_bulk_preview_ids(
+                raw_result["preview_tg_ids"]
+            )
+        if "details" in raw_result:
+            details = _bounded_bulk_details(raw_result["details"])
+            if (
+                "users" not in facts
+                or "changed" not in facts
+                or "failed" not in facts
+                or len(details) != int(facts["users"])
+                or sum(item["changed"] for item in details) != int(facts["changed"])
+                or sum(item["failed"] for item in details) != int(facts["failed"])
+            ):
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts["details"] = details
         if "tg_id" in raw_result:
             value = raw_result["tg_id"]
             if type(value) is not int or not -(2**63) <= value < 2**63:
@@ -3092,10 +3326,20 @@ def _apply_external_outcome(
 ) -> None:
     if outcome.status not in _TERMINAL_STATUSES:
         raise ValueError("external outcome must be terminal")
-    result_hash = _semantic_hash("admin-action-result", outcome.result)
+    persisted_result = dict(outcome.result)
+    persisted_result.pop(_INTERNAL_TARGET_CLAIMS_KEY, None)
+    if (
+        outcome.status == "uncertain"
+        and str(intent.target_type) == "users"
+        and str(intent.target_id) == "bulk"
+    ):
+        claims = _persisted_bulk_claims(intent)
+        if claims is not None:
+            persisted_result[_INTERNAL_TARGET_CLAIMS_KEY] = claims
+    result_hash = _semantic_hash("admin-action-result", persisted_result)
     intent.status = outcome.status
     intent.result_code = str(outcome.result["result_code"])
-    intent.result_summary_json = _canonical_json(outcome.result)
+    intent.result_summary_json = _canonical_json(persisted_result)
     intent.result_hash = result_hash
     intent.external_error_hash = outcome.external_error_hash
     intent.updated_at = updated_at
@@ -3160,7 +3404,7 @@ def _persist_external_outcome(
     intent_id: str,
     idempotency_key: str,
     outcome: ExternalOutcome,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], bool]:
     session = session_factory()
     try:
         _begin_write_lock(session)
@@ -3180,7 +3424,7 @@ def _persist_external_outcome(
         if intent.status != "executing":
             stored = _stored_result(intent)
             session.rollback()
-            return stored
+            return stored, True
         _apply_external_outcome(
             session=session,
             intent=intent,
@@ -3188,7 +3432,7 @@ def _persist_external_outcome(
             updated_at=_utcnow(),
         )
         session.commit()
-        return outcome.result
+        return outcome.result, False
     except Exception:
         session.rollback()
         raise
@@ -3231,8 +3475,9 @@ async def execute_action_intent(
     external_executor: Callable[[dict[str, Any]], Any] | None = None,
     post_commit_executor: Callable[[dict[str, Any]], Any] | None = None,
     external_timeout_seconds: float = EXTERNAL_EXECUTION_TIMEOUT_SECONDS,
+    return_replay_state: bool = False,
     now: datetime | None = None,
-) -> dict[str, Any]:
+) -> dict[str, Any] | tuple[dict[str, Any], bool]:
     normalized_intent_id, normalized_idempotency_key = (
         _normalize_execution_identifiers(
             session_factory=session_factory,
@@ -3288,9 +3533,17 @@ async def execute_action_intent(
             )
             if reconciled is not None:
                 session.commit()
-                return reconciled
+                return _execution_return(
+                    reconciled,
+                    replayed=True,
+                    return_replay_state=return_replay_state,
+                )
             session.rollback()
-            return replay
+            return _execution_return(
+                replay,
+                replayed=True,
+                return_replay_state=return_replay_state,
+            )
         assert state is not None
         intent.client_idempotency_key = normalized_idempotency_key
         intent.consumed_at = execution_time
@@ -3379,7 +3632,11 @@ async def execute_action_intent(
                         )
                     except Exception:
                         pass
-            return result
+            return _execution_return(
+                result,
+                replayed=False,
+                return_replay_state=return_replay_state,
+            )
 
         if executor_kind != "external" or external_executor is None:
             raise ActionIntentError(
@@ -3418,6 +3675,8 @@ async def execute_action_intent(
             "action_intent_id": str(intent.id),
             "audit_id": int(audit.id),
         }
+        if policy.action == "user.bulk_key_action":
+            executing_result[_INTERNAL_TARGET_CLAIMS_KEY] = _bulk_target_claims(state)
         intent.status = "executing"
         intent.admin_audit_id = int(audit.id)
         intent.result_code = "executing"
@@ -3448,7 +3707,11 @@ async def execute_action_intent(
                 normalized_idempotency_key,
             )
             if owner is not None and owner.id == normalized_intent_id:
-                return _stored_result(owner)
+                return _execution_return(
+                    _stored_result(owner),
+                    replayed=True,
+                    return_replay_state=return_replay_state,
+                )
         finally:
             conflict_session.close()
         raise ActionIntentError(
@@ -3520,13 +3783,19 @@ async def execute_action_intent(
     else:
         outcome = _normalize_external_outcome(
             raw_result=raw_result,
+            action=str(external_context["action"]),
             intent_id=normalized_intent_id,
             audit_id=int(external_context["audit_id"]),
         )
 
-    return _persist_external_outcome(
+    persisted, was_already_terminal = _persist_external_outcome(
         session_factory=session_factory,
         intent_id=normalized_intent_id,
         idempotency_key=normalized_idempotency_key,
         outcome=outcome,
+    )
+    return _execution_return(
+        persisted,
+        replayed=was_already_terminal,
+        return_replay_state=return_replay_state,
     )
