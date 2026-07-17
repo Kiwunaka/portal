@@ -16620,7 +16620,7 @@ def _raise_action_intent_header_required(
     code: str,
     message: str,
 ) -> None:
-    normalized_intent_id, audit_id = _action_intent_error_identifiers(
+    owned_intent_id, audit_id = _action_intent_error_identifiers(
         session_factory=SessionLocal,
         actor_tg_id=actor_tg_id,
         intent_id=intent_id,
@@ -16630,7 +16630,7 @@ def _raise_action_intent_header_required(
             code,
             status_code=428,
             message=message,
-            intent_id=normalized_intent_id,
+            intent_id=owned_intent_id,
             audit_id=audit_id,
         )
     )

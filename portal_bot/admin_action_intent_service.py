@@ -141,6 +141,8 @@ def _normalize_uuid(value: str, *, code: str) -> str:
 
 def _normalize_execution_identifiers(
     *,
+    session_factory,
+    actor_tg_id: int,
     intent_id: str,
     idempotency_key: str,
 ) -> tuple[str, str]:
@@ -151,7 +153,13 @@ def _normalize_execution_identifiers(
             code="invalid_idempotency_key",
         )
     except ActionIntentError as error:
-        error.intent_id = normalized_intent_id
+        owned_intent_id, audit_id = action_intent_error_identifiers(
+            session_factory=session_factory,
+            actor_tg_id=actor_tg_id,
+            intent_id=normalized_intent_id,
+        )
+        error.intent_id = owned_intent_id
+        error.audit_id = audit_id
         raise
     return normalized_intent_id, normalized_idempotency_key
 
@@ -174,28 +182,55 @@ def action_intent_error_identifiers(
     try:
         session = session_factory()
     except Exception:
-        return normalized_intent_id, None
+        return None, None
+    result: tuple[str | None, int | None] = (None, None)
     try:
         row = (
-            session.query(AdminActionIntent.admin_audit_id)
+            session.query(
+                AdminActionIntent.id,
+                AdminActionIntent.admin_audit_id,
+            )
             .filter(
                 AdminActionIntent.id == normalized_intent_id,
                 AdminActionIntent.actor_tg_id == int(actor_tg_id),
             )
             .first()
         )
-        audit_id = (
-            int(row[0])
-            if row is not None and row[0] is not None
-            else None
-        )
-        return normalized_intent_id, audit_id
+        if row is not None:
+            result = (
+                str(row[0]),
+                int(row[1]) if row[1] is not None else None,
+            )
     except Exception:
-        if session.in_transaction():
-            session.rollback()
-        return normalized_intent_id, None
-    finally:
+        try:
+            if session.in_transaction():
+                session.rollback()
+        except Exception:
+            pass
+        result = (None, None)
+    try:
         session.close()
+    except Exception:
+        return None, None
+    return result
+
+
+def _loaded_action_intent_error_identifiers(
+    intent: AdminActionIntent | None,
+    *,
+    actor_tg_id: int,
+) -> tuple[str | None, int | None]:
+    try:
+        if intent is None or int(intent.actor_tg_id) != int(actor_tg_id):
+            return None, None
+        return (
+            str(intent.id),
+            int(intent.admin_audit_id)
+            if intent.admin_audit_id is not None
+            else None,
+        )
+    except Exception:
+        return None, None
 
 
 def _normalize_target(
@@ -1013,6 +1048,8 @@ async def execute_action_intent(
 ) -> dict[str, Any]:
     normalized_intent_id, normalized_idempotency_key = (
         _normalize_execution_identifiers(
+            session_factory=session_factory,
+            actor_tg_id=actor_tg_id,
             intent_id=intent_id,
             idempotency_key=idempotency_key,
         )
@@ -1174,29 +1211,29 @@ async def execute_action_intent(
             intent_id=normalized_intent_id,
         ) from None
     except ActionIntentError as error:
+        owned_intent_id, audit_id = _loaded_action_intent_error_identifiers(
+            intent,
+            actor_tg_id=actor_tg_id,
+        )
         if error.intent_id is None:
-            error.intent_id = normalized_intent_id
-        if (
-            error.audit_id is None
-            and intent is not None
-            and intent.admin_audit_id is not None
-        ):
-            error.audit_id = int(intent.admin_audit_id)
+            error.intent_id = owned_intent_id
+        if error.audit_id is None:
+            error.audit_id = audit_id
         if session.in_transaction():
             session.rollback()
         raise
     except Exception:
         session.rollback()
+        owned_intent_id, audit_id = _loaded_action_intent_error_identifiers(
+            intent,
+            actor_tg_id=actor_tg_id,
+        )
         raise ActionIntentError(
             "action_failed",
             status_code=500,
             message="Действие не выполнено.",
-            intent_id=normalized_intent_id,
-            audit_id=(
-                int(intent.admin_audit_id)
-                if intent is not None and intent.admin_audit_id is not None
-                else None
-            ),
+            intent_id=owned_intent_id,
+            audit_id=audit_id,
         ) from None
     finally:
         session.close()
