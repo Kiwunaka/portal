@@ -974,7 +974,7 @@ class AdminAudit(Base):
 class AdminActionIntent(Base):
     __tablename__ = "admin_action_intents"
 
-    id = Column(String(36), primary_key=True)
+    id = Column(String(36), primary_key=True, nullable=False)
     actor_tg_id = Column(BigInteger, nullable=False)
     action = Column(String(64), nullable=False)
     target_type = Column(String(32), nullable=False)

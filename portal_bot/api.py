@@ -16598,9 +16598,17 @@ async def admin_node_undrain(node_code: str, payload: AdminNodeLifecycleIn, x_te
 
 
 def _raise_action_intent_http(error: ActionIntentError) -> None:
+    detail: dict[str, Any] = {
+        "code": str(error.code),
+        "message": str(error.message),
+    }
+    if error.intent_id:
+        detail["intent_id"] = str(error.intent_id)
+    if error.audit_id is not None:
+        detail["audit_id"] = int(error.audit_id)
     raise HTTPException(
         status_code=int(error.status_code),
-        detail={"code": str(error.code), "message": str(error.message)},
+        detail=detail,
     )
 
 
@@ -16683,7 +16691,7 @@ async def admin_node_disable(
             },
         )
     try:
-        return _execute_action_intent(
+        return await _execute_action_intent(
             session_factory=SessionLocal,
             actor_tg_id=actor,
             intent_id=x_admin_intent_id,

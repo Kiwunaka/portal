@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
+import inspect
 import json
+import math
 import re
 import unicodedata
 import uuid
@@ -13,22 +16,44 @@ from typing import Any, Callable, Mapping
 from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 
-from models import AdminActionIntent, Node, UserNode
+from models import AdminActionIntent, AdminAudit, Node, UserNode
 from ru_probe_contract import canonical_json_bytes
 
 
 ACTION_INTENT_TTL = timedelta(minutes=10)
+EXTERNAL_EXECUTION_TIMEOUT_SECONDS = 30.0
+EXTERNAL_EXECUTION_STALE_AFTER = timedelta(minutes=5)
+# Signed int32 representation of the stable "POKR" lock namespace. The same
+# value is embedded in the PostgreSQL user_nodes trigger migration.
+NODE_MAPPING_LOCK_NAMESPACE = 1_347_373_906
 _HEX_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _TARGET_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_EXTERNAL_RESULT_CODE_RE = re.compile(r"^[a-z][a-z0-9._-]{0,63}$")
 _TERMINAL_STATUSES = frozenset({"completed", "failed", "uncertain"})
+_EXTERNAL_RESULT_KEYS = frozenset(
+    {"ok", "code", "count", "changed", "failed", "skipped", "job_id"}
+)
+_EXTERNAL_COUNT_KEYS = ("count", "changed", "failed", "skipped")
+_MAX_EXTERNAL_COUNT = 1_000_000
+_MAX_EXTERNAL_REFERENCE_LENGTH = 128
 _constant_time_compare = hmac.compare_digest
 
 
 class ActionIntentError(RuntimeError):
-    def __init__(self, code: str, *, status_code: int, message: str) -> None:
+    def __init__(
+        self,
+        code: str,
+        *,
+        status_code: int,
+        message: str,
+        intent_id: str | None = None,
+        audit_id: int | None = None,
+    ) -> None:
         self.code = code
         self.status_code = int(status_code)
         self.message = message
+        self.intent_id = str(intent_id) if intent_id else None
+        self.audit_id = int(audit_id) if audit_id is not None else None
         super().__init__(code)
 
 
@@ -38,6 +63,13 @@ class EntityState:
     version_snapshot: dict[str, Any]
     public_snapshot: dict[str, Any]
     context: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ExternalOutcome:
+    status: str
+    result: dict[str, Any]
+    external_error_hash: str | None = None
 
 
 PayloadNormalizer = Callable[[Mapping[str, Any]], dict[str, Any]]
@@ -146,10 +178,39 @@ def _normalize_node_disable_payload(payload: Mapping[str, Any]) -> dict[str, Any
 
 
 def _node_entity_state(session, target_id: str, for_update: bool) -> EntityState:
-    query = session.query(Node).filter(func.lower(Node.code) == target_id)
-    if for_update and str(session.get_bind().dialect.name) == "postgresql":
-        query = query.with_for_update()
-    node = query.first()
+    dialect = str(session.get_bind().dialect.name)
+    node = None
+    if for_update and dialect == "postgresql":
+        node_id = (
+            session.query(Node.id)
+            .filter(func.lower(Node.code) == target_id)
+            .scalar()
+        )
+        if node_id is not None:
+            session.execute(
+                text(
+                    "SELECT pg_advisory_xact_lock(:lock_namespace, :node_id)"
+                ),
+                {
+                    "lock_namespace": NODE_MAPPING_LOCK_NAMESPACE,
+                    "node_id": int(node_id),
+                },
+            )
+            node = (
+                session.query(Node)
+                .filter(
+                    Node.id == int(node_id),
+                    func.lower(Node.code) == target_id,
+                )
+                .with_for_update()
+                .first()
+            )
+    else:
+        node = (
+            session.query(Node)
+            .filter(func.lower(Node.code) == target_id)
+            .first()
+        )
     if node is None:
         raise ActionIntentError(
             "target_not_found",
@@ -504,14 +565,322 @@ def _read_idempotency_owner(session, idempotency_key: str) -> AdminActionIntent 
     return query.first()
 
 
+def _external_error_fingerprint(code: str, value: object | None = None) -> str:
+    shape: dict[str, Any] = {"code": str(code)[:64]}
+    if isinstance(value, BaseException):
+        try:
+            message = str(value)[:512]
+        except Exception:
+            message = "<unprintable>"
+        shape.update(
+            {
+                "exception_type": type(value).__name__[:64],
+                "message_hash": hashlib.sha256(message.encode("utf-8")).hexdigest(),
+            }
+        )
+    elif value is not None:
+        shape["value_type"] = type(value).__name__[:64]
+        if isinstance(value, Mapping):
+            try:
+                bounded_keys: list[str] = []
+                for index, key in enumerate(value.keys()):
+                    if index >= 16:
+                        break
+                    bounded_keys.append(
+                        key[:64]
+                        if isinstance(key, str)
+                        else f"<{type(key).__name__}>"
+                    )
+                shape["keys"] = sorted(bounded_keys)
+            except Exception:
+                shape["keys"] = ["<unreadable>"]
+    return _semantic_hash("admin-action-external-error", shape)
+
+
+def _terminal_external_result(
+    *,
+    status: str,
+    result_code: str,
+    intent_id: str,
+    audit_id: int,
+    facts: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "ok": status == "completed",
+        "status": status,
+        "result_code": result_code,
+        "action_intent_id": intent_id,
+        "audit_id": int(audit_id),
+    }
+    if facts:
+        result["result"] = dict(facts)
+    return result
+
+
+def _malformed_external_outcome(
+    *,
+    raw_result: object,
+    intent_id: str,
+    audit_id: int,
+) -> ExternalOutcome:
+    result = _terminal_external_result(
+        status="uncertain",
+        result_code="external_result_malformed",
+        intent_id=intent_id,
+        audit_id=audit_id,
+    )
+    return ExternalOutcome(
+        status="uncertain",
+        result=result,
+        external_error_hash=_external_error_fingerprint(
+            "external_result_malformed",
+            raw_result,
+        ),
+    )
+
+
+def _normalize_external_outcome(
+    *,
+    raw_result: object,
+    intent_id: str,
+    audit_id: int,
+) -> ExternalOutcome:
+    try:
+        if not isinstance(raw_result, Mapping):
+            return _malformed_external_outcome(
+                raw_result=raw_result,
+                intent_id=intent_id,
+                audit_id=audit_id,
+            )
+        if len(raw_result) > len(_EXTERNAL_RESULT_KEYS):
+            return _malformed_external_outcome(
+                raw_result=raw_result,
+                intent_id=intent_id,
+                audit_id=audit_id,
+            )
+        keys = list(raw_result.keys())
+        if (
+            any(not isinstance(key, str) for key in keys)
+            or set(keys) - _EXTERNAL_RESULT_KEYS
+            or type(raw_result.get("ok")) is not bool
+        ):
+            return _malformed_external_outcome(
+                raw_result=raw_result,
+                intent_id=intent_id,
+                audit_id=audit_id,
+            )
+
+        succeeded = bool(raw_result["ok"])
+        default_code = "completed" if succeeded else "external_failed"
+        raw_code = raw_result.get("code")
+        if raw_code is None:
+            result_code = default_code
+        elif (
+            not isinstance(raw_code, str)
+            or not 1 <= len(raw_code) <= 64
+            or raw_code != raw_code.strip().lower()
+            or not _EXTERNAL_RESULT_CODE_RE.fullmatch(raw_code)
+        ):
+            return _malformed_external_outcome(
+                raw_result=raw_result,
+                intent_id=intent_id,
+                audit_id=audit_id,
+            )
+        else:
+            result_code = raw_code
+
+        facts: dict[str, Any] = {}
+        for key in _EXTERNAL_COUNT_KEYS:
+            if key not in raw_result:
+                continue
+            value = raw_result[key]
+            if type(value) is not int or not 0 <= value <= _MAX_EXTERNAL_COUNT:
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts[key] = int(value)
+        if succeeded and int(facts.get("failed") or 0) > 0:
+            return _malformed_external_outcome(
+                raw_result=raw_result,
+                intent_id=intent_id,
+                audit_id=audit_id,
+            )
+
+        if "job_id" in raw_result and raw_result["job_id"] is not None:
+            reference = raw_result["job_id"]
+            if (
+                not isinstance(reference, str)
+                or not 1 <= len(reference) <= _MAX_EXTERNAL_REFERENCE_LENGTH
+            ):
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts["external_reference_hash"] = _semantic_hash(
+                "admin-action-external-reference",
+                reference,
+            )
+
+        status = "completed" if succeeded else "failed"
+        return ExternalOutcome(
+            status=status,
+            result=_terminal_external_result(
+                status=status,
+                result_code=result_code,
+                intent_id=intent_id,
+                audit_id=audit_id,
+                facts=facts,
+            ),
+        )
+    except Exception as exc:
+        result = _terminal_external_result(
+            status="uncertain",
+            result_code="external_result_malformed",
+            intent_id=intent_id,
+            audit_id=audit_id,
+        )
+        return ExternalOutcome(
+            status="uncertain",
+            result=result,
+            external_error_hash=_external_error_fingerprint(
+                "external_result_normalization_failed",
+                exc,
+            ),
+        )
+
+
+def _terminal_audit_meta(
+    *,
+    audit: AdminAudit,
+    outcome: ExternalOutcome,
+    result_hash: str,
+) -> dict[str, Any]:
+    try:
+        parsed = json.loads(str(audit.meta or "{}"))
+    except (TypeError, ValueError):
+        parsed = {}
+    source = parsed if isinstance(parsed, dict) else {}
+    safe: dict[str, Any] = {}
+    string_limits = {
+        "action_intent_id": 36,
+        "risk_level": 8,
+        "target_type": 32,
+        "target_id": 128,
+        "payload_hash": 64,
+        "snapshot_hash": 64,
+        "entity_version_hash": 64,
+    }
+    for key, limit in string_limits.items():
+        value = source.get(key)
+        if isinstance(value, str) and len(value) <= limit:
+            safe[key] = value
+    mapped_users = source.get("mapped_users")
+    if type(mapped_users) is int and 0 <= mapped_users <= _MAX_EXTERNAL_COUNT:
+        safe["mapped_users"] = int(mapped_users)
+    if type(source.get("forced")) is bool:
+        safe["forced"] = bool(source["forced"])
+
+    safe.update(
+        {
+            "outcome": outcome.status,
+            "result_code": str(outcome.result["result_code"]),
+            "result_hash": result_hash,
+        }
+    )
+    if outcome.external_error_hash:
+        safe["external_error_hash"] = outcome.external_error_hash
+    facts = outcome.result.get("result")
+    if isinstance(facts, dict):
+        for key in _EXTERNAL_COUNT_KEYS:
+            value = facts.get(key)
+            if type(value) is int and 0 <= value <= _MAX_EXTERNAL_COUNT:
+                safe[key] = int(value)
+        reference_hash = facts.get("external_reference_hash")
+        if isinstance(reference_hash, str) and _HEX_SHA256_RE.fullmatch(reference_hash):
+            safe["external_reference_hash"] = reference_hash
+    return safe
+
+
+def _apply_external_outcome(
+    *,
+    session,
+    intent: AdminActionIntent,
+    outcome: ExternalOutcome,
+    updated_at: datetime,
+) -> None:
+    if outcome.status not in _TERMINAL_STATUSES:
+        raise ValueError("external outcome must be terminal")
+    result_hash = _semantic_hash("admin-action-result", outcome.result)
+    intent.status = outcome.status
+    intent.result_code = str(outcome.result["result_code"])
+    intent.result_summary_json = _canonical_json(outcome.result)
+    intent.result_hash = result_hash
+    intent.external_error_hash = outcome.external_error_hash
+    intent.updated_at = updated_at
+
+    if intent.admin_audit_id is None:
+        return
+    query = session.query(AdminAudit).filter(
+        AdminAudit.id == int(intent.admin_audit_id)
+    )
+    if str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    audit = query.first()
+    if audit is not None:
+        audit.meta = _canonical_json(
+            _terminal_audit_meta(
+                audit=audit,
+                outcome=outcome,
+                result_hash=result_hash,
+            )
+        )
+
+
+def _reconcile_stale_external_execution(
+    *,
+    session,
+    intent: AdminActionIntent,
+    idempotency_key: str,
+    now: datetime,
+) -> dict[str, Any] | None:
+    if (
+        intent.status != "executing"
+        or intent.client_idempotency_key != idempotency_key
+        or intent.admin_audit_id is None
+        or _as_utc(intent.updated_at) > now - EXTERNAL_EXECUTION_STALE_AFTER
+    ):
+        return None
+    result = _terminal_external_result(
+        status="uncertain",
+        result_code="external_execution_stale",
+        intent_id=str(intent.id),
+        audit_id=int(intent.admin_audit_id),
+    )
+    outcome = ExternalOutcome(
+        status="uncertain",
+        result=result,
+        external_error_hash=_external_error_fingerprint(
+            "external_execution_stale"
+        ),
+    )
+    _apply_external_outcome(
+        session=session,
+        intent=intent,
+        outcome=outcome,
+        updated_at=now,
+    )
+    return result
+
+
 def _persist_external_outcome(
     *,
     session_factory,
     intent_id: str,
     idempotency_key: str,
-    status: str,
-    result: dict[str, Any],
-    external_error_hash: str | None = None,
+    outcome: ExternalOutcome,
 ) -> dict[str, Any]:
     session = session_factory()
     try:
@@ -522,17 +891,25 @@ def _persist_external_outcome(
                 "intent_consumed",
                 status_code=409,
                 message="Intent больше не принадлежит этому выполнению.",
+                intent_id=intent_id,
+                audit_id=(
+                    int(intent.admin_audit_id)
+                    if intent is not None and intent.admin_audit_id is not None
+                    else None
+                ),
             )
         if intent.status != "executing":
-            return _stored_result(intent)
-        intent.status = status
-        intent.result_code = str(result.get("result_code") or status)[:64]
-        intent.result_summary_json = _canonical_json(result)
-        intent.result_hash = _semantic_hash("admin-action-result", result)
-        intent.external_error_hash = external_error_hash
-        intent.updated_at = _utcnow()
+            stored = _stored_result(intent)
+            session.rollback()
+            return stored
+        _apply_external_outcome(
+            session=session,
+            intent=intent,
+            outcome=outcome,
+            updated_at=_utcnow(),
+        )
         session.commit()
-        return result
+        return outcome.result
     except Exception:
         session.rollback()
         raise
@@ -540,7 +917,27 @@ def _persist_external_outcome(
         session.close()
 
 
-def execute_action_intent(
+async def _invoke_external_executor(external_executor, context: dict[str, Any]) -> Any:
+    if inspect.iscoroutinefunction(external_executor):
+        value = external_executor(context)
+    else:
+        value = await asyncio.to_thread(external_executor, context)
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+
+def _external_timeout_seconds(value: float) -> float:
+    try:
+        timeout = float(value)
+    except (TypeError, ValueError):
+        timeout = EXTERNAL_EXECUTION_TIMEOUT_SECONDS
+    if not math.isfinite(timeout) or timeout <= 0:
+        timeout = EXTERNAL_EXECUTION_TIMEOUT_SECONDS
+    return min(max(timeout, 0.01), 300.0)
+
+
+async def execute_action_intent(
     *,
     session_factory,
     actor_tg_id: int,
@@ -552,6 +949,7 @@ def execute_action_intent(
     payload: Mapping[str, Any],
     audit_writer,
     external_executor: Callable[[dict[str, Any]], Any] | None = None,
+    external_timeout_seconds: float = EXTERNAL_EXECUTION_TIMEOUT_SECONDS,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     normalized_intent_id = _normalize_uuid(intent_id, code="invalid_intent_id")
@@ -562,6 +960,7 @@ def execute_action_intent(
     execution_time = _as_utc(now or _utcnow())
     session = session_factory()
     external_context: dict[str, Any] | None = None
+    intent: AdminActionIntent | None = None
     try:
         _begin_write_lock(session)
         owner = _read_idempotency_owner(session, normalized_idempotency_key)
@@ -590,6 +989,15 @@ def execute_action_intent(
             now=execution_time,
         )
         if replay is not None:
+            reconciled = _reconcile_stale_external_execution(
+                session=session,
+                intent=intent,
+                idempotency_key=normalized_idempotency_key,
+                now=execution_time,
+            )
+            if reconciled is not None:
+                session.commit()
+                return reconciled
             session.rollback()
             return replay
         assert state is not None
@@ -703,8 +1111,17 @@ def execute_action_intent(
             "idempotency_conflict",
             status_code=409,
             message="Idempotency key уже использован.",
+            intent_id=normalized_intent_id,
         ) from None
-    except ActionIntentError:
+    except ActionIntentError as error:
+        if error.intent_id is None:
+            error.intent_id = normalized_intent_id
+        if (
+            error.audit_id is None
+            and intent is not None
+            and intent.admin_audit_id is not None
+        ):
+            error.audit_id = int(intent.admin_audit_id)
         if session.in_transaction():
             session.rollback()
         raise
@@ -714,55 +1131,58 @@ def execute_action_intent(
             "action_failed",
             status_code=500,
             message="Действие не выполнено.",
+            intent_id=normalized_intent_id,
+            audit_id=(
+                int(intent.admin_audit_id)
+                if intent is not None and intent.admin_audit_id is not None
+                else None
+            ),
         ) from None
     finally:
         session.close()
 
     assert external_context is not None
+    assert external_executor is not None
     try:
-        raw_result = external_executor(external_context)
-    except Exception as exc:
-        error_hash = _semantic_hash(
-            "admin-action-external-error",
-            {
-                "type": type(exc).__name__,
-                "message": str(exc),
-            },
+        raw_result = await asyncio.wait_for(
+            _invoke_external_executor(external_executor, external_context),
+            timeout=_external_timeout_seconds(external_timeout_seconds),
         )
-        uncertain = {
-            "ok": False,
-            "status": "uncertain",
-            "result_code": "external_outcome_uncertain",
-            "action_intent_id": normalized_intent_id,
-            "audit_id": int(external_context["audit_id"]),
-        }
-        return _persist_external_outcome(
-            session_factory=session_factory,
-            intent_id=normalized_intent_id,
-            idempotency_key=normalized_idempotency_key,
+    except TimeoutError:
+        outcome = ExternalOutcome(
             status="uncertain",
-            result=uncertain,
-            external_error_hash=error_hash,
+            result=_terminal_external_result(
+                status="uncertain",
+                result_code="external_timeout",
+                intent_id=normalized_intent_id,
+                audit_id=int(external_context["audit_id"]),
+            ),
+            external_error_hash=_external_error_fingerprint("external_timeout"),
+        )
+    except Exception as exc:
+        outcome = ExternalOutcome(
+            status="uncertain",
+            result=_terminal_external_result(
+                status="uncertain",
+                result_code="external_exception",
+                intent_id=normalized_intent_id,
+                audit_id=int(external_context["audit_id"]),
+            ),
+            external_error_hash=_external_error_fingerprint(
+                "external_exception",
+                exc,
+            ),
+        )
+    else:
+        outcome = _normalize_external_outcome(
+            raw_result=raw_result,
+            intent_id=normalized_intent_id,
+            audit_id=int(external_context["audit_id"]),
         )
 
-    safe_external = raw_result if isinstance(raw_result, dict) else {}
-    completed = {
-        "ok": True,
-        "status": "completed",
-        "result_code": "completed",
-        "action_intent_id": normalized_intent_id,
-        "audit_id": int(external_context["audit_id"]),
-        "result": {
-            str(key)[:64]: value
-            for key, value in safe_external.items()
-            if key in {"ok", "count", "changed", "failed", "skipped", "job_id"}
-            and isinstance(value, (str, int, bool, type(None)))
-        },
-    }
     return _persist_external_outcome(
         session_factory=session_factory,
         intent_id=normalized_intent_id,
         idempotency_key=normalized_idempotency_key,
-        status="completed",
-        result=completed,
+        outcome=outcome,
     )

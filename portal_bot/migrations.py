@@ -1321,7 +1321,7 @@ def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
         text(
             """
             CREATE TABLE IF NOT EXISTS admin_action_intents (
-              id VARCHAR(36) PRIMARY KEY,
+              id VARCHAR(36) NOT NULL PRIMARY KEY,
               actor_tg_id BIGINT NOT NULL,
               action VARCHAR(64) NOT NULL,
               target_type VARCHAR(32) NOT NULL,
@@ -1360,6 +1360,39 @@ def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
     ]:
         conn.execute(text(sql))
+    for sql in [
+        "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_insert;",
+        """
+        CREATE TRIGGER trg_user_nodes_guard_mapping_insert
+        BEFORE INSERT ON user_nodes
+        WHEN NOT EXISTS (
+          SELECT 1
+          FROM nodes
+          WHERE id = NEW.node_id
+            AND COALESCE(enabled, 0) = 1
+            AND COALESCE(accepting_new_clients, 0) = 1
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'user_node_target_unavailable');
+        END;
+        """,
+        "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_update;",
+        """
+        CREATE TRIGGER trg_user_nodes_guard_mapping_update
+        BEFORE UPDATE ON user_nodes
+        WHEN NOT EXISTS (
+          SELECT 1
+          FROM nodes
+          WHERE id = NEW.node_id
+            AND COALESCE(enabled, 0) = 1
+            AND COALESCE(accepting_new_clients, 0) = 1
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'user_node_target_unavailable');
+        END;
+        """,
+    ]:
+        conn.execute(text(sql))
 
 
 def _ensure_admin_action_intent_domain_postgres(conn) -> None:
@@ -1367,7 +1400,7 @@ def _ensure_admin_action_intent_domain_postgres(conn) -> None:
         text(
             """
             CREATE TABLE IF NOT EXISTS admin_action_intents (
-              id VARCHAR(36) PRIMARY KEY,
+              id VARCHAR(36) NOT NULL PRIMARY KEY,
               actor_tg_id BIGINT NOT NULL,
               action VARCHAR(64) NOT NULL,
               target_type VARCHAR(32) NOT NULL,
@@ -1408,6 +1441,61 @@ def _ensure_admin_action_intent_domain_postgres(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
     ]:
         conn.execute(text(sql))
+    conn.execute(
+        text(
+            """
+            CREATE OR REPLACE FUNCTION pokrov_guard_user_node_mapping()
+            RETURNS trigger
+            LANGUAGE plpgsql
+            AS $$
+            DECLARE
+              target_available BOOLEAN;
+            BEGIN
+              -- 1347373906 is the stable POKR namespace shared with the action core.
+              IF TG_OP = 'UPDATE' AND OLD.node_id IS DISTINCT FROM NEW.node_id THEN
+                PERFORM pg_advisory_xact_lock(
+                  1347373906,
+                  LEAST(OLD.node_id, NEW.node_id)
+                );
+                PERFORM pg_advisory_xact_lock(
+                  1347373906,
+                  GREATEST(OLD.node_id, NEW.node_id)
+                );
+              ELSE
+                PERFORM pg_advisory_xact_lock(1347373906, NEW.node_id);
+              END IF;
+
+              SELECT (enabled IS TRUE AND accepting_new_clients IS TRUE)
+              INTO target_available
+              FROM nodes
+              WHERE id = NEW.node_id
+              FOR UPDATE;
+
+              IF NOT FOUND OR NOT COALESCE(target_available, FALSE) THEN
+                RAISE EXCEPTION 'user_node_target_unavailable'
+                  USING ERRCODE = '23514';
+              END IF;
+              RETURN NEW;
+            END;
+            $$;
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping ON user_nodes;"
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TRIGGER trg_user_nodes_guard_mapping
+            BEFORE INSERT OR UPDATE ON user_nodes
+            FOR EACH ROW
+            EXECUTE FUNCTION pokrov_guard_user_node_mapping();
+            """
+        )
+    )
 
 
 def run_migrations(engine: Engine) -> None:

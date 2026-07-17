@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import importlib
@@ -14,6 +15,7 @@ from urllib.parse import urlencode
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 
 PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
@@ -157,6 +159,10 @@ def _detail_code(response) -> str:
     return str(response.json()["detail"]["code"])
 
 
+def _run(coroutine):
+    return asyncio.run(coroutine)
+
+
 def test_prepare_contract_is_frozen_redacted_and_unknown_actions_fail_closed(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -244,18 +250,21 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     import admin_action_intent_service as service
 
     with pytest.raises(service.ActionIntentError) as actor_error:
-        service.execute_action_intent(
-            session_factory=api.SessionLocal,
-            actor_tg_id=8888,
-            intent_id=intent_id,
-            idempotency_key=str(uuid.uuid4()),
-            confirmation_sha256_header=hashlib.sha256(b"NL").hexdigest(),
-            action="node.disable",
-            target={"type": "node", "id": "nl"},
-            payload={"force": False},
-            audit_writer=api._add_admin_audit,
+        _run(
+            service.execute_action_intent(
+                session_factory=api.SessionLocal,
+                actor_tg_id=8888,
+                intent_id=intent_id,
+                idempotency_key=str(uuid.uuid4()),
+                confirmation_sha256_header=hashlib.sha256(b"NL").hexdigest(),
+                action="node.disable",
+                target={"type": "node", "id": "nl"},
+                payload={"force": False},
+                audit_writer=api._add_admin_audit,
+            )
         )
     assert actor_error.value.code == "intent_mismatch"
+    assert actor_error.value.intent_id == intent_id
 
     target_mismatch = client.post(
         "/api/admin/nodes/de/disable",
@@ -264,6 +273,7 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     )
     assert target_mismatch.status_code == 409
     assert _detail_code(target_mismatch) == "intent_mismatch"
+    assert target_mismatch.json()["detail"]["intent_id"] == intent_id
 
     payload_mismatch = client.post(
         "/api/admin/nodes/nl/disable",
@@ -272,6 +282,7 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     )
     assert payload_mismatch.status_code == 409
     assert _detail_code(payload_mismatch) == "intent_mismatch"
+    assert payload_mismatch.json()["detail"]["intent_id"] == intent_id
 
     assert service.confirmation_sha256("  Е\u0308  ") == service.confirmation_sha256("Ё")
     original_compare = service._constant_time_compare
@@ -289,21 +300,25 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     )
     assert confirmation_mismatch.status_code == 409
     assert _detail_code(confirmation_mismatch) == "confirmation_mismatch"
+    assert confirmation_mismatch.json()["detail"]["intent_id"] == intent_id
     assert len(compare_calls) == 1
 
     with pytest.raises(service.ActionIntentError) as action_error:
-        service.execute_action_intent(
-            session_factory=api.SessionLocal,
-            actor_tg_id=9999,
-            intent_id=intent_id,
-            idempotency_key=str(uuid.uuid4()),
-            confirmation_sha256_header=hashlib.sha256(b"NL").hexdigest(),
-            action="node.enable",
-            target={"type": "node", "id": "nl"},
-            payload={"force": False},
-            audit_writer=api._add_admin_audit,
+        _run(
+            service.execute_action_intent(
+                session_factory=api.SessionLocal,
+                actor_tg_id=9999,
+                intent_id=intent_id,
+                idempotency_key=str(uuid.uuid4()),
+                confirmation_sha256_header=hashlib.sha256(b"NL").hexdigest(),
+                action="node.enable",
+                target={"type": "node", "id": "nl"},
+                payload={"force": False},
+                audit_writer=api._add_admin_audit,
+            )
         )
     assert action_error.value.code == "intent_mismatch"
+    assert action_error.value.intent_id == intent_id
 
     from models import AdminActionIntent, Node
 
@@ -324,6 +339,7 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     )
     assert stale.status_code == 409
     assert _detail_code(stale) == "stale_intent"
+    assert stale.json()["detail"]["intent_id"] == intent_id
     session = api.SessionLocal()
     try:
         row = session.query(AdminActionIntent).filter_by(id=intent_id).one()
@@ -347,6 +363,7 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     )
     assert expired.status_code == 409
     assert _detail_code(expired) == "expired_intent"
+    assert expired.json()["detail"]["intent_id"] == expired_id
     session = api.SessionLocal()
     try:
         assert session.query(AdminActionIntent).filter_by(id=expired_id).one().status == "expired"
@@ -382,6 +399,8 @@ def test_concurrent_consume_is_atomic_and_idempotency_replays_stored_result(
     assert isinstance(completed["audit_id"], int)
     loser = next(response for response in responses if response.status_code == 409)
     assert _detail_code(loser) == "intent_consumed"
+    assert loser.json()["detail"]["intent_id"] == intent_id
+    assert loser.json()["detail"]["audit_id"] == completed["audit_id"]
 
     replay = execute(winner_key)
     assert replay.status_code == 200
@@ -389,6 +408,8 @@ def test_concurrent_consume_is_atomic_and_idempotency_replays_stored_result(
     conflict = execute(str(uuid.uuid4()))
     assert conflict.status_code == 409
     assert _detail_code(conflict) == "intent_consumed"
+    assert conflict.json()["detail"]["intent_id"] == intent_id
+    assert conflict.json()["detail"]["audit_id"] == completed["audit_id"]
 
     from models import AdminActionIntent, AdminAudit, Node
 
@@ -430,6 +451,7 @@ def test_audit_failure_rolls_back_node_and_intent_without_leaking_error(
     )
     assert response.status_code == 503
     assert _detail_code(response) == "audit_failed"
+    assert response.json()["detail"]["intent_id"] == intent_id
     assert "synthetic-private-audit-failure" not in response.text.lower()
 
     from models import AdminActionIntent, AdminAudit, Node
@@ -447,7 +469,43 @@ def test_audit_failure_rolls_back_node_and_intent_without_leaking_error(
         session.close()
 
 
-def test_external_uncertain_result_is_audited_once_and_never_retried(
+def test_mapping_guard_rejects_new_assignment_after_nonforce_disable(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    _seed_nodes(api)
+    client = TestClient(api.app)
+    intent_id = _prepare(client).json()["intent_id"]
+    disabled = client.post(
+        "/api/admin/nodes/nl/disable",
+        headers=_execute_headers(intent_id),
+        json={"force": False},
+    )
+    assert disabled.status_code == 200, disabled.text
+
+    from models import Node, UserNode
+
+    session = api.SessionLocal()
+    try:
+        node = session.query(Node).filter_by(code="nl").one()
+        session.add(
+            UserNode(
+                tg_id=777000,
+                node_id=int(node.id),
+                client_uuid=str(uuid.uuid4()),
+                panel_email="guard-test@example.test",
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+        assert session.query(UserNode).filter_by(node_id=int(node.id)).count() == 0
+    finally:
+        session.close()
+
+
+def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -466,52 +524,200 @@ def test_external_uncertain_result_is_audited_once_and_never_retried(
         ),
     )
     client = TestClient(api.app)
-    prepared_response = _prepare(client, action=external_action)
-    assert prepared_response.status_code == 200, prepared_response.text
-    intent_id = prepared_response.json()["intent_id"]
-    idempotency_key = str(uuid.uuid4())
-    attempts: list[int] = []
 
-    def external_effect(_context):
-        attempts.append(1)
-        raise TimeoutError("SYNTHETIC-PRIVATE-PROVIDER-BODY")
+    def prepare_intent() -> str:
+        response = _prepare(client, action=external_action)
+        assert response.status_code == 200, response.text
+        return str(response.json()["intent_id"])
 
-    execute_kwargs = {
-        "session_factory": api.SessionLocal,
-        "actor_tg_id": 9999,
-        "intent_id": intent_id,
-        "idempotency_key": idempotency_key,
-        "confirmation_sha256_header": hashlib.sha256(b"NL").hexdigest(),
-        "action": external_action,
-        "target": {"type": "node", "id": "nl"},
-        "payload": {"force": False},
-        "audit_writer": api._add_admin_audit,
-        "external_executor": external_effect,
-    }
-    first = service.execute_action_intent(**execute_kwargs)
-    second = service.execute_action_intent(**execute_kwargs)
-    assert first == second
-    assert first["status"] == "uncertain"
-    assert first["action_intent_id"] == intent_id
-    assert isinstance(first["audit_id"], int)
-    assert attempts == [1]
-    assert "synthetic-private-provider-body" not in json.dumps(first).lower()
+    def execute(
+        intent_id: str,
+        idempotency_key: str,
+        executor,
+        *,
+        timeout: float = 1.0,
+    ) -> dict:
+        return _run(
+            service.execute_action_intent(
+                session_factory=api.SessionLocal,
+                actor_tg_id=9999,
+                intent_id=intent_id,
+                idempotency_key=idempotency_key,
+                confirmation_sha256_header=hashlib.sha256(b"NL").hexdigest(),
+                action=external_action,
+                target={"type": "node", "id": "nl"},
+                payload={"force": False},
+                audit_writer=api._add_admin_audit,
+                external_executor=executor,
+                external_timeout_seconds=timeout,
+            )
+        )
+
+    async_attempts: list[int] = []
+    provider_reference = "SYNTHETIC-PRIVATE-PROVIDER-JOB"
+
+    async def async_success(_context):
+        async_attempts.append(1)
+        await asyncio.sleep(0)
+        return {
+            "ok": True,
+            "code": "provider_completed",
+            "changed": 1,
+            "job_id": provider_reference,
+        }
+
+    completed_id = prepare_intent()
+    completed_key = str(uuid.uuid4())
+    completed = execute(completed_id, completed_key, async_success)
+    assert completed["status"] == "completed"
+    assert completed["result_code"] == "provider_completed"
+    assert completed["result"]["changed"] == 1
+    assert len(completed["result"]["external_reference_hash"]) == 64
+    assert provider_reference.lower() not in json.dumps(completed).lower()
+    assert async_attempts == [1]
+
+    negative_attempts: list[int] = []
+
+    def sync_negative(_context):
+        negative_attempts.append(1)
+        return {"ok": False, "code": "provider_rejected", "failed": 1}
+
+    failed_id = prepare_intent()
+    failed_key = str(uuid.uuid4())
+    failed = execute(failed_id, failed_key, sync_negative)
+    assert failed["status"] == "failed"
+    assert failed["result_code"] == "provider_rejected"
+    assert execute(failed_id, failed_key, sync_negative) == failed
+    assert negative_attempts == [1]
+
+    timeout_attempts: list[int] = []
+
+    async def hangs(_context):
+        timeout_attempts.append(1)
+        await asyncio.sleep(1)
+        return {"ok": True, "code": "too_late"}
+
+    timeout_id = prepare_intent()
+    timeout_key = str(uuid.uuid4())
+    timed_out = execute(timeout_id, timeout_key, hangs, timeout=0.01)
+    assert timed_out["status"] == "uncertain"
+    assert timed_out["result_code"] == "external_timeout"
+    assert execute(timeout_id, timeout_key, hangs, timeout=0.01) == timed_out
+    assert timeout_attempts == [1]
+
+    malformed_secret = "SYNTHETIC-PRIVATE-MALFORMED-BODY"
+    malformed_id = prepare_intent()
+    malformed = execute(
+        malformed_id,
+        str(uuid.uuid4()),
+        lambda _context: {"message": malformed_secret},
+    )
+    assert malformed["status"] == "uncertain"
+    assert malformed["result_code"] == "external_result_malformed"
+
+    exception_secret = "SYNTHETIC-PRIVATE-PROVIDER-BODY"
+    exception_attempts: list[int] = []
+
+    def raises_private(_context):
+        exception_attempts.append(1)
+        raise RuntimeError(exception_secret)
+
+    exception_id = prepare_intent()
+    exception_key = str(uuid.uuid4())
+    raised = execute(exception_id, exception_key, raises_private)
+    assert raised["status"] == "uncertain"
+    assert raised["result_code"] == "external_exception"
+    assert execute(exception_id, exception_key, raises_private) == raised
+    assert exception_attempts == [1]
+
+    stale_id = prepare_intent()
+    stale_key = str(uuid.uuid4())
+    session = api.SessionLocal()
+    try:
+        from models import AdminActionIntent
+
+        intent = session.query(AdminActionIntent).filter_by(id=stale_id).one()
+        audit = api._add_admin_audit(
+            session=session,
+            actor_tg_id=9999,
+            action="admin_node_disable",
+            meta={"action_intent_id": stale_id, "outcome": "executing"},
+        )
+        executing = {
+            "ok": True,
+            "status": "executing",
+            "action_intent_id": stale_id,
+            "audit_id": int(audit.id),
+        }
+        intent.status = "executing"
+        intent.client_idempotency_key = stale_key
+        intent.consumed_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+        intent.admin_audit_id = int(audit.id)
+        intent.result_code = "executing"
+        intent.result_summary_json = json.dumps(executing, separators=(",", ":"))
+        intent.result_hash = "e" * 64
+        intent.updated_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+        session.commit()
+    finally:
+        session.close()
+
+    stale_effect_calls: list[int] = []
+
+    def stale_effect(_context):
+        stale_effect_calls.append(1)
+        return {"ok": True, "code": "must_not_run"}
+
+    stale = execute(stale_id, stale_key, stale_effect)
+    assert stale["status"] == "uncertain"
+    assert stale["result_code"] == "external_execution_stale"
+    assert execute(stale_id, stale_key, stale_effect) == stale
+    assert stale_effect_calls == []
 
     with pytest.raises(service.ActionIntentError) as conflict:
-        service.execute_action_intent(
-            **{**execute_kwargs, "idempotency_key": str(uuid.uuid4())}
-        )
+        execute(exception_id, str(uuid.uuid4()), raises_private)
     assert conflict.value.code == "intent_consumed"
+    assert conflict.value.intent_id == exception_id
+    assert conflict.value.audit_id == raised["audit_id"]
 
     from models import AdminActionIntent, AdminAudit
 
     session = api.SessionLocal()
     try:
-        intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
-        assert intent.status == "uncertain"
-        assert intent.admin_audit_id is not None
-        assert session.query(AdminAudit).filter_by(id=intent.admin_audit_id).count() == 1
-        safe_text = f"{intent.result_summary_json} {intent.external_error_hash}".lower()
-        assert "synthetic-private-provider-body" not in safe_text
+        expected = {
+            completed_id: "completed",
+            failed_id: "failed",
+            timeout_id: "uncertain",
+            malformed_id: "uncertain",
+            exception_id: "uncertain",
+            stale_id: "uncertain",
+        }
+        for persisted in session.query(AdminActionIntent).filter(
+            AdminActionIntent.id.in_(expected)
+        ):
+            assert persisted.status == expected[persisted.id]
+            audit = session.query(AdminAudit).filter_by(id=persisted.admin_audit_id).one()
+            audit_meta = json.loads(audit.meta)
+            assert audit_meta["outcome"] == persisted.status
+            assert audit_meta["result_code"] == persisted.result_code
+            assert audit_meta["result_hash"] == persisted.result_hash
+        safe_text = " ".join(
+            f"{row.result_summary_json} {row.external_error_hash}"
+            for row in session.query(AdminActionIntent).filter(
+                AdminActionIntent.id.in_(expected)
+            )
+        ).lower()
+        safe_text += " " + " ".join(
+            str(row.meta or "")
+            for row in session.query(AdminAudit).filter(
+                AdminAudit.id.in_(
+                    session.query(AdminActionIntent.admin_audit_id).filter(
+                        AdminActionIntent.id.in_(expected)
+                    )
+                )
+            )
+        ).lower()
+        assert provider_reference.lower() not in safe_text
+        assert malformed_secret.lower() not in safe_text
+        assert exception_secret.lower() not in safe_text
     finally:
         session.close()

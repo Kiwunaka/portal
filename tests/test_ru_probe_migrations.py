@@ -16,6 +16,7 @@ if str(PORTAL_DIR) not in sys.path:
 
 import migrations  # noqa: E402
 import models  # noqa: E402
+from admin_action_intent_service import NODE_MAPPING_LOCK_NAMESPACE  # noqa: E402
 
 
 RU_TABLES = {
@@ -517,14 +518,46 @@ def test_admin_action_intent_migration_contract(tmp_path: Path) -> None:
         if table.name not in RU_TABLES | {table_name}
     ]
     models.Base.metadata.create_all(engine, tables=bootstrap_tables)
+    with engine.begin() as conn:
+        existing_node_id = int(
+            conn.execute(
+                text(
+                    "INSERT INTO nodes(code, name, enabled, accepting_new_clients) "
+                    "VALUES ('legacy-map', 'Legacy map', 0, 0)"
+                )
+            ).lastrowid
+        )
+        existing_mapping_id = int(
+            conn.execute(
+                text(
+                    "INSERT INTO user_nodes(tg_id, node_id, client_uuid, panel_email) "
+                    "VALUES (700001, :node_id, :client_uuid, 'legacy@example.test')"
+                ),
+                {"node_id": existing_node_id, "client_uuid": str(uuid.uuid4())},
+            ).lastrowid
+        )
     migrations.run_migrations(engine)
     migrations.run_migrations(engine)
     inspector = inspect(engine)
     model_table = models.Base.metadata.tables[table_name]
     assert set(inspector.get_table_names()) >= {table_name, "admin_audit"}
-    assert {column["name"] for column in inspector.get_columns(table_name)} == set(
-        model_table.c.keys()
-    )
+    db_columns = {
+        column["name"]: column for column in inspector.get_columns(table_name)
+    }
+    assert set(db_columns) == set(model_table.c.keys())
+    for column in model_table.c:
+        actual = db_columns[column.name]
+        assert str(actual["type"]).upper() == str(column.type).upper()
+        assert bool(actual["nullable"]) is bool(column.nullable)
+        model_default = (
+            column.server_default.arg
+            if column.server_default is not None
+            else None
+        )
+        assert _normalized_default(actual.get("default")) == _normalized_default(
+            model_default
+        )
+    assert bool(db_columns["id"]["nullable"]) is False
     assert _unique_constraints(inspector, table_name) == {
         "uq_admin_action_intents_idempotency": ("client_idempotency_key",)
     }
@@ -546,6 +579,39 @@ def test_admin_action_intent_migration_contract(tmp_path: Path) -> None:
     assert {
         str(index.name): tuple(index.columns.keys()) for index in model_table.indexes
     } == expected_indexes
+    with engine.connect() as conn:
+        table_sql = str(
+            conn.execute(
+                text(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type = 'table' AND name = :name"
+                ),
+                {"name": table_name},
+            ).scalar_one()
+        )
+        trigger_rows = conn.execute(
+            text(
+                "SELECT name, sql FROM sqlite_master "
+                "WHERE type = 'trigger' AND name LIKE "
+                "'trg_user_nodes_guard_mapping_%'"
+            )
+        ).fetchall()
+        assert conn.execute(
+            text("SELECT COUNT(*) FROM user_nodes WHERE id = :mapping_id"),
+            {"mapping_id": existing_mapping_id},
+        ).scalar_one() == 1
+    assert "id VARCHAR(36) NOT NULL PRIMARY KEY" in table_sql
+    sqlite_triggers = {str(row[0]): str(row[1]) for row in trigger_rows}
+    assert set(sqlite_triggers) == {
+        "trg_user_nodes_guard_mapping_insert",
+        "trg_user_nodes_guard_mapping_update",
+    }
+    assert all(
+        "user_node_target_unavailable" in sql
+        and "accepting_new_clients" in sql
+        and "enabled" in sql
+        for sql in sqlite_triggers.values()
+    )
 
     with engine.begin() as conn:
         audit_id = int(
@@ -594,6 +660,15 @@ def test_admin_action_intent_migration_contract(tmp_path: Path) -> None:
         conn.execute(insert_sql, values)
         with pytest.raises(IntegrityError):
             conn.execute(insert_sql, {**values, "id": str(uuid.uuid4())})
+        with pytest.raises(IntegrityError, match="NOT NULL.*admin_action_intents.id"):
+            conn.execute(
+                insert_sql,
+                {
+                    **values,
+                    "id": None,
+                    "key": str(uuid.uuid4()),
+                },
+            )
     with engine.begin() as conn:
         with pytest.raises(IntegrityError):
             conn.execute(
@@ -617,3 +692,10 @@ def test_admin_action_intent_migration_contract(tmp_path: Path) -> None:
     assert "CONSTRAINT fk_admin_action_intents_audit" in postgres_sql
     assert "ON DELETE RESTRICT" in postgres_sql
     assert all(name in postgres_sql for name in expected_indexes)
+    assert "CREATE OR REPLACE FUNCTION pokrov_guard_user_node_mapping()" in postgres_sql
+    assert "CREATE TRIGGER trg_user_nodes_guard_mapping" in postgres_sql
+    assert f"pg_advisory_xact_lock( {NODE_MAPPING_LOCK_NAMESPACE}" in postgres_sql
+    assert "LEAST(OLD.node_id, NEW.node_id)" in postgres_sql
+    assert "GREATEST(OLD.node_id, NEW.node_id)" in postgres_sql
+    assert "enabled IS TRUE AND accepting_new_clients IS TRUE" in postgres_sql
+    assert "user_node_target_unavailable" in postgres_sql
