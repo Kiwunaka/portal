@@ -105,9 +105,9 @@ test("каждый раздел запрашивает только собств
     { href: "/alerts", label: "Алерты", paths: ["/api/admin/alerts?status=active"] },
     { href: "/provider-caps", label: "Лимиты провайдеров", paths: ["/api/admin/ops/overview", "/api/admin/provider-quotas"] },
     { href: "/free-tier", label: "Бесплатный контур", paths: ["/api/admin/ops/overview", "/api/admin/free-tier/users?limit=500"] },
-    { href: "/users", label: "Пользователи", paths: ["/api/admin/users?page_size=80&offset=0&sort=created_desc"] },
-    { href: "/online", label: "Сейчас онлайн", paths: ["/api/admin/online/users?limit=200", "/api/admin/keys/pressure?limit=80"] },
-    { href: "/tickets", label: "Тикеты", paths: ["/api/admin/tickets?status=&limit=50"] },
+    { href: "/users", label: "Пользователи", paths: ["/api/admin/users?page_size=80&offset=0&sort=created_desc", "/api/admin/online/users?limit=200"] },
+    { href: "/online", label: "Сейчас онлайн", paths: ["/api/admin/online/users?limit=200"] },
+    { href: "/tickets", label: "Тикеты", paths: ["/api/admin/tickets?status=&limit=100"] },
     { href: "/payments", label: "Платежи", paths: ["/api/admin/payments/summary?period=today", "/api/admin/payments/summary?period=7d", "/api/admin/payments/summary?period=30d", "/api/admin/payments/orders?limit=80"] },
     { href: "/funnel", label: "Воронка", paths: ["/api/admin/funnel/summary"] },
     { href: "/promos", label: "Промо", paths: ["/api/admin/promos?limit=100"] },
@@ -196,7 +196,7 @@ test("отключённый ресурс не показывает карточ
           user: { tg_id: 1001, display_name: "Тестовый пользователь", status: "active", sub_type: "paid" },
           summary: {},
           keys: [],
-          observer: { recent_ips: [] },
+          observer: { state: "ok", recent_nodes: [] },
           risk: {},
           tickets: [],
           payment_orders: [],
@@ -227,11 +227,13 @@ test("отключённый ресурс не показывает карточ
   });
 
   await page.goto("/users");
+  await page.getByRole("button", { name: /Тестовый пользователь/ }).click();
   await expect(page.getByRole("heading", { name: "Пользователь 1001" })).toBeVisible();
-  await page.getByPlaceholder("tg_id, username, install_id, order_id, key/email").fill("nobody");
+  await page.getByPlaceholder("Telegram ID, имя, ID установки, почта").fill("nobody");
+  await page.getByRole("button", { name: "Найти" }).click();
   await expect.poll(() => userQueries.includes("nobody")).toBe(true);
 
-  await expect(page.getByText("Выбери пользователя в таблице.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Пользователи не найдены", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Пользователь 1001" })).toHaveCount(0);
 });
 

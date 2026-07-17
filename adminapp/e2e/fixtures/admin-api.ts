@@ -697,6 +697,202 @@ type AdminApiMockOptions = {
   broadcastStatus?: number;
   failAllLegacyRequests?: boolean;
   delayFirstOverviewFailure?: boolean;
+  ticketReplyOutcomes?: Array<"completed" | "failed" | "uncertain">;
+};
+
+const clientUserRows = [
+  {
+    tg_id: 1001,
+    username: "operator_test",
+    display_name: "Иван Проверочный",
+    sub_type: "paid",
+    status: "active",
+    origin: "app",
+    is_manual: false,
+    expiry_at: "2026-08-15T10:00:00Z",
+    created_at: "2026-06-01T09:00:00Z",
+    app_install_id: "install-safe-1001",
+    observer_state: "watch",
+    observer_updated_at: "2026-07-15T09:55:00Z",
+  },
+  {
+    tg_id: -42,
+    username: null,
+    display_name: "Ручной тест",
+    sub_type: "manual",
+    status: "manual_test",
+    origin: "manual_test",
+    is_manual: true,
+    expiry_at: "2026-07-30T10:00:00Z",
+    created_at: "2026-07-01T09:00:00Z",
+    app_install_id: null,
+    observer_state: "ok",
+    observer_updated_at: "2026-07-15T09:55:00Z",
+  },
+];
+
+function clientUserDetail(tgId: number) {
+  const listRow = clientUserRows.find((row) => row.tg_id === tgId) || clientUserRows[0];
+  return {
+    user: {
+      ...listRow,
+      tg_id: tgId,
+      is_active: true,
+      effective_active: true,
+      stars_paid: tgId > 0 ? 1200 : 0,
+      total_gb: 18.5,
+      trial_used: true,
+      referral_count: 2,
+      streak_months: 3,
+      linked_telegram_id: null,
+      linked_telegram_username: null,
+      app_platform: tgId > 0 ? "android" : null,
+      app_last_seen_at: "2026-07-15T09:54:00Z",
+    },
+    summary: {
+      nodes_total: null,
+      nodes_with_client: null,
+      nodes_online: null,
+      online_keys_now: null,
+      online_connections_now: null,
+      active_users_estimate: null,
+      online_node_codes_now: null,
+      nodes_enabled: null,
+      subid_mismatch_count: null,
+      traffic_total_gb: null,
+      panel_state: "partial",
+    },
+    keys: [
+      {
+        node_code: "nl",
+        node_name: "Нидерланды",
+        exists: true,
+        enabled: true,
+        online: true,
+        current_connections: 2,
+        sub_id_match: true,
+        total_gb: 18.5,
+        last_online_at: "2026-07-15T09:59:00Z",
+        last_online_age_seconds: 60,
+        panel_state: "ok",
+      },
+      {
+        node_code: "de",
+        node_name: "Германия",
+        exists: null,
+        enabled: null,
+        online: null,
+        current_connections: null,
+        sub_id_match: null,
+        total_gb: null,
+        last_online_at: null,
+        last_online_age_seconds: null,
+        panel_state: "error",
+      },
+    ],
+    tickets: [{ id: 501, status: "open", status_title: "Открыт", subject: "Не подключается", updated_at: "2026-07-15T09:45:00Z", last_message_preview: "Нужна помощь" }],
+    payment_orders: [{ id: 701, order_id: "ORDER-701", provider: "stars", plan_code: "month", amount: 299, currency: "RUB", status: "paid", created_at: "2026-07-01T10:00:00Z", paid_at: "2026-07-01T10:01:00Z" }],
+    key_history: [{ id: 801, action: "admin_user_key_toggle", node_code: "nl", actor_tg_id: 9999, source: "admin", created_at: "2026-07-10T10:00:00Z" }],
+    admin_actions: [{ id: 901, action: "admin_manual_extend", node_code: null, actor_tg_id: 9999, source: "admin", created_at: "2026-07-11T10:00:00Z" }],
+    observer: {
+      state: "watch",
+      reasons: ["multi_ip"],
+      observed_ip_count_24h: 2,
+      observed_ip_count_7d: 3,
+      observed_ip_count_30d: 4,
+      observed_node_count_24h: 1,
+      observed_node_count_7d: 2,
+      observed_node_count_30d: 2,
+      overlap_count_24h: 0,
+      last_observed_at: "2026-07-15T09:58:00Z",
+      updated_at: "2026-07-15T09:59:00Z",
+      recent_nodes: [{ node_id: 1, node_code: "nl", node_name: "Нидерланды", last_seen_at: "2026-07-15T09:58:00Z", score_ip_count: 2 }],
+    },
+    risk: {
+      score: 35,
+      level: "medium",
+      window_days: 30,
+      updated_at: "2026-07-15T09:59:00Z",
+      signals: { regen_count: 0, admin_key_ops: 1, unique_ips: 2, observer_state: "watch", traffic_gb: 18.5, subid_mismatch_count: 0 },
+      factors: [{ key: "multi_ip", weight: 35, value: "2" }],
+    },
+  };
+}
+
+const clientInvestigation = {
+  tg_id: 1001,
+  generated_at: generatedAt,
+  observer: {
+    ...clientUserDetail(1001).observer,
+    recent_ips: [{
+      source_ip_raw: "203.0.113.44",
+      node_code: "nl",
+      node_name: "Нидерланды",
+      last_seen_at: "2026-07-15T09:58:00Z",
+      counts_for_suspicion: true,
+    }],
+  },
+};
+
+const clientOnlinePayload = {
+  ok: true,
+  generated_at: generatedAt,
+  total: 1,
+  limit: 200,
+  rows: [{
+    row_id: "user:1001",
+    tg_id: 1001,
+    username: "operator_test",
+    display_name: "Иван Проверочный",
+    sub_type: "paid",
+    status: "active",
+    origin: "app",
+    nodes_online: ["nl"],
+    online_keys_now: 1,
+    online_connections_now: 2,
+    ip_count: 2,
+    risk_flags: ["multi_ip"],
+    last_online_at: "2026-07-15T09:59:00Z",
+    traffic_gb_24h: 1.5,
+    pressure_score: 20,
+  }],
+  summary: {
+    online_identities: 1,
+    known_users_online: 1,
+    unknown_online_keys: 0,
+    online_keys_now: 1,
+    online_connections_now: 2,
+    nodes_with_panel_errors: 0,
+  },
+  panel_errors: [],
+};
+
+const clientTicketList = {
+  id: 501,
+  user_tg_id: 1001,
+  status: "open",
+  status_title: "Открыт",
+  subject: "Не подключается",
+  priority: "high",
+  created_at: "2026-07-15T08:00:00Z",
+  updated_at: "2026-07-15T09:45:00Z",
+  closed_at: null,
+  last_message_preview: "Нужна помощь с подключением",
+};
+
+const clientTicketDetail = {
+  ...clientTicketList,
+  messages: [
+    {
+      id: 1,
+      sender_tg_id: 1001,
+      sender_role: "user",
+      body: "Нужна помощь с подключением",
+      attachment: { type: "file", name: "диагностика.txt", content_type: "text/plain", size_bytes: 512, download_url: "/api/tickets/attachments/20260715-Abcdefgh1234.txt" },
+      created_at: "2026-07-15T08:00:00Z",
+    },
+    { id: 2, sender_tg_id: 9999, sender_role: "admin", body: "Уточните платформу", created_at: "2026-07-15T08:05:00Z" },
+  ],
 };
 
 const LEGACY_GET_PATHS = new Set([
@@ -731,11 +927,34 @@ function isNodeActionPath(pathname: string): boolean {
   return /^\/api\/admin\/nodes\/[^/]+\/(drain|undrain|enable|disable|resync)$/.test(pathname);
 }
 
+function isUserDetailPath(pathname: string): boolean {
+  return /^\/api\/admin\/users\/-?[1-9]\d*$/.test(pathname);
+}
+
+function isUserInvestigationPath(pathname: string): boolean {
+  return /^\/api\/admin\/users\/-?[1-9]\d*\/investigation$/.test(pathname);
+}
+
+function isUserActionPath(pathname: string): boolean {
+  return /^\/api\/admin\/users\/-?[1-9]\d*\/(manual\/(extend|block|regenerate-token)|presets\/run|safe-delete|message|keys\/[^/]+\/(toggle|reset-traffic|resync-subid)|key-limits\/[^/]+)$/.test(pathname);
+}
+
+function isTicketDetailPath(pathname: string): boolean {
+  return /^\/api\/admin\/tickets\/[1-9]\d*$/.test(pathname);
+}
+
+function isTicketActionPath(pathname: string): boolean {
+  return /^\/api\/admin\/tickets\/[1-9]\d*\/(reply|status)$/.test(pathname);
+}
+
 function isFocusedGetPath(pathname: string): boolean {
   return FOCUSED_GET_PATHS.has(pathname)
     || pathname === "/api/admin/probes/ru-origin/runs"
     || pathname === "/api/admin/probes/ru-origin/uploader-status"
-    || isNodeObservabilityPath(pathname);
+    || isNodeObservabilityPath(pathname)
+    || isUserDetailPath(pathname)
+    || isUserInvestigationPath(pathname)
+    || isTicketDetailPath(pathname);
 }
 
 function fulfillJson(route: Route, data: unknown, status = 200) {
@@ -746,7 +965,7 @@ function fulfillJson(route: Route, data: unknown, status = 200) {
     headers: {
       "access-control-allow-origin": origin,
       "access-control-allow-credentials": "true",
-      "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
+      "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
       "access-control-allow-headers": "authorization,content-type,x-telegram-init-data,x-web-auth-token,x-admin-intent-id,x-admin-idempotency-key,x-admin-confirmation-sha256"
     },
     body: JSON.stringify(data)
@@ -775,13 +994,14 @@ export async function installAdminApiMock(
   let overviewRequestCount = 0;
   let ruLatestRequestCount = 0;
   let historyPageOneRequestCount = 0;
-  await page.route("**/api/admin/**", async (route) => {
+  let ticketReplyRequestCount = 0;
+  await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method();
     const requestHeaders = request.headers();
     let requestBody: unknown = undefined;
-    if (method === "POST") {
+    if (method !== "GET" && method !== "OPTIONS") {
       try {
         requestBody = request.postDataJSON();
       } catch {
@@ -803,13 +1023,17 @@ export async function installAdminApiMock(
       || url.pathname === "/api/admin/auth/session"
       || url.pathname === "/api/admin/broadcast"
       || url.pathname === "/api/admin/action-intents"
-      || isNodeActionPath(url.pathname);
+      || isNodeActionPath(url.pathname)
+      || isUserActionPath(url.pathname)
+      || isTicketActionPath(url.pathname);
     const knownRequest =
       (method === "GET" && isFocusedGetPath(url.pathname)) ||
       (method === "POST" && url.pathname === "/api/admin/auth/session") ||
       (method === "POST" && url.pathname === "/api/admin/broadcast") ||
       (method === "POST" && url.pathname === "/api/admin/action-intents") ||
       (method === "POST" && isNodeActionPath(url.pathname)) ||
+      ((method === "POST" || method === "PUT") && isUserActionPath(url.pathname)) ||
+      (method === "POST" && isTicketActionPath(url.pathname)) ||
       (method === "OPTIONS" && knownPath);
     if (!knownRequest) {
       await fulfillJson(
@@ -863,7 +1087,9 @@ export async function installAdminApiMock(
       const target = body.target && typeof body.target === "object" && !Array.isArray(body.target)
         ? body.target as Record<string, unknown>
         : {};
-      const nodeCode = String(target.id || "nl").trim().toLowerCase();
+      const targetType = String(target.type || "node").trim().toLowerCase();
+      const targetId = String(target.id || "nl").trim();
+      const nodeCode = targetId.toLowerCase();
       const lifecycle = { enabled: true, accepting_new_clients: true, is_draining: false };
       const afterByAction: Record<string, Record<string, unknown>> = {
         "node.drain": { ...lifecycle, enabled: true, accepting_new_clients: false, is_draining: true },
@@ -872,25 +1098,35 @@ export async function installAdminApiMock(
         "node.disable": { ...lifecycle, enabled: false, accepting_new_clients: false, is_draining: false },
         "node.resync": { code: nodeCode.toUpperCase(), planned_moves: 31, without_target: 0, dry_run: false },
       };
-      const challenge = action === "node.disable" ? nodeCode.toUpperCase() : "ПОДТВЕРДИТЬ";
+      const nodeAction = action.startsWith("node.");
+      const l3Action = action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete";
+      const challenge = action === "node.disable"
+        ? nodeCode.toUpperCase()
+        : action === "ticket.reply" || action === "user.message"
+          ? "ОТПРАВИТЬ"
+          : l3Action
+            ? targetId
+            : "ПОДТВЕРДИТЬ";
+      const genericBefore = targetType === "ticket" ? { ticket_id: Number(targetId), status: "open" } : { tg_id: Number(targetId), status: "active" };
+      const genericAfter = targetType === "ticket" ? { ticket_id: Number(targetId), status: action === "ticket.status" ? String((body.payload as Record<string, unknown> | undefined)?.status || "open") : "open" } : { tg_id: Number(targetId), status: action === "user.block" ? "blocked" : "active" };
       await fulfillJson(route, {
         ok: true,
         intent_id: "00000000-0000-4000-8000-000000000713",
         action,
-        target: { type: "node", id: nodeCode },
-        risk_level: action === "node.disable" ? "L3" : "L2",
+        target: { type: targetType, id: nodeAction ? nodeCode : targetId },
+        risk_level: l3Action ? "L3" : "L2",
         preview: {
-          title: action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}`,
-          summary: action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}`,
-          before: { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 },
-          after: { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 },
+          title: nodeAction ? action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}` : targetType === "ticket" ? `Действие с тикетом ${targetId}` : `Действие с пользователем ${targetId}`,
+          summary: nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер проверил текущее состояние и подготовил изменение.",
+          before: nodeAction ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 } : genericBefore,
+          after: nodeAction ? { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 } : genericAfter,
           warnings: action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : [],
         },
         payload_hash: "1".repeat(64),
         snapshot_hash: "2".repeat(64),
         entity_version_hash: "3".repeat(64),
         confirmation_challenge: challenge,
-        confirmation_challenge_kind: action === "node.disable" ? "exact_node_code" : "exact_phrase",
+        confirmation_challenge_kind: action === "node.disable" ? "exact_node_code" : l3Action ? "exact_tg_id" : "exact_phrase",
         expires_at: "2099-07-15T10:10:00Z",
       });
       return;
@@ -911,9 +1147,76 @@ export async function installAdminApiMock(
       return;
     }
 
+    if (isUserActionPath(url.pathname) || isTicketActionPath(url.pathname)) {
+      if (!requestHeaders["x-admin-intent-id"] || !requestHeaders["x-admin-idempotency-key"] || !requestHeaders["x-admin-confirmation-sha256"]) {
+        await fulfillJson(route, { detail: { code: "intent_required", message: "Нужно защищённое намерение" } }, 428);
+        return;
+      }
+      let status: "completed" | "failed" | "uncertain" = "completed";
+      if (url.pathname.endsWith("/reply")) {
+        const configured = options.ticketReplyOutcomes || [];
+        status = configured[Math.min(ticketReplyRequestCount, Math.max(0, configured.length - 1))] || "completed";
+        ticketReplyRequestCount += 1;
+      }
+      await fulfillJson(route, {
+        ok: status === "completed",
+        status,
+        action_intent_id: requestHeaders["x-admin-intent-id"],
+        audit_id: status === "uncertain" ? null : 714,
+        result_code: status === "failed" ? "fixture_known_failure" : status === "uncertain" ? "fixture_uncertain" : "completed",
+      });
+      return;
+    }
+
     if (options.failAllLegacyRequests && method === "GET" && LEGACY_GET_PATHS.has(url.pathname)) {
       await fulfillJson(route, { detail: "Legacy request failed", code: "legacy_test_failure" }, 500);
       if (url.pathname === "/api/admin/ops/overview") overviewResponses.push(500);
+      return;
+    }
+
+    if (isUserInvestigationPath(url.pathname)) {
+      const tgId = Number(url.pathname.split("/").at(-2));
+      await fulfillJson(route, { ...clientInvestigation, tg_id: tgId });
+      return;
+    }
+
+    if (isUserDetailPath(url.pathname)) {
+      const tgId = Number(url.pathname.split("/").at(-1));
+      await fulfillJson(route, clientUserDetail(tgId));
+      return;
+    }
+
+    if (isTicketDetailPath(url.pathname)) {
+      await fulfillJson(route, { ticket: clientTicketDetail });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/users") {
+      const query = (url.searchParams.get("q") || "").trim().toLowerCase();
+      const status = (url.searchParams.get("status") || "").trim().toLowerCase();
+      const rows = clientUserRows.filter((row) => {
+        if (status && status !== "all") {
+          if (status === "manual" && row.status !== "manual_test") return false;
+          if (status !== "manual" && row.status !== status) return false;
+        }
+        if (!query) return true;
+        return [row.tg_id, row.username, row.display_name, row.app_install_id].filter((value) => value !== null).join(" ").toLowerCase().includes(query);
+      });
+      await fulfillJson(route, { page: 1, page_size: 80, total: rows.length, sort: url.searchParams.get("sort") || "created_desc", users: rows });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/online/users") {
+      const only = (url.searchParams.get("only") || "").trim().toLowerCase();
+      const rows = only ? clientOnlinePayload.rows.filter((row) => row.nodes_online.includes(only)) : clientOnlinePayload.rows;
+      await fulfillJson(route, { ...clientOnlinePayload, total: rows.length, rows });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/tickets") {
+      const status = (url.searchParams.get("status") || "").trim().toLowerCase();
+      const rows = status && clientTicketList.status !== status ? [] : [clientTicketList];
+      await fulfillJson(route, { tickets: rows });
       return;
     }
 

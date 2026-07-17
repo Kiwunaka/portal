@@ -186,6 +186,8 @@ export type TicketInfo = {
   messages: TicketMessage[];
 };
 
+export type AdminTicketSummary = Omit<TicketInfo, "messages" | "assigned_admin_tg_id">;
+
 export type UserPayload = {
   tg_id: number;
   username?: string | null;
@@ -3285,10 +3287,15 @@ export function adminBroadcast(payload: {
   });
 }
 
-export async function adminTickets(status = "", limit = 30): Promise<TicketInfo[]> {
+export async function adminTickets(status = "", limit = 30): Promise<AdminTicketSummary[]> {
   const qs = `status=${encodeURIComponent(status)}&limit=${limit}`;
-  const data = await apiFetch<{ tickets: TicketInfo[] }>(`/api/admin/tickets?${qs}`);
+  const data = await apiFetch<{ tickets: AdminTicketSummary[] }>(`/api/admin/tickets?${qs}`);
   return data.tickets || [];
+}
+
+export async function adminTicketDetail(ticketId: number): Promise<TicketInfo> {
+  const data = await apiFetch<{ ticket: TicketInfo }>(`/api/admin/tickets/${ticketId}`);
+  return data.ticket;
 }
 
 export async function adminTicketReply(ticketId: number, body: string): Promise<TicketInfo> {

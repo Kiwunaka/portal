@@ -209,6 +209,29 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
   }
 }
 
+export async function apiFetchBlob(path: string, init?: ApiRequestInit): Promise<Blob> {
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...requestInit } = init || {};
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const headers = new Headers(requestInit.headers || {});
+  for (const [key, value] of authHeaders()) headers.set(key, value);
+  try {
+    const response = await fetch(`${apiBase()}${path}`, {
+      ...requestInit,
+      headers,
+      credentials: "include",
+      signal: signal || controller.signal,
+    });
+    if (!response.ok) {
+      const parsedError = await parseApiError(response);
+      throw new AdminApiError(parsedError.message, response.status, parsedError.code, parsedError.correlationId);
+    }
+    return await response.blob();
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 export function createAdminSession(): Promise<AdminSessionPayload> {
   return apiFetch<AdminSessionPayload>("/api/admin/auth/session", { method: "POST" });
 }

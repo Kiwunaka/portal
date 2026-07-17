@@ -900,7 +900,7 @@ export function LegacySection({
           disabled={!row.original.tg_id}
           onClick={() => row.original.tg_id ? setSelectedTgId(Number(row.original.tg_id)) : undefined}
         >
-          {text(row.original.display_name || row.original.username || row.original.panel_email || row.original.identity)}
+          {text(row.original.display_name || row.original.username || (row.original.tg_id ? `Пользователь ${row.original.tg_id}` : "Не сопоставлен"))}
           <span className="block text-[11px] font-normal text-[color:var(--atlas-text-muted)]">{row.original.tg_id ? `tg ${row.original.tg_id}` : "не сопоставлен"}</span>
         </button>
       )

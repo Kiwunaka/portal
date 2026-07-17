@@ -145,9 +145,9 @@
 | Алерты | `/api/admin/alerts`; `status`, `severity`, `source`, `entity` | Очередь и detail причины | `/ack`, `/silence` L1 | Видны источник, возраст, длительность и переход к сущности |
 | Лимиты провайдеров | `/api/admin/provider-quotas`, `/status`; `q`, `state` | Таблица квот + edit drawer | POST/PATCH L2, DELETE L3 | Review показывает before/after и прогноз исчерпания |
 | Бесплатный контур | `/api/admin/free-tier/summary`, `/users`; `range`, `state`, `q` | Burn-rate, лимиты, users | Только переход в пользователя L0 | Платный и бесплатный пулы не смешиваются |
-| Пользователи | `/api/admin/users`, `/users/{tg_id}`; `q`, `status`, `sort`, `selected`, `tab` | Master–detail | Существующие user/key actions L2–L3 | Первый слой — доступ/онлайн; raw IP только в detail |
-| Сейчас онлайн | `/api/admin/online/users`; `node`, `source`, `q` | Ограниченный live-список | Только переход в пользователя L0 | Ни одного raw IP; aggregate age и source видны |
-| Тикеты | `/api/admin/tickets`; `status`, `priority`, `selected` | Очередь + thread detail | reply/status L2 | После ответа сохраняются выбранный тикет и позиция списка |
+| Пользователи | `/api/admin/users`, `/users/{tg_id}`, `/users/{tg_id}/investigation`; `q`, `status`, `sort`, `selected`, `tab` | Master–detail | Существующие user/key actions L2–L3 | Первый слой — доступ/онлайн; исходные IP-адреса загружаются только для вкладки расследования |
+| Сейчас онлайн | `/api/admin/online/users`; `node`, `source`, `q` | Ограниченный live-список | Только переход в пользователя L0 | Ни одного raw IP или panel identity; несопоставленные строки имеют непрозрачный стабильный ID; aggregate age и source видны |
+| Тикеты | `/api/admin/tickets`, `/api/admin/tickets/{ticket_id}`; `status`, `priority`, `selected` | Админ-очередь из bounded summary + отдельный безопасный thread detail | reply/status L2 | После ответа сохраняются выбранный тикет и позиция списка; admin DTO не возвращает сырой provider file ID/payload; публичный `/api/tickets*` сохраняет клиентскую совместимость |
 | Платежи | `/api/admin/payments/summary`, `/orders`; `period`, `status`, `q`, `selected` | KPI + orders master–detail | Только уже существующие диагностические действия; новые платежи не создаются | Today/7d/30d, stuck и provider state не смешиваются |
 | Воронка | `/api/admin/funnel/summary`; `range`, `source`, `stage` | Аналитическое полотно | Нет | Стадии/источники читаемы без raw JSON |
 | Промо | `/api/admin/promos`; `state`, `q`, `selected` | Таблица + edit drawer | create/update L2, delete/deactivate L3 | Срок, область и before/after подтверждаются сервером |
@@ -555,7 +555,7 @@ adminapp/src/
 | L2 — изменение состояния | drain/undrain/enable/resync, изменение лимита или промо | Server action intent, review before/after, русское подтверждение, entity-version recheck |
 | L3 — опасное/массовое | disable ноды, удаление правила, реальная рассылка | Server dry-run/frozen preview, ввод кода ноды или `ОТПРАВИТЬ`, consumed intent и audit ID |
 
-Raw IP виден только внутри карточки конкретного пользователя при расследовании. Общие online-списки его не получают. Нельзя выводить panel credentials, HMAC secret, subscription tokens/URL, private keys, callback body или сырой provider payload.
+Raw IP виден только внутри карточки конкретного пользователя при расследовании. Общие online-списки его не получают и не возвращают panel email/client UUID; несопоставленные строки обозначаются непрозрачным стабильным ID. В admin DTO нельзя выводить panel credentials, HMAC secret, subscription tokens/URL, private keys, callback body, provider file ID или сырой provider payload. Админ-очередь тикетов и базовая admin-карточка пользователя получают только bounded summary; полный admin detail возвращает тело переписки и allowlist-метаданные вложения, а файл скачивается только через существующий защищённый маршрут с auth headers. Публичный клиентский `/api/tickets*` остаётся отдельным совместимым контрактом.
 
 Frontend confirmation — лишь представление серверного action-intent flow из §13.4. Все существующие L2/L3 handlers мигрируют на обязательный intent; оставить параллельный unguarded endpoint нельзя. L1 остаётся идемпотентным/обратимым и пишет обычный audit.
 

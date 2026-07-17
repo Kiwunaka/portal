@@ -3142,7 +3142,8 @@ def _apply_admin_user_search(query, q: str):
         User.linked_telegram_username.ilike(f"%{q_norm}%"),
         User.app_install_id.ilike(f"%{q_norm}%"),
     ]
-    if q_norm.isdigit():
+    is_signed_integer = q_norm.isdigit() or (q_norm.startswith("-") and q_norm[1:].isdigit())
+    if is_signed_integer and int(q_norm) != 0:
         filters.extend(
             [
                 User.tg_id == int(q_norm),
@@ -4903,7 +4904,65 @@ def _ticket_status_title(status: str) -> str:
     return st or "Неизвестно"
 
 
-def _ticket_message_row(msg) -> dict[str, Any]:
+_TICKET_ATTACHMENT_URL_RE = re.compile(
+    r"^/api/tickets/attachments/\d{8}-[A-Za-z0-9]{8,64}\.(?:png|jpg|jpeg|webp|pdf|txt)$"
+)
+
+
+def _safe_ticket_attachment(msg) -> dict[str, Any] | None:
+    media_type = str(getattr(msg, "media_type", "") or "").strip().lower()[:32]
+    media_file_id = str(getattr(msg, "media_file_id", "") or "").strip()
+    payload = _json_obj(getattr(msg, "media_payload", None))
+    if not (media_type or media_file_id or payload):
+        return None
+
+    raw_name = str(payload.get("name") or payload.get("file_name") or "").strip()
+    name = _sanitize_ticket_upload_name(raw_name) if raw_name else None
+    raw_content_type = str(payload.get("content_type") or payload.get("mime_type") or "").strip().lower()[:80]
+    content_type = (
+        raw_content_type
+        if re.fullmatch(r"[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*", raw_content_type)
+        else None
+    )
+    try:
+        parsed_size = int(payload.get("size") or payload.get("file_size") or 0)
+        size_bytes = parsed_size if 0 < parsed_size <= 10 * 1024 * 1024 * 1024 else 0
+    except (TypeError, ValueError):
+        size_bytes = 0
+    raw_url = str(payload.get("url") or "").strip()
+    download_url = raw_url if _TICKET_ATTACHMENT_URL_RE.fullmatch(raw_url) else None
+    attachment_kind = str(payload.get("kind") or media_type).strip().lower()
+    safe_type = {
+        "photo": "image",
+        "image": "image",
+        "document": "file",
+        "file": "file",
+        "video": "video",
+        "audio": "audio",
+        "voice": "audio",
+    }.get(attachment_kind, "attachment")
+    return {
+        "type": safe_type,
+        "name": name,
+        "content_type": content_type,
+        "size_bytes": size_bytes or None,
+        "download_url": download_url,
+    }
+
+
+def _ticket_message_detail_row(msg) -> dict[str, Any]:
+    return {
+        "id": msg.id,
+        "ticket_id": msg.ticket_id,
+        "sender_tg_id": msg.sender_tg_id,
+        "sender_role": msg.sender_role,
+        "body": str(msg.body or "")[:2000],
+        "attachment": _safe_ticket_attachment(msg),
+        "created_at": _safe_iso(msg.created_at),
+    }
+
+
+def _ticket_public_message_row(msg) -> dict[str, Any]:
     return {
         "id": msg.id,
         "ticket_id": msg.ticket_id,
@@ -4939,8 +4998,41 @@ def _ticket_unread_for_user(messages: list | None) -> int:
     return unread
 
 
-def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
+def _ticket_summary_row(ticket, messages: list | None = None) -> dict[str, Any]:
     rows = messages if messages is not None else []
+    last_message = rows[-1] if rows else None
+    last_message_preview = (str(getattr(last_message, "body", "") or "").strip()[:200] if last_message else "")
+    has_attachment = bool(last_message and _safe_ticket_attachment(last_message))
+    if not last_message_preview and has_attachment:
+        last_message_preview = "Вложение"
+    return {
+        "id": ticket.id,
+        "user_tg_id": ticket.user_tg_id,
+        "status": ticket.status,
+        "status_title": _ticket_status_title(ticket.status),
+        "subject": ticket.subject,
+        "created_at": _safe_iso(ticket.created_at),
+        "updated_at": _safe_iso(ticket.updated_at),
+        "closed_at": _safe_iso(ticket.closed_at),
+        "last_message_preview": last_message_preview,
+        "has_attachment": has_attachment,
+        "operatorPresence": _ticket_operator_presence(ticket),
+        "operatorTyping": False,
+        "unreadForUser": _ticket_unread_for_user(rows),
+        "slaHint": None if str(ticket.status or "").strip().lower() == STATUS_CLOSED else "support_queue",
+    }
+
+
+def _ticket_detail_row(ticket, messages: list | None = None) -> dict[str, Any]:
+    rows = list(messages or [])
+    return {
+        **_ticket_summary_row(ticket, rows),
+        "messages": [_ticket_message_detail_row(message) for message in rows],
+    }
+
+
+def _ticket_public_row(ticket, messages: list | None = None) -> dict[str, Any]:
+    rows = list(messages or [])
     last_message = rows[-1] if rows else None
     return {
         "id": ticket.id,
@@ -4952,7 +5044,7 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
-        "messages": [_ticket_message_row(m) for m in rows],
+        "messages": [_ticket_public_message_row(message) for message in rows],
         "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
         "operatorPresence": _ticket_operator_presence(ticket),
         "operatorTyping": False,
@@ -4961,14 +5053,14 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
     }
 
 
-def _load_ticket_row(ticket_id: int, *, message_limit: int = 100) -> dict[str, Any]:
+def _load_public_ticket_row(ticket_id: int, *, message_limit: int = 100) -> dict[str, Any]:
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, int(ticket_id))
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
         msgs = list_ticket_messages(s, ticket.id, limit=max(1, min(int(message_limit), 100)))
-        return _ticket_row(ticket, msgs)
+        return _ticket_public_row(ticket, msgs)
     finally:
         s.close()
 
@@ -12098,7 +12190,7 @@ async def get_tickets(request: Request, x_telegram_init_data: str = Header(defau
         data = []
         for t in items:
             msgs = list_ticket_messages(s, t.id, limit=1)
-            data.append(_ticket_row(t, msgs))
+            data.append(_ticket_public_row(t, msgs))
         return {"tickets": data}
     finally:
         s.close()
@@ -12228,7 +12320,7 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
         text=payload.body,
         has_attachment=bool(payload.media_type or payload.media_file_id),
     )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=20)}
+    return {"ticket": _load_public_ticket_row(ticket_id, message_limit=20)}
 
 
 @app.get("/api/tickets/{ticket_id}")
@@ -12243,7 +12335,7 @@ async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str
         if not (_is_admin_tg(actor) or int(ticket.user_tg_id) == actor):
             raise HTTPException(status_code=403, detail="Access denied")
         msgs = list_ticket_messages(s, ticket.id, limit=100)
-        return {"ticket": _ticket_row(ticket, msgs)}
+        return {"ticket": _ticket_public_row(ticket, msgs)}
     finally:
         s.close()
 
@@ -12292,7 +12384,7 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             text=payload.body,
             has_attachment=bool(payload.media_type or payload.media_file_id),
         )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=100)}
+    return {"ticket": _load_public_ticket_row(ticket_id, message_limit=100)}
 
 
 @app.get("/api/admin/summary")
@@ -13163,6 +13255,14 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
         )
 
     keys.sort(key=lambda item: str(item.get("node_code") or ""))
+    failed_panel_rows = [row for row in panel_rows if str(row.get("error") or "").strip()]
+    usable_panel_rows = [row for row in panel_rows if not str(row.get("error") or "").strip()]
+    if panel_error or (allowed_by_code and not panel_rows) or (failed_panel_rows and not usable_panel_rows):
+        panel_state = "error"
+    elif failed_panel_rows:
+        panel_state = "partial"
+    else:
+        panel_state = "ok"
     active_users_estimate, active_users_source = _estimate_active_users_proxy(
         live_connections=online_connections_now,
         live_nodes=online_count,
@@ -13186,7 +13286,7 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
             "traffic_down_bytes": int(total_down),
             "traffic_total_bytes": int(total_up + total_down),
             "traffic_total_gb": _bytes_to_gb(total_up + total_down),
-            "panel_state": "error" if panel_error else "ok",
+            "panel_state": panel_state,
             "panel_error": panel_error or None,
             "policies_total": int(len(policy_by_code)),
         },
@@ -13232,7 +13332,11 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         )
         loyalty_snapshot = _user_loyalty_snapshot(s=s, user=user)
         observer_payload = build_admin_observer_block(s=s, tg_id=int(tg_id))
-        sub_token = str(getattr(user, "sub_token", "") or "").strip()
+        observer_summary_payload = {
+            key: value
+            for key, value in observer_payload.items()
+            if key != "recent_ips"
+        }
         user_status = _user_effective_status(user)
         user_origin = _user_origin(user)
         user_payload = {
@@ -13252,8 +13356,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "referral_count": int(user.referral_count or 0),
             "streak_months": int(user.streak_months or 0),
             "created_at": _safe_iso(user.created_at),
-            "subscription_url": _admin_subscription_url(user),
-            "subscription_token": sub_token,
             "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
             "linked_telegram_username": getattr(user, "linked_telegram_username", None),
             "app_install_id": getattr(user, "app_install_id", None),
@@ -13262,7 +13364,7 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "observer_state": observer_payload.get("state", "ok"),
             "observer_updated_at": observer_payload.get("updated_at"),
         }
-        ticket_payload = [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
+        ticket_payload = [_ticket_summary_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
         policy_payload = [_serialize_key_policy(row) for row in policies]
         history_payload = [
             {
@@ -13271,7 +13373,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
                 "node_code": str(row.node_code or "") or None,
                 "actor_tg_id": int(row.actor_tg_id) if row.actor_tg_id is not None else None,
                 "source": str(row.source or ""),
-                "meta": _json_obj(getattr(row, "meta", None)),
                 "created_at": _safe_iso(row.created_at),
             }
             for row in history_rows
@@ -13282,7 +13383,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
                 "actor_tg_id": int(row.actor_tg_id),
                 "action": str(row.action or ""),
                 "target_tg_id": int(row.target_tg_id) if row.target_tg_id is not None else None,
-                "meta": _json_obj(getattr(row, "meta", None)),
                 "created_at": _safe_iso(row.created_at),
             }
             for row in recent_admin_rows
@@ -13297,6 +13397,63 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         risk = _compute_user_risk(s=s2, user=user, keys_summary=(keys_state or {}).get("summary") or {})
     finally:
         s2.close()
+    keys_summary = dict((keys_state or {}).get("summary") or {})
+    raw_panel_state = str(keys_summary.get("panel_state") or "").strip().lower()
+    panel_state = raw_panel_state if raw_panel_state in {"ok", "partial", "error"} else "error"
+
+    def panel_value(key: str) -> Any:
+        return keys_summary.get(key) if panel_state == "ok" else None
+
+    def safe_key_row(row: dict[str, Any]) -> dict[str, Any]:
+        row_panel_state = "error" if row.get("panel_error") else "ok"
+        panel_ok = row_panel_state == "ok"
+        return {
+            "node_code": row.get("node_code"),
+            "node_name": row.get("node_name"),
+            "exists": bool(row.get("exists")) if panel_ok else None,
+            "enabled": bool(row.get("enabled")) if panel_ok else None,
+            "online": row.get("online") if panel_ok and isinstance(row.get("online"), bool) else None,
+            "current_connections": int(row.get("current_connections") or 0) if panel_ok else None,
+            "sub_id_match": bool(row.get("sub_id_match")) if panel_ok else None,
+            "up_bytes": int(row.get("up_bytes") or 0) if panel_ok else None,
+            "down_bytes": int(row.get("down_bytes") or 0) if panel_ok else None,
+            "total_bytes": int(row.get("total_bytes") or 0) if panel_ok else None,
+            "total_gb": float(row.get("total_gb") or 0.0) if panel_ok else None,
+            "last_online_at": row.get("last_online_at") if panel_ok else None,
+            "last_online_age_seconds": row.get("last_online_age_seconds") if panel_ok else None,
+            "panel_state": row_panel_state,
+            "policy": row.get("policy"),
+        }
+
+    safe_keys_state = {
+        "summary": {
+            "nodes_total": panel_value("nodes_total"),
+            "nodes_with_client": panel_value("nodes_with_client"),
+            "nodes_online": panel_value("nodes_online"),
+            "online_keys_now": panel_value("online_keys_now"),
+            "online_connections_now": panel_value("online_connections_now"),
+            "active_users_estimate": panel_value("active_users_estimate"),
+            "active_users_source": panel_value("active_users_source"),
+            "online_node_codes_now": (
+                list(keys_summary.get("online_node_codes_now") or [])
+                if panel_state == "ok"
+                else None
+            ),
+            "nodes_enabled": panel_value("nodes_enabled"),
+            "subid_mismatch_count": panel_value("subid_mismatch_count"),
+            "traffic_up_bytes": panel_value("traffic_up_bytes"),
+            "traffic_down_bytes": panel_value("traffic_down_bytes"),
+            "traffic_total_bytes": panel_value("traffic_total_bytes"),
+            "traffic_total_gb": panel_value("traffic_total_gb"),
+            "panel_state": panel_state,
+            "policies_total": keys_summary.get("policies_total"),
+        },
+        "keys": [
+            safe_key_row(row)
+            for row in list((keys_state or {}).get("keys") or [])
+            if isinstance(row, dict)
+        ],
+    }
     return {
         "user": user_payload,
         "tickets": ticket_payload,
@@ -13305,10 +13462,27 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         "admin_actions": recent_admin_payload,
         "payment_orders": payment_order_payload,
         "risk": risk,
-        "observer": observer_payload,
+        "observer": observer_summary_payload,
         "loyalty": loyalty_snapshot,
-        **keys_state,
+        **safe_keys_state,
     }
+
+
+@app.get("/api/admin/users/{tg_id}/investigation")
+async def admin_user_investigation(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "tg_id": int(tg_id),
+            "generated_at": _safe_iso(_utcnow()),
+            "observer": build_admin_observer_block(s=s, tg_id=int(tg_id)),
+        }
+    finally:
+        s.close()
 
 
 @app.post("/api/admin/users/manual")
@@ -14911,7 +15085,21 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
             )
         else:
             rows = list_active_tickets(s, limit=lim)
-        return {"tickets": [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in rows]}
+        return {"tickets": [_ticket_summary_row(t, list_ticket_messages(s, t.id, limit=1)) for t in rows]}
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/tickets/{ticket_id}")
+async def admin_ticket_detail(ticket_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(s, int(ticket_id))
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        messages = list_ticket_messages(s, ticket.id, limit=100)
+        return {"ticket": _ticket_detail_row(ticket, messages)}
     finally:
         s.close()
 
@@ -15658,6 +15846,26 @@ def _pressure_reasons(row: KeyPressureState) -> list[str]:
     return [str(item) for item in parsed if str(item or "").strip()] if isinstance(parsed, list) else []
 
 
+def _admin_online_row_id(*, tg_id: int | None, panel_email: str, client_uuid: str, node_code: str) -> str:
+    if tg_id is not None:
+        return f"user:{int(tg_id)}"
+    subject = str(panel_email or "").strip().lower() or str(client_uuid or "").strip() or str(node_code or "").strip().lower()
+    digest = hashlib.sha256(f"admin-online-row-v1\0{subject}".encode("utf-8")).hexdigest()[:24]
+    return f"panel:{digest}"
+
+
+def _safe_admin_online_panel_errors(errors: list[dict]) -> list[dict[str, str | None]]:
+    allowed_codes = {"missing_node_code", "panel_request_failed", "panel_unavailable"}
+    safe: list[dict[str, str | None]] = []
+    for item in errors:
+        raw_node_code = str((item or {}).get("node_code") or "").strip().lower()
+        node_code = raw_node_code if re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,31}", raw_node_code) else None
+        raw_code = str((item or {}).get("evidence_code") or (item or {}).get("error_code") or "").strip().lower()
+        evidence_code = raw_code if raw_code in allowed_codes else "panel_request_failed"
+        safe.append({"node_code": node_code, "evidence_code": evidence_code})
+    return safe
+
+
 def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict], limit: int) -> dict[str, Any]:
     tg_ids = sorted(
         {
@@ -15715,11 +15923,16 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
         if user is None and email_key:
             user = users_by_email.get(email_key)
         effective_tg_id = int(user.tg_id) if user else tg_id
-        identity = f"tg:{effective_tg_id}" if effective_tg_id is not None else f"panel:{email_key or live.get('client_uuid') or live.get('node_code')}"
+        row_id = _admin_online_row_id(
+            tg_id=effective_tg_id,
+            panel_email=email_key,
+            client_uuid=str(live.get("client_uuid") or ""),
+            node_code=str(live.get("node_code") or ""),
+        )
         agg = aggregates.setdefault(
-            identity,
+            row_id,
             {
-                "identity": identity,
+                "row_id": row_id,
                 "tg_id": effective_tg_id,
                 "username": getattr(user, "username", None) if user else None,
                 "display_name": getattr(user, "display_name", None) if user else None,
@@ -15793,7 +16006,7 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
 
     rows: list[dict[str, Any]] = []
     for agg in aggregates.values():
-        panel_emails_out = sorted({str(email) for email in agg.pop("panel_email_set", set()) if str(email).strip()})
+        agg.pop("panel_email_set", None)
         nodes_online = sorted({str(code) for code in agg.pop("nodes_online_set", set()) if str(code).strip()})
         agg.pop("last_online_dt", None)
         risk_flags = sorted({str(flag) for flag in agg.pop("risk_flags", set()) if str(flag).strip()})
@@ -15803,9 +16016,6 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
                 "nodes_online": nodes_online,
                 "nodes_online_count": len(nodes_online),
                 "risk_flags": risk_flags,
-                "panel_email": panel_emails_out[0] if panel_emails_out and agg.get("tg_id") is None else None,
-                "panel_email_count": len(panel_emails_out),
-                "raw_ip_exposed": False,
                 "traffic_gb_24h": round(float(agg.get("traffic_gb_24h") or 0.0), 3),
                 "pressure_score": round(float(agg.get("pressure_score") or 0.0), 1),
             }
@@ -15819,6 +16029,7 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
         )
     )
     bounded = rows[: max(1, min(int(limit), 500))]
+    safe_errors = _safe_admin_online_panel_errors(errors)
     return {
         "ok": True,
         "generated_at": _safe_iso(_utcnow()),
@@ -15831,13 +16042,13 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
             "unknown_online_keys": sum(1 for row in rows if row.get("tg_id") is None),
             "online_keys_now": sum(int(row.get("online_keys_now") or 0) for row in rows),
             "online_connections_now": sum(int(row.get("online_connections_now") or 0) for row in rows),
-            "nodes_with_panel_errors": len(errors),
+            "nodes_with_panel_errors": len(safe_errors),
             "raw_ip_exposed": False,
         },
-        "panel_errors": errors,
+        "panel_errors": safe_errors,
         "notes": [
-            "Список построен по live panel online state.",
-            "IP-адреса здесь не возвращаются; raw IP видны только в карточке конкретного пользователя через observer block.",
+            "Список построен по оперативному состоянию панели.",
+            "IP-адреса здесь не возвращаются; исходные IP-адреса доступны только через отдельный запрос расследования пользователя.",
         ],
     }
 
@@ -17414,7 +17625,7 @@ def _admin_guarded_action_response(
             if ticket is None:
                 return result
             messages = list_ticket_messages(session, ticket_id, limit=100)
-            return merged({"ticket": _ticket_row(ticket, messages)})
+            return merged({"ticket": _ticket_detail_row(ticket, messages)})
         finally:
             session.close()
 

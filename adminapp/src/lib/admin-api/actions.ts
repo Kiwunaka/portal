@@ -47,6 +47,7 @@ export type ActionIntentRequest = {
   target: { type: string; id: string };
   payload: Record<string, unknown>;
   endpoint: string;
+  method?: "POST" | "PUT";
 };
 
 export function prepareActionIntent(
@@ -76,17 +77,19 @@ export async function executeAdminAction({
   payload,
   intent,
   confirmation,
+  method = "POST",
   idempotencyKey = globalThis.crypto.randomUUID(),
 }: {
   endpoint: string;
   payload: Record<string, unknown>;
   intent: PreparedActionIntent;
   confirmation: string;
+  method?: "POST" | "PUT";
   idempotencyKey?: string;
 }): Promise<AdminActionResult> {
   const confirmationHash = await confirmationSha256(confirmation);
   return apiFetch<AdminActionResult>(endpoint, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
       "X-Admin-Intent-Id": intent.intent_id,

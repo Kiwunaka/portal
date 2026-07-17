@@ -66,7 +66,10 @@ Key v1 endpoints:
 - `GET /api/admin/ops/overview`
 - `GET /api/admin/users`
 - `GET /api/admin/users/{tg_id}`
+- `GET /api/admin/users/{tg_id}/investigation`
 - `GET /api/admin/online/users`
+- `GET /api/admin/tickets`
+- `GET /api/admin/tickets/{ticket_id}`
 - `GET /api/admin/nodes/health`
 - `GET /api/admin/nodes/runtime`
 - `GET /api/admin/nodes/drift`
@@ -95,7 +98,11 @@ Parity modules reuse existing admin endpoints such as `/api/admin/tickets`, `/ap
 Privacy rule:
 
 - shared online lists must not expose raw IP addresses
-- raw/recent IP details are allowed only inside the individual user card for operator investigation
+- unmatched online rows use an opaque stable row ID; panel email, client UUID, and raw panel errors are not returned
+- the base user card omits raw IPs, connection strings, subscription tokens/URLs, panel identifiers, and arbitrary provider metadata
+- raw/recent IP details are returned only by the admin-only investigation endpoint and loaded only while the individual user's `Расследование` tab is open
+- admin ticket queues and the base admin user card receive only bounded summaries; `GET /api/admin/tickets/{ticket_id}` exposes safe attachment metadata and, when available, a guarded same-origin download path fetched with admin authentication
+- authenticated public/client routes under `/api/tickets*` retain their existing support-thread DTO for webapp compatibility; the admin privacy boundary does not redefine that public client contract
 
 ## Local Run
 

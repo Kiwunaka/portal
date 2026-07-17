@@ -243,11 +243,31 @@ class ObserverApiTests(unittest.TestCase):
         card_resp = self.client.get("/api/admin/users/1001", headers=admin_hdrs)
         self.assertEqual(card_resp.status_code, 200, card_resp.text)
         card_body = card_resp.json()
+        card_serialized = json.dumps(card_body, ensure_ascii=False)
         self.assertEqual(card_body["observer"]["state"], "watch")
         self.assertEqual(card_body["observer"]["observed_ip_count_24h"], 3)
         self.assertEqual(card_body["observer"]["observed_node_count_24h"], 2)
-        self.assertEqual(len(card_body["observer"]["recent_ips"]), 3)
+        self.assertNotIn("recent_ips", card_body["observer"])
+        self.assertNotIn("source_ip_raw", card_resp.text)
         self.assertEqual(len(card_body["observer"]["recent_nodes"]), 2)
+        for forbidden in (
+            "subscription_token",
+            "subscription_url",
+            "vless_link",
+            "expected_sub_id",
+            "panel_email",
+            "client_uuid",
+            "node_host",
+            "panel_error",
+            '"meta"',
+        ):
+            self.assertNotIn(forbidden, card_serialized)
+
+        investigation_resp = self.client.get("/api/admin/users/1001/investigation", headers=admin_hdrs)
+        self.assertEqual(investigation_resp.status_code, 200, investigation_resp.text)
+        investigation_body = investigation_resp.json()
+        self.assertEqual(investigation_body["tg_id"], 1001)
+        self.assertEqual(len(investigation_body["observer"]["recent_ips"]), 3)
 
         summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
         self.assertEqual(summary_resp.status_code, 200, summary_resp.text)

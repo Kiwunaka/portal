@@ -213,8 +213,8 @@ export type NodeRuntimePayload = {
   nodes: Array<Record<string, unknown>>;
 };
 
-export type OnlineUserRow = Record<string, unknown> & {
-  identity: string;
+export type OnlineUserRow = {
+  row_id: string;
   tg_id?: number | null;
   username?: string | null;
   display_name?: string | null;
@@ -226,7 +226,6 @@ export type OnlineUserRow = Record<string, unknown> & {
   ip_count?: number;
   risk_flags?: string[];
   last_online_at?: string | null;
-  raw_ip_exposed?: boolean;
 };
 
 export type OnlineUsersPayload = {
@@ -236,7 +235,7 @@ export type OnlineUsersPayload = {
   total: number;
   limit: number;
   summary: Record<string, unknown>;
-  panel_errors?: Array<Record<string, unknown>>;
+  panel_errors?: Array<{ node_code: string | null; evidence_code: string }>;
   notes?: string[];
 };
 

@@ -757,14 +757,24 @@ def test_admin_online_users_aggregate_omits_raw_ips(monkeypatch, tmp_path) -> No
     assert body["summary"]["unknown_online_keys"] == 1
     assert body["summary"]["nodes_with_panel_errors"] == 1
     known = next(row for row in body["rows"] if row["tg_id"] == 1001)
-    assert known["raw_ip_exposed"] is False
+    unknown = next(row for row in body["rows"] if row["tg_id"] is None)
+    assert known["row_id"] == "user:1001"
+    assert unknown["row_id"].startswith("panel:")
+    assert "identity" not in known
+    assert "panel_email" not in unknown
     assert known["online_connections_now"] == 2
     assert "manual_review" in known["risk_flags"]
     assert "multi_ip" in known["risk_flags"]
     assert "observer:watch" in known["risk_flags"]
+    assert body["panel_errors"] == [{"node_code": "pl", "evidence_code": "panel_request_failed"}]
     assert "203.0.113.77" not in response.text
     assert "198.51.100.42" not in response.text
     assert "source_ip_raw" not in response.text
+    assert "nearcap@example.test" not in response.text
+    assert "unknown@example.test" not in response.text
+    assert "client-1001" not in response.text
+    assert "client-unknown" not in response.text
+    assert "panel timeout" not in response.text
 
 
 def test_admin_broadcast_dry_run_does_not_send(monkeypatch, tmp_path) -> None:

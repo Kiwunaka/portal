@@ -164,7 +164,7 @@ const onlineUsers = {
   generated_at: generatedAt,
   rows: [
     {
-      identity: "tg:1001",
+      row_id: "user:1001",
       tg_id: 1001,
       username: "operator_user",
       display_name: "Operator User",
@@ -175,9 +175,7 @@ const onlineUsers = {
       online_connections_now: 3,
       ip_count: 2,
       risk_flags: ["multi_ip", "manual_review"],
-      last_online_at: generatedAt,
-      raw_ip_exposed: false,
-      source_ip_raw: "203.0.113.77"
+      last_online_at: generatedAt
     }
   ],
   total: 1,
@@ -601,73 +599,6 @@ test("dashboard exchanges initData when browser session is missing", async ({ pa
     .poll(() => calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session" && call.initData.includes("query_id=test")))
     .toBe(true);
   await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
-});
-
-test("global search opens users and renders card with raw IP only inside user card", async ({ page }) => {
-  const calls = await mockAdminApi(page);
-  const cardCallCount = (tgId: number) => calls.filter((call) => call.path === `/api/admin/users/${tgId}`).length;
-  await gotoWithAdminSession(page, "/");
-
-  await page.keyboard.press("Control+k");
-  const palette = page.getByRole("dialog", { name: "Палитра команд" });
-  const search = page.getByRole("searchbox", { name: "Глобальный поиск" });
-  await expect(search).toBeFocused();
-  await search.fill("1001");
-  await expect.poll(() => calls.some((call) => call.method === "GET" && call.path === "/api/admin/search?q=1001")).toBe(true);
-  await expect(palette).not.toContainText("203.0.113.77");
-  await palette.getByRole("button", { name: /Operator User/ }).click();
-
-  await expect(page).toHaveURL(/\/users\/?\?selected=1001$/);
-  await expect.poll(() => cardCallCount(1001)).toBeGreaterThan(0);
-  await expect(page.getByRole("heading", { name: "Поиск пользователей" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Operator User tg/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Пользователь 1001", exact: true })).toBeVisible();
-  const ipHeading = page.getByRole("heading", { name: "IP-наблюдения" });
-  await expect(ipHeading).toBeVisible();
-  const ipCard = page.locator("section").filter({ has: ipHeading });
-  await expect(ipCard.getByText("203.0.113.77")).toBeVisible();
-  await expect(page.locator("main").getByText("203.0.113.77")).toHaveCount(1);
-
-  const firstUserCallsBeforeClear = cardCallCount(2002);
-  await page.evaluate(() => {
-    window.history.pushState({}, "", "/users");
-    window.dispatchEvent(new Event("pokrov-admin-url-state"));
-  });
-  await expect(page).toHaveURL(/\/users$/);
-  await expect.poll(() => cardCallCount(2002)).toBeGreaterThan(firstUserCallsBeforeClear);
-  await expect(page.getByRole("heading", { name: "Пользователь 2002", exact: true })).toBeVisible();
-
-  const selectedCallsBeforePopstate = cardCallCount(1001);
-  await page.goBack();
-  await expect(page).toHaveURL(/\/users\/?\?selected=1001$/);
-  await expect.poll(() => cardCallCount(1001)).toBeGreaterThan(selectedCallsBeforePopstate);
-  await expect(page.getByRole("heading", { name: "Пользователь 1001", exact: true })).toBeVisible();
-
-  const firstUserCallsBeforeInvalid = cardCallCount(2002);
-  await page.evaluate(() => {
-    window.history.pushState({}, "", "/users?selected=not-a-number");
-    window.dispatchEvent(new Event("pokrov-admin-url-state"));
-  });
-  await expect.poll(() => cardCallCount(2002)).toBeGreaterThan(firstUserCallsBeforeInvalid);
-  await expect(page.getByRole("heading", { name: "Пользователь 2002", exact: true })).toBeVisible();
-
-  const selectedCallsBeforeLegacyQuery = cardCallCount(1001);
-  await page.evaluate(() => {
-    window.history.pushState({}, "", "/users?q=1001");
-    window.dispatchEvent(new Event("pokrov-admin-url-state"));
-  });
-  await expect.poll(() => cardCallCount(1001)).toBeGreaterThan(selectedCallsBeforeLegacyQuery);
-  await expect(page.getByRole("heading", { name: "Пользователь 1001", exact: true })).toBeVisible();
-});
-
-test("online screen hides raw IP in the general list", async ({ page }) => {
-  await mockAdminApi(page);
-  await gotoWithAdminSession(page, "/online");
-
-  await expect(page.getByRole("main").getByRole("heading", { name: "Сейчас онлайн" })).toBeVisible();
-  await expect(page.getByText("Operator User")).toBeVisible();
-  await expect(page.getByText("IP только в карточке пользователя")).toBeVisible();
-  await expect(page.locator("main")).not.toContainText("203.0.113.77");
 });
 
 test("node detail requires text confirmation for lifecycle actions", async ({ page }) => {
