@@ -113,7 +113,9 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
       else await silenceAlert(alert.id, 60);
       resource.reload();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Действие с алертом не выполнено.");
+      setActionError(error instanceof AdminApiError
+        ? adminApiErrorText(error, "Действие с алертом не выполнено.")
+        : "Действие с алертом не выполнено.");
     } finally {
       setActionId(null);
     }

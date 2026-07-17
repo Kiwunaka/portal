@@ -168,7 +168,7 @@ export function TicketsPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
             <div className="mt-3">
               <RouteBoundary loading={tickets.loading} refreshing={tickets.refreshing} error={tickets.error} hasData={tickets.data !== null} retryLabel="Повторить загрузку тикетов" onRetry={tickets.reload}>
                 {queue.length ? (
-                  <div ref={listScrollRef} className="ops-scrollbar max-h-[calc(100vh-19rem)] space-y-2 overflow-auto pr-1">
+                  <div ref={listScrollRef} className="ops-scrollbar max-h-[calc(100dvh-19rem)] space-y-2 overflow-auto pr-1">
                     {queue.map((ticket) => (
                       <button key={ticket.id} type="button" aria-current={selected === ticket.id ? "true" : undefined} onClick={() => selectTicket(ticket.id)} className={`w-full rounded-[var(--pokrov-radius-card)] border p-3 text-left transition-colors ${selected === ticket.id ? "border-[color:var(--atlas-border-strong)] bg-[color:var(--pokrov-nav-active-bg)]" : "border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] hover:border-[color:var(--atlas-border-strong)]"}`}>
                         <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold">Тикет #{ticket.id}</span><div className="flex gap-2"><Badge tone={priorityTone(ticket.priority)}>{priorityLabel(ticket.priority)}</Badge><Badge tone={ticket.status === "open" ? "warning" : ticket.status === "closed" ? "success" : "info"}>{statusLabel(ticket.status)}</Badge></div></div>

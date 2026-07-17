@@ -26,7 +26,7 @@ export function OpsShell({ section }: { section: string }) {
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [shellStatus, setShellStatus] = useState<OpsShellStatus>(EMPTY_OPS_SHELL_STATUS);
-  const legacyDashboardRef = useRef<HTMLDivElement>(null);
+  const routeContentRef = useRef<HTMLDivElement>(null);
 
   const changeCommandsOpen = useCallback((open: boolean) => {
     if (open) setMobileNavigationOpen(false);
@@ -75,11 +75,11 @@ export function OpsShell({ section }: { section: string }) {
   }, []);
 
   const refresh = useCallback(() => {
-    const legacyRefresh = Array.from(legacyDashboardRef.current?.querySelectorAll("button") ?? []).find(
+    const refreshControl = Array.from(routeContentRef.current?.querySelectorAll("button") ?? []).find(
       (button) => button.textContent?.trim() === "Обновить"
     );
-    if (legacyRefresh && !legacyRefresh.disabled) {
-      legacyRefresh.click();
+    if (refreshControl && !refreshControl.disabled) {
+      refreshControl.click();
       return;
     }
     window.location.reload();
@@ -88,7 +88,13 @@ export function OpsShell({ section }: { section: string }) {
   const activeSection = opsSectionFromPath(`/${active === "dashboard" ? "" : active}`);
 
   return (
-    <div className="min-h-screen bg-[color:var(--atlas-canvas-alt)] text-[color:var(--atlas-text)]">
+    <div className="min-h-dvh bg-[color:var(--atlas-canvas-alt)] text-[color:var(--atlas-text)]">
+      <a
+        href="#ops-main-content"
+        className="fixed left-3 top-3 z-[110] -translate-y-24 rounded-[var(--pokrov-radius-control)] bg-[color:var(--atlas-primary)] px-4 py-2 text-sm font-semibold text-[color:var(--atlas-primary-text)] transition-transform focus:translate-y-0"
+      >
+        К основному содержанию
+      </a>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-4 lg:block">
         <div className="mb-6 flex items-center gap-3 px-2">
           <div className="grid h-9 w-9 place-items-center rounded-[var(--pokrov-radius-card)] bg-[color:var(--atlas-primary)] text-sm font-bold text-[color:var(--atlas-primary-text)]">
@@ -99,7 +105,7 @@ export function OpsShell({ section }: { section: string }) {
             <div className="text-[11px] text-[color:var(--atlas-text-muted)]">Центр управления</div>
           </div>
         </div>
-        <OpsNavigation active={active} onNavigate={navigate} className="max-h-[calc(100vh-88px)] pr-1" />
+        <OpsNavigation active={active} onNavigate={navigate} className="max-h-[calc(100dvh-88px)] pr-1" />
       </aside>
 
       <div className="lg:pl-[248px]">
@@ -110,8 +116,8 @@ export function OpsShell({ section }: { section: string }) {
           onOpenNavigation={() => changeMobileNavigationOpen(true)}
           onRefresh={refresh}
         />
-        <main className="px-4 py-4 lg:px-6 lg:py-5">
-          <div ref={legacyDashboardRef} className="[&>.space-y-4>div:first-child]:hidden">
+        <main id="ops-main-content" tabIndex={-1} className="px-4 py-4 outline-none lg:px-6 lg:py-5">
+          <div ref={routeContentRef}>
             <OpsDashboard section={active} onShellStatus={setShellStatus} />
           </div>
         </main>

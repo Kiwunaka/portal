@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Dialog } from "@/components/ui/dialog";
-import { AdminApiError, apiFetch } from "@/lib/api";
+import { AdminApiError, apiFetch } from "@/lib/admin-api/client";
 import { OPS_SECTIONS } from "@/lib/sections";
 
 export type AdminSearchResult = {

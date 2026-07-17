@@ -143,7 +143,7 @@ export function UserList({
       </div>
 
       {rows.length ? (
-        <div ref={scrollRef} className="ops-scrollbar max-h-[calc(100vh-19rem)] overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]">
+        <div ref={scrollRef} className="ops-scrollbar max-h-[calc(100dvh-19rem)] overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]">
           <table className="w-full min-w-[940px] border-collapse text-left text-xs">
             <thead className="sticky top-0 z-10 bg-[color:var(--pokrov-table-header-bg)] text-[11px] text-[color:var(--atlas-text-soft)]">
               <tr>

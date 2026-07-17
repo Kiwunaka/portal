@@ -86,7 +86,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        className={cn("max-h-[min(88vh,52rem)] w-full max-w-2xl overflow-auto rounded-[var(--pokrov-radius-modal)] border border-[color:var(--atlas-border-strong)] bg-[color:var(--atlas-surface)] shadow-[var(--atlas-shadow-medium)] focus:outline-none", className)}
+        className={cn("max-h-[min(88dvh,52rem)] w-full max-w-2xl overflow-auto rounded-[var(--pokrov-radius-modal)] border border-[color:var(--atlas-border-strong)] bg-[color:var(--atlas-surface)] shadow-[var(--atlas-shadow-medium)] focus:outline-none", className)}
       >
         <header className="flex items-start justify-between gap-4 border-b border-[color:var(--atlas-border)] px-5 py-4">
           <div>

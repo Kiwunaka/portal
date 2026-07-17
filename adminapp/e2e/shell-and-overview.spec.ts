@@ -47,6 +47,39 @@ const expectedGroups = [
   }
 ] as const;
 
+test("существующая admin-сессия используется без повторного обмена", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
+  });
+  const api = await installAdminApiMock(page);
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
+  await expect.poll(() => api.calls.some((call) => (
+    call.method === "GET"
+    && call.path === "/api/admin/ops/overview"
+    && call.headers?.authorization === "Bearer mock-admin-token"
+  ))).toBe(true);
+  expect(api.calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session")).toBe(false);
+});
+
+test("initData обменивается на сессию только через явный вход", async ({ page }) => {
+  const api = await installAdminApiMock(page, { requireInitDataForSession: true });
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Вход в админку" })).toBeVisible();
+  const initData = "query_id=test&user=%7B%22id%22%3A9999%7D&auth_date=1&hash=test";
+  await page.getByLabel("Telegram WebApp initData").fill(initData);
+  await page.getByRole("button", { name: "Войти по initData" }).click();
+
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
+  await expect.poll(() => api.calls.some((call) => (
+    call.method === "POST"
+    && call.path === "/api/admin/auth/session"
+    && call.headers?.["x-telegram-init-data"] === initData
+  ))).toBe(true);
+});
+
 test("оболочка группирует 15 разделов и открывает палитру с клавиатуры", async ({ page }) => {
   await installAdminApiMock(page);
   await page.goto("/");

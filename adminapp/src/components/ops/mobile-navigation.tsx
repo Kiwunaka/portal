@@ -18,12 +18,12 @@ export function MobileNavigation({ open, active, onOpenChange, onNavigate }: Mob
       onOpenChange={onOpenChange}
       title="Навигация по разделам"
       description="Выберите рабочий раздел. После перехода меню закроется."
-      className="mr-auto h-[calc(100vh-2rem)] max-h-none max-w-sm rounded-[var(--pokrov-radius-modal)]"
+      className="mr-auto h-[calc(100dvh-2rem)] max-h-none max-w-sm rounded-[var(--pokrov-radius-modal)]"
     >
       <OpsNavigation
         active={active}
         label="Мобильная навигация"
-        className="max-h-[calc(100vh-9rem)] pr-1"
+        className="max-h-[calc(100dvh-9rem)] pr-1"
         onNavigate={(href) => {
           onNavigate(href);
           onOpenChange(false);

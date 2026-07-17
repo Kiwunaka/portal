@@ -22,8 +22,28 @@ function isAccessDenied(error: unknown): boolean {
 
 export function adminApiErrorText(error: AdminApiError | null, fallback: string): string {
   if (!error) return fallback;
-  const correlation = error.correlationId ? ` Код обращения: ${error.correlationId}.` : "";
-  return `${error.message}${correlation}`;
+  const message = error.status === 401
+    ? "Сессия истекла. Войдите снова."
+    : error.status === 403
+      ? "Недостаточно прав для этого раздела."
+      : error.status === 404
+        ? "Запрошенные данные не найдены."
+        : error.status === 409
+          ? "Данные изменились. Обновите раздел и повторите проверку."
+          : error.status === 422
+            ? "Сервер отклонил параметры запроса. Проверьте введённые данные."
+            : error.status === 429
+              ? "Слишком много запросов. Подождите и повторите позже."
+              : error.status >= 500
+                ? "Сервис временно недоступен. Повторите запрос позже."
+                : fallback;
+  const safeCode = error.code && /^[a-z0-9._-]{1,96}$/i.test(error.code) ? error.code : null;
+  const safeCorrelation = error.correlationId && /^[a-z0-9._:-]{1,128}$/i.test(error.correlationId) ? error.correlationId : null;
+  const technical = [
+    safeCode ? `Технический код: ${safeCode}.` : "",
+    safeCorrelation ? `ID обращения: ${safeCorrelation}.` : ""
+  ].filter(Boolean).join(" ");
+  return technical ? `${message} ${technical}` : message;
 }
 
 export function AdminRouteBoundary({
@@ -56,7 +76,9 @@ export function AdminRouteBoundary({
         oldestRequiredSourceAt: null
       });
       if (!options?.silent) {
-        setError(reason instanceof Error ? reason.message : "Не удалось открыть сессию. Проверьте доступ и повторите вход.");
+        setError(reason instanceof AdminApiError
+          ? adminApiErrorText(reason, "Не удалось открыть сессию. Проверьте доступ и повторите вход.")
+          : "Не удалось открыть сессию. Проверьте доступ и повторите вход.");
       }
     } finally {
       setBusy(false);

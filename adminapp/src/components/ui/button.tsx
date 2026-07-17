@@ -7,6 +7,7 @@ export type ButtonSize = "default" | "compact" | "icon";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  tone?: ButtonVariant;
   size?: ButtonSize;
 }
 
@@ -24,17 +25,19 @@ const sizeClasses: Record<ButtonSize, string> = {
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { className, variant = "secondary", size = "default", type = "button", ...props },
+  { className, variant, tone, size = "default", type = "button", ...props },
   ref
 ) {
+  const resolvedVariant = variant ?? tone ?? "secondary";
+
   return (
     <button
       ref={ref}
       type={type}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-[var(--pokrov-radius-control)] border text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-[var(--pokrov-radius-control)] border text-xs font-semibold transition-[color,background-color,border-color,transform] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--atlas-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--atlas-canvas)]",
-        variantClasses[variant],
+        variantClasses[resolvedVariant],
         sizeClasses[size],
         className
       )}

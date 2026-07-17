@@ -681,6 +681,7 @@ const unsafeSearchResults: Array<Record<string, unknown>> = [
 ];
 
 type AdminApiMockOptions = {
+  requireInitDataForSession?: boolean;
   ruScenario?: RuScenario;
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
@@ -1208,6 +1209,8 @@ export async function installAdminApiMock(
       path: `${url.pathname}${url.search}`,
       body: requestBody,
       headers: {
+        authorization: requestHeaders.authorization || "",
+        "x-telegram-init-data": requestHeaders["x-telegram-init-data"] || "",
         "x-admin-intent-id": requestHeaders["x-admin-intent-id"] || "",
         "x-admin-idempotency-key": requestHeaders["x-admin-idempotency-key"] || "",
         "x-admin-confirmation-sha256": requestHeaders["x-admin-confirmation-sha256"] || "",
@@ -1271,6 +1274,18 @@ export async function installAdminApiMock(
     }
 
     if (url.pathname === "/api/admin/auth/session") {
+      if (options.requireInitDataForSession && !requestHeaders["x-telegram-init-data"]) {
+        await fulfillJson(
+          route,
+          {
+            detail: "Нужен Telegram initData",
+            code: "admin_init_data_required",
+            correlation_id: "session-test-id"
+          },
+          401
+        );
+        return;
+      }
       await fulfillJson(route, {
         ok: true,
         token: "mock-admin-token",
