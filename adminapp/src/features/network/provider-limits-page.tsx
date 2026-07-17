@@ -110,7 +110,10 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
   const selectedConfig = resource.data?.configs.find((row) => row.node_code.toLowerCase() === selectedCode) || null;
   const selectedStatus = resource.data?.statuses.find((row) => row.node_code.toLowerCase() === selectedCode) || null;
   const selectedSourceVersion = quotaSourceVersion(selectedConfig, selectedStatus);
-  const activeEdit = editState?.nodeCode === selectedCode ? editState : null;
+  const matchingEdit = editState?.nodeCode === selectedCode ? editState : null;
+  const activeEdit = matchingEdit && (matchingEdit.dirty || matchingEdit.sourceVersion === selectedSourceVersion)
+    ? matchingEdit
+    : null;
   const serverDraft = selectedCode && resource.data !== null ? draftFor(selectedCode, selectedConfig, selectedStatus) : null;
   const draft = activeEdit?.draft || serverDraft;
   const draftSourceVersion = activeEdit?.sourceVersion || selectedSourceVersion;
@@ -140,7 +143,7 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
   function updateDraft(patch: Partial<QuotaDraft>) {
     if (!selectedCode || !draft) return;
     setEditState((current) => {
-      const base = current?.nodeCode === selectedCode
+      const base = current?.nodeCode === selectedCode && (current.dirty || current.sourceVersion === selectedSourceVersion)
         ? current
         : { nodeCode: selectedCode, draft, sourceVersion: selectedSourceVersion, dirty: false, error: "" };
       return { ...base, draft: { ...base.draft, ...patch }, dirty: true, error: "" };
@@ -149,7 +152,7 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
 
   function setCurrentError(error: string) {
     if (!selectedCode || !draft) return;
-    setEditState((current) => current?.nodeCode === selectedCode
+    setEditState((current) => current?.nodeCode === selectedCode && (current.dirty || current.sourceVersion === selectedSourceVersion)
       ? { ...current, error }
       : { nodeCode: selectedCode, draft, sourceVersion: selectedSourceVersion, dirty: false, error });
   }

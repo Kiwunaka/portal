@@ -17,7 +17,7 @@ import { readUrlState, replaceUrlState, subscribeToUrlState, urlCodecs } from "@
 
 type PromoUrlState = { state: string; q: string; selected: string | null };
 type PromoDraft = { code: string; promoType: "discount" | "days"; value: string; usesLeft: string; expiresAt: string };
-type PromoEditState = { key: string; draft: PromoDraft; dirty: boolean; error: string };
+type PromoEditState = { key: string; draft: PromoDraft; sourceVersion: string; dirty: boolean; error: string };
 const PROMO_URL_CODECS = { state: urlCodecs.string(""), q: urlCodecs.string(""), selected: urlCodecs.optionalString() };
 
 function promoState(row: PromoRow): string {
@@ -67,8 +67,12 @@ export function PromosPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
   const selected = urlState.selected && urlState.selected !== "new" ? resource.data?.find((row) => row.code.toUpperCase() === urlState.selected?.toUpperCase()) || null : null;
   const creating = urlState.selected === "new";
   const selectionKey = urlState.selected?.toUpperCase() || null;
-  const activeEdit = editState?.key === selectionKey ? editState : null;
   const serverDraft = creating ? draftFrom(null) : selected ? draftFrom(selected) : null;
+  const selectedSourceVersion = JSON.stringify(serverDraft);
+  const matchingEdit = editState?.key === selectionKey ? editState : null;
+  const activeEdit = matchingEdit && (matchingEdit.dirty || matchingEdit.sourceVersion === selectedSourceVersion)
+    ? matchingEdit
+    : null;
   const draft = activeEdit?.draft || serverDraft;
   const dirty = activeEdit?.dirty || false;
   const formError = activeEdit?.error || "";
@@ -89,15 +93,17 @@ export function PromosPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
   function updateDraft(patch: Partial<PromoDraft>) {
     if (!selectionKey || !draft) return;
     setEditState((current) => {
-      const base = current?.key === selectionKey ? current : { key: selectionKey, draft, dirty: false, error: "" };
+      const base = current?.key === selectionKey && (current.dirty || current.sourceVersion === selectedSourceVersion)
+        ? current
+        : { key: selectionKey, draft, sourceVersion: selectedSourceVersion, dirty: false, error: "" };
       return { ...base, draft: { ...base.draft, ...patch }, dirty: true, error: "" };
     });
   }
   function setCurrentError(error: string) {
     if (!selectionKey || !draft) return;
-    setEditState((current) => current?.key === selectionKey
+    setEditState((current) => current?.key === selectionKey && (current.dirty || current.sourceVersion === selectedSourceVersion)
       ? { ...current, error }
-      : { key: selectionKey, draft, dirty: false, error });
+      : { key: selectionKey, draft, sourceVersion: selectedSourceVersion, dirty: false, error });
   }
   function reload() { setEditState(null); resource.reload(); }
   function submit(event: FormEvent) {
