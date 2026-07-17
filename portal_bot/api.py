@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 POKROV API for Telegram WebApp and Subscription endpoint.
 
@@ -14166,87 +14166,58 @@ async def admin_plans(x_telegram_init_data: str = Header(default=""), include_in
 
 
 @app.post("/api/admin/plans")
-async def admin_plans_create(payload: AdminPlanCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_create(
+    payload: AdminPlanCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = (payload.code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        exists = s.query(PlanCatalog.id).filter(func.lower(PlanCatalog.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Plan already exists")
-        now = _utcnow()
-        row = PlanCatalog(
-            code=code,
-            label=payload.label.strip(),
-            amount_rub=int(payload.amount_rub),
-            amount_stars=int(payload.amount_stars),
-            days=int(payload.days),
-            device_limit=int(payload.device_limit),
-            node_policy=(payload.node_policy or "").strip()[:32] or None,
-            badge=(payload.badge or "").strip()[:32] or None,
-            is_active=bool(payload.is_active),
-            sort_order=int(payload.sort_order),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_create", meta={"code": code})
-    return {"ok": True, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.create",
+        target_type="plan",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/plans/{code}")
-async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_update(
+    code: str,
+    payload: AdminPlanUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     target = (code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Plan not found")
-        if payload.label is not None:
-            row.label = payload.label.strip()
-        if payload.amount_rub is not None:
-            row.amount_rub = int(payload.amount_rub)
-        if payload.amount_stars is not None:
-            row.amount_stars = int(payload.amount_stars)
-        if payload.days is not None:
-            row.days = int(payload.days)
-        if payload.device_limit is not None:
-            row.device_limit = int(payload.device_limit)
-        if payload.node_policy is not None:
-            row.node_policy = (payload.node_policy or "").strip()[:32] or None
-        if payload.badge is not None:
-            row.badge = (payload.badge or "").strip()[:32] or None
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.sort_order is not None:
-            row.sort_order = int(payload.sort_order)
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_update", meta={"code": target})
-    return {"ok": True, "code": target}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.update",
+        target_type="plan",
+        target_id=target,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/plans/{code}")
-async def admin_plans_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_delete(
+    code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     target = (code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Plan not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_delete", meta={"code": target})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.delete",
+        target_type="plan",
+        target_id=target,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/live-updates")
@@ -14286,97 +14257,55 @@ async def admin_live_updates(x_telegram_init_data: str = Header(default=""), inc
 
 
 @app.post("/api/admin/live-updates")
-async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_create(
+    payload: AdminLiveUpdateCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
-    post_id = int(payload.post_id or 0) if payload.post_id is not None else None
-    if post_id is not None and not channel_username:
-        raise HTTPException(status_code=400, detail="channel_username is required when post_id is provided")
-    final_link = _build_tg_post_link(
-        channel_username=channel_username,
-        post_id=post_id,
-        fallback_link=payload.link,
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.create",
+        target_type="live_update",
+        target_id="new",
+        payload=payload.model_dump(),
+        request=request,
     )
-    if not final_link:
-        raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
-    s = SessionLocal()
-    try:
-        now = _utcnow()
-        row = LiveUpdate(
-            title=payload.title.strip(),
-            summary=payload.summary.strip(),
-            link=final_link,
-            channel_username=channel_username,
-            post_id=post_id,
-            published_at=_parse_optional_datetime(payload.published_at),
-            is_active=bool(payload.is_active),
-            sort_order=int(payload.sort_order),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        update_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_create", meta={"id": update_id})
-    return {"ok": True, "id": update_id}
 
 
 @app.patch("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_update(
+    update_id: int,
+    payload: AdminLiveUpdateUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Live update not found")
-        if payload.title is not None:
-            row.title = payload.title.strip()
-        if payload.summary is not None:
-            row.summary = payload.summary.strip()
-        if payload.link is not None:
-            row.link = payload.link.strip()
-        if "channel_username" in payload.model_fields_set:
-            row.channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
-        if "post_id" in payload.model_fields_set:
-            row.post_id = int(payload.post_id or 0) or None
-        if "published_at" in payload.model_fields_set:
-            row.published_at = _parse_optional_datetime(payload.published_at)
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.sort_order is not None:
-            row.sort_order = int(payload.sort_order)
-        row.link = _build_tg_post_link(
-            channel_username=getattr(row, "channel_username", None),
-            post_id=getattr(row, "post_id", None),
-            fallback_link=str(row.link or "").strip(),
-        )
-        if not str(row.link or "").strip():
-            raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_update", meta={"id": int(update_id)})
-    return {"ok": True, "id": int(update_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.update",
+        target_type="live_update",
+        target_id=str(update_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_delete(update_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_delete(
+    update_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Live update not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_delete", meta={"id": int(update_id)})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.delete",
+        target_type="live_update",
+        target_id=str(update_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/start-links")
@@ -14409,82 +14338,56 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
 
 
 @app.post("/api/admin/start-links")
-async def admin_start_links_create(payload: AdminStartLinkCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_create(
+    payload: AdminStartLinkCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
-    if len(code) < 2:
-        raise HTTPException(status_code=400, detail="Invalid code")
-    s = SessionLocal()
-    try:
-        exists = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Start link already exists")
-        now = _utcnow()
-        row = StartLink(
-            code=code,
-            description=str(payload.description or "").strip()[:240] or None,
-            target_action=str(payload.target_action or "").strip()[:64] or None,
-            is_active=bool(payload.is_active),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        row_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_create", meta={"id": row_id, "code": code})
-    return {"ok": True, "id": row_id, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.create",
+        target_type="start_link",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/start-links/{link_id}")
-async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_update(
+    link_id: int,
+    payload: AdminStartLinkUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Start link not found")
-        if payload.code is not None:
-            code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
-            if len(code) < 2:
-                raise HTTPException(status_code=400, detail="Invalid code")
-            if code != str(row.code or "").strip().lower():
-                dup = s.query(StartLink.id).filter(func.lower(StartLink.code) == code, StartLink.id != row.id).first()
-                if dup:
-                    raise HTTPException(status_code=409, detail="Start link already exists")
-                row.code = code
-        if "description" in payload.model_fields_set:
-            row.description = str(payload.description or "").strip()[:240] or None
-        if "target_action" in payload.model_fields_set:
-            row.target_action = str(payload.target_action or "").strip()[:64] or None
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        row.updated_at = _utcnow()
-        s.commit()
-        out_code = str(row.code or "").strip().lower()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_update", meta={"id": int(link_id), "code": out_code})
-    return {"ok": True, "id": int(link_id), "code": out_code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.update",
+        target_type="start_link",
+        target_id=str(link_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/start-links/{link_id}")
-async def admin_start_links_delete(link_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_delete(
+    link_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Start link not found")
-        row.is_active = False
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_deactivate", meta={"id": int(link_id)})
-    return {"ok": True, "id": int(link_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.delete",
+        target_type="start_link",
+        target_id=str(link_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/wheel-config")
@@ -14499,21 +14402,20 @@ async def admin_wheel_config_get(x_telegram_init_data: str = Header(default=""))
 
 
 @app.put("/api/admin/wheel-config")
-async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_wheel_config_put(
+    payload: AdminWheelConfigIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_wheel_config(payload.model_dump())
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key="wheel_config", value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_wheel_config_update",
-        meta={"preset": normalized.get("preset"), "cooldown_hours": normalized.get("cooldown_hours")},
+        action="wheel_config.update",
+        target_type="config",
+        target_id="wheel",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "wheel_config": normalized}
 
 
 @app.get("/api/admin/network-rollout-config")
@@ -14527,161 +14429,37 @@ async def admin_network_rollout_config_get(x_telegram_init_data: str = Header(de
 
 
 @app.put("/api/admin/network-rollout-config")
-async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_network_rollout_config_put(
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = normalized_network_rollout_config(payload if isinstance(payload, dict) else {})
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_network_rollout_config_put",
-        meta={
-            "version": normalized.get("version"),
-            "default_transport_profile": ((normalized.get("defaults") or {}).get("transport_profile")),
-        },
+        action="network_rollout_config.update",
+        target_type="config",
+        target_id="network-rollout",
+        payload=payload if isinstance(payload, dict) else {},
+        request=request,
     )
-    return {"ok": True, "network_rollout_config": normalized}
 
 
 @app.put("/api/admin/client/warp/material")
 async def admin_client_warp_material_put(
     payload: AdminWarpMaterialPutIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    row_id = 0
-    audit_meta: dict[str, Any] = {}
-    user_for_failure: User | None = None
-    install_id_for_failure: str | None = None
-    try:
-        user = s.query(User).filter(User.tg_id == int(payload.tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user_for_failure = user
-        install_id = (
-            str(payload.install_id or getattr(user, "app_install_id", "") or "").strip()
-            or None
-        )
-        install_id_for_failure = install_id
-        limit, window_seconds = _warp_material_provision_limit()
-        if limit and _warp_event_count(
-            s,
-            user=user,
-            install_id=install_id,
-            event_name="material_provisioned",
-            window_seconds=window_seconds,
-        ) >= limit:
-            policy = public_warp_policy_for_user(
-                s,
-                user=user,
-                install_id=install_id,
-                rollout_config=load_network_rollout_config(session=s),
-            )
-            record_warp_event(
-                s,
-                user=user,
-                install_id=install_id,
-                policy=policy,
-                event_name="material_provision_rate_limited",
-                state="rate_limited",
-                reason_code="provision_limit",
-                consented=False,
-                meta={"source": "admin", "actor_tg_id": actor},
-            )
-            s.commit()
-            raise HTTPException(
-                status_code=429,
-                detail=_warp_rate_limit_detail(
-                    code="warp_material_rate_limited",
-                    limit=limit,
-                    window_seconds=window_seconds,
-                ),
-            )
-        row = provision_warp_material(
-            s,
-            user=user,
-            install_id=install_id,
-            wireguard_config=dict(payload.wireguard_config or {}),
-            account=dict(payload.account or {}),
-            source=payload.source,
-            mode=payload.mode,
-        )
-        s.flush()
-        policy = public_warp_policy_for_user(
-            s,
-            user=user,
-            install_id=install_id,
-            rollout_config=load_network_rollout_config(session=s),
-        )
-        record_warp_event(
-            s,
-            user=user,
-            install_id=install_id,
-            policy=policy,
-            event_name="material_provisioned",
-            state="ready_to_consent",
-            reason_code="admin_provisioned",
-            consented=False,
-            meta={"source": "admin", "actor_tg_id": actor, "material_id": int(row.id or 0)},
-        )
-        s.commit()
-        s.refresh(row)
-        row_id = int(row.id or 0)
-        policy = public_warp_policy_for_user(
-            s,
-            user=user,
-            install_id=install_id,
-            rollout_config=load_network_rollout_config(session=s),
-        )
-        material = warp_material_public_payload(row, policy=policy)
-        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
-        audit_meta = {
-            "material_id": row_id,
-            "install_id": install_id,
-            "material_hash": material.get("material_hash"),
-            "runtime_ready": bool(material.get("runtime_ready")),
-            "source": material.get("source"),
-        }
-        return {"ok": True, "material": material, "warp_status": status}
-    except ValueError as exc:
-        s.rollback()
-        if user_for_failure is not None:
-            policy = public_warp_policy_for_user(
-                s,
-                user=user_for_failure,
-                install_id=install_id_for_failure,
-                rollout_config=load_network_rollout_config(session=s),
-            )
-            record_warp_event(
-                s,
-                user=user_for_failure,
-                install_id=install_id_for_failure,
-                policy=policy,
-                event_name="material_provision_failed",
-                state="provision_failed",
-                reason_code="invalid_material",
-                consented=False,
-                meta={"source": "admin", "actor_tg_id": actor},
-            )
-            s.commit()
-        raise HTTPException(status_code=400, detail={"code": "invalid_warp_material", "message": str(exc)}) from exc
-    except RuntimeError as exc:
-        s.rollback()
-        raise HTTPException(status_code=503, detail={"code": "warp_material_store_unavailable", "message": str(exc)}) from exc
-    finally:
-        s.close()
-        if row_id:
-            _audit_admin(
-                actor_tg_id=actor,
-                action="admin_warp_material_put",
-                target_tg_id=int(payload.tg_id),
-                meta=audit_meta,
-            )
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="warp_material.replace",
+        target_type="warp_material",
+        target_id=str(payload.tg_id),
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.get("/api/admin/client/warp/summary")
@@ -14721,22 +14499,20 @@ async def admin_promo_slots_get(x_telegram_init_data: str = Header(default="")) 
 
 
 @app.put("/api/admin/promo-slots")
-async def admin_promo_slots_put(payload: AdminPromoSlotsPutIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+async def admin_promo_slots_put(
+    payload: AdminPromoSlotsPutIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_promo_slots_config({"assignments": payload.model_dump().get("assignments") or []}, strict=True)
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key=PROMO_SLOTS_CONFIG_KEY, value={"assignments": normalized.get("assignments") or []})
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_promo_slots_put",
-        meta={"assignments": len(list(normalized.get("assignments") or []))},
+        action="promo_slots.update",
+        target_type="config",
+        target_id="promo-slots",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "promo_slots": normalized}
 
 
 @app.post("/api/admin/campaign-links/build")
@@ -14901,17 +14677,20 @@ async def admin_loyalty_config_get(x_telegram_init_data: str = Header(default=""
 
 
 @app.put("/api/admin/loyalty-config")
-async def admin_loyalty_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_loyalty_config_put(
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_loyalty_config(payload if isinstance(payload, dict) else {})
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key="loyalty_config", value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_loyalty_config_put", meta=normalized)
-    return {"ok": True, "loyalty_config": normalized}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="loyalty_config.update",
+        target_type="config",
+        target_id="loyalty",
+        payload=payload if isinstance(payload, dict) else {},
+        request=request,
+    )
 
 
 @app.get("/api/admin/campaigns")
@@ -14952,97 +14731,55 @@ async def admin_campaigns_get(x_telegram_init_data: str = Header(default=""), li
 
 
 @app.post("/api/admin/campaigns")
-async def admin_campaigns_create(payload: AdminCampaignCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_campaigns_create(
+    payload: AdminCampaignCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    ctype = str(payload.campaign_type or "").strip().lower()
-    if ctype not in {"promo", "gift"}:
-        raise HTTPException(status_code=400, detail="campaign_type must be promo or gift")
-    starts_at = _parse_optional_datetime(payload.starts_at)
-    ends_at = _parse_optional_datetime(payload.ends_at)
-    if starts_at and ends_at and starts_at > ends_at:
-        raise HTTPException(status_code=400, detail="starts_at must be <= ends_at")
-    now = _utcnow()
-    s = SessionLocal()
-    try:
-        row = IncentiveCampaign(
-            name=str(payload.name or "").strip()[:120],
-            campaign_type=ctype,
-            target_value=str(payload.target_value or "").strip().upper()[:64],
-            segment=str(payload.segment or "all_active").strip().lower()[:32],
-            starts_at=starts_at,
-            ends_at=ends_at,
-            max_activations=int(payload.max_activations),
-            activations_count=0,
-            auto_disable=bool(payload.auto_disable),
-            is_active=bool(payload.is_active),
-            created_by=actor,
-            metadata_json=json.dumps(payload.metadata or {}, ensure_ascii=False, separators=(",", ":")),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        out_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_create", meta={"campaign_id": out_id, "campaign_type": ctype})
-    return {"ok": True, "id": out_id}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.create",
+        target_type="campaign",
+        target_id="new",
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/campaigns/{campaign_id}")
 async def admin_campaigns_patch(
     campaign_id: int,
     payload: AdminCampaignUpdateIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        if payload.name is not None:
-            row.name = str(payload.name).strip()[:120]
-        if payload.segment is not None:
-            row.segment = str(payload.segment).strip().lower()[:32]
-        if payload.starts_at is not None:
-            row.starts_at = _parse_optional_datetime(payload.starts_at)
-        if payload.ends_at is not None:
-            row.ends_at = _parse_optional_datetime(payload.ends_at)
-        if row.starts_at and row.ends_at and row.starts_at > row.ends_at:
-            raise HTTPException(status_code=400, detail="starts_at must be <= ends_at")
-        if payload.max_activations is not None:
-            row.max_activations = int(payload.max_activations)
-        if payload.auto_disable is not None:
-            row.auto_disable = bool(payload.auto_disable)
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.metadata is not None:
-            row.metadata_json = json.dumps(payload.metadata or {}, ensure_ascii=False, separators=(",", ":"))
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_patch", meta={"campaign_id": int(campaign_id)})
-    return {"ok": True, "id": int(campaign_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.update",
+        target_type="campaign",
+        target_id=str(campaign_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/campaigns/{campaign_id}")
-async def admin_campaigns_delete(campaign_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_campaigns_delete(
+    campaign_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        row.is_active = False
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_disable", meta={"campaign_id": int(campaign_id)})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.delete",
+        target_type="campaign",
+        target_id=str(campaign_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/templates")
@@ -15063,65 +14800,56 @@ async def admin_templates(x_telegram_init_data: str = Header(default=""), limit:
 
 
 @app.post("/api/admin/templates")
-async def admin_templates_create(payload: AdminTemplateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_create(
+    payload: AdminTemplateCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     key = (payload.key or "").strip().lower()
-    text_val = (payload.text or "").strip()
-    s = SessionLocal()
-    try:
-        exists = s.query(Template.id).filter(func.lower(Template.key) == key).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Template already exists")
-        row = Template(key=key, text=text_val)
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_create", meta={"key": key})
-    return {"ok": True, "key": key}
-
-
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.create",
+        target_type="template",
+        target_id=key,
+        payload=payload.model_dump(),
+        request=request,
+    )
 @app.patch("/api/admin/templates/{key}")
-async def admin_templates_update(key: str, payload: AdminTemplateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_update(
+    key: str,
+    payload: AdminTemplateUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_key = (key or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Template not found")
-        if payload.new_key is not None and payload.new_key.strip():
-            new_key = payload.new_key.strip().lower()
-            if new_key != src_key:
-                exists = s.query(Template.id).filter(func.lower(Template.key) == new_key).first()
-                if exists:
-                    raise HTTPException(status_code=409, detail="Template key already exists")
-                row.key = new_key
-        if payload.text is not None:
-            row.text = payload.text.strip()
-        s.commit()
-        out_key = row.key
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_update", meta={"from": src_key, "to": out_key})
-    return {"ok": True, "key": out_key}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.update",
+        target_type="template",
+        target_id=src_key,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/templates/{key}")
-async def admin_templates_delete(key: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_delete(
+    key: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_key = (key or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Template not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_delete", meta={"key": src_key})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.delete",
+        target_type="template",
+        target_id=src_key,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/gift-codes")
@@ -15151,69 +14879,39 @@ async def admin_gift_codes(x_telegram_init_data: str = Header(default=""), limit
 
 
 @app.post("/api/admin/access-keys/issue")
-async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+async def admin_access_keys_issue(
+    payload: AdminAccessKeyIssueIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     plan_code = str(payload.plan_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        plan = _resolve_plan_config(s=s, code=plan_code)
-        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
-        if not normalized_plan:
-            raise HTTPException(status_code=400, detail="Unsupported plan_code")
-
-        issued: list[dict[str, Any]] = []
-        for _ in range(int(payload.quantity or 1)):
-            code = _generate_gift_code_for_admin(s)
-            row = GiftCard(code=code, card_type=normalized_plan["code"], created_by=actor)
-            s.add(row)
-            issued.append(
-                {
-                    "key": code,
-                    "plan": normalized_plan,
-                    "issued_at": _safe_iso(_utcnow()),
-                }
-            )
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_access_keys_issue",
-        meta={"plan_code": plan_code, "quantity": int(payload.quantity or 1)},
+        action="access_key.issue",
+        target_type="access_key_batch",
+        target_id=plan_code,
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {
-        "ok": True,
-        "plan": normalized_plan,
-        "issued": issued,
-    }
 
 
 @app.post("/api/admin/gift-codes")
-async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_gift_codes_create(
+    payload: AdminGiftCodeCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     card_type = (payload.card_type or "").strip().lower()
-    card = GIFT_CARD_TYPES.get(card_type)
-    if not card:
-        raise HTTPException(status_code=400, detail="Unsupported card_type")
-    s = SessionLocal()
-    try:
-        code = _generate_gift_code_for_admin(s)
-        row = GiftCard(code=code, card_type=card_type, created_by=actor)
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_gift_code_create", meta={"code": code, "card_type": card_type})
-    return {
-        "ok": True,
-        "gift_code": {
-            "code": code,
-            "card_type": card_type,
-            "days": int(card.get("days", 0)),
-            "stars": int(card.get("stars", 0)),
-        },
-    }
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="gift_code.create",
+        target_type="gift_code",
+        target_id=card_type,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.get("/api/admin/tickets")
@@ -16303,47 +16001,20 @@ async def admin_nodes_drift(
 
 
 @app.post("/api/admin/nodes/sync")
-async def admin_nodes_sync(payload: AdminNodeSyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_nodes_sync(
+    payload: AdminNodeSyncIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        if payload.tg_id:
-            users = s.query(User).filter(User.tg_id == int(payload.tg_id)).all()
-        else:
-            segment = (payload.segment or "active").strip().lower()
-            q = s.query(User).filter(User.tg_id > 0)
-            if segment == "active":
-                q = q.filter(User.is_active == True)
-            elif segment == "free":
-                q = q.filter(func.upper(User.sub_type) == "FREE")
-            elif segment == "paid":
-                q = q.filter(func.upper(User.sub_type) == "PAID")
-            else:
-                raise HTTPException(status_code=400, detail="Unsupported sync segment")
-            users = q.order_by(User.created_at.asc()).limit(max(1, min(int(payload.limit), 1000))).all()
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    synced = 0
-    failed = 0
-    try:
-        await panel.login()
-        for u in users:
-            ok = await panel.enable_client(u.uuid, True)
-            if ok:
-                synced += 1
-            else:
-                failed += 1
-    finally:
-        await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_nodes_sync",
-        meta={"synced": synced, "failed": failed, "count": len(users), "segment": payload.segment, "tg_id": payload.tg_id},
+        action="node.sync_global",
+        target_type="node_sync",
+        target_id="global",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "synced": synced, "failed": failed, "count": len(users)}
 
 
 @app.post("/api/admin/nodes/{node_code}/drain")
@@ -16704,6 +16375,314 @@ async def _execute_node_resync_external(context: dict[str, Any]) -> dict[str, An
     }
 
 
+_TASK20_DB_ACTIONS = frozenset(
+    {
+        "plan.create",
+        "plan.update",
+        "plan.delete",
+        "live_update.create",
+        "live_update.update",
+        "live_update.delete",
+        "start_link.create",
+        "start_link.update",
+        "start_link.delete",
+        "wheel_config.update",
+        "network_rollout_config.update",
+        "warp_material.replace",
+        "promo_slots.update",
+        "loyalty_config.update",
+        "campaign.create",
+        "campaign.update",
+        "campaign.delete",
+        "template.create",
+        "template.update",
+        "template.delete",
+        "access_key.issue",
+        "gift_code.create",
+    }
+)
+
+
+def _execute_task20_admin_action_db(
+    session,
+    state,
+    runtime: dict[str, Any],
+    *,
+    actor_tg_id: int,
+    action: str,
+) -> dict[str, Any]:
+    now = _utcnow()
+
+    if action in {"plan.create", "plan.update", "plan.delete"}:
+        row = state.entity
+        if action == "plan.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="План не найден.")
+            code = str(row.code or "").strip().lower()
+            session.delete(row)
+            session.flush()
+            return {"code": code, "deleted": True}
+        if action == "plan.create":
+            if row is not None:
+                raise ActionIntentError("target_exists", status_code=409, message="План уже существует.")
+            row = PlanCatalog(code=str(runtime["code"]), created_at=now)
+            session.add(row)
+        for field in (
+            "label",
+            "amount_rub",
+            "amount_stars",
+            "days",
+            "device_limit",
+            "node_policy",
+            "badge",
+            "is_active",
+            "sort_order",
+        ):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        row.updated_at = now
+        session.flush()
+        return {"code": str(row.code or "").strip().lower()}
+
+    if action in {"live_update.create", "live_update.update", "live_update.delete"}:
+        row = state.entity
+        if action == "live_update.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Новость не найдена.")
+            update_id = int(row.id)
+            session.delete(row)
+            session.flush()
+            return {"id": update_id, "deleted": True}
+        if action == "live_update.create":
+            row = LiveUpdate(created_at=now, updated_at=now)
+            session.add(row)
+        for field in ("title", "summary", "is_active", "sort_order"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        if "link" in runtime and runtime["link"] is not None:
+            row.link = str(runtime["link"])
+        if "channel_username" in runtime:
+            row.channel_username = runtime["channel_username"]
+        if "post_id" in runtime:
+            row.post_id = runtime["post_id"]
+        if "published_at" in runtime:
+            row.published_at = (
+                datetime.fromisoformat(str(runtime["published_at"]))
+                if runtime["published_at"]
+                else None
+            )
+        row.link = _build_tg_post_link(
+            channel_username=getattr(row, "channel_username", None),
+            post_id=getattr(row, "post_id", None),
+            fallback_link=str(getattr(row, "link", "") or "").strip(),
+        )
+        if not str(row.link or "").strip():
+            raise ActionIntentError("invalid_payload", status_code=422, message="Нужна ссылка или Telegram post target.")
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id)}
+
+    if action in {"start_link.create", "start_link.update", "start_link.delete"}:
+        row = state.entity
+        if action == "start_link.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Start link не найден.")
+            row.is_active = False
+            row.updated_at = now
+            session.flush()
+            return {"id": int(row.id), "code": str(row.code or "").strip().lower(), "deleted": True}
+        if action == "start_link.create":
+            row = StartLink(code=str(runtime["code"]), created_at=now, updated_at=now)
+            session.add(row)
+        if "code" in runtime and str(runtime["code"]) != str(row.code or "").strip().lower():
+            duplicate = session.query(StartLink.id).filter(
+                func.lower(StartLink.code) == str(runtime["code"]),
+                StartLink.id != int(row.id),
+            ).first()
+            if duplicate:
+                raise ActionIntentError("target_exists", status_code=409, message="Start link уже существует.")
+            row.code = str(runtime["code"])
+        for field in ("description", "target_action", "is_active"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id), "code": str(row.code or "").strip().lower()}
+
+    if action == "wheel_config.update":
+        normalized = _normalized_wheel_config(runtime)
+        _set_app_setting_json(s=session, key="wheel_config", value=normalized)
+        session.flush()
+        return {"wheel_config": normalized}
+
+    if action == "network_rollout_config.update":
+        normalized = normalized_network_rollout_config(runtime)
+        _set_app_setting_json(s=session, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
+        session.flush()
+        return {"network_rollout_config": normalized}
+
+    if action == "promo_slots.update":
+        normalized = _normalized_promo_slots_config(runtime, strict=True)
+        _set_app_setting_json(
+            s=session,
+            key=PROMO_SLOTS_CONFIG_KEY,
+            value={"assignments": normalized.get("assignments") or []},
+        )
+        session.flush()
+        return {"promo_slots": normalized}
+
+    if action == "loyalty_config.update":
+        normalized = _normalized_loyalty_config(runtime)
+        _set_app_setting_json(s=session, key="loyalty_config", value=normalized)
+        session.flush()
+        return {"loyalty_config": normalized}
+
+    if action == "warp_material.replace":
+        user = state.entity
+        install_id = str(runtime.get("install_id") or getattr(user, "app_install_id", "") or "").strip() or None
+        limit, window_seconds = _warp_material_provision_limit()
+        if limit and _warp_event_count(
+            session,
+            user=user,
+            install_id=install_id,
+            event_name="material_provisioned",
+            window_seconds=window_seconds,
+        ) >= limit:
+            raise ActionIntentError(
+                "warp_material_rate_limited",
+                status_code=429,
+                message="Лимит замены WARP material исчерпан.",
+            )
+        try:
+            row = provision_warp_material(
+                session,
+                user=user,
+                install_id=install_id,
+                wireguard_config=dict(runtime["wireguard_config"]),
+                account=dict(runtime.get("account") or {}),
+                source=str(runtime["source"]),
+                mode=str(runtime["mode"]),
+            )
+            session.flush()
+            policy = public_warp_policy_for_user(
+                session,
+                user=user,
+                install_id=install_id,
+                rollout_config=load_network_rollout_config(session=session),
+            )
+            record_warp_event(
+                session,
+                user=user,
+                install_id=install_id,
+                policy=policy,
+                event_name="material_provisioned",
+                state="ready_to_consent",
+                reason_code="admin_provisioned",
+                consented=False,
+                meta={"source": "admin", "actor_tg_id": int(actor_tg_id), "material_id": int(row.id or 0)},
+            )
+            session.flush()
+        except ValueError:
+            raise ActionIntentError("invalid_warp_material", status_code=422, message="WARP material не прошёл проверку.") from None
+        except RuntimeError:
+            raise ActionIntentError("warp_material_store_unavailable", status_code=503, message="Хранилище WARP material недоступно.") from None
+        material = warp_material_public_payload(row, policy=policy)
+        status = build_warp_status(session, user=user, install_id=install_id, policy=policy)
+        return {"material": material, "warp_status": status}
+
+    if action in {"campaign.create", "campaign.update", "campaign.delete"}:
+        row = state.entity
+        if action == "campaign.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Кампания не найдена.")
+            row.is_active = False
+            row.updated_at = now
+            session.flush()
+            return {"id": int(row.id), "deleted": True}
+        if action == "campaign.create":
+            row = IncentiveCampaign(
+                campaign_type=str(runtime["campaign_type"]),
+                target_value=str(runtime["target_value"]),
+                activations_count=0,
+                created_by=int(actor_tg_id),
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+        for field in ("name", "segment", "max_activations", "auto_disable", "is_active"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        for field in ("starts_at", "ends_at"):
+            if field in runtime:
+                setattr(row, field, datetime.fromisoformat(str(runtime[field])) if runtime[field] else None)
+        if row.starts_at and row.ends_at and row.starts_at > row.ends_at:
+            raise ActionIntentError("invalid_payload", status_code=422, message="starts_at должен быть не позже ends_at.")
+        if "metadata" in runtime:
+            row.metadata_json = json.dumps(runtime["metadata"], ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id)}
+
+    if action in {"template.create", "template.update", "template.delete"}:
+        row = state.entity
+        if action == "template.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Шаблон не найден.")
+            key = str(row.key or "").strip().lower()
+            session.delete(row)
+            session.flush()
+            return {"key": key, "deleted": True}
+        if action == "template.create":
+            row = Template(key=str(runtime["key"]), text=str(runtime["text"]), created_at=now)
+            session.add(row)
+        new_key = runtime.get("new_key")
+        if new_key and str(new_key) != str(row.key or "").strip().lower():
+            duplicate = session.query(Template.id).filter(
+                func.lower(Template.key) == str(new_key),
+                Template.id != int(row.id),
+            ).first()
+            if duplicate:
+                raise ActionIntentError("target_exists", status_code=409, message="Ключ шаблона уже существует.")
+            row.key = str(new_key)
+        if "text" in runtime:
+            row.text = str(runtime["text"])
+        session.flush()
+        return {"key": str(row.key or "").strip().lower()}
+
+    if action == "access_key.issue":
+        plan_code = str(runtime["plan_code"])
+        plan = _resolve_plan_config(s=session, code=plan_code)
+        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
+        if not normalized_plan:
+            raise ActionIntentError("invalid_payload", status_code=422, message="plan_code не поддерживается.")
+        issued: list[dict[str, Any]] = []
+        for _ in range(int(runtime["quantity"])):
+            code = _generate_gift_code_for_admin(session)
+            session.add(GiftCard(code=code, card_type=normalized_plan["code"], created_by=int(actor_tg_id)))
+            issued.append({"key": code, "plan": normalized_plan, "issued_at": _safe_iso(now)})
+        session.flush()
+        return {"plan": normalized_plan, "issued": issued}
+
+    if action == "gift_code.create":
+        card_type = str(runtime["card_type"])
+        card = GIFT_CARD_TYPES.get(card_type)
+        if not card:
+            raise ActionIntentError("invalid_payload", status_code=422, message="card_type не поддерживается.")
+        code = _generate_gift_code_for_admin(session)
+        session.add(GiftCard(code=code, card_type=card_type, created_by=int(actor_tg_id)))
+        session.flush()
+        return {
+            "gift_code": {
+                "code": code,
+                "card_type": card_type,
+                "days": int(card.get("days", 0)),
+                "stars": int(card.get("stars", 0)),
+            }
+        }
+
+    raise ActionIntentError("executor_unavailable", status_code=503, message="DB-исполнитель действия недоступен.")
+
+
 def _execute_admin_client_action_db(
     session,
     state,
@@ -16713,6 +16692,15 @@ def _execute_admin_client_action_db(
     actor_tg_id: int,
     action: str,
 ) -> dict[str, Any]:
+    if action in _TASK20_DB_ACTIONS:
+        return _execute_task20_admin_action_db(
+            session,
+            state,
+            dict(_runtime_payload),
+            actor_tg_id=actor_tg_id,
+            action=action,
+        )
+
     if action == "payment.reconcile":
         order = state.entity
         next_status = str(state.context["to_status"])
@@ -17665,6 +17653,31 @@ async def _execute_admin_client_action_external(
             "details": details,
         }
 
+    if action == "node.sync_global":
+        selection = [dict(item) for item in execution["selection"]]
+        if len(selection) != int(execution["selected_count"]):
+            raise RuntimeError("frozen global sync selection is unavailable")
+        panel = ControlPanel()
+        changed = 0
+        failed = 0
+        try:
+            await panel.login()
+            for item in selection:
+                ok = await panel.enable_client(str(item["uuid"]), True)
+                if ok:
+                    changed += 1
+                else:
+                    failed += 1
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "global_sync_completed" if failed == 0 else "global_sync_partial",
+            "count": len(selection),
+            "changed": changed,
+            "failed": failed,
+        }
+
     if action == "broadcast.send":
         recipients = [int(value) for value in execution["selected_tg_ids"]]
         if (
@@ -17807,6 +17820,7 @@ def _admin_guarded_action_response(
         ("user.bulk_key_action", "force_required"),
         ("ticket.reply", "telegram_failed"),
         ("broadcast.send", "broadcast_partial"),
+        ("node.sync_global", "global_sync_partial"),
     }:
         return result
     facts = result.get("result") if isinstance(result.get("result"), dict) else {}
@@ -18029,6 +18043,15 @@ def _admin_guarded_action_response(
                 "attempted": int(facts.get("attempted") or 0),
                 "sent": int(facts.get("sent") or 0),
                 "failed": int(facts.get("failed") or 0),
+            }
+        )
+
+    if action == "node.sync_global":
+        return merged(
+            {
+                "synced": int(facts.get("changed") or 0),
+                "failed": int(facts.get("failed") or 0),
+                "count": int(facts.get("count") or 0),
             }
         )
 

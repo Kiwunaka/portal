@@ -28,20 +28,28 @@ from models import (
     AdminActionIntent,
     AdminAudit,
     AdminBroadcastRecipientPlan,
+    AppSetting,
     ExternalOrder,
     ExternalPaymentEvent,
     Event,
+    GiftCard,
+    IncentiveCampaign,
+    LiveUpdate,
+    PlanCatalog,
     PromoCode,
     PromoUsage,
     ReferralBonusQueue,
     RewardClaim,
+    StartLink,
     SupportTicket,
     SupportTicketMessage,
+    Template,
     User,
     UserKeyPolicy,
     UserNode,
     Node,
     ProviderTrafficQuota,
+    WarpMaterial,
 )
 from node_policy import canonical_free_node_code, node_is_free, user_uses_free_pool
 from nodes_repo import enabled_nodes
@@ -160,6 +168,7 @@ AuditTargetBuilder = Callable[[EntityState, Mapping[str, Any]], int | None]
 AuditMetaBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
 AuditActionBuilder = Callable[[Mapping[str, Any]], str]
 PostCommitContextBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any] | None]
+ResultSanitizer = Callable[[Mapping[str, Any]], dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -183,6 +192,7 @@ class ActionPolicy:
     audit_action_builder: AuditActionBuilder | None = None
     post_commit_context_builder: PostCommitContextBuilder | None = None
     execution_state_builder: ExecutionStateBuilder | None = None
+    result_sanitizer: ResultSanitizer | None = None
 
 
 def _utcnow() -> datetime:
@@ -4290,6 +4300,1494 @@ ACTION_POLICIES["referral.process"] = ActionPolicy(
 )
 
 
+def _normalize_identifier(
+    value: object,
+    *,
+    field: str,
+    minimum: int = 1,
+    maximum: int = 128,
+    uppercase: bool = False,
+) -> str:
+    normalized = _bounded_text(
+        value,
+        field=field,
+        minimum=minimum,
+        maximum=maximum,
+    )
+    normalized = normalized.upper() if uppercase else normalized.lower()
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", normalized) is None:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} содержит недопустимые символы.",
+        )
+    return normalized
+
+
+def _normalize_optional_datetime(value: object, *, field: str) -> str | None:
+    if value is None or value == "":
+        return None
+    raw = _bounded_text(value, field=field, maximum=64)
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} должно содержать ISO datetime.",
+        ) from None
+    if parsed.tzinfo is not None and parsed.utcoffset() is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed.isoformat()
+
+
+def _normalize_json_object(
+    value: object,
+    *,
+    field: str,
+    maximum_bytes: int = 200_000,
+) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} должно быть JSON-объектом.",
+        )
+    try:
+        encoded = canonical_json_bytes(dict(value))
+        decoded = json.loads(encoded)
+    except (TypeError, ValueError):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} содержит неподдерживаемый JSON.",
+        ) from None
+    if len(encoded) > maximum_bytes or not isinstance(decoded, dict):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message=f"Поле {field} слишком велико.",
+        )
+    return decoded
+
+
+def _json_fingerprint(domain: str, value: object) -> dict[str, Any]:
+    encoded = canonical_json_bytes(value)
+    return {
+        "sha256": _semantic_hash(domain, value),
+        "bytes": len(encoded),
+    }
+
+
+def _row_for_update(query, session, for_update: bool):
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    return query.first()
+
+
+def _management_challenge(_state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return "ПОДТВЕРДИТЬ УПРАВЛЕНИЕ"
+
+
+def _context_target_challenge(state: EntityState, _payload: Mapping[str, Any]) -> str:
+    return str(state.context["challenge"])
+
+
+def _safe_model_snapshot(row: Any, fields: tuple[str, ...]) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    snapshot: dict[str, Any] = {"id": int(row.id)} if getattr(row, "id", None) is not None else {}
+    for field in fields:
+        value = getattr(row, field, None)
+        if isinstance(value, datetime):
+            snapshot[field] = _safe_iso(value)
+        elif isinstance(value, str) and field in {
+            "label",
+            "title",
+            "summary",
+            "link",
+            "description",
+            "name",
+            "metadata_json",
+            "text",
+        }:
+            snapshot[field] = _redacted_text(value)
+        else:
+            snapshot[field] = value
+    return snapshot
+
+
+def _normalize_plan_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(
+        payload,
+        {
+            "code",
+            "label",
+            "amount_rub",
+            "amount_stars",
+            "days",
+            "device_limit",
+            "node_policy",
+            "badge",
+            "is_active",
+            "sort_order",
+        },
+    )
+    node_policy = payload.get("node_policy")
+    badge = payload.get("badge")
+    is_active = payload.get("is_active", True)
+    if type(is_active) is not bool:
+        raise ActionIntentError("invalid_payload", status_code=422, message="is_active должен быть bool.")
+    return {
+        "code": _normalize_identifier(payload.get("code"), field="code", minimum=2, maximum=32),
+        "label": _bounded_text(payload.get("label"), field="label", minimum=2, maximum=120),
+        "amount_rub": _normalize_promo_integer(payload.get("amount_rub"), field="amount_rub", minimum=0, maximum=1_000_000),
+        "amount_stars": _normalize_promo_integer(payload.get("amount_stars", 0), field="amount_stars", minimum=0, maximum=1_000_000),
+        "days": _normalize_promo_integer(payload.get("days", 30), field="days", minimum=1, maximum=3650),
+        "device_limit": _normalize_promo_integer(payload.get("device_limit", 1), field="device_limit", minimum=1, maximum=64),
+        "node_policy": _bounded_text(node_policy, field="node_policy", maximum=32) or None if node_policy is not None else None,
+        "badge": _bounded_text(badge, field="badge", maximum=32) or None if badge is not None else None,
+        "is_active": is_active,
+        "sort_order": _normalize_promo_integer(payload.get("sort_order", 100), field="sort_order", minimum=0, maximum=10_000),
+    }
+
+
+def _normalize_plan_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    allowed = {
+        "label",
+        "amount_rub",
+        "amount_stars",
+        "days",
+        "device_limit",
+        "node_policy",
+        "badge",
+        "is_active",
+        "sort_order",
+    }
+    _reject_extra_payload_fields(payload, allowed)
+    if not payload:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Нужно указать изменение плана.")
+    out: dict[str, Any] = {}
+    if "label" in payload:
+        out["label"] = _bounded_text(payload.get("label"), field="label", minimum=2, maximum=120)
+    for field, minimum, maximum in (
+        ("amount_rub", 0, 1_000_000),
+        ("amount_stars", 0, 1_000_000),
+        ("days", 1, 3650),
+        ("device_limit", 1, 64),
+        ("sort_order", 0, 10_000),
+    ):
+        if field in payload:
+            out[field] = _normalize_promo_integer(payload.get(field), field=field, minimum=minimum, maximum=maximum)
+    for field in ("node_policy", "badge"):
+        if field in payload:
+            value = payload.get(field)
+            out[field] = _bounded_text(value, field=field, maximum=32) or None if value is not None else None
+    if "is_active" in payload:
+        if type(payload.get("is_active")) is not bool:
+            raise ActionIntentError("invalid_payload", status_code=422, message="is_active должен быть bool.")
+        out["is_active"] = bool(payload["is_active"])
+    return out
+
+
+_PLAN_FIELDS = (
+    "code",
+    "label",
+    "amount_rub",
+    "amount_stars",
+    "days",
+    "device_limit",
+    "node_policy",
+    "badge",
+    "is_active",
+    "sort_order",
+    "created_at",
+    "updated_at",
+)
+
+
+def _plan_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    code = _normalize_identifier(target_id, field="target", minimum=2, maximum=32)
+    if mode == "create" and str(payload.get("code") or "") != code:
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель должна совпадать с кодом плана.")
+    row = _row_for_update(
+        session.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == code),
+        session,
+        for_update,
+    )
+    if mode == "create" and row is not None:
+        raise ActionIntentError("target_exists", status_code=409, message="План уже существует.")
+    if mode != "create" and row is None:
+        raise ActionIntentError("target_not_found", status_code=404, message="План не найден.")
+    before = _safe_model_snapshot(row, _PLAN_FIELDS)
+    if mode == "delete":
+        after = None
+    elif mode == "create":
+        after = dict(payload)
+        after["label"] = _redacted_text(str(payload["label"]))
+    else:
+        after = {**dict(before or {}), **dict(payload)}
+        if "label" in payload:
+            after["label"] = _redacted_text(str(payload["label"]))
+    return EntityState(
+        entity=row,
+        version_snapshot={"mode": mode, "row": before},
+        public_snapshot=before or {"code": code, "exists": False},
+        context={"mode": mode, "code": code, "after_snapshot": after, "challenge": code},
+    )
+
+
+def _plan_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _plan_state(session, target_id, payload, for_update, mode="create")
+
+
+def _plan_update_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _plan_state(session, target_id, payload, for_update, mode="update")
+
+
+def _plan_delete_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _plan_state(session, target_id, payload, for_update, mode="delete")
+
+
+def _model_change_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _simple_preview(
+        f"Изменение {state.context['mode']} для {state.context.get('code') or state.context.get('challenge')}",
+        state.public_snapshot,
+        state.context.get("after_snapshot"),
+        ["Сущность и её версия зафиксированы сервером; чувствительный текст заменён fingerprint."],
+    )
+
+
+def _normalize_live_update_runtime(
+    payload: Mapping[str, Any],
+    *,
+    partial: bool,
+) -> dict[str, Any]:
+    allowed = {
+        "title",
+        "summary",
+        "link",
+        "channel_username",
+        "post_id",
+        "published_at",
+        "is_active",
+        "sort_order",
+    }
+    _reject_extra_payload_fields(payload, allowed)
+    if partial and not payload:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Нужно указать изменение новости.")
+    out: dict[str, Any] = {}
+    for field, minimum, maximum in (("title", 2, 160), ("summary", 2, 600)):
+        if field in payload or not partial:
+            out[field] = _bounded_text(payload.get(field), field=field, minimum=minimum, maximum=maximum)
+    for field, maximum in (("link", 600), ("channel_username", 64)):
+        if field in payload:
+            value = payload.get(field)
+            out[field] = _bounded_text(value, field=field, maximum=maximum) or None if value is not None else None
+    if "channel_username" in out and out["channel_username"] is not None:
+        channel = str(out["channel_username"]).lstrip("@").lower()
+        if re.fullmatch(r"[a-z0-9_]{4,64}", channel) is None:
+            raise ActionIntentError("invalid_payload", status_code=422, message="channel_username указан неверно.")
+        out["channel_username"] = channel
+    if "post_id" in payload:
+        value = payload.get("post_id")
+        out["post_id"] = None if value is None else _normalize_promo_integer(value, field="post_id", minimum=1, maximum=2_000_000_000)
+    if "published_at" in payload:
+        out["published_at"] = _normalize_optional_datetime(payload.get("published_at"), field="published_at")
+    if "is_active" in payload or not partial:
+        value = payload.get("is_active", True)
+        if type(value) is not bool:
+            raise ActionIntentError("invalid_payload", status_code=422, message="is_active должен быть bool.")
+        out["is_active"] = bool(value)
+    if "sort_order" in payload or not partial:
+        out["sort_order"] = _normalize_promo_integer(payload.get("sort_order", 100), field="sort_order", minimum=0, maximum=10_000)
+    if not partial and not out.get("link") and not (out.get("channel_username") and out.get("post_id")):
+        raise ActionIntentError("invalid_payload", status_code=422, message="Нужна ссылка или Telegram post target.")
+    return out
+
+
+def _safe_live_update_payload(runtime: Mapping[str, Any]) -> dict[str, Any]:
+    out = dict(runtime)
+    for field in ("title", "summary", "link", "channel_username"):
+        if isinstance(out.get(field), str):
+            out[field] = _redacted_text(str(out[field]))
+    return out
+
+
+def _normalize_live_update_create_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_live_update_runtime(payload, partial=False)
+
+
+def _normalize_live_update_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_live_update_payload(_normalize_live_update_create_runtime(payload))
+
+
+def _normalize_live_update_update_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_live_update_runtime(payload, partial=True)
+
+
+def _normalize_live_update_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_live_update_payload(_normalize_live_update_update_runtime(payload))
+
+
+_LIVE_UPDATE_FIELDS = (
+    "title",
+    "summary",
+    "link",
+    "channel_username",
+    "post_id",
+    "published_at",
+    "is_active",
+    "sort_order",
+    "created_at",
+    "updated_at",
+)
+
+
+def _live_update_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    row = None
+    if mode == "create":
+        if target_id != "new":
+            raise ActionIntentError("invalid_target", status_code=422, message="Цель создания новости должна быть new.")
+        count, max_id = session.query(func.count(LiveUpdate.id), func.max(LiveUpdate.id)).one()
+        before: dict[str, Any] | None = None
+        version = {"count": int(count or 0), "max_id": int(max_id or 0)}
+        challenge = "new"
+    else:
+        update_id = _integer_target(target_id, positive=True)
+        row = _row_for_update(
+            session.query(LiveUpdate).filter(LiveUpdate.id == update_id),
+            session,
+            for_update,
+        )
+        if row is None:
+            raise ActionIntentError("target_not_found", status_code=404, message="Новость не найдена.")
+        before = _safe_model_snapshot(row, _LIVE_UPDATE_FIELDS)
+        version = before
+        challenge = str(update_id)
+    safe_after = None if mode == "delete" else _safe_live_update_payload(payload)
+    if mode == "update":
+        safe_after = {**dict(before or {}), **dict(safe_after or {})}
+    return EntityState(
+        entity=row,
+        version_snapshot={"mode": mode, "row": version},
+        public_snapshot=before or {"exists": False},
+        context={"mode": mode, "after_snapshot": safe_after, "challenge": challenge},
+    )
+
+
+def _live_update_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _live_update_state(session, target_id, payload, for_update, mode="create")
+
+
+def _live_update_update_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _live_update_state(session, target_id, payload, for_update, mode="update")
+
+
+def _live_update_delete_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _live_update_state(session, target_id, payload, for_update, mode="delete")
+
+
+def _normalize_start_link_runtime(payload: Mapping[str, Any], *, partial: bool) -> dict[str, Any]:
+    allowed = {"code", "description", "target_action", "is_active"}
+    _reject_extra_payload_fields(payload, allowed)
+    if partial and not payload:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Нужно указать изменение start link.")
+    out: dict[str, Any] = {}
+    if "code" in payload or not partial:
+        out["code"] = _normalize_identifier(payload.get("code"), field="code", minimum=2, maximum=64)
+    for field, maximum in (("description", 240), ("target_action", 64)):
+        if field in payload or (not partial and field == "target_action"):
+            value = payload.get(field)
+            minimum = 2 if field == "target_action" else 0
+            out[field] = _bounded_text(value, field=field, minimum=minimum, maximum=maximum) or None if value is not None else None
+    if "is_active" in payload or not partial:
+        value = payload.get("is_active", True)
+        if type(value) is not bool:
+            raise ActionIntentError("invalid_payload", status_code=422, message="is_active должен быть bool.")
+        out["is_active"] = bool(value)
+    return out
+
+
+def _safe_start_link_payload(runtime: Mapping[str, Any]) -> dict[str, Any]:
+    out = dict(runtime)
+    if isinstance(out.get("description"), str):
+        out["description"] = _redacted_text(str(out["description"]))
+    return out
+
+
+def _normalize_start_link_create_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_start_link_runtime(payload, partial=False)
+
+
+def _normalize_start_link_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_start_link_payload(_normalize_start_link_create_runtime(payload))
+
+
+def _normalize_start_link_update_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_start_link_runtime(payload, partial=True)
+
+
+def _normalize_start_link_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_start_link_payload(_normalize_start_link_update_runtime(payload))
+
+
+_START_LINK_FIELDS = ("code", "description", "target_action", "is_active", "created_at", "updated_at")
+
+
+def _start_link_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    if mode == "create":
+        code = _normalize_identifier(target_id, field="target", minimum=2, maximum=64)
+        if str(payload.get("code") or "") != code:
+            raise ActionIntentError("invalid_target", status_code=422, message="Цель должна совпадать с start code.")
+        row = _row_for_update(
+            session.query(StartLink).filter(func.lower(StartLink.code) == code),
+            session,
+            for_update,
+        )
+        if row is not None:
+            raise ActionIntentError("target_exists", status_code=409, message="Start link уже существует.")
+        before = None
+        challenge = code
+    else:
+        link_id = _integer_target(target_id, positive=True)
+        row = _row_for_update(
+            session.query(StartLink).filter(StartLink.id == link_id),
+            session,
+            for_update,
+        )
+        if row is None:
+            raise ActionIntentError("target_not_found", status_code=404, message="Start link не найден.")
+        before = _safe_model_snapshot(row, _START_LINK_FIELDS)
+        challenge = str(link_id)
+    after = None if mode == "delete" else _safe_start_link_payload(payload)
+    if mode == "update":
+        after = {**dict(before or {}), **dict(after or {})}
+    return EntityState(
+        entity=row,
+        version_snapshot={"mode": mode, "row": before},
+        public_snapshot=before or {"exists": False},
+        context={"mode": mode, "after_snapshot": after, "challenge": challenge},
+    )
+
+
+def _start_link_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _start_link_state(session, target_id, payload, for_update, mode="create")
+
+
+def _start_link_update_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _start_link_state(session, target_id, payload, for_update, mode="update")
+
+
+def _start_link_delete_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _start_link_state(session, target_id, payload, for_update, mode="delete")
+
+
+def _normalize_campaign_runtime(payload: Mapping[str, Any], *, partial: bool) -> dict[str, Any]:
+    allowed = {
+        "name",
+        "campaign_type",
+        "target_value",
+        "segment",
+        "starts_at",
+        "ends_at",
+        "max_activations",
+        "auto_disable",
+        "is_active",
+        "metadata",
+    }
+    _reject_extra_payload_fields(payload, allowed)
+    if partial and not payload:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Нужно указать изменение кампании.")
+    out: dict[str, Any] = {}
+    if "name" in payload or not partial:
+        out["name"] = _bounded_text(payload.get("name"), field="name", minimum=2, maximum=120)
+    if not partial:
+        campaign_type = str(payload.get("campaign_type") or "").strip().lower()
+        if campaign_type not in {"promo", "gift"}:
+            raise ActionIntentError("invalid_payload", status_code=422, message="campaign_type должен быть promo или gift.")
+        out["campaign_type"] = campaign_type
+        out["target_value"] = _bounded_text(payload.get("target_value"), field="target_value", minimum=2, maximum=64).upper()
+    if "segment" in payload or not partial:
+        out["segment"] = _bounded_text(payload.get("segment", "all_active"), field="segment", minimum=2, maximum=32).lower()
+    for field in ("starts_at", "ends_at"):
+        if field in payload:
+            out[field] = _normalize_optional_datetime(payload.get(field), field=field)
+    starts = out.get("starts_at")
+    ends = out.get("ends_at")
+    if starts and ends and datetime.fromisoformat(str(starts)) > datetime.fromisoformat(str(ends)):
+        raise ActionIntentError("invalid_payload", status_code=422, message="starts_at должен быть не позже ends_at.")
+    if "max_activations" in payload or not partial:
+        out["max_activations"] = _normalize_promo_integer(payload.get("max_activations", -1), field="max_activations", minimum=-1, maximum=1_000_000)
+    for field, default in (("auto_disable", True), ("is_active", True)):
+        if field in payload or not partial:
+            value = payload.get(field, default)
+            if type(value) is not bool:
+                raise ActionIntentError("invalid_payload", status_code=422, message=f"{field} должен быть bool.")
+            out[field] = bool(value)
+    if "metadata" in payload or not partial:
+        out["metadata"] = _normalize_json_object(payload.get("metadata") or {}, field="metadata", maximum_bytes=50_000)
+    return out
+
+
+def _safe_campaign_payload(runtime: Mapping[str, Any]) -> dict[str, Any]:
+    out = dict(runtime)
+    for field in ("name", "target_value"):
+        if isinstance(out.get(field), str):
+            out[field] = _redacted_text(str(out[field]))
+    if "metadata" in out:
+        out["metadata"] = _json_fingerprint("admin-campaign-metadata", out["metadata"])
+    return out
+
+
+def _normalize_campaign_create_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_campaign_runtime(payload, partial=False)
+
+
+def _normalize_campaign_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_campaign_payload(_normalize_campaign_create_runtime(payload))
+
+
+def _normalize_campaign_update_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_campaign_runtime(payload, partial=True)
+
+
+def _normalize_campaign_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_campaign_payload(_normalize_campaign_update_runtime(payload))
+
+
+_CAMPAIGN_FIELDS = (
+    "name",
+    "campaign_type",
+    "target_value",
+    "segment",
+    "starts_at",
+    "ends_at",
+    "max_activations",
+    "activations_count",
+    "auto_disable",
+    "is_active",
+    "created_by",
+    "metadata_json",
+    "created_at",
+    "updated_at",
+)
+
+
+def _campaign_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    if mode == "create":
+        if target_id != "new":
+            raise ActionIntentError("invalid_target", status_code=422, message="Цель создания кампании должна быть new.")
+        row = None
+        count, max_id = session.query(func.count(IncentiveCampaign.id), func.max(IncentiveCampaign.id)).one()
+        before = None
+        version: object = {"count": int(count or 0), "max_id": int(max_id or 0)}
+        challenge = "new"
+    else:
+        campaign_id = _integer_target(target_id, positive=True)
+        row = _row_for_update(
+            session.query(IncentiveCampaign).filter(IncentiveCampaign.id == campaign_id),
+            session,
+            for_update,
+        )
+        if row is None:
+            raise ActionIntentError("target_not_found", status_code=404, message="Кампания не найдена.")
+        before = _safe_model_snapshot(row, _CAMPAIGN_FIELDS)
+        version = before
+        challenge = str(campaign_id)
+    after = None if mode == "delete" else _safe_campaign_payload(payload)
+    if mode == "update":
+        after = {**dict(before or {}), **dict(after or {})}
+    return EntityState(
+        entity=row,
+        version_snapshot={"mode": mode, "row": version},
+        public_snapshot=before or {"exists": False},
+        context={"mode": mode, "after_snapshot": after, "challenge": challenge},
+    )
+
+
+def _campaign_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _campaign_state(session, target_id, payload, for_update, mode="create")
+
+
+def _campaign_update_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _campaign_state(session, target_id, payload, for_update, mode="update")
+
+
+def _campaign_delete_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _campaign_state(session, target_id, payload, for_update, mode="delete")
+
+
+def _normalize_template_runtime(payload: Mapping[str, Any], *, partial: bool) -> dict[str, Any]:
+    allowed = {"key", "new_key", "text"}
+    _reject_extra_payload_fields(payload, allowed)
+    if partial and not payload:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Нужно указать изменение шаблона.")
+    out: dict[str, Any] = {}
+    if "key" in payload or not partial:
+        out["key"] = _normalize_identifier(payload.get("key"), field="key", minimum=2, maximum=50)
+    if "new_key" in payload:
+        value = payload.get("new_key")
+        out["new_key"] = None if value is None else _normalize_identifier(value, field="new_key", minimum=2, maximum=50)
+    if "text" in payload or not partial:
+        out["text"] = _bounded_text(payload.get("text"), field="text", minimum=1, maximum=2000)
+    return out
+
+
+def _safe_template_payload(runtime: Mapping[str, Any]) -> dict[str, Any]:
+    out = dict(runtime)
+    if isinstance(out.get("text"), str):
+        out["text"] = _redacted_text(str(out["text"]))
+    return out
+
+
+def _normalize_template_create_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_template_runtime(payload, partial=False)
+
+
+def _normalize_template_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_template_payload(_normalize_template_create_runtime(payload))
+
+
+def _normalize_template_update_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_template_runtime(payload, partial=True)
+
+
+def _normalize_template_update_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _safe_template_payload(_normalize_template_update_runtime(payload))
+
+
+def _template_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    key = _normalize_identifier(target_id, field="target", minimum=2, maximum=50)
+    if mode == "create" and str(payload.get("key") or "") != key:
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель должна совпадать с ключом шаблона.")
+    row = _row_for_update(
+        session.query(Template).filter(func.lower(Template.key) == key),
+        session,
+        for_update,
+    )
+    if mode == "create" and row is not None:
+        raise ActionIntentError("target_exists", status_code=409, message="Шаблон уже существует.")
+    if mode != "create" and row is None:
+        raise ActionIntentError("target_not_found", status_code=404, message="Шаблон не найден.")
+    before = _safe_model_snapshot(row, ("key", "text", "created_at"))
+    after = None if mode == "delete" else _safe_template_payload(payload)
+    if mode == "update":
+        after = {**dict(before or {}), **dict(after or {})}
+    return EntityState(
+        entity=row,
+        version_snapshot={"mode": mode, "row": before},
+        public_snapshot=before or {"key": key, "exists": False},
+        context={"mode": mode, "after_snapshot": after, "challenge": key},
+    )
+
+
+def _template_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _template_state(session, target_id, payload, for_update, mode="create")
+
+
+def _template_update_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _template_state(session, target_id, payload, for_update, mode="update")
+
+
+def _template_delete_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _template_state(session, target_id, payload, for_update, mode="delete")
+
+
+def _app_setting_value(row: AppSetting | None) -> object:
+    if row is None or not str(row.value_json or "").strip():
+        return None
+    try:
+        return json.loads(str(row.value_json))
+    except (TypeError, ValueError):
+        return {"invalid_json_sha256": _semantic_hash("admin-setting-invalid-json", str(row.value_json or ""))}
+
+
+def _app_setting_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    target: str,
+    setting_key: str,
+    fingerprint_domain: str,
+) -> EntityState:
+    if str(target_id) != target:
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель конфигурации указана неверно.")
+    row = _row_for_update(
+        session.query(AppSetting).filter(AppSetting.key == setting_key),
+        session,
+        for_update,
+    )
+    current = _app_setting_value(row)
+    before = {
+        "exists": row is not None,
+        "updated_at": _safe_iso(row.updated_at) if row is not None else None,
+        "value": _json_fingerprint(f"{fingerprint_domain}-before", current),
+    }
+    after = _json_fingerprint(f"{fingerprint_domain}-after", payload)
+    return EntityState(
+        entity=row,
+        version_snapshot={"setting_key": setting_key, **before},
+        public_snapshot=before,
+        context={
+            "mode": "update",
+            "setting_key": setting_key,
+            "after_snapshot": after,
+            "challenge": target,
+        },
+    )
+
+
+def _normalize_wheel_config_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"preset", "weights", "cooldown_hours"})
+    preset = _bounded_text(payload.get("preset", "balanced"), field="preset", minimum=2, maximum=32)
+    cooldown = _normalize_promo_integer(payload.get("cooldown_hours", 168), field="cooldown_hours", minimum=1, maximum=2160)
+    weights_value = payload.get("weights")
+    if not isinstance(weights_value, list) or not 1 <= len(weights_value) <= 20:
+        raise ActionIntentError("invalid_payload", status_code=422, message="weights должен содержать 1..20 элементов.")
+    weights: list[dict[str, int]] = []
+    seen: set[int] = set()
+    for value in weights_value:
+        if not isinstance(value, Mapping):
+            raise ActionIntentError("invalid_payload", status_code=422, message="Элемент weights должен быть объектом.")
+        _reject_extra_payload_fields(value, {"days", "weight"})
+        days = _normalize_promo_integer(value.get("days"), field="days", minimum=1, maximum=365)
+        weight = _normalize_promo_integer(value.get("weight"), field="weight", minimum=1, maximum=10_000)
+        if days in seen:
+            raise ActionIntentError("invalid_payload", status_code=422, message="Дни wheel должны быть уникальны.")
+        seen.add(days)
+        weights.append({"days": days, "weight": weight})
+    return {"preset": preset, "weights": weights, "cooldown_hours": cooldown}
+
+
+def _wheel_config_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _app_setting_state(
+        session,
+        target_id,
+        payload,
+        for_update,
+        target="wheel",
+        setting_key="wheel_config",
+        fingerprint_domain="admin-wheel-config",
+    )
+
+
+def _normalize_fingerprinted_config_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return _normalize_json_object(payload, field="config")
+
+
+def _fingerprinted_config_payload(domain: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_fingerprinted_config_runtime(payload)
+    return {"config": _json_fingerprint(domain, runtime)}
+
+
+def _normalize_network_config_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_fingerprinted_config_runtime(payload)
+    defaults = runtime.get("defaults") if isinstance(runtime.get("defaults"), Mapping) else {}
+    return {
+        "config": _json_fingerprint("admin-network-rollout-config", runtime),
+        "version": str(runtime.get("version") or "")[:64] or None,
+        "default_transport_profile": str(defaults.get("transport_profile") or "")[:64] or None,
+    }
+
+
+def _network_config_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _app_setting_state(
+        session,
+        target_id,
+        payload,
+        for_update,
+        target="network-rollout",
+        setting_key="network_rollout_config",
+        fingerprint_domain="admin-network-rollout-config",
+    )
+
+
+def _normalize_promo_slots_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_fingerprinted_config_runtime(payload)
+    assignments = runtime.get("assignments")
+    if not isinstance(assignments, list) or len(assignments) > 128:
+        raise ActionIntentError("invalid_payload", status_code=422, message="assignments должен быть списком до 128 элементов.")
+    return {
+        "config": _json_fingerprint("admin-promo-slots", runtime),
+        "assignments": len(assignments),
+    }
+
+
+def _promo_slots_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _app_setting_state(
+        session,
+        target_id,
+        payload,
+        for_update,
+        target="promo-slots",
+        setting_key="promo_slots_config_v1",
+        fingerprint_domain="admin-promo-slots",
+    )
+
+
+def _normalize_loyalty_config_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_fingerprinted_config_runtime(payload)
+    tiers = runtime.get("tiers")
+    return {
+        "config": _json_fingerprint("admin-loyalty-config", runtime),
+        "enabled": bool(runtime.get("enabled", True)),
+        "tiers": len(tiers) if isinstance(tiers, list) else 0,
+    }
+
+
+def _loyalty_config_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _app_setting_state(
+        session,
+        target_id,
+        payload,
+        for_update,
+        target="loyalty",
+        setting_key="loyalty_config",
+        fingerprint_domain="admin-loyalty-config",
+    )
+
+
+def _normalize_warp_material_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(
+        payload,
+        {"tg_id", "install_id", "source", "mode", "wireguard_config", "account"},
+    )
+    tg_id = _normalize_promo_integer(payload.get("tg_id"), field="tg_id", minimum=1, maximum=2**63 - 1)
+    install_value = payload.get("install_id")
+    install_id = _bounded_text(install_value, field="install_id", maximum=128) or None if install_value is not None else None
+    source = _bounded_text(payload.get("source", "operator_provisioned"), field="source", minimum=2, maximum=64)
+    mode = _bounded_text(payload.get("mode", "proxy_over_warp"), field="mode", minimum=3, maximum=32)
+    wireguard = _normalize_json_object(payload.get("wireguard_config") or {}, field="wireguard_config", maximum_bytes=100_000)
+    if not wireguard:
+        raise ActionIntentError("invalid_payload", status_code=422, message="wireguard_config не может быть пустым.")
+    account_value = payload.get("account")
+    account = None if account_value is None else _normalize_json_object(account_value, field="account", maximum_bytes=100_000)
+    return {
+        "tg_id": tg_id,
+        "install_id": install_id,
+        "source": source,
+        "mode": mode,
+        "wireguard_config": wireguard,
+        "account": account,
+    }
+
+
+def _normalize_warp_material_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_warp_material_runtime(payload)
+    return {
+        "tg_id": int(runtime["tg_id"]),
+        "install_id": _redacted_text(str(runtime["install_id"])) if runtime.get("install_id") else None,
+        "source": str(runtime["source"]),
+        "mode": str(runtime["mode"]),
+        "wireguard_config": _json_fingerprint("admin-warp-wireguard", runtime["wireguard_config"]),
+        "account": _json_fingerprint("admin-warp-account", runtime["account"]) if runtime.get("account") is not None else None,
+    }
+
+
+def _warp_material_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    tg_id = _integer_target(target_id, positive=True)
+    if int(payload.get("tg_id") or 0) != tg_id:
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель должна совпадать с tg_id материала.")
+    user = _row_for_update(session.query(User).filter(User.tg_id == tg_id), session, for_update)
+    if user is None:
+        raise ActionIntentError("target_not_found", status_code=404, message="Пользователь не найден.")
+    install_id = str(payload.get("install_id") or getattr(user, "app_install_id", "") or "").strip() or None
+    query = session.query(WarpMaterial).filter(WarpMaterial.tg_id == tg_id, WarpMaterial.is_active == True)
+    if install_id is None:
+        query = query.filter(WarpMaterial.install_id.is_(None))
+    else:
+        query = query.filter(WarpMaterial.install_id == install_id)
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    materials = query.order_by(WarpMaterial.id.asc()).all()
+    fingerprints = [
+        {
+            "id": int(row.id),
+            "material_hash": str(row.material_hash or "") or None,
+            "state": str(row.state or ""),
+            "source": str(row.source or ""),
+            "mode": str(row.mode or ""),
+            "updated_at": _safe_iso(row.updated_at),
+        }
+        for row in materials
+    ]
+    before = {
+        "tg_id": tg_id,
+        "install_id_sha256": _semantic_hash("admin-warp-install", install_id or ""),
+        "active_materials": fingerprints,
+    }
+    after = {
+        "tg_id": tg_id,
+        "install_id_sha256": before["install_id_sha256"],
+        "source": str(payload["source"]),
+        "mode": str(payload["mode"]),
+        "wireguard_config": _json_fingerprint("admin-warp-wireguard", payload["wireguard_config"]),
+        "account": _json_fingerprint("admin-warp-account", payload["account"]) if payload.get("account") is not None else None,
+    }
+    return EntityState(
+        entity=user,
+        version_snapshot={"user_active": bool(user.is_active), **before},
+        public_snapshot=before,
+        context={"mode": "replace", "after_snapshot": after, "challenge": str(tg_id), "tg_id": tg_id},
+    )
+
+
+def _audit_warp_target(state: EntityState, _payload: Mapping[str, Any]) -> int | None:
+    return int(state.context["tg_id"])
+
+
+def _normalize_access_key_issue_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"plan_code", "quantity"})
+    return {
+        "plan_code": _normalize_identifier(payload.get("plan_code"), field="plan_code", minimum=2, maximum=32),
+        "quantity": _normalize_promo_integer(payload.get("quantity", 1), field="quantity", minimum=1, maximum=200),
+    }
+
+
+def _access_key_issue_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    plan_code = _normalize_identifier(target_id, field="target", minimum=2, maximum=32)
+    if str(payload.get("plan_code") or "") != plan_code:
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель должна совпадать с plan_code.")
+    plan = _row_for_update(
+        session.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == plan_code),
+        session,
+        for_update,
+    )
+    count, max_id = session.query(func.count(GiftCard.id), func.max(GiftCard.id)).one()
+    before = {
+        "plan": _safe_model_snapshot(plan, _PLAN_FIELDS),
+        "issued_count": int(count or 0),
+        "max_issue_id": int(max_id or 0),
+    }
+    return EntityState(
+        entity=plan,
+        version_snapshot=before,
+        public_snapshot=before,
+        context={
+            "mode": "issue",
+            "after_snapshot": {"plan_code": plan_code, "quantity": int(payload["quantity"])},
+            "challenge": plan_code,
+        },
+    )
+
+
+def _normalize_gift_code_create_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"card_type"})
+    return {"card_type": _normalize_identifier(payload.get("card_type"), field="card_type", minimum=3, maximum=20)}
+
+
+def _gift_code_create_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    card_type = _normalize_identifier(target_id, field="target", minimum=3, maximum=20)
+    if str(payload.get("card_type") or "") != card_type:
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель должна совпадать с card_type.")
+    count, max_id = session.query(func.count(GiftCard.id), func.max(GiftCard.id)).one()
+    before = {"issued_count": int(count or 0), "max_issue_id": int(max_id or 0)}
+    return EntityState(
+        entity=None,
+        version_snapshot=before,
+        public_snapshot=before,
+        context={"mode": "create", "after_snapshot": {"card_type": card_type}, "challenge": card_type},
+    )
+
+
+def _sanitize_issued_key_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    safe = dict(result)
+    issued = list(safe.pop("issued", []) or [])
+    gift = safe.pop("gift_code", None)
+    fingerprints: list[dict[str, Any]] = []
+    for item in issued:
+        if isinstance(item, Mapping) and isinstance(item.get("key"), str):
+            fingerprints.append(_redacted_text(str(item["key"])))
+    if isinstance(gift, Mapping) and isinstance(gift.get("code"), str):
+        fingerprints.append(_redacted_text(str(gift["code"])))
+    safe["issued_fingerprints"] = fingerprints
+    safe["issued_count"] = len(fingerprints)
+    return safe
+
+
+def _normalize_node_sync_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"tg_id", "segment", "limit"})
+    tg_value = payload.get("tg_id")
+    tg_id = None if tg_value is None else _normalize_promo_integer(tg_value, field="tg_id", minimum=1, maximum=2**63 - 1)
+    segment = _bounded_text(payload.get("segment", "active"), field="segment", minimum=2, maximum=32).lower()
+    if segment not in {"active", "free", "paid"}:
+        raise ActionIntentError("invalid_payload", status_code=422, message="Сегмент sync не поддерживается.")
+    return {
+        "tg_id": tg_id,
+        "segment": segment,
+        "limit": _normalize_promo_integer(payload.get("limit", 100), field="limit", minimum=1, maximum=1000),
+    }
+
+
+def _node_sync_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    if target_id != "global":
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель global sync указана неверно.")
+    query = session.query(User).filter(User.tg_id > 0)
+    if payload.get("tg_id") is not None:
+        query = query.filter(User.tg_id == int(payload["tg_id"]))
+    elif payload["segment"] == "active":
+        query = query.filter(User.is_active == True)
+    elif payload["segment"] == "free":
+        query = query.filter(func.upper(User.sub_type) == "FREE")
+    else:
+        query = query.filter(func.upper(User.sub_type) == "PAID")
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    users = query.order_by(User.created_at.asc(), User.tg_id.asc()).limit(int(payload["limit"])).all()
+    selection = [
+        {
+            "tg_id": int(user.tg_id),
+            "uuid": str(user.uuid or ""),
+            "email": str(user.email or ""),
+            "sub_id": str(user.sub_token or user.tg_id),
+        }
+        for user in users
+    ]
+    recipient_versions = [
+        {
+            "tg_id": int(item["tg_id"]),
+            "identity_sha256": _semantic_hash(
+                "admin-global-sync-recipient",
+                [item["uuid"], item["email"], item["sub_id"]],
+            ),
+        }
+        for item in selection
+    ]
+    selection_hash = _semantic_hash("admin-global-sync-selection", recipient_versions)
+    snapshot = {"selected_count": len(selection), "selection_hash": selection_hash}
+    return EntityState(
+        entity=users,
+        version_snapshot={"payload": dict(payload), "recipients": recipient_versions, **snapshot},
+        public_snapshot=snapshot,
+        context={
+            "mode": "sync",
+            "after_snapshot": {**snapshot, "state": "panel_sync"},
+            "challenge": "ПОДТВЕРДИТЬ УПРАВЛЕНИЕ",
+            "selection": selection,
+            **snapshot,
+        },
+    )
+
+
+def _node_sync_external_context(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "selection": [dict(item) for item in state.context["selection"]],
+        "selection_hash": str(state.context["selection_hash"]),
+        "selected_count": int(state.context["selected_count"]),
+    }
+
+
+ACTION_POLICIES.update(
+    {
+        "plan.create": ActionPolicy(
+            action="plan.create",
+            target_type="plan",
+            risk_level="L2",
+            payload_normalizer=_normalize_plan_create_payload,
+            entity_state_builder=_plan_create_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_plan_create",
+        ),
+        "plan.update": ActionPolicy(
+            action="plan.update",
+            target_type="plan",
+            risk_level="L2",
+            payload_normalizer=_normalize_plan_update_payload,
+            entity_state_builder=_plan_update_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_plan_update",
+        ),
+        "plan.delete": ActionPolicy(
+            action="plan.delete",
+            target_type="plan",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_plan_delete_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_plan_code",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_plan_delete",
+        ),
+        "live_update.create": ActionPolicy(
+            action="live_update.create",
+            target_type="live_update",
+            risk_level="L2",
+            payload_normalizer=_normalize_live_update_create_payload,
+            runtime_payload_normalizer=_normalize_live_update_create_runtime,
+            entity_state_builder=_live_update_create_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_live_update_create",
+        ),
+        "live_update.update": ActionPolicy(
+            action="live_update.update",
+            target_type="live_update",
+            risk_level="L2",
+            payload_normalizer=_normalize_live_update_update_payload,
+            runtime_payload_normalizer=_normalize_live_update_update_runtime,
+            entity_state_builder=_live_update_update_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_live_update_update",
+        ),
+        "live_update.delete": ActionPolicy(
+            action="live_update.delete",
+            target_type="live_update",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_live_update_delete_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_live_update_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_live_update_delete",
+        ),
+        "start_link.create": ActionPolicy(
+            action="start_link.create",
+            target_type="start_link",
+            risk_level="L2",
+            payload_normalizer=_normalize_start_link_create_payload,
+            runtime_payload_normalizer=_normalize_start_link_create_runtime,
+            entity_state_builder=_start_link_create_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_start_link_create",
+        ),
+        "start_link.update": ActionPolicy(
+            action="start_link.update",
+            target_type="start_link",
+            risk_level="L2",
+            payload_normalizer=_normalize_start_link_update_payload,
+            runtime_payload_normalizer=_normalize_start_link_update_runtime,
+            entity_state_builder=_start_link_update_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_start_link_update",
+        ),
+        "start_link.delete": ActionPolicy(
+            action="start_link.delete",
+            target_type="start_link",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_start_link_delete_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_start_link_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_start_link_deactivate",
+        ),
+        "wheel_config.update": ActionPolicy(
+            action="wheel_config.update",
+            target_type="config",
+            risk_level="L2",
+            payload_normalizer=_normalize_wheel_config_payload,
+            entity_state_builder=_wheel_config_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_wheel_config_update",
+        ),
+        "network_rollout_config.update": ActionPolicy(
+            action="network_rollout_config.update",
+            target_type="config",
+            risk_level="L2",
+            payload_normalizer=_normalize_network_config_payload,
+            runtime_payload_normalizer=_normalize_fingerprinted_config_runtime,
+            entity_state_builder=_network_config_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_network_rollout_config_put",
+        ),
+        "warp_material.replace": ActionPolicy(
+            action="warp_material.replace",
+            target_type="warp_material",
+            risk_level="L3",
+            payload_normalizer=_normalize_warp_material_payload,
+            runtime_payload_normalizer=_normalize_warp_material_runtime,
+            entity_state_builder=_warp_material_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_tg_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_warp_material_put",
+            audit_target_builder=_audit_warp_target,
+        ),
+        "promo_slots.update": ActionPolicy(
+            action="promo_slots.update",
+            target_type="config",
+            risk_level="L2",
+            payload_normalizer=_normalize_promo_slots_payload,
+            runtime_payload_normalizer=_normalize_fingerprinted_config_runtime,
+            entity_state_builder=_promo_slots_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_promo_slots_put",
+        ),
+        "loyalty_config.update": ActionPolicy(
+            action="loyalty_config.update",
+            target_type="config",
+            risk_level="L2",
+            payload_normalizer=_normalize_loyalty_config_payload,
+            runtime_payload_normalizer=_normalize_fingerprinted_config_runtime,
+            entity_state_builder=_loyalty_config_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_loyalty_config_put",
+        ),
+        "campaign.create": ActionPolicy(
+            action="campaign.create",
+            target_type="campaign",
+            risk_level="L2",
+            payload_normalizer=_normalize_campaign_create_payload,
+            runtime_payload_normalizer=_normalize_campaign_create_runtime,
+            entity_state_builder=_campaign_create_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_campaign_create",
+        ),
+        "campaign.update": ActionPolicy(
+            action="campaign.update",
+            target_type="campaign",
+            risk_level="L2",
+            payload_normalizer=_normalize_campaign_update_payload,
+            runtime_payload_normalizer=_normalize_campaign_update_runtime,
+            entity_state_builder=_campaign_update_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_campaign_patch",
+        ),
+        "campaign.delete": ActionPolicy(
+            action="campaign.delete",
+            target_type="campaign",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_campaign_delete_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_campaign_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_campaign_disable",
+        ),
+        "template.create": ActionPolicy(
+            action="template.create",
+            target_type="template",
+            risk_level="L2",
+            payload_normalizer=_normalize_template_create_payload,
+            runtime_payload_normalizer=_normalize_template_create_runtime,
+            entity_state_builder=_template_create_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_template_create",
+        ),
+        "template.update": ActionPolicy(
+            action="template.update",
+            target_type="template",
+            risk_level="L2",
+            payload_normalizer=_normalize_template_update_payload,
+            runtime_payload_normalizer=_normalize_template_update_runtime,
+            entity_state_builder=_template_update_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_l2_challenge,
+            executor_kind="db",
+            audit_action="admin_template_update",
+        ),
+        "template.delete": ActionPolicy(
+            action="template.delete",
+            target_type="template",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_template_delete_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_template_key",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_template_delete",
+        ),
+        "access_key.issue": ActionPolicy(
+            action="access_key.issue",
+            target_type="access_key_batch",
+            risk_level="L3",
+            payload_normalizer=_normalize_access_key_issue_payload,
+            entity_state_builder=_access_key_issue_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_plan_code",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_access_keys_issue",
+            result_sanitizer=_sanitize_issued_key_result,
+        ),
+        "gift_code.create": ActionPolicy(
+            action="gift_code.create",
+            target_type="gift_code",
+            risk_level="L3",
+            payload_normalizer=_normalize_gift_code_create_payload,
+            entity_state_builder=_gift_code_create_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_card_type",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_gift_code_create",
+            result_sanitizer=_sanitize_issued_key_result,
+        ),
+        "node.sync_global": ActionPolicy(
+            action="node.sync_global",
+            target_type="node_sync",
+            risk_level="L3",
+            payload_normalizer=_normalize_node_sync_payload,
+            entity_state_builder=_node_sync_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_management_challenge,
+            executor_kind="external",
+            audit_action="admin_nodes_sync",
+            external_context_builder=_node_sync_external_context,
+        ),
+    }
+)
+
+
+ACTION_POLICY_ROUTES: dict[str, tuple[tuple[str, str], ...]] = {
+    "payment.reconcile": (("POST", "/api/admin/payments/orders/{provider}/{order_id}/reconcile"),),
+    "user.manual_create": (("POST", "/api/admin/users/manual"),),
+    "user.extend": (
+        ("POST", "/api/admin/users/{tg_id}/manual/extend"),
+        ("POST", "/api/admin/users/{tg_id}/manual-extend"),
+    ),
+    "user.block": (("POST", "/api/admin/users/{tg_id}/manual/block"),),
+    "user.regenerate_token": (("POST", "/api/admin/users/{tg_id}/manual/regenerate-token"),),
+    "user.safe_delete": (("POST", "/api/admin/users/{tg_id}/safe-delete"),),
+    "user.delete_test": (("POST", "/api/admin/users/{tg_id}/delete-test-user"),),
+    "user.key_toggle": (("POST", "/api/admin/users/{tg_id}/keys/{node_code}/toggle"),),
+    "user.key_reset_traffic": (("POST", "/api/admin/users/{tg_id}/keys/{node_code}/reset-traffic"),),
+    "user.key_resync_subid": (("POST", "/api/admin/users/{tg_id}/keys/{node_code}/resync-subid"),),
+    "user.key_limits": (("PUT", "/api/admin/users/{tg_id}/key-limits/{node_code}"),),
+    "user.loyalty_grant": (("POST", "/api/admin/users/{tg_id}/loyalty/grant"),),
+    "user.preset_run": (("POST", "/api/admin/users/{tg_id}/presets/run"),),
+    "user.bulk_key_action": (("POST", "/api/admin/users/keys/bulk-action"),),
+    "user.message": (("POST", "/api/admin/users/{tg_id}/message"),),
+    "broadcast.send": (("POST", "/api/admin/broadcast"),),
+    "promo.create": (("POST", "/api/admin/promos"),),
+    "promo.update": (("PATCH", "/api/admin/promos/{code}"),),
+    "promo.delete": (("DELETE", "/api/admin/promos/{code}"),),
+    "plan.create": (("POST", "/api/admin/plans"),),
+    "plan.update": (("PATCH", "/api/admin/plans/{code}"),),
+    "plan.delete": (("DELETE", "/api/admin/plans/{code}"),),
+    "live_update.create": (("POST", "/api/admin/live-updates"),),
+    "live_update.update": (("PATCH", "/api/admin/live-updates/{update_id}"),),
+    "live_update.delete": (("DELETE", "/api/admin/live-updates/{update_id}"),),
+    "start_link.create": (("POST", "/api/admin/start-links"),),
+    "start_link.update": (("PATCH", "/api/admin/start-links/{link_id}"),),
+    "start_link.delete": (("DELETE", "/api/admin/start-links/{link_id}"),),
+    "wheel_config.update": (("PUT", "/api/admin/wheel-config"),),
+    "network_rollout_config.update": (("PUT", "/api/admin/network-rollout-config"),),
+    "warp_material.replace": (("PUT", "/api/admin/client/warp/material"),),
+    "promo_slots.update": (("PUT", "/api/admin/promo-slots"),),
+    "referral.process": (("POST", "/api/admin/referrals/process"),),
+    "loyalty_config.update": (("PUT", "/api/admin/loyalty-config"),),
+    "campaign.create": (("POST", "/api/admin/campaigns"),),
+    "campaign.update": (("PATCH", "/api/admin/campaigns/{campaign_id}"),),
+    "campaign.delete": (("DELETE", "/api/admin/campaigns/{campaign_id}"),),
+    "template.create": (("POST", "/api/admin/templates"),),
+    "template.update": (("PATCH", "/api/admin/templates/{key}"),),
+    "template.delete": (("DELETE", "/api/admin/templates/{key}"),),
+    "access_key.issue": (("POST", "/api/admin/access-keys/issue"),),
+    "gift_code.create": (("POST", "/api/admin/gift-codes"),),
+    "ticket.reply": (("POST", "/api/admin/tickets/{ticket_id}/reply"),),
+    "ticket.status": (("POST", "/api/admin/tickets/{ticket_id}/status"),),
+    "provider_quota.create": (("POST", "/api/admin/provider-quotas"),),
+    "provider_quota.update": (("PATCH", "/api/admin/provider-quotas/{node_code}"),),
+    "provider_quota.delete": (("DELETE", "/api/admin/provider-quotas/{node_code}"),),
+    "key.rotate": (("POST", "/api/admin/keys/{key_id}/rotate"),),
+    "node.sync_global": (("POST", "/api/admin/nodes/sync"),),
+    "node.drain": (("POST", "/api/admin/nodes/{node_code}/drain"),),
+    "node.enable": (("POST", "/api/admin/nodes/{node_code}/enable"),),
+    "node.undrain": (("POST", "/api/admin/nodes/{node_code}/undrain"),),
+    "node.disable": (("POST", "/api/admin/nodes/{node_code}/disable"),),
+    "node.resync": (("POST", "/api/admin/nodes/{node_code}/resync"),),
+}
+
+
+def action_policy_route_keys() -> frozenset[tuple[str, str]]:
+    unknown = set(ACTION_POLICY_ROUTES) - set(ACTION_POLICIES)
+    if unknown:
+        raise RuntimeError(f"Routes reference unknown action policies: {sorted(unknown)!r}")
+    route_keys = [
+        route_key
+        for routes in ACTION_POLICY_ROUTES.values()
+        for route_key in routes
+    ]
+    if len(route_keys) != len(set(route_keys)):
+        raise RuntimeError("An admin mutation route is assigned to multiple policies")
+    return frozenset(route_keys)
+
+
 def _validate_execution(
     *,
     session,
@@ -5182,11 +6680,19 @@ async def execute_action_intent(
                 "audit_id": int(audit.id),
                 **domain_result,
             }
+            persisted_result = (
+                policy.result_sanitizer(result)
+                if policy.result_sanitizer is not None
+                else result
+            )
             intent.status = "completed"
             intent.admin_audit_id = int(audit.id)
             intent.result_code = "completed"
-            intent.result_summary_json = _canonical_json(result)
-            intent.result_hash = _semantic_hash("admin-action-result", result)
+            intent.result_summary_json = _canonical_json(persisted_result)
+            intent.result_hash = _semantic_hash(
+                "admin-action-result",
+                persisted_result,
+            )
             session.commit()
             if (
                 policy.post_commit_context_builder is not None

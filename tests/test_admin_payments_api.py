@@ -302,6 +302,14 @@ class AdminPaymentsApiTests(unittest.TestCase):
         finally:
             session.close()
 
+    def test_payment_reconcile_route_is_in_exact_action_policy_registry(self) -> None:
+        from admin_action_intent_service import ACTION_POLICY_ROUTES
+
+        self.assertEqual(
+            ACTION_POLICY_ROUTES["payment.reconcile"],
+            (("POST", "/api/admin/payments/orders/{provider}/{order_id}/reconcile"),),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

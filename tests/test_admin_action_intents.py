@@ -1860,6 +1860,68 @@ def test_broadcast_executes_only_frozen_recipients_and_message(
         session.close()
 
 
+def test_warp_material_intent_persists_fingerprints_only(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminActionIntent, User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add(
+            User(
+                tg_id=7301,
+                uuid="00000000-0000-4000-8000-000000007301",
+                email="warp-guard@example.test",
+                sub_type="PAID",
+                created_at=now,
+                expiry_at=now + timedelta(days=30),
+                is_active=True,
+                sub_token="warp-guard-token",
+                app_install_id="install-warp-7301",
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    private_key = "SYNTHETIC-WARP-PRIVATE-MATERIAL"
+    account_token = "SYNTHETIC-WARP-ACCOUNT-TOKEN"
+    client = TestClient(api.app)
+    prepared = _prepare(
+        client,
+        action="warp_material.replace",
+        target_type="warp_material",
+        target_id="7301",
+        payload={
+            "tg_id": 7301,
+            "install_id": "install-warp-7301",
+            "source": "operator_provisioned",
+            "mode": "proxy_over_warp",
+            "wireguard_config": {"private_key": private_key, "address": "172.16.0.2/32"},
+            "account": {"token": account_token},
+        },
+    )
+
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["risk_level"] == "L3"
+    assert prepared.json()["confirmation_challenge"] == "7301"
+    session = api.SessionLocal()
+    try:
+        intent = session.query(AdminActionIntent).filter_by(id=prepared.json()["intent_id"]).one()
+        persisted = " ".join((intent.canonical_payload_json, intent.preview_snapshot_json))
+        assert private_key not in persisted
+        assert account_token not in persisted
+        assert "install-warp-7301" not in persisted
+        canonical = json.loads(intent.canonical_payload_json)
+        assert len(canonical["wireguard_config"]["sha256"]) == 64
+        assert len(canonical["account"]["sha256"]) == 64
+    finally:
+        session.close()
+
+
 def test_broadcast_timeout_is_uncertain_and_same_idempotency_does_not_resend(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

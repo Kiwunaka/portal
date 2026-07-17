@@ -804,6 +804,15 @@ def test_admin_broadcast_dry_run_does_not_send(monkeypatch, tmp_path) -> None:
     assert body["failed"] == 0
     assert sent_messages == []
 
+    guarded = client.post(
+        "/api/admin/broadcast",
+        headers=_admin_headers(),
+        json={"text": "Реальная отправка", "segment": "all_active", "limit": 20, "dry_run": False},
+    )
+    assert guarded.status_code == 428, guarded.text
+    assert guarded.json()["detail"]["code"] == "intent_required"
+    assert sent_messages == []
+
 
 def test_provider_quota_usage_handles_counter_reset(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
