@@ -4,11 +4,6 @@ import {
   adminKeyRotate,
   adminKeysPressure,
   adminMetricsStatus,
-  adminNodeDisable,
-  adminNodeDrain,
-  adminNodeEnable,
-  adminNodeResync,
-  adminNodeUndrain,
   adminNodesDrift,
   adminNodesCapacity,
   adminNodesHealth,
@@ -267,8 +262,6 @@ export default function AdminNodesPage() {
   const [busy, setBusy] = useState(false);
   const [syncTarget, setSyncTarget] = useState("");
   const [driftBusy, setDriftBusy] = useState(false);
-  const [nodeActionBusy, setNodeActionBusy] = useState("");
-  const [nodeActionNote, setNodeActionNote] = useState("");
   const [operatorToolNote, setOperatorToolNote] = useState("");
   const [error, setError] = useState("");
 
@@ -383,36 +376,6 @@ export default function AdminNodesPage() {
     }
   };
 
-  const runNodeAction = async (node: AdminNodeHealthRow, action: "drain" | "undrain" | "enable" | "disable" | "resync"): Promise<void> => {
-    setNodeActionBusy(`${action}:${node.code}`);
-    setNodeActionNote("");
-    setError("");
-    try {
-      if (action === "drain") {
-        await adminNodeDrain(node.code);
-        setNodeActionNote(`Нода ${node.code.toUpperCase()} больше не принимает новые назначения.`);
-      } else if (action === "enable") {
-        await adminNodeEnable(node.code);
-        setNodeActionNote(`Нода ${node.code.toUpperCase()} снова участвует в выдаче.`);
-      } else if (action === "undrain") {
-        await adminNodeUndrain(node.code);
-        setNodeActionNote(`Нода ${node.code.toUpperCase()} снова принимает новые назначения.`);
-      } else if (action === "disable") {
-        await adminNodeDisable(node.code, {});
-        setNodeActionNote(`Нода ${node.code.toUpperCase()} выключена из выдачи.`);
-      } else {
-        const result = await adminNodeResync(node.code, { limit: 200 });
-        setNodeActionNote(`Обновление ${node.code.toUpperCase()}: перенесено ${result.migrated}, пропущено ${result.skipped}, ошибок ${result.failed}.`);
-      }
-      await load();
-      if (drift) await loadDrift();
-    } catch (err) {
-      setError(String((err as { message?: string })?.message || err || "Не удалось выполнить действие с нодой."));
-    } finally {
-      setNodeActionBusy("");
-    }
-  };
-
   const runSync = async (segment: string): Promise<void> => {
     setBusy(true);
     setSyncTarget(segment);
@@ -420,7 +383,7 @@ export default function AdminNodesPage() {
     try {
       await adminNodesSync({ segment, limit: 200 });
       await load();
-      setNodeActionNote(`Сегмент ${segment} пересобран и синхронизирован.`);
+      setOperatorToolNote(`Сегмент ${segment} пересобран и синхронизирован.`);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось пересобрать назначения."));
     } finally {
@@ -480,7 +443,6 @@ export default function AdminNodesPage() {
           </div>
         </div>
         {error ? <p className="mt-3 text-sm text-[color:var(--atlas-status-danger-text)]">{error}</p> : null}
-        {nodeActionNote ? <p className="mt-2 text-sm text-[color:var(--atlas-status-success-text)]">{nodeActionNote}</p> : null}
         {operatorToolNote ? <p className="mt-2 text-sm text-[color:var(--atlas-status-success-text)]">{operatorToolNote}</p> : null}
         {status?.active_alerts?.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1048,26 +1010,19 @@ export default function AdminNodesPage() {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {node.enabled && !node.is_draining ? (
-                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "drain")}>
-                    {nodeActionBusy === `drain:${node.code}` ? "..." : "Остановить новые"}
-                  </button>
-                ) : node.is_draining ? (
-                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "undrain")}>
-                    {nodeActionBusy === `undrain:${node.code}` ? "..." : "Снова принимать новые"}
-                  </button>
-                ) : (
-                  <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy} onClick={() => void runNodeAction(node, "enable")}>
-                    {nodeActionBusy === `enable:${node.code}` ? "..." : "Вернуть в выдачу"}
-                  </button>
-                )}
-                <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold" disabled={!!nodeActionBusy || !node.enabled} onClick={() => void runNodeAction(node, "resync")}>
-                  {nodeActionBusy === `resync:${node.code}` ? "..." : "Пересобрать назначения"}
-                </button>
-                <button type="button" className="outline-btn rounded-xl px-3 py-2 text-xs font-semibold sm:col-span-2" disabled={!!nodeActionBusy || !node.enabled} onClick={() => void runNodeAction(node, "disable")}>
-                  {nodeActionBusy === `disable:${node.code}` ? "..." : "Выключить ноду"}
-                </button>
+              <div className="mt-4 rounded-xl border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3">
+                <div className="text-sm font-semibold">Команды доступны в операционном центре</div>
+                <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-soft)]">
+                  Изменение состояния ноды и перенос клиентов требуют серверного предпросмотра и записи в аудит.
+                </p>
+                <a
+                  href={`https://admin.pokrov.space/nodes?selected=${encodeURIComponent(node.code)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary mt-3 inline-flex rounded-xl px-3 py-2 text-xs font-semibold"
+                >
+                  Открыть безопасные действия
+                </a>
               </div>
 
               {probeFailure ? (

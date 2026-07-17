@@ -7,14 +7,10 @@ import {
   Check,
   Eye,
   Loader2,
-  Power,
-  PowerOff,
   RefreshCw,
-  RotateCw,
   Save,
   Search,
   Send,
-  ShieldAlert,
   Trash2
 } from "lucide-react";
 import {
@@ -51,8 +47,6 @@ import {
   fetchPaymentsSummary,
   fetchProviderQuotas,
   fetchTrafficSummary,
-  nodeLifecycleAction,
-  nodeResync,
   saveProviderQuota,
   sendBroadcast,
   silenceAlert,
@@ -107,14 +101,6 @@ type QuotaFormState = {
   critical_ratio: string;
   enabled: boolean;
   notes: string;
-};
-
-type NodePendingAction = {
-  action: "drain" | "enable" | "undrain" | "disable" | "resync";
-  code: string;
-  confirm: string;
-  force: boolean;
-  limit: string;
 };
 
 const moduleSections = new Set<OpsDashboardSection>(["promos", "referrals"]);
@@ -675,10 +661,6 @@ export function LegacySection({
   const [userStatus, setUserStatus] = useState("");
   const [selectedTgId, setSelectedTgId] = useState<number | null>(null);
   const [selectedNodeCode, setSelectedNodeCode] = useState("");
-  const [pendingNodeAction, setPendingNodeAction] = useState<NodePendingAction | null>(null);
-  const [nodeActionBusy, setNodeActionBusy] = useState(false);
-  const [nodeActionResult, setNodeActionResult] = useState("");
-  const [nodeActionError, setNodeActionError] = useState("");
   const [quotaForm, setQuotaForm] = useState<QuotaFormState | null>(null);
   const [savingQuota, setSavingQuota] = useState(false);
   const [deletingQuota, setDeletingQuota] = useState(false);
@@ -1094,32 +1076,6 @@ export function LegacySection({
     </div>
   );
 
-  const runNodeAction = async (dryRun = false) => {
-    if (!pendingNodeAction || !selectedNode) return;
-    if (pendingNodeAction.confirm.trim().toLowerCase() !== pendingNodeAction.code.toLowerCase()) {
-      setNodeActionError("Введи node_code точно, например " + pendingNodeAction.code);
-      return;
-    }
-    setNodeActionBusy(true);
-    setNodeActionError("");
-    setNodeActionResult("");
-    try {
-      const output =
-        pendingNodeAction.action === "resync"
-          ? await nodeResync(pendingNodeAction.code, { limit: Number(pendingNodeAction.limit || 100), dry_run: dryRun })
-          : await nodeLifecycleAction(pendingNodeAction.code, pendingNodeAction.action, { force: pendingNodeAction.force });
-      setNodeActionResult(`${pendingNodeAction.action}: ok ${compactValue(output.ok)} · dry_run ${compactValue(output.dry_run)}`);
-      if (!dryRun) {
-        setPendingNodeAction(null);
-        await load();
-      }
-    } catch (err) {
-      setNodeActionError(errorMessage(err, "Node action failed"));
-    } finally {
-      setNodeActionBusy(false);
-    }
-  };
-
   const renderNodeDetail = selectedNode ? (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1140,60 +1096,20 @@ export function LegacySection({
         <Field label="online" value={`${formatInt(selectedNode.online_keys_now)} ключ / ${formatInt(selectedNode.online_connections_now)} соед.`} />
         <Field label="mapped users" value={selectedNode.mapped_users ?? 0} />
       </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-5">
-        {(["drain", "enable", "undrain", "disable", "resync"] as const).map((action) => (
-          <Button
-            key={action}
-            tone={action === "disable" ? "danger" : "secondary"}
-            onClick={() => {
-              setPendingNodeAction({ action, code: selectedNode.code, confirm: "", force: false, limit: "100" });
-              setNodeActionError("");
-              setNodeActionResult("");
-            }}
-          >
-            {action === "enable" || action === "undrain" ? <Power size={15} /> : action === "disable" ? <PowerOff size={15} /> : action === "resync" ? <RotateCw size={15} /> : <ShieldAlert size={15} />}
-            {action}
-          </Button>
-        ))}
-      </div>
-      {pendingNodeAction ? (
-        <div className="mt-4 rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3">
-          <div className="mb-3 text-sm font-semibold">Подтверждение: {pendingNodeAction.action} для {pendingNodeAction.code}</div>
-          <div className="grid gap-2 md:grid-cols-[1fr_120px_auto_auto] md:items-end">
-            <label className="text-xs font-semibold text-[color:var(--atlas-text-soft)]">
-              введи node_code
-              <input
-                value={pendingNodeAction.confirm}
-                onChange={(event) => setPendingNodeAction({ ...pendingNodeAction, confirm: event.target.value })}
-                className="mt-1 h-9 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 text-sm outline-none focus:border-[color:var(--atlas-focus)]"
-              />
-            </label>
-            {pendingNodeAction.action === "resync" ? (
-              <label className="text-xs font-semibold text-[color:var(--atlas-text-soft)]">
-                limit
-                <input
-                  value={pendingNodeAction.limit}
-                  onChange={(event) => setPendingNodeAction({ ...pendingNodeAction, limit: event.target.value })}
-                  className="mt-1 h-9 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 text-sm outline-none focus:border-[color:var(--atlas-focus)]"
-                />
-              </label>
-            ) : (
-              <label className="flex h-9 items-center gap-2 text-sm text-[color:var(--atlas-text-soft)]">
-                <input type="checkbox" checked={pendingNodeAction.force} onChange={(event) => setPendingNodeAction({ ...pendingNodeAction, force: event.target.checked })} />
-                force
-              </label>
-            )}
-            {pendingNodeAction.action === "resync" ? <Button disabled={nodeActionBusy} onClick={() => void runNodeAction(true)}><Eye size={15} /> Dry-run</Button> : null}
-            <Button tone={pendingNodeAction.action === "disable" ? "danger" : "primary"} disabled={nodeActionBusy} onClick={() => void runNodeAction(false)}>
-              {nodeActionBusy ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />} Выполнить
-            </Button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {nodeActionError ? <Badge tone="danger">{nodeActionError}</Badge> : null}
-            {nodeActionResult ? <Badge tone="success">{nodeActionResult}</Badge> : null}
-          </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3">
+        <div>
+          <div className="text-sm font-semibold text-[color:var(--atlas-text)]">Команды перенесены в операционный центр</div>
+          <p className="mt-1 text-xs leading-5 text-[color:var(--atlas-text-soft)]">
+            Изменение состояния и перенос клиентов доступны только через серверный предпросмотр с записью в аудит.
+          </p>
         </div>
-      ) : null}
+        <a
+          href={`/nodes?selected=${encodeURIComponent(selectedNode.code)}`}
+          className="inline-flex min-h-9 items-center justify-center rounded-[var(--pokrov-radius-control)] bg-[color:var(--atlas-primary)] px-3 text-sm font-semibold text-white"
+        >
+          Открыть безопасные действия
+        </a>
+      </div>
     </Card>
   ) : null;
 

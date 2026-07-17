@@ -187,26 +187,6 @@ export async function fetchPaymentOrders(limit = 80, init?: ApiRequestInit): Pro
   return Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : [];
 }
 
-export function nodeLifecycleAction(
-  nodeCode: string,
-  action: "drain" | "enable" | "undrain" | "disable",
-  payload?: { force?: boolean }
-): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>(`/api/admin/nodes/${encodeURIComponent(nodeCode)}/${action}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-}
-
-export function nodeResync(nodeCode: string, payload?: { limit?: number; dry_run?: boolean }): Promise<Record<string, unknown>> {
-  return apiFetch<Record<string, unknown>>(`/api/admin/nodes/${encodeURIComponent(nodeCode)}/resync`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {})
-  });
-}
-
 export async function sendBroadcast(payload: { text: string; segment: string; limit: number; tg_ids?: number[]; dry_run?: boolean }): Promise<Record<string, unknown>> {
   return apiFetch<Record<string, unknown>>("/api/admin/broadcast", {
     method: "POST",
