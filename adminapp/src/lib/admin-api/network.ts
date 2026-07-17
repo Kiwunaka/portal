@@ -54,7 +54,9 @@ export type ProviderQuotaConfig = {
   warning_ratio: number | null;
   critical_ratio: number | null;
   enabled: boolean;
-  notes: string | null;
+  notes_present: boolean;
+  notes_length: number;
+  notes_sha256: string;
   created_at: string | null;
   updated_at: string | null;
 };

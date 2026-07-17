@@ -834,47 +834,39 @@ def test_provider_quota_usage_handles_counter_reset(monkeypatch, tmp_path) -> No
         s.close()
 
 
-def test_provider_quota_crud_writes_audit(monkeypatch, tmp_path) -> None:
+def test_provider_quota_read_contract_redacts_persisted_notes(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
-    from models import ProviderTrafficQuotaAudit
+    from models import ProviderTrafficQuota
 
     client = TestClient(api.app)
-    headers = _admin_headers()
-
-    created = client.post(
-        "/api/admin/provider-quotas",
-        headers=headers,
-        json={
-            "node_code": "nl-free",
-            "included_gb": 100,
-            "reset_day": 15,
-            "timezone": "UTC",
-            "warning_ratio": 0.7,
-            "critical_ratio": 0.9,
-            "enabled": True,
-            "notes": "free hoster cap",
-        },
-    )
-    assert created.status_code == 200, created.text
-    assert created.json()["quota"]["included_gb"] == 100.0
-
-    updated = client.patch(
-        "/api/admin/provider-quotas/nl-free",
-        headers=headers,
-        json={"included_gb": 120, "notes": "raised after provider change"},
-    )
-    assert updated.status_code == 200, updated.text
-    assert updated.json()["quota"]["included_gb"] == 120.0
-
-    deleted = client.delete("/api/admin/provider-quotas/nl-free", headers=headers)
-    assert deleted.status_code == 200, deleted.text
-
+    private_note = "SYNTHETIC-PRIVATE-PROVIDER-NOTE"
     s = api.SessionLocal()
     try:
-        actions = [row.action for row in s.query(ProviderTrafficQuotaAudit).order_by(ProviderTrafficQuotaAudit.id.asc()).all()]
+        s.add(
+            ProviderTrafficQuota(
+                node_code="nl-free",
+                included_bytes=_gb(100),
+                reset_day=15,
+                timezone="UTC",
+                warning_ratio=0.7,
+                critical_ratio=0.9,
+                enabled=True,
+                notes=private_note,
+            )
+        )
+        s.commit()
     finally:
         s.close()
-    assert actions == ["create", "update", "delete"]
+
+    response = client.get("/api/admin/provider-quotas", headers=_admin_headers())
+    assert response.status_code == 200, response.text
+    assert private_note not in response.text
+    quota = response.json()["quotas"][0]
+    assert quota["node_code"] == "nl-free"
+    assert quota["notes_present"] is True
+    assert quota["notes_length"] == len(private_note)
+    assert len(quota["notes_sha256"]) == 64
+    assert "notes" not in quota
 
 
 def test_durable_alert_refresh_resolves_missing_candidates(monkeypatch, tmp_path) -> None:

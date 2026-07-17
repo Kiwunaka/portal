@@ -699,6 +699,7 @@ type AdminApiMockOptions = {
   delayFirstOverviewFailure?: boolean;
   ticketReplyOutcomes?: Array<"completed" | "failed" | "uncertain">;
   networkScenario?: "populated";
+  networkDelayMs?: number;
 };
 
 const networkTrafficRows = [
@@ -719,7 +720,9 @@ const networkQuotaConfig = {
   warning_ratio: 0.8,
   critical_ratio: 0.95,
   enabled: true,
-  notes: null,
+  notes_present: false,
+  notes_length: 0,
+  notes_sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   created_at: "2026-07-01T10:00:00Z",
   updated_at: "2026-07-15T09:55:00Z",
 };
@@ -1084,6 +1087,21 @@ export async function installAdminApiMock(
         "x-admin-confirmation-sha256": requestHeaders["x-admin-confirmation-sha256"] || "",
       },
     });
+
+    if (
+      method === "GET"
+      && options.networkDelayMs
+      && [
+        "/api/admin/traffic/summary",
+        "/api/admin/alerts",
+        "/api/admin/provider-quotas",
+        "/api/admin/provider-quotas/status",
+        "/api/admin/free-tier/summary",
+        "/api/admin/free-tier/users",
+      ].includes(url.pathname)
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, options.networkDelayMs));
+    }
 
     const knownPath = isFocusedGetPath(url.pathname)
       || url.pathname === "/api/admin/auth/session"

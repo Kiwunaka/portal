@@ -1020,37 +1020,6 @@ def test_client_and_ticket_mutation_routes_require_action_intent(
         assert _detail_code(response) == "intent_required"
 
 
-def test_private_message_and_bulk_selection_persist_only_hashes(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    api = _load_api(monkeypatch, tmp_path)
-    from models import AdminActionIntent, AdminAudit, User
-
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    session = api.SessionLocal()
-    try:
-        session.add_all(
-            [
-                User(
-                    tg_id=tg_id,
-                    uuid=f"00000000-0000-4000-8000-{tg_id:012d}",
-                    email=f"task14-{tg_id}@example.test",
-                    sub_type="PAID",
-                    current_plan_code="1_month",
-                    created_at=now,
-                    expiry_at=now + timedelta(days=30),
-                    is_active=True,
-                    sub_token=f"task14-token-{tg_id}",
-                )
-                for tg_id in (1001, 1002)
-            ]
-        )
-        session.commit()
-    finally:
-        session.close()
-
-
 def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_l1(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -1058,6 +1027,7 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
     api = _load_api(monkeypatch, tmp_path)
     _seed_nodes(api)
     client = TestClient(api.app)
+    private_note = "SYNTHETIC-PRIVATE-PROVIDER-NOTE"
     create_payload = {
         "node_code": "de",
         "included_gb": 80,
@@ -1066,7 +1036,7 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
         "warning_ratio": 0.8,
         "critical_ratio": 0.95,
         "enabled": True,
-        "notes": None,
+        "notes": private_note,
     }
     for method, path, body in (
         ("POST", "/api/admin/provider-quotas", create_payload),
@@ -1123,7 +1093,64 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
     finally:
         session.close()
 
-    private_note = "SYNTHETIC-PRIVATE-PROVIDER-NOTE"
+    create_existing = _prepare(
+        client,
+        action="provider_quota.create",
+        target_type="provider_quota",
+        target_id="nl",
+        payload={**create_payload, "node_code": "nl"},
+    )
+    assert create_existing.status_code == 409, create_existing.text
+    assert _detail_code(create_existing) == "target_exists"
+
+    create_prepared = _prepare(
+        client,
+        action="provider_quota.create",
+        target_type="provider_quota",
+        target_id="de",
+        payload=create_payload,
+    )
+    assert create_prepared.status_code == 200, create_prepared.text
+    assert create_prepared.json()["risk_level"] == "L2"
+    assert create_prepared.json()["confirmation_challenge"] == "ПОДТВЕРДИТЬ"
+    assert private_note not in create_prepared.text
+    create_headers = _execute_headers(
+        str(create_prepared.json()["intent_id"]),
+        confirmation_hash=hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest(),
+    )
+    mismatched_create = client.post(
+        "/api/admin/provider-quotas",
+        headers=create_headers,
+        json={**create_payload, "included_gb": 81},
+    )
+    assert mismatched_create.status_code == 409, mismatched_create.text
+    assert _detail_code(mismatched_create) == "intent_mismatch"
+
+    created = client.post(
+        "/api/admin/provider-quotas",
+        headers=_execute_headers(
+            str(create_prepared.json()["intent_id"]),
+            confirmation_hash=hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest(),
+        ),
+        json=create_payload,
+    )
+    assert created.status_code == 200, created.text
+    assert created.json()["quota"]["included_gb"] == 80.0
+    assert created.json()["quota"]["notes_present"] is True
+    assert created.json()["quota"]["notes_length"] == len(private_note)
+    assert "notes" not in created.json()["quota"]
+    assert private_note not in created.text
+
+    create_again = _prepare(
+        client,
+        action="provider_quota.create",
+        target_type="provider_quota",
+        target_id="de",
+        payload=create_payload,
+    )
+    assert create_again.status_code == 409, create_again.text
+    assert _detail_code(create_again) == "target_exists"
+
     update_payload = {
         "included_gb": 120,
         "reset_day": 1,
@@ -1180,6 +1207,9 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
     assert completed.status_code == 200, completed.text
     assert completed.json()["status"] == "completed"
     assert completed.json()["quota"]["included_gb"] == 120.0
+    assert completed.json()["quota"]["notes_present"] is True
+    assert "notes" not in completed.json()["quota"]
+    assert private_note not in completed.text
 
     delete_preview = _prepare(
         client,
@@ -1193,6 +1223,38 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
     assert delete_preview.json()["confirmation_challenge"] == "NL"
     assert delete_preview.json()["preview"]["before"]["node_status"] == "active"
 
+    wrong_delete = client.request(
+        "DELETE",
+        "/api/admin/provider-quotas/nl",
+        headers=_execute_headers(
+            str(delete_preview.json()["intent_id"]),
+            confirmation_hash=hashlib.sha256(b"DE").hexdigest(),
+        ),
+        json={},
+    )
+    assert wrong_delete.status_code == 409, wrong_delete.text
+    assert _detail_code(wrong_delete) == "confirmation_mismatch"
+
+    delete_fresh = _prepare(
+        client,
+        action="provider_quota.delete",
+        target_type="provider_quota",
+        target_id="nl",
+        payload={},
+    )
+    assert delete_fresh.status_code == 200, delete_fresh.text
+    deleted = client.request(
+        "DELETE",
+        "/api/admin/provider-quotas/nl",
+        headers=_execute_headers(
+            str(delete_fresh.json()["intent_id"]),
+            confirmation_hash=hashlib.sha256(b"NL").hexdigest(),
+        ),
+        json={},
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert deleted.json()["deleted"] is True
+
     acknowledged = client.post(f"/api/admin/alerts/{alert_id}/ack", headers=_admin_headers())
     silenced = client.post(
         f"/api/admin/alerts/{alert_id}/silence",
@@ -1204,16 +1266,158 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
 
     session = api.SessionLocal()
     try:
-        quota = session.query(ProviderTrafficQuota).filter_by(node_code="nl").one()
-        assert quota.included_bytes == 120 * (1024**3)
+        assert session.query(ProviderTrafficQuota).filter_by(node_code="nl").count() == 0
+        quota = session.query(ProviderTrafficQuota).filter_by(node_code="de").one()
+        assert quota.included_bytes == 80 * (1024**3)
         assert quota.notes == private_note
-        assert session.query(ProviderTrafficQuotaAudit).filter_by(node_code="nl", action="update").count() == 1
-        assert session.query(AdminAudit).filter_by(action="admin_provider_quota_update").count() == 1
+        provider_audits = session.query(ProviderTrafficQuotaAudit).order_by(ProviderTrafficQuotaAudit.id.asc()).all()
+        assert [(row.node_code, row.action) for row in provider_audits] == [
+            ("de", "create"),
+            ("nl", "update"),
+            ("nl", "delete"),
+        ]
+        for audit in provider_audits:
+            persisted = f"{audit.before_json or ''} {audit.after_json or ''}"
+            assert private_note not in persisted
+            for raw_snapshot in (audit.before_json, audit.after_json):
+                if raw_snapshot is None:
+                    continue
+                snapshot = json.loads(raw_snapshot)
+                assert "notes" not in snapshot
+                assert set(snapshot) >= {"notes_present", "notes_length", "notes_sha256"}
+                assert len(snapshot["notes_sha256"]) == 64
+        guarded_admin_audits = (
+            session.query(AdminAudit)
+            .filter(
+                AdminAudit.action.in_(
+                    [
+                        "admin_provider_quota_create",
+                        "admin_provider_quota_update",
+                        "admin_provider_quota_delete",
+                    ]
+                )
+            )
+            .all()
+        )
+        guarded_admin_actions = sorted(row.action for row in guarded_admin_audits)
+        assert guarded_admin_actions == [
+            "admin_provider_quota_create",
+            "admin_provider_quota_delete",
+            "admin_provider_quota_update",
+        ]
+        assert all(private_note not in str(row.meta or "") for row in guarded_admin_audits)
         assert session.query(AdminAudit).filter_by(action="admin_ops_alert_ack").count() == 1
         assert session.query(AdminAudit).filter_by(action="admin_ops_alert_silence").count() == 1
         intent = session.query(AdminActionIntent).filter_by(id=fresh.json()["intent_id"]).one()
         assert private_note not in intent.canonical_payload_json
         assert json.loads(intent.canonical_payload_json)["included_bytes"] == 120 * (1024**3)
+        create_intent = session.query(AdminActionIntent).filter_by(id=create_prepared.json()["intent_id"]).one()
+        assert private_note not in create_intent.canonical_payload_json
+    finally:
+        session.close()
+
+
+def test_provider_quota_admin_audit_failure_rolls_back_whole_guarded_transaction(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    _seed_nodes(api)
+    from models import AdminActionIntent, AdminAudit, ProviderTrafficQuota, ProviderTrafficQuotaAudit
+
+    client = TestClient(api.app)
+    payload = {
+        "node_code": "de",
+        "included_gb": 80,
+        "reset_day": 1,
+        "timezone": "UTC",
+        "warning_ratio": 0.8,
+        "critical_ratio": 0.95,
+        "enabled": True,
+        "notes": "SAFE-OPERATOR-NOTE",
+    }
+    prepared = _prepare(
+        client,
+        action="provider_quota.create",
+        target_type="provider_quota",
+        target_id="de",
+        payload=payload,
+    )
+    assert prepared.status_code == 200, prepared.text
+    intent_id = str(prepared.json()["intent_id"])
+    confirmation_hash = hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest()
+    original_add_admin_audit = api._add_admin_audit
+
+    def fail_admin_audit(**_kwargs):
+        raise RuntimeError("synthetic audit failure")
+
+    monkeypatch.setattr(api, "_add_admin_audit", fail_admin_audit)
+    failed = client.post(
+        "/api/admin/provider-quotas",
+        headers=_execute_headers(intent_id, confirmation_hash=confirmation_hash),
+        json=payload,
+    )
+    assert failed.status_code == 503, failed.text
+    assert _detail_code(failed) == "audit_failed"
+
+    session = api.SessionLocal()
+    try:
+        assert session.query(ProviderTrafficQuota).count() == 0
+        assert session.query(ProviderTrafficQuotaAudit).count() == 0
+        assert session.query(AdminAudit).count() == 0
+        intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
+        assert intent.status == "prepared"
+        assert intent.consumed_at is None
+    finally:
+        session.close()
+
+    monkeypatch.setattr(api, "_add_admin_audit", original_add_admin_audit)
+    completed = client.post(
+        "/api/admin/provider-quotas",
+        headers=_execute_headers(intent_id, confirmation_hash=confirmation_hash),
+        json=payload,
+    )
+    assert completed.status_code == 200, completed.text
+
+    session = api.SessionLocal()
+    try:
+        assert session.query(ProviderTrafficQuota).filter_by(node_code="de").count() == 1
+        assert session.query(ProviderTrafficQuotaAudit).filter_by(node_code="de", action="create").count() == 1
+        assert session.query(AdminAudit).filter_by(action="admin_provider_quota_create").count() == 1
+        intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
+        assert intent.status == "completed"
+        assert intent.admin_audit_id is not None
+    finally:
+        session.close()
+
+
+def test_private_message_and_bulk_selection_persist_only_hashes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminActionIntent, AdminAudit, User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add_all(
+            [
+                User(
+                    tg_id=tg_id,
+                    uuid=f"00000000-0000-4000-8000-{tg_id:012d}",
+                    email=f"task14-{tg_id}@example.test",
+                    sub_type="PAID",
+                    current_plan_code="1_month",
+                    created_at=now,
+                    expiry_at=now + timedelta(days=30),
+                    is_active=True,
+                    sub_token=f"task14-token-{tg_id}",
+                )
+                for tg_id in (1001, 1002)
+            ]
+        )
+        session.commit()
     finally:
         session.close()
 

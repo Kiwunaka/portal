@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { MISSING_DATA_TEXT, MissingData } from "@/components/ops/missing-data";
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, DataTable, EmptyState, SectionTitle } from "@/components/ui";
@@ -14,11 +15,20 @@ import { useRouteResource } from "@/lib/use-route-resource";
 import { readUrlState, replaceUrlState, subscribeToUrlState, urlCodecs } from "@/lib/url-state";
 
 type TrafficUrlState = { range: TrafficRange; node: string };
+type TrafficChartPoint = { date: string; label: string; [key: string]: string | number | null };
 
 const TRAFFIC_URL_CODECS = {
   range: urlCodecs.enum(["7d", "30d", "90d"] as const, "30d"),
   node: urlCodecs.string(""),
 };
+
+const MISSING_POOL = "__missing_pool__";
+const POOL_STROKES = [
+  "var(--atlas-primary)",
+  "var(--atlas-status-warning-text)",
+  "var(--atlas-status-success-text)",
+  "var(--atlas-status-danger-text)",
+];
 
 function finite(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -31,9 +41,11 @@ function numberText(value: unknown, digits = 2): string {
 
 function MissingNumber({ value, suffix = "" }: { value: unknown; suffix?: string }) {
   const normalized = finite(value);
-  return normalized === null ? (
-    <span><span className="font-semibold">—</span><span className="block text-[11px] text-[color:var(--atlas-text-muted)]">Нет данных</span></span>
-  ) : <span className="tabular-nums">{numberText(normalized)}{suffix}</span>;
+  return normalized === null ? <MissingData /> : <span className="tabular-nums">{numberText(normalized)}{suffix}</span>;
+}
+
+function poolCode(row: TrafficRow): string {
+  return row.pool_code.trim() || MISSING_POOL;
 }
 
 function isAccessDenied(error: AdminApiError | null): boolean {
@@ -57,18 +69,29 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
 
   const nodes = useMemo(() => [...new Set((resource.data?.rows || []).map((row) => row.node_code).filter(Boolean))].sort(), [resource.data]);
   const rows = useMemo(() => (resource.data?.rows || []).filter((row) => !urlState.node || row.node_code === urlState.node), [resource.data, urlState.node]);
-  const chartData = useMemo(() => {
+  const poolSeries = useMemo(() => [...new Set(rows.map(poolCode))].sort().map((code, index) => ({
+    code,
+    dataKey: `pool_${index}`,
+    label: code === MISSING_POOL ? MISSING_DATA_TEXT : code,
+    stroke: POOL_STROKES[index % POOL_STROKES.length],
+  })), [rows]);
+  const chartData = useMemo<TrafficChartPoint[]>(() => {
     const dates = new Map<string, TrafficRow[]>();
     for (const row of rows) dates.set(row.date, [...(dates.get(row.date) || []), row]);
     return [...dates.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([date, dayRows]) => {
-      const values = dayRows.map((row) => finite(row.traffic_gb));
-      return {
+      const point: TrafficChartPoint = {
         date,
         label: new Date(`${date}T00:00:00Z`).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
-        trafficGb: values.some((value) => value === null) ? null : values.reduce<number>((sum, value) => sum + (value as number), 0),
       };
+      for (const series of poolSeries) {
+        const values = dayRows.filter((row) => poolCode(row) === series.code).map((row) => finite(row.traffic_gb));
+        point[series.dataKey] = !values.length || values.some((value) => value === null)
+          ? null
+          : values.reduce<number>((sum, value) => sum + (value as number), 0);
+      }
+      return point;
     });
-  }, [rows]);
+  }, [poolSeries, rows]);
   const nodeBreakdown = useMemo(() => {
     const values = new Map<string, number | null>();
     for (const row of rows) {
@@ -82,16 +105,17 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
     const values = new Map<string, number | null>();
     for (const row of rows) {
       const value = finite(row.traffic_gb);
-      const previous = values.get(row.pool_code);
-      values.set(row.pool_code, value === null || previous === null ? null : (previous || 0) + value);
+      const code = poolCode(row);
+      const previous = values.get(code);
+      values.set(code, value === null || previous === null ? null : (previous || 0) + value);
     }
     return [...values.entries()].sort(([left], [right]) => left.localeCompare(right));
   }, [rows]);
 
   const columns = useMemo<ColumnDef<TrafficRow>[]>(() => [
     { header: "Дата", cell: ({ row }) => <time dateTime={row.original.date}>{new Date(`${row.original.date}T00:00:00Z`).toLocaleDateString("ru-RU")}</time> },
-    { header: "Нода", cell: ({ row }) => <span className="font-semibold uppercase">{row.original.node_code || "—"}</span> },
-    { header: "Контур", cell: ({ row }) => row.original.pool_code || <span>—<span className="block text-[11px] text-[color:var(--atlas-text-muted)]">Нет данных</span></span> },
+    { header: "Нода", cell: ({ row }) => row.original.node_code ? <span className="font-semibold uppercase">{row.original.node_code}</span> : <MissingData /> },
+    { header: "Контур", cell: ({ row }) => row.original.pool_code || <MissingData /> },
     { header: "Трафик", cell: ({ row }) => <MissingNumber value={row.original.traffic_gb} suffix=" ГиБ" /> },
     { header: "Измерения", cell: ({ row }) => <MissingNumber value={row.original.samples} /> },
   ], []);
@@ -101,7 +125,7 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
-          <Badge tone={resource.error ? "warning" : "success"}>{resource.error ? "Источник отвечает с ошибкой" : "Сводка трафика получена"}</Badge>
+          <Badge tone={resource.error ? "warning" : resource.data ? "success" : "neutral"}>{resource.error ? "Источник отвечает с ошибкой" : resource.data ? "Сводка трафика получена" : "Сводка трафика ещё не получена"}</Badge>
           <span>{resource.updatedAt ? `Обновлено ${new Date(resource.updatedAt).toLocaleString("ru-RU")}` : "Данные ещё не получены"}</span>
         </div>
         <Button tone="secondary" disabled={resource.loading || refreshing} onClick={resource.reload}><RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Обновить</Button>
@@ -109,7 +133,7 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
 
       <Card>
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <SectionTitle title="Трафик по дням" description="Один диапазон и одна нода управляют графиком, разбивками и исходной таблицей." />
+          <SectionTitle title="Трафик по дням" description="Один диапазон и одна нода управляют графиком, разбивками и исходной таблицей; каждый контур остаётся отдельной серией." />
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="text-xs font-semibold text-[color:var(--atlas-text-soft)]">Диапазон
               <select aria-label="Диапазон трафика" value={urlState.range} onChange={(event) => replaceUrlState<TrafficUrlState>({ range: event.target.value as TrafficRange }, TRAFFIC_URL_CODECS)} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 outline-none focus:border-[color:var(--atlas-focus)]">
@@ -125,19 +149,20 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
         </div>
         <RouteBoundary loading={resource.loading} refreshing={resource.refreshing} error={resource.error} hasData={resource.data !== null} retryLabel="Повторить загрузку трафика" onRetry={resource.reload}>
           {chartData.length ? (
-            <div aria-label="График трафика" className="h-72 w-full pt-4">
+            <div aria-label="График трафика" data-pools={poolSeries.map((series) => series.code).join(",")} className="h-72 w-full pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 8, right: 14, left: 0, bottom: 4 }}>
                   <CartesianGrid stroke="var(--atlas-border)" strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="label" tick={{ fill: "var(--atlas-text-muted)", fontSize: 11 }} />
                   <YAxis tick={{ fill: "var(--atlas-text-muted)", fontSize: 11 }} width={48} />
-                  <Tooltip formatter={(value) => [`${numberText(value)} ГиБ`, "Трафик"]} />
-                  <Line type="monotone" dataKey="trafficGb" name="Трафик" stroke="var(--atlas-primary)" strokeWidth={2} dot={false} connectNulls={false} />
+                  <Tooltip formatter={(value, name) => [finite(value) === null ? MISSING_DATA_TEXT : `${numberText(value)} ГиБ`, String(name)]} />
+                  <Legend />
+                  {poolSeries.map((series) => <Line key={series.code} type="monotone" dataKey={series.dataKey} name={series.label} stroke={series.stroke} strokeWidth={2} dot={false} connectNulls={false} />)}
                 </LineChart>
               </ResponsiveContainer>
             </div>
           ) : resource.data ? <EmptyState description="В выбранном диапазоне нет строк. Это не означает нулевой трафик." /> : null}
-          {chartData.some((point) => point.trafficGb === null) ? <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)]">Разрыв линии означает «Нет данных»; отсутствующее измерение не заменено нулём.</p> : null}
+          {chartData.some((point) => poolSeries.some((series) => point[series.dataKey] === null)) ? <p className="mt-2 text-xs text-[color:var(--atlas-text-soft)]">Разрыв линии означает «Нет данных»; отсутствующее измерение не заменено нулём.</p> : null}
         </RouteBoundary>
       </Card>
 
@@ -148,7 +173,7 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
         </Card>
         <aside className="space-y-4" aria-label="Разбивки трафика">
           <Card><SectionTitle title="По нодам" />{nodeBreakdown.length ? <dl className="divide-y divide-[color:var(--atlas-border)]">{nodeBreakdown.map(([label, value]) => <div key={label} className="flex justify-between gap-3 py-2 text-xs"><dt className="font-semibold uppercase">{label}</dt><dd><MissingNumber value={value} suffix=" ГиБ" /></dd></div>)}</dl> : <EmptyState description="Нет данных по нодам." className="min-h-0" />}</Card>
-          <Card><SectionTitle title="По контурам" />{poolBreakdown.length ? <dl className="divide-y divide-[color:var(--atlas-border)]">{poolBreakdown.map(([label, value]) => <div key={label} className="flex justify-between gap-3 py-2 text-xs"><dt className="font-semibold">{label}</dt><dd><MissingNumber value={value} suffix=" ГиБ" /></dd></div>)}</dl> : <EmptyState description="Нет данных по контурам." className="min-h-0" />}</Card>
+          <Card><SectionTitle title="По контурам" />{poolBreakdown.length ? <dl className="divide-y divide-[color:var(--atlas-border)]">{poolBreakdown.map(([label, value]) => <div key={label} className="flex justify-between gap-3 py-2 text-xs"><dt className="font-semibold">{label === MISSING_POOL ? <MissingData inline /> : label}</dt><dd><MissingNumber value={value} suffix=" ГиБ" /></dd></div>)}</dl> : <EmptyState description="Нет данных по контурам." className="min-h-0" />}</Card>
         </aside>
       </div>
       {resource.error && resource.data ? <p className="text-xs text-[color:var(--atlas-text-soft)]">{adminApiErrorText(resource.error, "Повторите загрузку.")}</p> : null}

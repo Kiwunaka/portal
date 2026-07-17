@@ -1776,6 +1776,12 @@ def _provider_quota_entity_state(
     if for_update and str(session.get_bind().dialect.name) == "postgresql":
         query = query.with_for_update()
     quota = query.first()
+    if mode == "create" and quota is not None:
+        raise ActionIntentError(
+            "target_exists",
+            status_code=409,
+            message="Квота провайдера для этой ноды уже настроена.",
+        )
     if mode in {"update", "delete"} and quota is None:
         raise ActionIntentError(
             "target_not_found",

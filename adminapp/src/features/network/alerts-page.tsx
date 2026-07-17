@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BellOff, Check, ExternalLink, RefreshCw } from "lucide-react";
 
+import { MISSING_DATA_TEXT, MissingData } from "@/components/ops/missing-data";
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, EmptyState, ErrorState, SectionTitle, type Tone } from "@/components/ui";
@@ -37,11 +38,15 @@ function tone(value: string): Tone {
 }
 
 function severityLabel(value: string): string {
-  return value.toLowerCase() === "critical" ? "Критично" : value.toLowerCase() === "warning" ? "Внимание" : "Информация";
+  const normalized = value.toLowerCase();
+  if (normalized === "critical") return "Критично";
+  if (normalized === "warning") return "Внимание";
+  if (normalized === "info") return "Информация";
+  return value || MISSING_DATA_TEXT;
 }
 
 function statusLabel(value: string): string {
-  return { active: "Активен", silenced: "Приглушён", resolved: "Закрыт" }[value.toLowerCase()] || value || "Нет данных";
+  return { active: "Активен", silenced: "Приглушён", resolved: "Закрыт" }[value.toLowerCase()] || value || MISSING_DATA_TEXT;
 }
 
 function dateText(value: string | null): string {
@@ -50,7 +55,7 @@ function dateText(value: string | null): string {
 }
 
 function ageText(value: string | null): string {
-  if (!value || Number.isNaN(Date.parse(value))) return "Нет данных";
+  if (!value || Number.isNaN(Date.parse(value))) return MISSING_DATA_TEXT;
   const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 1000));
   if (seconds < 60) return "только что";
   if (seconds < 3600) return `${Math.floor(seconds / 60)} мин назад`;
@@ -59,7 +64,7 @@ function ageText(value: string | null): string {
 }
 
 function durationText(first: string | null, last: string | null): string {
-  if (!first || !last || Number.isNaN(Date.parse(first)) || Number.isNaN(Date.parse(last))) return "Нет данных";
+  if (!first || !last || Number.isNaN(Date.parse(first)) || Number.isNaN(Date.parse(last))) return MISSING_DATA_TEXT;
   const minutes = Math.max(0, Math.floor((Date.parse(last) - Date.parse(first)) / 60_000));
   if (minutes < 60) return `${minutes} мин`;
   const hours = Math.floor(minutes / 60);
@@ -118,7 +123,7 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
-          <Badge tone={resource.error ? "warning" : alerts.some((alert) => alert.severity === "critical") ? "danger" : "success"}>{alerts.length ? `В очереди: ${alerts.length}` : "Очередь пуста"}</Badge>
+          <Badge tone={resource.error ? "warning" : resource.data === null ? "neutral" : alerts.some((alert) => alert.severity === "critical") ? "danger" : "success"}>{resource.data === null ? resource.error ? "Данные алертов недоступны" : "Данные алертов ещё не получены" : alerts.length ? `В очереди: ${alerts.length}` : "Очередь пуста"}</Badge>
           <span>{resource.data?.generated_at ? `Снимок ${dateText(resource.data.generated_at)}` : "Снимок ещё не получен"}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -139,8 +144,8 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
               <article key={alert.id} className={`py-3 ${selected?.id === alert.id ? "bg-[color:var(--command-surface-raised)]" : ""}`}>
                 <button aria-label={`Открыть алерт ${alert.id}`} className="w-full rounded-[var(--pokrov-radius-control)] p-1 text-left outline-none transition hover:bg-[color:var(--command-surface-raised)] focus-visible:ring-2 focus-visible:ring-[color:var(--atlas-focus)] active:translate-y-px" onClick={() => pushUrlState<AlertsUrlState>({ selected: alert.id }, ALERTS_URL_CODECS)}>
                   <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><Badge tone={tone(alert.severity)}>{severityLabel(alert.severity)}</Badge><h3 className="text-sm font-semibold">{alert.title}</h3></div><Badge tone={tone(alert.status)}>{statusLabel(alert.status)}</Badge></div>
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-[color:var(--atlas-text-soft)]">{alert.body || "Описание не получено"}</p>
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[color:var(--atlas-text-muted)]"><span>{SOURCE_LABELS[alert.source] || alert.source || "Источник не указан"}</span><span>{ageText(alert.last_seen_at)}</span><span>Длительность: {durationText(alert.first_seen_at, alert.last_seen_at)}</span></div>
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-[color:var(--atlas-text-soft)]">{alert.body || MISSING_DATA_TEXT}</p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[color:var(--atlas-text-muted)]"><span>{SOURCE_LABELS[alert.source] || alert.source || MISSING_DATA_TEXT}</span><span>{ageText(alert.last_seen_at)}</span><span>Длительность: {durationText(alert.first_seen_at, alert.last_seen_at)}</span></div>
                 </button>
               </article>
             ))}</div> : resource.data ? <EmptyState description="Активных алертов нет. Это состояние текущей серверной очереди." /> : null}
@@ -153,9 +158,9 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
               <div>
                 <div className="flex flex-wrap items-center gap-2"><Badge tone={tone(selected.severity)}>{severityLabel(selected.severity)}</Badge><Badge tone={tone(selected.status)}>{statusLabel(selected.status)}</Badge></div>
                 <h2 className="mt-3 text-lg font-semibold tracking-tight">{selected.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{selected.body || "Описание не получено."}</p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--atlas-text-soft)]">{selected.body || MISSING_DATA_TEXT}</p>
                 <dl className="mt-4 divide-y divide-[color:var(--atlas-border)] text-xs">
-                  <div className="flex justify-between gap-3 py-2"><dt>Источник</dt><dd className="font-semibold">{SOURCE_LABELS[selected.source] || selected.source || "—"}</dd></div>
+                  <div className="flex justify-between gap-3 py-2"><dt>Источник</dt><dd className="font-semibold">{SOURCE_LABELS[selected.source] || selected.source || <MissingData inline />}</dd></div>
                   <div className="flex justify-between gap-3 py-2"><dt>Первый сигнал</dt><dd className="text-right font-semibold">{dateText(selected.first_seen_at)}<span className="block font-normal text-[color:var(--atlas-text-muted)]">{selected.first_seen_at ? ageText(selected.first_seen_at) : "Нет данных"}</span></dd></div>
                   <div className="flex justify-between gap-3 py-2"><dt>Последний сигнал</dt><dd className="text-right font-semibold">{dateText(selected.last_seen_at)}<span className="block font-normal text-[color:var(--atlas-text-muted)]">{selected.last_seen_at ? ageText(selected.last_seen_at) : "Нет данных"}</span></dd></div>
                   <div className="flex justify-between gap-3 py-2"><dt>Длительность</dt><dd className="font-semibold">{durationText(selected.first_seen_at, selected.last_seen_at)}</dd></div>

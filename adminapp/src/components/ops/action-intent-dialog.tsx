@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShieldAlert } from "lucide-react";
 
+import { MISSING_DATA_TEXT } from "@/components/ops/missing-data";
 import { Badge, Button } from "@/components/ui";
 import { Dialog } from "@/components/ui/dialog";
 import {
@@ -103,7 +104,7 @@ const FIELD_LABELS: Record<string, string> = {
 function valueText(value: unknown, field: string): string {
   if (value === true) return "Да";
   if (value === false) return "Нет";
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return MISSING_DATA_TEXT;
   if (typeof value === "number") return value.toLocaleString("ru-RU");
   const raw = String(value);
   if (field.endsWith("_at")) {

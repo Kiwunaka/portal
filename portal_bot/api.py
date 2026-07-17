@@ -15220,10 +15220,23 @@ def _provider_quota_bytes_from_payload(payload: AdminProviderQuotaIn | AdminProv
     return max(0, int(existing or 0))
 
 
-def _provider_quota_audit_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
+def _provider_quota_safe_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
     if not row:
         return None
-    return _ops_provider_quota_payload(row)
+    payload = _ops_provider_quota_payload(row)
+    notes = str(payload.pop("notes", "") or "")
+    payload.update(
+        {
+            "notes_present": bool(notes),
+            "notes_length": len(notes),
+            "notes_sha256": hashlib.sha256(notes.encode("utf-8")).hexdigest(),
+        }
+    )
+    return payload
+
+
+def _provider_quota_audit_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
+    return _provider_quota_safe_payload(row)
 
 
 def _add_provider_quota_audit(
@@ -15302,7 +15315,7 @@ async def admin_provider_quotas(x_telegram_init_data: str = Header(default="")) 
     s = SessionLocal()
     try:
         rows = s.query(ProviderTrafficQuota).order_by(ProviderTrafficQuota.node_code.asc()).all()
-        return {"ok": True, "quotas": [_ops_provider_quota_payload(row) for row in rows]}
+        return {"ok": True, "quotas": [_provider_quota_safe_payload(row) for row in rows]}
     finally:
         s.close()
 
@@ -16503,12 +16516,25 @@ def _execute_admin_client_action_db(
         node_code = str(state.context["node_code"])
         row = state.entity
         before = _provider_quota_audit_payload(row)
-        quota_action = "update"
         now = _utcnow()
-        if row is None:
+        if action == "provider_quota.create":
+            if row is not None:
+                raise ActionIntentError(
+                    "target_exists",
+                    status_code=409,
+                    message="Квота провайдера для этой ноды уже настроена.",
+                )
             row = ProviderTrafficQuota(node_code=node_code, created_at=now)
             session.add(row)
             quota_action = "create"
+        else:
+            if row is None:
+                raise ActionIntentError(
+                    "target_not_found",
+                    status_code=404,
+                    message="Квота провайдера не найдена.",
+                )
+            quota_action = "update"
         proposed = dict(state.context.get("proposed_config") or {})
         row.included_bytes = int(proposed["included_bytes"])
         row.reset_day = int(proposed["reset_day"])
@@ -16520,7 +16546,8 @@ def _execute_admin_client_action_db(
         row.updated_by = int(actor_tg_id)
         row.updated_at = now
         session.flush()
-        after = _ops_provider_quota_payload(row)
+        after = _provider_quota_safe_payload(row)
+        assert after is not None
         _add_provider_quota_audit(
             s=session,
             quota=row,
