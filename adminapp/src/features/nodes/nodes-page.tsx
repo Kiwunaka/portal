@@ -342,6 +342,10 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
                 resetHistoryContinuation();
                 pushUrlState<NodeUrlState>({ range }, NODE_URL_CODECS);
               }}
+              onRefreshNode={() => {
+                list.reload();
+                detail.reload();
+              }}
             />
           ) : null}
         </section>

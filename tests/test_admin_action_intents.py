@@ -155,6 +155,27 @@ def _execute_headers(
     }
 
 
+def _execute_node_action(
+    client: TestClient,
+    *,
+    action: str,
+    intent_id: str,
+    payload: dict[str, object],
+    idempotency_key: str | None = None,
+    confirmation: str = "ПОДТВЕРДИТЬ",
+):
+    command = action.split(".", 1)[1]
+    return client.post(
+        f"/api/admin/nodes/nl/{command}",
+        headers=_execute_headers(
+            intent_id,
+            idempotency_key=idempotency_key,
+            confirmation_hash=hashlib.sha256(confirmation.encode("utf-8")).hexdigest(),
+        ),
+        json=payload,
+    )
+
+
 def _detail_code(response) -> str:
     return str(response.json()["detail"]["code"])
 
@@ -171,13 +192,20 @@ def test_prepare_contract_is_frozen_redacted_and_unknown_actions_fail_closed(
     _seed_nodes(api)
     client = TestClient(api.app)
 
-    direct = client.post(
-        "/api/admin/nodes/nl/disable",
-        headers=_admin_headers(),
-        json={"force": False},
-    )
-    assert direct.status_code == 428
-    assert _detail_code(direct) == "intent_required"
+    for command, payload in (
+        ("drain", {"force": False}),
+        ("undrain", {"force": False}),
+        ("enable", {"force": False}),
+        ("disable", {"force": False}),
+        ("resync", {"limit": 50, "dry_run": False}),
+    ):
+        direct = client.post(
+            f"/api/admin/nodes/nl/{command}",
+            headers=_admin_headers(),
+            json=payload,
+        )
+        assert direct.status_code == 428
+        assert _detail_code(direct) == "intent_required"
 
     unknown = _prepare(client, action="node.shell")
     assert unknown.status_code == 422
@@ -238,6 +266,236 @@ def test_prepare_contract_is_frozen_redacted_and_unknown_actions_fail_closed(
         session.close()
 
 
+def test_all_node_policies_execute_once_with_atomic_audit(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    _seed_nodes(api)
+    client = TestClient(api.app)
+
+    class EmptyPanel:
+        login_calls = 0
+
+        async def login(self):
+            EmptyPanel.login_calls += 1
+            return True
+
+        async def close(self):
+            return True
+
+    monkeypatch.setattr(api, "ControlPanel", EmptyPanel)
+    cases = (
+        ("node.drain", {"force": False}, "ПОДТВЕРДИТЬ", (True, False, True)),
+        ("node.undrain", {"force": False}, "ПОДТВЕРДИТЬ", (True, True, False)),
+        ("node.disable", {"force": False}, "NL", (False, False, False)),
+        ("node.enable", {"force": False}, "ПОДТВЕРДИТЬ", (True, True, False)),
+    )
+    for action, payload, confirmation, expected_lifecycle in cases:
+        prepared = _prepare(client, action=action, payload=payload)
+        assert prepared.status_code == 200, prepared.text
+        intent_id = str(prepared.json()["intent_id"])
+        idempotency_key = str(uuid.uuid4())
+        completed = _execute_node_action(
+            client,
+            action=action,
+            intent_id=intent_id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            confirmation=confirmation,
+        )
+        assert completed.status_code == 200, completed.text
+        body = completed.json()
+        assert body["status"] == "completed"
+        assert body["action_intent_id"] == intent_id
+        assert isinstance(body["audit_id"], int)
+        node = body["node"]
+        assert (
+            node["enabled"],
+            node["accepting_new_clients"],
+            node["is_draining"],
+        ) == expected_lifecycle
+        replay = _execute_node_action(
+            client,
+            action=action,
+            intent_id=intent_id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            confirmation=confirmation,
+        )
+        assert replay.json() == body
+
+    resync_payload = {"limit": 50, "dry_run": False}
+    prepared = _prepare(client, action="node.resync", payload=resync_payload)
+    assert prepared.status_code == 200, prepared.text
+    intent_id = str(prepared.json()["intent_id"])
+    idempotency_key = str(uuid.uuid4())
+    completed = _execute_node_action(
+        client,
+        action="node.resync",
+        intent_id=intent_id,
+        payload=resync_payload,
+        idempotency_key=idempotency_key,
+    )
+    assert completed.status_code == 200, completed.text
+    assert completed.json()["status"] == "completed"
+    assert completed.json()["result"] == {
+        "changed": 0,
+        "count": 0,
+        "failed": 0,
+        "skipped": 0,
+    }
+    assert _execute_node_action(
+        client,
+        action="node.resync",
+        intent_id=intent_id,
+        payload=resync_payload,
+        idempotency_key=idempotency_key,
+    ).json() == completed.json()
+    assert EmptyPanel.login_calls == 1
+
+    from models import AdminActionIntent, AdminAudit
+
+    session = api.SessionLocal()
+    try:
+        intents = session.query(AdminActionIntent).all()
+        assert len(intents) == 5
+        assert all(row.status == "completed" for row in intents)
+        assert session.query(AdminAudit).count() == 5
+    finally:
+        session.close()
+
+
+def test_resync_freezes_redacted_selection_and_uncertain_result_never_retries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    _seed_nodes(api)
+
+    from models import AdminActionIntent, AdminAudit, Node, User, UserNode
+
+    recipient_ids = (700_001, 700_002)
+    private_values = (
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+        "recipient-one@example.test",
+        "recipient-two@example.test",
+    )
+
+    def add_recipient(index: int) -> None:
+        session = api.SessionLocal()
+        try:
+            source = session.query(Node).filter_by(code="nl").one()
+            user = User(
+                tg_id=recipient_ids[index],
+                uuid=private_values[index],
+                email=private_values[index + 2],
+                username=f"private-recipient-{index}",
+                sub_type="PAID",
+                current_plan_code="1_month",
+                is_active=True,
+            )
+            session.add(user)
+            session.flush()
+            session.add(
+                UserNode(
+                    tg_id=int(user.tg_id),
+                    node_id=int(source.id),
+                    client_uuid=str(user.uuid),
+                    panel_email=str(user.email),
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+    add_recipient(0)
+    client = TestClient(api.app)
+    payload = {"limit": 50, "dry_run": False}
+    first = _prepare(client, action="node.resync", payload=payload)
+    assert first.status_code == 200, first.text
+    first_body = first.json()
+    assert first_body["preview"]["selection"]["count"] == 1
+    assert len(first_body["preview"]["selection"]["hash"]) == 64
+    assert all(value.lower() not in first.text.lower() for value in private_values)
+    assert all(str(value) not in first.text for value in recipient_ids)
+
+    add_recipient(1)
+    stale = _execute_node_action(
+        client,
+        action="node.resync",
+        intent_id=str(first_body["intent_id"]),
+        payload=payload,
+        confirmation="ПОДТВЕРДИТЬ",
+    )
+    assert stale.status_code == 409
+    assert _detail_code(stale) == "stale_intent"
+
+    attempts: list[int] = []
+
+    class UncertainPanel:
+        async def login(self):
+            return True
+
+        async def close(self):
+            return True
+
+        async def ensure_user_on_all_nodes(self, **_kwargs):
+            attempts.append(1)
+            raise RuntimeError("SYNTHETIC-PRIVATE-PANEL-FAILURE")
+
+    monkeypatch.setattr(api, "ControlPanel", UncertainPanel)
+    prepared = _prepare(client, action="node.resync", payload=payload)
+    assert prepared.status_code == 200, prepared.text
+    prepared_body = prepared.json()
+    assert prepared_body["preview"]["selection"]["count"] == 2
+    intent_id = str(prepared_body["intent_id"])
+    idempotency_key = str(uuid.uuid4())
+    uncertain = _execute_node_action(
+        client,
+        action="node.resync",
+        intent_id=intent_id,
+        payload=payload,
+        idempotency_key=idempotency_key,
+    )
+    assert uncertain.status_code == 200, uncertain.text
+    result = uncertain.json()
+    assert result["status"] == "uncertain"
+    assert result["result_code"] == "external_exception"
+    assert result["action_intent_id"] == intent_id
+    assert isinstance(result["audit_id"], int)
+    assert _execute_node_action(
+        client,
+        action="node.resync",
+        intent_id=intent_id,
+        payload=payload,
+        idempotency_key=idempotency_key,
+    ).json() == result
+    assert attempts == [1]
+
+    session = api.SessionLocal()
+    try:
+        intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
+        audit = session.query(AdminAudit).filter_by(id=intent.admin_audit_id).one()
+        safe_text = " ".join(
+            (
+                intent.canonical_payload_json,
+                intent.preview_snapshot_json,
+                str(intent.result_summary_json or ""),
+                str(audit.meta or ""),
+            )
+        ).lower()
+        assert all(value.lower() not in safe_text for value in private_values)
+        assert all(str(value) not in safe_text for value in recipient_ids)
+        audit_meta = json.loads(str(audit.meta))
+        assert audit_meta["selection_hash"] == prepared_body["preview"]["selection"]["hash"]
+        assert audit_meta["selected_count"] == 2
+        assert audit_meta["outcome"] == "uncertain"
+    finally:
+        session.close()
+
+
 def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -264,7 +522,7 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
             )
         )
     assert actor_error.value.code == "intent_mismatch"
-    assert actor_error.value.intent_id == intent_id
+    assert actor_error.value.intent_id is None
 
     target_mismatch = client.post(
         "/api/admin/nodes/de/disable",

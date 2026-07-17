@@ -3,6 +3,8 @@ import type { Page, Route } from "@playwright/test";
 export type AdminApiCall = {
   method: string;
   path: string;
+  headers?: Record<string, string>;
+  body?: unknown;
 };
 
 export type AdminSearchResult = {
@@ -725,6 +727,10 @@ function isNodeObservabilityPath(pathname: string): boolean {
   return /^\/api\/admin\/nodes\/[^/]+\/observability$/.test(pathname);
 }
 
+function isNodeActionPath(pathname: string): boolean {
+  return /^\/api\/admin\/nodes\/[^/]+\/(drain|undrain|enable|disable|resync)$/.test(pathname);
+}
+
 function isFocusedGetPath(pathname: string): boolean {
   return FOCUSED_GET_PATHS.has(pathname)
     || pathname === "/api/admin/probes/ru-origin/runs"
@@ -741,7 +747,7 @@ function fulfillJson(route: Route, data: unknown, status = 200) {
       "access-control-allow-origin": origin,
       "access-control-allow-credentials": "true",
       "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS",
-      "access-control-allow-headers": "authorization,content-type,x-telegram-init-data,x-web-auth-token"
+      "access-control-allow-headers": "authorization,content-type,x-telegram-init-data,x-web-auth-token,x-admin-intent-id,x-admin-idempotency-key,x-admin-confirmation-sha256"
     },
     body: JSON.stringify(data)
   });
@@ -773,13 +779,37 @@ export async function installAdminApiMock(
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method();
-    calls.push({ method, path: `${url.pathname}${url.search}` });
+    const requestHeaders = request.headers();
+    let requestBody: unknown = undefined;
+    if (method === "POST") {
+      try {
+        requestBody = request.postDataJSON();
+      } catch {
+        requestBody = undefined;
+      }
+    }
+    calls.push({
+      method,
+      path: `${url.pathname}${url.search}`,
+      body: requestBody,
+      headers: {
+        "x-admin-intent-id": requestHeaders["x-admin-intent-id"] || "",
+        "x-admin-idempotency-key": requestHeaders["x-admin-idempotency-key"] || "",
+        "x-admin-confirmation-sha256": requestHeaders["x-admin-confirmation-sha256"] || "",
+      },
+    });
 
-    const knownPath = isFocusedGetPath(url.pathname) || url.pathname === "/api/admin/auth/session" || url.pathname === "/api/admin/broadcast";
+    const knownPath = isFocusedGetPath(url.pathname)
+      || url.pathname === "/api/admin/auth/session"
+      || url.pathname === "/api/admin/broadcast"
+      || url.pathname === "/api/admin/action-intents"
+      || isNodeActionPath(url.pathname);
     const knownRequest =
       (method === "GET" && isFocusedGetPath(url.pathname)) ||
       (method === "POST" && url.pathname === "/api/admin/auth/session") ||
       (method === "POST" && url.pathname === "/api/admin/broadcast") ||
+      (method === "POST" && url.pathname === "/api/admin/action-intents") ||
+      (method === "POST" && isNodeActionPath(url.pathname)) ||
       (method === "OPTIONS" && knownPath);
     if (!knownRequest) {
       await fulfillJson(
@@ -822,6 +852,62 @@ export async function installAdminApiMock(
         return;
       }
       await fulfillJson(route, { ok: true, attempted: 0, sent: 0, failed: 0 });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/action-intents") {
+      const body = requestBody && typeof requestBody === "object" && !Array.isArray(requestBody)
+        ? requestBody as Record<string, unknown>
+        : {};
+      const action = String(body.action || "node.disable");
+      const target = body.target && typeof body.target === "object" && !Array.isArray(body.target)
+        ? body.target as Record<string, unknown>
+        : {};
+      const nodeCode = String(target.id || "nl").trim().toLowerCase();
+      const lifecycle = { enabled: true, accepting_new_clients: true, is_draining: false };
+      const afterByAction: Record<string, Record<string, unknown>> = {
+        "node.drain": { ...lifecycle, enabled: true, accepting_new_clients: false, is_draining: true },
+        "node.undrain": { ...lifecycle },
+        "node.enable": { ...lifecycle },
+        "node.disable": { ...lifecycle, enabled: false, accepting_new_clients: false, is_draining: false },
+        "node.resync": { code: nodeCode.toUpperCase(), planned_moves: 31, without_target: 0, dry_run: false },
+      };
+      const challenge = action === "node.disable" ? nodeCode.toUpperCase() : "ПОДТВЕРДИТЬ";
+      await fulfillJson(route, {
+        ok: true,
+        intent_id: "00000000-0000-4000-8000-000000000713",
+        action,
+        target: { type: "node", id: nodeCode },
+        risk_level: action === "node.disable" ? "L3" : "L2",
+        preview: {
+          title: action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}`,
+          summary: action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}`,
+          before: { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 },
+          after: { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 },
+          warnings: action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : [],
+        },
+        payload_hash: "1".repeat(64),
+        snapshot_hash: "2".repeat(64),
+        entity_version_hash: "3".repeat(64),
+        confirmation_challenge: challenge,
+        confirmation_challenge_kind: action === "node.disable" ? "exact_node_code" : "exact_phrase",
+        expires_at: "2099-07-15T10:10:00Z",
+      });
+      return;
+    }
+
+    if (isNodeActionPath(url.pathname)) {
+      if (!requestHeaders["x-admin-intent-id"] || !requestHeaders["x-admin-idempotency-key"] || !requestHeaders["x-admin-confirmation-sha256"]) {
+        await fulfillJson(route, { detail: { code: "intent_required", message: "Нужно защищённое намерение" } }, 428);
+        return;
+      }
+      await fulfillJson(route, {
+        ok: true,
+        status: "completed",
+        action_intent_id: requestHeaders["x-admin-intent-id"],
+        audit_id: 713,
+        node: { code: "NL", enabled: false, accepting_new_clients: false, is_draining: false },
+      });
       return;
     }
 

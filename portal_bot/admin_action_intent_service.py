@@ -6,6 +6,7 @@ import hmac
 import inspect
 import json
 import math
+import os
 import re
 import unicodedata
 import uuid
@@ -16,7 +17,9 @@ from typing import Any, Callable, Mapping
 from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 
-from models import AdminActionIntent, AdminAudit, Node, UserNode
+from models import AdminActionIntent, AdminAudit, Node, User, UserNode
+from node_policy import canonical_free_node_code, node_is_free, user_uses_free_pool
+from nodes_repo import enabled_nodes
 from ru_probe_contract import canonical_json_bytes
 
 
@@ -73,10 +76,11 @@ class ExternalOutcome:
 
 
 PayloadNormalizer = Callable[[Mapping[str, Any]], dict[str, Any]]
-EntityStateBuilder = Callable[[Any, str, bool], EntityState]
+EntityStateBuilder = Callable[[Any, str, Mapping[str, Any], bool], EntityState]
 PreviewBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
 ChallengeBuilder = Callable[[EntityState, Mapping[str, Any]], str]
 DbExecutor = Callable[[Any, EntityState, Mapping[str, Any]], dict[str, Any]]
+ExternalContextBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -92,6 +96,7 @@ class ActionPolicy:
     executor_kind: str
     audit_action: str
     db_executor: DbExecutor | None = None
+    external_context_builder: ExternalContextBuilder | None = None
 
 
 def _utcnow() -> datetime:
@@ -118,6 +123,28 @@ def _semantic_hash(domain: str, value: object) -> str:
 def confirmation_sha256(value: str) -> str:
     normalized = unicodedata.normalize("NFC", str(value or "")).strip()
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def node_resync_recipient_fingerprint(
+    *,
+    tg_id: int,
+    mapping_client_uuid: str,
+    mapping_panel_email: str,
+    user_uuid: str,
+    user_email: str,
+    sub_id: str,
+) -> str:
+    return _semantic_hash(
+        "admin-node-resync-recipient",
+        {
+            "tg_id": int(tg_id),
+            "mapping_client_uuid": str(mapping_client_uuid or ""),
+            "mapping_panel_email": str(mapping_panel_email or ""),
+            "user_uuid": str(user_uuid or ""),
+            "user_email": str(user_email or ""),
+            "sub_id": str(sub_id or ""),
+        },
+    )
 
 
 def _normalize_uuid(value: str, *, code: str) -> str:
@@ -254,24 +281,53 @@ def _normalize_target(
     return {"type": target_type, "id": target_id}
 
 
-def _normalize_node_disable_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+def _normalize_node_lifecycle_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     if set(payload) - {"force"}:
         raise ActionIntentError(
             "invalid_payload",
             status_code=422,
-            message="Payload действия содержит неподдерживаемые поля.",
+            message="Тело запроса содержит неподдерживаемые поля.",
         )
     force = payload.get("force", False)
     if not isinstance(force, bool):
         raise ActionIntentError(
             "invalid_payload",
             status_code=422,
-            message="Поле force должно быть boolean.",
+            message="Поле force должно быть логическим значением.",
         )
     return {"force": force}
 
 
-def _node_entity_state(session, target_id: str, for_update: bool) -> EntityState:
+def _normalize_node_resync_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    if set(payload) - {"limit", "dry_run"}:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Тело запроса содержит неподдерживаемые поля.",
+        )
+    limit = payload.get("limit", 100)
+    dry_run = payload.get("dry_run", False)
+    if type(limit) is not int or not 1 <= int(limit) <= 1000:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле limit должно быть целым числом от 1 до 1000.",
+        )
+    if not isinstance(dry_run, bool):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле dry_run должно быть логическим значением.",
+        )
+    return {"dry_run": bool(dry_run), "limit": int(limit)}
+
+
+def _node_entity_state(
+    session,
+    target_id: str,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
     dialect = str(session.get_bind().dialect.name)
     node = None
     if for_update and dialect == "postgresql":
@@ -342,6 +398,218 @@ def _node_entity_state(session, target_id: str, for_update: bool) -> EntityState
     )
 
 
+def _node_code_base(code: str) -> str:
+    normalized = str(code or "").strip().lower()
+    for separator in ("_", "-", "."):
+        if separator in normalized:
+            normalized = normalized.split(separator, 1)[0]
+    return normalized
+
+
+def _resync_excluded_codes() -> set[str]:
+    return {
+        token.strip().lower()
+        for token in str(os.getenv("SUBSCRIPTION_EXCLUDE_NODE_CODES", "") or "").split(",")
+        if token.strip()
+    }
+
+
+def _resync_node_accepts_new_clients(node: Any) -> bool:
+    return (
+        bool(getattr(node, "enabled", True))
+        and bool(getattr(node, "accepting_new_clients", True))
+        and not bool(getattr(node, "is_draining", False))
+    )
+
+
+def _resync_node_allowed_for_plan(
+    user: User,
+    node: Any,
+    *,
+    excluded_codes: set[str],
+    free_code: str,
+) -> bool:
+    code = str(getattr(node, "code", "") or "").strip().lower()
+    if not code or code in excluded_codes or _node_code_base(code) in excluded_codes:
+        return False
+    if user_uses_free_pool(user):
+        return bool(free_code) and code == free_code
+    return not node_is_free(node)
+
+
+def _resync_fallback_nodes(user: User, nodes: list[Any]) -> list[Any]:
+    if not nodes:
+        return []
+    excluded_codes = _resync_excluded_codes()
+    candidate_nodes = [node for node in nodes if _resync_node_accepts_new_clients(node)]
+    if not candidate_nodes:
+        return []
+
+    if user_uses_free_pool(user):
+        free_code = str(
+            canonical_free_node_code(candidate_nodes)
+            or canonical_free_node_code(nodes)
+            or ""
+        ).strip().lower()
+        pool = [
+            node
+            for node in candidate_nodes
+            if str(getattr(node, "code", "") or "").strip().lower() == free_code
+        ]
+    else:
+        free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+        pool = [node for node in candidate_nodes if not node_is_free(node)]
+
+    filtered = [
+        node
+        for node in pool
+        if _resync_node_allowed_for_plan(
+            user,
+            node,
+            excluded_codes=excluded_codes,
+            free_code=free_code,
+        )
+    ]
+    return filtered
+
+
+def _resync_target_node_codes(
+    session,
+    user: User,
+    source_code: str,
+    nodes: list[Any],
+) -> list[str]:
+    source = str(source_code or "").strip().lower()
+    node_by_id = {
+        int(getattr(node, "id", 0) or 0): node
+        for node in nodes
+        if getattr(node, "id", None) is not None
+    }
+    excluded_codes = _resync_excluded_codes()
+    free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+    out: list[str] = []
+    seen: set[str] = set()
+
+    mapped_rows = (
+        session.query(UserNode)
+        .filter(UserNode.tg_id == int(user.tg_id))
+        .order_by(UserNode.created_at.asc(), UserNode.id.asc())
+        .all()
+    )
+    for row in mapped_rows:
+        node = node_by_id.get(int(getattr(row, "node_id", 0) or 0))
+        if (
+            node is None
+            or not _resync_node_accepts_new_clients(node)
+            or not _resync_node_allowed_for_plan(
+                user,
+                node,
+                excluded_codes=excluded_codes,
+                free_code=free_code,
+            )
+        ):
+            continue
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        if not code or code == source or code in seen:
+            continue
+        seen.add(code)
+        out.append(code)
+
+    for node in _resync_fallback_nodes(user, nodes):
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        if not code or code == source or code in seen:
+            continue
+        seen.add(code)
+        out.append(code)
+    return out
+
+
+def _node_resync_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    base = _node_entity_state(session, target_id, payload, for_update)
+    query = (
+        session.query(UserNode, User)
+        .join(User, User.tg_id == UserNode.tg_id)
+        .filter(UserNode.node_id == int(base.entity.id))
+        .order_by(UserNode.created_at.asc(), UserNode.id.asc())
+        .limit(int(payload["limit"]))
+    )
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update(of=UserNode)
+    rows = query.all()
+    candidate_nodes = enabled_nodes(session)
+    node_id_by_code = {
+        str(getattr(node, "code", "") or "").strip().lower(): int(getattr(node, "id"))
+        for node in candidate_nodes
+        if getattr(node, "id", None) is not None
+        and str(getattr(node, "code", "") or "").strip()
+    }
+    selection: list[dict[str, Any]] = []
+    selection_version: list[dict[str, Any]] = []
+    for source_mapping, user in rows:
+        target_codes = _resync_target_node_codes(
+            session,
+            user,
+            target_id,
+            candidate_nodes,
+        )
+        target_nodes = [
+            {
+                "id": node_id_by_code[code],
+                "code": code,
+            }
+            for code in target_codes
+            if code in node_id_by_code
+        ]
+        recipient_fingerprint = node_resync_recipient_fingerprint(
+            tg_id=int(user.tg_id),
+            mapping_client_uuid=str(source_mapping.client_uuid or ""),
+            mapping_panel_email=str(source_mapping.panel_email or ""),
+            user_uuid=str(user.uuid or ""),
+            user_email=str(user.email or ""),
+            sub_id=str(getattr(user, "sub_token", "") or user.tg_id),
+        )
+        item = {
+            "source_user_node_id": int(source_mapping.id),
+            "recipient_fingerprint": recipient_fingerprint,
+            "target_nodes": target_nodes,
+        }
+        selection.append(item)
+        selection_version.append(
+            {
+                "source_user_node_id": int(source_mapping.id),
+                "recipient_fingerprint": recipient_fingerprint,
+                "target_nodes": target_nodes,
+            }
+        )
+    selection_hash = _semantic_hash(
+        "admin-node-resync-selection",
+        selection_version,
+    )
+    no_target_count = sum(1 for item in selection if not item["target_nodes"])
+    return EntityState(
+        entity=base.entity,
+        version_snapshot={
+            **base.version_snapshot,
+            "selection_hash": selection_hash,
+            "selection_limit": int(payload["limit"]),
+            "selected_count": len(selection),
+        },
+        public_snapshot=base.public_snapshot,
+        context={
+            **base.context,
+            "resync_selection": selection,
+            "selection_hash": selection_hash,
+            "selected_count": len(selection),
+            "no_target_count": no_target_count,
+        },
+    )
+
+
 def _node_disable_preview(
     state: EntityState,
     payload: Mapping[str, Any],
@@ -356,7 +624,7 @@ def _node_disable_preview(
     warnings: list[str] = []
     if int(state.context["mapped_users"]) > 0:
         warnings.append(
-            "На ноде есть привязанные пользователи; без force выполнение будет остановлено."
+            "На ноде есть привязанные пользователи; без принудительного режима выполнение будет остановлено."
         )
     if bool(payload["force"]):
         warnings.append("Принудительное отключение может оборвать активные подключения.")
@@ -370,11 +638,192 @@ def _node_disable_preview(
     }
 
 
+def _node_lifecycle_preview(
+    state: EntityState,
+    *,
+    title: str,
+    summary: str,
+    lifecycle: Mapping[str, bool],
+    warnings: list[str] | None = None,
+) -> dict[str, Any]:
+    before = dict(state.public_snapshot)
+    return {
+        "title": title,
+        "summary": summary,
+        "before": before,
+        "after": {**before, **dict(lifecycle)},
+        "warnings": list(warnings or []),
+    }
+
+
+def _node_drain_preview(
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    code = str(state.public_snapshot["code"])
+    warnings = []
+    if not bool(state.public_snapshot["enabled"]):
+        warnings.append("Отключённая нода будет включена в режиме вывода из контура.")
+    return _node_lifecycle_preview(
+        state,
+        title=f"Вывод ноды {code} из контура",
+        summary=f"Нода {code} перестанет принимать новых клиентов",
+        lifecycle={
+            "enabled": True,
+            "accepting_new_clients": False,
+            "is_draining": True,
+        },
+        warnings=warnings,
+    )
+
+
+def _node_undrain_preview(
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    code = str(state.public_snapshot["code"])
+    return _node_lifecycle_preview(
+        state,
+        title=f"Возврат ноды {code} в контур",
+        summary=f"Нода {code} снова начнёт принимать новых клиентов",
+        lifecycle={
+            "enabled": True,
+            "accepting_new_clients": True,
+            "is_draining": False,
+        },
+    )
+
+
+def _node_enable_preview(
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    code = str(state.public_snapshot["code"])
+    return _node_lifecycle_preview(
+        state,
+        title=f"Включение ноды {code}",
+        summary=f"Нода {code} будет включена и начнёт принимать новых клиентов",
+        lifecycle={
+            "enabled": True,
+            "accepting_new_clients": True,
+            "is_draining": False,
+        },
+    )
+
+
+def _node_resync_preview(
+    state: EntityState,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    code = str(state.public_snapshot["code"])
+    selected_count = int(state.context["selected_count"])
+    no_target_count = int(state.context["no_target_count"])
+    warnings: list[str] = []
+    if selected_count == 0:
+        warnings.append("Для переноса не найдено ни одной локальной привязки.")
+    if no_target_count:
+        warnings.append(
+            f"Для {no_target_count} привязок сейчас нет подходящей целевой ноды."
+        )
+    if not bool(payload["dry_run"]):
+        warnings.append(
+            "Внешняя панель будет вызвана один раз; неясный исход нельзя повторять автоматически."
+        )
+    return {
+        "title": f"Перенос клиентов с ноды {code}",
+        "summary": f"Будет обработано привязок: {selected_count}",
+        "before": {
+            "code": code,
+            "mapped_users": int(state.context["mapped_users"]),
+            "selected_users": selected_count,
+        },
+        "after": {
+            "code": code,
+            "planned_moves": selected_count - no_target_count,
+            "without_target": no_target_count,
+            "dry_run": bool(payload["dry_run"]),
+        },
+        "warnings": warnings,
+        "selection": {
+            "count": selected_count,
+            "without_target": no_target_count,
+            "hash": str(state.context["selection_hash"]),
+        },
+    }
+
+
 def _node_challenge(
     state: EntityState,
     _payload: Mapping[str, Any],
 ) -> str:
     return str(state.public_snapshot["code"]).upper()
+
+
+def _node_l2_challenge(
+    _state: EntityState,
+    _payload: Mapping[str, Any],
+) -> str:
+    return "ПОДТВЕРДИТЬ"
+
+
+def _node_lifecycle_result(
+    state: EntityState,
+    *,
+    enabled: bool,
+    accepting_new_clients: bool,
+    is_draining: bool,
+) -> dict[str, Any]:
+    node = state.entity
+    node.enabled = enabled
+    node.accepting_new_clients = accepting_new_clients
+    node.is_draining = is_draining
+    return {
+        "node": {
+            **state.public_snapshot,
+            "enabled": enabled,
+            "accepting_new_clients": accepting_new_clients,
+            "is_draining": is_draining,
+        }
+    }
+
+
+def _execute_node_drain(
+    _session,
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    return _node_lifecycle_result(
+        state,
+        enabled=True,
+        accepting_new_clients=False,
+        is_draining=True,
+    )
+
+
+def _execute_node_undrain(
+    _session,
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    return _node_lifecycle_result(
+        state,
+        enabled=True,
+        accepting_new_clients=True,
+        is_draining=False,
+    )
+
+
+def _execute_node_enable(
+    _session,
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    return _node_lifecycle_result(
+        state,
+        enabled=True,
+        accepting_new_clients=True,
+        is_draining=False,
+    )
 
 
 def _execute_node_disable(
@@ -387,28 +836,87 @@ def _execute_node_disable(
         raise ActionIntentError(
             "node_has_mapped_users",
             status_code=409,
-            message="Сначала перенесите пользователей или подтвердите force.",
+            message="Сначала перенесите пользователей или подтвердите принудительное отключение.",
         )
-    node = state.entity
-    node.enabled = False
-    node.accepting_new_clients = False
-    node.is_draining = False
+    return _node_lifecycle_result(
+        state,
+        enabled=False,
+        accepting_new_clients=False,
+        is_draining=False,
+    )
+
+
+def _node_resync_external_context(
+    state: EntityState,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
     return {
-        "node": {
-            **state.public_snapshot,
-            "enabled": False,
-            "accepting_new_clients": False,
-            "is_draining": False,
-        }
+        "source_node_id": int(state.entity.id),
+        "source_node_code": str(state.entity.code or "").strip().lower(),
+        "selection": [dict(item) for item in state.context["resync_selection"]],
+        "selection_hash": str(state.context["selection_hash"]),
+        "dry_run": bool(payload["dry_run"]),
     }
 
 
 ACTION_POLICIES: dict[str, ActionPolicy] = {
+    "node.drain": ActionPolicy(
+        action="node.drain",
+        target_type="node",
+        risk_level="L2",
+        payload_normalizer=_normalize_node_lifecycle_payload,
+        entity_state_builder=_node_entity_state,
+        preview_builder=_node_drain_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_node_l2_challenge,
+        executor_kind="db",
+        audit_action="admin_node_drain",
+        db_executor=_execute_node_drain,
+    ),
+    "node.undrain": ActionPolicy(
+        action="node.undrain",
+        target_type="node",
+        risk_level="L2",
+        payload_normalizer=_normalize_node_lifecycle_payload,
+        entity_state_builder=_node_entity_state,
+        preview_builder=_node_undrain_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_node_l2_challenge,
+        executor_kind="db",
+        audit_action="admin_node_undrain",
+        db_executor=_execute_node_undrain,
+    ),
+    "node.enable": ActionPolicy(
+        action="node.enable",
+        target_type="node",
+        risk_level="L2",
+        payload_normalizer=_normalize_node_lifecycle_payload,
+        entity_state_builder=_node_entity_state,
+        preview_builder=_node_enable_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_node_l2_challenge,
+        executor_kind="db",
+        audit_action="admin_node_enable",
+        db_executor=_execute_node_enable,
+    ),
+    "node.resync": ActionPolicy(
+        action="node.resync",
+        target_type="node",
+        risk_level="L2",
+        payload_normalizer=_normalize_node_resync_payload,
+        entity_state_builder=_node_resync_entity_state,
+        preview_builder=_node_resync_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_node_l2_challenge,
+        executor_kind="external",
+        audit_action="admin_node_resync",
+        external_context_builder=_node_resync_external_context,
+    ),
     "node.disable": ActionPolicy(
         action="node.disable",
         target_type="node",
         risk_level="L3",
-        payload_normalizer=_normalize_node_disable_payload,
+        payload_normalizer=_normalize_node_lifecycle_payload,
         entity_state_builder=_node_entity_state,
         preview_builder=_node_disable_preview,
         challenge_kind="exact_node_code",
@@ -467,7 +975,12 @@ def prepare_action_intent(
     policy = _policy_for(action)
     normalized_target = _normalize_target(target, expected_type=policy.target_type)
     normalized_payload = policy.payload_normalizer(payload)
-    state = policy.entity_state_builder(session, normalized_target["id"], False)
+    state = policy.entity_state_builder(
+        session,
+        normalized_target["id"],
+        normalized_payload,
+        False,
+    )
     preview = policy.preview_builder(state, normalized_payload)
     challenge = policy.challenge_builder(state, normalized_payload)
     prepared_at = _as_utc(now or _utcnow())
@@ -561,7 +1074,7 @@ def _audit_meta(
     *,
     outcome: str,
 ) -> dict[str, Any]:
-    return {
+    meta: dict[str, Any] = {
         "action_intent_id": str(intent.id),
         "risk_level": str(intent.risk_level),
         "target_type": str(intent.target_type),
@@ -573,6 +1086,18 @@ def _audit_meta(
         "forced": bool(payload.get("force", False)),
         "outcome": outcome,
     }
+    selection_hash = state.context.get("selection_hash")
+    if isinstance(selection_hash, str) and _HEX_SHA256_RE.fullmatch(selection_hash):
+        meta.update(
+            {
+                "selection_hash": selection_hash,
+                "selected_count": int(state.context.get("selected_count") or 0),
+                "no_target_count": int(state.context.get("no_target_count") or 0),
+                "limit": int(payload.get("limit") or 0),
+                "dry_run": bool(payload.get("dry_run", False)),
+            }
+        )
+    return meta
 
 
 def _validate_execution(
@@ -591,7 +1116,7 @@ def _validate_execution(
         raise ActionIntentError(
             "intent_mismatch",
             status_code=409,
-            message="Intent выпущен для другого actor или action.",
+            message="Намерение выпущено для другого оператора или другой команды.",
         )
     policy = _policy_for(intent.action)
     normalized_target = _normalize_target(target, expected_type=policy.target_type)
@@ -639,7 +1164,12 @@ def _validate_execution(
             message="Intent уже использован.",
         )
 
-    state = policy.entity_state_builder(session, normalized_target["id"], True)
+    state = policy.entity_state_builder(
+        session,
+        normalized_target["id"],
+        normalized_payload,
+        True,
+    )
     live_version = _entity_version_hash(policy, normalized_target, state)
     if live_version != str(intent.entity_version_hash):
         raise ActionIntentError(
@@ -876,6 +1406,15 @@ def _terminal_audit_meta(
         safe["mapped_users"] = int(mapped_users)
     if type(source.get("forced")) is bool:
         safe["forced"] = bool(source["forced"])
+    selection_hash = source.get("selection_hash")
+    if isinstance(selection_hash, str) and _HEX_SHA256_RE.fullmatch(selection_hash):
+        safe["selection_hash"] = selection_hash
+    for key in ("selected_count", "no_target_count", "limit"):
+        value = source.get(key)
+        if type(value) is int and 0 <= value <= _MAX_EXTERNAL_COUNT:
+            safe[key] = int(value)
+    if type(source.get("dry_run")) is bool:
+        safe["dry_run"] = bool(source["dry_run"])
 
     safe.update(
         {
@@ -1191,6 +1730,11 @@ async def execute_action_intent(
             "preview": json.loads(intent.preview_snapshot_json),
             "audit_id": int(audit.id),
         }
+        if policy.external_context_builder is not None:
+            external_context["execution"] = policy.external_context_builder(
+                state,
+                normalized_payload,
+            )
         session.commit()
     except IntegrityError:
         session.rollback()

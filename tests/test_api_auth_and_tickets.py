@@ -179,6 +179,30 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
+    def _execute_node_intent(self, *, action: str, node_code: str, payload: dict):
+        admin_headers = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        prepared = self.client.post(
+            "/api/admin/action-intents",
+            headers=admin_headers,
+            json={
+                "action": action,
+                "target": {"type": "node", "id": node_code},
+                "payload": payload,
+            },
+        )
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        challenge = node_code.upper() if action == "node.disable" else "ПОДТВЕРДИТЬ"
+        return self.client.post(
+            f"/api/admin/nodes/{node_code}/{action.split('.', 1)[1]}",
+            headers={
+                **admin_headers,
+                "X-Admin-Intent-Id": str(prepared.json()["intent_id"]),
+                "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+                "X-Admin-Confirmation-SHA256": hashlib.sha256(challenge.encode("utf-8")).hexdigest(),
+            },
+            json=payload,
+        )
+
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = self.client.get("/api/admin/summary", headers=hdrs)
@@ -903,8 +927,11 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         r = self.client.post("/api/admin/nodes/pl/disable", headers=admin_hdrs, json={})
-        self.assertEqual(r.status_code, 409, r.text)
-        self.assertIn("resync", r.text.lower())
+        self.assertEqual(r.status_code, 428, r.text)
+        self.assertEqual(r.json()["detail"]["code"], "intent_required")
+        guarded = self._execute_node_intent(action="node.disable", node_code="pl", payload={"force": False})
+        self.assertEqual(guarded.status_code, 409, guarded.text)
+        self.assertEqual(guarded.json()["detail"]["code"], "node_has_mapped_users")
 
     def test_admin_node_resync_moves_mapping_off_draining_node(self) -> None:
         from db import SessionLocal
@@ -972,12 +999,15 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         original_panel = self.api.ControlPanel
         self.api.ControlPanel = FakePanel
         try:
-            admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
-            drained = self.client.post("/api/admin/nodes/pl/drain", headers=admin_hdrs, json={})
+            drained = self._execute_node_intent(action="node.drain", node_code="pl", payload={"force": False})
             self.assertEqual(drained.status_code, 200, drained.text)
-            resync = self.client.post("/api/admin/nodes/pl/resync", headers=admin_hdrs, json={"limit": 50})
+            resync = self._execute_node_intent(
+                action="node.resync",
+                node_code="pl",
+                payload={"limit": 50, "dry_run": False},
+            )
             self.assertEqual(resync.status_code, 200, resync.text)
-            self.assertEqual(int(resync.json().get("migrated") or 0), 1)
+            self.assertEqual(int((resync.json().get("result") or {}).get("changed") or 0), 1)
         finally:
             self.api.ControlPanel = original_panel
 

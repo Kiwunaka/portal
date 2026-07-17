@@ -36,6 +36,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func
+from sqlalchemy import text as sql_text
 from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -247,9 +248,11 @@ from admin_ops_service import (
     traffic_summary_rows as _ops_traffic_summary_rows,
 )
 from admin_action_intent_service import (
+    NODE_MAPPING_LOCK_NAMESPACE,
     ActionIntentError,
     action_intent_error_identifiers as _action_intent_error_identifiers,
     execute_action_intent as _execute_action_intent,
+    node_resync_recipient_fingerprint as _node_resync_recipient_fingerprint,
     prepare_action_intent as _prepare_action_intent,
 )
 from internal_request_auth import (
@@ -16515,87 +16518,87 @@ async def admin_nodes_sync(payload: AdminNodeSyncIn, x_telegram_init_data: str =
 
 
 @app.post("/api/admin/nodes/{node_code}/drain")
-async def admin_node_drain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_drain(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = False
-        node.is_draining = True
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_drain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.drain",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/enable")
-async def admin_node_enable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_enable(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = True
-        node.is_draining = False
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_enable", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.enable",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/undrain")
-async def admin_node_undrain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_undrain(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = True
-        node.is_draining = False
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_undrain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.undrain",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 def _raise_action_intent_http(error: ActionIntentError) -> None:
@@ -16634,6 +16637,296 @@ def _raise_action_intent_header_required(
             audit_id=audit_id,
         )
     )
+
+
+async def _execute_node_resync_external(context: dict[str, Any]) -> dict[str, Any]:
+    execution = context.get("execution")
+    if not isinstance(execution, dict):
+        raise RuntimeError("missing frozen resync execution context")
+    source_node_id = int(execution.get("source_node_id") or 0)
+    source_code = str(execution.get("source_node_code") or "").strip().lower()
+    selection = execution.get("selection")
+    dry_run = bool(execution.get("dry_run", False))
+    if source_node_id <= 0 or not source_code or not isinstance(selection, list):
+        raise RuntimeError("invalid frozen resync execution context")
+
+    selected_count = len(selection)
+    skipped = sum(
+        1
+        for item in selection
+        if isinstance(item, dict) and not item.get("target_nodes")
+    )
+    if dry_run:
+        return {
+            "ok": True,
+            "code": "resync_dry_run_completed",
+            "count": selected_count,
+            "changed": 0,
+            "failed": 0,
+            "skipped": skipped,
+        }
+
+    panel = ControlPanel()
+    migrated = 0
+    failed = 0
+    try:
+        await panel.login()
+        for item in selection:
+            if not isinstance(item, dict):
+                raise RuntimeError("invalid frozen resync item")
+            source_user_node_id = int(item.get("source_user_node_id") or 0)
+            recipient_fingerprint = str(item.get("recipient_fingerprint") or "")
+            raw_target_nodes = item.get("target_nodes")
+            if not isinstance(raw_target_nodes, list):
+                raise RuntimeError("invalid frozen target nodes")
+            target_nodes: list[dict[str, Any]] = []
+            seen_target_ids: set[int] = set()
+            seen_target_codes: set[str] = set()
+            for raw_target in raw_target_nodes:
+                if not isinstance(raw_target, dict):
+                    raise RuntimeError("invalid frozen target node")
+                target_node_id = int(raw_target.get("id") or 0)
+                target_code = str(raw_target.get("code") or "").strip().lower()
+                if (
+                    target_node_id <= 0
+                    or not target_code
+                    or target_node_id in seen_target_ids
+                    or target_code in seen_target_codes
+                ):
+                    raise RuntimeError("invalid frozen target node")
+                seen_target_ids.add(target_node_id)
+                seen_target_codes.add(target_code)
+                target_nodes.append({"id": target_node_id, "code": target_code})
+            target_codes = [str(target["code"]) for target in target_nodes]
+            if source_user_node_id <= 0:
+                raise RuntimeError("invalid frozen source mapping")
+            if not target_nodes:
+                continue
+
+            session = SessionLocal()
+            try:
+                row = (
+                    session.query(UserNode, User)
+                    .join(User, User.tg_id == UserNode.tg_id)
+                    .filter(
+                        UserNode.id == source_user_node_id,
+                        UserNode.node_id == source_node_id,
+                    )
+                    .first()
+                )
+                if row is None:
+                    failed += 1
+                    continue
+                source_mapping, user = row
+                source_node = session.query(Node).filter(Node.id == source_node_id).first()
+                if (
+                    source_node is None
+                    or str(source_node.code or "").strip().lower() != source_code
+                ):
+                    failed += 1
+                    continue
+                tg_id = int(user.tg_id)
+                client_uuid = str(user.uuid)
+                panel_email = str(user.email)
+                sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+                current_recipient_fingerprint = _node_resync_recipient_fingerprint(
+                    tg_id=tg_id,
+                    mapping_client_uuid=str(source_mapping.client_uuid or ""),
+                    mapping_panel_email=str(source_mapping.panel_email or ""),
+                    user_uuid=client_uuid,
+                    user_email=panel_email,
+                    sub_id=sub_id,
+                )
+                if not hmac.compare_digest(
+                    recipient_fingerprint,
+                    current_recipient_fingerprint,
+                ):
+                    failed += 1
+                    continue
+            finally:
+                session.close()
+
+            ensure_results = await panel.ensure_user_on_all_nodes(
+                tg_id=tg_id,
+                client_uuid=client_uuid,
+                email=panel_email,
+                sub_id=sub_id,
+                enable=True,
+                only_node_codes=target_codes,
+            )
+            successful_codes = {
+                str(code or "").strip().lower()
+                for code, value in ensure_results.items()
+                if bool(value) and str(code or "").strip().lower() in seen_target_codes
+            }
+            if not successful_codes:
+                failed += 1
+                continue
+
+            disable_results = await panel.set_existing_user_enabled_on_nodes(
+                tg_id=tg_id,
+                node_codes=[source_code],
+                enable=False,
+                sub_id=sub_id,
+            )
+            source_disabled = any(
+                str(code or "").strip().lower() == source_code and bool(value)
+                for code, value in disable_results.items()
+            )
+            if not source_disabled:
+                failed += 1
+                continue
+
+            session = SessionLocal()
+            try:
+                target_ids = [int(target["id"]) for target in target_nodes]
+                dialect = str(session.get_bind().dialect.name)
+                if dialect == "postgresql":
+                    for locked_node_id in sorted({source_node_id, *target_ids}):
+                        session.execute(
+                            sql_text(
+                                "SELECT pg_advisory_xact_lock(:lock_namespace, :node_id)"
+                            ),
+                            {
+                                "lock_namespace": NODE_MAPPING_LOCK_NAMESPACE,
+                                "node_id": int(locked_node_id),
+                            },
+                        )
+                source_query = session.query(Node).filter(Node.id == source_node_id)
+                target_query = session.query(Node).filter(Node.id.in_(target_ids))
+                if dialect == "postgresql":
+                    source_query = source_query.with_for_update()
+                    target_query = target_query.with_for_update()
+                current_source = source_query.first()
+                current_targets = target_query.all()
+                current_by_id = {int(node.id): node for node in current_targets}
+                frozen_targets_match = (
+                    current_source is not None
+                    and str(current_source.code or "").strip().lower() == source_code
+                    and len(current_by_id) == len(target_nodes)
+                    and all(
+                        int(target["id"]) in current_by_id
+                        and str(current_by_id[int(target["id"])].code or "").strip().lower()
+                        == str(target["code"])
+                        for target in target_nodes
+                    )
+                )
+                if not frozen_targets_match:
+                    session.rollback()
+                    failed += 1
+                    continue
+                successful_targets = [
+                    current_by_id[int(target["id"])]
+                    for target in target_nodes
+                    if str(target["code"]) in successful_codes
+                ]
+                successful_targets_valid = bool(successful_targets) and all(
+                    bool(target.enabled)
+                    and bool(target.accepting_new_clients)
+                    and not bool(target.is_draining)
+                    for target in successful_targets
+                )
+                if not successful_targets_valid:
+                    session.rollback()
+                    failed += 1
+                    continue
+                existing_node_ids = {
+                    int(row.node_id)
+                    for row in session.query(UserNode)
+                    .filter(UserNode.tg_id == tg_id)
+                    .all()
+                }
+                for target_node in successful_targets:
+                    if int(target_node.id) in existing_node_ids:
+                        continue
+                    session.add(
+                        UserNode(
+                            tg_id=tg_id,
+                            node_id=int(target_node.id),
+                            client_uuid=client_uuid,
+                            panel_email=panel_email,
+                        )
+                    )
+                deleted = session.query(UserNode).filter(
+                    UserNode.id == source_user_node_id,
+                    UserNode.node_id == source_node_id,
+                ).delete(synchronize_session=False)
+                if deleted != 1:
+                    session.rollback()
+                    failed += 1
+                    continue
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+            migrated += 1
+    finally:
+        await panel.close()
+
+    return {
+        "ok": failed == 0,
+        "code": "resync_completed" if failed == 0 else "resync_partial",
+        "count": selected_count,
+        "changed": migrated,
+        "failed": failed,
+        "skipped": skipped,
+    }
+
+
+async def _execute_admin_node_action(
+    *,
+    actor_tg_id: int,
+    action: str,
+    node_code: str,
+    payload: dict[str, Any],
+    intent_id: str,
+    idempotency_key: str,
+    confirmation_sha256: str,
+) -> dict[str, Any]:
+    if not str(intent_id or "").strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "intent_required",
+                "message": "Сначала создайте защищённое намерение через серверный предпросмотр.",
+            },
+        )
+    if not str(idempotency_key or "").strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="idempotency_required",
+            message="Нужен клиентский ключ идемпотентности.",
+        )
+    if not str(confirmation_sha256 or "").strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="confirmation_required",
+            message="Нужно подтверждение серверной проверочной фразы.",
+        )
+    try:
+        return await _execute_action_intent(
+            session_factory=SessionLocal,
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            idempotency_key=idempotency_key,
+            confirmation_sha256_header=confirmation_sha256,
+            action=action,
+            target={"type": "node", "id": node_code},
+            payload=payload,
+            audit_writer=_add_admin_audit,
+            external_executor=(
+                _execute_node_resync_external
+                if action == "node.resync"
+                else None
+            ),
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
 
 
 @app.post("/api/admin/action-intents")
@@ -16690,191 +16983,43 @@ async def admin_node_disable(
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    if not str(x_admin_intent_id or "").strip():
-        raise HTTPException(
-            status_code=428,
-            detail={
-                "code": "intent_required",
-                "message": "Сначала создайте server action intent.",
-            },
-        )
-    if not str(x_admin_idempotency_key or "").strip():
-        _raise_action_intent_header_required(
-            actor_tg_id=actor,
-            intent_id=x_admin_intent_id,
-            code="idempotency_required",
-            message="Нужен client idempotency key.",
-        )
-    if not str(x_admin_confirmation_sha256 or "").strip():
-        _raise_action_intent_header_required(
-            actor_tg_id=actor,
-            intent_id=x_admin_intent_id,
-            code="confirmation_required",
-            message="Нужно подтверждение server challenge.",
-        )
-    try:
-        return await _execute_action_intent(
-            session_factory=SessionLocal,
-            actor_tg_id=actor,
-            intent_id=x_admin_intent_id,
-            idempotency_key=x_admin_idempotency_key,
-            confirmation_sha256_header=x_admin_confirmation_sha256,
-            action="node.disable",
-            target={"type": "node", "id": wanted},
-            payload={"force": bool(payload.force)},
-            audit_writer=_add_admin_audit,
-        )
-    except ActionIntentError as error:
-        _raise_action_intent_http(error)
-        raise AssertionError("unreachable")
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.disable",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/resync")
-async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_resync(
+    node_code: str,
+    payload: AdminNodeResyncIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not source:
-            raise HTTPException(status_code=404, detail="Node not found")
-        rows = (
-            s.query(UserNode, User)
-            .join(User, User.tg_id == UserNode.tg_id)
-            .filter(UserNode.node_id == int(source.id))
-            .order_by(UserNode.created_at.asc(), UserNode.id.asc())
-            .limit(max(1, min(int(payload.limit), 1000)))
-            .all()
-        )
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    migrated = 0
-    failed = 0
-    skipped = 0
-    details: list[dict[str, Any]] = []
-    try:
-        if not payload.dry_run:
-            await panel.login()
-        for _user_node, user in rows:
-            s = SessionLocal()
-            try:
-                target_codes = _target_node_codes_for_resync(s, user, wanted, enabled_nodes(s))
-            finally:
-                s.close()
-            if not target_codes:
-                skipped += 1
-                details.append({"tg_id": int(user.tg_id), "status": "no_target", "target_codes": []})
-                continue
-            if payload.dry_run:
-                details.append({"tg_id": int(user.tg_id), "status": "planned", "target_codes": target_codes})
-                continue
-
-            sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-            ensure_results = await panel.ensure_user_on_all_nodes(
-                tg_id=int(user.tg_id),
-                client_uuid=str(user.uuid),
-                email=str(user.email),
-                sub_id=sub_id,
-                enable=True,
-                only_node_codes=target_codes,
-            )
-            if not any(bool(v) for v in ensure_results.values()):
-                failed += 1
-                details.append(
-                    {
-                        "tg_id": int(user.tg_id),
-                        "status": "ensure_failed",
-                        "target_codes": target_codes,
-                        "ensure_results": ensure_results,
-                    }
-                )
-                continue
-
-            disable_results = await panel.set_existing_user_enabled_on_nodes(
-                tg_id=int(user.tg_id),
-                node_codes=[wanted],
-                enable=False,
-                sub_id=sub_id,
-            )
-            if not any(bool(v) for v in disable_results.values()):
-                failed += 1
-                details.append(
-                    {
-                        "tg_id": int(user.tg_id),
-                        "status": "disable_failed",
-                        "target_codes": target_codes,
-                        "ensure_results": ensure_results,
-                        "disable_results": disable_results,
-                    }
-                )
-                continue
-
-            s = SessionLocal()
-            try:
-                source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-                target_nodes = (
-                    s.query(Node)
-                    .filter(func.lower(Node.code).in_([code.lower() for code in target_codes]))
-                    .all()
-                )
-                existing_node_ids = {
-                    int(row.node_id)
-                    for row in s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id)).all()
-                }
-                for target_node in target_nodes:
-                    if int(target_node.id) in existing_node_ids:
-                        continue
-                    s.add(
-                        UserNode(
-                            tg_id=int(user.tg_id),
-                            node_id=int(target_node.id),
-                            client_uuid=str(user.uuid),
-                            panel_email=str(user.email),
-                        )
-                    )
-                if source:
-                    s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id), UserNode.node_id == int(source.id)).delete()
-                s.commit()
-            finally:
-                s.close()
-            migrated += 1
-            details.append(
-                {
-                    "tg_id": int(user.tg_id),
-                    "status": "migrated",
-                    "target_codes": target_codes,
-                    "ensure_results": ensure_results,
-                    "disable_results": disable_results,
-                }
-            )
-    finally:
-        if not payload.dry_run:
-            await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_node_action(
         actor_tg_id=actor,
-        action="admin_node_resync",
-        meta={
-            "node_code": wanted,
-            "count": len(rows),
-            "migrated": migrated,
-            "failed": failed,
-            "skipped": skipped,
-            "dry_run": bool(payload.dry_run),
-        },
+        action="node.resync",
+        node_code=wanted,
+        payload={"limit": int(payload.limit), "dry_run": bool(payload.dry_run)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
     )
-    return {
-        "ok": True,
-        "node_code": wanted,
-        "count": len(rows),
-        "migrated": migrated,
-        "failed": failed,
-        "skipped": skipped,
-        "dry_run": bool(payload.dry_run),
-        "details": details,
-    }
 
 
 def _transport_profiles_payload(node: Any) -> dict[str, dict[str, Any]]:

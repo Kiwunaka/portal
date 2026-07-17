@@ -18,6 +18,7 @@ import type {
 import { formatSourceAge } from "@/lib/ops-status/presentation";
 
 import { capacityText, NodeSourceSummary, opsStatusFromSource, reasonText, sourceStatusText } from "./node-source-summary";
+import { NodeActions } from "./node-actions";
 import { RuHistory } from "./ru-history";
 import { UploaderStatus } from "./uploader-status";
 
@@ -339,7 +340,8 @@ export function NodeDetail({
   uploaderError,
   onUploaderRetry,
   range,
-  onRangeChange
+  onRangeChange,
+  onRefreshNode
 }: {
   data: NodeObservability;
   tab: NodeDetailTab;
@@ -362,6 +364,7 @@ export function NodeDetail({
   onUploaderRetry: () => void;
   range: RuHistoryRange;
   onRangeChange: (range: RuHistoryRange) => void;
+  onRefreshNode: () => void;
 }) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -391,8 +394,10 @@ export function NodeDetail({
           </div>
           <p className="mt-1 text-xs text-[color:var(--atlas-text-soft)]">{data.node.name || "Без названия"} · снимок {new Date(data.generated_at).toLocaleString("ru-RU")}</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]"><ShieldCheck size={15} /> Только чтение</div>
+        <div className="flex items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]"><ShieldCheck size={15} /> Команды через серверный предпросмотр</div>
       </div>
+
+      <NodeActions data={data} onRefreshNode={onRefreshNode} />
 
       <div role="tablist" aria-label="Разделы карточки ноды" className="ops-scrollbar flex gap-1 overflow-x-auto border-b border-[color:var(--atlas-border)] pb-2">
         {TABS.map((item, index) => (

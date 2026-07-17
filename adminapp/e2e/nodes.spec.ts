@@ -15,6 +15,35 @@ async function openRuTab(page: Page) {
   await expect(page).toHaveURL(/tab=ru/);
 }
 
+test("отключение ноды выполняется только после серверного предпросмотра и ввода кода", async ({ page }) => {
+  const api = await installAdminApiMock(page, { ruScenario: "fresh-pass" });
+  await page.goto("/nodes?selected=nl");
+  await expect(page.getByRole("heading", { name: "Нода NL" })).toBeVisible();
+  const initialListLoads = api.calls.filter((call) => call.path === "/api/admin/nodes/health").length;
+  const initialDetailLoads = api.calls.filter((call) => call.path === "/api/admin/nodes/nl/observability?include_ru_history=false").length;
+
+  await page.getByRole("button", { name: "Отключить ноду" }).click();
+  const dialog = page.getByRole("dialog", { name: "Проверка действия" });
+  await expect(dialog).toContainText("Будет отключена нода NL");
+  await expect(dialog).toContainText("Риск L3");
+  await expect(dialog.getByRole("button", { name: "Выполнить" })).toBeDisabled();
+  await dialog.getByLabel("Подтверждение").fill("NL");
+  await dialog.getByRole("button", { name: "Выполнить" }).click();
+  await expect(dialog.getByText("ID аудита: 713", { exact: true })).toBeVisible();
+
+  const previewIndex = api.calls.findIndex((call) => call.path === "/api/admin/action-intents");
+  const executeIndex = api.calls.findIndex((call) => call.path === "/api/admin/nodes/nl/disable");
+  expect(previewIndex).toBeGreaterThanOrEqual(0);
+  expect(executeIndex).toBeGreaterThan(previewIndex);
+  const execution = api.calls[executeIndex];
+  expect(execution.headers?.["x-admin-intent-id"]).toBe("00000000-0000-4000-8000-000000000713");
+  expect(execution.headers?.["x-admin-idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
+  expect(execution.headers?.["x-admin-confirmation-sha256"]).toMatch(/^[0-9a-f]{64}$/);
+  expect(execution.headers?.["x-admin-confirmation-sha256"]).not.toBe("NL");
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/nodes/health").length).toBeGreaterThan(initialListLoads);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/nodes/nl/observability?include_ru_history=false").length).toBeGreaterThan(initialDetailLoads);
+});
+
 test("карточка ноды открывается за два действия, разделяет источники и лениво загружает RU-историю", async ({ page }) => {
   const api = await installAdminApiMock(page, { ruScenario: "fresh-pass" });
   await page.goto("/nodes");
