@@ -27,6 +27,7 @@ from models import (
     AccessKey,
     AdminActionIntent,
     AdminAudit,
+    AdminBroadcastRecipientPlan,
     ExternalOrder,
     ExternalPaymentEvent,
     Event,
@@ -62,6 +63,8 @@ _EXTERNAL_RESULT_KEYS = frozenset(
         "ok",
         "code",
         "count",
+        "attempted",
+        "sent",
         "changed",
         "failed",
         "skipped",
@@ -85,11 +88,21 @@ _EXTERNAL_RESULT_KEYS = frozenset(
         "details",
     }
 )
-_EXTERNAL_COUNT_KEYS = ("count", "changed", "failed", "skipped", "users", "tier_days")
+_EXTERNAL_COUNT_KEYS = (
+    "count",
+    "attempted",
+    "sent",
+    "changed",
+    "failed",
+    "skipped",
+    "users",
+    "tier_days",
+)
 _MAX_EXTERNAL_COUNT = 1_000_000
 _MAX_EXTERNAL_REFERENCE_LENGTH = 128
 _MAX_BULK_PREVIEW_IDS = 50
 _MAX_BULK_DETAILS = 500
+_MAX_BROADCAST_RECIPIENTS = 1000
 _INTERNAL_TARGET_CLAIMS_KEY = "_target_overlap_claims"
 _BULK_EXECUTION_LOCK_ENTITY_ID = -10_002
 _constant_time_compare = hmac.compare_digest
@@ -130,6 +143,10 @@ class ExternalOutcome:
 
 PayloadNormalizer = Callable[[Mapping[str, Any]], dict[str, Any]]
 EntityStateBuilder = Callable[[Any, str, Mapping[str, Any], bool], EntityState]
+ExecutionStateBuilder = Callable[
+    [Any, AdminActionIntent, Mapping[str, Any], bool],
+    EntityState,
+]
 PreviewBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
 ChallengeBuilder = Callable[[EntityState, Mapping[str, Any]], str]
 DbExecutor = Callable[[Any, EntityState, Mapping[str, Any]], dict[str, Any]]
@@ -165,6 +182,7 @@ class ActionPolicy:
     audit_meta_builder: AuditMetaBuilder | None = None
     audit_action_builder: AuditActionBuilder | None = None
     post_commit_context_builder: PostCommitContextBuilder | None = None
+    execution_state_builder: ExecutionStateBuilder | None = None
 
 
 def _utcnow() -> datetime:
@@ -873,6 +891,83 @@ def _normalize_message_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {"text": _redacted_text(runtime["text"])}
 
 
+def _normalize_broadcast_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(payload, {"segment", "limit", "tg_ids", "text"})
+    segment = _bounded_text(
+        payload.get("segment", "all_active"),
+        field="segment",
+        minimum=2,
+        maximum=32,
+    ).lower()
+    if segment not in {"all_active", "free", "paid", "expired", "custom"}:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Сегмент рассылки не поддерживается.",
+        )
+    limit = payload.get("limit", 500)
+    if type(limit) is not int or not 1 <= int(limit) <= _MAX_BROADCAST_RECIPIENTS:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Поле limit для рассылки указано неверно.",
+        )
+    raw_ids = payload.get("tg_ids", [])
+    if (
+        not isinstance(raw_ids, list)
+        or len(raw_ids) > _MAX_BROADCAST_RECIPIENTS
+        or any(type(value) is not int or int(value) <= 0 for value in raw_ids)
+    ):
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Список Telegram ID для рассылки указан неверно.",
+        )
+    tg_ids = sorted({int(value) for value in raw_ids})
+    if segment != "custom" and tg_ids:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Telegram ID разрешены только для пользовательского сегмента.",
+        )
+    if segment == "custom" and not tg_ids:
+        raise ActionIntentError(
+            "empty_selection",
+            status_code=409,
+            message="Список получателей рассылки пуст.",
+        )
+    text_value = _bounded_text(
+        payload.get("text"),
+        field="text",
+        minimum=1,
+        maximum=4000,
+        strip=False,
+    )
+    message_meta = _redacted_text(text_value)
+    return {
+        "segment": segment,
+        "limit": int(limit),
+        "tg_ids": tg_ids,
+        "text": text_value,
+        "requested_tg_ids_hash": hashlib.sha256(
+            canonical_json_bytes(tg_ids)
+        ).hexdigest(),
+        "message_sha256": str(message_meta["sha256"]),
+        "message_length": int(message_meta["length"]),
+    }
+
+
+def _normalize_broadcast_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_broadcast_runtime(payload)
+    return {
+        "segment": runtime["segment"],
+        "limit": runtime["limit"],
+        "requested_tg_ids_hash": runtime["requested_tg_ids_hash"],
+        "message_sha256": runtime["message_sha256"],
+        "message_length": runtime["message_length"],
+    }
+
+
 def _normalize_ticket_reply_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
     allowed = {"body", "media_type", "media_file_id", "media_payload"}
     _reject_extra_payload_fields(payload, allowed)
@@ -1486,6 +1581,111 @@ def _bulk_entity_state(
     )
 
 
+def _broadcast_state_from_selection(selection: list[int]) -> EntityState:
+    normalized = sorted({int(value) for value in selection if int(value) > 0})
+    if not 1 <= len(normalized) <= _MAX_BROADCAST_RECIPIENTS:
+        raise ActionIntentError(
+            "empty_selection" if not normalized else "invalid_selection",
+            status_code=409,
+            message=(
+                "Под выбранные условия получатели не найдены."
+                if not normalized
+                else "Зафиксированная выборка рассылки недоступна."
+            ),
+        )
+    recipient_hash = _semantic_hash(
+        "admin-broadcast-selected-recipients",
+        normalized,
+    )
+    snapshot = {
+        "recipient_count": len(normalized),
+        "recipient_hash": recipient_hash,
+    }
+    return EntityState(
+        entity=None,
+        version_snapshot=dict(snapshot),
+        public_snapshot=dict(snapshot),
+        context={
+            "selected_tg_ids": normalized,
+            "recipient_count": len(normalized),
+            "recipient_hash": recipient_hash,
+        },
+    )
+
+
+def _broadcast_entity_state(
+    session,
+    target_id: str,
+    payload: Mapping[str, Any],
+    _for_update: bool,
+) -> EntityState:
+    if str(target_id) != "broadcast":
+        raise ActionIntentError(
+            "invalid_target",
+            status_code=422,
+            message="Цель рассылки указана неверно.",
+        )
+    segment = str(payload["segment"])
+    query = session.query(User.tg_id).filter(User.tg_id > 0)
+    if segment == "all_active":
+        query = query.filter(User.is_active == True)
+    elif segment == "free":
+        query = query.filter(func.upper(User.sub_type) == "FREE")
+    elif segment == "paid":
+        query = query.filter(func.upper(User.sub_type) == "PAID")
+    elif segment == "expired":
+        query = query.filter(
+            User.expiry_at.isnot(None),
+            User.expiry_at < _utcnow().replace(tzinfo=None),
+        )
+    elif segment == "custom":
+        query = query.filter(User.tg_id.in_(list(payload["tg_ids"])))
+    else:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Сегмент рассылки не поддерживается.",
+        )
+    selection = [
+        int(row[0])
+        for row in query.order_by(User.tg_id.asc())
+        .limit(int(payload["limit"]))
+        .all()
+    ]
+    return _broadcast_state_from_selection(selection)
+
+
+def _broadcast_execution_state(
+    session,
+    intent: AdminActionIntent,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    query = session.query(AdminBroadcastRecipientPlan).filter(
+        AdminBroadcastRecipientPlan.intent_id == str(intent.id)
+    )
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    rows = query.order_by(AdminBroadcastRecipientPlan.ordinal.asc()).all()
+    if (
+        not 1 <= len(rows) <= _MAX_BROADCAST_RECIPIENTS
+        or any(int(row.ordinal) != index for index, row in enumerate(rows))
+    ):
+        raise ActionIntentError(
+            "frozen_selection_unavailable",
+            status_code=409,
+            message="Зафиксированный план рассылки недоступен; отправка заблокирована.",
+        )
+    selection = [int(row.tg_id) for row in rows]
+    if selection != sorted(set(selection)):
+        raise ActionIntentError(
+            "frozen_selection_unavailable",
+            status_code=409,
+            message="Зафиксированный план рассылки повреждён; отправка заблокирована.",
+        )
+    return _broadcast_state_from_selection(selection)
+
+
 def _l2_challenge(_state: EntityState, _payload: Mapping[str, Any]) -> str:
     return "ПОДТВЕРДИТЬ"
 
@@ -1684,6 +1884,27 @@ def _message_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str
     )
 
 
+def _broadcast_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
+    count = int(state.context["recipient_count"])
+    return _simple_preview(
+        f"Рассылка будет отправлена {count} зафиксированным получателям.",
+        {
+            "recipient_count": count,
+            "recipient_hash": str(state.context["recipient_hash"]),
+        },
+        {
+            "segment": str(payload["segment"]),
+            "limit": int(payload["limit"]),
+            "message_sha256": str(payload["message_sha256"]),
+            "message_length": int(payload["message_length"]),
+        },
+        [
+            "Список получателей зафиксирован на этапе предпросмотра.",
+            "Повторная отправка после неопределённого результата запрещена.",
+        ],
+    )
+
+
 def _ticket_reply_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
     return _simple_preview(
         f"В обращение #{state.context['ticket_id']} будет добавлен ответ оператора.",
@@ -1758,6 +1979,17 @@ def _ticket_external_context(state: EntityState, _payload: Mapping[str, Any]) ->
     return {
         "ticket_id": int(state.context["ticket_id"]),
         "user_tg_id": int(state.context["user_tg_id"]),
+    }
+
+
+def _broadcast_external_context(
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "selected_tg_ids": list(state.context["selected_tg_ids"]),
+        "recipient_count": int(state.context["recipient_count"]),
+        "recipient_hash": str(state.context["recipient_hash"]),
     }
 
 
@@ -1844,6 +2076,21 @@ def _message_audit_meta(state: EntityState, payload: Mapping[str, Any]) -> dict[
         "tg_id": int(state.context["tg_id"]),
         "message_sha256": str(text_meta["sha256"]),
         "message_length": int(text_meta["length"]),
+    }
+
+
+def _broadcast_audit_meta(
+    state: EntityState,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "segment": str(payload["segment"]),
+        "limit": int(payload["limit"]),
+        "requested_tg_ids_hash": str(payload["requested_tg_ids_hash"]),
+        "message_sha256": str(payload["message_sha256"]),
+        "message_length": int(payload["message_length"]),
+        "recipient_hash": str(state.context["recipient_hash"]),
+        "recipient_count": int(state.context["recipient_count"]),
     }
 
 
@@ -3045,6 +3292,22 @@ ACTION_POLICIES: dict[str, ActionPolicy] = {
         audit_target_builder=_audit_user_target,
         audit_meta_builder=_message_audit_meta,
     ),
+    "broadcast.send": ActionPolicy(
+        action="broadcast.send",
+        target_type="broadcast",
+        risk_level="L3",
+        payload_normalizer=_normalize_broadcast_payload,
+        runtime_payload_normalizer=_normalize_broadcast_runtime,
+        entity_state_builder=_broadcast_entity_state,
+        execution_state_builder=_broadcast_execution_state,
+        preview_builder=_broadcast_preview,
+        challenge_kind="exact_phrase",
+        challenge_builder=_send_challenge,
+        executor_kind="external",
+        audit_action="admin_broadcast",
+        external_context_builder=_broadcast_external_context,
+        audit_meta_builder=_broadcast_audit_meta,
+    ),
     "ticket.reply": ActionPolicy(
         action="ticket.reply",
         target_type="ticket",
@@ -3191,6 +3454,29 @@ def prepare_action_intent(
     )
     session.add(row)
     session.flush()
+    if policy.action == "broadcast.send":
+        selected = list(state.context.get("selected_tg_ids") or [])
+        if (
+            not 1 <= len(selected) <= _MAX_BROADCAST_RECIPIENTS
+            or selected != sorted(set(int(value) for value in selected))
+        ):
+            raise ActionIntentError(
+                "invalid_selection",
+                status_code=409,
+                message="Зафиксированный план рассылки создать не удалось.",
+            )
+        session.add_all(
+            [
+                AdminBroadcastRecipientPlan(
+                    intent_id=intent_id,
+                    ordinal=index,
+                    tg_id=int(tg_id),
+                    created_at=prepared_at,
+                )
+                for index, tg_id in enumerate(selected)
+            ]
+        )
+        session.flush()
     return {
         "ok": True,
         "intent_id": intent_id,
@@ -3233,6 +3519,42 @@ def _stored_result(intent: AdminActionIntent) -> dict[str, Any]:
         "status": str(intent.status),
         "action_intent_id": str(intent.id),
         "audit_id": int(intent.admin_audit_id) if intent.admin_audit_id else None,
+    }
+
+
+def get_action_intent_status(
+    *,
+    session,
+    actor_tg_id: int,
+    intent_id: str,
+) -> dict[str, Any]:
+    normalized_intent_id = _normalize_uuid(intent_id, code="invalid_intent_id")
+    intent = (
+        session.query(AdminActionIntent)
+        .filter(
+            AdminActionIntent.id == normalized_intent_id,
+            AdminActionIntent.actor_tg_id == int(actor_tg_id),
+        )
+        .one_or_none()
+    )
+    if intent is None:
+        raise ActionIntentError(
+            "intent_not_found",
+            status_code=404,
+            message="Intent не найден.",
+        )
+    if str(intent.status) in _TERMINAL_STATUSES or str(intent.status) == "executing":
+        return _stored_result(intent)
+    return {
+        "ok": False,
+        "status": str(intent.status),
+        "action_intent_id": str(intent.id),
+        "audit_id": (
+            int(intent.admin_audit_id)
+            if intent.admin_audit_id is not None
+            else None
+        ),
+        "result_code": str(intent.result_code) if intent.result_code else None,
     }
 
 
@@ -4007,7 +4329,7 @@ def _validate_execution(
     normalized_payload = policy.payload_normalizer(payload)
     if _payload_hash(normalized_payload) != str(intent.payload_hash):
         raise ActionIntentError(
-            "intent_mismatch",
+            "payload_mismatch" if policy.action == "broadcast.send" else "intent_mismatch",
             status_code=409,
             message="Payload изменился после preview.",
         )
@@ -4063,11 +4385,15 @@ def _validate_execution(
     ):
         _acquire_bulk_execution_lock(session)
 
-    state = policy.entity_state_builder(
-        session,
-        normalized_target["id"],
-        runtime_payload,
-        True,
+    state = (
+        policy.execution_state_builder(session, intent, runtime_payload, True)
+        if policy.execution_state_builder is not None
+        else policy.entity_state_builder(
+            session,
+            normalized_target["id"],
+            runtime_payload,
+            True,
+        )
     )
     live_version = _entity_version_hash(policy, normalized_target, state)
     if live_version != str(intent.entity_version_hash):
@@ -4272,6 +4598,17 @@ def _normalize_external_outcome(
                 intent_id=intent_id,
                 audit_id=audit_id,
             )
+        if action == "broadcast.send" and (
+            not {"attempted", "sent", "failed"}.issubset(facts)
+            or int(facts["sent"]) + int(facts["failed"])
+            != int(facts["attempted"])
+            or succeeded != (int(facts["failed"]) == 0)
+        ):
+            return _malformed_external_outcome(
+                raw_result=raw_result,
+                intent_id=intent_id,
+                audit_id=audit_id,
+            )
         has_bulk_diagnostics = any(
             key in raw_result for key in ("preview_tg_ids", "details")
         )
@@ -4464,6 +4801,7 @@ def _terminal_audit_meta(
         "display_name_length",
         "reason_length",
         "message_length",
+        "recipient_count",
         "body_length",
         "media_file_id_length",
         "media_payload_length",
@@ -4498,6 +4836,7 @@ def _terminal_audit_meta(
         ("node_code", 32),
         ("preset", 64),
         ("action", 24),
+        ("segment", 32),
         ("status", 20),
         ("media_type", 32),
     ):
@@ -4508,6 +4847,8 @@ def _terminal_audit_meta(
         "reason_sha256",
         "display_name_sha256",
         "message_sha256",
+        "requested_tg_ids_hash",
+        "recipient_hash",
         "body_sha256",
         "media_file_id_sha256",
         "media_payload_sha256",

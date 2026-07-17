@@ -1474,6 +1474,35 @@ def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
     ]:
         conn.execute(text(sql))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_recipient_plan (
+              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              intent_id VARCHAR(36) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              tg_id BIGINT NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_plan_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_plan_intent_ordinal
+                UNIQUE (intent_id, ordinal),
+              CONSTRAINT uq_admin_broadcast_plan_intent_tg_id
+                UNIQUE (intent_id, tg_id),
+              CONSTRAINT ck_admin_broadcast_plan_ordinal
+                CHECK (ordinal >= 0 AND ordinal < 1000),
+              CONSTRAINT ck_admin_broadcast_plan_tg_id CHECK (tg_id > 0)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_plan_intent "
+            "ON admin_broadcast_recipient_plan(intent_id);"
+        )
+    )
     for sql in [
         "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_insert;",
         """
@@ -1556,6 +1585,35 @@ def _ensure_admin_action_intent_domain_postgres(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
     ]:
         conn.execute(text(sql))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_recipient_plan (
+              id BIGSERIAL NOT NULL PRIMARY KEY,
+              intent_id VARCHAR(36) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              tg_id BIGINT NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_plan_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_plan_intent_ordinal
+                UNIQUE (intent_id, ordinal),
+              CONSTRAINT uq_admin_broadcast_plan_intent_tg_id
+                UNIQUE (intent_id, tg_id),
+              CONSTRAINT ck_admin_broadcast_plan_ordinal
+                CHECK (ordinal >= 0 AND ordinal < 1000),
+              CONSTRAINT ck_admin_broadcast_plan_tg_id CHECK (tg_id > 0)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_plan_intent "
+            "ON admin_broadcast_recipient_plan(intent_id);"
+        )
+    )
     conn.execute(
         text(
             """

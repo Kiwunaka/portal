@@ -1,0 +1,227 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Radio, RefreshCw, ShieldAlert } from "lucide-react";
+
+import { ActionIntentDialog } from "@/components/ops/action-intent-dialog";
+import type { OpsShellStatus } from "@/components/ops/shell-status";
+import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import type { ActionIntentRequest, AdminActionResult, PreparedActionIntent } from "@/lib/admin-api/actions";
+import { AdminApiError } from "@/lib/admin-api/client";
+import { fetchActionIntentStatus } from "@/lib/admin-api/control";
+
+type BroadcastSegment = "all_active" | "paid" | "free" | "expired" | "custom";
+type BroadcastDraft = {
+  segment: BroadcastSegment;
+  limit: string;
+  customIds: string;
+  text: string;
+};
+
+const STORAGE_KEY = "pokrov_admin_broadcast_draft_v1";
+const EMPTY_DRAFT: BroadcastDraft = { segment: "all_active", limit: "500", customIds: "", text: "" };
+const SEGMENTS: BroadcastSegment[] = ["all_active", "paid", "free", "expired", "custom"];
+
+function loadDraft(): BroadcastDraft {
+  if (typeof window === "undefined") return EMPTY_DRAFT;
+  try {
+    const parsed = JSON.parse(String(window.sessionStorage.getItem(STORAGE_KEY) || "{}")) as Partial<BroadcastDraft>;
+    return {
+      segment: SEGMENTS.includes(parsed.segment as BroadcastSegment) ? parsed.segment as BroadcastSegment : EMPTY_DRAFT.segment,
+      limit: typeof parsed.limit === "string" ? parsed.limit : EMPTY_DRAFT.limit,
+      customIds: typeof parsed.customIds === "string" ? parsed.customIds : "",
+      text: typeof parsed.text === "string" ? parsed.text.slice(0, 4000) : "",
+    };
+  } catch {
+    return EMPTY_DRAFT;
+  }
+}
+
+function parseCustomIds(value: string): number[] | null {
+  const tokens = value.split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+  if (!tokens.length) return [];
+  if (tokens.some((item) => !/^\d+$/.test(item))) return null;
+  const ids = tokens.map(Number);
+  if (ids.some((item) => !Number.isSafeInteger(item) || item <= 0)) return null;
+  return [...new Set(ids)].sort((left, right) => left - right);
+}
+
+function resultCount(result: AdminActionResult | null, key: "attempted" | "sent" | "failed"): number | null {
+  if (!result) return null;
+  const direct = (result as AdminActionResult & Record<string, unknown>)[key];
+  const nested = result.result?.[key];
+  const value = typeof direct === "number" ? direct : nested;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function resultTone(result: AdminActionResult): "success" | "warning" | "danger" {
+  if (result.status === "completed") return "success";
+  if (result.status === "uncertain" || result.status === "executing") return "warning";
+  return "danger";
+}
+
+export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
+  const [draft, setDraft] = useState<BroadcastDraft>(loadDraft);
+  const [formError, setFormError] = useState("");
+  const [request, setRequest] = useState<ActionIntentRequest | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [lastResult, setLastResult] = useState<AdminActionResult | null>(null);
+  const [statusIntentId, setStatusIntentId] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState("");
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const clearStorageOnEmptyRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      if (clearStorageOnEmptyRef.current && draft.text === "" && draft.customIds === "") {
+        window.sessionStorage.removeItem(STORAGE_KEY);
+        clearStorageOnEmptyRef.current = false;
+        return;
+      }
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      // The in-memory draft remains available when storage is blocked.
+    }
+  }, [draft]);
+
+  useEffect(() => {
+    onShellStatus?.({
+      api: statusError ? "degraded" : lastResult ? lastResult.status === "completed" ? "ok" : "degraded" : "missing",
+      session: "missing",
+      oldestRequiredSourceAt: null,
+    });
+  }, [lastResult, onShellStatus, statusError]);
+
+  const clearConfirmedDraft = useCallback(() => {
+    clearStorageOnEmptyRef.current = true;
+    try {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // State still clears after a confirmed outcome.
+    }
+    setDraft(EMPTY_DRAFT);
+  }, []);
+
+  const handleResult = useCallback((result: AdminActionResult) => {
+    setLastResult(result);
+    setStatusIntentId(result.action_intent_id || null);
+    setStatusError("");
+    if (result.status === "completed" && result.ok) clearConfirmedDraft();
+  }, [clearConfirmedDraft]);
+
+  const handlePrepared = useCallback((intent: PreparedActionIntent) => {
+    setStatusIntentId(intent.intent_id);
+    setStatusError("");
+  }, []);
+
+  const checkStatus = useCallback(async () => {
+    if (!statusIntentId || checkingStatus) return;
+    setCheckingStatus(true);
+    setStatusError("");
+    try {
+      const result = await fetchActionIntentStatus(statusIntentId, { timeoutMs: 15_000 });
+      setLastResult(result);
+      if (result.status === "completed" && result.ok) clearConfirmedDraft();
+    } catch (error) {
+      const apiError = error instanceof AdminApiError ? error : null;
+      setStatusError(apiError?.correlationId ? `Статус недоступен. ID обращения: ${apiError.correlationId}` : "Статус отправки сейчас недоступен. Не повторяйте отправку.");
+    } finally {
+      setCheckingStatus(false);
+    }
+  }, [checkingStatus, clearConfirmedDraft, statusIntentId]);
+
+  function updateDraft(patch: Partial<BroadcastDraft>) {
+    setDraft((current) => ({ ...current, ...patch }));
+    setFormError("");
+  }
+
+  function openPreview(event: FormEvent) {
+    event.preventDefault();
+    const limit = Number(draft.limit.trim());
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+      setFormError("Лимит должен быть целым числом от 1 до 1000.");
+      return;
+    }
+    if (!draft.text.trim() || draft.text.length > 4000) {
+      setFormError("Введите сообщение длиной от 1 до 4000 символов.");
+      return;
+    }
+    const customIds = parseCustomIds(draft.customIds);
+    if (customIds === null || (draft.segment === "custom" && customIds.length === 0)) {
+      setFormError("Для пользовательского сегмента укажите корректные положительные Telegram ID.");
+      return;
+    }
+    const payload = {
+      segment: draft.segment,
+      limit,
+      tg_ids: draft.segment === "custom" ? customIds : [],
+      text: draft.text,
+    };
+    setFormError("");
+    setLastResult(null);
+    setStatusError("");
+    setRequest({
+      action: "broadcast.send",
+      target: { type: "broadcast", id: "broadcast" },
+      payload,
+      endpoint: "/api/admin/broadcast",
+      method: "POST",
+    });
+    setDialogOpen(true);
+  }
+
+  const attempted = useMemo(() => resultCount(lastResult, "attempted"), [lastResult]);
+  const sent = useMemo(() => resultCount(lastResult, "sent"), [lastResult]);
+  const failed = useMemo(() => resultCount(lastResult, "failed"), [lastResult]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
+          <Badge tone="danger">L3 · внешняя отправка</Badge>
+          <span>Получатели фиксируются сервером до подтверждения. Автоматического повтора нет.</span>
+        </div>
+        {statusIntentId ? <Button tone="secondary" disabled={checkingStatus} onClick={() => void checkStatus()}><RefreshCw size={15} className={checkingStatus ? "animate-spin" : ""} /> Проверить статус</Button> : null}
+      </div>
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.72fr)_minmax(320px,0.28fr)]">
+        <Card>
+          <SectionTitle title="Защищённая рассылка" description="Черновик → серверный предпросмотр → точная фраза «ОТПРАВИТЬ» → однократный внешний исполнитель. Изменение сообщения после предпросмотра блокируется." />
+          <form className="space-y-4" onSubmit={openPreview}>
+            {formError ? <div role="alert" className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] p-3 text-xs text-[color:var(--atlas-status-danger-text)]">{formError}</div> : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs font-semibold">Сегмент<select aria-label="Сегмент рассылки" value={draft.segment} onChange={(event) => updateDraft({ segment: event.target.value as BroadcastSegment })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="all_active">Все активные</option><option value="paid">Платные</option><option value="free">Бесплатные</option><option value="expired">Истёкшие</option><option value="custom">Список Telegram ID</option></select></label>
+              <label className="block text-xs font-semibold">Лимит<input aria-label="Лимит рассылки" inputMode="numeric" value={draft.limit} onChange={(event) => updateDraft({ limit: event.target.value })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 tabular-nums" /></label>
+            </div>
+            {draft.segment === "custom" ? <label className="block text-xs font-semibold">Telegram ID получателей<textarea aria-label="Telegram ID получателей" value={draft.customIds} onChange={(event) => updateDraft({ customIds: event.target.value })} placeholder="10001, 10002" className="mt-1 min-h-20 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 font-mono text-xs" /><span className="mt-1 block font-normal text-[color:var(--atlas-text-muted)]">Список не возвращается в UI и не попадает в intent/audit; сохраняются только count и SHA-256.</span></label> : null}
+            <label className="block text-xs font-semibold">Сообщение<textarea aria-label="Текст рассылки" value={draft.text} maxLength={4000} onChange={(event) => updateDraft({ text: event.target.value })} placeholder="Текст сообщения" className="mt-1 min-h-44 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 text-sm leading-6" /><span className="mt-1 flex justify-between font-normal text-[color:var(--atlas-text-muted)]"><span>Черновик хранится только в sessionStorage этого окна. Не вставляйте секреты.</span><span>{draft.text.length} / 4000</span></span></label>
+            <div className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3 text-xs leading-5 text-[color:var(--atlas-status-warning-text)]"><div className="flex items-center gap-2 font-semibold"><ShieldAlert size={15} /> После timeout итог считается неопределённым</div><p className="mt-1">Не создавайте новую отправку. Используйте только «Проверить статус» и сверку с аудитом.</p></div>
+            <Button tone="danger" type="submit"><Radio size={15} /> Подготовить защищённый предпросмотр</Button>
+          </form>
+        </Card>
+
+        <aside className="space-y-4" aria-label="Состояние рассылки">
+          <Card>
+            <SectionTitle title="Последний результат" description="Показываются только агрегаты backend, ID intent и ID аудита." />
+            {lastResult ? <div className="space-y-3 text-xs">
+              <Badge tone={resultTone(lastResult)}>{lastResult.status === "completed" ? "Отправка подтверждена" : lastResult.status === "uncertain" || lastResult.status === "executing" ? "Итог неясен — не повторять" : "Отправка завершилась с ошибкой"}</Badge>
+              <dl className="grid grid-cols-2 gap-2"><dt className="text-[color:var(--atlas-text-muted)]">Попыток</dt><dd className="font-semibold tabular-nums">{attempted ?? "— · Нет данных"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Отправлено</dt><dd className="font-semibold tabular-nums">{sent ?? "— · Нет данных"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Ошибок</dt><dd className="font-semibold tabular-nums">{failed ?? "— · Нет данных"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Код результата</dt><dd className="break-all font-mono text-[11px]">{lastResult.result_code || "— · Нет данных"}</dd></dl>
+              <div className="border-t border-[color:var(--atlas-border)] pt-3"><p className="text-[color:var(--atlas-text-muted)]">Intent ID</p><code className="mt-1 block break-all">{lastResult.action_intent_id || "— · Нет данных"}</code><p className="mt-2 text-[color:var(--atlas-text-muted)]">Audit ID</p><code className="mt-1 block">{lastResult.audit_id ?? "— · Нет данных"}</code></div>
+            </div> : <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)]">Подтверждённого результата ещё нет. Черновик не очищается при ошибке, 401 или неопределённом исходе.</p>}
+          </Card>
+          {statusError ? <Card><div role="alert" className="text-xs leading-5 text-[color:var(--atlas-status-warning-text)]">{statusError}</div></Card> : null}
+        </aside>
+      </div>
+
+      <ActionIntentDialog
+        open={dialogOpen}
+        request={request}
+        onOpenChange={(open) => { setDialogOpen(open); if (!open) setRequest(null); }}
+        onKnownOutcome={() => undefined}
+        onCheckState={() => { void checkStatus(); }}
+        onResult={handleResult}
+        onPrepared={handlePrepared}
+      />
+    </div>
+  );
+}

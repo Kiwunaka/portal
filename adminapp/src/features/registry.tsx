@@ -1,7 +1,8 @@
 import { Fragment, type ReactNode } from "react";
 
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { LegacySection } from "@/features/legacy/legacy-section";
+import { BroadcastPage } from "@/features/control/broadcast-page";
+import { ReleasePage } from "@/features/control/release-page";
 import { AlertsPage } from "@/features/network/alerts-page";
 import { FreeTierPage } from "@/features/network/free-tier-page";
 import { ProviderLimitsPage } from "@/features/network/provider-limits-page";
@@ -37,8 +38,8 @@ export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
   funnel: ({ onShellStatus }) => <FunnelPage onShellStatus={onShellStatus} />,
   promos: ({ onShellStatus }) => <PromosPage onShellStatus={onShellStatus} />,
   referrals: ({ onShellStatus }) => <ReferralsPage onShellStatus={onShellStatus} />,
-  release: ({ onShellStatus }) => <LegacySection section="release" onShellStatus={onShellStatus} />,
-  broadcast: ({ onShellStatus }) => <LegacySection section="broadcast" onShellStatus={onShellStatus} />
+  release: ({ onShellStatus }) => <ReleasePage onShellStatus={onShellStatus} />,
+  broadcast: ({ onShellStatus }) => <BroadcastPage onShellStatus={onShellStatus} />
 };
 
 export function ActiveOpsRoute({ section, onShellStatus }: { section: OpsSectionId; onShellStatus?: (status: OpsShellStatus) => void }) {

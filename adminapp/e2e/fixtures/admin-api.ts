@@ -695,6 +695,8 @@ type AdminApiMockOptions = {
   promoRows?: Array<Record<string, unknown>>;
   referralsStatus?: number;
   broadcastStatus?: number;
+  broadcastOutcome?: "completed" | "failed" | "uncertain";
+  actionIntentPrepareStatus?: number;
   failAllLegacyRequests?: boolean;
   delayFirstOverviewFailure?: boolean;
   ticketReplyOutcomes?: Array<"completed" | "failed" | "uncertain">;
@@ -705,6 +707,69 @@ type AdminApiMockOptions = {
   funnelStatus?: number;
   promosStatus?: number;
 };
+
+const releaseCandidates = [
+  {
+    candidate_id: "a".repeat(64),
+    component: "adminapp",
+    version: "2026.07.17.1",
+    revision: "1".repeat(40),
+    artifact_sha256: "2".repeat(64),
+    descriptor_sha256: "a".repeat(64),
+    imported_at: "2026-07-15T09:58:00Z",
+    age_seconds: 120,
+  },
+  {
+    candidate_id: "b".repeat(64),
+    component: "portal_bot",
+    version: "2026.07.17.2",
+    revision: "3".repeat(40),
+    artifact_sha256: "4".repeat(64),
+    descriptor_sha256: "b".repeat(64),
+    imported_at: "2026-07-15T09:50:00Z",
+    age_seconds: 600,
+  },
+];
+
+function releaseCheck(origin: "current" | "brain" | "ru", status: string, marker: string) {
+  return {
+    origin,
+    check_name: `${origin}_origin_reachability`,
+    required: true,
+    status,
+    observed_at: status === "MISSING" ? null : "2026-07-15T09:55:00Z",
+    evidence_ref: status === "MISSING" ? null : marker.repeat(64),
+    evidence_sha256: status === "MISSING" ? null : marker.repeat(64),
+    ru_probe_run_id: origin === "ru" && status !== "MISSING" ? "00000000-0000-4000-8000-000000000719" : null,
+    detail: {},
+    reason: status === "MISSING" ? "missing_required_evidence" : `reported_${status.toLowerCase()}`,
+  };
+}
+
+function releaseReadiness(candidateId: string) {
+  const candidate = releaseCandidates.find((item) => item.candidate_id === candidateId) || releaseCandidates[0];
+  const allPass = candidate.candidate_id === releaseCandidates[1].candidate_id;
+  const origins = allPass
+    ? [
+      { origin: "current", status: "PASS", checks: [releaseCheck("current", "PASS", "5")], diagnostics: [] },
+      { origin: "brain", status: "PASS", checks: [releaseCheck("brain", "PASS", "6")], diagnostics: [] },
+      { origin: "ru", status: "PASS", checks: [releaseCheck("ru", "PASS", "7")], diagnostics: [] },
+    ]
+    : [
+      { origin: "current", status: "PASS", checks: [releaseCheck("current", "PASS", "5")], diagnostics: [] },
+      { origin: "brain", status: "OPERATOR_ATTESTED", checks: [releaseCheck("brain", "OPERATOR_ATTESTED", "6")], diagnostics: [] },
+      { origin: "ru", status: "BLOCKED_BY_ACCESS", checks: [releaseCheck("ru", "BLOCKED_BY_ACCESS", "7")], diagnostics: [releaseCheck("ru", "MISSING", "8")] },
+    ];
+  return {
+    candidate,
+    candidate_id: candidate.candidate_id,
+    required_check_matrix_version: 1,
+    status: allPass ? "PASS" : "BLOCKED_BY_ACCESS",
+    ready: allPass,
+    generated_at: generatedAt,
+    origins,
+  };
+}
 
 const revenueOrders = [
   { id: 901, order_id: "order-review-901", provider: "freekassa", tg_id: 1001, user: { tg_id: 1001, username: "operator_test", display_name: "Иван Проверочный", status: "active" }, plan_code: "start_99", amount: 99, currency: "RUB", status: "manual_review", source: "checkout", campaign: "summer", promo_code: "WELCOME20", created_at: "2026-07-15T08:30:00Z", paid_at: null, event_count: 2, last_event: { id: 9901, provider: "freekassa", event_type: "result", external_id: "safe-event-9901", order_id: "order-review-901", signature_ok: true, processed_ok: false, created_at: "2026-07-15T08:31:00Z" } },
@@ -1064,6 +1129,14 @@ function isAlertActionPath(pathname: string): boolean {
   return /^\/api\/admin\/alerts\/[1-9]\d*\/(ack|silence)$/.test(pathname);
 }
 
+function isReleaseReadinessPath(pathname: string): boolean {
+  return /^\/api\/admin\/releases\/[a-f0-9]{64}\/readiness$/.test(pathname);
+}
+
+function isActionIntentStatusPath(pathname: string): boolean {
+  return /^\/api\/admin\/action-intents\/[0-9a-f-]{36}$/.test(pathname);
+}
+
 function isFocusedGetPath(pathname: string): boolean {
   return FOCUSED_GET_PATHS.has(pathname)
     || pathname === "/api/admin/probes/ru-origin/runs"
@@ -1072,7 +1145,10 @@ function isFocusedGetPath(pathname: string): boolean {
     || isUserDetailPath(pathname)
     || isUserInvestigationPath(pathname)
     || isTicketDetailPath(pathname)
-    || isPaymentDetailPath(pathname);
+    || isPaymentDetailPath(pathname)
+    || pathname === "/api/admin/releases/candidates"
+    || isReleaseReadinessPath(pathname)
+    || isActionIntentStatusPath(pathname);
 }
 
 function fulfillJson(route: Route, data: unknown, status = 200) {
@@ -1204,6 +1280,31 @@ export async function installAdminApiMock(
       return;
     }
 
+    if (url.pathname === "/api/admin/releases/candidates") {
+      await fulfillJson(route, { items: releaseCandidates, next_cursor: null, limit: 50 });
+      return;
+    }
+
+    if (isReleaseReadinessPath(url.pathname)) {
+      const candidateId = url.pathname.split("/").at(-2) || "";
+      await fulfillJson(route, releaseReadiness(candidateId));
+      return;
+    }
+
+    if (isActionIntentStatusPath(url.pathname)) {
+      const intentId = url.pathname.split("/").at(-1) || "";
+      const outcome = options.broadcastOutcome || "uncertain";
+      await fulfillJson(route, {
+        ok: outcome === "completed",
+        status: outcome,
+        action_intent_id: intentId,
+        audit_id: outcome === "uncertain" ? 719 : 718,
+        result_code: outcome === "completed" ? "broadcast_sent" : outcome === "failed" ? "broadcast_partial" : "external_timeout",
+        ...(outcome === "completed" ? { result: { attempted: 12, sent: 12, failed: 0 } } : {}),
+      });
+      return;
+    }
+
     if (url.pathname === "/api/admin/broadcast") {
       const status = options.broadcastStatus ?? 200;
       if (status !== 200) {
@@ -1214,11 +1315,32 @@ export async function installAdminApiMock(
         );
         return;
       }
-      await fulfillJson(route, { ok: true, attempted: 0, sent: 0, failed: 0 });
+      if (!requestHeaders["x-admin-intent-id"] || !requestHeaders["x-admin-idempotency-key"] || !requestHeaders["x-admin-confirmation-sha256"]) {
+        await fulfillJson(route, { detail: { code: "intent_required", message: "Нужно защищённое намерение" } }, 428);
+        return;
+      }
+      const outcome = options.broadcastOutcome || "completed";
+      await fulfillJson(route, {
+        ok: outcome === "completed",
+        status: outcome,
+        action_intent_id: requestHeaders["x-admin-intent-id"],
+        audit_id: 718,
+        result_code: outcome === "completed" ? "broadcast_sent" : outcome === "failed" ? "broadcast_partial" : "external_timeout",
+        ...(outcome === "completed" ? { attempted: 12, sent: 12, failed: 0 } : {}),
+      });
       return;
     }
 
     if (url.pathname === "/api/admin/action-intents") {
+      const prepareStatus = options.actionIntentPrepareStatus ?? 200;
+      if (prepareStatus !== 200) {
+        await fulfillJson(
+          route,
+          { detail: { code: "intent_prepare_rejected", message: "Предпросмотр рассылки отклонён", correlation_id: "broadcast-prepare-test-id" } },
+          prepareStatus,
+        );
+        return;
+      }
       const body = requestBody && typeof requestBody === "object" && !Array.isArray(requestBody)
         ? requestBody as Record<string, unknown>
         : {};
@@ -1242,15 +1364,16 @@ export async function installAdminApiMock(
       const paymentAction = action === "payment.reconcile";
       const promoAction = action.startsWith("promo.");
       const referralAction = action === "referral.process";
+      const broadcastAction = action === "broadcast.send";
       const revenueAction = paymentAction || promoAction || referralAction;
-      const l3Action = action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete" || action === "provider_quota.delete" || action === "promo.delete";
+      const l3Action = broadcastAction || action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete" || action === "provider_quota.delete" || action === "promo.delete";
       const challenge = action === "node.disable"
         ? nodeCode.toUpperCase()
         : action === "provider_quota.delete"
           ? nodeCode.toUpperCase()
         : action === "promo.delete"
           ? targetId.toUpperCase()
-        : action === "ticket.reply" || action === "user.message"
+        : broadcastAction || action === "ticket.reply" || action === "user.message"
           ? "ОТПРАВИТЬ"
           : l3Action
             ? targetId
@@ -1266,6 +1389,9 @@ export async function installAdminApiMock(
       const promoAfter = action === "promo.delete" ? { ...promoBefore, exists: false } : { ...promoBefore, promo_code: String(revenuePayload.new_code || revenuePayload.code || targetId).toUpperCase(), promo_type: String(revenuePayload.promo_type || promoBefore.promo_type), value: Number(revenuePayload.value ?? promoBefore.value), uses_left: Number(revenuePayload.uses_left ?? promoBefore.uses_left), expires_at: revenuePayload.expires_at ?? promoBefore.expires_at, exists: true };
       const referralBefore = { selection_count: 2, queue_id: 301, order_id: "ref-order-301", referrer_tg_id: 1101, referred_tg_id: 2101, decision_basis: "reward_ready" };
       const referralAfter = { ...referralBefore, status: "process" };
+      const broadcastPayload = body.payload && typeof body.payload === "object" && !Array.isArray(body.payload) ? body.payload as Record<string, unknown> : {};
+      const broadcastBefore = { recipient_count: 12, recipient_hash: "9".repeat(64) };
+      const broadcastAfter = { segment: String(broadcastPayload.segment || "all_active"), limit: Number(broadcastPayload.limit || 500), message_sha256: "8".repeat(64), message_length: String(broadcastPayload.text || "").length };
       const revenueBefore = paymentAction ? paymentBefore : promoAction ? promoBefore : referralBefore;
       const revenueAfter = paymentAction ? paymentAfter : promoAction ? promoAfter : referralAfter;
       await fulfillJson(route, {
@@ -1275,18 +1401,18 @@ export async function installAdminApiMock(
         target: { type: targetType, id: nodeAction || providerAction ? nodeCode : targetId },
         risk_level: l3Action ? "L3" : "L2",
         preview: {
-          title: revenueAction ? paymentAction ? "Сверка платёжного заказа" : promoAction ? "Изменение промокода" : "Обработка реферальной очереди" : providerAction ? `Квота провайдера ${nodeCode.toUpperCase()}` : nodeAction ? action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}` : targetType === "ticket" ? `Действие с тикетом ${targetId}` : `Действие с пользователем ${targetId}`,
-          summary: revenueAction ? paymentAction ? "Сервер зафиксировал provider, order, status и callback version." : promoAction ? "Сервер показал точные before/after и срок промокода." : "Сервер зафиксировал очередь и основание решения." : providerAction ? "Сервер пересчитал конфигурацию и прогноз исчерпания." : nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер проверил текущее состояние и подготовил изменение.",
-          before: revenueAction ? revenueBefore : providerAction ? providerBefore : nodeAction ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 } : genericBefore,
-          after: revenueAction ? revenueAfter : providerAction ? providerAfter : nodeAction ? { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 } : genericAfter,
-          warnings: revenueAction ? paymentAction ? ["Callback evidence не изменяется."] : referralAction ? ["Новый платёж не создаётся."] : [] : action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : providerAction ? ["Прогноз рассчитан сервером."] : [],
+          title: broadcastAction ? "Защищённая рассылка" : revenueAction ? paymentAction ? "Сверка платёжного заказа" : promoAction ? "Изменение промокода" : "Обработка реферальной очереди" : providerAction ? `Квота провайдера ${nodeCode.toUpperCase()}` : nodeAction ? action === "node.disable" ? `Отключение ноды ${nodeCode.toUpperCase()}` : `Команда для ноды ${nodeCode.toUpperCase()}` : targetType === "ticket" ? `Действие с тикетом ${targetId}` : `Действие с пользователем ${targetId}`,
+          summary: broadcastAction ? "Сервер зафиксировал точных получателей и SHA-256 сообщения." : revenueAction ? paymentAction ? "Сервер зафиксировал provider, order, status и callback version." : promoAction ? "Сервер показал точные before/after и срок промокода." : "Сервер зафиксировал очередь и основание решения." : providerAction ? "Сервер пересчитал конфигурацию и прогноз исчерпания." : nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер проверил текущее состояние и подготовил изменение.",
+          before: broadcastAction ? broadcastBefore : revenueAction ? revenueBefore : providerAction ? providerBefore : nodeAction ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 } : genericBefore,
+          after: broadcastAction ? broadcastAfter : revenueAction ? revenueAfter : providerAction ? providerAfter : nodeAction ? { code: nodeCode.toUpperCase(), ...afterByAction[action], mapped_users: 31 } : genericAfter,
+          warnings: broadcastAction ? ["Получатели зафиксированы. Автоматического повтора нет."] : revenueAction ? paymentAction ? ["Callback evidence не изменяется."] : referralAction ? ["Новый платёж не создаётся."] : [] : action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : providerAction ? ["Прогноз рассчитан сервером."] : [],
           ...(referralAction ? { selection: { selection_count: 2, selection_hash: "4".repeat(64) } } : {}),
         },
         payload_hash: "1".repeat(64),
         snapshot_hash: "2".repeat(64),
         entity_version_hash: "3".repeat(64),
         confirmation_challenge: challenge,
-        confirmation_challenge_kind: action === "promo.delete" ? "exact_promo_code" : action === "node.disable" || action === "provider_quota.delete" ? "exact_node_code" : l3Action ? "exact_tg_id" : "exact_phrase",
+        confirmation_challenge_kind: broadcastAction ? "exact_phrase" : action === "promo.delete" ? "exact_promo_code" : action === "node.disable" || action === "provider_quota.delete" ? "exact_node_code" : l3Action ? "exact_tg_id" : "exact_phrase",
         expires_at: "2099-07-15T10:10:00Z",
       });
       return;

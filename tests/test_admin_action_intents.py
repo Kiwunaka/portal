@@ -1587,6 +1587,7 @@ def test_private_message_and_bulk_selection_persist_only_hashes(
     finally:
         session.close()
 
+
     client = TestClient(api.app)
     private_message = "SYNTHETIC-PRIVATE-TASK14-MESSAGE"
     prepared = _prepare(
@@ -1726,3 +1727,211 @@ def test_private_message_and_bulk_selection_persist_only_hashes(
         assert set(persisted_preview["after"]) == {"action_title", "dry_run"}
     finally:
         session.close()
+
+
+def test_broadcast_executes_only_frozen_recipients_and_message(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminActionIntent, AdminAudit, AdminBroadcastRecipientPlan, User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add_all(
+            [
+                User(
+                    tg_id=tg_id,
+                    uuid=f"00000000-0000-4000-8000-{tg_id:012d}",
+                    email=f"broadcast-{tg_id}@example.test",
+                    sub_type="PAID",
+                    created_at=now,
+                    expiry_at=now + timedelta(days=30),
+                    is_active=is_active,
+                    sub_token=f"broadcast-token-{tg_id}",
+                )
+                for tg_id, is_active in ((7101, True), (7102, True), (7103, False))
+            ]
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    client = TestClient(api.app)
+    text = "Плановые работы"
+    payload = {"segment": "all_active", "limit": 100, "tg_ids": [], "text": text}
+    prepared = _prepare(
+        client,
+        action="broadcast.send",
+        target_type="broadcast",
+        target_id="broadcast",
+        payload=payload,
+    )
+    assert prepared.status_code == 200, prepared.text
+    preview = prepared.json()
+    assert preview["risk_level"] == "L3"
+    assert preview["confirmation_challenge"] == "ОТПРАВИТЬ"
+    assert preview["preview"]["before"]["recipient_count"] == 2
+    assert len(preview["preview"]["before"]["recipient_hash"]) == 64
+    assert preview["preview"]["after"]["message_sha256"] == hashlib.sha256(
+        text.encode("utf-8")
+    ).hexdigest()
+    intent_id = str(preview["intent_id"])
+
+    session = api.SessionLocal()
+    try:
+        session.query(User).filter_by(tg_id=7103).one().is_active = True
+        session.commit()
+    finally:
+        session.close()
+
+    deliveries: list[tuple[int, str]] = []
+
+    async def send(chat_id: int, message: str) -> bool:
+        deliveries.append((chat_id, message))
+        return True
+
+    monkeypatch.setattr(api, "_telegram_send_message", send)
+    idempotency_key = str(uuid.uuid4())
+    headers = _execute_headers(
+        intent_id,
+        idempotency_key=idempotency_key,
+        confirmation_hash=hashlib.sha256("ОТПРАВИТЬ".encode("utf-8")).hexdigest(),
+    )
+    changed = client.post(
+        "/api/admin/broadcast",
+        headers=headers,
+        json={**payload, "text": "Другой текст", "dry_run": False},
+    )
+    assert changed.status_code == 409
+    assert _detail_code(changed) == "payload_mismatch"
+    assert deliveries == []
+
+    sent = client.post(
+        "/api/admin/broadcast",
+        headers=headers,
+        json={**payload, "dry_run": False},
+    )
+    assert sent.status_code == 200, sent.text
+    assert sent.json()["status"] == "completed"
+    assert sent.json()["attempted"] == 2
+    assert sent.json()["sent"] == 2
+    assert sent.json()["failed"] == 0
+    assert deliveries == [(7101, text), (7102, text)]
+
+    replay = client.post(
+        "/api/admin/broadcast",
+        headers=headers,
+        json={**payload, "dry_run": False},
+    )
+    assert replay.json() == sent.json()
+    assert deliveries == [(7101, text), (7102, text)]
+
+    session = api.SessionLocal()
+    try:
+        intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
+        canonical = json.loads(intent.canonical_payload_json)
+        assert set(canonical) == {
+            "segment",
+            "limit",
+            "requested_tg_ids_hash",
+            "message_sha256",
+            "message_length",
+        }
+        assert canonical["message_sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
+        assert canonical["message_length"] == len(text)
+        assert session.query(AdminBroadcastRecipientPlan).filter_by(intent_id=intent_id).count() == 2
+        audit = session.query(AdminAudit).filter_by(id=intent.admin_audit_id).one()
+        persisted_public = " ".join(
+            (
+                intent.canonical_payload_json,
+                intent.preview_snapshot_json,
+                str(intent.result_summary_json or ""),
+                str(audit.meta or ""),
+            )
+        )
+        assert text not in persisted_public
+        assert all(str(tg_id) not in persisted_public for tg_id in (7101, 7102, 7103))
+        audit_meta = json.loads(audit.meta or "{}")
+        assert audit_meta["recipient_count"] == 2
+        assert len(audit_meta["recipient_hash"]) == 64
+    finally:
+        session.close()
+
+
+def test_broadcast_timeout_is_uncertain_and_same_idempotency_does_not_resend(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add(
+            User(
+                tg_id=7201,
+                uuid="00000000-0000-4000-8000-000000007201",
+                email="broadcast-timeout@example.test",
+                sub_type="PAID",
+                created_at=now,
+                expiry_at=now + timedelta(days=30),
+                is_active=True,
+                sub_token="broadcast-timeout-token",
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    client = TestClient(api.app)
+    text = "Сетевая проверка"
+    payload = {"segment": "custom", "limit": 10, "tg_ids": [7201], "text": text}
+    prepared = _prepare(
+        client,
+        action="broadcast.send",
+        target_type="broadcast",
+        target_id="broadcast",
+        payload=payload,
+    )
+    assert prepared.status_code == 200, prepared.text
+    intent_id = str(prepared.json()["intent_id"])
+    attempts = 0
+
+    async def timeout_send(_chat_id: int, _message: str) -> bool:
+        nonlocal attempts
+        attempts += 1
+        raise TimeoutError("synthetic network timeout")
+
+    monkeypatch.setattr(api, "_telegram_send_message", timeout_send)
+    key = str(uuid.uuid4())
+    headers = _execute_headers(
+        intent_id,
+        idempotency_key=key,
+        confirmation_hash=hashlib.sha256("ОТПРАВИТЬ".encode("utf-8")).hexdigest(),
+    )
+    uncertain = client.post(
+        "/api/admin/broadcast",
+        headers=headers,
+        json={**payload, "dry_run": False},
+    )
+    assert uncertain.status_code == 200, uncertain.text
+    assert uncertain.json()["status"] == "uncertain"
+    assert uncertain.json()["result_code"] == "external_timeout"
+
+    replay = client.post(
+        "/api/admin/broadcast",
+        headers=headers,
+        json={**payload, "dry_run": False},
+    )
+    assert replay.json() == uncertain.json()
+    assert attempts == 1
+
+    status = client.get(
+        f"/api/admin/action-intents/{intent_id}",
+        headers=_admin_headers(),
+    )
+    assert status.status_code == 200, status.text
+    assert status.json() == uncertain.json()

@@ -64,6 +64,12 @@ const FIELD_LABELS: Record<string, string> = {
   body_length: "Длина сообщения",
   text_length: "Длина сообщения",
   message_length: "Длина сообщения",
+  message_sha256: "SHA-256 сообщения",
+  recipient_count: "Зафиксировано получателей",
+  recipient_hash: "Хэш зафиксированных получателей",
+  requested_tg_ids_hash: "Хэш запрошенных Telegram ID",
+  segment: "Сегмент",
+  limit: "Лимит получателей",
   messages: "Сообщений в тикете",
   message_count: "Сообщений в тикете",
   media_type: "Вложение",
@@ -203,6 +209,7 @@ export function ActionIntentDialog({
   onKnownOutcome,
   onCheckState,
   onResult,
+  onPrepared,
 }: {
   open: boolean;
   request: ActionIntentRequest | null;
@@ -210,6 +217,7 @@ export function ActionIntentDialog({
   onKnownOutcome: () => void;
   onCheckState: () => void;
   onResult?: (result: AdminActionResult) => void;
+  onPrepared?: (intent: PreparedActionIntent) => void;
 }) {
   const [phase, setPhase] = useState<DialogPhase>("preparing");
   const [intent, setIntent] = useState<PreparedActionIntent | null>(null);
@@ -232,13 +240,14 @@ export function ActionIntentDialog({
       const prepared = await prepareActionIntent(nextRequest);
       if (sequence !== prepareSequenceRef.current) return;
       setIntent(prepared);
+      onPrepared?.(prepared);
       setPhase("ready");
     } catch (error) {
       if (sequence !== prepareSequenceRef.current) return;
       setCorrelationId(error instanceof AdminApiError ? error.correlationId : null);
       setPhase("prepare_failed");
     }
-  }, []);
+  }, [onPrepared]);
 
   useEffect(() => {
     if (!open || !request) {

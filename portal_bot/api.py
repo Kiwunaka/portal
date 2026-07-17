@@ -252,6 +252,7 @@ from admin_action_intent_service import (
     ActionIntentError,
     action_intent_error_identifiers as _action_intent_error_identifiers,
     execute_action_intent as _execute_action_intent,
+    get_action_intent_status as _get_action_intent_status,
     node_resync_recipient_fingerprint as _node_resync_recipient_fingerprint,
     prepare_action_intent as _prepare_action_intent,
 )
@@ -14007,10 +14008,29 @@ async def admin_user_message(
 
 
 @app.post("/api/admin/broadcast")
-async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_broadcast(
+    payload: AdminBroadcastIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     segment = (payload.segment or "all_active").strip().lower()
     limit = max(1, min(int(payload.limit), MAX_BROADCAST_LIMIT))
+
+    if not bool(payload.dry_run):
+        return await _execute_admin_guarded_action(
+            actor_tg_id=actor,
+            action="broadcast.send",
+            target_type="broadcast",
+            target_id="broadcast",
+            payload={
+                "text": payload.text,
+                "segment": segment,
+                "limit": limit,
+                "tg_ids": list(payload.tg_ids),
+            },
+            request=request,
+        )
 
     s = SessionLocal()
     try:
@@ -14033,42 +14053,19 @@ async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str =
     finally:
         s.close()
 
-    if bool(payload.dry_run):
-        _audit_admin(
-            actor_tg_id=actor,
-            action="admin_broadcast_preview",
-            meta={"segment": segment, "attempted": min(len(target_ids), limit), "limit": limit},
-        )
-        return {
-            "ok": True,
-            "dry_run": True,
-            "segment": segment,
-            "attempted": min(len(target_ids), limit),
-            "sent": 0,
-            "failed": 0,
-            "sample_tg_ids": [int(value) for value in target_ids[:5]],
-        }
-
-    sent = 0
-    failed = 0
-    errors: list[int] = []
-    for tg_id in target_ids[:limit]:
-        if tg_id == actor:
-            continue
-        ok = await _telegram_send_message(tg_id, payload.text)
-        if ok:
-            sent += 1
-        else:
-            failed += 1
-            if len(errors) < 25:
-                errors.append(tg_id)
-
     _audit_admin(
         actor_tg_id=actor,
-        action="admin_broadcast",
-        meta={"segment": segment, "sent": sent, "failed": failed, "attempted": min(len(target_ids), limit)},
+        action="admin_broadcast_preview",
+        meta={"segment": segment, "attempted": len(target_ids), "limit": limit},
     )
-    return {"ok": True, "segment": segment, "attempted": min(len(target_ids), limit), "sent": sent, "failed": failed, "failed_ids": errors}
+    return {
+        "ok": True,
+        "dry_run": True,
+        "segment": segment,
+        "attempted": len(target_ids),
+        "sent": 0,
+        "failed": 0,
+    }
 
 
 @app.get("/api/admin/promos")
@@ -17668,6 +17665,28 @@ async def _execute_admin_client_action_external(
             "details": details,
         }
 
+    if action == "broadcast.send":
+        recipients = [int(value) for value in execution["selected_tg_ids"]]
+        if (
+            recipients != sorted(set(recipients))
+            or len(recipients) != int(execution["recipient_count"])
+        ):
+            raise RuntimeError("frozen broadcast plan is unavailable")
+        sent = 0
+        failed = 0
+        for tg_id in recipients:
+            if await _telegram_send_message(tg_id, str(runtime["text"])):
+                sent += 1
+            else:
+                failed += 1
+        return {
+            "ok": failed == 0,
+            "code": "broadcast_sent" if failed == 0 else "broadcast_partial",
+            "attempted": len(recipients),
+            "sent": sent,
+            "failed": failed,
+        }
+
     if action == "user.message":
         tg_id = int(execution["tg_id"])
         ok = await _telegram_send_message(tg_id, str(runtime["text"]))
@@ -17787,6 +17806,7 @@ def _admin_guarded_action_response(
         ("user.bulk_key_action", "bulk_partial"),
         ("user.bulk_key_action", "force_required"),
         ("ticket.reply", "telegram_failed"),
+        ("broadcast.send", "broadcast_partial"),
     }:
         return result
     facts = result.get("result") if isinstance(result.get("result"), dict) else {}
@@ -18003,6 +18023,15 @@ def _admin_guarded_action_response(
     if action == "user.message":
         return merged({"ok": True})
 
+    if action == "broadcast.send":
+        return merged(
+            {
+                "attempted": int(facts.get("attempted") or 0),
+                "sent": int(facts.get("sent") or 0),
+                "failed": int(facts.get("failed") or 0),
+            }
+        )
+
     if action in {"ticket.reply", "ticket.status"}:
         ticket_id = int(facts.get("ticket_id") or result.get("ticket_id") or target_id)
         session = SessionLocal()
@@ -18086,7 +18115,7 @@ async def _execute_admin_guarded_action(
         _raise_action_intent_http(error)
         raise AssertionError("unreachable")
     result, replayed = execution_result
-    if replayed:
+    if replayed and action != "broadcast.send":
         return result
     return _admin_guarded_action_response(
         action=action,
@@ -18182,6 +18211,26 @@ async def admin_action_intent_prepare(
                 "message": "Не удалось подготовить действие.",
             },
         ) from None
+    finally:
+        session.close()
+
+
+@app.get("/api/admin/action-intents/{intent_id}")
+async def admin_action_intent_status(
+    intent_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    session = SessionLocal()
+    try:
+        return _get_action_intent_status(
+            session=session,
+            actor_tg_id=actor,
+            intent_id=intent_id,
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
     finally:
         session.close()
 

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -1114,6 +1115,47 @@ class AdminActionIntent(Base):
             target_type,
             target_id,
         ),
+    )
+
+
+class AdminBroadcastRecipientPlan(Base):
+    __tablename__ = "admin_broadcast_recipient_plan"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    intent_id = Column(
+        String(36),
+        ForeignKey(
+            "admin_action_intents.id",
+            name="fk_admin_broadcast_plan_intent",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    ordinal = Column(Integer, nullable=False)
+    tg_id = Column(BigInteger, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "intent_id",
+            "ordinal",
+            name="uq_admin_broadcast_plan_intent_ordinal",
+        ),
+        UniqueConstraint(
+            "intent_id",
+            "tg_id",
+            name="uq_admin_broadcast_plan_intent_tg_id",
+        ),
+        CheckConstraint(
+            "ordinal >= 0 AND ordinal < 1000",
+            name="ck_admin_broadcast_plan_ordinal",
+        ),
+        CheckConstraint("tg_id > 0", name="ck_admin_broadcast_plan_tg_id"),
+        Index("ix_admin_broadcast_plan_intent", intent_id),
     )
 
 
