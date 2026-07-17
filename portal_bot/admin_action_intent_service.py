@@ -112,6 +112,7 @@ _MAX_BULK_PREVIEW_IDS = 50
 _MAX_BULK_DETAILS = 500
 _MAX_BROADCAST_RECIPIENTS = 1000
 _INTERNAL_TARGET_CLAIMS_KEY = "_target_overlap_claims"
+_INTERNAL_ISSUED_CARD_IDS_KEY = "_issued_card_ids"
 _BULK_EXECUTION_LOCK_ENTITY_ID = -10_002
 _constant_time_compare = hmac.compare_digest
 
@@ -169,6 +170,10 @@ AuditMetaBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any]]
 AuditActionBuilder = Callable[[Mapping[str, Any]], str]
 PostCommitContextBuilder = Callable[[EntityState, Mapping[str, Any]], dict[str, Any] | None]
 ResultSanitizer = Callable[[Mapping[str, Any]], dict[str, Any]]
+ReplayResultBuilder = Callable[
+    [Any, AdminActionIntent, Mapping[str, Any]],
+    dict[str, Any],
+]
 
 
 @dataclass(frozen=True)
@@ -193,6 +198,7 @@ class ActionPolicy:
     post_commit_context_builder: PostCommitContextBuilder | None = None
     execution_state_builder: ExecutionStateBuilder | None = None
     result_sanitizer: ResultSanitizer | None = None
+    replay_result_builder: ReplayResultBuilder | None = None
 
 
 def _utcnow() -> datetime:
@@ -3515,12 +3521,18 @@ def _locked_intent(session, intent_id: str) -> AdminActionIntent | None:
     return query.first()
 
 
-def _stored_result(intent: AdminActionIntent) -> dict[str, Any]:
+def _stored_result(
+    intent: AdminActionIntent,
+    *,
+    include_internal: bool = False,
+) -> dict[str, Any]:
     if intent.result_summary_json:
         try:
             value = json.loads(intent.result_summary_json)
             if isinstance(value, dict):
-                value.pop(_INTERNAL_TARGET_CLAIMS_KEY, None)
+                if not include_internal:
+                    value.pop(_INTERNAL_TARGET_CLAIMS_KEY, None)
+                    value.pop(_INTERNAL_ISSUED_CARD_IDS_KEY, None)
                 return value
         except (TypeError, ValueError):
             pass
@@ -3530,6 +3542,27 @@ def _stored_result(intent: AdminActionIntent) -> dict[str, Any]:
         "action_intent_id": str(intent.id),
         "audit_id": int(intent.admin_audit_id) if intent.admin_audit_id else None,
     }
+
+
+def _replayed_result(
+    session,
+    intent: AdminActionIntent,
+    policy: ActionPolicy,
+) -> dict[str, Any]:
+    stored = _stored_result(
+        intent,
+        include_internal=policy.replay_result_builder is not None,
+    )
+    if policy.replay_result_builder is None or str(intent.status) != "completed":
+        return stored
+    return policy.replay_result_builder(session, intent, stored)
+
+
+def _public_execution_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    public = dict(result)
+    public.pop(_INTERNAL_TARGET_CLAIMS_KEY, None)
+    public.pop(_INTERNAL_ISSUED_CARD_IDS_KEY, None)
+    return public
 
 
 def get_action_intent_status(
@@ -5328,19 +5361,234 @@ def _gift_code_create_state(session, target_id: str, payload: Mapping[str, Any],
     )
 
 
-def _sanitize_issued_key_result(result: Mapping[str, Any]) -> dict[str, Any]:
-    safe = dict(result)
-    issued = list(safe.pop("issued", []) or [])
-    gift = safe.pop("gift_code", None)
+def _result_envelope(result: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: result[key]
+        for key in ("ok", "status", "action_intent_id", "audit_id")
+        if key in result
+    }
+
+
+def _sanitize_warp_material_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    safe = _result_envelope(result)
+    material = result.get("material")
+    if not isinstance(material, Mapping):
+        raise ActionIntentError(
+            "invalid_executor_result",
+            status_code=500,
+            message="Исполнитель WARP вернул некорректный результат.",
+        )
+    safe_material = {
+        key: material[key]
+        for key in (
+            "id",
+            "tg_id",
+            "source",
+            "mode",
+            "state",
+            "runtime_ready",
+            "wireguard_config_available",
+            "material_hash",
+            "is_active",
+            "provisioned_at",
+            "rotation_requested_at",
+            "revoked_at",
+            "updated_at",
+        )
+        if key in material
+    }
+    install_id = material.get("install_id")
+    safe_material["install_id_sha256"] = (
+        _semantic_hash("admin-warp-install", str(install_id))
+        if isinstance(install_id, str) and install_id
+        else None
+    )
+    safe["material"] = safe_material
+    return safe
+
+
+def _internal_issued_card_ids(
+    result: Mapping[str, Any],
+    *,
+    expected_count: int,
+) -> list[int]:
+    raw_ids = result.get(_INTERNAL_ISSUED_CARD_IDS_KEY)
+    if (
+        not isinstance(raw_ids, list)
+        or len(raw_ids) != expected_count
+        or any(type(value) is not int or value <= 0 for value in raw_ids)
+        or len(set(raw_ids)) != len(raw_ids)
+    ):
+        raise ActionIntentError(
+            "invalid_executor_result",
+            status_code=500,
+            message="Исполнитель не сохранил ссылки на выпущенные коды.",
+        )
+    return [int(value) for value in raw_ids]
+
+
+def _sanitize_access_key_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    issued = result.get("issued")
+    if not isinstance(issued, list) or not issued:
+        raise ActionIntentError(
+            "invalid_executor_result",
+            status_code=500,
+            message="Исполнитель не вернул выпущенные ключи.",
+        )
+    ids = _internal_issued_card_ids(result, expected_count=len(issued))
     fingerprints: list[dict[str, Any]] = []
     for item in issued:
-        if isinstance(item, Mapping) and isinstance(item.get("key"), str):
-            fingerprints.append(_redacted_text(str(item["key"])))
-    if isinstance(gift, Mapping) and isinstance(gift.get("code"), str):
-        fingerprints.append(_redacted_text(str(gift["code"])))
+        if not isinstance(item, Mapping) or not isinstance(item.get("key"), str):
+            raise ActionIntentError(
+                "invalid_executor_result",
+                status_code=500,
+                message="Исполнитель вернул некорректный ключ.",
+            )
+        fingerprints.append(_redacted_text(str(item["key"])))
+    safe = _result_envelope(result)
+    safe["plan"] = dict(result.get("plan") or {})
+    safe[_INTERNAL_ISSUED_CARD_IDS_KEY] = ids
     safe["issued_fingerprints"] = fingerprints
     safe["issued_count"] = len(fingerprints)
     return safe
+
+
+def _sanitize_gift_code_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    gift = result.get("gift_code")
+    if not isinstance(gift, Mapping) or not isinstance(gift.get("code"), str):
+        raise ActionIntentError(
+            "invalid_executor_result",
+            status_code=500,
+            message="Исполнитель не вернул подарочный код.",
+        )
+    ids = _internal_issued_card_ids(result, expected_count=1)
+    safe = _result_envelope(result)
+    safe[_INTERNAL_ISSUED_CARD_IDS_KEY] = ids
+    safe["issued_fingerprints"] = [_redacted_text(str(gift["code"]))]
+    safe["issued_count"] = 1
+    safe["gift_code_meta"] = {
+        key: gift[key]
+        for key in ("card_type", "days", "stars")
+        if key in gift
+    }
+    return safe
+
+
+def _issued_cards_for_replay(
+    session,
+    intent: AdminActionIntent,
+    stored: Mapping[str, Any],
+) -> list[GiftCard]:
+    expected_count = stored.get("issued_count")
+    if type(expected_count) is not int or not 1 <= expected_count <= 200:
+        raise ActionIntentError(
+            "result_unavailable",
+            status_code=409,
+            message="Выпущенные коды сохранены, но результат сейчас недоступен; не создавайте новый intent.",
+        )
+    try:
+        ids = _internal_issued_card_ids(stored, expected_count=expected_count)
+    except ActionIntentError as error:
+        raise ActionIntentError(
+            "result_unavailable",
+            status_code=409,
+            message="Выпущенные коды сохранены, но результат сейчас недоступен; не создавайте новый intent.",
+        ) from error
+    rows = (
+        session.query(GiftCard)
+        .filter(
+            GiftCard.id.in_(ids),
+            GiftCard.created_by == int(intent.actor_tg_id),
+        )
+        .all()
+    )
+    by_id = {int(row.id): row for row in rows}
+    ordered = [by_id.get(card_id) for card_id in ids]
+    fingerprints = stored.get("issued_fingerprints")
+    if (
+        not isinstance(fingerprints, list)
+        or len(fingerprints) != expected_count
+        or any(row is None for row in ordered)
+    ):
+        raise ActionIntentError(
+            "result_unavailable",
+            status_code=409,
+            message="Выпущенные коды сохранены, но результат сейчас недоступен; не создавайте новый intent.",
+        )
+    verified: list[GiftCard] = []
+    for row, fingerprint in zip(ordered, fingerprints, strict=True):
+        assert row is not None
+        code = str(row.code or "")
+        actual = _redacted_text(code)
+        if (
+            not isinstance(fingerprint, Mapping)
+            or fingerprint.get("length") != actual["length"]
+            or not _constant_time_compare(
+                str(fingerprint.get("sha256") or ""),
+                str(actual["sha256"]),
+            )
+            or str(row.card_type or "").strip().lower() != str(intent.target_id)
+        ):
+            raise ActionIntentError(
+                "result_unavailable",
+                status_code=409,
+                message="Выпущенные коды сохранены, но результат сейчас недоступен; не создавайте новый intent.",
+            )
+        verified.append(row)
+    return verified
+
+
+def _rehydrate_access_key_result(
+    session,
+    intent: AdminActionIntent,
+    stored: Mapping[str, Any],
+) -> dict[str, Any]:
+    rows = _issued_cards_for_replay(session, intent, stored)
+    plan = stored.get("plan")
+    if not isinstance(plan, Mapping) or str(plan.get("code") or "").strip().lower() != str(intent.target_id):
+        raise ActionIntentError(
+            "result_unavailable",
+            status_code=409,
+            message="Выпущенные ключи сохранены, но их описание недоступно; не создавайте новый intent.",
+        )
+    public = _public_execution_result(stored)
+    public.pop("issued_fingerprints", None)
+    public.pop("issued_count", None)
+    public["plan"] = dict(plan)
+    public["issued"] = [
+        {
+            "key": str(row.code or ""),
+            "plan": dict(plan),
+            "issued_at": _safe_iso(row.created_at),
+        }
+        for row in rows
+    ]
+    return public
+
+
+def _rehydrate_gift_code_result(
+    session,
+    intent: AdminActionIntent,
+    stored: Mapping[str, Any],
+) -> dict[str, Any]:
+    rows = _issued_cards_for_replay(session, intent, stored)
+    meta = stored.get("gift_code_meta")
+    if (
+        len(rows) != 1
+        or not isinstance(meta, Mapping)
+        or str(meta.get("card_type") or "").strip().lower() != str(intent.target_id)
+    ):
+        raise ActionIntentError(
+            "result_unavailable",
+            status_code=409,
+            message="Подарочный код сохранён, но его описание недоступно; не создавайте новый intent.",
+        )
+    public = _public_execution_result(stored)
+    public.pop("issued_fingerprints", None)
+    public.pop("issued_count", None)
+    public.pop("gift_code_meta", None)
+    public["gift_code"] = {"code": str(rows[0].code or ""), **dict(meta)}
+    return public
 
 
 def _normalize_node_sync_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -5567,6 +5815,7 @@ ACTION_POLICIES.update(
             executor_kind="db",
             audit_action="admin_warp_material_put",
             audit_target_builder=_audit_warp_target,
+            result_sanitizer=_sanitize_warp_material_result,
         ),
         "promo_slots.update": ActionPolicy(
             action="promo_slots.update",
@@ -5681,7 +5930,8 @@ ACTION_POLICIES.update(
             challenge_builder=_context_target_challenge,
             executor_kind="db",
             audit_action="admin_access_keys_issue",
-            result_sanitizer=_sanitize_issued_key_result,
+            result_sanitizer=_sanitize_access_key_result,
+            replay_result_builder=_rehydrate_access_key_result,
         ),
         "gift_code.create": ActionPolicy(
             action="gift_code.create",
@@ -5694,7 +5944,8 @@ ACTION_POLICIES.update(
             challenge_builder=_context_target_challenge,
             executor_kind="db",
             audit_action="admin_gift_code_create",
-            result_sanitizer=_sanitize_issued_key_result,
+            result_sanitizer=_sanitize_gift_code_result,
+            replay_result_builder=_rehydrate_gift_code_result,
         ),
         "node.sync_global": ActionPolicy(
             action="node.sync_global",
@@ -5852,7 +6103,7 @@ def _validate_execution(
                 normalized_payload,
                 runtime_payload,
                 None,
-                _stored_result(intent),
+                _replayed_result(session, intent, policy),
             )
     elif intent.client_idempotency_key is not None or intent.status in _TERMINAL_STATUSES or intent.status == "executing":
         raise ActionIntentError(
@@ -6722,7 +6973,7 @@ async def execute_action_intent(
                     except Exception:
                         pass
             return _execution_return(
-                result,
+                _public_execution_result(result),
                 replayed=False,
                 return_replay_state=return_replay_state,
             )
@@ -6796,8 +7047,9 @@ async def execute_action_intent(
                 normalized_idempotency_key,
             )
             if owner is not None and owner.id == normalized_intent_id:
+                owner_policy = _policy_for(str(owner.action))
                 return _execution_return(
-                    _stored_result(owner),
+                    _replayed_result(conflict_session, owner, owner_policy),
                     replayed=True,
                     return_replay_state=return_replay_state,
                 )

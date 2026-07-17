@@ -1889,20 +1889,21 @@ def test_warp_material_intent_persists_fingerprints_only(
 
     private_key = "SYNTHETIC-WARP-PRIVATE-MATERIAL"
     account_token = "SYNTHETIC-WARP-ACCOUNT-TOKEN"
+    payload = {
+        "tg_id": 7301,
+        "install_id": "install-warp-7301",
+        "source": "operator_provisioned",
+        "mode": "proxy_over_warp",
+        "wireguard_config": {"private_key": private_key, "address": "172.16.0.2/32"},
+        "account": {"token": account_token},
+    }
     client = TestClient(api.app)
     prepared = _prepare(
         client,
         action="warp_material.replace",
         target_type="warp_material",
         target_id="7301",
-        payload={
-            "tg_id": 7301,
-            "install_id": "install-warp-7301",
-            "source": "operator_provisioned",
-            "mode": "proxy_over_warp",
-            "wireguard_config": {"private_key": private_key, "address": "172.16.0.2/32"},
-            "account": {"token": account_token},
-        },
+        payload=payload,
     )
 
     assert prepared.status_code == 200, prepared.text
@@ -1920,6 +1921,116 @@ def test_warp_material_intent_persists_fingerprints_only(
         assert len(canonical["account"]["sha256"]) == 64
     finally:
         session.close()
+
+    headers = _execute_headers(
+        str(prepared.json()["intent_id"]),
+        idempotency_key=str(uuid.uuid4()),
+        confirmation_hash=hashlib.sha256("7301".encode("utf-8")).hexdigest(),
+    )
+    executed = client.put(
+        "/api/admin/client/warp/material",
+        headers=headers,
+        json=payload,
+    )
+    assert executed.status_code == 200, executed.text
+    assert executed.json()["material"]["install_id"] == "install-warp-7301"
+
+    session = api.SessionLocal()
+    try:
+        intent = session.query(AdminActionIntent).filter_by(id=prepared.json()["intent_id"]).one()
+        durable = str(intent.result_summary_json or "")
+        assert "install-warp-7301" not in durable
+        assert private_key not in durable
+        assert account_token not in durable
+        persisted_result = json.loads(durable)
+        assert len(persisted_result["material"]["install_id_sha256"]) == 64
+    finally:
+        session.close()
+
+
+def test_issued_codes_survive_lost_response_without_entering_intent_status(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminActionIntent, GiftCard
+
+    client = TestClient(api.app)
+    plan_code = str(api._default_plan_catalog()[0]["code"])
+    cases = (
+        (
+            "access_key.issue",
+            "access_key_batch",
+            plan_code,
+            "/api/admin/access-keys/issue",
+            {"plan_code": plan_code, "quantity": 2},
+            "issued",
+            "key",
+        ),
+        (
+            "gift_code.create",
+            "gift_code",
+            "mini",
+            "/api/admin/gift-codes",
+            {"card_type": "mini"},
+            "gift_code",
+            "code",
+        ),
+    )
+
+    for action, target_type, target_id, path, payload, result_key, code_key in cases:
+        prepared = _prepare(
+            client,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            payload=payload,
+        )
+        assert prepared.status_code == 200, prepared.text
+        intent_id = str(prepared.json()["intent_id"])
+        headers = _execute_headers(
+            intent_id,
+            idempotency_key=str(uuid.uuid4()),
+            confirmation_hash=hashlib.sha256(target_id.encode("utf-8")).hexdigest(),
+        )
+
+        first = client.post(path, headers=headers, json=payload)
+        assert first.status_code == 200, first.text
+        replay = client.post(path, headers=headers, json=payload)
+        assert replay.status_code == 200, replay.text
+        assert replay.json() == first.json()
+
+        raw_result = first.json()[result_key]
+        codes = (
+            [str(item[code_key]) for item in raw_result]
+            if isinstance(raw_result, list)
+            else [str(raw_result[code_key])]
+        )
+        assert all(codes)
+
+        status = client.get(
+            f"/api/admin/action-intents/{intent_id}",
+            headers=_admin_headers(),
+        )
+        assert status.status_code == 200, status.text
+        status_text = status.text
+        assert all(code not in status_text for code in codes)
+        assert "_issued_card_ids" not in status_text
+
+        session = api.SessionLocal()
+        try:
+            intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
+            durable = str(intent.result_summary_json or "")
+            assert all(code not in durable for code in codes)
+            assert "issued_fingerprints" in durable
+            assert (
+                session.query(GiftCard)
+                .filter(GiftCard.code.in_(codes), GiftCard.created_by == 9999)
+                .count()
+                == len(codes)
+            )
+        finally:
+            session.close()
 
 
 def test_broadcast_timeout_is_uncertain_and_same_idempotency_does_not_resend(

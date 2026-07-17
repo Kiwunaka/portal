@@ -16656,12 +16656,24 @@ def _execute_task20_admin_action_db(
         if not normalized_plan:
             raise ActionIntentError("invalid_payload", status_code=422, message="plan_code не поддерживается.")
         issued: list[dict[str, Any]] = []
+        issued_rows: list[GiftCard] = []
         for _ in range(int(runtime["quantity"])):
             code = _generate_gift_code_for_admin(session)
-            session.add(GiftCard(code=code, card_type=normalized_plan["code"], created_by=int(actor_tg_id)))
+            row = GiftCard(
+                code=code,
+                card_type=normalized_plan["code"],
+                created_by=int(actor_tg_id),
+                created_at=now,
+            )
+            session.add(row)
+            issued_rows.append(row)
             issued.append({"key": code, "plan": normalized_plan, "issued_at": _safe_iso(now)})
         session.flush()
-        return {"plan": normalized_plan, "issued": issued}
+        return {
+            "plan": normalized_plan,
+            "issued": issued,
+            "_issued_card_ids": [int(row.id) for row in issued_rows],
+        }
 
     if action == "gift_code.create":
         card_type = str(runtime["card_type"])
@@ -16669,9 +16681,16 @@ def _execute_task20_admin_action_db(
         if not card:
             raise ActionIntentError("invalid_payload", status_code=422, message="card_type не поддерживается.")
         code = _generate_gift_code_for_admin(session)
-        session.add(GiftCard(code=code, card_type=card_type, created_by=int(actor_tg_id)))
+        row = GiftCard(
+            code=code,
+            card_type=card_type,
+            created_by=int(actor_tg_id),
+            created_at=now,
+        )
+        session.add(row)
         session.flush()
         return {
+            "_issued_card_ids": [int(row.id)],
             "gift_code": {
                 "code": code,
                 "card_type": card_type,
@@ -20055,6 +20074,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "2096")))
-
-
 
