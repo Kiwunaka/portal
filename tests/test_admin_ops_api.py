@@ -1340,3 +1340,50 @@ def test_ru_alert_candidates_use_server_freshness_and_received_heartbeat_facts(
         if row["fingerprint"].startswith("ru_probe_uploader_")
         and row["fingerprint"] != "ru_probe_uploader_heartbeat_stale"
     }
+
+
+def test_admin_action_intent_audit_helper_preserves_l1_wrapper_compatibility(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminAudit
+
+    session = api.SessionLocal()
+    try:
+        rolled_back = api._add_admin_audit(
+            session,
+            actor_tg_id=9999,
+            action="intent_atomic_probe",
+            meta={"safe": True},
+        )
+        assert isinstance(rolled_back.id, int)
+        session.rollback()
+    finally:
+        session.close()
+
+    session = api.SessionLocal()
+    try:
+        assert session.query(AdminAudit).filter_by(action="intent_atomic_probe").count() == 0
+        committed = api._add_admin_audit(
+            session,
+            actor_tg_id=9999,
+            action="intent_atomic_commit",
+            meta={"safe": True},
+        )
+        committed_id = int(committed.id)
+        session.commit()
+    finally:
+        session.close()
+
+    api._audit_admin(
+        actor_tg_id=9999,
+        action="legacy_l1_wrapper",
+        meta={"safe": True},
+    )
+    session = api.SessionLocal()
+    try:
+        assert session.query(AdminAudit).filter_by(id=committed_id).count() == 1
+        assert session.query(AdminAudit).filter_by(action="legacy_l1_wrapper").count() == 1
+    finally:
+        session.close()

@@ -24,6 +24,7 @@ from db import SessionLocal, init_db
 from events_service import track_event
 from free_cycle_service import mark_user_became_free, process_due_free_cycle_resets
 from models import (
+    AdminActionIntent,
     CampaignSend,
     Event,
     ExternalOrder,
@@ -74,6 +75,7 @@ RU_PROBE_HEARTBEAT_RETENTION_DAYS = max(
     1,
     int(os.getenv("RU_PROBE_HEARTBEAT_RETENTION_DAYS", "30")),
 )
+ADMIN_ACTION_INTENT_RETENTION_DAYS = 7
 TELEMETRY_RETENTION_INTERVAL_SECONDS = max(3600, int(os.getenv("TELEMETRY_RETENTION_INTERVAL_SECONDS", "21600")))
 ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS = max(60, int(os.getenv("ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS", "300")))
 
@@ -1231,6 +1233,17 @@ def run_telemetry_retention_once(*, session, now: datetime) -> dict[str, int]:
             .filter(
                 RuProbeUploaderHeartbeat.observed_at
                 < ru_now - timedelta(days=RU_PROBE_HEARTBEAT_RETENTION_DAYS)
+            )
+            .delete(synchronize_session=False)
+            or 0
+        ),
+        "admin_action_intents": int(
+            session.query(AdminActionIntent)
+            .filter(AdminActionIntent.status.in_(("prepared", "expired")))
+            .filter(AdminActionIntent.admin_audit_id.is_(None))
+            .filter(
+                AdminActionIntent.expires_at
+                < ru_now - timedelta(days=ADMIN_ACTION_INTENT_RETENTION_DAYS)
             )
             .delete(synchronize_session=False)
             or 0

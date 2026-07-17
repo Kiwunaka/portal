@@ -971,6 +971,73 @@ class AdminAudit(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
+class AdminActionIntent(Base):
+    __tablename__ = "admin_action_intents"
+
+    id = Column(String(36), primary_key=True)
+    actor_tg_id = Column(BigInteger, nullable=False)
+    action = Column(String(64), nullable=False)
+    target_type = Column(String(32), nullable=False)
+    target_id = Column(String(128), nullable=False)
+    risk_level = Column(String(8), nullable=False)
+    executor_kind = Column(String(16), nullable=False)
+    canonical_payload_json = Column(Text, nullable=False)
+    payload_hash = Column(String(64), nullable=False)
+    preview_snapshot_json = Column(Text, nullable=False)
+    snapshot_hash = Column(String(64), nullable=False)
+    confirmation_challenge_kind = Column(String(32), nullable=False)
+    confirmation_challenge_hash = Column(String(64), nullable=False)
+    entity_version_hash = Column(String(64), nullable=False)
+    status = Column(
+        String(16),
+        default="prepared",
+        server_default=sql_text("'prepared'"),
+        nullable=False,
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    consumed_at = Column(DateTime(timezone=True), nullable=True)
+    client_idempotency_key = Column(String(36), nullable=True)
+    result_code = Column(String(64), nullable=True)
+    result_summary_json = Column(Text, nullable=True)
+    result_hash = Column(String(64), nullable=True)
+    external_error_hash = Column(String(64), nullable=True)
+    admin_audit_id = Column(
+        Integer,
+        ForeignKey(
+            "admin_audit.id",
+            name="fk_admin_action_intents_audit",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "client_idempotency_key",
+            name="uq_admin_action_intents_idempotency",
+        ),
+        Index("ix_admin_action_intents_actor", actor_tg_id),
+        Index("ix_admin_action_intents_status", status),
+        Index("ix_admin_action_intents_expires_at", expires_at),
+        Index("ix_admin_action_intents_action", action),
+        Index(
+            "ix_admin_action_intents_target",
+            target_type,
+            target_id,
+        ),
+    )
+
+
 class SecurityRateLimitBucket(Base):
     __tablename__ = "security_rate_limit_buckets"
 

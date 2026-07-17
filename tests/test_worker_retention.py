@@ -436,6 +436,133 @@ class WorkerRetentionTests(unittest.TestCase):
         finally:
             session.close()
 
+    def test_admin_action_intent_retention_only_deletes_old_unaudited_prepared_rows(self) -> None:
+        from models import AdminActionIntent, AdminAudit
+
+        now = self.worker._utcnow()
+        session = self.db.SessionLocal()
+        try:
+            audit = AdminAudit(
+                actor_tg_id=9999,
+                action="admin_node_disable",
+                meta='{"outcome":"completed"}',
+                created_at=now - timedelta(days=20),
+            )
+            session.add(audit)
+            session.flush()
+
+            def make_intent(
+                status: str,
+                *,
+                age_days: int,
+                audit_id: int | None = None,
+            ) -> AdminActionIntent:
+                intent_id = str(uuid.uuid4())
+                terminal = status in {"completed", "failed", "uncertain"}
+                result = (
+                    f'{{"action_intent_id":"{intent_id}","status":"{status}"}}'
+                    if terminal
+                    else None
+                )
+                return AdminActionIntent(
+                    id=intent_id,
+                    actor_tg_id=9999,
+                    action="node.disable",
+                    target_type="node",
+                    target_id="nl",
+                    risk_level="L3",
+                    executor_kind="db",
+                    canonical_payload_json='{"force":false}',
+                    payload_hash="a" * 64,
+                    preview_snapshot_json='{"summary":"safe"}',
+                    snapshot_hash="b" * 64,
+                    confirmation_challenge_kind="exact_node_code",
+                    confirmation_challenge_hash="c" * 64,
+                    entity_version_hash="d" * 64,
+                    status=status,
+                    expires_at=now - timedelta(days=age_days),
+                    consumed_at=now - timedelta(days=age_days) if terminal else None,
+                    client_idempotency_key=str(uuid.uuid4()) if terminal else None,
+                    result_code=status if terminal else None,
+                    result_summary_json=result,
+                    result_hash="e" * 64 if terminal else None,
+                    admin_audit_id=audit_id,
+                    created_at=now - timedelta(days=age_days, minutes=10),
+                    updated_at=now - timedelta(days=age_days),
+                )
+
+            old_prepared = make_intent("prepared", age_days=8)
+            old_expired = make_intent("expired", age_days=8)
+            recent_prepared = make_intent("prepared", age_days=6)
+            audited_expired = make_intent(
+                "expired",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            completed = make_intent(
+                "completed",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            failed = make_intent(
+                "failed",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            uncertain = make_intent(
+                "uncertain",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            expected_ids = {
+                "old_prepared": str(old_prepared.id),
+                "old_expired": str(old_expired.id),
+                "recent_prepared": str(recent_prepared.id),
+                "audited_expired": str(audited_expired.id),
+                "completed": str(completed.id),
+                "failed": str(failed.id),
+                "uncertain": str(uncertain.id),
+            }
+            audit_id = int(audit.id)
+            session.add_all(
+                [
+                    old_prepared,
+                    old_expired,
+                    recent_prepared,
+                    audited_expired,
+                    completed,
+                    failed,
+                    uncertain,
+                ]
+            )
+            session.commit()
+
+            deleted = self.worker.run_telemetry_retention_once(
+                session=session,
+                now=now,
+            )
+            session.commit()
+
+            self.assertEqual(deleted["admin_action_intents"], 2)
+            remaining_ids = {
+                row.id for row in session.query(AdminActionIntent).all()
+            }
+            self.assertNotIn(expected_ids["old_prepared"], remaining_ids)
+            self.assertNotIn(expected_ids["old_expired"], remaining_ids)
+            self.assertEqual(
+                remaining_ids,
+                {
+                    expected_ids["recent_prepared"],
+                    expected_ids["audited_expired"],
+                    expected_ids["completed"],
+                    expected_ids["failed"],
+                    expected_ids["uncertain"],
+                },
+            )
+            self.assertEqual(session.query(AdminAudit).filter_by(id=audit_id).count(), 1)
+        finally:
+            session.close()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -246,6 +246,11 @@ from admin_ops_service import (
     refresh_ops_alerts as _ops_refresh_alerts,
     traffic_summary_rows as _ops_traffic_summary_rows,
 )
+from admin_action_intent_service import (
+    ActionIntentError,
+    execute_action_intent as _execute_action_intent,
+    prepare_action_intent as _prepare_action_intent,
+)
 from internal_request_auth import (
     InternalAuthError,
     authenticate_internal_request,
@@ -1033,6 +1038,17 @@ class AdminNodeSyncIn(BaseModel):
 
 class AdminNodeLifecycleIn(BaseModel):
     force: bool = False
+
+
+class AdminActionIntentTargetIn(BaseModel):
+    type: str = Field(min_length=1, max_length=32)
+    id: str = Field(min_length=1, max_length=128)
+
+
+class AdminActionIntentPrepareIn(BaseModel):
+    action: str = Field(min_length=1, max_length=64)
+    target: AdminActionIntentTargetIn
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class AdminNodeResyncIn(BaseModel):
@@ -5004,16 +5020,34 @@ async def _maybe_append_support_ai_reply(
         s.close()
 
 
+def _add_admin_audit(
+    session,
+    actor_tg_id: int,
+    action: str,
+    target_tg_id: int | None = None,
+    meta: dict[str, Any] | None = None,
+) -> AdminAudit:
+    row = AdminAudit(
+        actor_tg_id=int(actor_tg_id),
+        action=(action or "").strip()[:64],
+        target_tg_id=int(target_tg_id) if target_tg_id is not None else None,
+        meta=json.dumps(meta or {}, ensure_ascii=False, separators=(",", ":"))[:2000],
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
 def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = None, meta: dict[str, Any] | None = None) -> None:
     s = SessionLocal()
     try:
-        row = AdminAudit(
-            actor_tg_id=int(actor_tg_id),
-            action=(action or "").strip()[:64],
-            target_tg_id=int(target_tg_id) if target_tg_id is not None else None,
-            meta=json.dumps(meta or {}, ensure_ascii=False, separators=(",", ":"))[:2000],
+        _add_admin_audit(
+            s,
+            actor_tg_id=actor_tg_id,
+            action=action,
+            target_tg_id=target_tg_id,
+            meta=meta,
         )
-        s.add(row)
         s.commit()
     except Exception:
         s.rollback()
@@ -16563,38 +16597,106 @@ async def admin_node_undrain(node_code: str, payload: AdminNodeLifecycleIn, x_te
     return {"ok": True, "node": payload_node}
 
 
+def _raise_action_intent_http(error: ActionIntentError) -> None:
+    raise HTTPException(
+        status_code=int(error.status_code),
+        detail={"code": str(error.code), "message": str(error.message)},
+    )
+
+
+@app.post("/api/admin/action-intents")
+async def admin_action_intent_prepare(
+    payload: AdminActionIntentPrepareIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    session = SessionLocal()
+    try:
+        result = _prepare_action_intent(
+            session=session,
+            actor_tg_id=actor,
+            action=payload.action,
+            target={"type": payload.target.type, "id": payload.target.id},
+            payload=dict(payload.payload),
+        )
+        session.commit()
+        return result
+    except ActionIntentError as error:
+        session.rollback()
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "intent_prepare_failed",
+                "message": "Не удалось подготовить действие.",
+            },
+        ) from None
+    finally:
+        session.close()
+
+
 @app.post("/api/admin/nodes/{node_code}/disable")
-async def admin_node_disable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_disable(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
+    if not str(x_admin_intent_id or "").strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "intent_required",
+                "message": "Сначала создайте server action intent.",
+            },
         )
-        if int(mapped_users) > 0 and not bool(payload.force):
-            raise HTTPException(status_code=409, detail="Node still has mapped users. Run resync first or use force.")
-        node.enabled = False
-        node.accepting_new_clients = False
-        node.is_draining = False
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(
-        actor_tg_id=actor,
-        action="admin_node_disable",
-        meta={"node_code": wanted, "mapped_users": int(mapped_users), "forced": bool(payload.force)},
-    )
-    return {"ok": True, "node": payload_node}
+    if not str(x_admin_idempotency_key or "").strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "idempotency_required",
+                "message": "Нужен client idempotency key.",
+            },
+        )
+    if not str(x_admin_confirmation_sha256 or "").strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "confirmation_required",
+                "message": "Нужно подтверждение server challenge.",
+            },
+        )
+    try:
+        return _execute_action_intent(
+            session_factory=SessionLocal,
+            actor_tg_id=actor,
+            intent_id=x_admin_intent_id,
+            idempotency_key=x_admin_idempotency_key,
+            confirmation_sha256_header=x_admin_confirmation_sha256,
+            action="node.disable",
+            target={"type": "node", "id": wanted},
+            payload={"force": bool(payload.force)},
+            audit_writer=_add_admin_audit,
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
 
 
 @app.post("/api/admin/nodes/{node_code}/resync")

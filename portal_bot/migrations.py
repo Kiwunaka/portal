@@ -1316,6 +1316,100 @@ def _ensure_ru_probe_domain_postgres(conn) -> None:
         conn.execute(text(sql))
 
 
+def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_action_intents (
+              id VARCHAR(36) PRIMARY KEY,
+              actor_tg_id BIGINT NOT NULL,
+              action VARCHAR(64) NOT NULL,
+              target_type VARCHAR(32) NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              risk_level VARCHAR(8) NOT NULL,
+              executor_kind VARCHAR(16) NOT NULL,
+              canonical_payload_json TEXT NOT NULL,
+              payload_hash VARCHAR(64) NOT NULL,
+              preview_snapshot_json TEXT NOT NULL,
+              snapshot_hash VARCHAR(64) NOT NULL,
+              confirmation_challenge_kind VARCHAR(32) NOT NULL,
+              confirmation_challenge_hash VARCHAR(64) NOT NULL,
+              entity_version_hash VARCHAR(64) NOT NULL,
+              status VARCHAR(16) NOT NULL DEFAULT 'prepared',
+              expires_at DATETIME NOT NULL,
+              consumed_at DATETIME,
+              client_idempotency_key VARCHAR(36),
+              result_code VARCHAR(64),
+              result_summary_json TEXT,
+              result_hash VARCHAR(64),
+              external_error_hash VARCHAR(64),
+              admin_audit_id INTEGER,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_admin_action_intents_idempotency UNIQUE (client_idempotency_key),
+              CONSTRAINT fk_admin_action_intents_audit FOREIGN KEY (admin_audit_id) REFERENCES admin_audit(id) ON DELETE RESTRICT
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_actor ON admin_action_intents(actor_tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_status ON admin_action_intents(status);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_expires_at ON admin_action_intents(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_action ON admin_action_intents(action);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_admin_action_intent_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_action_intents (
+              id VARCHAR(36) PRIMARY KEY,
+              actor_tg_id BIGINT NOT NULL,
+              action VARCHAR(64) NOT NULL,
+              target_type VARCHAR(32) NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              risk_level VARCHAR(8) NOT NULL,
+              executor_kind VARCHAR(16) NOT NULL,
+              canonical_payload_json TEXT NOT NULL,
+              payload_hash VARCHAR(64) NOT NULL,
+              preview_snapshot_json TEXT NOT NULL,
+              snapshot_hash VARCHAR(64) NOT NULL,
+              confirmation_challenge_kind VARCHAR(32) NOT NULL,
+              confirmation_challenge_hash VARCHAR(64) NOT NULL,
+              entity_version_hash VARCHAR(64) NOT NULL,
+              status VARCHAR(16) NOT NULL DEFAULT 'prepared',
+              expires_at TIMESTAMPTZ NOT NULL,
+              consumed_at TIMESTAMPTZ,
+              client_idempotency_key VARCHAR(36),
+              result_code VARCHAR(64),
+              result_summary_json TEXT,
+              result_hash VARCHAR(64),
+              external_error_hash VARCHAR(64),
+              admin_audit_id INTEGER,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_admin_action_intents_idempotency UNIQUE (client_idempotency_key),
+              CONSTRAINT fk_admin_action_intents_audit
+                FOREIGN KEY (admin_audit_id) REFERENCES admin_audit(id)
+                ON DELETE RESTRICT
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_actor ON admin_action_intents(actor_tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_status ON admin_action_intents(status);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_expires_at ON admin_action_intents(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_action ON admin_action_intents(action);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
+    ]:
+        conn.execute(text(sql))
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -1767,6 +1861,7 @@ def run_migrations(engine: Engine) -> None:
         _ensure_capacity_domain_sqlite(conn)
         _ensure_admin_ops_domain_sqlite(conn)
         _ensure_ru_probe_domain_sqlite(conn)
+        _ensure_admin_action_intent_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -2602,6 +2697,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _ensure_capacity_domain_postgres(conn)
         _ensure_admin_ops_domain_postgres(conn)
         _ensure_ru_probe_domain_postgres(conn)
+        _ensure_admin_action_intent_domain_postgres(conn)
 
         conn.execute(
             text(

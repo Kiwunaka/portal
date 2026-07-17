@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -496,3 +497,123 @@ def test_sqlite_autoincrement_guard_rejects_missing_keyword(migrated_engine) -> 
     _assert_sqlite_autoincrement_contract(table_sql)
     with pytest.raises(AssertionError):
         _assert_sqlite_autoincrement_contract(mutated_table_sql)
+
+
+def test_admin_action_intent_migration_contract(tmp_path: Path) -> None:
+    table_name = "admin_action_intents"
+    expected_indexes = {
+        "ix_admin_action_intents_actor": ("actor_tg_id",),
+        "ix_admin_action_intents_status": ("status",),
+        "ix_admin_action_intents_expires_at": ("expires_at",),
+        "ix_admin_action_intents_action": ("action",),
+        "ix_admin_action_intents_target": ("target_type", "target_id"),
+    }
+    engine = create_engine(
+        f"sqlite:///{(tmp_path / 'admin-action-intent-migration.db').as_posix()}"
+    )
+    bootstrap_tables = [
+        table
+        for table in models.Base.metadata.sorted_tables
+        if table.name not in RU_TABLES | {table_name}
+    ]
+    models.Base.metadata.create_all(engine, tables=bootstrap_tables)
+    migrations.run_migrations(engine)
+    migrations.run_migrations(engine)
+    inspector = inspect(engine)
+    model_table = models.Base.metadata.tables[table_name]
+    assert set(inspector.get_table_names()) >= {table_name, "admin_audit"}
+    assert {column["name"] for column in inspector.get_columns(table_name)} == set(
+        model_table.c.keys()
+    )
+    assert _unique_constraints(inspector, table_name) == {
+        "uq_admin_action_intents_idempotency": ("client_idempotency_key",)
+    }
+    assert _indexes(inspector, table_name) == expected_indexes
+    foreign_keys = inspector.get_foreign_keys(table_name)
+    assert foreign_keys == [
+        {
+            **foreign_keys[0],
+            "name": "fk_admin_action_intents_audit",
+            "constrained_columns": ["admin_audit_id"],
+            "referred_table": "admin_audit",
+            "referred_columns": ["id"],
+            "options": {"ondelete": "RESTRICT"},
+        }
+    ]
+    model_fk = next(iter(model_table.c.admin_audit_id.foreign_keys))
+    assert model_fk.name == "fk_admin_action_intents_audit"
+    assert model_fk.ondelete == "RESTRICT"
+    assert {
+        str(index.name): tuple(index.columns.keys()) for index in model_table.indexes
+    } == expected_indexes
+
+    with engine.begin() as conn:
+        audit_id = int(
+            conn.execute(
+                text(
+                    "INSERT INTO admin_audit(actor_tg_id, action, meta, created_at) "
+                    "VALUES (9999, 'intent-test', '{}', CURRENT_TIMESTAMP)"
+                )
+            ).lastrowid
+        )
+        values = {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "actor": 9999,
+            "action": "node.disable",
+            "target_type": "node",
+            "target_id": "nl",
+            "risk": "L3",
+            "executor": "db",
+            "payload": '{"force":false}',
+            "hash": "a" * 64,
+            "preview": '{"summary":"safe"}',
+            "snapshot_hash": "b" * 64,
+            "challenge_kind": "exact_node_code",
+            "challenge_hash": "c" * 64,
+            "version_hash": "d" * 64,
+            "expires": "2026-07-17T12:10:00+00:00",
+            "key": "00000000-0000-4000-8000-000000000002",
+            "audit_id": audit_id,
+        }
+        insert_sql = text(
+            """
+            INSERT INTO admin_action_intents(
+              id, actor_tg_id, action, target_type, target_id, risk_level,
+              executor_kind, canonical_payload_json, payload_hash,
+              preview_snapshot_json, snapshot_hash, confirmation_challenge_kind,
+              confirmation_challenge_hash, entity_version_hash, expires_at,
+              client_idempotency_key, admin_audit_id
+            ) VALUES (
+              :id, :actor, :action, :target_type, :target_id, :risk,
+              :executor, :payload, :hash, :preview, :snapshot_hash,
+              :challenge_kind, :challenge_hash, :version_hash, :expires,
+              :key, :audit_id
+            )
+            """
+        )
+        conn.execute(insert_sql, values)
+        with pytest.raises(IntegrityError):
+            conn.execute(insert_sql, {**values, "id": str(uuid.uuid4())})
+    with engine.begin() as conn:
+        with pytest.raises(IntegrityError):
+            conn.execute(
+                text("DELETE FROM admin_audit WHERE id = :audit_id"),
+                {"audit_id": audit_id},
+            )
+    engine.dispose()
+
+    class RecordingConnection:
+        def __init__(self) -> None:
+            self.statements: list[str] = []
+
+        def execute(self, statement):
+            self.statements.append(" ".join(str(statement).split()))
+
+    recorder = RecordingConnection()
+    migrations._ensure_admin_action_intent_domain_postgres(recorder)
+    postgres_sql = "\n".join(recorder.statements)
+    assert "CREATE TABLE IF NOT EXISTS admin_action_intents" in postgres_sql
+    assert "CONSTRAINT uq_admin_action_intents_idempotency" in postgres_sql
+    assert "CONSTRAINT fk_admin_action_intents_audit" in postgres_sql
+    assert "ON DELETE RESTRICT" in postgres_sql
+    assert all(name in postgres_sql for name in expected_indexes)
