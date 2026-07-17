@@ -82,7 +82,7 @@ test("подсказка и диалог управляются клавиату
 });
 
 test("mobile master-detail и desktop layout не создают общий горизонтальный скролл", async ({ page }) => {
-  await installAdminApiMock(page);
+  await installAdminApiMock(page, { ruScenario: "fresh-pass" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/nodes");
 
