@@ -166,6 +166,10 @@ test("Деньги: воронка применяет общий range/source/st
   await expect(chart).toHaveAttribute("data-stage", "paid");
   await expect(page.getByText("site", { exact: true })).toBeVisible();
   await expect(page.getByText("bot", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "Оплатили" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Посетители" })).toHaveCount(0);
+  await expect(page.getByText("Оплата → подтверждение", { exact: true })).toBeVisible();
+  await expect(page.getByText("Кабинет/бот → оплата", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/\{.*\}|payload_json|raw json/i)).toHaveCount(0);
 });
 

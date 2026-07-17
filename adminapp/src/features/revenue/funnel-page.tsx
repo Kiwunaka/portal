@@ -34,12 +34,12 @@ function isAccessDenied(error: AdminApiError | null): boolean {
   return Boolean(error && (error.status === 401 || error.status === 403));
 }
 
-const STAGE_METRICS: Array<{ value: string; label: string; key: keyof FunnelSource }> = [
-  { value: "visitors", label: "Посетители", key: "visitors" },
-  { value: "app_opens", label: "Открыли кабинет/бот", key: "app_opens" },
-  { value: "checkouts", label: "Начали оплату", key: "checkouts" },
-  { value: "paid", label: "Оплатили", key: "paid" },
-  { value: "connected", label: "Подключились", key: "connected" },
+const STAGE_METRICS: Array<{ value: string; label: string; key: keyof FunnelSource; stageKey: string }> = [
+  { value: "visitors", label: "Посетители", key: "visitors", stageKey: "site_to_app" },
+  { value: "app_opens", label: "Открыли кабинет/бот", key: "app_opens", stageKey: "site_to_app" },
+  { value: "checkouts", label: "Начали оплату", key: "checkouts", stageKey: "app_to_checkout" },
+  { value: "paid", label: "Оплатили", key: "paid", stageKey: "checkout_to_paid" },
+  { value: "connected", label: "Подключились", key: "connected", stageKey: "paid_to_connected" },
 ];
 
 export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
@@ -54,14 +54,18 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
 
   const sources = resource.data?.by_source || [];
   const filteredSources = useMemo(() => sources.filter((row) => !urlState.source || row.source === urlState.source), [sources, urlState.source]);
-  const selectedMetric = STAGE_METRICS.find((item) => item.value === urlState.stage) || null;
+  const selectedMetric = STAGE_METRICS.find((item) => item.value === urlState.stage)
+    || STAGE_METRICS.find((item) => item.value !== "visitors" && item.stageKey === urlState.stage)
+    || null;
+  const filteredMetrics = useMemo(() => STAGE_METRICS.filter((metric) => !selectedMetric || metric.value === selectedMetric.value), [selectedMetric]);
+  const filteredStages = useMemo(() => (resource.data?.stages || []).filter((stage) => !urlState.stage || stage.key === (selectedMetric?.stageKey || urlState.stage)), [resource.data?.stages, selectedMetric, urlState.stage]);
   const chartRows = useMemo(() => {
     if (urlState.source) {
-      const source = sources.find((row) => row.source === urlState.source);
-      return source ? STAGE_METRICS.filter((metric) => !selectedMetric || metric.value === selectedMetric.value).map((metric) => ({ label: metric.label, value: finite(source[metric.key]) })) : [];
+      const source = filteredSources[0];
+      return source ? filteredMetrics.map((metric) => ({ label: metric.label, value: finite(source[metric.key]) })) : [];
     }
-    return (resource.data?.stages || []).filter((stage) => !urlState.stage || stage.key === urlState.stage).map((stage) => ({ label: stage.label, value: finite(stage.reached_next) }));
-  }, [resource.data?.stages, selectedMetric, sources, urlState.source, urlState.stage]);
+    return filteredStages.map((stage) => ({ label: stage.label, value: finite(stage.reached_next) }));
+  }, [filteredMetrics, filteredSources, filteredStages, urlState.source]);
 
   const stageColumns = useMemo<ColumnDef<FunnelStage>[]>(() => [
     { header: "Переход", accessorKey: "label" },
@@ -72,8 +76,8 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
   ], []);
   const sourceColumns = useMemo<ColumnDef<FunnelSource>[]>(() => [
     { header: "Источник", cell: ({ row }) => <span className="font-semibold">{row.original.source || "— · Нет данных"}</span> },
-    ...STAGE_METRICS.map((metric): ColumnDef<FunnelSource> => ({ header: metric.label, cell: ({ row }) => <NumberValue value={row.original[metric.key]} /> })),
-  ], []);
+    ...filteredMetrics.map((metric): ColumnDef<FunnelSource> => ({ header: metric.label, cell: ({ row }) => <NumberValue value={row.original[metric.key]} /> })),
+  ], [filteredMetrics]);
 
   return (
     <div className="space-y-4">
@@ -87,7 +91,7 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
       </Card>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <Card><SectionTitle title="Стадии" description="Переход, потери и конверсия рассчитаны сервером." />{resource.data?.stages.length ? <DataTable data={resource.data.stages.filter((row) => !urlState.stage || urlState.source || row.key === urlState.stage)} columns={stageColumns} empty="Нет стадий" /> : resource.data ? <EmptyState description="Стадии не пришли от источника." /> : <MissingData />}</Card>
+        <Card><SectionTitle title="Стадии" description="Переход, потери и конверсия рассчитаны сервером." />{filteredStages.length ? <DataTable data={filteredStages} columns={stageColumns} empty="Нет стадий" /> : resource.data ? <EmptyState description="Для выбранной стадии нет данных." /> : <MissingData />}</Card>
         <aside aria-label="Причины потерь"><Card><SectionTitle title="Причины потерь" />{resource.data?.drop_reasons.length ? <dl className="divide-y divide-[color:var(--atlas-border)]">{resource.data.drop_reasons.map((row) => <div key={row.reason} className="flex justify-between gap-3 py-2 text-xs"><dt>{row.reason}</dt><dd><NumberValue value={row.count} /></dd></div>)}</dl> : resource.data ? <EmptyState description="Причины не рассчитаны." className="min-h-0" /> : <MissingData />}</Card></aside>
       </section>
 

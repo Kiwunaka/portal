@@ -82,9 +82,9 @@ export function PromosPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
   const rows = useMemo(() => (resource.data || []).filter((row) => (!urlState.state || promoState(row) === urlState.state) && (!urlState.q || row.code.toLowerCase().includes(urlState.q.toLowerCase()))), [resource.data, urlState.q, urlState.state]);
   const columns = useMemo<ColumnDef<PromoRow>[]>(() => [
     { header: "Промокод", cell: ({ row }) => <button className="font-mono font-semibold hover:underline" onClick={() => replaceUrlState<PromoUrlState>({ selected: row.original.code }, PROMO_URL_CODECS)}>{row.original.code}</button> },
-    { header: "Состояние", cell: ({ row }) => <Badge tone={stateTone(promoState(row.original))}>{stateLabel(promoState(row.original))}</Badge> },
-    { header: "Тип", cell: ({ row }) => row.original.promo_type === "days" ? "Дни" : row.original.promo_type === "discount" ? "Скидка" : row.original.promo_type || <MissingData /> },
-    { header: "Значение", cell: ({ row }) => row.original.value === null ? <MissingData /> : <span className="tabular-nums">{row.original.value}{row.original.promo_type === "discount" ? "%" : " дн."}</span> },
+    { header: "Состояние", cell: ({ row }) => promoState(row.original) === "unknown" ? <MissingData /> : <Badge tone={stateTone(promoState(row.original))}>{stateLabel(promoState(row.original))}</Badge> },
+    { header: "Тип", cell: ({ row }) => row.original.promo_type === "days" ? "Дни" : row.original.promo_type === "discount" ? "Скидка" : <MissingData /> },
+    { header: "Значение", cell: ({ row }) => row.original.value === null || row.original.promo_type === null ? <MissingData /> : <span className="tabular-nums">{row.original.value}{row.original.promo_type === "discount" ? "%" : " дн."}</span> },
     { header: "Осталось / использовано", cell: ({ row }) => row.original.uses_left === null || row.original.used_count === null ? <MissingData /> : <span className="tabular-nums">{row.original.uses_left < 0 ? "∞" : row.original.uses_left} / {row.original.used_count}</span> },
     { header: "Истекает", cell: ({ row }) => row.original.expires_at ? dateText(row.original.expires_at) : <span>Без срока</span> },
   ], []);

@@ -12,7 +12,7 @@ export type PaymentEventState = {
   external_id: string;
   order_id: string | null;
   signature_ok: boolean;
-  processed_ok: boolean;
+  processed_ok: boolean | null;
   created_at: string | null;
 };
 
@@ -25,7 +25,7 @@ export type PaymentOrder = {
   plan_code: string | null;
   amount: number | null;
   currency: string | null;
-  status: string;
+  status: string | null;
   source: string | null;
   campaign: string | null;
   promo_code: string | null;
@@ -59,7 +59,7 @@ export type FunnelPayload = {
 
 export type PromoRow = {
   code: string;
-  promo_type: string;
+  promo_type: "discount" | "days" | null;
   value: number | null;
   uses_left: number | null;
   used_count: number | null;
@@ -74,9 +74,9 @@ export type ReferralRow = {
   referred_tg_id: number;
   queued_at: string | null;
   ready_at: string | null;
-  status: string;
+  status: string | null;
   processed_at: string | null;
-  basis: string;
+  basis: string | null;
   meta_present: boolean;
   meta_sha256: string;
 };
@@ -87,6 +87,11 @@ function finite(value: unknown): number | null {
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function stateText(value: unknown): string | null {
+  const normalized = text(value);
+  return normalized?.toLowerCase() === "unknown" ? null : normalized;
 }
 
 function paymentOrder(value: unknown): PaymentOrder | null {
@@ -109,7 +114,7 @@ function paymentOrder(value: unknown): PaymentOrder | null {
     plan_code: text(row.plan_code),
     amount: finite(row.amount),
     currency: text(row.currency),
-    status: text(row.status) || "unknown",
+    status: stateText(row.status),
     source: text(row.source),
     campaign: text(row.campaign),
     promo_code: text(row.promo_code),
@@ -123,7 +128,7 @@ function paymentOrder(value: unknown): PaymentOrder | null {
       external_id: text(rawEvent.external_id) || "",
       order_id: text(rawEvent.order_id),
       signature_ok: rawEvent.signature_ok === true,
-      processed_ok: rawEvent.processed_ok === true,
+      processed_ok: typeof rawEvent.processed_ok === "boolean" ? rawEvent.processed_ok : null,
       created_at: text(rawEvent.created_at),
     } : null,
   };
@@ -202,7 +207,8 @@ export async function fetchPromos(init?: ApiRequestInit): Promise<PromoRow[]> {
     if (!item || typeof item !== "object") return [];
     const row = item as Record<string, unknown>;
     const code = text(row.code);
-    return code ? [{ code, promo_type: text(row.promo_type) || "unknown", value: finite(row.value), uses_left: finite(row.uses_left), used_count: finite(row.used_count), expires_at: text(row.expires_at), created_at: text(row.created_at) }] : [];
+    const promoType = text(row.promo_type);
+    return code ? [{ code, promo_type: promoType === "discount" || promoType === "days" ? promoType : null, value: finite(row.value), uses_left: finite(row.uses_left), used_count: finite(row.used_count), expires_at: text(row.expires_at), created_at: text(row.created_at) }] : [];
   }) : [];
 }
 
@@ -213,6 +219,6 @@ export async function fetchReferrals(status: string, init?: ApiRequestInit): Pro
     if (!item || typeof item !== "object") return [];
     const row = item as Record<string, unknown>;
     if (typeof row.id !== "number" || typeof row.order_id !== "string" || typeof row.referrer_tg_id !== "number" || typeof row.referred_tg_id !== "number") return [];
-    return [{ id: row.id, order_id: row.order_id, referrer_tg_id: row.referrer_tg_id, referred_tg_id: row.referred_tg_id, queued_at: text(row.queued_at), ready_at: text(row.ready_at), status: text(row.status) || "unknown", processed_at: text(row.processed_at), basis: text(row.basis) || "unknown", meta_present: row.meta_present === true, meta_sha256: text(row.meta_sha256) || "" }];
+    return [{ id: row.id, order_id: row.order_id, referrer_tg_id: row.referrer_tg_id, referred_tg_id: row.referred_tg_id, queued_at: text(row.queued_at), ready_at: text(row.ready_at), status: stateText(row.status), processed_at: text(row.processed_at), basis: stateText(row.basis), meta_present: row.meta_present === true, meta_sha256: text(row.meta_sha256) || "" }];
   }) : [];
 }
