@@ -1380,7 +1380,8 @@ def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
         """
         CREATE TRIGGER trg_user_nodes_guard_mapping_update
         BEFORE UPDATE ON user_nodes
-        WHEN NOT EXISTS (
+        WHEN OLD.node_id != NEW.node_id
+        AND NOT EXISTS (
           SELECT 1
           FROM nodes
           WHERE id = NEW.node_id
@@ -1452,7 +1453,10 @@ def _ensure_admin_action_intent_domain_postgres(conn) -> None:
               target_available BOOLEAN;
             BEGIN
               -- 1347373906 is the stable POKR namespace shared with the action core.
-              IF TG_OP = 'UPDATE' AND OLD.node_id IS DISTINCT FROM NEW.node_id THEN
+              IF TG_OP = 'UPDATE' THEN
+                IF OLD.node_id IS NOT DISTINCT FROM NEW.node_id THEN
+                  RETURN NEW;
+                END IF;
                 PERFORM pg_advisory_xact_lock(
                   1347373906,
                   LEAST(OLD.node_id, NEW.node_id)

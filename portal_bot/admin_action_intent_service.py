@@ -139,6 +139,65 @@ def _normalize_uuid(value: str, *, code: str) -> str:
     return parsed
 
 
+def _normalize_execution_identifiers(
+    *,
+    intent_id: str,
+    idempotency_key: str,
+) -> tuple[str, str]:
+    normalized_intent_id = _normalize_uuid(intent_id, code="invalid_intent_id")
+    try:
+        normalized_idempotency_key = _normalize_uuid(
+            idempotency_key,
+            code="invalid_idempotency_key",
+        )
+    except ActionIntentError as error:
+        error.intent_id = normalized_intent_id
+        raise
+    return normalized_intent_id, normalized_idempotency_key
+
+
+def action_intent_error_identifiers(
+    *,
+    session_factory,
+    actor_tg_id: int,
+    intent_id: str,
+) -> tuple[str | None, int | None]:
+    """Return only a canonical attempted ID and an actor-owned linked audit ID."""
+    try:
+        normalized_intent_id = _normalize_uuid(
+            intent_id,
+            code="invalid_intent_id",
+        )
+    except ActionIntentError:
+        return None, None
+
+    try:
+        session = session_factory()
+    except Exception:
+        return normalized_intent_id, None
+    try:
+        row = (
+            session.query(AdminActionIntent.admin_audit_id)
+            .filter(
+                AdminActionIntent.id == normalized_intent_id,
+                AdminActionIntent.actor_tg_id == int(actor_tg_id),
+            )
+            .first()
+        )
+        audit_id = (
+            int(row[0])
+            if row is not None and row[0] is not None
+            else None
+        )
+        return normalized_intent_id, audit_id
+    except Exception:
+        if session.in_transaction():
+            session.rollback()
+        return normalized_intent_id, None
+    finally:
+        session.close()
+
+
 def _normalize_target(
     target: Mapping[str, Any],
     *,
@@ -952,10 +1011,11 @@ async def execute_action_intent(
     external_timeout_seconds: float = EXTERNAL_EXECUTION_TIMEOUT_SECONDS,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    normalized_intent_id = _normalize_uuid(intent_id, code="invalid_intent_id")
-    normalized_idempotency_key = _normalize_uuid(
-        idempotency_key,
-        code="invalid_idempotency_key",
+    normalized_intent_id, normalized_idempotency_key = (
+        _normalize_execution_identifiers(
+            intent_id=intent_id,
+            idempotency_key=idempotency_key,
+        )
     )
     execution_time = _as_utc(now or _utcnow())
     session = session_factory()

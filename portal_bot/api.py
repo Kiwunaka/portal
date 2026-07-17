@@ -248,6 +248,7 @@ from admin_ops_service import (
 )
 from admin_action_intent_service import (
     ActionIntentError,
+    action_intent_error_identifiers as _action_intent_error_identifiers,
     execute_action_intent as _execute_action_intent,
     prepare_action_intent as _prepare_action_intent,
 )
@@ -16612,6 +16613,29 @@ def _raise_action_intent_http(error: ActionIntentError) -> None:
     )
 
 
+def _raise_action_intent_header_required(
+    *,
+    actor_tg_id: int,
+    intent_id: str,
+    code: str,
+    message: str,
+) -> None:
+    normalized_intent_id, audit_id = _action_intent_error_identifiers(
+        session_factory=SessionLocal,
+        actor_tg_id=actor_tg_id,
+        intent_id=intent_id,
+    )
+    _raise_action_intent_http(
+        ActionIntentError(
+            code,
+            status_code=428,
+            message=message,
+            intent_id=normalized_intent_id,
+            audit_id=audit_id,
+        )
+    )
+
+
 @app.post("/api/admin/action-intents")
 async def admin_action_intent_prepare(
     payload: AdminActionIntentPrepareIn,
@@ -16675,20 +16699,18 @@ async def admin_node_disable(
             },
         )
     if not str(x_admin_idempotency_key or "").strip():
-        raise HTTPException(
-            status_code=428,
-            detail={
-                "code": "idempotency_required",
-                "message": "Нужен client idempotency key.",
-            },
+        _raise_action_intent_header_required(
+            actor_tg_id=actor,
+            intent_id=x_admin_intent_id,
+            code="idempotency_required",
+            message="Нужен client idempotency key.",
         )
     if not str(x_admin_confirmation_sha256 or "").strip():
-        raise HTTPException(
-            status_code=428,
-            detail={
-                "code": "confirmation_required",
-                "message": "Нужно подтверждение server challenge.",
-            },
+        _raise_action_intent_header_required(
+            actor_tg_id=actor,
+            intent_id=x_admin_intent_id,
+            code="confirmation_required",
+            message="Нужно подтверждение server challenge.",
         )
     try:
         return await _execute_action_intent(
