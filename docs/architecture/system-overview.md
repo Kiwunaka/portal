@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-10
+Last updated: 2026-07-17
 
 ## Document Status
 
@@ -135,7 +135,7 @@ Node lifecycle rule:
 - `webapp/`
   user cabinet and session continuation; legacy admin routes stay only until `adminapp/` parity is proven
 - `adminapp/`
-  standalone Next.js operator surface for `https://admin.pokrov.space/`, with ops dashboard, nodes, traffic, free-tier, provider caps, durable alerts, users, tickets, payments, promos, referrals, releases, broadcast, and funnel modules
+  standalone Russian-language Next.js operator surface for `https://admin.pokrov.space/`, with 15 direct route modules: dashboard, nodes, traffic, alerts, provider caps, free tier, users, online, tickets, payments, funnel, promos, referrals, release, and broadcast
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `C:/Users/kiwun/Documents/ai/POKROV-app/`
@@ -172,7 +172,7 @@ Admin ownership rule:
 - `/api/admin/ops/overview` is the new dedicated ops snapshot for `adminapp`, combining summary, metrics freshness, capacity, traffic cap visibility, free-tier burn, provider quotas, and durable alerts
 - `/api/admin/online/users` is the bounded live online aggregate for operator lists; it must not expose raw IP addresses outside individual user investigation views
 - `/api/admin/payments/summary?period=today|7d|30d` is the payments aggregate for revenue, status counts, stuck-payment attention, and abandoned buy/checkout counts
-- dangerous admin actions exposed by `adminapp` require explicit confirmation in the UI; broadcast and bulk-style work should use dry-run/preview first where the backend supports it
+- dangerous admin actions exposed by `adminapp` require a server-owned action intent, explicit confirmation, idempotency, and durable audit; broadcast and bulk-style work should use dry-run/preview first where the backend supports it
 
 Public connection delivery rule:
 
@@ -539,6 +539,66 @@ Manual/test cleanup rule:
 
 - only explicit manual/test users may be deleted from admin
 - real-user deletion is out of scope for the main admin surface in this wave
+
+### RU-Origin Evidence Pipeline
+
+The RU-origin contour is an asynchronous evidence pipeline. The browser never
+runs a Russian probe and never decides freshness by itself.
+
+```text
+mini / replacement RU host
+  -> ru_probe_runner.py
+  -> immutable local spool (pending / blocked / quarantine / archive)
+  -> ru_probe_uploader.py
+  -> HMAC-authenticated internal ingest on brain
+  -> ru_probe_runs + ru_probe_target_results + ru_probe_uploader_heartbeats
+  -> admin read model
+  -> adminapp overview, node detail, history, and release readiness
+```
+
+Boundary rules:
+
+- `infra/pokrov-ru-probe.timer` schedules the runner at `00:00`, `06:00`,
+  `12:00`, and `18:00` UTC; the uploader timer retries the spool independently
+  every 15 minutes.
+- The runner writes a canonical, immutable artifact before network delivery.
+  A temporary API outage therefore leaves evidence in `pending` rather than
+  destroying or pretending to complete the run.
+- `scripts/ru_probe_uploader.py` sends the artifact and heartbeat to the exact
+  `/api/internal/probes/ru-origin/*` paths. `internal_request_auth.py` verifies
+  key id, subject, scope, timestamp, nonce, canonical body hash, and HMAC
+  signature before the payload reaches the service layer.
+- `portal_bot/ru_probe_contract.py` validates the signed contract;
+  `portal_bot/ru_probe_service.py` evaluates eligibility and stores normalized
+  rows. Raw secret material and arbitrary probe payloads do not cross the
+  admin read boundary.
+- `GET /api/admin/probes/ru-origin/latest`, `/runs`, and `/uploader-status`
+  expose bounded, redacted read models. Server time owns the 7-hour run-stale
+  and 45-minute heartbeat-stale decisions.
+- Unheld RU run rows have a default 180-day database retention window. A run
+  bound to retained release evidence receives a retention hold and is excluded
+  from routine pruning.
+
+### Release Evidence And Admin Action Services
+
+`portal_bot/release_evidence_service.py` owns exact-candidate evidence import.
+The internal importer accepts a redacted descriptor plus per-origin evidence,
+keeps `current`, `brain`, and `ru` separate, rejects candidate mismatches, and
+binds eligible RU evidence to its stored probe run. `adminapp` reads candidates
+and readiness through `/api/admin/releases/*`; it does not manufacture a green
+release verdict from local test results.
+
+`portal_bot/admin_action_intent_service.py` owns risky operator mutations. An
+intent captures actor, action, target, normalized parameters, before-state,
+expected effect, confirmation contract, expiry, idempotency key, result summary,
+and audit linkage. The original mutation route executes only a matching live
+intent. If the response is lost, the client reads intent status instead of
+blindly replaying the side effect. Redaction and allowlists apply before
+before/after/result material becomes durable or returns to the browser.
+
+These two services are deliberately separate: release evidence proves an exact
+candidate and origin; an action intent authorizes one operator mutation. Neither
+is a production deploy mechanism.
 
 ## Device, Telegram, And IP Correlation
 

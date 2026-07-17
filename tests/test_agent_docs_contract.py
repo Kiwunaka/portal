@@ -1325,3 +1325,60 @@ def test_surface_readme_repo_doc_pointers_resolve() -> None:
             assert (REPO_ROOT / pointer).exists(), (
                 f"{source_path} points to missing repository file {pointer}"
             )
+
+
+def test_admin_command_center_and_ru_probe_owners_are_cross_linked() -> None:
+    admin = (REPO_ROOT / "adminapp/README.md").read_text(encoding="utf-8")
+    overview = (
+        REPO_ROOT / "docs/architecture/system-overview.md"
+    ).read_text(encoding="utf-8")
+    monitoring = (
+        REPO_ROOT / "docs/operations/monitoring-and-visibility.md"
+    ).read_text(encoding="utf-8")
+    handoff = (
+        REPO_ROOT / "docs/operations/ru-origin-probe-handoff.md"
+    ).read_text(encoding="utf-8")
+    publishing = (
+        REPO_ROOT / "docs/operations/publishing-and-signing-guide.md"
+    ).read_text(encoding="utf-8")
+    deployment = (
+        REPO_ROOT / "docs/operations/deployment-and-access.md"
+    ).read_text(encoding="utf-8")
+
+    assert admin.count("| `/") == 15
+    for pointer in (
+        "docs/architecture/system-overview.md",
+        "docs/operations/monitoring-and-visibility.md",
+        "docs/operations/ru-origin-probe-handoff.md",
+    ):
+        assert pointer in admin
+    assert "ru_probe_runner.py" in overview
+    assert "ru_probe_uploader.py" in overview
+    assert "ru_probe_runs + ru_probe_target_results" in overview
+    assert "/api/admin/probes/ru-origin/latest" in overview
+
+    combined_ru = monitoring + "\n" + handoff
+    for required in (
+        "6 hours",
+        "7 hours",
+        "45 minutes",
+        "180 days",
+        "MANUAL_OWNER_TEST",
+        "BLOCKED_BY_ACCESS",
+    ):
+        assert required.casefold() in combined_ru.casefold()
+    assert "retention_hold=true" in monitoring
+    assert "не содержит команд для изменения живого хоста" in handoff
+
+    release_owners = publishing + "\n" + deployment
+    for required in (
+        "exact candidate",
+        "artifact_sha256",
+        "POST /api/internal/releases/candidates",
+        "retention hold",
+        "production deploy",
+        "RU-origin",
+    ):
+        assert required.casefold() in release_owners.casefold()
+    assert "do not prove production deploy" in publishing.casefold()
+    assert "current workstation only" in deployment.casefold()

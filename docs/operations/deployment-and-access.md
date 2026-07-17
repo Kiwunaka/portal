@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-12
+Last updated: 2026-07-17
 
 ## Document Status
 
@@ -186,6 +186,37 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 - bridge-era `release-links.env` is a compatibility fallback only
 - canonical stable metadata pointer when maintained: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
 - schema reference: [release_handoff_metadata.schema.json](C:/Users/kiwun/Documents/ai/VPN/scripts/release_handoff_metadata.schema.json)
+
+Exact-candidate evidence boundary:
+
+- runtime download metadata sync and operations-evidence import are separate
+  actions; neither one silently performs the other
+- before import, compute the canonical candidate from `component`, `version`,
+  `revision`, and `artifact_sha256`, and compare its derived `candidate_id`
+  with the retained artifact bundle
+- import only a redacted evidence envelope through the exact
+  `POST /api/internal/releases/candidates` path using an approved
+  HMAC-authenticated client and the dedicated `release:evidence` key scope
+- keep `current`, `brain`, and `ru` evidence as separate rows with explicit
+  labels; accepted labels include `PASS`, `FAIL`, `MANUAL_OWNER_TEST`,
+  `OPERATOR_ATTESTED`, `SKIPPED_BY_OWNER`, `SKIPPED_BY_OPERATOR`,
+  `BLOCKED_BY_ACCESS`, and `MISSING`
+- an RU `PASS` is accepted only when it binds to the exact stored, eligible,
+  current-manifest RU run; successful binding places that run on retention hold
+- retention hold prevents normal 180-day cleanup of the evidence run, but does
+  not prove a deploy, refresh an old run, or transfer evidence to another
+  candidate
+- do not include a secret value, raw log, provider payload, subscription URL,
+  personal identifier, host credential, or arbitrary metadata in the import
+- after import, read `/api/admin/releases/candidates` and
+  `/api/admin/releases/{candidate_id}/readiness` and compare every origin with
+  the retained source record
+
+Local unit/contract tests, `adminapp` build/lint/E2E, and a clean diff are
+candidate checks from the current workstation only. Even when all are green,
+production deploy, `brain-origin`, RU-origin, live timer installation and live
+secret/key state remain `NOT_REQUESTED`, `MANUAL_OWNER_TEST`, or
+`BLOCKED_BY_ACCESS` until separately executed and retained.
 
 ### API-only lifecycle smoke
 
