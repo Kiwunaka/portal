@@ -696,6 +696,7 @@ type AdminApiMockOptions = {
   referralsStatus?: number;
   broadcastStatus?: number;
   broadcastOutcome?: "completed" | "failed" | "uncertain";
+  broadcastStatusOutcome?: "completed" | "failed" | "uncertain" | "prepared";
   actionIntentPrepareStatus?: number;
   failAllLegacyRequests?: boolean;
   delayFirstOverviewFailure?: boolean;
@@ -1293,7 +1294,7 @@ export async function installAdminApiMock(
 
     if (isActionIntentStatusPath(url.pathname)) {
       const intentId = url.pathname.split("/").at(-1) || "";
-      const outcome = options.broadcastOutcome || "uncertain";
+      const outcome = options.broadcastStatusOutcome || options.broadcastOutcome || "uncertain";
       await fulfillJson(route, {
         ok: outcome === "completed",
         status: outcome,

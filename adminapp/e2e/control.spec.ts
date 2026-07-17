@@ -78,7 +78,7 @@ test("broadcast preview freezes count and hash before exact confirmation", async
 });
 
 test("uncertain broadcast offers status check and never retry-send", async ({ page }) => {
-  const api = await installAdminApiMock(page, { broadcastOutcome: "uncertain" });
+  const api = await installAdminApiMock(page, { broadcastOutcome: "uncertain", broadcastStatusOutcome: "prepared" });
   await openControl(page, "/broadcast");
 
   const draft = "Сообщение с неопределённым исходом";
@@ -90,10 +90,10 @@ test("uncertain broadcast offers status check and never retry-send", async ({ pa
   await expect(page.getByText("Итог действия неясен", { exact: true })).toBeVisible();
   const statusCheck = page.getByRole("button", { name: "Проверить текущее состояние" });
   await expect(statusCheck).toBeVisible();
-  await expect(page.getByRole("button", { name: "Подготовить защищённый предпросмотр" })).toBeDisabled();
   await expect(page.getByRole("button", { name: /повтор/i })).toHaveCount(0);
   await statusCheck.click();
   await expect.poll(() => api.calls.filter((call) => call.method === "GET" && /\/api\/admin\/action-intents\//.test(call.path)).length).toBe(1);
+  await expect(page.getByRole("button", { name: "Подготовить защищённый предпросмотр" })).toBeDisabled();
   expect(api.calls.filter((call) => call.method === "POST" && call.path === "/api/admin/broadcast")).toHaveLength(1);
   await expect.poll(() => page.evaluate(() => window.sessionStorage.getItem("pokrov_admin_broadcast_draft_v1"))).toContain(draft);
 });

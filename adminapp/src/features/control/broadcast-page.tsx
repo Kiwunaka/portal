@@ -60,6 +60,10 @@ function resultTone(result: AdminActionResult): "success" | "warning" | "danger"
   return "danger";
 }
 
+function isDefinitiveStoredOutcome(result: AdminActionResult): boolean {
+  return result.status === "completed" || result.status === "failed";
+}
+
 export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
   const [draft, setDraft] = useState<BroadcastDraft>(loadDraft);
   const [formError, setFormError] = useState("");
@@ -107,7 +111,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
     setLastResult(result);
     setStatusIntentId(result.action_intent_id || null);
     setStatusError("");
-    setOutcomeUncertain(result.status === "uncertain" || result.status === "executing");
+    setOutcomeUncertain(!isDefinitiveStoredOutcome(result));
     if (result.status === "completed" && result.ok) clearConfirmedDraft();
   }, [clearConfirmedDraft]);
 
@@ -128,7 +132,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
     try {
       const result = await fetchActionIntentStatus(statusIntentId, { timeoutMs: 15_000 });
       setLastResult(result);
-      setOutcomeUncertain(result.status === "uncertain" || result.status === "executing");
+      setOutcomeUncertain(!isDefinitiveStoredOutcome(result));
       if (result.status === "completed" && result.ok) clearConfirmedDraft();
     } catch (error) {
       const apiError = error instanceof AdminApiError ? error : null;
