@@ -40,6 +40,7 @@ from internal_request_auth import (  # noqa: E402
 
 
 RUNS_PATH = "/api/internal/probes/ru-origin/runs"
+RELEASE_PATH = "/api/internal/releases/candidates"
 NOW = datetime(2026, 7, 15, 12, 0, 0, tzinfo=timezone.utc)
 RAW_BODY = b'{"schema_version":2,"probe_host":{"id":"mini"}}'
 ACTIVE_KEY = InternalServiceKey(
@@ -853,6 +854,48 @@ def test_authentication_enforces_scope_and_origin_allowlists(session, registry) 
         "forbidden_origin",
     )
     assert _nonce_count(session) == 0
+
+
+def test_release_evidence_scope_binds_exact_candidate_import_bytes(session) -> None:
+    key = InternalServiceKey(
+        key_id="release-evidence-v1",
+        secret=b"release-test-secret-not-for-production",
+        subject="release-tooling",
+        scopes=frozenset({"release:evidence"}),
+        origins=frozenset({"release"}),
+        enabled=True,
+    )
+    raw_body = b'{"schema_version":1,"candidate_id":"' + b"a" * 64 + b'"}'
+    headers = _signed_headers(
+        key=key,
+        path=RELEASE_PATH,
+        raw_body=raw_body,
+        nonce="release-nonce-001",
+    )
+
+    authenticated = _authenticate(
+        session,
+        {key.key_id: key},
+        headers,
+        path=RELEASE_PATH,
+        raw_body=raw_body,
+        required_scope="release:evidence",
+        required_origin="release",
+    )
+    assert authenticated.body_sha256 == hashlib.sha256(raw_body).hexdigest()
+    assert authenticated.subject == "release-tooling"
+
+    with pytest.raises(InternalAuthError) as caught:
+        _authenticate(
+            session,
+            {key.key_id: key},
+            headers,
+            path=RELEASE_PATH,
+            raw_body=raw_body + b" ",
+            required_scope="release:evidence",
+            required_origin="release",
+        )
+    assert (caught.value.status_code, caught.value.code) == (401, "invalid_signature")
 
 
 def test_verifier_accepts_scope_64_and_rejects_scope_65(session) -> None:

@@ -291,6 +291,8 @@ class WorkerRetentionTests(unittest.TestCase):
     def test_telemetry_retention_cleans_ru_tables_and_preserves_holds(self) -> None:
         from models import (
             InternalIngestNonce,
+            ReleaseCandidate,
+            ReleaseOriginEvidence,
             RuProbeRun,
             RuProbeTargetResult,
             RuProbeUploaderHeartbeat,
@@ -347,6 +349,34 @@ class WorkerRetentionTests(unittest.TestCase):
             )
             session.add_all([old_unheld, old_held])
             session.flush()
+            candidate_id = "f" * 64
+            session.add(
+                ReleaseCandidate(
+                    candidate_id=candidate_id,
+                    component="adminapp",
+                    version="2026.07.15.1",
+                    revision="9da042c9da042c9da042c9da042c9da042c9da0",
+                    artifact_sha256="e" * 64,
+                    canonical_descriptor_json='{"artifact_sha256":"' + "e" * 64 + '"}',
+                    descriptor_sha256=candidate_id,
+                    ingest_key_id="release-test",
+                    imported_at=now - timedelta(days=180),
+                )
+            )
+            session.flush()
+            session.add(
+                ReleaseOriginEvidence(
+                    candidate_id=candidate_id,
+                    origin="ru",
+                    check_name="ru_origin_reachability",
+                    status="PASS",
+                    evidence_sha256="9" * 64,
+                    observed_at=old_held.finished_at,
+                    detail_json='{"source":"retained-run"}',
+                    ru_probe_run_id=old_held.id,
+                    imported_at=now - timedelta(days=180),
+                )
+            )
             for run in (old_unheld, old_held):
                 session.add(
                     RuProbeTargetResult(
@@ -433,6 +463,8 @@ class WorkerRetentionTests(unittest.TestCase):
             self.assertEqual([row.run_db_id for row in remaining_targets], [old_held.id])
             self.assertEqual(session.query(InternalIngestNonce).count(), 0)
             self.assertEqual(session.query(RuProbeUploaderHeartbeat).count(), 1)
+            self.assertEqual(session.query(ReleaseCandidate).count(), 1)
+            self.assertEqual(session.query(ReleaseOriginEvidence).count(), 1)
         finally:
             session.close()
 

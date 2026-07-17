@@ -960,6 +960,88 @@ class InternalIngestNonce(Base):
     )
 
 
+class ReleaseCandidate(Base):
+    __tablename__ = "release_candidates"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    candidate_id = Column(String(64), nullable=False)
+    component = Column(String(64), nullable=False)
+    version = Column(String(128), nullable=False)
+    revision = Column(String(128), nullable=False)
+    artifact_sha256 = Column(String(64), nullable=False)
+    canonical_descriptor_json = Column(Text, nullable=False)
+    descriptor_sha256 = Column(String(64), nullable=False)
+    ingest_key_id = Column(String(128), nullable=False)
+    imported_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_id",
+            name="uq_release_candidates_candidate_id",
+        ),
+        Index("ix_release_candidates_imported_at", imported_at),
+        Index("ix_release_candidates_component", component),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class ReleaseOriginEvidence(Base):
+    __tablename__ = "release_origin_evidence"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    candidate_id = Column(
+        String(64),
+        ForeignKey(
+            "release_candidates.candidate_id",
+            name="fk_release_origin_evidence_candidate",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    origin = Column(String(16), nullable=False)
+    check_name = Column(String(128), nullable=False)
+    status = Column(String(32), nullable=False)
+    evidence_sha256 = Column(String(64), nullable=False)
+    observed_at = Column(DateTime(timezone=True), nullable=False)
+    detail_json = Column(Text, nullable=False)
+    ru_probe_run_id = Column(
+        Integer,
+        ForeignKey(
+            "ru_probe_runs.id",
+            name="fk_release_origin_evidence_ru_probe_run",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+    imported_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_id",
+            "origin",
+            "check_name",
+            "evidence_sha256",
+            name="uq_release_origin_evidence_candidate_origin_check_hash",
+        ),
+        Index(
+            "ix_release_origin_evidence_candidate_origin",
+            candidate_id,
+            origin,
+        ),
+        Index("ix_release_origin_evidence_observed_at", observed_at),
+        Index("ix_release_origin_evidence_ru_probe_run_id", ru_probe_run_id),
+        {"sqlite_autoincrement": True},
+    )
+
+
 class AdminAudit(Base):
     __tablename__ = "admin_audit"
 

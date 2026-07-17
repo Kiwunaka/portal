@@ -274,6 +274,15 @@ from ru_probe_service import (
     store_ru_heartbeat,
     validate_ru_heartbeat,
 )
+from release_evidence_service import (
+    ReleaseEvidenceConflict,
+    ReleaseEvidenceNotFound,
+    ReleaseEvidenceReadError,
+    ReleaseEvidenceValidationError,
+    get_release_readiness,
+    import_release_evidence,
+    list_release_candidates,
+)
 
 
 HIDDIFY_HIDDEN_TAG_SUFFIX = " §hide§"
@@ -5182,8 +5191,10 @@ async def _read_limited_request_body(request: Request, *, max_bytes: int, scope:
 _RU_MANIFEST_PATH = "/api/internal/probes/ru-origin/manifest"
 _RU_RUNS_PATH = "/api/internal/probes/ru-origin/runs"
 _RU_HEARTBEAT_PATH = "/api/internal/probes/ru-origin/heartbeat"
+_RELEASE_CANDIDATES_PATH = "/api/internal/releases/candidates"
 _RU_RUN_MAX_BODY_BYTES = 512 * 1024
 _RU_HEARTBEAT_MAX_BODY_BYTES = 64 * 1024
+_RELEASE_EVIDENCE_MAX_BODY_BYTES = 256 * 1024
 _RU_CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
@@ -5387,6 +5398,22 @@ app.add_api_route(
 )
 
 
+async def _reject_release_evidence_route_alias(request: Request) -> JSONResponse:
+    return _ru_probe_error_response(
+        status_code=400,
+        code="invalid_request",
+        correlation_id=_ru_probe_correlation_id(request),
+    )
+
+
+app.add_api_route(
+    f"{_RELEASE_CANDIDATES_PATH}/",
+    _reject_release_evidence_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+
+
 @app.get(_RU_MANIFEST_PATH)
 async def internal_ru_probe_manifest(request: Request):
     correlation_id = _ru_probe_correlation_id(request)
@@ -5532,6 +5559,87 @@ async def internal_ru_probe_heartbeat(request: Request):
     except Exception as error:
         session.rollback()
         return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+def _release_evidence_response_for_exception(
+    error: Exception,
+    *,
+    correlation_id: str,
+) -> JSONResponse:
+    if isinstance(error, ReleaseEvidenceConflict):
+        return _ru_probe_error_response(
+            status_code=409,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    if isinstance(error, ReleaseEvidenceValidationError):
+        return _ru_probe_error_response(
+            status_code=422,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    return _ru_probe_response_for_exception(
+        error,
+        correlation_id=correlation_id,
+    )
+
+
+@app.post(_RELEASE_CANDIDATES_PATH)
+async def internal_release_candidate_import(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RELEASE_CANDIDATES_PATH)
+    except Exception as error:
+        return _release_evidence_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RELEASE_EVIDENCE_MAX_BODY_BYTES,
+            scope="Release evidence",
+        )
+        now = _ru_probe_now()
+        authenticated = authenticate_internal_request(
+            session,
+            load_internal_service_key_registry(),
+            method=request.method,
+            path=_RELEASE_CANDIDATES_PATH,
+            raw_body=raw_body,
+            headers=_ru_probe_headers(request),
+            required_scope="release:evidence",
+            required_origin="release",
+            now=now,
+        )
+        payload = _ru_probe_json(raw_body)
+        stored = import_release_evidence(
+            session,
+            payload,
+            ingest_key_id=authenticated.key_id,
+            imported_at=now,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created" if stored.created else "already_imported",
+                "candidate_id": stored.candidate_id,
+                "created": stored.created,
+                "candidate_created": stored.candidate_created,
+                "evidence_created": stored.evidence_created,
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _release_evidence_response_for_exception(
             error,
             correlation_id=correlation_id,
         )
@@ -15616,6 +15724,59 @@ async def admin_ru_probe_uploader_status(
     s = SessionLocal()
     try:
         return get_ru_uploader_status(s, now=_utcnow())
+    finally:
+        s.close()
+
+
+def _release_read_http_error(error: ReleaseEvidenceReadError) -> HTTPException:
+    return HTTPException(
+        status_code=400,
+        detail={
+            "code": error.code,
+            "message": "Invalid release evidence read request",
+        },
+    )
+
+
+@app.get("/api/admin/releases/candidates")
+async def admin_release_candidates(
+    x_telegram_init_data: str = Header(default=""),
+    limit: int = Query(default=50),
+    cursor: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return list_release_candidates(
+                s,
+                limit=limit,
+                cursor=cursor or None,
+                now=_utcnow(),
+            )
+        except ReleaseEvidenceReadError as exc:
+            raise _release_read_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/releases/{candidate_id}/readiness")
+async def admin_release_candidate_readiness(
+    candidate_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return get_release_readiness(s, candidate_id, now=_utcnow())
+        except ReleaseEvidenceNotFound as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": exc.code, "message": "Release candidate not found"},
+            ) from exc
+        except ReleaseEvidenceReadError as exc:
+            raise _release_read_http_error(exc) from exc
     finally:
         s.close()
 

@@ -24,6 +24,8 @@ RU_TABLES = {
     "ru_probe_target_results",
     "ru_probe_uploader_heartbeats",
     "internal_ingest_nonces",
+    "release_candidates",
+    "release_origin_evidence",
 }
 
 EXPECTED_COLUMNS = {
@@ -123,6 +125,30 @@ EXPECTED_COLUMNS = {
         "expires_at",
         "created_at",
     },
+    "release_candidates": {
+        "id",
+        "candidate_id",
+        "component",
+        "version",
+        "revision",
+        "artifact_sha256",
+        "canonical_descriptor_json",
+        "descriptor_sha256",
+        "ingest_key_id",
+        "imported_at",
+    },
+    "release_origin_evidence": {
+        "id",
+        "candidate_id",
+        "origin",
+        "check_name",
+        "status",
+        "evidence_sha256",
+        "observed_at",
+        "detail_json",
+        "ru_probe_run_id",
+        "imported_at",
+    },
 }
 
 EXPECTED_UNIQUES = {
@@ -143,6 +169,17 @@ EXPECTED_UNIQUES = {
             "key_scope",
             "key_id",
             "nonce_hash",
+        ),
+    },
+    "release_candidates": {
+        "uq_release_candidates_candidate_id": ("candidate_id",),
+    },
+    "release_origin_evidence": {
+        "uq_release_origin_evidence_candidate_origin_check_hash": (
+            "candidate_id",
+            "origin",
+            "check_name",
+            "evidence_sha256",
         ),
     },
 }
@@ -174,6 +211,18 @@ EXPECTED_INDEXES = {
     },
     "internal_ingest_nonces": {
         "ix_internal_ingest_nonces_expires_at": ("expires_at",),
+    },
+    "release_candidates": {
+        "ix_release_candidates_component": ("component",),
+        "ix_release_candidates_imported_at": ("imported_at",),
+    },
+    "release_origin_evidence": {
+        "ix_release_origin_evidence_candidate_origin": (
+            "candidate_id",
+            "origin",
+        ),
+        "ix_release_origin_evidence_observed_at": ("observed_at",),
+        "ix_release_origin_evidence_ru_probe_run_id": ("ru_probe_run_id",),
     },
 }
 
@@ -324,6 +373,20 @@ def test_ru_probe_tables_have_exact_safe_columns(migrated_engine) -> None:
     assert "nonce" not in nonce_columns
     assert not {"secret", "signature", "raw_nonce", "raw_body"} & nonce_columns
     assert "verdict" not in EXPECTED_COLUMNS["ru_probe_target_results"]
+    assert not {
+        "secret",
+        "signature",
+        "private_key",
+        "client_secret",
+        "raw_payload",
+    } & EXPECTED_COLUMNS["release_candidates"]
+    assert not {
+        "secret",
+        "signature",
+        "private_key",
+        "client_secret",
+        "raw_payload",
+    } & EXPECTED_COLUMNS["release_origin_evidence"]
 
 
 def test_models_and_explicit_sqlite_ddl_match(migrated_engine) -> None:
@@ -382,6 +445,38 @@ def test_models_and_explicit_sqlite_ddl_match(migrated_engine) -> None:
         assert models.RuProbeRun.__table__.c[column_name].type.timezone is True
     assert models.RuProbeTargetResult.__table__.c.observed_at.type.timezone is True
     assert models.RuProbeTargetResult.__table__.c.server_detail.type.length == 500
+    release_table = models.ReleaseOriginEvidence.__table__
+    candidate_fk = next(iter(release_table.c.candidate_id.foreign_keys))
+    assert candidate_fk.name == "fk_release_origin_evidence_candidate"
+    assert candidate_fk.target_fullname == "release_candidates.candidate_id"
+    assert candidate_fk.ondelete == "CASCADE"
+    run_fk = next(iter(release_table.c.ru_probe_run_id.foreign_keys))
+    assert run_fk.name == "fk_release_origin_evidence_ru_probe_run"
+    assert run_fk.target_fullname == "ru_probe_runs.id"
+    assert run_fk.ondelete == "RESTRICT"
+    release_fks = {
+        str(item["name"]): (
+            tuple(item["constrained_columns"]),
+            item["referred_table"],
+            tuple(item["referred_columns"]),
+            str((item.get("options") or {}).get("ondelete") or ""),
+        )
+        for item in inspector.get_foreign_keys("release_origin_evidence")
+    }
+    assert release_fks == {
+        "fk_release_origin_evidence_candidate": (
+            ("candidate_id",),
+            "release_candidates",
+            ("candidate_id",),
+            "CASCADE",
+        ),
+        "fk_release_origin_evidence_ru_probe_run": (
+            ("ru_probe_run_id",),
+            "ru_probe_runs",
+            ("id",),
+            "RESTRICT",
+        ),
+    }
 
 
 def test_required_unique_constraints_are_enforced(migrated_engine) -> None:
@@ -485,7 +580,8 @@ def test_sqlite_autoincrement_guard_rejects_missing_keyword(migrated_engine) -> 
                 "SELECT name, sql FROM sqlite_master "
                 "WHERE type = 'table' AND name IN "
                 "('ru_probe_runs', 'ru_probe_target_results', "
-                "'ru_probe_uploader_heartbeats', 'internal_ingest_nonces')"
+                "'ru_probe_uploader_heartbeats', 'internal_ingest_nonces', "
+                "'release_candidates', 'release_origin_evidence')"
             )
         ).fetchall()
     table_sql = {str(row[0]): str(row[1]) for row in rows}
@@ -498,6 +594,30 @@ def test_sqlite_autoincrement_guard_rejects_missing_keyword(migrated_engine) -> 
     _assert_sqlite_autoincrement_contract(table_sql)
     with pytest.raises(AssertionError):
         _assert_sqlite_autoincrement_contract(mutated_table_sql)
+
+
+def test_release_evidence_postgres_ddl_keeps_named_constraints_and_indexes() -> None:
+    class RecordingConnection:
+        def __init__(self) -> None:
+            self.statements: list[str] = []
+
+        def execute(self, statement):
+            self.statements.append(" ".join(str(statement).split()))
+
+    recorder = RecordingConnection()
+    migrations._ensure_release_evidence_domain_postgres(recorder)
+    sql = "\n".join(recorder.statements)
+
+    assert "CREATE TABLE IF NOT EXISTS release_candidates" in sql
+    assert "CREATE TABLE IF NOT EXISTS release_origin_evidence" in sql
+    assert "CONSTRAINT uq_release_candidates_candidate_id" in sql
+    assert "CONSTRAINT fk_release_origin_evidence_candidate" in sql
+    assert "CONSTRAINT fk_release_origin_evidence_ru_probe_run" in sql
+    assert "ON DELETE RESTRICT" in sql
+    assert "CONSTRAINT uq_release_origin_evidence_candidate_origin_check_hash" in sql
+    assert "ix_release_candidates_imported_at" in sql
+    assert "ix_release_origin_evidence_candidate_origin" in sql
+    assert "ix_release_origin_evidence_ru_probe_run_id" in sql
 
 
 def test_admin_action_intent_migration_contract(tmp_path: Path) -> None:
