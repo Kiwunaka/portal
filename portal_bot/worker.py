@@ -27,6 +27,7 @@ from economy_service import (
     cancel_channel_loss_grace,
     expire_stale_trial_reservations,
     migrate_pending_legacy_referral_queue,
+    reconcile_stale_trial_projections,
     rebuild_due_entitlement_projections,
     release_due_referrer_rewards,
     reverse_due_channel_grants,
@@ -1181,9 +1182,12 @@ async def trial_reservation_expiry_job() -> None:
         session = SessionLocal()
         try:
             result = expire_stale_trial_reservations(session, now=_utcnow())
+            projection_result = reconcile_stale_trial_projections(session, now=_utcnow(), limit=200)
             session.commit()
             if int(result.get("expired", 0)) > 0:
                 logger.info("trial_reservation_expiry result=%s", result)
+            if int(projection_result.get("reconciled", 0)) > 0:
+                logger.warning("stale_trial_projection_reconciliation result=%s", projection_result)
         except Exception:
             session.rollback()
             logger.exception("trial_reservation_expiry_job failed")

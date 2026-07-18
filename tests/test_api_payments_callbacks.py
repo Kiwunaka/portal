@@ -8,6 +8,7 @@ import tempfile
 import time
 import unittest
 import uuid
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -29,6 +30,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "DATABASE_URL",
             "BOT_TOKEN",
             "FREEKASSA_SIGNING_SECRET",
+            "FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED",
             "PAYMENT_CALLBACK_TOLERANT_MODE",
             "CHECKOUT_TICKET_SECRET",
             "CHECKOUT_TICKET_TTL_SECONDS",
@@ -64,6 +66,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["FREEKASSA_SIGNING_SECRET"] = "test_fk_secret"
+        # Legacy generic callback coverage is explicit. Production defaults to SCI-only.
+        os.environ["FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED"] = "true"
         os.environ["PAYMENT_CALLBACK_TOLERANT_MODE"] = "false"
         os.environ["CHECKOUT_TICKET_SECRET"] = "checkout_secret_test_123"
         os.environ["CHECKOUT_TICKET_TTL_SECONDS"] = "900"
@@ -161,6 +165,30 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         return hashlib.md5(base.encode("utf-8")).hexdigest()
 
     @staticmethod
+    def _freekassa_order_meta(
+        *,
+        plan_code: str = "1_month",
+        duration_days: int = 30,
+        amount_rub: str = "249.00",
+        currency: str = "RUB",
+        source: str = "site",
+    ) -> str:
+        return json.dumps(
+            {
+                "entitlement_snapshot": {
+                    "plan_code": plan_code,
+                    "duration_days": duration_days,
+                    "amount_rub": amount_rub,
+                    "currency": currency,
+                    "source": source,
+                },
+                "fulfillment": {"mode": "account_extend", "status": "pending_payment"},
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    @staticmethod
     def _sign_telegram_init_data(*, bot_token: str, tg_id: int, username: str) -> str:
         params = {
             "auth_date": str(int(time.time())),
@@ -181,6 +209,41 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             username=username,
         )
         return {"X-Telegram-Init-Data": init_data}
+
+    def _execute_admin_intent(
+        self,
+        client: TestClient,
+        *,
+        action: str,
+        target_type: str,
+        target_id: str | int,
+        method: str,
+        path: str,
+        payload: dict,
+    ):
+        admin_headers = self._auth_headers(9999, "admin")
+        prepared = client.post(
+            "/api/admin/action-intents",
+            headers=admin_headers,
+            json={
+                "action": action,
+                "target": {"type": target_type, "id": str(target_id)},
+                "payload": payload,
+            },
+        )
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        challenge = str(prepared.json()["confirmation_challenge"])
+        return client.request(
+            method,
+            path,
+            headers={
+                **admin_headers,
+                "X-Admin-Intent-Id": str(prepared.json()["intent_id"]),
+                "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+                "X-Admin-Confirmation-SHA256": hashlib.sha256(challenge.encode("utf-8")).hexdigest(),
+            },
+            json=payload,
+        )
 
     def test_success_and_fail_landing_routes(self) -> None:
         client = TestClient(self.api.app)
@@ -215,9 +278,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     provider="freekassa",
                     tg_id=1001,
                     plan_code="1_month",
+                    source="site",
                     amount=249.0,
                     currency="RUB",
                     status="pending",
+                    meta_json=self._freekassa_order_meta(),
                     created_at=self.api._utcnow(),
                 )
             )
@@ -351,9 +416,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     provider="freekassa",
                     tg_id=2002,
                     plan_code="1_month",
+                    source="site",
                     amount=249.0,
                     currency="RUB",
                     status="pending",
+                    meta_json=self._freekassa_order_meta(),
                     created_at=self.api._utcnow(),
                 )
             )
@@ -581,11 +648,9 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             event = s.query(ExternalPaymentEvent).filter(ExternalPaymentEvent.external_id == "tx-review-2403").first()
             row = s.query(ExternalOrder).filter(ExternalOrder.order_id == "order-review-2403").first()
             self.assertIsNotNone(event)
-            self.assertIsNotNone(row)
+            self.assertIsNone(row)
             self.assertTrue(bool(event.signature_ok))
             self.assertTrue(bool(event.processed_ok))
-            self.assertEqual(str(row.status or ""), "manual_review")
-            self.assertIsNone(row.paid_at)
         finally:
             s.close()
 
@@ -638,6 +703,320 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         r = client.post("/api/payments/freekassa/notify", params=payload)
         self.assertEqual(r.status_code, 400, r.text)
 
+    def test_freekassa_incomplete_sci_never_downgrades_to_generic_hmac(self) -> None:
+        client = TestClient(self.api.app)
+        payload = {
+            "MERCHANT_ID": "69962",
+            "AMOUNT": "249.00",
+            "MERCHANT_ORDER_ID": "order-incomplete-sci",
+            "status": "paid",
+        }
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        signature = self._hmac_sha256("test_fk_secret", raw)
+
+        response = client.post(
+            "/api/payments/result/freekassa",
+            data=raw,
+            headers={"Content-Type": "application/json", "X-Signature": signature},
+        )
+
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("incomplete_sci_payload", response.text)
+
+    def test_freekassa_generic_hmac_requires_explicit_compatibility_flag(self) -> None:
+        client = TestClient(self.api.app)
+        payload = {
+            "order_id": "order-generic-disabled",
+            "amount": "249.00",
+            "currency": "RUB",
+            "status": "paid",
+        }
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        signature = self._hmac_sha256("test_fk_secret", raw)
+        old_compat = self.api.FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED
+        self.api.FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED = False
+        try:
+            response = client.post(
+                "/api/payments/result/freekassa",
+                data=raw,
+                headers={"Content-Type": "application/json", "X-Signature": signature},
+            )
+        finally:
+            self.api.FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED = old_compat
+
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("generic_hmac_disabled", response.text)
+
+    def test_freekassa_generic_callback_without_state_is_not_paid(self) -> None:
+        self.assertEqual(
+            self.api._status_from_event(
+                "result",
+                {"order_id": "order-no-state"},
+                signature_ok=True,
+                provider="freekassa",
+            ),
+            "manual_review",
+        )
+
+    def test_freekassa_decimal_amount_and_currency_are_strict(self) -> None:
+        self.assertEqual(self.api._payload_amount_decimal({"AMOUNT": "249.00"}), Decimal("249.00"))
+        self.assertEqual(self.api._payload_currency({"CURRENCY": "rub"}), "RUB")
+        for invalid in ("", "0", "-1", "1.001", "NaN", "Infinity"):
+            with self.subTest(invalid=invalid):
+                self.assertIsNone(self.api._payload_amount_decimal({"AMOUNT": invalid}))
+
+    def test_freekassa_shop_lookup_does_not_fallback_across_sources(self) -> None:
+        self.assertEqual(self.api._fk_shop_by_source(""), {})
+        self.assertEqual(self.api._fk_shop_by_source("desktop"), {})
+        self.assertEqual(self.api._fk_shop_by_source("site").get("shop_id"), "69962")
+        self.assertEqual(self.api._fk_shop_by_source("bot").get("shop_id"), "69963")
+
+    def test_freekassa_paid_callback_must_match_local_order_authority(self) -> None:
+        from db import SessionLocal
+        from models import ExternalOrder
+
+        order_id = "fk-authority-order"
+        s = SessionLocal()
+        try:
+            s.add(
+                ExternalOrder(
+                    order_id=order_id,
+                    provider="freekassa",
+                    tg_id=7401,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="pending",
+                    meta_json=self._freekassa_order_meta(),
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        base_payload = {
+            "MERCHANT_ID": "69962",
+            "AMOUNT": "249.00",
+            "MERCHANT_ORDER_ID": order_id,
+            "SIGN": "signature-shape-only",
+            "CURRENCY": "RUB",
+            "us_tg_id": "7401",
+            "us_plan_code": "1_month",
+            "us_source": "site",
+        }
+        self.assertEqual(
+            self.api._validate_paid_callback_against_order(
+                provider="freekassa",
+                order_id=order_id,
+                payload=base_payload,
+            ),
+            (True, "ok"),
+        )
+        mismatches = (
+            ({"AMOUNT": "249.01"}, "amount_mismatch"),
+            ({"AMOUNT": "NaN"}, "invalid_amount"),
+            ({"CURRENCY": "USD"}, "currency_mismatch"),
+            ({"us_plan_code": "12_months"}, "plan_mismatch"),
+            ({"us_source": "bot"}, "source_mismatch"),
+            ({"MERCHANT_ID": "69963"}, "merchant_source_mismatch"),
+        )
+        for changed, expected_reason in mismatches:
+            with self.subTest(changed=changed):
+                payload = dict(base_payload)
+                payload.update(changed)
+                self.assertEqual(
+                    self.api._validate_paid_callback_against_order(
+                        provider="freekassa",
+                        order_id=order_id,
+                        payload=payload,
+                    ),
+                    (False, expected_reason),
+                )
+
+    def test_freekassa_callback_cannot_mutate_existing_order_authority(self) -> None:
+        from db import SessionLocal
+        from models import ExternalOrder
+
+        order_id = "fk-immutable-order"
+        s = SessionLocal()
+        try:
+            s.add(
+                ExternalOrder(
+                    order_id=order_id,
+                    provider="freekassa",
+                    tg_id=7402,
+                    plan_code="1_month",
+                    source="site",
+                    campaign="canonical-campaign",
+                    promo_code="CANONICAL",
+                    amount=249.0,
+                    currency="RUB",
+                    status="pending",
+                    meta_json=self._freekassa_order_meta(),
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+            row = self.api._upsert_external_order(
+                s,
+                provider="freekassa",
+                order_id=order_id,
+                payload={
+                    "tg_id": "999999",
+                    "plan_code": "12_months",
+                    "source": "bot",
+                    "campaign": "callback-campaign",
+                    "promo_code": "CALLBACK",
+                    "AMOUNT": "999.00",
+                    "CURRENCY": "USD",
+                },
+                status="manual_review",
+                mark_paid=False,
+            )
+            s.commit()
+            self.assertIsNotNone(row)
+            self.assertEqual(row.tg_id, 7402)
+            self.assertEqual(row.plan_code, "1_month")
+            self.assertEqual(row.source, "site")
+            self.assertEqual(row.campaign, "canonical-campaign")
+            self.assertEqual(row.promo_code, "CANONICAL")
+            self.assertEqual(float(row.amount or 0), 249.0)
+            self.assertEqual(row.currency, "RUB")
+            self.assertEqual(row.status, "manual_review")
+        finally:
+            s.close()
+
+    def test_freekassa_unknown_order_is_never_created_from_callback(self) -> None:
+        from db import SessionLocal
+        from models import ExternalOrder
+
+        s = SessionLocal()
+        try:
+            row = self.api._upsert_external_order(
+                s,
+                provider="freekassa",
+                order_id="fk-unknown-callback-order",
+                payload={"AMOUNT": "249.00", "CURRENCY": "RUB", "status": "failed"},
+                status="failed",
+                mark_paid=False,
+            )
+            s.commit()
+            self.assertIsNone(row)
+            self.assertIsNone(
+                s.query(ExternalOrder).filter_by(order_id="fk-unknown-callback-order").one_or_none()
+            )
+        finally:
+            s.close()
+
+    def test_freekassa_fulfillment_rejects_missing_entitlement_snapshot(self) -> None:
+        from db import SessionLocal
+        from models import EntitlementGrant, ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=7403,
+                    username="missing_snapshot",
+                    uuid=str(uuid.uuid4()),
+                    email="user_7403",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="fk-missing-snapshot",
+                    provider="freekassa",
+                    tg_id=7403,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="pending",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        self.assertEqual(
+            self.api._apply_external_paid_order(
+                provider="freekassa",
+                order_id="fk-missing-snapshot",
+                payload={"us_plan_code": "1_month"},
+            ),
+            (False, "missing_entitlement_snapshot"),
+        )
+        s = SessionLocal()
+        try:
+            self.assertEqual(
+                s.query(EntitlementGrant)
+                .filter_by(provider="freekassa", external_order_id="fk-missing-snapshot")
+                .count(),
+                0,
+            )
+            self.assertEqual(s.query(User).filter_by(tg_id=7403).one().sub_type, "FREE")
+        finally:
+            s.close()
+
+    def test_freekassa_fulfillment_uses_immutable_duration_snapshot(self) -> None:
+        from db import SessionLocal
+        from models import EntitlementGrant, ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=7404,
+                    username="snapshot_duration",
+                    uuid=str(uuid.uuid4()),
+                    email="user_7404",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="fk-snapshot-duration",
+                    provider="freekassa",
+                    tg_id=7404,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="pending",
+                    meta_json=self._freekassa_order_meta(duration_days=17),
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        activated, reason = self.api._apply_external_paid_order(
+            provider="freekassa",
+            order_id="fk-snapshot-duration",
+            payload={"us_plan_code": "1_month"},
+        )
+        self.assertTrue(activated, reason)
+        s = SessionLocal()
+        try:
+            grant = (
+                s.query(EntitlementGrant)
+                .filter_by(provider="freekassa", external_order_id="fk-snapshot-duration")
+                .one()
+            )
+            self.assertEqual(grant.plan_code, "1_month")
+            self.assertEqual(grant.duration_days, 17)
+        finally:
+            s.close()
+
     def test_admin_plan_key_then_real_payment_still_starts_first_referral_hold(self) -> None:
         client = TestClient(self.api.app)
 
@@ -687,9 +1066,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     provider="freekassa",
                     tg_id=2003,
                     plan_code="1_month",
+                    source="site",
                     amount=249.0,
                     currency="RUB",
                     status="pending",
+                    meta_json=self._freekassa_order_meta(),
                     created_at=self.api._utcnow(),
                 )
             )
@@ -890,6 +1271,12 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertIsNotNone(row)
             self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
             self.assertIn("\"payment_url\":\"https://pay.fk.money/", str(row.meta_json or ""))
+            meta = json.loads(row.meta_json or "{}")
+            self.assertEqual(meta.get("entitlement_snapshot", {}).get("plan_code"), "1_month")
+            self.assertEqual(meta.get("entitlement_snapshot", {}).get("duration_days"), 30)
+            self.assertEqual(meta.get("entitlement_snapshot", {}).get("amount_rub"), "199.00")
+            self.assertEqual(meta.get("entitlement_snapshot", {}).get("currency"), "RUB")
+            self.assertEqual(meta.get("entitlement_snapshot", {}).get("source"), "site")
         finally:
             s.close()
 
@@ -2606,10 +2993,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(pub_before.status_code, 200, pub_before.text)
         self.assertTrue(any((p.get("code") == "start_99") for p in pub_before.json().get("plans", [])))
 
-        create = client.post(
-            "/api/admin/plans",
-            headers=admin_hdrs,
-            json={
+        create_payload = {
                 "code": "special_45",
                 "label": "Special 45",
                 "amount_rub": 459,
@@ -2620,7 +3004,15 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                 "badge": "Test",
                 "is_active": True,
                 "sort_order": 5,
-            },
+            }
+        create = self._execute_admin_intent(
+            client,
+            action="plan.create",
+            target_type="plan",
+            target_id="special_45",
+            method="POST",
+            path="/api/admin/plans",
+            payload=create_payload,
         )
         self.assertEqual(create.status_code, 200, create.text)
 
@@ -2628,14 +3020,27 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(rows.status_code, 200, rows.text)
         self.assertTrue(any((p.get("code") == "special_45") for p in rows.json().get("plans", [])))
 
-        patch = client.patch(
-            "/api/admin/plans/special_45",
-            headers=admin_hdrs,
-            json={"amount_rub": 499, "is_active": False, "sort_order": 55},
+        patch_payload = {"amount_rub": 499, "is_active": False, "sort_order": 55}
+        patch = self._execute_admin_intent(
+            client,
+            action="plan.update",
+            target_type="plan",
+            target_id="special_45",
+            method="PATCH",
+            path="/api/admin/plans/special_45",
+            payload=patch_payload,
         )
         self.assertEqual(patch.status_code, 200, patch.text)
 
-        remove = client.delete("/api/admin/plans/special_45", headers=admin_hdrs)
+        remove = self._execute_admin_intent(
+            client,
+            action="plan.delete",
+            target_type="plan",
+            target_id="special_45",
+            method="DELETE",
+            path="/api/admin/plans/special_45",
+            payload={},
+        )
         self.assertEqual(remove.status_code, 200, remove.text)
 
     def test_public_live_updates_and_admin_live_updates_crud(self) -> None:
@@ -2646,27 +3051,43 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(public_rows.status_code, 200, public_rows.text)
         self.assertGreaterEqual(len(public_rows.json().get("updates", [])), 1)
 
-        create = client.post(
-            "/api/admin/live-updates",
-            headers=admin_hdrs,
-            json={
+        create_payload = {
                 "title": "Node maintenance completed",
                 "summary": "New route profile is online.",
+                "link": None,
                 "channel_username": "pokrov_vpn",
                 "post_id": 999,
                 "published_at": "2026-02-15T10:00:00",
                 "is_active": True,
                 "sort_order": 1,
-            },
+            }
+        create = self._execute_admin_intent(
+            client,
+            action="live_update.create",
+            target_type="live_update",
+            target_id="new",
+            method="POST",
+            path="/api/admin/live-updates",
+            payload=create_payload,
         )
         self.assertEqual(create.status_code, 200, create.text)
         update_id = int(create.json().get("id") or 0)
         self.assertGreater(update_id, 0)
 
-        patch = client.patch(
-            f"/api/admin/live-updates/{update_id}",
-            headers=admin_hdrs,
-            json={"title": "Node maintenance done", "summary": "Fresh route profile online.", "post_id": 1001, "sort_order": 2},
+        patch_payload = {
+            "title": "Node maintenance done",
+            "summary": "Fresh route profile online.",
+            "post_id": 1001,
+            "sort_order": 2,
+        }
+        patch = self._execute_admin_intent(
+            client,
+            action="live_update.update",
+            target_type="live_update",
+            target_id=update_id,
+            method="PATCH",
+            path=f"/api/admin/live-updates/{update_id}",
+            payload=patch_payload,
         )
         self.assertEqual(patch.status_code, 200, patch.text)
 
@@ -2678,7 +3099,15 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(found.get("post_id") or 0), 1001)
         self.assertEqual(str(found.get("tg_link") or ""), "https://t.me/pokrov_vpn/1001")
 
-        remove = client.delete(f"/api/admin/live-updates/{update_id}", headers=admin_hdrs)
+        remove = self._execute_admin_intent(
+            client,
+            action="live_update.delete",
+            target_type="live_update",
+            target_id=update_id,
+            method="DELETE",
+            path=f"/api/admin/live-updates/{update_id}",
+            payload={},
+        )
         self.assertEqual(remove.status_code, 200, remove.text)
 
     def test_paid_after_verified_email_mismatch_never_issues_fallback(self) -> None:
@@ -3653,9 +4082,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                 provider="freekassa",
                 tg_id=8803,
                 plan_code="1_month",
+                source="site",
                 amount=249,
                 currency="RUB",
                 status="pending",
+                meta_json=self._freekassa_order_meta(),
                 created_at=self.api._utcnow(),
             ))
             s.commit()

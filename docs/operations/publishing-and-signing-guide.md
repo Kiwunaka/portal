@@ -413,10 +413,11 @@ Minimum publishing verification:
   URLs, version, release channel, and manual gates
 - anonymous GitHub Releases range checks pass before runtime sync
 - Android and Windows builds install successfully
-- the recorded signing state matches the exact candidate metadata; production
-  Android signing and trusted Windows signing remain mandatory before those
-  stronger claims, while the current outside-store beta keeps its documented
-  accepted signing limitations
+- the recorded signing state matches the exact candidate metadata; the published
+  `1.0.0-beta` Windows artifact retains its owner-accepted unsigned state as
+  exact-candidate historical evidence only, while every rebuild, replacement,
+  runtime re-sync, or later public candidate requires trusted Windows signing
+  `PASS`; unsigned outputs are non-public engineering smoke
 - download links resolve from every runtime-driven public surface, and static marketing exports are rebuilt when URLs changed
 - store metadata matches current `POKROV` public naming policy, and Windows package identity or installer metadata does not leak legacy `POKROV VPN`, `Pokrov.Vpn`, or `hiddify` residue
 - Apple surfaces, if any, are clearly labeled as upcoming or waitlist-only

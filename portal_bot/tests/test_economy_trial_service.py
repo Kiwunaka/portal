@@ -241,6 +241,81 @@ def test_expiration_sweep_projects_free_without_revoking_paid_grants(tmp_path: P
     engine.dispose()
 
 
+def test_stale_trial_projection_reconciliation_preserves_exact_bounded_reservation(tmp_path: Path) -> None:
+    import economy_service
+
+    assert hasattr(economy_service, "reconcile_stale_trial_projections")
+    reconcile_stale_trial_projections = economy_service.reconcile_stale_trial_projections
+    reserve_trial = economy_service.reserve_trial
+
+    engine, session = _session(tmp_path)
+    account, device, user = _seed_account(session, suffix="31")
+    grant = reserve_trial(session, account_id=account.id, device_id=device.id, now=NOW)
+    user.expiry_at = NOW + timedelta(days=3650)
+    session.flush()
+
+    result = reconcile_stale_trial_projections(session, now=NOW, limit=20)
+
+    assert result == {"scanned": 1, "preserved": 1, "reconciled": 0, "manual_review": 0}
+    assert grant.status == "reserved"
+    assert user.sub_type == "FREE"
+    assert user.current_plan_code == "trial"
+    assert user.expiry_at == NOW + timedelta(days=7)
+    session.close()
+    engine.dispose()
+
+
+def test_stale_trial_projection_reconciliation_fails_closed_without_canonical_grant(tmp_path: Path) -> None:
+    import economy_service
+    from models import NodeProvisioningJob
+
+    assert hasattr(economy_service, "reconcile_stale_trial_projections")
+    reconcile_stale_trial_projections = economy_service.reconcile_stale_trial_projections
+
+    engine, session = _session(tmp_path)
+    _account, _device, user = _seed_account(session, suffix="32")
+    user.expiry_at = NOW + timedelta(days=3650)
+    session.flush()
+
+    first = reconcile_stale_trial_projections(session, now=NOW, limit=20)
+    second = reconcile_stale_trial_projections(session, now=NOW, limit=20)
+
+    assert first == {"scanned": 1, "preserved": 0, "reconciled": 1, "manual_review": 0}
+    assert second == {"scanned": 0, "preserved": 0, "reconciled": 0, "manual_review": 0}
+    assert user.sub_type == "FREE"
+    assert user.current_plan_code == "free_monthly"
+    assert user.expiry_at == NOW + timedelta(days=30)
+    assert session.query(NodeProvisioningJob).filter_by(tg_id=user.tg_id, job_type="free_to_standard").count() == 1
+    session.close()
+    engine.dispose()
+
+
+def test_stale_trial_projection_reconciliation_quarantines_unbounded_trial_grant(tmp_path: Path) -> None:
+    import economy_service
+
+    assert hasattr(economy_service, "reconcile_stale_trial_projections")
+    reconcile_stale_trial_projections = economy_service.reconcile_stale_trial_projections
+    reserve_trial = economy_service.reserve_trial
+
+    engine, session = _session(tmp_path)
+    account, device, user = _seed_account(session, suffix="33")
+    grant = reserve_trial(session, account_id=account.id, device_id=device.id, now=NOW)
+    grant.reservation_expires_at = NOW + timedelta(days=3650)
+    user.expiry_at = grant.reservation_expires_at
+    session.flush()
+
+    result = reconcile_stale_trial_projections(session, now=NOW, limit=20)
+
+    assert result == {"scanned": 1, "preserved": 0, "reconciled": 1, "manual_review": 1}
+    assert grant.status == "manual_review"
+    assert "stale_trial_reconciliation" in str(grant.metadata_json or "")
+    assert user.sub_type == "FREE"
+    assert user.current_plan_code == "free_monthly"
+    assert user.expiry_at == NOW + timedelta(days=30)
+    session.close()
+    engine.dispose()
+
+
 def test_sqlite_and_postgres_economy_migrations_are_additive(tmp_path: Path) -> None:
     import migrations
 
@@ -317,6 +392,7 @@ def test_worker_schedules_stale_trial_reservation_sweep() -> None:
     worker_source = (PORTAL_BOT_DIR / "worker.py").read_text(encoding="utf-8")
 
     assert "expire_stale_trial_reservations" in worker_source
+    assert "reconcile_stale_trial_projections" in worker_source
     assert '_supervise_job("trial_reservation_expiry", trial_reservation_expiry_job)' in worker_source
 
 

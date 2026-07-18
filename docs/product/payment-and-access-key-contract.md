@@ -1,6 +1,6 @@
 # Payment And Access-Key Contract
 
-Last updated: 2026-07-10
+Last updated: 2026-07-18
 
 ## Current Rule
 
@@ -8,10 +8,15 @@ Paid checkout can be presented as live for the evidence-backed Lava.top public b
 
 ## Account Ownership Boundary
 
-The repository now implements additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
-The public numeric `account_id`, stateless bearer flow, payment fulfillment, and entitlement authority remain on the legacy-compatible path.
-Production deployment of account foundation is not proven.
-Rotating sessions, recovery exchange, payment ownership cutover, and entitlement-ledger authority are not implemented current truth and must not be claimed.
+The repository candidate implements an additive account foundation: UUID `accounts.id`
+is persisted and `users.account_id` is a nullable projection. The
+public numeric `account_id` remains a compatibility projection. Device sessions
+use persisted rotating sessions; legacy browser, Telegram, and email tokens retain
+a stateless bearer compatibility path, not account or payment authority.
+Rotating sessions, recovery exchange, durable provider-payment grants,
+account-owned fulfillment, and entitlement-ledger authority exist in this
+repository candidate. Production deployment of account foundation is not proven.
+A completed production cutover, mixed-fleet safety, and full migration must not be claimed without exact current evidence.
 
 ## Target Contract
 
@@ -31,6 +36,13 @@ Lava.top is the active enabled RUB provider for the beta checkout path. Redacted
 
 Public checkout must keep paid purchase CTAs disabled or degraded for any provider, plan, or route where Lava.top credentials, per-plan offers, webhook auth, replay/idempotency evidence, or email delivery readiness are incomplete. The active public provider configuration remains Lava.top-only. Stronger production checkout claims remain blocked until refund/chargeback reconciliation evidence is attached.
 
+FreeKassa remains disabled compatibility code. Its generic-HMAC path is explicitly
+opt-in and defaults off; SCI callbacks require a complete canonical field set and
+an exact configured merchant. Even an authenticated callback cannot create local
+order authority: fulfillment requires a pre-existing order whose persisted owner,
+plan, source, amount, currency, and immutable entitlement snapshot match. Unknown
+orders and mismatches remain redacted manual-review evidence with no access effect.
+
 Current fulfillment contract:
 
 - authenticated cabinet and bot payments extend the linked account after a valid paid callback; bot payments are ticket-bound to Telegram and do not require buyer email;
@@ -48,4 +60,7 @@ Current fulfillment contract:
 - `start_99` is a one-time account plan: backend order creation must reject it before provider invoice creation when durable account payment history or an actual successful provider order already exists; admin-issued plan/gift/promo keys and compatibility flags alone do not consume it;
 - `start_99` must keep its configured amount and must not stack referral, promo, or pending-discount reductions; those discount mechanics are reserved for standard paid plans when backend eligibility allows them;
 - amount, currency, plan, provider auth, local order binding, replay idempotency, and failed/cancelled events are mandatory gate checks before access changes;
+- provider callbacks never supply or repair authoritative order fields, and new
+  orders capture duration/pricing/source as an immutable entitlement snapshot so
+  later catalog edits cannot change what a paid order grants;
 - access keys must not be returned in public payment API responses or URLs after payment.

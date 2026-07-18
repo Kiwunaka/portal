@@ -1,6 +1,6 @@
 # Payment Reconciliation
 
-Last updated: 2026-07-05
+Last updated: 2026-07-18
 
 ## Goal
 
@@ -10,6 +10,14 @@ For Lava.top, reconciliation must inspect the local `ExternalOrder` plus the lat
 
 `manual_review` is the expected state for validly authenticated callbacks with mismatched amount, currency, plan, or missing local order. Operators should not manually mark those paid until provider evidence and order intent are attached with secrets redacted.
 
+FreeKassa is not an active public provider. Its retained callbacks must additionally
+match the persisted merchant/source and immutable entitlement snapshot. Incomplete
+SCI, generic HMAC while compatibility is disabled, an unknown local order, or a
+missing/inconsistent snapshot cannot be repaired from callback fields. Preserve the
+redacted event and route the case to manual review; do not synthesize an order or
+grant. Enabling FreeKassa requires a new provider-specific evidence packet rather
+than reusing Lava.top proof.
+
 ## Minimum Beta Procedure
 
 1. Export or inspect provider-side order state.
@@ -18,6 +26,9 @@ For Lava.top, reconciliation must inspect the local `ExternalOrder` plus the lat
 4. Move ambiguous rows to manual review.
 5. Do not grant new access for failed, cancelled, refunded, chargeback, or ambiguous states.
 6. Record redacted evidence under the release work-order provider evidence folder.
+7. For any proposed FreeKassa enablement, confirm generic HMAC remains disabled,
+   both merchant IDs map to their exact source, and a created order retains its
+   entitlement snapshot through callback replay.
 
 ## Evidence Terms
 

@@ -26,6 +26,7 @@ from models import (
 
 TRIAL_RESERVATION_DAYS = 7
 TRIAL_DURATION_DAYS = 5
+TRIAL_PROJECTION_CLOCK_TOLERANCE = timedelta(minutes=5)
 TRIAL_SOURCE = "premium_trial"
 TRIAL_EVIDENCE_KIND = "observer_connection"
 PRE_FIRST_PAYMENT_PREMIUM_CAP_DAYS = 15
@@ -728,6 +729,100 @@ def rebuild_due_entitlement_projections(session, *, now: datetime | None = None)
         rebuilt += 1
     session.flush()
     return {"rebuilt": rebuilt, "expired": expired}
+
+
+def _bounded_trial_grant_state(grant: EntitlementGrant | None, *, now: datetime) -> str:
+    if grant is None or grant.reversed_at is not None:
+        return ""
+    status = str(grant.status or "").strip().lower()
+    if status == "reserved":
+        deadline = grant.reservation_expires_at
+        maximum = timedelta(days=TRIAL_RESERVATION_DAYS) + TRIAL_PROJECTION_CLOCK_TOLERANCE
+    elif status == "active":
+        deadline = grant.expires_at
+        maximum = timedelta(days=TRIAL_DURATION_DAYS) + TRIAL_PROJECTION_CLOCK_TOLERANCE
+    else:
+        return ""
+    if deadline is None or deadline <= now or deadline - now > maximum:
+        return ""
+    return status
+
+
+def reconcile_stale_trial_projections(
+    session,
+    *,
+    now: datetime | None = None,
+    limit: int = 200,
+) -> dict[str, int]:
+    current_now = (now or _utcnow()).replace(microsecond=0)
+    rows = (
+        session.query(User)
+        .filter(User.sub_type == "FREE", User.current_plan_code == "trial")
+        .order_by(User.tg_id.asc())
+        .limit(max(1, min(int(limit), 1000)))
+        .with_for_update()
+        .all()
+    )
+    preserved = 0
+    reconciled = 0
+    manual_review = 0
+    handled_accounts: set[str] = set()
+    for user in rows:
+        account_id = str(user.account_id or "").strip()
+        if account_id and account_id in handled_accounts:
+            continue
+        if account_id:
+            handled_accounts.add(account_id)
+            grant = (
+                _trial_query(session, account_id=account_id)
+                .order_by(EntitlementGrant.created_at.asc(), EntitlementGrant.id.asc())
+                .with_for_update()
+                .first()
+            )
+            bounded_state = _bounded_trial_grant_state(grant, now=current_now)
+            if bounded_state == "reserved":
+                _project_reserved_trial(
+                    session,
+                    account_id=account_id,
+                    reservation_expires_at=grant.reservation_expires_at,
+                )
+                preserved += 1
+                continue
+            if bounded_state == "active":
+                _project_active_trial(session, account_id=account_id, expires_at=grant.expires_at)
+                preserved += 1
+                continue
+            if grant is not None and str(grant.status or "").strip().lower() in {"reserved", "active"}:
+                metadata = _grant_metadata(grant)
+                metadata["stale_trial_reconciliation"] = "unbounded_or_invalid_projection"
+                _set_grant_metadata(grant, metadata)
+                grant.status = "manual_review"
+                grant.updated_at = current_now
+                manual_review += 1
+            rebuild_account_entitlement_projection(session, account_id=account_id, now=current_now)
+            account_users = _users_for_account(session, account_id)
+        else:
+            account_users = [user]
+
+        for projected in account_users:
+            if (
+                str(projected.sub_type or "").strip().upper() == "FREE"
+                and str(projected.current_plan_code or "").strip().lower() in {"", "free", "free_monthly", "trial"}
+            ):
+                projected.sub_type = "FREE"
+                projected.current_plan_code = "free_monthly"
+                projected.is_active = True
+                if projected.expiry_at is None or projected.expiry_at <= current_now:
+                    projected.expiry_at = current_now + timedelta(days=FREE_CYCLE_DAYS)
+                _mark_user_became_free(session, projected, now=current_now)
+        reconciled += 1
+    session.flush()
+    return {
+        "scanned": len(rows),
+        "preserved": preserved,
+        "reconciled": reconciled,
+        "manual_review": manual_review,
+    }
 
 
 def _provider_payment_key(provider: str, order_id: str) -> str:

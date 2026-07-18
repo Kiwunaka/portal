@@ -25,6 +25,18 @@ owners; implemented behavior here is not production evidence by itself.
 - Active Android and Windows client contracts:
   [POKROV App Docs Index](C:/Users/kiwun/Documents/ai/POKROV-app/docs/README.md).
 
+## Account Identity Boundary
+
+The repository candidate implements an additive account foundation: UUID `accounts.id`
+is persisted and `users.account_id` is a nullable projection. The
+public numeric `account_id` remains a compatibility projection. Device sessions
+use persisted rotating sessions; legacy browser, Telegram, and email tokens retain
+a stateless bearer compatibility path, not account or payment authority.
+Rotating sessions, recovery exchange, durable provider-payment grants,
+account-owned fulfillment, and entitlement-ledger authority exist in this
+repository candidate. Production deployment of account foundation is not proven.
+A completed production cutover, mixed-fleet safety, and full migration must not be claimed without exact current evidence.
+
 ## Client Apps
 
 `GET /api/client/apps` must return only approved runtime links. Empty Android or Windows URLs mean the corresponding public download is not available and must be presented as gated/support-routed.
@@ -539,4 +551,4 @@ real target, delivery is skipped and logged without content or provider data.
 
 ## Admin
 
-Admin APIs must keep payment, download, node, ticket, and user states audit-friendly. Telegram admin remains fallback-only; web admin is the primary operator surface.
+Admin APIs must keep payment, download, node, ticket, and user states audit-friendly. Telegram admin remains fallback-only; `adminapp` is the primary operator surface, while webapp admin routes are a temporary parity fallback.

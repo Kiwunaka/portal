@@ -26,6 +26,7 @@ import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -163,6 +164,7 @@ from node_policy import (
     node_tx_mbps,
     rank_nodes_for_app,
     rank_nodes_for_subscription,
+    free_user_has_bounded_premium_trial,
     user_free_access_role,
     user_uses_free_pool,
 )
@@ -466,7 +468,11 @@ WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
-SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
+FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED = env_bool(
+    "FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED",
+    default=False,
+)
+SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
 ADMIN_WEB_SESSION_TTL_SECONDS = max(300, env_int("ADMIN_WEB_SESSION_TTL_SECONDS", 3600))
 CABINET_HANDOFF_TTL_SECONDS = max(60, min(120, env_int("CABINET_HANDOFF_TTL_SECONDS", 120)))
@@ -795,14 +801,10 @@ def _fk_shop_configs() -> dict[str, dict[str, str]]:
 
 def _fk_shop_by_source(source: str) -> dict[str, str]:
     shops = _fk_shop_configs()
-    src = (source or "site").strip().lower()
-    if src in shops:
-        return shops[src]
-    if "site" in shops:
-        return shops["site"]
-    if "bot" in shops:
-        return shops["bot"]
-    return {}
+    src = str(source or "").strip().lower()
+    if src not in {"site", "bot"}:
+        return {}
+    return shops.get(src, {})
 
 
 def _fk_shop_by_merchant_id(merchant_id: str) -> dict[str, str]:
@@ -813,6 +815,16 @@ def _fk_shop_by_merchant_id(merchant_id: str) -> dict[str, str]:
         if str(cfg.get("shop_id") or "").strip() == mid:
             return cfg
     return {}
+
+
+def _fk_source_by_merchant_id(merchant_id: str) -> str:
+    mid = str(merchant_id or "").strip()
+    if not mid:
+        return ""
+    for source, cfg in _fk_shop_configs().items():
+        if str(cfg.get("shop_id") or "").strip() == mid:
+            return source
+    return ""
 
 
 def _fk_flatten_values(value: Any) -> list[str]:
@@ -1725,8 +1737,27 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
         "free_profile_error_code": str(getattr(user, "free_profile_error_code", "") or "").strip() or None,
     }
 
-    if sub_type == "FREE" and active_window and plan_code == "trial":
+    if sub_type == "FREE" and free_user_has_bounded_premium_trial(user, now=current_now):
         access_state = "bonus_premium" if getattr(user, "channel_bonus_claimed_at", None) else "trial_premium"
+        return {
+            "access_state": access_state,
+            "traffic_policy": {
+                "kind": "unlimited",
+                "label": "premium_unlimited",
+            },
+            "traffic_limit_gb": None,
+            "traffic_remaining_gb": None,
+            "next_reset_at": None,
+            "soft_mode_active": False,
+            **free_profile_facts,
+        }
+
+    if active_window and (
+        sub_type.startswith("TRIAL")
+        or sub_type.startswith("BONUS")
+        or sub_type in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}
+    ):
+        access_state = "trial_premium" if sub_type.startswith("TRIAL") else "bonus_premium"
         return {
             "access_state": access_state,
             "traffic_policy": {
@@ -1888,7 +1919,7 @@ def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
         secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
-        if calculated_hash != check_hash:
+        if not hmac.compare_digest(calculated_hash, check_hash):
             return None
         return json.loads(parsed.get("user", "{}"))
     except Exception:
@@ -4312,11 +4343,15 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
     # Freekassa SCI notify signature:
     # md5(MERCHANT_ID:AMOUNT:SECRET_WORD_2:MERCHANT_ORDER_ID)
     if p == "freekassa":
-        merchant_id = _payload_value(payload, "MERCHANT_ID", "merchant_id", "shopId")
-        amount = _payload_value(payload, "AMOUNT", "amount")
-        order_id = _payload_value(payload, "MERCHANT_ORDER_ID", "merchant_order_id", "order_id")
-        provided = _payload_value(payload, "SIGN", "sign", "signature")
-        if merchant_id and amount and order_id and provided:
+        sci_keys = {"MERCHANT_ID", "AMOUNT", "MERCHANT_ORDER_ID", "SIGN"}
+        present_sci_keys = sci_keys.intersection(payload.keys())
+        if present_sci_keys:
+            if present_sci_keys != sci_keys or any(not _payload_value(payload, key) for key in sci_keys):
+                return False, "incomplete_sci_payload"
+            merchant_id = _payload_value(payload, "MERCHANT_ID")
+            amount = _payload_value(payload, "AMOUNT")
+            order_id = _payload_value(payload, "MERCHANT_ORDER_ID")
+            provided = _payload_value(payload, "SIGN")
             shop = _fk_shop_by_merchant_id(merchant_id)
             secret2 = (shop.get("secret_word_2") or "").strip()
             if not secret2:
@@ -4330,6 +4365,8 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
             if hmac.compare_digest(str(provided).lower(), expected.lower()):
                 return True, "ok"
             return False, "invalid_signature"
+        if not FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED:
+            return False, "generic_hmac_disabled"
     if p == "lavatop":
         return _verify_lavatop_callback_auth(request)
     if p in {"cardlink", "pally", "platima"}:
@@ -4499,6 +4536,7 @@ def _serialize_external_order_meta(meta: dict[str, Any]) -> str:
         max_serialized=_EXTERNAL_ORDER_META_JSON_LIMIT,
         priority_keys=(
             "fulfillment",
+            "entitlement_snapshot",
             "reversal",
             "pricing",
             "buyer_email",
@@ -4526,16 +4564,37 @@ def _set_external_order_meta(row: ExternalOrder, meta: dict[str, Any]) -> None:
 
 def _payload_amount(payload: dict[str, Any]) -> float:
     return _safe_float(
-        _payload_value(payload, "amount", "sum", "amount_paid", "OutSum")
+        _payload_value(payload, "amount", "AMOUNT", "sum", "amount_paid", "OutSum")
         or _payload_nested_value(payload, "contract", "amount")
         or _payload_nested_value(payload, "invoice", "amount")
         or _payload_nested_value(payload, "payment", "amount")
     )
 
 
+def _payload_amount_decimal(payload: dict[str, Any]) -> Decimal | None:
+    raw_amount = (
+        _payload_value(payload, "amount", "AMOUNT", "sum", "amount_paid", "OutSum")
+        or _payload_nested_value(payload, "contract", "amount")
+        or _payload_nested_value(payload, "invoice", "amount")
+        or _payload_nested_value(payload, "payment", "amount")
+    )
+    if not raw_amount:
+        return None
+    try:
+        amount = Decimal(raw_amount)
+    except (InvalidOperation, ValueError):
+        return None
+    if not amount.is_finite() or amount <= 0:
+        return None
+    scale = max(0, -int(amount.as_tuple().exponent))
+    if scale > 2:
+        return None
+    return amount
+
+
 def _payload_currency(payload: dict[str, Any]) -> str:
     return (
-        _payload_value(payload, "currency", "cur", "ccy")
+        _payload_value(payload, "currency", "CURRENCY", "cur", "ccy")
         or _payload_nested_value(payload, "contract", "currency")
         or _payload_nested_value(payload, "invoice", "currency")
         or _payload_nested_value(payload, "payment", "currency")
@@ -4574,7 +4633,12 @@ def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: b
         return "manual_review"
     if state in {"created", "pending", "processing", "new", "waiting"}:
         return "pending"
-    if _normalize_provider(provider) == "freekassa" and event == "result" and not state:
+    if (
+        _normalize_provider(provider) == "freekassa"
+        and event == "result"
+        and not state
+        and all(_payload_value(payload, key) for key in ("MERCHANT_ID", "AMOUNT", "MERCHANT_ORDER_ID", "SIGN"))
+    ):
         return "paid"
     return "manual_review"
 
@@ -4603,7 +4667,9 @@ def _safe_payment_processing_error(value: str | None) -> str:
         "grant_not_found",
         "manual_review",
         "missing_buyer_email",
+        "missing_entitlement_snapshot",
         "missing_tg_id",
+        "invalid_entitlement_snapshot",
         "order_not_found",
         "order_reversed",
         "payment_pending",
@@ -4625,6 +4691,8 @@ _TERMINAL_PAYMENT_FULFILLMENT_CODES = {
     "fallback_type_conflict",
     "manual_review",
     "missing_buyer_email",
+    "missing_entitlement_snapshot",
+    "invalid_entitlement_snapshot",
     "order_reversed",
     "unsupported_plan",
     "verified_email_mismatch",
@@ -4657,29 +4725,36 @@ def _upsert_external_order(
         .first()
     )
     created = row is None
+    if created and _normalize_provider(provider) == "freekassa":
+        # FreeKassa callbacks may report an order, but only a locally created
+        # order is allowed to become product authority.
+        return None
     if created:
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
         row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
         row.plan_code = _payload_plan_code(payload) or row.plan_code
-    row.source = (
-        _payload_value(payload, "source", "checkout_source", "us_source")
-        or _payload_nested_value(payload, "clientUtm", "utm_medium")
-        or row.source
-    )
-    row.campaign = (
-        _payload_value(payload, "campaign", "utm_campaign")
-        or _payload_nested_value(payload, "clientUtm", "utm_campaign")
-        or row.campaign
-    )
-    row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
+    callback_can_define_authority = _normalize_provider(provider) != "freekassa"
+    if callback_can_define_authority:
+        row.source = (
+            _payload_value(payload, "source", "checkout_source", "us_source")
+            or _payload_nested_value(payload, "clientUtm", "utm_medium")
+            or row.source
+        )
+        row.campaign = (
+            _payload_value(payload, "campaign", "utm_campaign")
+            or _payload_nested_value(payload, "clientUtm", "utm_campaign")
+            or row.campaign
+        )
+        row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
     meta = _external_order_meta(row)
     meta["callback"] = _redact_payment_payload(payload, max_serialized=1000)
     _set_external_order_meta(row, meta)
-    callback_amount = _payload_amount(payload)
-    if callback_amount > 0 and float(row.amount or 0) <= 0:
-        row.amount = callback_amount
-    row.currency = _payload_currency(payload) or row.currency or "RUB"
+    if callback_can_define_authority:
+        callback_amount = _payload_amount(payload)
+        if callback_amount > 0 and float(row.amount or 0) <= 0:
+            row.amount = callback_amount
+        row.currency = _payload_currency(payload) or row.currency or "RUB"
     current_status = str(row.status or "").strip().lower()
     incoming_status = str(status or "").strip().lower()
     if current_status == "chargeback":
@@ -4894,7 +4969,44 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
         callback_tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
         if persisted_tg_id is not None and callback_tg_id is not None and persisted_tg_id != callback_tg_id:
             return False, "order_owner_mismatch"
-        if _normalize_provider(provider) != "lavatop":
+        normalized_provider = _normalize_provider(provider)
+        if normalized_provider == "freekassa":
+            expected_source = str(row.source or "").strip().lower()
+            if expected_source not in {"site", "bot"}:
+                return False, "invalid_order_source"
+            merchant_id = _payload_value(payload, "MERCHANT_ID")
+            if merchant_id:
+                merchant_source = _fk_source_by_merchant_id(merchant_id)
+                if not merchant_source or merchant_source != expected_source:
+                    return False, "merchant_source_mismatch"
+            callback_source = _payload_value(payload, "source", "checkout_source", "us_source")
+            if callback_source and callback_source.strip().lower() != expected_source:
+                return False, "source_mismatch"
+            expected_plan = str(row.plan_code or "").strip().lower()
+            if not expected_plan:
+                return False, "missing_order_plan"
+            actual_plan = _payload_plan_code(payload)
+            if actual_plan and actual_plan != expected_plan:
+                return False, "plan_mismatch"
+            expected_currency = str(row.currency or "").strip().upper()
+            if expected_currency != "RUB":
+                return False, "invalid_order_currency"
+            actual_currency = _payload_currency(payload)
+            if actual_currency and actual_currency != expected_currency:
+                return False, "currency_mismatch"
+            actual_amount = _payload_amount_decimal(payload)
+            if actual_amount is None:
+                return False, "invalid_amount"
+            try:
+                expected_amount = Decimal(str(row.amount))
+            except (InvalidOperation, ValueError):
+                return False, "invalid_order_amount"
+            if not expected_amount.is_finite() or expected_amount <= 0:
+                return False, "invalid_order_amount"
+            if actual_amount != expected_amount:
+                return False, "amount_mismatch"
+            return True, "ok"
+        if normalized_provider != "lavatop":
             return True, "ok"
         expected_amount = float(row.amount or 0)
         actual_amount = _payload_amount(payload)
@@ -4944,6 +5056,47 @@ def _rub_plan_days(plan_code: str) -> int:
     return max(1, int(fallback.get("days") or 30))
 
 
+def _validated_external_order_entitlement_snapshot(row: ExternalOrder) -> tuple[dict[str, Any] | None, str]:
+    snapshot = _external_order_meta(row).get("entitlement_snapshot")
+    if not isinstance(snapshot, dict):
+        return None, "missing_entitlement_snapshot"
+    plan_code = str(snapshot.get("plan_code") or "").strip().lower()
+    if not plan_code or plan_code != str(row.plan_code or "").strip().lower():
+        return None, "invalid_entitlement_snapshot"
+    try:
+        duration_days = int(snapshot.get("duration_days") or 0)
+    except (TypeError, ValueError):
+        return None, "invalid_entitlement_snapshot"
+    if duration_days <= 0 or duration_days > 3650:
+        return None, "invalid_entitlement_snapshot"
+    source = str(snapshot.get("source") or "").strip().lower()
+    if source not in {"site", "bot"} or source != str(row.source or "").strip().lower():
+        return None, "invalid_entitlement_snapshot"
+    currency = str(snapshot.get("currency") or "").strip().upper()
+    if currency != "RUB" or currency != str(row.currency or "").strip().upper():
+        return None, "invalid_entitlement_snapshot"
+    try:
+        snapshot_amount = Decimal(str(snapshot.get("amount_rub") or ""))
+        order_amount = Decimal(str(row.amount))
+    except (InvalidOperation, ValueError):
+        return None, "invalid_entitlement_snapshot"
+    if (
+        not snapshot_amount.is_finite()
+        or not order_amount.is_finite()
+        or snapshot_amount <= 0
+        or snapshot_amount != order_amount
+        or max(0, -int(snapshot_amount.as_tuple().exponent)) > 2
+    ):
+        return None, "invalid_entitlement_snapshot"
+    return {
+        "plan_code": plan_code,
+        "duration_days": duration_days,
+        "source": source,
+        "currency": currency,
+        "amount_rub": snapshot_amount,
+    }, "ok"
+
+
 def _external_order_has_reversal_state(row: ExternalOrder, meta: dict[str, Any]) -> bool:
     if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
         return True
@@ -4984,6 +5137,11 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             return False, "order_reversed"
         if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
             return True, "already_applied"
+        entitlement_snapshot: dict[str, Any] | None = None
+        if _normalize_provider(provider) == "freekassa":
+            entitlement_snapshot, snapshot_reason = _validated_external_order_entitlement_snapshot(ext_order)
+            if entitlement_snapshot is None:
+                return False, snapshot_reason
 
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
         if not user:
@@ -5015,16 +5173,17 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             if not user:
                 return False, "user_create_failed"
 
-        plan_code = str(ext_order.plan_code or "").strip()
+        plan_code = str(ext_order.plan_code or "").strip().lower()
         if not plan_code:
-            plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
-                payload, "clientUtm", "utm_term"
-            )
-        plan_code = (plan_code or "1_month").strip().lower()
+            return False, "unsupported_plan"
         plan_cfg = _resolve_plan_config(s=s, code=plan_code)
         if not plan_cfg:
-            plan_code = "1_month"
-        days = _rub_plan_days(plan_code)
+            return False, "unsupported_plan"
+        days = (
+            int(entitlement_snapshot["duration_days"])
+            if entitlement_snapshot is not None
+            else max(1, int(plan_cfg.get("days") or plan_cfg.get("duration_days") or 30))
+        )
 
         now = _utcnow()
         old_sub = (user.sub_type or "").upper().strip()
@@ -11526,6 +11685,14 @@ async def _rub_create_order_internal(
         discount_applied = bool(base_amount > 0 and final_amount < base_amount)
         discount_pct = int(round((1.0 - (float(final_amount) / float(base_amount))) * 100)) if discount_applied else 0
         amount_rub = float(final_amount)
+        duration_days = max(1, int(plan.get("duration_days") or plan.get("days") or 30))
+        entitlement_snapshot = {
+            "plan_code": normalized_plan_code,
+            "duration_days": duration_days,
+            "amount_rub": f"{Decimal(str(amount_rub)):.2f}",
+            "currency": (currency or "RUB").strip().upper()[:16] or "RUB",
+            "source": str(source or "").strip().lower(),
+        }
         order_prefix = "fk" if provider == "freekassa" else provider[:12]
         order_subject = str(normalized_tg_id if normalized_tg_id > 0 else "public")
         order_id = f"{order_prefix}_{source}_{order_subject}_{int(time.time())}_{secrets.token_hex(4)}"
@@ -11556,6 +11723,7 @@ async def _rub_create_order_internal(
                     "lavatop_payment_provider": lavatop_payment_provider or None,
                     "lavatop_payment_method": lavatop_payment_method or None,
                     "plan_label": plan_label,
+                    "entitlement_snapshot": entitlement_snapshot,
                     "fulfillment": {
                         "mode": fulfillment_mode,
                         "status": "pending_payment",
@@ -11664,10 +11832,12 @@ async def _rub_create_order_internal(
         row = s.query(ExternalOrder).filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id).first()
         if row:
             row.status = "pending"
-            row.meta_json = _serialize_external_order_meta(
+            meta = _external_order_meta(row)
+            meta.update(
                 {
                     "request": req_data,
                     "response": {"payment_url": payment_url, "remote": remote_response},
+                    "entitlement_snapshot": entitlement_snapshot,
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -11692,6 +11862,7 @@ async def _rub_create_order_internal(
                     },
                 }
             )
+            _set_external_order_meta(row, meta)
             s.commit()
     finally:
         s.close()

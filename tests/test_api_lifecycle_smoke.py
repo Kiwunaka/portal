@@ -141,6 +141,38 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             )
         }
 
+    def _execute_admin_intent(
+        self,
+        *,
+        action: str,
+        target_type: str,
+        target_id: str,
+        path: str,
+        payload: dict,
+    ):
+        admin_headers = self._auth_headers(9999, "admin")
+        prepared = self.client.post(
+            "/api/admin/action-intents",
+            headers=admin_headers,
+            json={
+                "action": action,
+                "target": {"type": target_type, "id": target_id},
+                "payload": payload,
+            },
+        )
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        challenge = str(prepared.json()["confirmation_challenge"])
+        return self.client.post(
+            path,
+            headers={
+                **admin_headers,
+                "X-Admin-Intent-Id": str(prepared.json()["intent_id"]),
+                "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+                "X-Admin-Confirmation-SHA256": hashlib.sha256(challenge.encode("utf-8")).hexdigest(),
+            },
+            json=payload,
+        )
+
     @staticmethod
     def _fk_sci_signature(*, merchant_id: str, amount: str, order_id: str, secret_word_2: str) -> str:
         base = f"{merchant_id}:{amount}:{secret_word_2}:{order_id}"
@@ -256,18 +288,28 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         self.assertEqual(ticket.status_code, 200, ticket.text)
         self.assertEqual(str(ticket.json()["ticket"]["status"]), "open")
 
-        admin_headers = self._auth_headers(9999, "admin")
-        promo = self.client.post(
-            "/api/admin/promos",
-            headers=admin_headers,
-            json={"code": "SMOKE14", "promo_type": "days", "value": 14, "uses_left": 10},
+        promo_payload = {
+            "code": "SMOKE14",
+            "promo_type": "days",
+            "value": 14,
+            "uses_left": 10,
+            "expires_at": None,
+        }
+        promo = self._execute_admin_intent(
+            action="promo.create",
+            target_type="promo",
+            target_id="SMOKE14",
+            path="/api/admin/promos",
+            payload=promo_payload,
         )
         self.assertEqual(promo.status_code, 200, promo.text)
 
-        gift = self.client.post(
-            "/api/admin/gift-codes",
-            headers=admin_headers,
-            json={"card_type": "standard"},
+        gift = self._execute_admin_intent(
+            action="gift_code.create",
+            target_type="gift_code",
+            target_id="standard",
+            path="/api/admin/gift-codes",
+            payload={"card_type": "standard"},
         )
         self.assertEqual(gift.status_code, 200, gift.text)
         gift_code = str(gift.json().get("gift_code", {}).get("code") or "")

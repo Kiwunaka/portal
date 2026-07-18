@@ -155,8 +155,8 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertEqual(trial["traffic_policy"]["kind"], "unlimited")
 
         bonus_user = SimpleNamespace(
-            sub_type="FREE",
-            current_plan_code="trial",
+            sub_type="BONUS",
+            current_plan_code="channel_bonus",
             is_active=True,
             expiry_at=now + timedelta(days=10),
             channel_bonus_claimed_at=now,
@@ -182,6 +182,56 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertTrue(soft["soft_mode_active"])
         self.assertEqual(soft["traffic_limit_gb"], 5.0)
         self.assertEqual(soft["traffic_remaining_gb"], 0.0)
+
+    def test_free_pool_routing_fails_closed_for_stale_free_plan_labels(self) -> None:
+        from node_policy import user_uses_free_pool
+
+        now = datetime(2030, 1, 10, 12, 0, 0)
+        valid_trial = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=5),
+        )
+        stale_trial = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=3650),
+        )
+
+        self.assertFalse(user_uses_free_pool(valid_trial, now=now))
+        self.assertTrue(user_uses_free_pool(stale_trial, now=now))
+        for plan_code in ("channel_bonus", "start_99", "1_month"):
+            with self.subTest(plan_code=plan_code):
+                user = SimpleNamespace(
+                    sub_type="FREE",
+                    current_plan_code=plan_code,
+                    is_active=True,
+                    expiry_at=now + timedelta(days=3650),
+                )
+                self.assertTrue(user_uses_free_pool(user, now=now))
+
+    def test_access_policy_does_not_promote_unbounded_free_trial_projection(self) -> None:
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        now = datetime(2030, 1, 10, 12, 0, 0)
+        user = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=3650),
+            channel_bonus_claimed_at=None,
+            free_cycle_next_reset_at=now + timedelta(days=30),
+            free_profile_state="standard",
+            free_profile_active_role="free_standard",
+        )
+
+        access = api._build_access_policy(user=user, used_bytes=0, now=now)
+
+        self.assertEqual(access["access_state"], "free_monthly")
+        self.assertEqual(access["traffic_policy"]["kind"], "metered")
 
     def test_api_plan_catalog_fallback_defaults(self) -> None:
         api = importlib.import_module("api")

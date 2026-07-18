@@ -151,10 +151,13 @@ def _collect_findings() -> list[Finding]:
     else:
         _add_pass(findings, api_file, "Admin campaign link builder marks public checkout as safe fallback")
 
-    if "SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED" not in api_text:
-        _add_fail(findings, api_file, "Missing compat env-flag for numeric subscription fallback")
+    numeric_fallback_deny_default = (
+        'SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)'
+    )
+    if numeric_fallback_deny_default not in api_text:
+        _add_fail(findings, api_file, "Numeric subscription fallback is not fail-closed by default")
     else:
-        _add_pass(findings, api_file, "Compat env-flag for numeric subscription fallback is present")
+        _add_pass(findings, api_file, "Numeric subscription fallback is explicit compatibility and defaults off")
 
     return findings
 

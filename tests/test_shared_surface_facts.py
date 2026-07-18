@@ -57,7 +57,38 @@ def test_public_url_helpers_use_shared_public_url_defaults(monkeypatch):
 
     assert public_urls.public_connect_base_url() == "https://connect.pokrov.space"
     assert public_urls.public_connect_host() == "connect.pokrov.space"
-    assert public_urls.build_subscription_url("abc123") == "https://connect.pokrov.space/s8Kx2mP7qR4wT/abc123"
+    token = "abc123_secure_token"
+    assert public_urls.build_subscription_url(token) == f"https://connect.pokrov.space/s8Kx2mP7qR4wT/{token}"
+
+
+def test_subscription_url_builder_fails_closed_for_missing_or_numeric_credentials():
+    public_urls = importlib.import_module("public_urls")
+
+    assert public_urls.build_subscription_url("") == ""
+    assert public_urls.build_subscription_url("   ") == ""
+    assert public_urls.build_subscription_url(1001) == ""
+    assert public_urls.build_subscription_url("1001") == ""
+
+
+def test_numeric_subscription_compatibility_is_deny_by_default():
+    api_source = (PORTAL_BOT_DIR / "api.py").read_text(encoding="utf-8")
+    check_links_source = (REPO_ROOT / "scripts" / "check-links.py").read_text(encoding="utf-8")
+
+    assert (
+        'SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)'
+        in api_source
+    )
+    assert (
+        'SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)'
+        in check_links_source
+    )
+
+
+def test_telegram_login_hash_uses_constant_time_comparison():
+    api_source = (PORTAL_BOT_DIR / "api.py").read_text(encoding="utf-8")
+
+    assert "calculated_hash != check_hash" not in api_source
+    assert "hmac.compare_digest(calculated_hash, check_hash)" in api_source
 
 
 def test_sync_shared_surface_facts_builds_pokrov_app_seed_updates_from_shared_truth():

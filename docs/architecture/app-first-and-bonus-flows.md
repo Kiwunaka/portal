@@ -473,7 +473,13 @@ Contract rule:
 - public email register, verify, and recovery can be shown as live only while transactional sender identity and delivery-confirmation/webhook visibility are live
 - browser entry screens in `webapp` are continuation-first and must not become a second landing-page pitch
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
+- new links require a non-numeric `sub_token`; missing or numeric credentials fail
+  closed and produce no user-facing URL
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
+- numeric subscription lookup is disabled by default and may be temporarily enabled
+  only as an observed compatibility rollback. A production cutover requires token
+  backfill, exact panel `subId` reconciliation, and an owner-approved observation
+  window with zero legitimate numeric fallback hits
 - the same `client_policy` contract still flows through `start-trial`, `user`, and `dashboard`, but the rollout policy behind it can vary by cohort without introducing a new endpoint
 
 ## Checkout Continuation
@@ -706,6 +712,11 @@ Rules:
   consumption clock starts at the first valid internal observer observation
 - a new channel claim adds `+5 days`; already-issued `+10 days` grants remain grandfathered
 - once premium expires, auto-downgrade must set `current_plan_code=free_monthly`, not `trial`
+- the worker also reconciles stale `FREE`/`trial` projections. Only an exact active,
+  bounded `premium_trial` grant inside the reservation clock may keep paid-pool
+  placement; missing, unbounded, or stale grant state is quarantined for manual
+  review, projected to `free_monthly`, and queued for free-profile provisioning
+  idempotently
 - `free_monthly` keeps an exact `5 * 1024^3` byte quota per 30-day cycle with device limit `1` on a node explicitly labeled `access_role=free_standard`
 - reaching the quota records server-side evidence and queues one durable transition; bytes alone never project `free_soft_mode`
 - the persisted lifecycle is `standard -> soft_transition_pending -> soft_active`, with `error` for bounded retry/manual review; reset uses `soft_active -> reset_pending -> standard`

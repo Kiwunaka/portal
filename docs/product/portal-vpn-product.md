@@ -60,10 +60,10 @@ Client-canon note:
 
 ## Current Account Foundation Boundary
 
-The repository now implements additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
-The public numeric `account_id`, stateless bearer flow, payment fulfillment, and entitlement authority remain on the legacy-compatible path.
-Production deployment of account foundation is not proven.
-Rotating sessions, recovery exchange, payment ownership cutover, and entitlement-ledger authority are not implemented current truth and must not be claimed.
+The repository candidate implements an additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
+The public numeric `account_id` remains a compatibility projection. Device sessions use persisted rotating sessions; legacy browser, Telegram, and email tokens retain a stateless bearer compatibility path, not account or payment authority.
+Rotating sessions, recovery exchange, durable provider-payment grants, account-owned fulfillment, and entitlement-ledger authority exist in this repository candidate.
+Production deployment of account foundation is not proven. A completed production cutover, mixed-fleet safety, and full migration must not be claimed without exact current evidence.
 
 ## Locked Product Rules
 
@@ -83,8 +83,8 @@ Rotating sessions, recovery exchange, payment ownership cutover, and entitlement
   telemetry never activate the trial
 - Telegram reward: `+5 days` for new account-owned grants; already-issued `+10 days` grants are grandfathered
 - current distributed beta: `1.0.0-beta`
-- public client version line remains `0.x.x-beta` until exact promoted client
-  evidence says otherwise
+- canonical public client version line remains `1.0.0-beta`; any later candidate
+  requires exact promoted-client evidence
 - target candidate: `1.0.0-rc.1`
 - stable `1.0.0`: unproven
 - Russian is a first-class user language

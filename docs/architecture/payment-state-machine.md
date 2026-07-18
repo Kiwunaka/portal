@@ -1,12 +1,12 @@
 # Payment State Machine
 
-Last updated: 2026-07-10
+Last updated: 2026-07-18
 
 | State | Meaning | Access effect |
 | --- | --- | --- |
-| `draft` | Local order created before provider redirect. | none |
-| `provider_pending` | Provider invoice created and waiting. | none |
-| `paid_unverified` | Provider success observed before normalization/reconciliation. | none |
+| `created` | Local order stored before provider redirect. | none |
+| `pending` | Provider invoice created and waiting. | none |
+| `pending_verification` | Callback observed but provider authentication failed or is incomplete. | none |
 | `paid` | Authenticated provider success applied idempotently. | fulfill |
 | `failed` | Provider or local failure. | none |
 | `cancelled` | User or provider cancellation. | none |
@@ -21,10 +21,15 @@ for the exact candidate.
 
 ## Account Ownership Boundary
 
-The repository now implements additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
-The public numeric `account_id`, stateless bearer flow, payment fulfillment, and entitlement authority remain on the legacy-compatible path.
-Production deployment of account foundation is not proven.
-Rotating sessions, recovery exchange, payment ownership cutover, and entitlement-ledger authority are not implemented current truth and must not be claimed.
+The repository candidate implements an additive account foundation: UUID `accounts.id`
+is persisted and `users.account_id` is a nullable projection. The
+public numeric `account_id` remains a compatibility projection. Device sessions
+use persisted rotating sessions; legacy browser, Telegram, and email tokens retain
+a stateless bearer compatibility path, not account or payment authority.
+Rotating sessions, recovery exchange, durable provider-payment grants,
+account-owned fulfillment, and entitlement-ledger authority exist in this
+repository candidate. Production deployment of account foundation is not proven.
+A completed production cutover, mixed-fleet safety, and full migration must not be claimed without exact current evidence.
 
 ## Lava.top Normalization
 
@@ -37,6 +42,32 @@ Incoming Lava.top result webhooks must pass `X-Api-Key` or Basic webhook authent
 Before any Lava.top paid callback fulfills, the backend validates local order binding, amount, currency, and plan. Any missing local order, amount mismatch, currency mismatch, or plan mismatch becomes `manual_review` and does not grant access.
 
 For authenticated cabinet and Telegram-bound orders, fulfillment extends the linked account. The cabinet can show the single `connect.pokrov.space` subscription link and QR after access is active; the bot also sends that link after a paid Telegram-bound callback as a beta-stage manual import fallback. Anonymous public orders do not receive links in API responses; they receive one emailed access key after fulfillment.
+
+## FreeKassa Compatibility Boundary
+
+FreeKassa is retained as disabled compatibility code, not as an enabled public
+provider. The active public provider configuration remains Lava.top-only until a
+separate exact-candidate merchant, callback, fulfillment, reconciliation, and
+rollback evidence packet is retained.
+
+FreeKassa SCI handling is fail-closed:
+
+- the presence of any SCI field requires the complete uppercase
+  `MERCHANT_ID`, `AMOUNT`, `MERCHANT_ORDER_ID`, and `SIGN` shape; an incomplete
+  SCI payload cannot downgrade to generic HMAC verification;
+- generic HMAC compatibility requires
+  `FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED=true` and defaults off;
+- a paid callback requires a pre-existing local `ExternalOrder`; an unknown
+  signed order is retained only as a redacted event/manual-review fact and cannot
+  create an order or grant;
+- the configured merchant must map to the exact persisted `site` or `bot`
+  source, while owner, optional source/plan fields, exact positive two-decimal
+  amount, and optional currency must agree with local authority;
+- callback data cannot rewrite owner, plan, source, campaign, promo, amount, or
+  currency on an existing FreeKassa order;
+- fulfillment uses the immutable entitlement snapshot captured at order creation.
+  Missing or inconsistent snapshots are terminal manual-review outcomes, never a
+  callback-plan or `1_month` fallback.
 
 Account fulfillment records a durable `provider_payment` entitlement grant keyed
 by provider/order while holding the canonical account row. Its interval starts

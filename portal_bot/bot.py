@@ -10100,7 +10100,13 @@ async def create_subscription(
                     panel_client=panel_client,
                     provider_order_id=stable_order_id,
                 )
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "Stars panel credential reconciliation failed tg_id=%s order_id=%s error_type=%s",
+                    int(tg_id),
+                    stable_order_id,
+                    type(exc).__name__,
+                )
                 await _send_stars_fulfillment_retry(message, payment_grant_id=payment_grant_id)
                 return False
         # User exists in panel - update DB and add traffic
@@ -10169,7 +10175,13 @@ async def create_subscription(
                     panel_client=created_panel_client,
                     provider_order_id=stable_order_id,
                 )
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "Stars panel credential reconciliation failed after create tg_id=%s order_id=%s error_type=%s",
+                    int(tg_id),
+                    stable_order_id,
+                    type(exc).__name__,
+                )
                 await _send_stars_fulfillment_retry(message, payment_grant_id=payment_grant_id)
                 return False
         else:

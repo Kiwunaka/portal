@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
@@ -13,6 +13,7 @@ FREE_SOFT_ROLE = "free_soft"
 PAID_ROLE = "paid"
 OPERATOR_LAB_ROLE = "operator_lab"
 FREE_STANDARD_QUOTA_BYTES = 5 * 1024**3
+FREE_TRIAL_RESERVATION_MAX_AGE = timedelta(days=7, minutes=5)
 
 
 class NodeAccessRoleError(ValueError):
@@ -529,14 +530,26 @@ def rank_nodes_for_key_pressure(
     )
 
 
-def user_uses_free_pool(user: Any) -> bool:
+def free_user_has_bounded_premium_trial(user: Any, *, now: datetime | None = None) -> bool:
+    sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
+    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    if sub_type != "FREE" or plan_code != "trial" or not bool(getattr(user, "is_active", False)):
+        return False
+    current_now = _normalize_utc_naive(now) or _utcnow()
+    expiry = _normalize_utc_naive(getattr(user, "expiry_at", None))
+    if expiry is None or expiry <= current_now:
+        return False
+    return expiry - current_now <= FREE_TRIAL_RESERVATION_MAX_AGE
+
+
+def user_uses_free_pool(user: Any, *, now: datetime | None = None) -> bool:
     sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
 
+    if sub_type == "FREE":
+        return not free_user_has_bounded_premium_trial(user, now=now)
     if plan_code in _PREMIUM_PLAN_CODES:
         return False
-    if sub_type == "FREE":
-        return True
     if sub_type in {"", "PENDING"}:
         return True
     if sub_type.startswith("TRIAL"):

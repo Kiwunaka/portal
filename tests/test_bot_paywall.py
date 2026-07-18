@@ -75,7 +75,7 @@ def _owned_panel_client(
     token: str,
     client_uuid: str | None = None,
     node_code: str = "NL-test",
-    node_id: int = 77,
+    node_id: int = 0,
 ) -> dict:
     return {
         "id": client_uuid or "12345678-1234-4234-9234-123456789abc",
@@ -227,6 +227,8 @@ class BotPaywallTests(unittest.TestCase):
         trial_user = types.SimpleNamespace(
             sub_type="FREE",
             current_plan_code="trial",
+            is_active=True,
+            expiry_at=self.bot_module._utcnow() + timedelta(days=5),
             free_profile_state="standard",
             free_profile_active_role="free_standard",
         )
@@ -1279,7 +1281,7 @@ class BotPaywallTests(unittest.TestCase):
             session.close()
 
     def test_add_client_success_then_local_reconcile_failure_replays_exact_panel_credentials(self) -> None:
-        from models import AccessKey, EntitlementGrant, PayAttempt, User, UserNode
+        from models import AccessKey, EntitlementGrant, Node, PayAttempt, User, UserNode
 
         self.bot_module.ensure_pending_user(1001, username="alice")
         now = self.bot_module._utcnow().replace(microsecond=0)
@@ -1294,7 +1296,18 @@ class BotPaywallTests(unittest.TestCase):
                 currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a6",
                 started_at=now, updated_at=now,
             )
-            session.add(attempt)
+            session.add_all(
+                [
+                    attempt,
+                    Node(
+                        id=77,
+                        code="NL-test",
+                        name="NL test",
+                        enabled=True,
+                        accepting_new_clients=True,
+                    ),
+                ]
+            )
             session.flush()
             payload = f"portal_1_month_1001_buy_a{attempt.id}"
             attempt.invoice_payload = payload
@@ -1313,7 +1326,11 @@ class BotPaywallTests(unittest.TestCase):
 
             async def add_client(self, user_uuid, email, _sub_type, _gb, tg_id, sub_token):
                 self.adds += 1
-                self.client = _owned_panel_client(token=sub_token, client_uuid=user_uuid)
+                self.client = _owned_panel_client(
+                    token=sub_token,
+                    client_uuid=user_uuid,
+                    node_id=77,
+                )
                 self.client["email"] = email
                 self.client["tgId"] = str(tg_id)
                 return True
@@ -1640,7 +1657,7 @@ class BotPaywallTests(unittest.TestCase):
                     token="provenance_mismatch_token_123",
                     client_uuid=client_uuid,
                     node_code="NL-test",
-                    node_id=77,
+                    node_id=0,
                 )
 
             async def update_client_traffic(self, _tg_id, _gb):
