@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, event, text
 
 
 def _sqlite_column_exists(conn, table: str, column: str) -> bool:
@@ -20,6 +20,24 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
         {"name": index_name},
     ).fetchall()
     return bool(rows)
+
+
+def _sqlite_enable_foreign_keys_on_checkout(
+    dbapi_connection,
+    _connection_record,
+    _connection_proxy,
+) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
+
+
+def _configure_sqlite_foreign_keys(engine: Engine) -> None:
+    pool = engine.pool
+    if not event.contains(pool, "checkout", _sqlite_enable_foreign_keys_on_checkout):
+        event.listen(pool, "checkout", _sqlite_enable_foreign_keys_on_checkout)
 
 
 _POSTGRES_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -1603,6 +1621,651 @@ def _ensure_admin_ops_domain_postgres(conn) -> None:
         conn.execute(text(sql))
 
 
+def _ensure_ru_probe_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_runs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              run_id VARCHAR(36) NOT NULL,
+              schema_version INTEGER NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              probe_host_id VARCHAR(64) NOT NULL,
+              probe_host_label VARCHAR(128) NOT NULL,
+              probe_public_ip VARCHAR(64),
+              runner_version VARCHAR(64) NOT NULL,
+              started_at DATETIME NOT NULL,
+              finished_at DATETIME NOT NULL,
+              received_at DATETIME NOT NULL,
+              manifest_revision VARCHAR(64) NOT NULL,
+              execution_status VARCHAR(32) NOT NULL,
+              evidence_code VARCHAR(64),
+              environment_verdict VARCHAR(32) NOT NULL,
+              release_verdict VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              google_reachable BOOLEAN,
+              xhttp_alive BOOLEAN,
+              hysteria_alive BOOLEAN,
+              server_reason VARCHAR(500),
+              server_summary VARCHAR(1000),
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              retention_hold BOOLEAN NOT NULL DEFAULT FALSE,
+              retention_hold_reason VARCHAR(500),
+              retention_held_at DATETIME,
+              CONSTRAINT uq_ru_probe_runs_run_id UNIQUE (run_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_target_results (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              run_db_id INTEGER NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              target_kind VARCHAR(32) NOT NULL,
+              scope VARCHAR(32) NOT NULL,
+              node_code VARCHAR(32),
+              endpoint_fingerprint VARCHAR(64) NOT NULL,
+              endpoint_host VARCHAR(255) NOT NULL,
+              endpoint_port INTEGER NOT NULL,
+              endpoint_sni VARCHAR(255),
+              requested_address_families_json JSON NOT NULL,
+              transport_metadata_json JSON NOT NULL,
+              transport_profile VARCHAR(64) NOT NULL,
+              probe_mode VARCHAR(64) NOT NULL,
+              http_path VARCHAR(512),
+              min_body_bytes INTEGER,
+              local_probe_profile_id VARCHAR(128),
+              observed_at DATETIME NOT NULL,
+              overall_status VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              dns_status VARCHAR(32) NOT NULL,
+              dns_latency_ms INTEGER,
+              tcp_status VARCHAR(32) NOT NULL,
+              tcp_latency_ms INTEGER,
+              tls_status VARCHAR(32) NOT NULL,
+              tls_latency_ms INTEGER,
+              http_large_body_status VARCHAR(32) NOT NULL,
+              http_large_body_latency_ms INTEGER,
+              transport_handshake_status VARCHAR(32) NOT NULL,
+              transport_handshake_latency_ms INTEGER,
+              ipv4_status VARCHAR(32) NOT NULL,
+              ipv6_status VARCHAR(32) NOT NULL,
+              reported_transport_handshake_status VARCHAR(32) NOT NULL,
+              reported_transport_classification VARCHAR(64) NOT NULL,
+              server_reason_code VARCHAR(64),
+              server_detail VARCHAR(500),
+              CONSTRAINT fk_ru_probe_target_results_run FOREIGN KEY (run_db_id) REFERENCES ru_probe_runs(id) ON DELETE CASCADE,
+              CONSTRAINT uq_ru_probe_target_run_target UNIQUE (run_db_id, target_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_uploader_heartbeats (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              probe_host_id VARCHAR(64) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              received_at DATETIME NOT NULL,
+              service_version VARCHAR(64) NOT NULL,
+              pending_count INTEGER NOT NULL DEFAULT 0,
+              blocked_count INTEGER NOT NULL DEFAULT 0,
+              quarantine_count INTEGER NOT NULL DEFAULT 0,
+              oldest_pending_at DATETIME,
+              archive_write_ok BOOLEAN NOT NULL DEFAULT FALSE,
+              disk_free_bytes BIGINT,
+              disk_state VARCHAR(32) NOT NULL,
+              last_error_code VARCHAR(64),
+              ingest_key_id VARCHAR(128) NOT NULL,
+              CONSTRAINT uq_ru_probe_uploader_heartbeat_host_observed UNIQUE (probe_host_id, observed_at)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS internal_ingest_nonces (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              key_scope VARCHAR(64) NOT NULL,
+              key_id VARCHAR(128) NOT NULL,
+              nonce_hash VARCHAR(64) NOT NULL,
+              request_path VARCHAR(512) NOT NULL,
+              request_timestamp DATETIME NOT NULL,
+              body_sha256 VARCHAR(64) NOT NULL,
+              expires_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_internal_ingest_nonce_scope_key_hash UNIQUE (key_scope, key_id, nonce_hash)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_finished_at ON ru_probe_runs(finished_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_release_verdict ON ru_probe_runs(release_verdict);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_current_eligible ON ru_probe_runs(current_eligible);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_probe_host_label ON ru_probe_runs(probe_host_label);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_code ON ru_probe_target_results(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_target_kind ON ru_probe_target_results(target_kind);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_overall_status ON ru_probe_target_results(overall_status);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_observed_at ON ru_probe_target_results(node_code, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_run_node ON ru_probe_target_results(run_db_id, node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_received_at ON ru_probe_uploader_heartbeats(received_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_probe_host_id ON ru_probe_uploader_heartbeats(probe_host_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_host_observed_at ON ru_probe_uploader_heartbeats(probe_host_id, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_internal_ingest_nonces_expires_at ON internal_ingest_nonces(expires_at);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_ru_probe_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_runs (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              run_id VARCHAR(36) NOT NULL,
+              schema_version INTEGER NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              probe_host_id VARCHAR(64) NOT NULL,
+              probe_host_label VARCHAR(128) NOT NULL,
+              probe_public_ip VARCHAR(64),
+              runner_version VARCHAR(64) NOT NULL,
+              started_at TIMESTAMPTZ NOT NULL,
+              finished_at TIMESTAMPTZ NOT NULL,
+              received_at TIMESTAMPTZ NOT NULL,
+              manifest_revision VARCHAR(64) NOT NULL,
+              execution_status VARCHAR(32) NOT NULL,
+              evidence_code VARCHAR(64),
+              environment_verdict VARCHAR(32) NOT NULL,
+              release_verdict VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              google_reachable BOOLEAN,
+              xhttp_alive BOOLEAN,
+              hysteria_alive BOOLEAN,
+              server_reason VARCHAR(500),
+              server_summary VARCHAR(1000),
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              retention_hold BOOLEAN NOT NULL DEFAULT FALSE,
+              retention_hold_reason VARCHAR(500),
+              retention_held_at TIMESTAMPTZ,
+              CONSTRAINT uq_ru_probe_runs_run_id UNIQUE (run_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_target_results (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              run_db_id INTEGER NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              target_kind VARCHAR(32) NOT NULL,
+              scope VARCHAR(32) NOT NULL,
+              node_code VARCHAR(32),
+              endpoint_fingerprint VARCHAR(64) NOT NULL,
+              endpoint_host VARCHAR(255) NOT NULL,
+              endpoint_port INTEGER NOT NULL,
+              endpoint_sni VARCHAR(255),
+              requested_address_families_json JSONB NOT NULL,
+              transport_metadata_json JSONB NOT NULL,
+              transport_profile VARCHAR(64) NOT NULL,
+              probe_mode VARCHAR(64) NOT NULL,
+              http_path VARCHAR(512),
+              min_body_bytes INTEGER,
+              local_probe_profile_id VARCHAR(128),
+              observed_at TIMESTAMPTZ NOT NULL,
+              overall_status VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              dns_status VARCHAR(32) NOT NULL,
+              dns_latency_ms INTEGER,
+              tcp_status VARCHAR(32) NOT NULL,
+              tcp_latency_ms INTEGER,
+              tls_status VARCHAR(32) NOT NULL,
+              tls_latency_ms INTEGER,
+              http_large_body_status VARCHAR(32) NOT NULL,
+              http_large_body_latency_ms INTEGER,
+              transport_handshake_status VARCHAR(32) NOT NULL,
+              transport_handshake_latency_ms INTEGER,
+              ipv4_status VARCHAR(32) NOT NULL,
+              ipv6_status VARCHAR(32) NOT NULL,
+              reported_transport_handshake_status VARCHAR(32) NOT NULL,
+              reported_transport_classification VARCHAR(64) NOT NULL,
+              server_reason_code VARCHAR(64),
+              server_detail VARCHAR(500),
+              CONSTRAINT fk_ru_probe_target_results_run
+                FOREIGN KEY (run_db_id) REFERENCES ru_probe_runs(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_ru_probe_target_run_target
+                UNIQUE (run_db_id, target_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_uploader_heartbeats (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              probe_host_id VARCHAR(64) NOT NULL,
+              observed_at TIMESTAMPTZ NOT NULL,
+              received_at TIMESTAMPTZ NOT NULL,
+              service_version VARCHAR(64) NOT NULL,
+              pending_count INTEGER NOT NULL DEFAULT 0,
+              blocked_count INTEGER NOT NULL DEFAULT 0,
+              quarantine_count INTEGER NOT NULL DEFAULT 0,
+              oldest_pending_at TIMESTAMPTZ,
+              archive_write_ok BOOLEAN NOT NULL DEFAULT FALSE,
+              disk_free_bytes BIGINT,
+              disk_state VARCHAR(32) NOT NULL,
+              last_error_code VARCHAR(64),
+              ingest_key_id VARCHAR(128) NOT NULL,
+              CONSTRAINT uq_ru_probe_uploader_heartbeat_host_observed
+                UNIQUE (probe_host_id, observed_at)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS internal_ingest_nonces (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              key_scope VARCHAR(64) NOT NULL,
+              key_id VARCHAR(128) NOT NULL,
+              nonce_hash VARCHAR(64) NOT NULL,
+              request_path VARCHAR(512) NOT NULL,
+              request_timestamp TIMESTAMPTZ NOT NULL,
+              body_sha256 VARCHAR(64) NOT NULL,
+              expires_at TIMESTAMPTZ NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_internal_ingest_nonce_scope_key_hash
+                UNIQUE (key_scope, key_id, nonce_hash)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_finished_at ON ru_probe_runs(finished_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_release_verdict ON ru_probe_runs(release_verdict);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_current_eligible ON ru_probe_runs(current_eligible);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_probe_host_label ON ru_probe_runs(probe_host_label);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_code ON ru_probe_target_results(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_target_kind ON ru_probe_target_results(target_kind);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_overall_status ON ru_probe_target_results(overall_status);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_observed_at ON ru_probe_target_results(node_code, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_run_node ON ru_probe_target_results(run_db_id, node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_received_at ON ru_probe_uploader_heartbeats(received_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_probe_host_id ON ru_probe_uploader_heartbeats(probe_host_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_host_observed_at ON ru_probe_uploader_heartbeats(probe_host_id, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_internal_ingest_nonces_expires_at ON internal_ingest_nonces(expires_at);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_release_evidence_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_candidates (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id VARCHAR(64) NOT NULL,
+              component VARCHAR(64) NOT NULL,
+              version VARCHAR(128) NOT NULL,
+              revision VARCHAR(128) NOT NULL,
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              canonical_descriptor_json TEXT NOT NULL,
+              descriptor_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_release_candidates_candidate_id UNIQUE (candidate_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_origin_evidence (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id VARCHAR(64) NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              check_name VARCHAR(128) NOT NULL,
+              status VARCHAR(32) NOT NULL,
+              evidence_sha256 VARCHAR(64) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              detail_json TEXT NOT NULL,
+              ru_probe_run_id INTEGER,
+              imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_release_origin_evidence_candidate FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id) ON DELETE RESTRICT,
+              CONSTRAINT fk_release_origin_evidence_ru_probe_run FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id) ON DELETE RESTRICT,
+              CONSTRAINT uq_release_origin_evidence_hash UNIQUE (evidence_sha256)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_imported_at ON release_candidates(imported_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_component ON release_candidates(component);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_candidate_origin ON release_origin_evidence(candidate_id, origin);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_observed_at ON release_origin_evidence(observed_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_ru_probe_run_id ON release_origin_evidence(ru_probe_run_id);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_release_evidence_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_candidates (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              candidate_id VARCHAR(64) NOT NULL,
+              component VARCHAR(64) NOT NULL,
+              version VARCHAR(128) NOT NULL,
+              revision VARCHAR(128) NOT NULL,
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              canonical_descriptor_json TEXT NOT NULL,
+              descriptor_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_release_candidates_candidate_id
+                UNIQUE (candidate_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_origin_evidence (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              candidate_id VARCHAR(64) NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              check_name VARCHAR(128) NOT NULL,
+              status VARCHAR(32) NOT NULL,
+              evidence_sha256 VARCHAR(64) NOT NULL,
+              observed_at TIMESTAMPTZ NOT NULL,
+              detail_json TEXT NOT NULL,
+              ru_probe_run_id INTEGER,
+              imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_release_origin_evidence_candidate
+                FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id)
+                ON DELETE RESTRICT,
+              CONSTRAINT fk_release_origin_evidence_ru_probe_run
+                FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id)
+                ON DELETE RESTRICT,
+              CONSTRAINT uq_release_origin_evidence_hash
+                UNIQUE (evidence_sha256)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_imported_at ON release_candidates(imported_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_component ON release_candidates(component);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_candidate_origin ON release_origin_evidence(candidate_id, origin);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_observed_at ON release_origin_evidence(observed_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_ru_probe_run_id ON release_origin_evidence(ru_probe_run_id);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_action_intents (
+              id VARCHAR(36) NOT NULL PRIMARY KEY,
+              actor_tg_id BIGINT NOT NULL,
+              action VARCHAR(64) NOT NULL,
+              target_type VARCHAR(32) NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              risk_level VARCHAR(8) NOT NULL,
+              executor_kind VARCHAR(16) NOT NULL,
+              canonical_payload_json TEXT NOT NULL,
+              payload_hash VARCHAR(64) NOT NULL,
+              preview_snapshot_json TEXT NOT NULL,
+              snapshot_hash VARCHAR(64) NOT NULL,
+              confirmation_challenge_kind VARCHAR(32) NOT NULL,
+              confirmation_challenge_hash VARCHAR(64) NOT NULL,
+              entity_version_hash VARCHAR(64) NOT NULL,
+              status VARCHAR(16) NOT NULL DEFAULT 'prepared',
+              expires_at DATETIME NOT NULL,
+              consumed_at DATETIME,
+              client_idempotency_key VARCHAR(36),
+              result_code VARCHAR(64),
+              result_summary_json TEXT,
+              result_hash VARCHAR(64),
+              external_error_hash VARCHAR(64),
+              admin_audit_id INTEGER,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_admin_action_intents_idempotency UNIQUE (client_idempotency_key),
+              CONSTRAINT fk_admin_action_intents_audit FOREIGN KEY (admin_audit_id) REFERENCES admin_audit(id) ON DELETE RESTRICT
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_actor ON admin_action_intents(actor_tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_status ON admin_action_intents(status);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_expires_at ON admin_action_intents(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_action ON admin_action_intents(action);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
+    ]:
+        conn.execute(text(sql))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_recipient_plan (
+              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              intent_id VARCHAR(36) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              tg_id BIGINT NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_plan_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_plan_intent_ordinal
+                UNIQUE (intent_id, ordinal),
+              CONSTRAINT uq_admin_broadcast_plan_intent_tg_id
+                UNIQUE (intent_id, tg_id),
+              CONSTRAINT ck_admin_broadcast_plan_ordinal
+                CHECK (ordinal >= 0 AND ordinal < 1000),
+              CONSTRAINT ck_admin_broadcast_plan_tg_id CHECK (tg_id > 0)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_plan_intent "
+            "ON admin_broadcast_recipient_plan(intent_id);"
+        )
+    )
+    for sql in [
+        "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_insert;",
+        """
+        CREATE TRIGGER trg_user_nodes_guard_mapping_insert
+        BEFORE INSERT ON user_nodes
+        WHEN NOT EXISTS (
+          SELECT 1
+          FROM nodes
+          WHERE id = NEW.node_id
+            AND COALESCE(enabled, 0) = 1
+            AND COALESCE(accepting_new_clients, 0) = 1
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'user_node_target_unavailable');
+        END;
+        """,
+        "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_update;",
+        """
+        CREATE TRIGGER trg_user_nodes_guard_mapping_update
+        BEFORE UPDATE ON user_nodes
+        WHEN OLD.node_id != NEW.node_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM nodes
+          WHERE id = NEW.node_id
+            AND COALESCE(enabled, 0) = 1
+            AND COALESCE(accepting_new_clients, 0) = 1
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'user_node_target_unavailable');
+        END;
+        """,
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_admin_action_intent_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_action_intents (
+              id VARCHAR(36) NOT NULL PRIMARY KEY,
+              actor_tg_id BIGINT NOT NULL,
+              action VARCHAR(64) NOT NULL,
+              target_type VARCHAR(32) NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              risk_level VARCHAR(8) NOT NULL,
+              executor_kind VARCHAR(16) NOT NULL,
+              canonical_payload_json TEXT NOT NULL,
+              payload_hash VARCHAR(64) NOT NULL,
+              preview_snapshot_json TEXT NOT NULL,
+              snapshot_hash VARCHAR(64) NOT NULL,
+              confirmation_challenge_kind VARCHAR(32) NOT NULL,
+              confirmation_challenge_hash VARCHAR(64) NOT NULL,
+              entity_version_hash VARCHAR(64) NOT NULL,
+              status VARCHAR(16) NOT NULL DEFAULT 'prepared',
+              expires_at TIMESTAMPTZ NOT NULL,
+              consumed_at TIMESTAMPTZ,
+              client_idempotency_key VARCHAR(36),
+              result_code VARCHAR(64),
+              result_summary_json TEXT,
+              result_hash VARCHAR(64),
+              external_error_hash VARCHAR(64),
+              admin_audit_id INTEGER,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_admin_action_intents_idempotency UNIQUE (client_idempotency_key),
+              CONSTRAINT fk_admin_action_intents_audit
+                FOREIGN KEY (admin_audit_id) REFERENCES admin_audit(id)
+                ON DELETE RESTRICT
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_actor ON admin_action_intents(actor_tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_status ON admin_action_intents(status);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_expires_at ON admin_action_intents(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_action ON admin_action_intents(action);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
+    ]:
+        conn.execute(text(sql))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_recipient_plan (
+              id BIGSERIAL NOT NULL PRIMARY KEY,
+              intent_id VARCHAR(36) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              tg_id BIGINT NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_plan_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_plan_intent_ordinal
+                UNIQUE (intent_id, ordinal),
+              CONSTRAINT uq_admin_broadcast_plan_intent_tg_id
+                UNIQUE (intent_id, tg_id),
+              CONSTRAINT ck_admin_broadcast_plan_ordinal
+                CHECK (ordinal >= 0 AND ordinal < 1000),
+              CONSTRAINT ck_admin_broadcast_plan_tg_id CHECK (tg_id > 0)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_plan_intent "
+            "ON admin_broadcast_recipient_plan(intent_id);"
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE OR REPLACE FUNCTION pokrov_guard_user_node_mapping()
+            RETURNS trigger
+            LANGUAGE plpgsql
+            AS $$
+            DECLARE
+              target_available BOOLEAN;
+            BEGIN
+              -- 1347373906 is the stable POKR namespace shared with the action core.
+              IF TG_OP = 'UPDATE' THEN
+                IF OLD.node_id IS NOT DISTINCT FROM NEW.node_id THEN
+                  RETURN NEW;
+                END IF;
+                PERFORM pg_advisory_xact_lock(
+                  1347373906,
+                  LEAST(OLD.node_id, NEW.node_id)
+                );
+                PERFORM pg_advisory_xact_lock(
+                  1347373906,
+                  GREATEST(OLD.node_id, NEW.node_id)
+                );
+              ELSE
+                PERFORM pg_advisory_xact_lock(1347373906, NEW.node_id);
+              END IF;
+
+              SELECT (enabled IS TRUE AND accepting_new_clients IS TRUE)
+              INTO target_available
+              FROM nodes
+              WHERE id = NEW.node_id
+              FOR UPDATE;
+
+              IF NOT FOUND OR NOT COALESCE(target_available, FALSE) THEN
+                RAISE EXCEPTION 'user_node_target_unavailable'
+                  USING ERRCODE = '23514';
+              END IF;
+              RETURN NEW;
+            END;
+            $$;
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping ON user_nodes;"
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TRIGGER trg_user_nodes_guard_mapping
+            BEFORE INSERT OR UPDATE ON user_nodes
+            FOR EACH ROW
+            EXECUTE FUNCTION pokrov_guard_user_node_mapping();
+            """
+        )
+    )
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -1615,6 +2278,7 @@ def run_migrations(engine: Engine) -> None:
     if dialect and dialect != "sqlite":
         return
 
+    _configure_sqlite_foreign_keys(engine)
     with engine.begin() as conn:
         # users table: add columns if missing
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")).fetchone():
@@ -2092,6 +2756,9 @@ def run_migrations(engine: Engine) -> None:
         _ensure_admin_ops_domain_sqlite(conn)
         _ensure_economy_domain_sqlite(conn)
         _ensure_payment_entitlement_claims_sqlite(conn)
+        _ensure_ru_probe_domain_sqlite(conn)
+        _ensure_release_evidence_domain_sqlite(conn)
+        _ensure_admin_action_intent_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -2940,6 +3607,9 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _ensure_admin_ops_domain_postgres(conn)
         _ensure_economy_domain_postgres(conn)
         _ensure_payment_entitlement_claims_postgres(conn)
+        _ensure_ru_probe_domain_postgres(conn)
+        _ensure_release_evidence_domain_postgres(conn)
+        _ensure_admin_action_intent_domain_postgres(conn)
 
         conn.execute(
             text(

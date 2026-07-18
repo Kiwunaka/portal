@@ -237,6 +237,66 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             content=content,
         )
 
+    def _execute_node_intent(self, *, action: str, node_code: str, payload: dict):
+        return self._execute_admin_intent(
+            action=action,
+            target_type="node",
+            target_id=node_code,
+            method="POST",
+            path=f"/api/admin/nodes/{node_code}/{action.split('.', 1)[1]}",
+            payload=payload,
+        )
+
+    def _prepare_admin_intent(
+        self,
+        *,
+        action: str,
+        target_type: str,
+        target_id: str | int,
+        payload: dict,
+    ):
+        admin_headers = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        return self.client.post(
+            "/api/admin/action-intents",
+            headers=admin_headers,
+            json={
+                "action": action,
+                "target": {"type": target_type, "id": str(target_id)},
+                "payload": payload,
+            },
+        )
+
+    def _execute_admin_intent(
+        self,
+        *,
+        action: str,
+        target_type: str,
+        target_id: str | int,
+        method: str,
+        path: str,
+        payload: dict,
+    ):
+        admin_headers = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        prepared = self._prepare_admin_intent(
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            payload=payload,
+        )
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        challenge = str(prepared.json()["confirmation_challenge"])
+        return self.client.request(
+            method,
+            path,
+            headers={
+                **admin_headers,
+                "X-Admin-Intent-Id": str(prepared.json()["intent_id"]),
+                "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+                "X-Admin-Confirmation-SHA256": hashlib.sha256(challenge.encode("utf-8")).hexdigest(),
+            },
+            json=payload,
+        )
+
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = self.client.get("/api/admin/summary", headers=hdrs)
@@ -342,11 +402,30 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_admin_delete_test_user_rejects_real_user_and_deletes_manual_user(self) -> None:
         from db import SessionLocal
-        from models import Event, User, UserKeyPolicy, UserNode
+        from models import Event, Node, User, UserKeyPolicy, UserNode
 
         now = _utcnow()
         s = SessionLocal()
         try:
+            node = Node(
+                code="delete-test",
+                name="Delete test node",
+                host="delete.example.test",
+                vless_port=443,
+                reality_sni="delete.example.test",
+                reality_pbk="pbk-delete",
+                reality_sid="sid-delete",
+                panel_base_url="https://delete.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+                accepting_new_clients=True,
+                access_role="paid",
+            )
+            s.add(node)
+            s.flush()
             user = User(
                 tg_id=-777,
                 username=None,
@@ -363,8 +442,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             )
             s.add(user)
             s.flush()
-            s.add(UserNode(tg_id=-777, node_id=1, client_uuid=str(user.uuid), panel_email=str(user.email)))
-            s.add(UserKeyPolicy(tg_id=-777, node_code="nl"))
+            s.add(UserNode(tg_id=-777, node_id=node.id, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.add(UserKeyPolicy(tg_id=-777, node_code=node.code))
             s.add(Event(tg_id=-777, event_name="opened_webapp", source="tests"))
             s.commit()
         finally:
@@ -385,10 +464,22 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         try:
             admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-            real = self.client.post("/api/admin/users/1001/delete-test-user", headers=admin_hdrs)
-            self.assertEqual(real.status_code, 400, real.text)
+            real = self._prepare_admin_intent(
+                action="user.delete_test",
+                target_type="user",
+                target_id=1001,
+                payload={},
+            )
+            self.assertEqual(real.status_code, 409, real.text)
 
-            deleted = self.client.post("/api/admin/users/-777/delete-test-user", headers=admin_hdrs)
+            deleted = self._execute_admin_intent(
+                action="user.delete_test",
+                target_type="user",
+                target_id=-777,
+                method="POST",
+                path="/api/admin/users/-777/delete-test-user",
+                payload={},
+            )
             self.assertEqual(deleted.status_code, 200, deleted.text)
             self.assertTrue(bool(deleted.json()["panel_deleted"]))
         finally:
@@ -1036,8 +1127,11 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         r = self.client.post("/api/admin/nodes/pl/disable", headers=admin_hdrs, json={})
-        self.assertEqual(r.status_code, 409, r.text)
-        self.assertIn("resync", r.text.lower())
+        self.assertEqual(r.status_code, 428, r.text)
+        self.assertEqual(r.json()["detail"]["code"], "intent_required")
+        guarded = self._execute_node_intent(action="node.disable", node_code="pl", payload={"force": False})
+        self.assertEqual(guarded.status_code, 409, guarded.text)
+        self.assertEqual(guarded.json()["detail"]["code"], "node_has_mapped_users")
 
     def test_admin_node_resync_moves_mapping_off_draining_node(self) -> None:
         from db import SessionLocal
@@ -1105,12 +1199,15 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         original_panel = self.api.ControlPanel
         self.api.ControlPanel = FakePanel
         try:
-            admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
-            drained = self.client.post("/api/admin/nodes/pl/drain", headers=admin_hdrs, json={})
+            drained = self._execute_node_intent(action="node.drain", node_code="pl", payload={"force": False})
             self.assertEqual(drained.status_code, 200, drained.text)
-            resync = self.client.post("/api/admin/nodes/pl/resync", headers=admin_hdrs, json={"limit": 50})
+            resync = self._execute_node_intent(
+                action="node.resync",
+                node_code="pl",
+                payload={"limit": 50, "dry_run": False},
+            )
             self.assertEqual(resync.status_code, 200, resync.text)
-            self.assertEqual(int(resync.json().get("migrated") or 0), 1)
+            self.assertEqual(int((resync.json().get("result") or {}).get("changed") or 0), 1)
         finally:
             self.api.ControlPanel = original_panel
 
@@ -1442,10 +1539,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(ticket["messages"][0]["media_type"], "photo")
         ticket_id = ticket["id"]
 
-        reply = self.client.post(
-            f"/api/admin/tickets/{ticket_id}/reply",
-            headers=admin_hdrs,
-            json={"body": "Проверили, уже исправлено"},
+        reply = self._execute_admin_intent(
+            action="ticket.reply",
+            target_type="ticket",
+            target_id=ticket_id,
+            method="POST",
+            path=f"/api/admin/tickets/{ticket_id}/reply",
+            payload={"body": "Проверили, уже исправлено"},
         )
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()["ticket"]["status"], "in_progress")
@@ -2773,10 +2873,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.api.ControlPanel = FakePanel
 
-        created = self.client.post(
-            "/api/admin/users/manual",
-            headers=admin_hdrs,
-            json={"display_name": "Offline Client", "days": 30},
+        created = self._execute_admin_intent(
+            action="user.manual_create",
+            target_type="user",
+            target_id="manual",
+            method="POST",
+            path="/api/admin/users/manual",
+            payload={"display_name": "Offline Client", "days": 30},
         )
         self.assertEqual(created.status_code, 200, created.text)
         body = created.json()
@@ -2792,60 +2895,81 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             session.close()
 
-        extend = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"delta_days": 7},
+        extend = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"delta_days": 7},
         )
         self.assertEqual(extend.status_code, 200, extend.text)
         self.assertTrue(extend.json()["ok"])
         self.assertEqual(int(extend.json().get("delta_days") or 0), 7)
         self.assertIsInstance(datetime.fromisoformat(extend.json()["expiry_at"]), datetime)
 
-        alias_extend = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual-extend",
-            headers=admin_hdrs,
-            json={"delta_days": 1},
+        alias_extend = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual-extend",
+            payload={"delta_days": 1},
         )
         self.assertEqual(alias_extend.status_code, 200, alias_extend.text)
         self.assertEqual(int(alias_extend.json().get("delta_days") or 0), 1)
 
-        backwards_compat = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"days": 3},
+        backwards_compat = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"days": 3},
         )
         self.assertEqual(backwards_compat.status_code, 200, backwards_compat.text)
         self.assertEqual(int(backwards_compat.json().get("delta_days") or 0), 3)
 
-        reject_negative = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"delta_days": -3650},
+        reject_negative = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"delta_days": -3650},
         )
-        self.assertEqual(reject_negative.status_code, 400, reject_negative.text)
+        self.assertEqual(reject_negative.status_code, 409, reject_negative.text)
 
-        allow_negative = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"delta_days": -3650, "allow_deactivate": True},
+        allow_negative = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"delta_days": -3650, "allow_deactivate": True},
         )
         self.assertEqual(allow_negative.status_code, 200, allow_negative.text)
         self.assertFalse(bool(allow_negative.json().get("is_active")))
 
-        block = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/block",
-            headers=admin_hdrs,
-            json={"blocked": True},
+        block = self._execute_admin_intent(
+            action="user.block",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/block",
+            payload={"blocked": True},
         )
         self.assertEqual(block.status_code, 200, block.text)
         self.assertTrue(block.json()["ok"])
         self.assertFalse(block.json()["is_active"])
 
-        regen = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/regenerate-token",
-            headers=admin_hdrs,
-            json={},
+        regen = self._execute_admin_intent(
+            action="user.regenerate_token",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/regenerate-token",
+            payload={},
         )
         self.assertEqual(regen.status_code, 200, regen.text)
         self.assertTrue(regen.json()["ok"])
@@ -3012,18 +3136,24 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-        inactive_resp = self.client.post(
-            "/api/admin/users/keys/bulk-action",
-            headers=admin_hdrs,
-            json={"action": "disable", "segment": "inactive", "dry_run": True},
+        inactive_resp = self._execute_admin_intent(
+            action="user.bulk_key_action",
+            target_type="users",
+            target_id="bulk",
+            method="POST",
+            path="/api/admin/users/keys/bulk-action",
+            payload={"action": "disable", "segment": "inactive", "dry_run": True},
         )
         self.assertEqual(inactive_resp.status_code, 200, inactive_resp.text)
         self.assertIn(2101, inactive_resp.json().get("preview_tg_ids", []))
 
-        manual_resp = self.client.post(
-            "/api/admin/users/keys/bulk-action",
-            headers=admin_hdrs,
-            json={"action": "disable", "segment": "manual_test", "dry_run": True},
+        manual_resp = self._execute_admin_intent(
+            action="user.bulk_key_action",
+            target_type="users",
+            target_id="bulk",
+            method="POST",
+            path="/api/admin/users/keys/bulk-action",
+            payload={"action": "disable", "segment": "manual_test", "dry_run": True},
         )
         self.assertEqual(manual_resp.status_code, 200, manual_resp.text)
         self.assertIn(-10060, manual_resp.json().get("preview_tg_ids", []))
@@ -3068,17 +3198,21 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-        reject_real = self.client.post(
-            "/api/admin/users/1001/safe-delete",
-            headers=admin_hdrs,
-            json={"confirm": True},
+        reject_real = self._prepare_admin_intent(
+            action="user.safe_delete",
+            target_type="user",
+            target_id=1001,
+            payload={"confirm": True},
         )
-        self.assertEqual(reject_real.status_code, 400, reject_real.text)
+        self.assertEqual(reject_real.status_code, 409, reject_real.text)
 
-        deleted = self.client.post(
-            "/api/admin/users/-10070/safe-delete",
-            headers=admin_hdrs,
-            json={"confirm": True},
+        deleted = self._execute_admin_intent(
+            action="user.safe_delete",
+            target_type="user",
+            target_id=-10070,
+            method="POST",
+            path="/api/admin/users/-10070/safe-delete",
+            payload={"confirm": True},
         )
         self.assertEqual(deleted.status_code, 200, deleted.text)
         self.assertTrue(bool(deleted.json().get("ok")))
@@ -3094,10 +3228,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
-        created_promo = self.client.post(
-            "/api/admin/promos",
-            headers=admin_hdrs,
-            json={"code": "WELCOME14", "promo_type": "days", "value": 14, "uses_left": 100},
+        created_promo = self._execute_admin_intent(
+            action="promo.create",
+            target_type="promo",
+            target_id="WELCOME14",
+            method="POST",
+            path="/api/admin/promos",
+            payload={"code": "WELCOME14", "promo_type": "days", "value": 14, "uses_left": 100},
         )
         self.assertEqual(created_promo.status_code, 200, created_promo.text)
 
@@ -3105,20 +3242,33 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(promo_list.status_code, 200, promo_list.text)
         self.assertTrue(any((p.get("code") or "") == "WELCOME14" for p in promo_list.json().get("promos", [])))
 
-        updated_promo = self.client.patch(
-            "/api/admin/promos/WELCOME14",
-            headers=admin_hdrs,
-            json={"value": 21, "uses_left": 50},
+        updated_promo = self._execute_admin_intent(
+            action="promo.update",
+            target_type="promo",
+            target_id="WELCOME14",
+            method="PATCH",
+            path="/api/admin/promos/WELCOME14",
+            payload={"value": 21, "uses_left": 50},
         )
         self.assertEqual(updated_promo.status_code, 200, updated_promo.text)
 
-        deleted_promo = self.client.delete("/api/admin/promos/WELCOME14", headers=admin_hdrs)
+        deleted_promo = self._execute_admin_intent(
+            action="promo.delete",
+            target_type="promo",
+            target_id="WELCOME14",
+            method="DELETE",
+            path="/api/admin/promos/WELCOME14",
+            payload={},
+        )
         self.assertEqual(deleted_promo.status_code, 200, deleted_promo.text)
 
-        created_tpl = self.client.post(
-            "/api/admin/templates",
-            headers=admin_hdrs,
-            json={"key": "retention_t3", "text": "Подписка скоро завершится. Продлите доступ."},
+        created_tpl = self._execute_admin_intent(
+            action="template.create",
+            target_type="template",
+            target_id="retention_t3",
+            method="POST",
+            path="/api/admin/templates",
+            payload={"key": "retention_t3", "text": "Подписка скоро завершится. Продлите доступ."},
         )
         self.assertEqual(created_tpl.status_code, 200, created_tpl.text)
 
@@ -3126,20 +3276,33 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(tpl_list.status_code, 200, tpl_list.text)
         self.assertTrue(any((t.get("key") or "") == "retention_t3" for t in tpl_list.json().get("templates", [])))
 
-        updated_tpl = self.client.patch(
-            "/api/admin/templates/retention_t3",
-            headers=admin_hdrs,
-            json={"text": "Напоминаем: продлите доступ, чтобы не было паузы."},
+        updated_tpl = self._execute_admin_intent(
+            action="template.update",
+            target_type="template",
+            target_id="retention_t3",
+            method="PATCH",
+            path="/api/admin/templates/retention_t3",
+            payload={"text": "Напоминаем: продлите доступ, чтобы не было паузы."},
         )
         self.assertEqual(updated_tpl.status_code, 200, updated_tpl.text)
 
-        deleted_tpl = self.client.delete("/api/admin/templates/retention_t3", headers=admin_hdrs)
+        deleted_tpl = self._execute_admin_intent(
+            action="template.delete",
+            target_type="template",
+            target_id="retention_t3",
+            method="DELETE",
+            path="/api/admin/templates/retention_t3",
+            payload={},
+        )
         self.assertEqual(deleted_tpl.status_code, 200, deleted_tpl.text)
 
-        gift_created = self.client.post(
-            "/api/admin/gift-codes",
-            headers=admin_hdrs,
-            json={"card_type": "standard"},
+        gift_created = self._execute_admin_intent(
+            action="gift_code.create",
+            target_type="gift_code",
+            target_id="standard",
+            method="POST",
+            path="/api/admin/gift-codes",
+            payload={"card_type": "standard"},
         )
         self.assertEqual(gift_created.status_code, 200, gift_created.text)
         code = gift_created.json().get("gift_code", {}).get("code")
@@ -3171,10 +3334,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        cfg = self.client.put(
-            "/api/admin/loyalty-config",
-            headers=admin_hdrs,
-            json={"enabled": True, "tiers": [{"days": 30, "bonus_days": 5, "perk": "loyal_30"}]},
+        cfg = self._execute_admin_intent(
+            action="loyalty_config.update",
+            target_type="config",
+            target_id="loyalty",
+            method="PUT",
+            path="/api/admin/loyalty-config",
+            payload={"enabled": True, "tiers": [{"days": 30, "bonus_days": 5, "perk": "loyal_30"}]},
         )
         self.assertEqual(cfg.status_code, 200, cfg.text)
 
@@ -3186,10 +3352,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.api._sync_user_after_paid_bonus = fake_sync
 
-        granted = self.client.post(
-            "/api/admin/users/1001/loyalty/grant",
-            headers=admin_hdrs,
-            json={"tier_days": 30},
+        granted = self._execute_admin_intent(
+            action="user.loyalty_grant",
+            target_type="user",
+            target_id=1001,
+            method="POST",
+            path="/api/admin/users/1001/loyalty/grant",
+            payload={"tier_days": 30},
         )
         self.assertEqual(granted.status_code, 200, granted.text)
         self.assertTrue(granted.json().get("ok"))
@@ -3200,10 +3369,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
-        created = self.client.post(
-            "/api/admin/gift-codes",
-            headers=admin_hdrs,
-            json={"card_type": "standard"},
+        created = self._execute_admin_intent(
+            action="gift_code.create",
+            target_type="gift_code",
+            target_id="standard",
+            method="POST",
+            path="/api/admin/gift-codes",
+            payload={"card_type": "standard"},
         )
         self.assertEqual(created.status_code, 200, created.text)
         code = str(created.json().get("gift_code", {}).get("code") or "")
@@ -3264,10 +3436,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
-        created = self.client.post(
-            "/api/admin/promos",
-            headers=admin_hdrs,
-            json={"code": "FOREVER20", "promo_type": "discount", "value": 20, "uses_left": -1},
+        created = self._execute_admin_intent(
+            action="promo.create",
+            target_type="promo",
+            target_id="FOREVER20",
+            method="POST",
+            path="/api/admin/promos",
+            payload={"code": "FOREVER20", "promo_type": "discount", "value": 20, "uses_left": -1},
         )
         self.assertEqual(created.status_code, 200, created.text)
 
@@ -4458,10 +4633,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
     def test_admin_start_links_and_wheel_config(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-        created = self.client.post(
-            "/api/admin/start-links",
-            headers=admin_hdrs,
-            json={
+        created = self._execute_admin_intent(
+            action="start_link.create",
+            target_type="start_link",
+            target_id="launch14",
+            method="POST",
+            path="/api/admin/start-links",
+            payload={
                 "code": "launch14",
                 "description": "Campaign launch link",
                 "target_action": "opening_bonus",
@@ -4476,24 +4654,37 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(rows.status_code, 200, rows.text)
         self.assertTrue(any((r.get("code") or "") == "launch14" for r in rows.json().get("start_links", [])))
 
-        patched = self.client.patch(
-            f"/api/admin/start-links/{link_id}",
-            headers=admin_hdrs,
-            json={"description": "Updated", "is_active": False},
+        patched = self._execute_admin_intent(
+            action="start_link.update",
+            target_type="start_link",
+            target_id=link_id,
+            method="PATCH",
+            path=f"/api/admin/start-links/{link_id}",
+            payload={"description": "Updated", "is_active": False},
         )
         self.assertEqual(patched.status_code, 200, patched.text)
 
-        removed = self.client.delete(f"/api/admin/start-links/{link_id}", headers=admin_hdrs)
+        removed = self._execute_admin_intent(
+            action="start_link.delete",
+            target_type="start_link",
+            target_id=link_id,
+            method="DELETE",
+            path=f"/api/admin/start-links/{link_id}",
+            payload={},
+        )
         self.assertEqual(removed.status_code, 200, removed.text)
 
         cfg_get = self.client.get("/api/admin/wheel-config", headers=admin_hdrs)
         self.assertEqual(cfg_get.status_code, 200, cfg_get.text)
         self.assertIn("wheel_config", cfg_get.json())
 
-        cfg_put = self.client.put(
-            "/api/admin/wheel-config",
-            headers=admin_hdrs,
-            json={
+        cfg_put = self._execute_admin_intent(
+            action="wheel_config.update",
+            target_type="config",
+            target_id="wheel",
+            method="PUT",
+            path="/api/admin/wheel-config",
+            payload={
                 "preset": "manual",
                 "weights": [
                     {"days": 1, "weight": 50},

@@ -1,0 +1,27 @@
+[Unit]
+Description=POKROV RU-origin manifest probe
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pokrov-ru-probe
+Group=pokrov-ru-probe
+EnvironmentFile=/etc/pokrov-ru-probe/probe.env
+ExecStart=/usr/bin/python3 /opt/pokrov/scripts/ru_probe_runner.py --spool-root /var/lib/pokrov-ru-probe --secret-file /etc/pokrov-ru-probe/hmac.key --profile-registry /etc/pokrov-ru-probe/profiles.json
+StateDirectory=pokrov-ru-probe
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/
+ReadWritePaths=/var/lib/pokrov-ru-probe
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

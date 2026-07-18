@@ -29,7 +29,15 @@ class AdminPaymentsApiTests(unittest.TestCase):
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["ADMIN_ID"] = "9999"
 
-        for module_name in ("api", "db", "models", "migrations", "config"):
+        for module_name in (
+            "api",
+            "admin_action_intent_service",
+            "admin_ops_service",
+            "db",
+            "models",
+            "migrations",
+            "config",
+        ):
             sys.modules.pop(module_name, None)
 
         importlib.import_module("config")
@@ -139,58 +147,168 @@ class AdminPaymentsApiTests(unittest.TestCase):
         self.assertNotIn("raw-provider-token", json.dumps(row))
         self.assertNotIn("must-not-render", json.dumps(row))
 
-    def test_admin_payment_reconcile_requires_note_and_audits_status_change(self) -> None:
+    def test_admin_payment_reconcile_requires_intent_freezes_callback_and_commits_atomically(self) -> None:
         from db import SessionLocal
-        from models import AdminAudit, ExternalOrder
+        from models import AdminActionIntent, AdminAudit, ExternalOrder, ExternalPaymentEvent
+
+        session = SessionLocal()
+        try:
+            order = ExternalOrder(
+                order_id="order-failed-2404",
+                provider="freekassa",
+                tg_id=2404,
+                plan_code="start_99",
+                amount=99,
+                currency="RUB",
+                status="failed",
+            )
+            session.add(order)
+            session.add(
+                ExternalPaymentEvent(
+                    provider="freekassa",
+                    event_type="result",
+                    external_id="callback-1",
+                    order_id="order-failed-2404",
+                    payload_json='{"provider_secret":"SYNTHETIC-CALLBACK-SECRET"}',
+                    signature_ok=True,
+                    processed_ok=False,
+                )
+            )
+            session.commit()
+            order_db_id = int(order.id)
+        finally:
+            session.close()
+
+        note = "Provider dashboard checked by operator; keep for reconciliation history."
+        direct = self.client.post(
+            "/api/admin/payments/orders/freekassa/order-failed-2404/reconcile",
+            headers=self._auth_headers(),
+            json={"status": "manual_review", "note": note},
+        )
+        self.assertEqual(direct.status_code, 428, direct.text)
+        self.assertEqual(direct.json()["detail"]["code"], "intent_required")
+
+        missing_note = self.client.post(
+            "/api/admin/action-intents",
+            headers=self._auth_headers(),
+            json={
+                "action": "payment.reconcile",
+                "target": {"type": "payment", "id": str(order_db_id)},
+                "payload": {"status": "manual_review"},
+            },
+        )
+        self.assertEqual(missing_note.status_code, 422, missing_note.text)
+
+        def prepare():
+            return self.client.post(
+                "/api/admin/action-intents",
+                headers=self._auth_headers(),
+                json={
+                    "action": "payment.reconcile",
+                    "target": {"type": "payment", "id": str(order_db_id)},
+                    "payload": {"status": "manual_review", "note": note},
+                },
+            )
+
+        prepared = prepare()
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        preview = prepared.json()["preview"]
+        self.assertEqual(preview["before"]["provider"], "freekassa")
+        self.assertEqual(preview["before"]["order_id"], "order-failed-2404")
+        self.assertEqual(preview["before"]["status"], "failed")
+        self.assertEqual(preview["after"]["status"], "manual_review")
+        self.assertNotIn(note, json.dumps(prepared.json(), ensure_ascii=False))
 
         session = SessionLocal()
         try:
             session.add(
-                ExternalOrder(
-                    order_id="order-failed-2404",
+                ExternalPaymentEvent(
                     provider="freekassa",
-                    tg_id=2404,
-                    plan_code="start_99",
-                    amount=99,
-                    currency="RUB",
-                    status="failed",
+                    event_type="status",
+                    external_id="callback-2",
+                    order_id="order-failed-2404",
+                    payload_json='{"provider_secret":"SYNTHETIC-SECOND-CALLBACK"}',
+                    signature_ok=True,
+                    processed_ok=True,
                 )
             )
             session.commit()
         finally:
             session.close()
 
-        no_note = self.client.post(
-            "/api/admin/payments/orders/freekassa/order-failed-2404/reconcile",
-            headers=self._auth_headers(),
-            json={"status": "manual_review"},
-        )
-        self.assertEqual(no_note.status_code, 422, no_note.text)
+        confirmation_hash = hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest()
 
-        response = self.client.post(
-            "/api/admin/payments/orders/freekassa/order-failed-2404/reconcile",
-            headers=self._auth_headers(),
-            json={"status": "manual_review", "note": "Provider dashboard shows paid; waiting for fulfillment decision."},
-        )
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["order"]["status"], "manual_review")
+        def execute(intent_id: str):
+            return self.client.post(
+                "/api/admin/payments/orders/freekassa/order-failed-2404/reconcile",
+                headers={
+                    **self._auth_headers(),
+                    "X-Admin-Intent-Id": intent_id,
+                    "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+                    "X-Admin-Confirmation-SHA256": confirmation_hash,
+                },
+                json={"status": "manual_review", "note": note},
+            )
+
+        stale = execute(str(prepared.json()["intent_id"]))
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertEqual(stale.json()["detail"]["code"], "stale_intent")
+
+        fresh = prepare()
+        self.assertEqual(fresh.status_code, 200, fresh.text)
+        original_add_audit = self.api._add_admin_audit
+
+        def fail_audit(**_kwargs):
+            raise RuntimeError("synthetic audit failure")
+
+        self.api._add_admin_audit = fail_audit
+        failed = execute(str(fresh.json()["intent_id"]))
+        self.assertEqual(failed.status_code, 503, failed.text)
+        self.api._add_admin_audit = original_add_audit
 
         session = SessionLocal()
         try:
             order = session.query(ExternalOrder).filter(ExternalOrder.order_id == "order-failed-2404").first()
             self.assertIsNotNone(order)
+            self.assertEqual(order.status, "failed")
+            intent = session.query(AdminActionIntent).filter_by(id=fresh.json()["intent_id"]).one()
+            self.assertEqual(intent.status, "prepared")
+            self.assertIsNone(intent.consumed_at)
+        finally:
+            session.close()
+
+        response = execute(str(fresh.json()["intent_id"]))
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["order"]["status"], "manual_review")
+
+        session = SessionLocal()
+        try:
+            order = session.query(ExternalOrder).filter(ExternalOrder.order_id == "order-failed-2404").one()
             self.assertEqual(order.status, "manual_review")
-            audit = session.query(AdminAudit).filter(AdminAudit.action == "admin_payment_reconcile").first()
-            self.assertIsNotNone(audit)
+            self.assertIn(note, order.meta_json or "")
+            audit = session.query(AdminAudit).filter(AdminAudit.action == "admin_payment_reconcile").one()
             self.assertEqual(audit.target_tg_id, 2404)
             meta = json.loads(audit.meta or "{}")
             self.assertEqual(meta["provider"], "freekassa")
             self.assertEqual(meta["order_id"], "order-failed-2404")
             self.assertEqual(meta["from_status"], "failed")
             self.assertEqual(meta["to_status"], "manual_review")
-            self.assertIn("Provider dashboard", meta["note"])
+            self.assertEqual(meta["note_sha256"], hashlib.sha256(note.encode("utf-8")).hexdigest())
+            self.assertNotIn(note, audit.meta or "")
+            self.assertNotIn("SYNTHETIC-CALLBACK-SECRET", audit.meta or "")
+            events = session.query(ExternalPaymentEvent).order_by(ExternalPaymentEvent.id.asc()).all()
+            self.assertEqual(len(events), 2)
+            self.assertIn("SYNTHETIC-CALLBACK-SECRET", events[0].payload_json)
         finally:
             session.close()
+
+    def test_payment_reconcile_route_is_in_exact_action_policy_registry(self) -> None:
+        from admin_action_intent_service import ACTION_POLICY_ROUTES
+
+        self.assertEqual(
+            ACTION_POLICY_ROUTES["payment.reconcile"],
+            (("POST", "/api/admin/payments/orders/{provider}/{order_id}/reconcile"),),
+        )
 
 
 if __name__ == "__main__":

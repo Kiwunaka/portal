@@ -1,0 +1,11 @@
+[Unit]
+Description=Run POKROV RU-origin probe every six hours
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00
+Persistent=true
+RandomizedDelaySec=5m
+Unit=pokrov-ru-probe.service
+
+[Install]
+WantedBy=timers.target

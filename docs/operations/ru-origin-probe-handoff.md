@@ -1,125 +1,183 @@
-# Передача для RU-origin probe
+# RU-Origin Probe Handoff
 
-Last updated: 2026-05-22
+Last updated: 2026-07-17
 
-Current SSH access note, verified on `2026-05-22`: `mini` / `RFMINI` is reachable as `kiwunaka@176.123.166.119:22` with the retained local password bundle. `root@22` does not authenticate, and `29374` opens TCP but resets before the SSH banner. Do not write the password value into docs, commits, reports, or chat handoffs.
+## Document Status
 
-## Зачем нужен этот файл
+Document class: ACTIVE_EXECUTION. Это текущий операторский чек-лист для
+внешней проверки POKROV из РФ. Каноническую семантику origin, свежести и
+вердиктов задаёт
+[Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md).
 
-Используйте эту инструкцию, когда для релиза или разбора инцидента нужно реальное подтверждение доступности из RU-origin.
+Этот документ не подтверждает, что таймеры установлены на `mini`, что доступ к
+хосту сейчас есть или что последний RU-origin результат прошёл. Такие факты
+появляются только после отдельного ручного выполнения и сохранения доказательств.
 
-Предпочтительный RU probe host сейчас `mini` / `RFMINI`: это канонический RU-origin operator sandbox. Если TCP до `mini` есть, но SSH auth не проходит, фиксируйте `RU-origin check: BLOCKED_BY_ACCESS`, а не отсутствие RU-origin.
+## Область проверки
 
-## Когда сразу останавливаемся
+Стандартный RU-origin verdict включает только:
 
-Сразу считаем RU-origin visibility degraded, если нет хотя бы одного пункта:
+- доступность среды пробы через отдельную environment-проверку;
+- канонические публичные POKROV-хосты и API health;
+- delivery-ноды, которые входят в подписанный manifest;
+- явно включённые reserve ingress проверки.
 
-- рабочего внешнего RU-host
-- возможности запустить probe именно с этого хоста
-- сырого JSON-результата probe
-- короткого отчёта для оператора
+Сторонние диагностические цели не влияют на release verdict. `current-origin`,
+`brain-origin` и `RU-origin` всегда остаются тремя отдельными строками.
 
-Нельзя писать `RU-origin check: pass`, если probe реально не запускался с рабочего RU-host.
+## Поток данных
 
-## Что нужно получить от вас
-
-- имя RU probe host:
-  - обычно `mini`
-  - если его нет, тогда имя заменяющего RU-host
-- публичный IP probe host, если вы его знаете
-- reserve host, сейчас это `rf1.pokrov.space`
-- путь, куда сохранять JSON-отчёт
-
-## Что делать по шагам
-
-1. Проверьте, жив ли `mini` / `RFMINI`.
-2. Если TCP до `mini` есть, но SSH auth не проходит, зафиксируйте `RU-origin check: BLOCKED_BY_ACCESS` и обновите credential/authorized_keys.
-3. Если `mini` недоступен, сразу зафиксируйте, что RU-origin observability degraded, и укажите replacement host, если он есть.
-4. Подключитесь к `mini` со строгой проверкой SSH host key. Во временный каталог
-   с режимом `0700` перенесите точные candidate-версии `ru_probe_runner.py`,
-   `node_dataplane_probe.py`, `node_inventory.py` и inventory. Запустите probe
-   **внутри `mini`**, затем заберите JSON и удалите временный каталог:
-
-```bash
-python3 ru_probe_runner.py \
-  --inventory inventory.md \
-  --reserve-host rf1.pokrov.space \
-  --probe-host mini \
-  --out ru-probe.json
+```text
+RU host -> runner -> private immutable spool -> uploader -> HMAC ingest
+        -> normalized RU tables -> admin read model -> adminapp
 ```
 
-   `--probe-host mini` только записывает метку в JSON и не выполняет SSH.
-   Локальный запуск этой команды на workstation не является RU-origin proof.
-   Временный каталог, runner и сырой JSON на сервере удаляются после успешного
-   копирования отчёта в локальный `ops-local/` вне Git.
+Репозиторные шаблоны:
 
-5. Соберите короткий операторский отчёт локально:
+- `infra/pokrov-ru-probe.service`
+- `infra/pokrov-ru-probe.timer`
+- `infra/pokrov-ru-probe-uploader.service`
+- `infra/pokrov-ru-probe-uploader.timer`
+
+Runner запускается по UTC в `00:00`, `06:00`, `12:00` и `18:00`; uploader
+обрабатывает очередь каждые 15 минут. Это шаблоны для ревью. Их наличие в Git
+не доказывает установку или активность unit на живом хосте.
+
+## Предварительные условия
+
+Перед ручным вводом контура владелец подтверждает без публикации значений:
+
+- доступ к `mini` либо утверждённому replacement RU host;
+- синхронизированное UTC-время и рабочий DNS/TCP/TLS egress;
+- отдельного непривилегированного пользователя процесса;
+- приватный spool, доступный только этому пользователю, с достаточным свободным
+  местом;
+- Python runtime и точную версию `scripts/ru_probe_runner.py`,
+  `scripts/ru_probe_uploader.py`, `scripts/internal_hmac_client.py`,
+  `scripts/node_dataplane_probe.py` и `portal_bot/ru_probe_contract.py`;
+- redacted `probe.env` и `uploader.env` с API base URL, key id и host id, но
+  без HMAC-значения в handoff;
+- HMAC secret file, переданный через утверждённый секретный канал, с правами
+  только для процесса;
+- совпадение `probe_host_id` с subject ключа и scopes
+  `ru_probe:manifest`, `ru_probe:ingest`, `ru_probe:heartbeat`;
+- `profiles.json` только с разрешёнными фиксированными executable/argv, без
+  shell-фрагментов, токенов, URL подписки или учётных данных;
+- актуальный server-side manifest и известный rollback owner.
+
+В отчёт разрешено записывать имена переменных, key id, fingerprint/revision,
+путь к секрету и факт проверки прав. Значение HMAC, SSH-пароль, private key,
+subscription URL, raw provider payload и пользовательские данные запрещены.
+
+## Spool и значения состояний
+
+Корень spool по шаблону — `/var/lib/pokrov-ru-probe`; конкретный путь может
+быть переопределён в утверждённой установке. Каждый run сначала становится
+неизменяемой парой artifact + sidecar.
+
+- `pending`: артефакт корректен локально, но ещё не принят backend. Сетевые и
+  временные ошибки остаются здесь с bounded backoff.
+- `archive`: backend подтвердил точный `run_id`, а локальная архивная запись
+  завершилась. Это подтверждает ingest, но не обязательно `PASS` проверок.
+- `blocked`: ключ отключён, scope/subject запрещён или доступ намеренно
+  заблокирован. Автоматический повтор не должен маскировать проблему доступа.
+- `quarantine`: повреждён hash, нарушен контракт, payload конфликтует, nonce
+  повторён либо размер/схема недопустимы. Такие артефакты не возвращаются в
+  очередь без расследования причины.
+
+Не удаляйте `blocked`, `quarantine` или необработанный `pending` ради зелёного
+heartbeat. Сначала сохраните redacted run id, correlation id, server code,
+время и решение владельца.
+
+## Локальная проверка кандидата
+
+До работы с живым хостом допустимы только локальные, не изменяющие runtime
+проверки:
 
 ```powershell
-python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
+python scripts/ru_probe_runner.py --help
+python scripts/ru_probe_uploader.py --help
+python -B -m pytest -p no:cacheprovider tests/test_internal_request_auth.py tests/test_ru_probe_contract.py tests/test_ru_probe_service.py tests/test_ru_probe_ingest_api.py tests/test_ru_probe_runner.py tests/test_ru_probe_uploader.py -q
 ```
 
-6. Прочитайте отчёт до того, как писать handoff.
-7. Правильно классифицируйте результат:
-   - проблема probe host
-   - проблема canonical host
-   - проблема foreign edge
-   - проблема EU-node
-8. Из того же самого запуска запишите `xhttp_alive` и `hysteria_alive`.
+Ожидается `PASS`. Этот результат подтверждает код и фикстуры конкретного
+локального commit, но не подтверждает сеть РФ, production ingest, установку
+unit или актуальность живого HMAC key record.
 
-## Что probe обязан показать
+## Ручная приёмка владельцем
 
-Из отчёта должно быть понятно:
+Фактическая установка/обновление unit и секретов — `MANUAL_OWNER_TEST`.
+Владелец выполняет её через утверждённый доступ и сохраняет только redacted
+результат:
 
-- может ли RU-host открыть `google.com`
-- открываются ли текущие публичные поверхности `POKROV`, если это нужно в проверке
-- доступны ли целевые delivery nodes
-- доступен ли reserve contour
+1. Точный platform commit и checksums файлов совпадают с кандидатом.
+2. Unit используют репозиторные шаблоны, непривилегированного пользователя,
+   `UMask=0077`, защищённые paths и ожидаемые schedule.
+3. Один ручной runner создаёт ровно один новый `pending` artifact.
+4. Один uploader переносит принятый artifact в `archive` и отправляет heartbeat.
+5. Admin read endpoints показывают тот же `run_id`, manifest revision,
+   законченный UTC timestamp и per-node результаты.
+6. Через минуту `adminapp` показывает серверный результат, а не локально
+   выдуманный статус.
+7. Следующий scheduled run подтверждает cadence без ручного запуска.
 
-Желательно сохранить и технические стадии:
+Если SSH, HMAC record, API admin session или доступ к RU host отсутствует,
+итог — `BLOCKED_BY_ACCESS` с названием недостающей зависимости. Не ставьте
+`FAIL` нодам и не ставьте `PASS` RU-origin при неработающей среде пробы.
 
-- `DNS`
-- `TCP/443`
-- `TLS`
-- HTTPS с большим телом ответа
+## Heartbeat
 
-## Что нужно прислать мне обратно
+Uploader отправляет только ограниченную сводку: service version, counts
+`pending/blocked/quarantine`, oldest pending timestamp, archive-write state,
+disk state/free bytes и allowlisted last error code.
 
-Пришлите:
+- свежий heartbeat: возраст не больше 45 минут;
+- stale heartbeat: старше 45 минут — новые результаты могут не доставляться;
+- missing heartbeat: backend ни разу не получил пригодную сводку;
+- `pending_count > 0`: смотреть oldest pending и retry code;
+- `blocked_count > 0`: проверять key state/scope/subject;
+- `quarantine_count > 0`: расследовать контракт/hash/conflict;
+- `archive_write_ok=false`, `disk_state=critical|unknown`: локальная сохранность
+  доказательств под угрозой.
 
-- имя probe host
-- его публичный IP, если известен
-- путь к сырому JSON
-- путь к готовому отчёту или сам короткий summary
-- открывался ли `google.com`
-- краткий итог по нодам
-- статусы `xhttp_alive` и `hysteria_alive`
-- итоговую `probe_classification`
+Heartbeat не меняет прошлый RU verdict. Последний eligible run становится
+`stale` только по серверному 7-часовому окну.
 
-## Как именно писать итог в handoff
+## Rollback
 
-Используйте одну из этих форм:
+Rollback выполняет владелец без удаления доказательств:
 
-- `RU-origin check: pass`
-- `RU-origin check: fail`
-- `RU-origin check: unavailable`
+1. Останавливает новые runner/uploader запуски и фиксирует время остановки.
+2. Сохраняет `pending`, `blocked`, `quarantine`, `archive`, manifest cache и
+   redacted checksums для расследования.
+3. Отзывает или отключает только затронутый HMAC key record на backend.
+4. Возвращает предыдущие проверенные unit/script versions.
+5. Проверяет, что admin честно показывает stale/missing/uploader unavailable,
+   а не зелёный статус.
+6. Возобновляет schedule только после локальной проверки и нового
+   `MANUAL_OWNER_TEST`.
 
-Если `unavailable`, сразу дописывайте причину:
+Этот чек-лист намеренно не содержит команд для изменения живого хоста или
+значений секретов.
 
-- `mini down`
-- `no replacement RU host`
-- `probe host could not reach google.com`
+## Шаблон итогового доказательства
 
-## Частые причины блокировки
+```text
+candidate: <platform commit>
+probe host: <redacted label>
+manifest revision: <sha256>
+runner unit/timer: MANUAL_OWNER_TEST | BLOCKED_BY_ACCESS
+uploader unit/timer: MANUAL_OWNER_TEST | BLOCKED_BY_ACCESS
+current-origin check: PASS | FAIL | NOT_REQUESTED
+brain-origin check: PASS | FAIL | BLOCKED_BY_ACCESS | NOT_REQUESTED
+RU-origin check: PASS | FAIL | BLOCKED_BY_ACCESS | MANUAL_OWNER_TEST
+run id: <uuid or absent>
+finished at UTC: <timestamp or absent>
+uploader heartbeat: fresh | stale | missing | unavailable
+spool: pending=<n>, blocked=<n>, quarantine=<n>
+production deploy: NOT_REQUESTED | <retained deployment evidence reference>
+notes: <redacted blockers and correlation ids only>
+```
 
-- `mini` не работает и нет замены
-- RU-host не открывает `google.com`
-- probe запускали локально или с `brain`, а не из RU
-- есть только сырой JSON, но никто не собрал и не прочитал summary
-- кто-то пытается делать вывод по RU из `current-origin` или `brain-origin`, не имея реального RU probe
-
-## Связанные инструкции
-
-- [Monitoring And Visibility](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
-- [Передача по финальным ссылкам и релизному handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
-- [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+Не превращайте `MANUAL_OWNER_TEST`, `BLOCKED_BY_ACCESS`, `NOT_REQUESTED` или
+отсутствующий артефакт в `PASS`.

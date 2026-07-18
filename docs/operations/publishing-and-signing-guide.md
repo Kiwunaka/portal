@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-07-12
+Last updated: 2026-07-17
 
 ## Document Status
 
@@ -316,6 +316,46 @@ After every client release:
 5. pass that exact `release-handoff.json` to the runtime sync procedure in [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
 6. verify the same links appear in app, bot, and authenticated WebApp surfaces
 7. rebuild and redeploy static marketing outputs if public download URLs changed
+
+### Exact-Candidate Operations Evidence
+
+Operational readiness is attached to an exact candidate, not to a branch name,
+working directory, latest tag, or visually similar build. The normalized
+candidate descriptor contains only:
+
+- `component`
+- `version`
+- `revision`
+- `artifact_sha256`
+
+`candidate_id` is the SHA-256 of the canonical descriptor. Before any evidence
+import, compare those four values with the retained candidate bundle and keep
+the artifact checksum calculation in the evidence record. A changed revision
+or artifact hash is a different candidate and requires new evidence.
+
+The redacted evidence importer is the HMAC-authenticated
+`POST /api/internal/releases/candidates` boundary. Each evidence row carries an
+origin (`current`, `brain`, or `ru`), required check name, explicit status,
+UTC observation time, evidence SHA-256 and a small allowlisted detail object.
+Do not include bearer tokens, HMAC values, provider payloads, connection URLs,
+host credentials, raw logs, personal identifiers or arbitrary metadata.
+
+Allowed evidence labels are `PASS`, `FAIL`, `MANUAL_OWNER_TEST`,
+`OPERATOR_ATTESTED`, `SKIPPED_BY_OWNER`, `SKIPPED_BY_OPERATOR`,
+`BLOCKED_BY_ACCESS`, and `MISSING`. These labels are retained as written; a
+skip, attestation, manual check, missing record or blocked access is never
+promoted to `PASS` by the admin UI.
+
+An RU-origin `PASS` must reference the exact eligible stored RU probe run. On
+successful atomic import, that run receives `retention_hold=true` and is not
+deleted by the normal 180-day unheld retention job. The hold preserves release
+evidence; it does not make an old run fresh for another candidate.
+
+Local pytest, build, lint, E2E, checksum and static-contract results are
+`current-origin` candidate evidence only. They do not prove production deploy,
+`brain-origin` reachability, RU-origin reachability, live signing, store
+availability or physical-device behavior. Record every missing/live boundary
+separately in the final handoff.
 
 Retained evidence reference, not current procedure:
 

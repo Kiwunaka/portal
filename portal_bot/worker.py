@@ -33,17 +33,21 @@ from economy_service import (
 )
 from free_cycle_service import FREE_STANDARD_QUOTA_BYTES, process_due_free_cycle_resets, queue_free_profile_reentry
 from models import (
+    AdminActionIntent,
     CampaignSend,
     Event,
     EntitlementGrant,
     ExternalOrder,
     ExternalPaymentEvent,
     FunnelEvent,
+    InternalIngestNonce,
     KeyActionHistory,
     NodeHealthSample,
     OpsAlert,
     PayAttempt,
     RenderedSubscriptionSnapshot,
+    RuProbeRun,
+    RuProbeUploaderHeartbeat,
     SubscriptionFetchEvent,
     Template,
     User,
@@ -77,6 +81,12 @@ FUNNEL_EVENT_RETENTION_DAYS = max(1, int(os.getenv("FUNNEL_EVENT_RETENTION_DAYS"
 PAY_ATTEMPT_RETENTION_DAYS = max(1, int(os.getenv("PAY_ATTEMPT_RETENTION_DAYS", "365")))
 EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS = max(1, int(os.getenv("EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS", "180")))
 SUBSCRIPTION_EVENT_RETENTION_DAYS = max(1, int(os.getenv("SUBSCRIPTION_EVENT_RETENTION_DAYS", "90")))
+RU_PROBE_RETENTION_DAYS = max(1, int(os.getenv("RU_PROBE_RETENTION_DAYS", "180")))
+RU_PROBE_HEARTBEAT_RETENTION_DAYS = max(
+    1,
+    int(os.getenv("RU_PROBE_HEARTBEAT_RETENTION_DAYS", "30")),
+)
+ADMIN_ACTION_INTENT_RETENTION_DAYS = 7
 TELEMETRY_RETENTION_INTERVAL_SECONDS = max(3600, int(os.getenv("TELEMETRY_RETENTION_INTERVAL_SECONDS", "21600")))
 ANTIABUSE_RETENTION_BATCH_LIMIT = max(1, min(10_000, int(os.getenv("ANTIABUSE_RETENTION_BATCH_LIMIT", "1000"))))
 ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN = max(
@@ -1212,44 +1222,95 @@ def _delete_older_than(session, model, column, cutoff: datetime) -> int:
     )
 
 
+def run_telemetry_retention_once(*, session, now: datetime) -> dict[str, int]:
+    ru_now = (
+        now.replace(tzinfo=timezone.utc)
+        if now.tzinfo is None or now.utcoffset() is None
+        else now.astimezone(timezone.utc)
+    )
+    deleted = {
+        "events": _delete_older_than(
+            session,
+            Event,
+            Event.created_at,
+            now - timedelta(days=EVENT_RETENTION_DAYS),
+        ),
+        "funnel_events": _delete_older_than(
+            session,
+            FunnelEvent,
+            FunnelEvent.created_at,
+            now - timedelta(days=FUNNEL_EVENT_RETENTION_DAYS),
+        ),
+        "pay_attempts": _delete_older_than(
+            session,
+            PayAttempt,
+            PayAttempt.started_at,
+            now - timedelta(days=PAY_ATTEMPT_RETENTION_DAYS),
+        ),
+        "external_payment_events": _delete_older_than(
+            session,
+            ExternalPaymentEvent,
+            ExternalPaymentEvent.created_at,
+            now - timedelta(days=EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS),
+        ),
+        "subscription_fetch_events": _delete_older_than(
+            session,
+            SubscriptionFetchEvent,
+            SubscriptionFetchEvent.created_at,
+            now - timedelta(days=SUBSCRIPTION_EVENT_RETENTION_DAYS),
+        ),
+        "rendered_subscription_snapshots": _delete_older_than(
+            session,
+            RenderedSubscriptionSnapshot,
+            RenderedSubscriptionSnapshot.created_at,
+            now - timedelta(days=SUBSCRIPTION_EVENT_RETENTION_DAYS),
+        ),
+        "ru_probe_runs": int(
+            session.query(RuProbeRun)
+            .filter(RuProbeRun.retention_hold == False)
+            .filter(
+                RuProbeRun.finished_at
+                < ru_now - timedelta(days=RU_PROBE_RETENTION_DAYS)
+            )
+            .delete(synchronize_session=False)
+            or 0
+        ),
+        "internal_ingest_nonces": int(
+            session.query(InternalIngestNonce)
+            .filter(InternalIngestNonce.expires_at < ru_now)
+            .delete(synchronize_session=False)
+            or 0
+        ),
+        "ru_probe_uploader_heartbeats": int(
+            session.query(RuProbeUploaderHeartbeat)
+            .filter(
+                RuProbeUploaderHeartbeat.observed_at
+                < ru_now - timedelta(days=RU_PROBE_HEARTBEAT_RETENTION_DAYS)
+            )
+            .delete(synchronize_session=False)
+            or 0
+        ),
+        "admin_action_intents": int(
+            session.query(AdminActionIntent)
+            .filter(AdminActionIntent.status.in_(("prepared", "expired")))
+            .filter(AdminActionIntent.admin_audit_id.is_(None))
+            .filter(
+                AdminActionIntent.expires_at
+                < ru_now - timedelta(days=ADMIN_ACTION_INTENT_RETENTION_DAYS)
+            )
+            .delete(synchronize_session=False)
+            or 0
+        ),
+    }
+    return deleted
+
+
 async def telemetry_retention_job() -> None:
     while True:
         session = SessionLocal()
         try:
             now = _utcnow()
-            deleted = {
-                "events": _delete_older_than(session, Event, Event.created_at, now - timedelta(days=EVENT_RETENTION_DAYS)),
-                "funnel_events": _delete_older_than(
-                    session,
-                    FunnelEvent,
-                    FunnelEvent.created_at,
-                    now - timedelta(days=FUNNEL_EVENT_RETENTION_DAYS),
-                ),
-                "pay_attempts": _delete_older_than(
-                    session,
-                    PayAttempt,
-                    PayAttempt.started_at,
-                    now - timedelta(days=PAY_ATTEMPT_RETENTION_DAYS),
-                ),
-                "external_payment_events": _delete_older_than(
-                    session,
-                    ExternalPaymentEvent,
-                    ExternalPaymentEvent.created_at,
-                    now - timedelta(days=EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS),
-                ),
-                "subscription_fetch_events": _delete_older_than(
-                    session,
-                    SubscriptionFetchEvent,
-                    SubscriptionFetchEvent.created_at,
-                    now - timedelta(days=SUBSCRIPTION_EVENT_RETENTION_DAYS),
-                ),
-                "rendered_subscription_snapshots": _delete_older_than(
-                    session,
-                    RenderedSubscriptionSnapshot,
-                    RenderedSubscriptionSnapshot.created_at,
-                    now - timedelta(days=SUBSCRIPTION_EVENT_RETENTION_DAYS),
-                ),
-            }
+            deleted = run_telemetry_retention_once(session=session, now=now)
             session.commit()
             if any(deleted.values()):
                 logger.info("telemetry_retention deleted=%s", deleted)

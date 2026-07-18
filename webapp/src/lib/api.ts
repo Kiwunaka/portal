@@ -186,6 +186,8 @@ export type TicketInfo = {
   messages: TicketMessage[];
 };
 
+export type AdminTicketSummary = Omit<TicketInfo, "messages" | "assigned_admin_tg_id">;
+
 export type UserPayload = {
   tg_id: number;
   username?: string | null;
@@ -3359,10 +3361,15 @@ export function adminBroadcast(payload: {
   });
 }
 
-export async function adminTickets(status = "", limit = 30): Promise<TicketInfo[]> {
+export async function adminTickets(status = "", limit = 30): Promise<AdminTicketSummary[]> {
   const qs = `status=${encodeURIComponent(status)}&limit=${limit}`;
-  const data = await apiFetch<{ tickets: TicketInfo[] }>(`/api/admin/tickets?${qs}`);
+  const data = await apiFetch<{ tickets: AdminTicketSummary[] }>(`/api/admin/tickets?${qs}`);
   return data.tickets || [];
+}
+
+export async function adminTicketDetail(ticketId: number): Promise<TicketInfo> {
+  const data = await apiFetch<{ ticket: TicketInfo }>(`/api/admin/tickets/${ticketId}`);
+  return data.ticket;
 }
 
 export async function adminTicketReply(ticketId: number, body: string): Promise<TicketInfo> {
@@ -3456,49 +3463,6 @@ export function adminNodesDrift(only?: string[]): Promise<AdminNodeDriftReport> 
   if (only?.length) qs.set("only", only.join(","));
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<AdminNodeDriftReport>(`/api/admin/nodes/drift${suffix}`);
-}
-
-export function adminNodeDrain(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
-  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/drain`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-}
-
-export function adminNodeEnable(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
-  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/enable`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-}
-
-export function adminNodeUndrain(code: string): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
-  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/undrain`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-}
-
-export function adminNodeDisable(code: string, payload?: { force?: boolean }): Promise<{ ok: boolean; node: AdminNodeHealthRow }> {
-  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/disable`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {}),
-  });
-}
-
-export function adminNodeResync(
-  code: string,
-  payload?: { limit?: number; dry_run?: boolean },
-): Promise<{ ok: boolean; node_code: string; count: number; migrated: number; failed: number; skipped: number; dry_run: boolean; details: Array<Record<string, unknown>> }> {
-  return apiFetch(`/api/admin/nodes/${encodeURIComponent(code)}/resync`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload || {}),
-  });
 }
 
 export async function adminPromos(limit = 200): Promise<AdminPromoRow[]> {

@@ -27,7 +27,14 @@ class WorkerRetentionTests(unittest.TestCase):
             "SUPPORT_ATTACHMENT_CLEANUP_BATCH_SIZE",
             "SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT",
         )
-        for key in ("DATABASE_URL", "BOT_TOKEN", "PUBLIC_CHANNEL", *cleanup_env_keys):
+        for key in (
+            "DATABASE_URL",
+            "BOT_TOKEN",
+            "PUBLIC_CHANNEL",
+            *cleanup_env_keys,
+            "RU_PROBE_RETENTION_DAYS",
+            "RU_PROBE_HEARTBEAT_RETENTION_DAYS",
+        ):
             self._saved_env[key] = os.environ.get(key)
         for key in cleanup_env_keys:
             os.environ.pop(key, None)
@@ -37,6 +44,8 @@ class WorkerRetentionTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path.as_posix()}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
+        os.environ["RU_PROBE_RETENTION_DAYS"] = "180"
+        os.environ["RU_PROBE_HEARTBEAT_RETENTION_DAYS"] = "30"
 
         for mod_name in ("config", "db", "worker"):
             if mod_name in sys.modules:
@@ -774,6 +783,313 @@ class WorkerRetentionTests(unittest.TestCase):
                 self.worker.asyncio.run(self.worker.antiabuse_retention_job())
 
         self.assertEqual(sleep_calls, [1])
+
+    def test_telemetry_retention_cleans_ru_tables_and_preserves_holds(self) -> None:
+        from models import (
+            InternalIngestNonce,
+            ReleaseCandidate,
+            ReleaseOriginEvidence,
+            RuProbeRun,
+            RuProbeTargetResult,
+            RuProbeUploaderHeartbeat,
+        )
+
+        now = self.worker._utcnow()
+        session = self.db.SessionLocal()
+        try:
+            old_unheld = RuProbeRun(
+                run_id=str(uuid.uuid4()),
+                schema_version=2,
+                origin="ru",
+                probe_host_id="mini",
+                probe_host_label="Мини",
+                runner_version="2.0.0",
+                started_at=now - timedelta(days=181, minutes=2),
+                finished_at=now - timedelta(days=181),
+                received_at=now - timedelta(days=181),
+                manifest_revision="a" * 64,
+                execution_status="completed",
+                environment_verdict="available",
+                release_verdict="pass",
+                current_eligible=True,
+                google_reachable=True,
+                xhttp_alive=False,
+                hysteria_alive=False,
+                artifact_sha256="b" * 64,
+                ingest_key_id="ru-test",
+                retention_hold=False,
+            )
+            old_held = RuProbeRun(
+                run_id=str(uuid.uuid4()),
+                schema_version=2,
+                origin="ru",
+                probe_host_id="mini",
+                probe_host_label="Мини",
+                runner_version="2.0.0",
+                started_at=now - timedelta(days=181, minutes=2),
+                finished_at=now - timedelta(days=181),
+                received_at=now - timedelta(days=181),
+                manifest_revision="c" * 64,
+                execution_status="completed",
+                environment_verdict="available",
+                release_verdict="pass",
+                current_eligible=True,
+                google_reachable=True,
+                xhttp_alive=False,
+                hysteria_alive=False,
+                artifact_sha256="d" * 64,
+                ingest_key_id="ru-test",
+                retention_hold=True,
+                retention_hold_reason="release_evidence:candidate-1",
+                retention_held_at=now - timedelta(days=180),
+            )
+            session.add_all([old_unheld, old_held])
+            session.flush()
+            candidate_id = "f" * 64
+            session.add(
+                ReleaseCandidate(
+                    candidate_id=candidate_id,
+                    component="adminapp",
+                    version="2026.07.15.1",
+                    revision="9da042c9da042c9da042c9da042c9da042c9da0",
+                    artifact_sha256="e" * 64,
+                    canonical_descriptor_json='{"artifact_sha256":"' + "e" * 64 + '"}',
+                    descriptor_sha256=candidate_id,
+                    ingest_key_id="release-test",
+                    imported_at=now - timedelta(days=180),
+                )
+            )
+            session.flush()
+            session.add(
+                ReleaseOriginEvidence(
+                    candidate_id=candidate_id,
+                    origin="ru",
+                    check_name="ru_origin_reachability",
+                    status="PASS",
+                    evidence_sha256="9" * 64,
+                    observed_at=old_held.finished_at,
+                    detail_json='{"source":"retained-run"}',
+                    ru_probe_run_id=old_held.id,
+                    imported_at=now - timedelta(days=180),
+                )
+            )
+            for run in (old_unheld, old_held):
+                session.add(
+                    RuProbeTargetResult(
+                        run_db_id=run.id,
+                        target_id="node:nl",
+                        target_kind="delivery_node",
+                        scope="release_required",
+                        node_code="nl",
+                        endpoint_fingerprint="e" * 64,
+                        endpoint_host="nl.example.test",
+                        endpoint_port=443,
+                        requested_address_families_json=["ipv4"],
+                        transport_metadata_json={},
+                        transport_profile="legacy_reality_fallback",
+                        probe_mode="delivery_tls",
+                        observed_at=run.finished_at,
+                        overall_status="pass",
+                        current_eligible=True,
+                        dns_status="pass",
+                        tcp_status="pass",
+                        tls_status="pass",
+                        http_large_body_status="not_applicable",
+                        transport_handshake_status="not_applicable",
+                        ipv4_status="pass",
+                        ipv6_status="not_applicable",
+                        reported_transport_handshake_status="not_applicable",
+                        reported_transport_classification="ok",
+                    )
+                )
+            session.add_all(
+                [
+                    InternalIngestNonce(
+                        key_scope="ru_probe:ingest",
+                        key_id="ru-test",
+                        nonce_hash="1" * 64,
+                        request_path="/api/internal/probes/ru-origin/runs",
+                        request_timestamp=now - timedelta(days=2),
+                        body_sha256="2" * 64,
+                        expires_at=now - timedelta(minutes=1),
+                        created_at=now - timedelta(days=2),
+                    ),
+                    RuProbeUploaderHeartbeat(
+                        probe_host_id="mini",
+                        observed_at=now - timedelta(days=31),
+                        received_at=now - timedelta(days=31),
+                        service_version="2.0.0",
+                        pending_count=0,
+                        blocked_count=0,
+                        quarantine_count=0,
+                        archive_write_ok=True,
+                        disk_free_bytes=1_000_000,
+                        disk_state="ok",
+                        ingest_key_id="ru-test",
+                    ),
+                    RuProbeUploaderHeartbeat(
+                        probe_host_id="mini",
+                        observed_at=now - timedelta(days=29),
+                        received_at=now - timedelta(days=29),
+                        service_version="2.0.0",
+                        pending_count=0,
+                        blocked_count=0,
+                        quarantine_count=0,
+                        archive_write_ok=True,
+                        disk_free_bytes=1_000_000,
+                        disk_state="ok",
+                        ingest_key_id="ru-test",
+                    ),
+                ]
+            )
+            session.commit()
+
+            deleted = self.worker.run_telemetry_retention_once(
+                session=session,
+                now=now,
+            )
+            session.commit()
+
+            self.assertEqual(deleted["ru_probe_runs"], 1)
+            self.assertEqual(deleted["internal_ingest_nonces"], 1)
+            self.assertEqual(deleted["ru_probe_uploader_heartbeats"], 1)
+            remaining_runs = session.query(RuProbeRun).all()
+            self.assertEqual([row.id for row in remaining_runs], [old_held.id])
+            remaining_targets = session.query(RuProbeTargetResult).all()
+            self.assertEqual([row.run_db_id for row in remaining_targets], [old_held.id])
+            self.assertEqual(session.query(InternalIngestNonce).count(), 0)
+            self.assertEqual(session.query(RuProbeUploaderHeartbeat).count(), 1)
+            self.assertEqual(session.query(ReleaseCandidate).count(), 1)
+            self.assertEqual(session.query(ReleaseOriginEvidence).count(), 1)
+        finally:
+            session.close()
+
+    def test_admin_action_intent_retention_only_deletes_old_unaudited_prepared_rows(self) -> None:
+        from models import AdminActionIntent, AdminAudit
+
+        now = self.worker._utcnow()
+        session = self.db.SessionLocal()
+        try:
+            audit = AdminAudit(
+                actor_tg_id=9999,
+                action="admin_node_disable",
+                meta='{"outcome":"completed"}',
+                created_at=now - timedelta(days=20),
+            )
+            session.add(audit)
+            session.flush()
+
+            def make_intent(
+                status: str,
+                *,
+                age_days: int,
+                audit_id: int | None = None,
+            ) -> AdminActionIntent:
+                intent_id = str(uuid.uuid4())
+                terminal = status in {"completed", "failed", "uncertain"}
+                result = (
+                    f'{{"action_intent_id":"{intent_id}","status":"{status}"}}'
+                    if terminal
+                    else None
+                )
+                return AdminActionIntent(
+                    id=intent_id,
+                    actor_tg_id=9999,
+                    action="node.disable",
+                    target_type="node",
+                    target_id="nl",
+                    risk_level="L3",
+                    executor_kind="db",
+                    canonical_payload_json='{"force":false}',
+                    payload_hash="a" * 64,
+                    preview_snapshot_json='{"summary":"safe"}',
+                    snapshot_hash="b" * 64,
+                    confirmation_challenge_kind="exact_node_code",
+                    confirmation_challenge_hash="c" * 64,
+                    entity_version_hash="d" * 64,
+                    status=status,
+                    expires_at=now - timedelta(days=age_days),
+                    consumed_at=now - timedelta(days=age_days) if terminal else None,
+                    client_idempotency_key=str(uuid.uuid4()) if terminal else None,
+                    result_code=status if terminal else None,
+                    result_summary_json=result,
+                    result_hash="e" * 64 if terminal else None,
+                    admin_audit_id=audit_id,
+                    created_at=now - timedelta(days=age_days, minutes=10),
+                    updated_at=now - timedelta(days=age_days),
+                )
+
+            old_prepared = make_intent("prepared", age_days=8)
+            old_expired = make_intent("expired", age_days=8)
+            recent_prepared = make_intent("prepared", age_days=6)
+            audited_expired = make_intent(
+                "expired",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            completed = make_intent(
+                "completed",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            failed = make_intent(
+                "failed",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            uncertain = make_intent(
+                "uncertain",
+                age_days=20,
+                audit_id=int(audit.id),
+            )
+            expected_ids = {
+                "old_prepared": str(old_prepared.id),
+                "old_expired": str(old_expired.id),
+                "recent_prepared": str(recent_prepared.id),
+                "audited_expired": str(audited_expired.id),
+                "completed": str(completed.id),
+                "failed": str(failed.id),
+                "uncertain": str(uncertain.id),
+            }
+            audit_id = int(audit.id)
+            session.add_all(
+                [
+                    old_prepared,
+                    old_expired,
+                    recent_prepared,
+                    audited_expired,
+                    completed,
+                    failed,
+                    uncertain,
+                ]
+            )
+            session.commit()
+
+            deleted = self.worker.run_telemetry_retention_once(
+                session=session,
+                now=now,
+            )
+            session.commit()
+
+            self.assertEqual(deleted["admin_action_intents"], 2)
+            remaining_ids = {
+                row.id for row in session.query(AdminActionIntent).all()
+            }
+            self.assertNotIn(expected_ids["old_prepared"], remaining_ids)
+            self.assertNotIn(expected_ids["old_expired"], remaining_ids)
+            self.assertEqual(
+                remaining_ids,
+                {
+                    expected_ids["recent_prepared"],
+                    expected_ids["audited_expired"],
+                    expected_ids["completed"],
+                    expected_ids["failed"],
+                    expected_ids["uncertain"],
+                },
+            )
+            self.assertEqual(session.query(AdminAudit).filter_by(id=audit_id).count(), 1)
+        finally:
+            session.close()
 
 
 if __name__ == "__main__":

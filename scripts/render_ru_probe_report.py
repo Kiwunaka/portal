@@ -20,7 +20,71 @@ def _status(value: Any) -> str:
     return text or "unknown"
 
 
+def _render_v2(payload: dict[str, Any]) -> str:
+    probe_host = dict(payload.get("probe_host") or {})
+    host_id = str(probe_host.get("id") or "unknown")
+    host_label = str(probe_host.get("label") or "unknown")
+    public_ip = str(probe_host.get("public_ip") or "unknown")
+    lines = [
+        "# RU Probe Report",
+        "",
+        f"- finished_at: `{payload.get('finished_at', 'unknown')}`",
+        f"- probe_host: `{host_id}` — {host_label}",
+        f"- probe_public_ip: `{public_ip}`",
+        f"- execution_status: `{_status(payload.get('execution_status'))}`",
+        f"- manifest_revision: `{payload.get('manifest_revision', 'unknown')}`",
+        f"- runner_version: `{payload.get('runner_version', 'unknown')}`",
+        "",
+        "## Targets",
+        "",
+    ]
+    targets = list(payload.get("targets") or [])
+    if not targets:
+        lines.append("- no target results were provided")
+    for target in targets:
+        endpoint = dict(target.get("endpoint") or {})
+        stages = dict(target.get("stages") or {})
+        stage_parts = [
+            f"{stage_name}={_status(dict(stages.get(stage_name) or {}).get('status'))}"
+            for stage_name in (
+                "dns",
+                "tcp",
+                "tls",
+                "http_large_body",
+                "transport_handshake",
+            )
+        ]
+        family_status = dict(target.get("address_family_status") or {})
+        family_parts = [
+            f"{family}={_status(family_status.get(family))}"
+            for family in ("ipv4", "ipv6")
+        ]
+        row = (
+            f"- `{target.get('target_id', 'unknown')}` "
+            f"`{target.get('target_kind', 'target')}` "
+            f"`{endpoint.get('host', 'unknown')}:{endpoint.get('port', 'unknown')}` "
+            f"[{', '.join(stage_parts)}] "
+            f"[{', '.join(family_parts)}]"
+        )
+        detail_code = target.get("detail_code")
+        if detail_code:
+            row += f" (`{detail_code}`)"
+        lines.append(row)
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "- Stage states are shown exactly as `pass`, `fail`, `not_run`, or `not_applicable`.",
+            "- Server-side verdicts remain authoritative because required stages come from the signed manifest.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
 def _render(payload: dict[str, Any]) -> str:
+    if payload.get("schema_version") == 2:
+        return _render_v2(payload)
     timestamp = payload.get("timestamp_utc") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     probe_host = payload.get("probe_host", "unknown")
     probe_ip = payload.get("probe_public_ip", "unknown")

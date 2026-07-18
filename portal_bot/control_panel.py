@@ -394,13 +394,13 @@ class ControlPanel:
         async def _collect(node):
             code = str(getattr(node, "code", "") or "").strip()
             if not code:
-                return {"node_code": "", "rows": [], "error": "missing_node_code"}
+                return {"node_code": "", "rows": [], "error_code": "missing_node_code"}
             async with semaphore:
                 try:
                     rows = await self._clients[code].get_node_online_clients()
-                    return {"node_code": code, "rows": rows, "error": ""}
-                except Exception as exc:
-                    return {"node_code": code, "rows": [], "error": str(exc)[:300]}
+                    return {"node_code": code, "rows": rows, "error_code": ""}
+                except Exception:
+                    return {"node_code": code, "rows": [], "error_code": "panel_request_failed"}
 
         collected = await asyncio.gather(*[_collect(n) for n in selected_nodes], return_exceptions=False)
         rows: list[dict] = []
@@ -408,8 +408,13 @@ class ControlPanel:
         for item in collected:
             if not item:
                 continue
-            if item.get("error"):
-                errors.append({"node_code": item.get("node_code"), "error": item.get("error")})
+            if item.get("error_code"):
+                errors.append(
+                    {
+                        "node_code": item.get("node_code"),
+                        "evidence_code": item.get("error_code"),
+                    }
+                )
             rows.extend([dict(row or {}) for row in item.get("rows") or []])
         return {"rows": rows, "errors": errors}
 

@@ -9,17 +9,14 @@ import {
 
 import { cn } from "@/components/utils";
 
-export function DataTable<T>({
-  data,
-  columns,
-  empty = "Нет данных",
-  className
-}: {
+export interface DataTableProps<T> {
   data: T[];
   columns: ColumnDef<T>[];
   empty?: string;
   className?: string;
-}) {
+}
+
+export function DataTable<T>({ data, columns, empty = "Нет данных", className }: DataTableProps<T>) {
   // TanStack Table returns callable table helpers that React Compiler intentionally skips.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -65,3 +62,5 @@ export function DataTable<T>({
     </div>
   );
 }
+
+export type { ColumnDef } from "@tanstack/react-table";

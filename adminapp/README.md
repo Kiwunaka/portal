@@ -1,157 +1,160 @@
 # POKROV AdminApp
 
-Last updated: 2026-07-12
+Last updated: 2026-07-17
 
-## Document Status
+## Статус документа
 
-Document class: CANONICAL. This file is the local authority for the primary operator surface in `adminapp/`.
+Document class: CANONICAL. Этот файл — локальный источник правды для
+`adminapp/`, основной операторской поверхности (primary operator surface)
+`https://admin.pokrov.space/`.
 
-## Purpose
+## Назначение
 
-`adminapp/` is the dedicated Next.js primary operator app for `https://admin.pokrov.space/`.
+`adminapp/` — русскоязычный операционный command center для повседневной
+диагностики и безопасного управления POKROV. Первый экран отвечает на вопрос
+«что требует действий сейчас», а не дублирует сырые API-ответы.
 
-It owns the new admin surface for:
+Активная навигация состоит ровно из 15 маршрутов:
 
-- action-first ops overview: critical nodes, stuck payments, provider/free-tier limits, key pressure, and fresh tickets
-- global search by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifier
-- users: search, table, user card, access/online first, node/key/IP details only inside the user card, payments, tickets, and action history
-- online users: bounded live panel aggregate without raw IPs in the shared list
-- nodes: health-first view with panel/dataplane/probe/TLS/freshness/latency/observer/IP/transport/capacity and guarded lifecycle actions
-- payments: today/7d/30d revenue, stuck payments, orders, and abandoned buy/checkout counts
-- funnel: stage and source breakdown instead of raw JSON dumps
-- tickets, alerts, capacity, traffic, free-tier burn, provider/hoster quotas
-- free-tier burn and user caps
-- provider/hoster traffic quotas
-- promos, referrals, release readiness, and broadcast with preview/dry-run before real send
+| Маршрут | Экран | Основная задача |
+| --- | --- | --- |
+| `/` | Главная | Очередь реакции, состояние источников, основные показатели |
+| `/nodes` | Ноды | Master-detail по нодам, проверки из РФ, нагрузка, клиенты, транспорт и алерты |
+| `/traffic` | Трафик | Динамика трафика по диапазону, пулу и ноде |
+| `/alerts` | Алерты | Приоритизированная очередь подтверждения и приглушения сигналов |
+| `/provider-caps` | Лимиты провайдеров | Ручные лимиты, окна сброса и текущий расход |
+| `/free-tier` | Бесплатный контур | Лимиты и пользователи отдельного бесплатного пула |
+| `/users` | Пользователи | Поиск, карточка пользователя, доступ, ключи, риски и аудит |
+| `/online` | Сейчас онлайн | Ограниченный live-снимок без сырых IP в общем списке |
+| `/tickets` | Тикеты | Очередь поддержки и master-detail переписки |
+| `/payments` | Платежи | Выручка, проблемные заказы и детализация без raw payload |
+| `/funnel` | Воронка | Путь от входа до оплаты и подключения |
+| `/promos` | Промо | Реестр, создание и изменение промокодов |
+| `/referrals` | Рефералы | Очередь решений и история начислений |
+| `/release` | Релиз | Точный кандидат и раздельные доказательства по origin |
+| `/broadcast` | Рассылка | Предпросмотр, dry-run и подтверждённая отправка |
 
-The old `webapp/src/app/(admin)/admin/` routes stay as a parity fallback until the dedicated panel covers every operator workflow and the regression checklist is green.
+Старый монолит административных экранов не является активной поверхностью
+этого приложения. Новые операторские сценарии добавляются в соответствующий
+маршрут и его доменный API-клиент.
 
-## Stack
+## Правила интерфейса
 
-- Next.js static export
-- React 19
-- Tailwind CSS 4
-- POKROV design tokens from `shared/design-tokens.json`
-- TanStack Table for dense operator tables
-- Recharts for v1 charts
-- lucide-react icons
+- Вся видимая оператору навигация, статусы, ошибки, подсказки и подтверждения
+  написаны по-русски. Технический код допускается рядом как вторичный признак
+  для поиска и расследования.
+- Состояния `0`, «Нет данных», «Недоступно», «Устарело» и «Сбой» не
+  взаимозаменяемы. UI не превращает отсутствие телеметрии в нулевой показатель.
+- Списки и карточки используют master-detail: выбор сохраняется в URL, а
+  возврат браузера восстанавливает предыдущий контекст.
+- Поиск, фильтры, диапазон, выбранная строка и вкладка кодируются query-параметрами
+  через `src/lib/url-state.ts`. Это делает экран воспроизводимым по ссылке.
+- Фоновое обновление сохраняет уже показанные данные и помечает их как
+  «Обновляем»; ошибка одного источника не стирает успешные данные другого.
+- Подсказки доступны с клавиатуры и по фокусу. Модальные окна возвращают фокус,
+  а `prefers-reduced-motion` отключает необязательную анимацию.
+- На мобильном остаётся триаж и чтение. Плотные таблицы допускают горизонтальную
+  прокрутку; опасные действия не маскируются под обычные ссылки.
 
-The app intentionally avoids build-time `next/font/google` fetches; production builds use the local/system font stack with the POKROV token fallback.
+## Обновление данных
 
-No Grafana, Beszel, Netdata, VictoriaMetrics, or provider API is required for v1.
+Интервалы относятся к перечитыванию серверного read-model, а не к запуску
+новой проверки:
 
-## Runtime Contract
+- `/online` — каждые 30 секунд;
+- главная, ноды, последние RU-результаты, uploader, платежи, алерты, лимиты,
+  трафик, воронка, промо, рефералы и релиз — каждые 60 секунд на активном экране;
+- тяжёлая карточка пользователя, расследование, карточка тикета и история
+  RU-проверок — при открытии, смене контекста или по кнопке «Обновить»;
+- браузер останавливает polling в скрытой вкладке и перечитывает данные после
+  возвращения.
 
-Primary host:
+Сама внешняя проверка из РФ выполняется раз в 6 часов. Сервер считает последний
+пригодный запуск устаревшим после 7 часов, а heartbeat загрузчика — после
+45 минут. Минутный polling UI только быстро показывает новый серверный вердикт
+и никогда не выдаёт локальный таймер браузера за RU-доказательство.
 
-- `https://admin.pokrov.space/`
+## Безопасные действия
 
-Temporary DNS/SSL alias while Timeweb propagation is being resolved:
+Опасные изменения проходят через серверный action-intent:
 
-- `https://www.admin.pokrov.space/`
+1. UI отправляет нормализованное действие и цель в
+   `POST /api/admin/action-intents`.
+2. Сервер возвращает снимок «до», ожидаемый эффект, риск, срок жизни и текст
+   подтверждения.
+3. Оператор проверяет предпросмотр и вводит точное подтверждение; браузер
+   передаёт только требуемый SHA-256 и идентификаторы intent/idempotency.
+4. Исполнение отправляется на исходный mutation route с заголовками
+   `X-Admin-Intent-Id`, `X-Admin-Confirmation-SHA256` и
+   `X-Idempotency-Key`.
+5. UI показывает серверный снимок «после» и audit ID. При неопределённом
+   исходе он читает `GET /api/admin/action-intents/{intent_id}`, а не повторяет
+   мутацию вслепую.
 
-API host:
+Предпросмотр рассылки и dry-run не доказывают отправку. Неисполненный,
+просроченный или изменившийся intent готовится заново.
 
-- `https://api.pokrov.space/`
+## Runtime-контракт
 
-Auth:
+Основной UI-хост: `https://admin.pokrov.space/`.
 
-- reuses the existing POKROV admin auth model
-- first tries the existing browser web session cookie from the cabinet and exchanges it for a short admin bearer session
-- accepts Telegram WebApp initData as a manual fallback when the browser session is missing or not admin-authorized
-- roles v1: single superadmin
+API-хост: `https://api.pokrov.space/`.
 
-Key v1 endpoints:
+Авторизация переиспользует существующую административную сессию POKROV;
+Telegram WebApp initData остаётся ручным fallback. UI не хранит provider secret,
+HMAC-ключ RU-пробы, panel password, subscription URL или приватный ключ.
 
-- `GET /api/admin/ops/overview`
-- `GET /api/admin/users`
-- `GET /api/admin/users/{tg_id}`
-- `GET /api/admin/online/users`
-- `GET /api/admin/nodes/health`
-- `GET /api/admin/nodes/runtime`
-- `GET /api/admin/nodes/drift`
-- `POST /api/admin/nodes/{node_code}/drain`
-- `POST /api/admin/nodes/{node_code}/enable`
-- `POST /api/admin/nodes/{node_code}/undrain`
-- `POST /api/admin/nodes/{node_code}/disable`
-- `POST /api/admin/nodes/{node_code}/resync`
-- `GET /api/admin/keys/pressure`
-- `GET /api/admin/payments/summary?period=today|7d|30d`
-- `GET /api/admin/payments/orders`
-- `GET /api/admin/funnel/summary`
-- `GET /api/admin/free-tier/summary`
-- `GET /api/admin/free-tier/users`
-- `GET/POST/PATCH/DELETE /api/admin/provider-quotas`
-- `GET /api/admin/provider-quotas/status`
-- `GET /api/admin/nodes/timeseries`
-- `GET /api/admin/traffic/summary`
-- `GET /api/admin/alerts`
-- `POST /api/admin/alerts/{id}/ack`
-- `POST /api/admin/alerts/{id}/silence`
-- `POST /api/admin/broadcast` with `dry_run=true` for preview
+Ключевые read boundary для нового контура:
 
-Parity modules reuse existing admin endpoints such as `/api/admin/tickets`, `/api/admin/promos`, `/api/admin/referrals/pending`, `/api/admin/live-updates`, and `/api/admin/gift-codes`.
+- `GET /api/admin/ops/overview`;
+- `GET /api/admin/nodes/health`;
+- `GET /api/admin/nodes/runtime`;
+- `GET /api/admin/probes/ru-origin/latest`;
+- `GET /api/admin/probes/ru-origin/runs`;
+- `GET /api/admin/probes/ru-origin/uploader-status`;
+- `GET /api/admin/releases/candidates`;
+- `GET /api/admin/releases/{candidate_id}/readiness`.
 
-Privacy rule:
+Сырые и недоверенные payload не возвращаются в браузер. Общие online-списки
+не содержат raw IP; IP-контекст загружается только внутри карточки конкретного
+пользователя.
 
-- shared online lists must not expose raw IP addresses
-- raw/recent IP details are allowed only inside the individual user card for operator investigation
+Архитектурная граница описана в `docs/architecture/system-overview.md`,
+семантика мониторинга — в `docs/operations/monitoring-and-visibility.md`,
+операторский запуск RU-контура — в
+`docs/operations/ru-origin-probe-handoff.md`.
 
-## Local Run
+## Локальная работа
 
 ```powershell
+Push-Location adminapp
 npm.cmd install
-npm.cmd run dev
-```
-
-Default dev URL:
-
-- `http://localhost:3000/`
-
-Use `NEXT_PUBLIC_API_BASE_URL` when testing against a non-production API:
-
-```powershell
-$env:NEXT_PUBLIC_API_BASE_URL = "http://127.0.0.1:8080"
 npm.cmd run dev -- --port 3105
+Pop-Location
 ```
 
-## Build
+Для непродового API задайте `NEXT_PUBLIC_API_BASE_URL`. Не направляйте локальную
+сборку на production для проверки мутаций.
+
+## Проверка кандидата
+
+Финальная проверка выполняется один раз после завершения пакета правок:
 
 ```powershell
-npm.cmd run build
-npm.cmd run lint
-```
-
-Browser regression:
-
-```powershell
-npm.cmd run test:e2e
-```
-
-Static output is emitted to:
-
-- `adminapp/out`
-
-## Verification
-
-Minimum checks for adminapp work:
-
-```powershell
+Push-Location adminapp
 npm.cmd run build
 npm.cmd run lint
 npm.cmd run test:e2e
-python -m pytest tests/test_admin_ops_api.py -q
+Pop-Location
 ```
 
-Run the old `webapp` admin E2E only when retained parity routes change:
+Статический export появляется в `adminapp/out`. Успешные локальные build, lint
+и E2E подтверждают только локальный кандидат: они не доказывают production
+deploy, доступность `brain` или прохождение проверки из РФ.
 
-```powershell
-cd ../webapp
-npm.cmd run test:e2e:admin
-```
+## Публикация
 
-## Release Notes
-
-- `scripts/remote_deploy_brain_static_sites.py` validates and deploys `adminapp/out` alongside `marketing/out` and `webapp/out`.
-- `scripts/release_gate_check.py` includes `AdminApp production build`.
-- Do not delete `webapp` admin routes until a parity checklist confirms every existing operator workflow has moved.
+`scripts/remote_deploy_brain_static_sites.py` умеет валидировать и публиковать
+`adminapp/out` вместе с другими статическими поверхностями. Публикация,
+production-мутации и установка таймеров на `mini` выполняются только по
+отдельному операторскому разрешению и не входят в обычную UI-проверку.

@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-07-12
+Last updated: 2026-07-17
 
 ## Document Status
 
@@ -215,6 +215,8 @@ Default retention windows:
 - `PAY_ATTEMPT_RETENTION_DAYS=365` for Telegram Stars `pay_attempts`
 - `EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS=180` for raw provider callback event logs
 - `SUBSCRIPTION_EVENT_RETENTION_DAYS=90` for subscription fetch/render logs
+- `RU_PROBE_RETENTION_DAYS=180` for unheld RU probe runs, their normalized
+  target results, and routine uploader heartbeat history
 - `TELEMETRY_RETENTION_INTERVAL_SECONDS=21600` for cleanup cadence
 
 Do not use this job to delete `external_orders`: those rows remain the payment ledger and are needed for reconciliation, refund/chargeback review, and launch evidence.
@@ -239,6 +241,10 @@ a PostgreSQL TTL. During an incident or guarded rollback, use
 `python scripts/cleanup_antiabuse_retention.py` for read-only counts and add
 `--apply` only for an explicit one-shot drain. The JSON contains counts, not
 database URLs or row contents.
+
+Do not prune an RU run while `retention_hold=true`. Exact-candidate release
+evidence sets that hold together with a redacted reason; routine retention may
+remove only unheld data older than the configured window.
 
 ## External RU Probe Policy
 
@@ -319,6 +325,58 @@ Vantage-point reporting rule:
 - do not call a node RU-broken until an `RU-origin check` actually fails from a working RU probe host
 - if SSH, admin auth, provider dashboard, physical device, or RU probe access is missing, report the affected origin as `BLOCKED_BY_ACCESS` and name the missing dependency instead of treating the check as passed or failed
 - `current-origin check` is allowed to use local repo/static gates, browser/API probes, and non-secret public endpoints; it does not prove what `brain` or a Russian network can reach
+
+### RU Probe Read Model And Freshness
+
+Canonical timing:
+
+- runner cadence: every `6 hours`
+- last eligible run becomes stale after `7 hours`
+- uploader heartbeat becomes stale after `45 minutes`
+- uploader retry cadence: every `15 minutes`
+- database retention: `180 days` for unheld RU runs and associated routine
+  telemetry
+
+The extra hour between the 6-hour schedule and the 7-hour stale boundary is a
+delivery grace window, not permission to skip a run. `adminapp` may poll the
+read model every minute, but that polling neither runs the probe nor refreshes
+the evidence timestamp.
+
+Server verdict semantics:
+
+- `ok`: a current eligible run exists and the scoped POKROV checks passed
+- `degraded`: current evidence is usable but partial/non-release diagnostics
+  require attention
+- `failed`: the runner completed and returned an explicit scoped failure
+- `stale`: a previously eligible result exists but is older than 7 hours
+- `missing`: no eligible result has been stored
+- `unavailable`: the read source could not be queried; this is not a zero or a
+  failed RU run
+- `BLOCKED_BY_ACCESS`: signed or operator-retained evidence says the required
+  probe access was unavailable; it must not be converted to `PASS`
+
+Keep four independently useful layers on each node card:
+
+1. `brain` metrics freshness and control-plane dataplane probe
+2. panel/runtime state
+3. observer-lite state
+4. RU-origin result and uploader health
+
+A successful `brain -> node` check cannot replace RU-origin evidence. A stale
+heartbeat does not rewrite the last stored run as failed; it means new results
+may no longer be arriving. A missing run and an unavailable admin endpoint are
+different operational incidents.
+
+The read boundary is:
+
+- `/api/admin/probes/ru-origin/latest` for the global and per-node current view
+- `/api/admin/probes/ru-origin/runs` for bounded history
+- `/api/admin/probes/ru-origin/uploader-status` for spool delivery health
+
+These endpoints return normalized, redacted state from `ru_probe_runs`,
+`ru_probe_target_results`, and `ru_probe_uploader_heartbeats`. They do not
+return the HMAC secret, private spool artifact, arbitrary response body, raw
+subscription material, or host credential.
 
 ## Node Metrics Freshness And Alerts
 
@@ -407,9 +465,10 @@ Runtime telemetry wave `2026-06-02`:
 - `/api/admin/funnel/summary` combines anonymous site events with known `events`, `pay_attempts`, and `external_orders` to show the operator path: site entry, cabinet/bot open, checkout start, paid confirmation, and connection confirmation
 - funnel counts are operational direction signals, not billing reconciliation; paid truth still comes from signed provider callbacks and fulfillment records
 
-Admin ops app wave `2026-07-06`, redesigned `2026-07-08`:
+Admin ops app wave `2026-07-06`, command-center redesign completed locally on
+`2026-07-17`:
 
-- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and may expose only triage/status views on mobile
+- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 15 direct route modules while keeping mobile focused on triage/status
 - the first screen is "Требует действий": critical/warning nodes, stuck payments, provider/free-tier limits, suspicious key pressure, active alerts, and fresh tickets, followed by revenue, online, node health, and funnel summaries
 - global admin search routes operators into user investigation by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifiers
 - v1 does not require Grafana, Beszel, Netdata, VictoriaMetrics, or provider APIs; first-party Postgres tables, collected node samples, usage rollups, and admin API snapshots are the source of truth

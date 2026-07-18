@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 POKROV API for Telegram WebApp and Subscription endpoint.
 
@@ -35,9 +35,10 @@ import aiohttp
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func, text
+from sqlalchemy import text as sql_text
 from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -285,10 +286,12 @@ from warp_service import (
     warp_material_public_payload,
 )
 from admin_ops_service import (
+    admin_search_results as _ops_admin_search_results,
     admin_nodes_capacity_payload as _ops_admin_nodes_capacity_payload,
     alert_payload as _ops_alert_payload,
     build_admin_metrics_status_snapshot as _ops_build_admin_metrics_status_snapshot,
     build_alert_candidates as _ops_build_alert_candidates,
+    build_node_observability as _ops_build_node_observability,
     bytes_to_gb as _ops_bytes_to_gb,
     free_tier_summary as _ops_free_tier_summary,
     free_tier_user_rows as _ops_free_tier_user_rows,
@@ -299,6 +302,43 @@ from admin_ops_service import (
     refresh_ops_alerts_for_current_state as _ops_refresh_alerts_for_current_state,
     refresh_ops_alerts as _ops_refresh_alerts,
     traffic_summary_rows as _ops_traffic_summary_rows,
+)
+from admin_action_intent_service import (
+    NODE_MAPPING_LOCK_NAMESPACE,
+    ActionIntentError,
+    action_intent_error_identifiers as _action_intent_error_identifiers,
+    execute_action_intent as _execute_action_intent,
+    get_action_intent_status as _get_action_intent_status,
+    node_resync_recipient_fingerprint as _node_resync_recipient_fingerprint,
+    prepare_action_intent as _prepare_action_intent,
+)
+from internal_request_auth import (
+    InternalAuthError,
+    authenticate_internal_request,
+    load_internal_service_key_registry,
+)
+from ru_probe_contract import RuProbeContractError, validate_run_payload
+from ru_probe_service import (
+    RuProbeConfigurationError,
+    RuProbePayloadConflict,
+    RuProbeReadModelError,
+    build_ru_manifest,
+    evaluate_ru_run,
+    get_latest_ru_status,
+    get_ru_run_history,
+    get_ru_uploader_status,
+    store_evaluated_ru_run,
+    store_ru_heartbeat,
+    validate_ru_heartbeat,
+)
+from release_evidence_service import (
+    ReleaseEvidenceConflict,
+    ReleaseEvidenceNotFound,
+    ReleaseEvidenceReadError,
+    ReleaseEvidenceValidationError,
+    get_release_readiness,
+    import_release_evidence,
+    list_release_candidates,
 )
 
 
@@ -1110,6 +1150,17 @@ class AdminNodeSyncIn(BaseModel):
 
 class AdminNodeLifecycleIn(BaseModel):
     force: bool = False
+
+
+class AdminActionIntentTargetIn(BaseModel):
+    type: str = Field(min_length=1, max_length=32)
+    id: str = Field(min_length=1, max_length=128)
+
+
+class AdminActionIntentPrepareIn(BaseModel):
+    action: str = Field(min_length=1, max_length=64)
+    target: AdminActionIntentTargetIn
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class AdminNodeResyncIn(BaseModel):
@@ -3412,7 +3463,8 @@ def _apply_admin_user_search(query, q: str):
         User.linked_telegram_username.ilike(f"%{q_norm}%"),
         User.app_install_id.ilike(f"%{q_norm}%"),
     ]
-    if q_norm.isdigit():
+    is_signed_integer = q_norm.isdigit() or (q_norm.startswith("-") and q_norm[1:].isdigit())
+    if is_signed_integer and int(q_norm) != 0:
         filters.extend(
             [
                 User.tg_id == int(q_norm),
@@ -6222,6 +6274,69 @@ def _ticket_message_row(msg, *, include_media: bool = True) -> dict[str, Any]:
     return row
 
 
+_TICKET_ATTACHMENT_URL_RE = re.compile(
+    r"^/api/tickets/attachments/\d{8}-[A-Za-z0-9]{8,64}\.(?:png|jpg|jpeg|webp|pdf|txt)$"
+)
+
+
+def _safe_ticket_attachment(msg) -> dict[str, Any] | None:
+    media_type = str(getattr(msg, "media_type", "") or "").strip().lower()[:32]
+    media_file_id = str(getattr(msg, "media_file_id", "") or "").strip()
+    payload = _json_obj(getattr(msg, "media_payload", None))
+    if not (media_type or media_file_id or payload):
+        return None
+
+    raw_name = str(payload.get("name") or payload.get("file_name") or "").strip()
+    name = _sanitize_ticket_upload_name(raw_name) if raw_name else None
+    raw_content_type = str(
+        payload.get("content_type") or payload.get("mime_type") or ""
+    ).strip().lower()[:80]
+    content_type = (
+        raw_content_type
+        if re.fullmatch(
+            r"[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*",
+            raw_content_type,
+        )
+        else None
+    )
+    try:
+        parsed_size = int(payload.get("size") or payload.get("file_size") or 0)
+        size_bytes = parsed_size if 0 < parsed_size <= 10 * 1024 * 1024 * 1024 else 0
+    except (TypeError, ValueError):
+        size_bytes = 0
+    raw_url = str(payload.get("url") or "").strip()
+    download_url = raw_url if _TICKET_ATTACHMENT_URL_RE.fullmatch(raw_url) else None
+    attachment_kind = str(payload.get("kind") or media_type).strip().lower()
+    safe_type = {
+        "photo": "image",
+        "image": "image",
+        "document": "file",
+        "file": "file",
+        "video": "video",
+        "audio": "audio",
+        "voice": "audio",
+    }.get(attachment_kind, "attachment")
+    return {
+        "type": safe_type,
+        "name": name,
+        "content_type": content_type,
+        "size_bytes": size_bytes or None,
+        "download_url": download_url,
+    }
+
+
+def _ticket_message_detail_row(msg) -> dict[str, Any]:
+    return {
+        "id": msg.id,
+        "ticket_id": msg.ticket_id,
+        "sender_tg_id": msg.sender_tg_id,
+        "sender_role": msg.sender_role,
+        "body": str(msg.body or "")[:2000],
+        "attachment": _safe_ticket_attachment(msg),
+        "created_at": _safe_iso(msg.created_at),
+    }
+
+
 def _ticket_operator_presence(ticket) -> str:
     status = str(getattr(ticket, "status", "") or "").strip().lower()
     if status == STATUS_CLOSED:
@@ -6244,8 +6359,41 @@ def _ticket_unread_for_user(messages: list | None) -> int:
     return unread
 
 
-def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = True) -> dict[str, Any]:
+def _ticket_summary_row(ticket, messages: list | None = None) -> dict[str, Any]:
     rows = messages if messages is not None else []
+    last_message = rows[-1] if rows else None
+    last_message_preview = (str(getattr(last_message, "body", "") or "").strip()[:200] if last_message else "")
+    has_attachment = bool(last_message and _safe_ticket_attachment(last_message))
+    if not last_message_preview and has_attachment:
+        last_message_preview = "Вложение"
+    return {
+        "id": ticket.id,
+        "user_tg_id": ticket.user_tg_id,
+        "status": ticket.status,
+        "status_title": _ticket_status_title(ticket.status),
+        "subject": ticket.subject,
+        "created_at": _safe_iso(ticket.created_at),
+        "updated_at": _safe_iso(ticket.updated_at),
+        "closed_at": _safe_iso(ticket.closed_at),
+        "last_message_preview": last_message_preview,
+        "has_attachment": has_attachment,
+        "operatorPresence": _ticket_operator_presence(ticket),
+        "operatorTyping": False,
+        "unreadForUser": _ticket_unread_for_user(rows),
+        "slaHint": None if str(ticket.status or "").strip().lower() == STATUS_CLOSED else "support_queue",
+    }
+
+
+def _ticket_detail_row(ticket, messages: list | None = None) -> dict[str, Any]:
+    rows = list(messages or [])
+    return {
+        **_ticket_summary_row(ticket, rows),
+        "messages": [_ticket_message_detail_row(message) for message in rows],
+    }
+
+
+def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = True) -> dict[str, Any]:
+    rows = list(messages or [])
     last_message = rows[-1] if rows else None
     return {
         "id": ticket.id,
@@ -6257,7 +6405,7 @@ def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = T
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
-        "messages": [_ticket_message_row(m, include_media=include_media) for m in rows],
+        "messages": [_ticket_message_row(message, include_media=include_media) for message in rows],
         "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
         "operatorPresence": _ticket_operator_presence(ticket),
         "operatorTyping": False,
@@ -6335,16 +6483,34 @@ async def _maybe_append_support_ai_reply(
             logger.warning("support AI ticket session cleanup failed code=support_reply_cleanup_error")
 
 
+def _add_admin_audit(
+    session,
+    actor_tg_id: int,
+    action: str,
+    target_tg_id: int | None = None,
+    meta: dict[str, Any] | None = None,
+) -> AdminAudit:
+    row = AdminAudit(
+        actor_tg_id=int(actor_tg_id),
+        action=(action or "").strip()[:64],
+        target_tg_id=int(target_tg_id) if target_tg_id is not None else None,
+        meta=json.dumps(meta or {}, ensure_ascii=False, separators=(",", ":"))[:2000],
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
 def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = None, meta: dict[str, Any] | None = None) -> None:
     s = SessionLocal()
     try:
-        row = AdminAudit(
-            actor_tg_id=int(actor_tg_id),
-            action=(action or "").strip()[:64],
-            target_tg_id=int(target_tg_id) if target_tg_id is not None else None,
-            meta=json.dumps(meta or {}, ensure_ascii=False, separators=(",", ":"))[:2000],
+        _add_admin_audit(
+            s,
+            actor_tg_id=actor_tg_id,
+            action=action,
+            target_tg_id=target_tg_id,
+            meta=meta,
         )
-        s.add(row)
         s.commit()
     except Exception:
         s.rollback()
@@ -6395,6 +6561,463 @@ def _support_upload_reject_reason(exc: HTTPException) -> str:
     if "attachment is too large" in detail:
         return "attachment_too_large"
     return f"http_{int(exc.status_code)}"
+_RU_MANIFEST_PATH = "/api/internal/probes/ru-origin/manifest"
+_RU_RUNS_PATH = "/api/internal/probes/ru-origin/runs"
+_RU_HEARTBEAT_PATH = "/api/internal/probes/ru-origin/heartbeat"
+_RELEASE_CANDIDATES_PATH = "/api/internal/releases/candidates"
+_RU_RUN_MAX_BODY_BYTES = 512 * 1024
+_RU_HEARTBEAT_MAX_BODY_BYTES = 64 * 1024
+_RELEASE_EVIDENCE_MAX_BODY_BYTES = 256 * 1024
+_RU_CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+class _RuProbeHttpError(RuntimeError):
+    def __init__(self, status_code: int, code: str) -> None:
+        self.status_code = int(status_code)
+        self.code = str(code)
+        super().__init__(self.code)
+
+
+def _ru_probe_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _ru_probe_correlation_id(request: Request) -> str:
+    supplied = str(request.headers.get("x-correlation-id") or "")
+    if _RU_CORRELATION_RE.fullmatch(supplied) is not None:
+        return supplied
+    return uuid.uuid4().hex
+
+
+def _ru_probe_headers(request: Request) -> dict[str, str]:
+    required = {
+        "x-internal-key-id",
+        "x-internal-timestamp",
+        "x-internal-nonce",
+        "x-internal-signature",
+    }
+    headers: dict[str, str] = {}
+    for raw_name, raw_value in request.scope.get("headers", []):
+        name = raw_name.decode("latin-1").lower()
+        if name not in required:
+            continue
+        if name in headers:
+            raise InternalAuthError(401, "malformed_auth_header")
+        headers[name] = raw_value.decode("latin-1")
+    return headers
+
+
+def _require_exact_ru_probe_route(
+    request: Request,
+    expected_path: str,
+) -> None:
+    expected_raw_path = expected_path.encode("ascii")
+    if (
+        request.scope.get("path") != expected_path
+        or request.scope.get("raw_path") != expected_raw_path
+        or request.scope.get("query_string", b"") != b""
+    ):
+        raise InternalAuthError(400, "invalid_signed_path")
+
+
+def _ru_probe_unique_json_object(
+    pairs: list[tuple[str, object]],
+) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate JSON member")
+        result[name] = value
+    return result
+
+
+def _ru_probe_reject_json_constant(_value: str) -> object:
+    raise ValueError("non-finite JSON number")
+
+
+def _ru_probe_json(raw_body: bytes) -> object:
+    if not raw_body:
+        raise _RuProbeHttpError(422, "invalid_payload")
+    try:
+        return json.loads(
+            raw_body.decode("utf-8"),
+            object_pairs_hook=_ru_probe_unique_json_object,
+            parse_constant=_ru_probe_reject_json_constant,
+        )
+    except (UnicodeError, ValueError, RecursionError):
+        raise _RuProbeHttpError(422, "invalid_payload") from None
+
+
+def _ru_probe_error_response(
+    *,
+    status_code: int,
+    code: str,
+    correlation_id: str,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=int(status_code),
+        content={
+            "code": str(code)[:64],
+            "correlation_id": correlation_id,
+        },
+    )
+
+
+def _ru_probe_auth_error(error: InternalAuthError) -> tuple[int, str]:
+    if error.status_code == 409 and error.code == "replayed_nonce":
+        return 409, "replayed_nonce"
+    if error.status_code == 413:
+        return 413, "request_too_large"
+    if error.status_code == 403:
+        return 403, "key_scope_forbidden"
+    if error.status_code == 401:
+        return 401, "key_disabled"
+    if error.status_code == 400:
+        return 400, "invalid_request"
+    return 500, "temporary"
+
+
+def _ru_probe_http_exception(error: HTTPException) -> tuple[int, str]:
+    if int(error.status_code) == 413:
+        return 413, "request_too_large"
+    if 400 <= int(error.status_code) < 500:
+        return 400, "invalid_request"
+    return 500, "temporary"
+
+
+def _ru_probe_contract_error(error: RuProbeContractError) -> tuple[int, str]:
+    if error.code == "unsupported_schema_version":
+        return 422, "unsupported_schema"
+    return 422, "invalid_payload"
+
+
+def _ru_probe_response_for_exception(
+    error: Exception,
+    *,
+    correlation_id: str,
+) -> JSONResponse:
+    if isinstance(error, _RuProbeHttpError):
+        return _ru_probe_error_response(
+            status_code=error.status_code,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    if isinstance(error, InternalAuthError):
+        status_code, code = _ru_probe_auth_error(error)
+    elif isinstance(error, HTTPException):
+        status_code, code = _ru_probe_http_exception(error)
+    elif isinstance(error, RuProbeContractError):
+        status_code, code = _ru_probe_contract_error(error)
+    elif isinstance(error, RuProbePayloadConflict):
+        status_code, code = 409, "payload_conflict"
+    elif isinstance(error, RuProbeConfigurationError):
+        status_code, code = 500, "temporary"
+    else:
+        status_code, code = 500, "temporary"
+    return _ru_probe_error_response(
+        status_code=status_code,
+        code=code,
+        correlation_id=correlation_id,
+    )
+
+
+def _authenticate_ru_probe_request(
+    session,
+    request: Request,
+    *,
+    raw_body: bytes,
+    required_scope: str,
+    expected_path: str,
+    now: datetime,
+):
+    return authenticate_internal_request(
+        session,
+        load_internal_service_key_registry(),
+        method=request.method,
+        path=expected_path,
+        raw_body=raw_body,
+        headers=_ru_probe_headers(request),
+        required_scope=required_scope,
+        required_origin="ru",
+        now=now,
+    )
+
+
+async def _reject_ru_probe_route_alias(request: Request) -> JSONResponse:
+    return _ru_probe_error_response(
+        status_code=400,
+        code="invalid_request",
+        correlation_id=_ru_probe_correlation_id(request),
+    )
+
+
+app.add_api_route(
+    f"{_RU_MANIFEST_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["GET"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    f"{_RU_RUNS_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    f"{_RU_HEARTBEAT_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+
+
+async def _reject_release_evidence_route_alias(request: Request) -> JSONResponse:
+    return _ru_probe_error_response(
+        status_code=400,
+        code="invalid_request",
+        correlation_id=_ru_probe_correlation_id(request),
+    )
+
+
+app.add_api_route(
+    f"{_RELEASE_CANDIDATES_PATH}/",
+    _reject_release_evidence_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+
+
+@app.get(_RU_MANIFEST_PATH)
+async def internal_ru_probe_manifest(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_MANIFEST_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=0,
+            scope="RU probe manifest",
+        )
+        now = _ru_probe_now()
+        _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:manifest",
+            expected_path=_RU_MANIFEST_PATH,
+            now=now,
+        )
+        manifest = build_ru_manifest(session, now=now)
+        session.commit()
+        return JSONResponse(status_code=200, content=manifest)
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+@app.post(_RU_RUNS_PATH)
+async def internal_ru_probe_run(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_RUNS_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RU_RUN_MAX_BODY_BYTES,
+            scope="RU probe run",
+        )
+        now = _ru_probe_now()
+        authenticated = _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:ingest",
+            expected_path=_RU_RUNS_PATH,
+            now=now,
+        )
+        payload = _ru_probe_json(raw_body)
+        validated = validate_run_payload(payload)
+        if authenticated.subject != validated["probe_host"]["id"]:
+            raise _RuProbeHttpError(403, "key_scope_forbidden")
+        evaluated = evaluate_ru_run(session, validated, now=now)
+        stored = store_evaluated_ru_run(
+            session,
+            evaluated,
+            artifact_sha256=hashlib.sha256(raw_body).hexdigest(),
+            ingest_key_id=authenticated.key_id,
+            received_at=now,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created",
+                "run_db_id": stored.run_db_id,
+                "run_id": stored.run_id,
+                "created": stored.created,
+                "current_eligible": stored.current_eligible,
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+@app.post(_RU_HEARTBEAT_PATH)
+async def internal_ru_probe_heartbeat(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_HEARTBEAT_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RU_HEARTBEAT_MAX_BODY_BYTES,
+            scope="RU probe heartbeat",
+        )
+        now = _ru_probe_now()
+        authenticated = _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:heartbeat",
+            expected_path=_RU_HEARTBEAT_PATH,
+            now=now,
+        )
+        heartbeat = validate_ru_heartbeat(_ru_probe_json(raw_body), now=now)
+        if authenticated.subject != heartbeat.probe_host_id:
+            raise _RuProbeHttpError(403, "key_scope_forbidden")
+        stored = store_ru_heartbeat(
+            session,
+            heartbeat,
+            received_at=now,
+            ingest_key_id=authenticated.key_id,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created",
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+def _release_evidence_response_for_exception(
+    error: Exception,
+    *,
+    correlation_id: str,
+) -> JSONResponse:
+    if isinstance(error, ReleaseEvidenceConflict):
+        return _ru_probe_error_response(
+            status_code=409,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    if isinstance(error, ReleaseEvidenceValidationError):
+        return _ru_probe_error_response(
+            status_code=422,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    return _ru_probe_response_for_exception(
+        error,
+        correlation_id=correlation_id,
+    )
+
+
+@app.post(_RELEASE_CANDIDATES_PATH)
+async def internal_release_candidate_import(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RELEASE_CANDIDATES_PATH)
+    except Exception as error:
+        return _release_evidence_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RELEASE_EVIDENCE_MAX_BODY_BYTES,
+            scope="Release evidence",
+        )
+        now = _ru_probe_now()
+        authenticated = authenticate_internal_request(
+            session,
+            load_internal_service_key_registry(),
+            method=request.method,
+            path=_RELEASE_CANDIDATES_PATH,
+            raw_body=raw_body,
+            headers=_ru_probe_headers(request),
+            required_scope="release:evidence",
+            required_origin="release",
+            now=now,
+        )
+        payload = _ru_probe_json(raw_body)
+        stored = import_release_evidence(
+            session,
+            payload,
+            ingest_key_id=authenticated.key_id,
+            imported_at=now,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created" if stored.created else "already_imported",
+                "candidate_id": stored.candidate_id,
+                "created": stored.created,
+                "candidate_created": stored.candidate_created,
+                "evidence_created": stored.evidence_created,
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _release_evidence_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
 
 
 def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: bytes) -> tuple[str, str, str]:
@@ -8278,6 +8901,15 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         raise
     finally:
         s.close()
+
+    session_token = create_web_session_token(
+        tg_id=int(user.tg_id),
+        username=str(user.username or "").strip() or None,
+        auth_type="app",
+        auth_origin="app",
+    )
+    if not session_token:
+        raise HTTPException(status_code=500, detail="App session is not configured")
 
     sync_ok = False
     panel = ControlPanel()
@@ -14983,11 +15615,38 @@ async def admin_payment_orders(
         s.close()
 
 
+@app.get("/api/admin/payments/orders/{provider}/{order_id}")
+async def admin_payment_order_detail(
+    provider: str,
+    order_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    provider_norm = _normalize_provider(provider)
+    order_norm = str(order_id or "").strip()
+    s = SessionLocal()
+    try:
+        order = (
+            s.query(ExternalOrder)
+            .filter(
+                ExternalOrder.provider == provider_norm,
+                ExternalOrder.order_id == order_norm,
+            )
+            .first()
+        )
+        if order is None:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return {"order": _admin_payment_order_payload(s=s, order=order)}
+    finally:
+        s.close()
+
+
 @app.post("/api/admin/payments/orders/{provider}/{order_id}/reconcile")
 async def admin_payment_order_reconcile(
     provider: str,
     order_id: str,
     payload: AdminPaymentReconcileIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
@@ -14995,10 +15654,16 @@ async def admin_payment_order_reconcile(
     order_norm = str(order_id or "").strip()
     if not provider_norm or not order_norm:
         raise HTTPException(status_code=400, detail="Provider and order_id are required")
-    status_norm = str(payload.status or "").strip().lower()
-    if status_norm and status_norm not in ADMIN_PAYMENT_RECONCILE_STATUSES:
-        raise HTTPException(status_code=400, detail="Unsupported payment status")
-    note = str(payload.note or "").strip()
+    guarded_payload = {"note": str(payload.note or ""), "status": payload.status}
+    if not str(request.headers.get("X-Admin-Intent-Id") or "").strip():
+        return await _execute_admin_guarded_action(
+            actor_tg_id=actor,
+            action="payment.reconcile",
+            target_type="payment",
+            target_id="0",
+            payload=guarded_payload,
+            request=request,
+        )
     s = SessionLocal()
     try:
         order = (
@@ -15008,30 +15673,17 @@ async def admin_payment_order_reconcile(
         )
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
-        from_status = str(order.status or "created")
-        if status_norm:
-            order.status = status_norm
-            if status_norm == "paid" and not order.paid_at:
-                order.paid_at = _utcnow()
-        s.commit()
-        s.refresh(order)
-        order_payload = _admin_payment_order_payload(s=s, order=order)
+        target_id = str(int(order.id))
     finally:
         s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_payment_reconcile",
-        target_tg_id=int(order_payload["tg_id"]) if order_payload.get("tg_id") is not None else None,
-        meta={
-            "provider": provider_norm,
-            "order_id": order_norm,
-            "from_status": from_status,
-            "to_status": status_norm or from_status,
-            "note": note,
-        },
+        action="payment.reconcile",
+        target_type="payment",
+        target_id=target_id,
+        payload=guarded_payload,
+        request=request,
     )
-    return {"ok": True, "order": order_payload}
 
 
 @app.get("/api/admin/users")
@@ -15314,6 +15966,14 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
         )
 
     keys.sort(key=lambda item: str(item.get("node_code") or ""))
+    failed_panel_rows = [row for row in panel_rows if str(row.get("error") or "").strip()]
+    usable_panel_rows = [row for row in panel_rows if not str(row.get("error") or "").strip()]
+    if panel_error or (allowed_by_code and not panel_rows) or (failed_panel_rows and not usable_panel_rows):
+        panel_state = "error"
+    elif failed_panel_rows:
+        panel_state = "partial"
+    else:
+        panel_state = "ok"
     active_users_estimate, active_users_source = _estimate_active_users_proxy(
         live_connections=online_connections_now,
         live_nodes=online_count,
@@ -15337,7 +15997,7 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
             "traffic_down_bytes": int(total_down),
             "traffic_total_bytes": int(total_up + total_down),
             "traffic_total_gb": _bytes_to_gb(total_up + total_down),
-            "panel_state": "error" if panel_error else "ok",
+            "panel_state": panel_state,
             "panel_error": panel_error or None,
             "policies_total": int(len(policy_by_code)),
         },
@@ -15383,7 +16043,11 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         )
         loyalty_snapshot = _user_loyalty_snapshot(s=s, user=user)
         observer_payload = build_admin_observer_block(s=s, tg_id=int(tg_id))
-        sub_token = str(getattr(user, "sub_token", "") or "").strip()
+        observer_summary_payload = {
+            key: value
+            for key, value in observer_payload.items()
+            if key != "recent_ips"
+        }
         user_status = _user_effective_status(user)
         user_origin = _user_origin(user)
         user_payload = {
@@ -15403,8 +16067,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "referral_count": int(user.referral_count or 0),
             "streak_months": int(user.streak_months or 0),
             "created_at": _safe_iso(user.created_at),
-            "subscription_url": _admin_subscription_url(user),
-            "subscription_token": sub_token,
             "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
             "linked_telegram_username": getattr(user, "linked_telegram_username", None),
             "app_install_id": getattr(user, "app_install_id", None),
@@ -15413,7 +16075,7 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "observer_state": observer_payload.get("state", "ok"),
             "observer_updated_at": observer_payload.get("updated_at"),
         }
-        ticket_payload = [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
+        ticket_payload = [_ticket_summary_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
         policy_payload = [_serialize_key_policy(row) for row in policies]
         history_payload = [
             {
@@ -15422,7 +16084,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
                 "node_code": str(row.node_code or "") or None,
                 "actor_tg_id": int(row.actor_tg_id) if row.actor_tg_id is not None else None,
                 "source": str(row.source or ""),
-                "meta": _json_obj(getattr(row, "meta", None)),
                 "created_at": _safe_iso(row.created_at),
             }
             for row in history_rows
@@ -15433,7 +16094,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
                 "actor_tg_id": int(row.actor_tg_id),
                 "action": str(row.action or ""),
                 "target_tg_id": int(row.target_tg_id) if row.target_tg_id is not None else None,
-                "meta": _json_obj(getattr(row, "meta", None)),
                 "created_at": _safe_iso(row.created_at),
             }
             for row in recent_admin_rows
@@ -15448,6 +16108,63 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         risk = _compute_user_risk(s=s2, user=user, keys_summary=(keys_state or {}).get("summary") or {})
     finally:
         s2.close()
+    keys_summary = dict((keys_state or {}).get("summary") or {})
+    raw_panel_state = str(keys_summary.get("panel_state") or "").strip().lower()
+    panel_state = raw_panel_state if raw_panel_state in {"ok", "partial", "error"} else "error"
+
+    def panel_value(key: str) -> Any:
+        return keys_summary.get(key) if panel_state == "ok" else None
+
+    def safe_key_row(row: dict[str, Any]) -> dict[str, Any]:
+        row_panel_state = "error" if row.get("panel_error") else "ok"
+        panel_ok = row_panel_state == "ok"
+        return {
+            "node_code": row.get("node_code"),
+            "node_name": row.get("node_name"),
+            "exists": bool(row.get("exists")) if panel_ok else None,
+            "enabled": bool(row.get("enabled")) if panel_ok else None,
+            "online": row.get("online") if panel_ok and isinstance(row.get("online"), bool) else None,
+            "current_connections": int(row.get("current_connections") or 0) if panel_ok else None,
+            "sub_id_match": bool(row.get("sub_id_match")) if panel_ok else None,
+            "up_bytes": int(row.get("up_bytes") or 0) if panel_ok else None,
+            "down_bytes": int(row.get("down_bytes") or 0) if panel_ok else None,
+            "total_bytes": int(row.get("total_bytes") or 0) if panel_ok else None,
+            "total_gb": float(row.get("total_gb") or 0.0) if panel_ok else None,
+            "last_online_at": row.get("last_online_at") if panel_ok else None,
+            "last_online_age_seconds": row.get("last_online_age_seconds") if panel_ok else None,
+            "panel_state": row_panel_state,
+            "policy": row.get("policy"),
+        }
+
+    safe_keys_state = {
+        "summary": {
+            "nodes_total": panel_value("nodes_total"),
+            "nodes_with_client": panel_value("nodes_with_client"),
+            "nodes_online": panel_value("nodes_online"),
+            "online_keys_now": panel_value("online_keys_now"),
+            "online_connections_now": panel_value("online_connections_now"),
+            "active_users_estimate": panel_value("active_users_estimate"),
+            "active_users_source": panel_value("active_users_source"),
+            "online_node_codes_now": (
+                list(keys_summary.get("online_node_codes_now") or [])
+                if panel_state == "ok"
+                else None
+            ),
+            "nodes_enabled": panel_value("nodes_enabled"),
+            "subid_mismatch_count": panel_value("subid_mismatch_count"),
+            "traffic_up_bytes": panel_value("traffic_up_bytes"),
+            "traffic_down_bytes": panel_value("traffic_down_bytes"),
+            "traffic_total_bytes": panel_value("traffic_total_bytes"),
+            "traffic_total_gb": panel_value("traffic_total_gb"),
+            "panel_state": panel_state,
+            "policies_total": keys_summary.get("policies_total"),
+        },
+        "keys": [
+            safe_key_row(row)
+            for row in list((keys_state or {}).get("keys") or [])
+            if isinstance(row, dict)
+        ],
+    }
     return {
         "user": user_payload,
         "tickets": ticket_payload,
@@ -15456,272 +16173,136 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         "admin_actions": recent_admin_payload,
         "payment_orders": payment_order_payload,
         "risk": risk,
-        "observer": observer_payload,
+        "observer": observer_summary_payload,
         "loyalty": loyalty_snapshot,
-        **keys_state,
+        **safe_keys_state,
     }
 
 
-@app.post("/api/admin/users/manual")
-async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+@app.get("/api/admin/users/{tg_id}/investigation")
+async def admin_user_investigation(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
     s = SessionLocal()
     try:
-        tg_id = _next_manual_tg_id(s)
-        now = _utcnow()
-        user = User(
-            tg_id=tg_id,
-            username=None,
-            uuid=str(uuid.uuid4()),
-            email=f"MANUAL_{abs(tg_id)}",
-            sub_type="MANUAL",
-            current_plan_code="manual",
-            created_at=now,
-            expiry_at=now + timedelta(days=int(payload.days)),
-            is_active=True,
-            stars_paid=0,
-            total_gb=0,
-            trial_used=False,
-            tos_accepted=True,
-            first_purchase_done=False,
-            sub_token=_generate_sub_token(),
-            is_manual=True,
-            created_by_admin=actor,
-            display_name=payload.display_name.strip(),
-        )
-        s.add(user)
-        ensure_user_account_foundation(s, user, now=now)
-        s.commit()
-        s.refresh(user)
-        created = {
-            "tg_id": int(user.tg_id),
-            "uuid": str(user.uuid),
-            "email": str(user.email),
-            "sub_token": str(user.sub_token or ""),
-            "display_name": str(user.display_name or ""),
-            "sub_type": str(user.sub_type or ""),
-            "is_active": bool(user.is_active),
-            "expiry_at": _safe_iso(user.expiry_at),
+        user = s.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "tg_id": int(tg_id),
+            "generated_at": _safe_iso(_utcnow()),
+            "observer": build_admin_observer_block(s=s, tg_id=int(tg_id)),
         }
     finally:
         s.close()
 
-    panel = ControlPanel()
-    sync_ok = False
-    try:
-        await panel.login()
-        res = await panel.ensure_user_on_all_nodes(
-            tg_id=int(created["tg_id"]),
-            client_uuid=str(created["uuid"]),
-            email=str(created["email"]),
-            sub_id=str(created["sub_token"] or created["tg_id"]),
-            enable=True,
-            only_node_codes=None,
-        )
-        sync_ok = bool(any(res.values())) if res else False
-    finally:
-        await panel.close()
 
-    _audit_admin(
+@app.post("/api/admin/users/manual")
+async def admin_create_manual_user(
+    payload: ManualUserCreateRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_manual_create",
-        target_tg_id=int(created["tg_id"]),
-        meta={"days": payload.days, "sync_ok": sync_ok},
+        action="user.manual_create",
+        target_type="user",
+        target_id="manual",
+        payload={"display_name": payload.display_name, "days": int(payload.days)},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(created["tg_id"]),
-        action="manual_create",
-        actor_tg_id=actor,
-        meta={"days": int(payload.days), "sync_ok": bool(sync_ok)},
-    )
-    return {
-        "ok": True,
-        "user": {
-            "tg_id": int(created["tg_id"]),
-            "display_name": created["display_name"],
-            "sub_type": created["sub_type"],
-            "is_active": bool(created["is_active"]),
-            "expiry_at": created["expiry_at"],
-            "subscription_url": build_subscription_url(str(created["sub_token"] or "")),
-        },
-        "sync_ok": sync_ok,
-    }
 
 
 @app.post("/api/admin/users/{tg_id}/manual/extend")
 @app.post("/api/admin/users/{tg_id}/manual-extend")
-async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_extend_manual_user(
+    tg_id: int,
+    payload: ManualUserExtendRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    delta_days = int(payload.delta_days if payload.delta_days is not None else (payload.days or 0))
-    if delta_days == 0:
-        raise HTTPException(status_code=400, detail="delta_days must be non-zero")
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        now = _utcnow()
-        cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        candidate_expiry = cur + timedelta(days=delta_days)
-        if candidate_expiry <= now:
-            if not bool(payload.allow_deactivate):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Operation would deactivate user; pass allow_deactivate=true to confirm",
-                )
-            user.expiry_at = now
-            user.is_active = False
-        else:
-            user.expiry_at = candidate_expiry
-            user.is_active = True
-        s.commit()
-        s.refresh(user)
-        expiry_iso = _safe_iso(user.expiry_at)
-        is_active = bool(user.is_active)
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_manual_extend",
-        target_tg_id=tg_id,
-        meta={"delta_days": int(delta_days), "allow_deactivate": bool(payload.allow_deactivate)},
+        action="user.extend",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={
+            "days": payload.days,
+            "delta_days": payload.delta_days,
+            "allow_deactivate": bool(payload.allow_deactivate),
+        },
+        request=request,
     )
-    return {"ok": True, "expiry_at": expiry_iso, "is_active": is_active, "delta_days": int(delta_days)}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/block")
-async def admin_block_manual_user(tg_id: int, payload: ManualUserBlockRequest, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_block_manual_user(
+    tg_id: int,
+    payload: ManualUserBlockRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user.is_active = not bool(payload.blocked)
-        s.commit()
-        user_uuid = str(user.uuid)
-        active = bool(user.is_active)
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        await panel.enable_client(user_uuid, enable=active)
-    finally:
-        await panel.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_manual_block", target_tg_id=tg_id, meta={"blocked": bool(payload.blocked)})
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="manual_block" if bool(payload.blocked) else "manual_unblock",
-        node_code=None,
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        meta={"blocked": bool(payload.blocked)},
+        action="user.block",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"blocked": bool(payload.blocked)},
+        request=request,
     )
-    return {"ok": True, "is_active": active}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/regenerate-token")
-async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_regenerate_manual_token(
+    tg_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user.sub_token = _generate_sub_token()
-        s.commit()
-        s.refresh(user)
-        _process_referral_bonus_queue(limit=100, force_without_activity=False)
-        sub_token = str(user.sub_token or "")
-        user_uuid = str(user.uuid or "")
-        is_active = bool(user.is_active)
-    finally:
-        s.close()
-
-    sync_ok = False
-    if user_uuid:
-        panel = ControlPanel()
-        try:
-            await panel.login()
-            sync_ok = bool(await panel.enable_client(user_uuid, enable=is_active))
-        finally:
-            await panel.close()
-    _audit_admin(actor_tg_id=actor, action="admin_manual_regen_token", target_tg_id=tg_id)
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="token_regenerate",
-        node_code=None,
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        meta={"sync_ok": bool(sync_ok)},
+        action="user.regenerate_token",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={},
+        request=request,
     )
-    return {
-        "ok": True,
-        "subscription_url": build_subscription_url(str(sub_token or "")),
-        "sync_ok": bool(sync_ok),
-    }
 
 
 @app.post("/api/admin/users/{tg_id}/safe-delete")
 async def admin_safe_delete_test_user(
     tg_id: int,
     payload: AdminUserSafeDeleteIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    if not bool(payload.confirm):
-        raise HTTPException(status_code=400, detail="confirm=true is required")
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        if not _is_manual_test_user(user):
-            raise HTTPException(status_code=400, detail="Only explicit manual/test users can be deleted")
-        target_meta = {
-            "tg_id": int(user.tg_id),
-            "display_name": str(getattr(user, "display_name", "") or ""),
-            "sub_type": str(getattr(user, "sub_type", "") or ""),
-        }
-        s.query(UserNode).filter(UserNode.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(KeyActionHistory).filter(KeyActionHistory.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(Event).filter(Event.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.delete(user)
-        s.commit()
-    finally:
-        s.close()
-
-    panel_deleted = False
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        panel_deleted = bool(await panel.delete_client(int(tg_id)))
-    except Exception as exc:
-        logger.warning("admin safe delete panel cleanup failed tg_id=%s err=%s", int(tg_id), exc)
-    finally:
-        await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_safe_delete_test_user",
-        target_tg_id=int(tg_id),
-        meta={**target_meta, "panel_deleted": bool(panel_deleted)},
+        action="user.safe_delete",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"confirm": bool(payload.confirm)},
+        request=request,
     )
-    return {"ok": True, "tg_id": int(tg_id), "panel_deleted": bool(panel_deleted)}
 
 
 @app.post("/api/admin/users/{tg_id}/delete-test-user")
 async def admin_delete_test_user_compat(
     tg_id: int,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    return await admin_safe_delete_test_user(
-        tg_id=tg_id,
-        payload=AdminUserSafeDeleteIn(confirm=True),
-        x_telegram_init_data=x_telegram_init_data,
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="user.delete_test",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={},
+        request=request,
     )
 
 
@@ -15730,147 +16311,54 @@ async def admin_user_key_toggle(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyToggleIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        hard_cap_gb = _get_user_node_hard_cap_gb(s=s, tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.set_user_key_enabled_on_node(
-            tg_id=int(tg_id),
-            node_code=str(node_code or ""),
-            enable=bool(payload.enable),
-            sub_id=expected_sub_id,
-            hard_cap_gb=hard_cap_gb,
-        )
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel update failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_toggle",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or ""), "enable": bool(payload.enable)},
+        action="user.key_toggle",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code, "enable": bool(payload.enable)},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_enable" if bool(payload.enable) else "key_disable",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-        meta={"enabled": bool(payload.enable)},
-    )
-    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or ""), "enabled": bool(payload.enable)}
 
 
 @app.post("/api/admin/users/{tg_id}/keys/{node_code}/reset-traffic")
 async def admin_user_key_reset_traffic(
     tg_id: int,
     node_code: str,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.reset_user_key_traffic_on_node(tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel reset failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_reset_traffic",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        action="user.key_reset_traffic",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_reset_traffic",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-    )
-    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or "")}
 
 
 @app.post("/api/admin/users/{tg_id}/keys/{node_code}/resync-subid")
 async def admin_user_key_resync_subid(
     tg_id: int,
     node_code: str,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        hard_cap_gb = _get_user_node_hard_cap_gb(s=s, tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.resync_user_key_subid_on_node(
-            tg_id=int(tg_id),
-            node_code=str(node_code or ""),
-            sub_id=expected_sub_id,
-            hard_cap_gb=hard_cap_gb,
-        )
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel subId sync failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_resync_subid",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        action="user.key_resync_subid",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_resync_subid",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-    )
-    return {
-        "ok": True,
-        "tg_id": int(tg_id),
-        "node_code": str(node_code or ""),
-        "expected_sub_id": expected_sub_id,
-    }
 
 
 @app.get("/api/admin/users/{tg_id}/key-history")
@@ -15925,76 +16413,27 @@ async def admin_user_key_limits_put(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyLimitsIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    node = str(node_code or "").strip().lower()
-    if not node:
-        raise HTTPException(status_code=400, detail="node_code is required")
-    if payload.soft_cap_gb is not None and payload.hard_cap_gb is not None and int(payload.hard_cap_gb) < int(payload.soft_cap_gb):
-        raise HTTPException(status_code=400, detail="hard_cap_gb must be >= soft_cap_gb")
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        row = (
-            s.query(UserKeyPolicy)
-            .filter(UserKeyPolicy.tg_id == int(tg_id), func.lower(UserKeyPolicy.node_code) == node)
-            .first()
-        )
-        if not row:
-            row = UserKeyPolicy(
-                tg_id=int(tg_id),
-                node_code=node,
-                updated_by=actor,
-                updated_at=_utcnow(),
-            )
-            s.add(row)
-        row.burst_mbps = int(payload.burst_mbps) if payload.burst_mbps is not None else None
-        row.soft_cap_gb = int(payload.soft_cap_gb) if payload.soft_cap_gb is not None else None
-        row.hard_cap_gb = int(payload.hard_cap_gb) if payload.hard_cap_gb is not None else None
-        row.notify_soft = bool(payload.notify_soft)
-        row.notify_hard = bool(payload.notify_hard)
-        row.auto_disable_on_hard = bool(payload.auto_disable_on_hard)
-        row.updated_by = actor
-        row.updated_at = _utcnow()
-        s.commit()
-        s.refresh(row)
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        row_payload = _serialize_key_policy(row)
-    finally:
-        s.close()
-
-    applied = None
-    if bool(payload.apply_now):
-        panel = ControlPanel()
-        try:
-            await panel.login()
-            applied = await panel.apply_user_key_limits_on_node(
-                tg_id=int(tg_id),
-                node_code=node,
-                hard_cap_gb=(int(payload.hard_cap_gb) if payload.hard_cap_gb is not None else None),
-                sub_id=expected_sub_id,
-            )
-        finally:
-            await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_limits_put",
-        target_tg_id=int(tg_id),
-        meta={"node_code": node, "policy": row_payload, "apply_now": bool(payload.apply_now), "applied": applied},
+        action="user.key_limits",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={
+            "node_code": node_code,
+            "burst_mbps": payload.burst_mbps,
+            "soft_cap_gb": payload.soft_cap_gb,
+            "hard_cap_gb": payload.hard_cap_gb,
+            "notify_soft": bool(payload.notify_soft),
+            "notify_hard": bool(payload.notify_hard),
+            "auto_disable_on_hard": bool(payload.auto_disable_on_hard),
+            "apply_now": bool(payload.apply_now),
+        },
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_limits_update",
-        node_code=node,
-        actor_tg_id=actor,
-        meta={"policy": row_payload, "apply_now": bool(payload.apply_now), "applied": applied},
-    )
-    return {"ok": True, "policy": row_payload, "applied": applied}
 
 
 @app.get("/api/admin/users/{tg_id}/risk")
@@ -16034,269 +16473,62 @@ async def admin_user_loyalty_get(tg_id: int, x_telegram_init_data: str = Header(
 async def admin_user_loyalty_grant(
     tg_id: int,
     payload: AdminLoyaltyGrantIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        loyalty = _user_loyalty_snapshot(s=s, user=user)
-        tier = next((x for x in loyalty.get("tiers", []) if int(x.get("days") or 0) == int(payload.tier_days)), None)
-        if not tier:
-            raise HTTPException(status_code=404, detail="Tier not found")
-        if not bool(tier.get("unlocked")):
-            raise HTTPException(status_code=400, detail="Tier is not unlocked yet")
-        reward_key = str(tier.get("reward_key") or "")
-        if bool(tier.get("claimed")):
-            raise HTTPException(status_code=400, detail="Tier already claimed")
-        bonus_days = int(tier.get("bonus_days") or 0)
-        now = _utcnow()
-        start = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = start + timedelta(days=max(1, bonus_days))
-        user.is_active = True
-        s.add(RewardClaim(tg_id=int(tg_id), reward_key=reward_key, meta=json.dumps({"tier": int(payload.tier_days)}, ensure_ascii=False)))
-        s.commit()
-        try:
-            sync_ok = bool(await _sync_user_after_paid_bonus(user))
-        except Exception as exc:
-            logger.warning("loyalty grant sync failed tg_id=%s err=%s", int(tg_id), exc)
-            sync_ok = False
-        expiry_at = _safe_iso(user.expiry_at)
-    except IntegrityError:
-        s.rollback()
-        raise HTTPException(status_code=400, detail="Tier already claimed")
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_loyalty_grant",
-        target_tg_id=int(tg_id),
-        meta={"tier_days": int(payload.tier_days), "sync_ok": bool(sync_ok)},
+        action="user.loyalty_grant",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"tier_days": int(payload.tier_days)},
+        request=request,
     )
-    return {"ok": True, "tier_days": int(payload.tier_days), "expiry_at": expiry_at, "sync_ok": bool(sync_ok)}
 
 
 @app.post("/api/admin/users/{tg_id}/presets/run")
 async def admin_user_preset_run(
     tg_id: int,
     payload: AdminUserPresetRunIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    preset = str(payload.preset or "").strip().lower()
-    if preset not in {"reset_key", "rotate_link", "extend_1d", "send_guide"}:
-        raise HTTPException(status_code=400, detail="Unsupported preset")
-
-    if preset == "extend_1d":
-        s = SessionLocal()
-        try:
-            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
-            now = _utcnow()
-            base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-            user.expiry_at = base + timedelta(days=1)
-            user.is_active = True
-            s.commit()
-            expiry_at = _safe_iso(user.expiry_at)
-        finally:
-            s.close()
-        _audit_admin(actor_tg_id=actor, action="admin_operator_extend_1d", target_tg_id=int(tg_id))
-        return {"ok": True, "preset": preset, "expiry_at": expiry_at}
-
-    if preset == "send_guide":
-        text = (
-            "Инструкция по подключению:\n"
-            "1) Откройте раздел Устройства.\n"
-            "2) Импортируйте ключ.\n"
-            "3) Проверьте статус и перезапустите приложение."
-        )
-        ok = await _telegram_send_message(int(tg_id), text)
-        _audit_admin(actor_tg_id=actor, action="admin_operator_send_guide", target_tg_id=int(tg_id), meta={"ok": bool(ok)})
-        if not ok:
-            raise HTTPException(status_code=502, detail="Telegram send failed")
-        return {"ok": True, "preset": preset}
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        nodes = enabled_nodes(s)
-    finally:
-        s.close()
-    keys_state = await _admin_user_keys_state(user, nodes=nodes)
-    keys = [k for k in (keys_state.get("keys") or []) if bool(k.get("exists"))]
-
-    panel = ControlPanel()
-    changed = 0
-    failed = 0
-    try:
-        await panel.login()
-        if preset == "reset_key":
-            for k in keys:
-                ok = await panel.reset_user_key_traffic_on_node(tg_id=int(tg_id), node_code=str(k.get("node_code") or ""))
-                if ok:
-                    changed += 1
-                else:
-                    failed += 1
-                    continue
-                _key_history_log(
-                    tg_id=int(tg_id),
-                    action="key_reset_traffic",
-                    node_code=str(k.get("node_code") or ""),
-                    actor_tg_id=actor,
-                    source="preset",
-                )
-        elif preset == "rotate_link":
-            s2 = SessionLocal()
-            try:
-                db_user = s2.query(User).filter(User.tg_id == int(tg_id)).first()
-                if not db_user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                db_user.sub_token = _generate_sub_token()
-                s2.commit()
-                s2.refresh(db_user)
-                expected_sub_id = str(db_user.sub_token or db_user.tg_id)
-            finally:
-                s2.close()
-            for k in keys:
-                code = str(k.get("node_code") or "")
-                hard_cap = None
-                s3 = SessionLocal()
-                try:
-                    hard_cap = _get_user_node_hard_cap_gb(s=s3, tg_id=int(tg_id), node_code=code)
-                finally:
-                    s3.close()
-                ok = await panel.resync_user_key_subid_on_node(
-                    tg_id=int(tg_id),
-                    node_code=code,
-                    sub_id=expected_sub_id,
-                    hard_cap_gb=hard_cap,
-                )
-                if ok:
-                    changed += 1
-                else:
-                    failed += 1
-                    continue
-                _key_history_log(tg_id=int(tg_id), action="key_resync_subid", node_code=code, actor_tg_id=actor, source="preset")
-            _key_history_log(tg_id=int(tg_id), action="token_regenerate", actor_tg_id=actor, source="preset")
-    finally:
-        await panel.close()
-    _audit_admin(actor_tg_id=actor, action=f"admin_operator_{preset}", target_tg_id=int(tg_id), meta={"changed": changed, "failed": failed})
-    return {
-        "ok": True,
-        "preset": preset,
-        "changed": int(changed),
-        "failed": int(failed),
-        "subscription_url": build_subscription_url(expected_sub_id),
-    }
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="user.preset_run",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"preset": payload.preset},
+        request=request,
+    )
 
 
 @app.post("/api/admin/users/keys/bulk-action")
-async def admin_users_keys_bulk_action(payload: AdminUserKeysBulkActionIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_users_keys_bulk_action(
+    payload: AdminUserKeysBulkActionIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    action = str(payload.action or "").strip().lower()
-    if action not in {"disable", "enable", "reset", "resync"}:
-        raise HTTPException(status_code=400, detail="Unsupported action")
-
-    s = SessionLocal()
-    try:
-        users = _admin_select_users_for_segment(
-            s=s,
-            segment=payload.segment,
-            q=payload.q,
-            tg_ids=payload.tg_ids,
-            limit=payload.limit,
-        )
-    finally:
-        s.close()
-    if not users:
-        return {"ok": True, "action": action, "dry_run": bool(payload.dry_run), "users": 0, "changed": 0, "failed": 0, "details": []}
-
-    if len(users) > 50 and not bool(payload.force) and not bool(payload.dry_run):
-        return {
-            "ok": False,
-            "requires_force": True,
-            "action": action,
-            "users": int(len(users)),
-            "message": "Bulk action over 50 users requires force=true",
-        }
-
-    if bool(payload.dry_run):
-        return {
-            "ok": True,
-            "action": action,
-            "dry_run": True,
-            "users": int(len(users)),
-            "preview_tg_ids": [int(u.tg_id) for u in users[:50]],
-        }
-
-    panel = ControlPanel()
-    changed = 0
-    failed = 0
-    details: list[dict[str, Any]] = []
-    try:
-        await panel.login()
-        for user in users:
-            tg_id = int(user.tg_id)
-            nodes = payload.node_codes or []
-            if not nodes:
-                snapshots = await panel.get_user_key_snapshots(tg_id=tg_id)
-                nodes = [str(r.get("node_code") or "") for r in snapshots if str(r.get("node_code") or "").strip()]
-            expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-            user_changed = 0
-            user_failed = 0
-            for node_code in nodes:
-                code = str(node_code or "").strip().lower()
-                if not code:
-                    continue
-                s2 = SessionLocal()
-                try:
-                    hard_cap_gb = _get_user_node_hard_cap_gb(s=s2, tg_id=tg_id, node_code=code)
-                finally:
-                    s2.close()
-                ok: bool | None
-                if action == "disable":
-                    ok = await panel.set_user_key_enabled_on_node(tg_id=tg_id, node_code=code, enable=False, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                elif action == "enable":
-                    ok = await panel.set_user_key_enabled_on_node(tg_id=tg_id, node_code=code, enable=True, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                elif action == "reset":
-                    ok = await panel.reset_user_key_traffic_on_node(tg_id=tg_id, node_code=code)
-                else:
-                    ok = await panel.resync_user_key_subid_on_node(tg_id=tg_id, node_code=code, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                if ok:
-                    changed += 1
-                    user_changed += 1
-                    hist_action = {
-                        "disable": "key_disable",
-                        "enable": "key_enable",
-                        "reset": "key_reset_traffic",
-                        "resync": "key_resync_subid",
-                    }[action]
-                    _key_history_log(tg_id=tg_id, action=hist_action, node_code=code, actor_tg_id=actor, source="bulk")
-                else:
-                    failed += 1
-                    user_failed += 1
-            details.append({"tg_id": tg_id, "changed": user_changed, "failed": user_failed})
-    finally:
-        await panel.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_bulk_key_action",
-        meta={
-            "action": action,
+        action="user.bulk_key_action",
+        target_type="users",
+        target_id="bulk",
+        payload={
+            "action": payload.action,
             "segment": payload.segment,
-            "users": len(users),
-            "changed": changed,
-            "failed": failed,
-            "forced": bool(payload.force),
+            "node_codes": list(payload.node_codes),
+            "tg_ids": list(payload.tg_ids),
+            "q": payload.q,
+            "limit": int(payload.limit),
+            "dry_run": bool(payload.dry_run),
+            "force": bool(payload.force),
         },
+        request=request,
     )
-    return {"ok": True, "action": action, "users": int(len(users)), "changed": int(changed), "failed": int(failed), "details": details}
 
 
 @app.get("/api/admin/audit")
@@ -16340,25 +16572,47 @@ async def admin_audit_log(
 
 
 @app.post("/api/admin/users/{tg_id}/message")
-async def admin_user_message(tg_id: int, payload: AdminMessageIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_user_message(
+    tg_id: int,
+    payload: AdminMessageIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    ok = await _telegram_send_message(tg_id, payload.text)
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_message",
-        target_tg_id=tg_id,
-        meta={"ok": ok, "length": len(payload.text)},
+        action="user.message",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"text": payload.text},
+        request=request,
     )
-    if not ok:
-        raise HTTPException(status_code=502, detail="Telegram send failed")
-    return {"ok": True}
 
 
 @app.post("/api/admin/broadcast")
-async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_broadcast(
+    payload: AdminBroadcastIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     segment = (payload.segment or "all_active").strip().lower()
     limit = max(1, min(int(payload.limit), MAX_BROADCAST_LIMIT))
+
+    if not bool(payload.dry_run):
+        return await _execute_admin_guarded_action(
+            actor_tg_id=actor,
+            action="broadcast.send",
+            target_type="broadcast",
+            target_id="broadcast",
+            payload={
+                "text": payload.text,
+                "segment": segment,
+                "limit": limit,
+                "tg_ids": list(payload.tg_ids),
+            },
+            request=request,
+        )
 
     s = SessionLocal()
     try:
@@ -16381,42 +16635,19 @@ async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str =
     finally:
         s.close()
 
-    if bool(payload.dry_run):
-        _audit_admin(
-            actor_tg_id=actor,
-            action="admin_broadcast_preview",
-            meta={"segment": segment, "attempted": min(len(target_ids), limit), "limit": limit},
-        )
-        return {
-            "ok": True,
-            "dry_run": True,
-            "segment": segment,
-            "attempted": min(len(target_ids), limit),
-            "sent": 0,
-            "failed": 0,
-            "sample_tg_ids": [int(value) for value in target_ids[:5]],
-        }
-
-    sent = 0
-    failed = 0
-    errors: list[int] = []
-    for tg_id in target_ids[:limit]:
-        if tg_id == actor:
-            continue
-        ok = await _telegram_send_message(tg_id, payload.text)
-        if ok:
-            sent += 1
-        else:
-            failed += 1
-            if len(errors) < 25:
-                errors.append(tg_id)
-
     _audit_admin(
         actor_tg_id=actor,
-        action="admin_broadcast",
-        meta={"segment": segment, "sent": sent, "failed": failed, "attempted": min(len(target_ids), limit)},
+        action="admin_broadcast_preview",
+        meta={"segment": segment, "attempted": len(target_ids), "limit": limit},
     )
-    return {"ok": True, "segment": segment, "attempted": min(len(target_ids), limit), "sent": sent, "failed": failed, "failed_ids": errors}
+    return {
+        "ok": True,
+        "dry_run": True,
+        "segment": segment,
+        "attempted": len(target_ids),
+        "sent": 0,
+        "failed": 0,
+    }
 
 
 @app.get("/api/admin/promos")
@@ -16451,87 +16682,58 @@ async def admin_promos(x_telegram_init_data: str = Header(default=""), limit: in
 
 
 @app.post("/api/admin/promos")
-async def admin_promos_create(payload: AdminPromoCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_create(
+    payload: AdminPromoCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = (payload.code or "").strip().upper()
-    promo_type = (payload.promo_type or "").strip().lower()
-    if promo_type not in {"discount", "days"}:
-        raise HTTPException(status_code=400, detail="promo_type must be discount or days")
-    s = SessionLocal()
-    try:
-        exists = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Promo code already exists")
-        row = PromoCode(
-            code=code,
-            promo_type=promo_type,
-            value=int(payload.value),
-            uses_left=int(payload.uses_left),
-            expires_at=_parse_optional_datetime(payload.expires_at),
-        )
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_promo_create", meta={"code": code, "promo_type": promo_type})
-    return {"ok": True, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.create",
+        target_type="promo",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/promos/{code}")
-async def admin_promos_update(code: str, payload: AdminPromoUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_update(
+    code: str,
+    payload: AdminPromoUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_code = (code or "").strip().upper()
-    s = SessionLocal()
-    try:
-        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Promo not found")
-
-        if payload.new_code is not None and payload.new_code.strip():
-            next_code = payload.new_code.strip().upper()
-            if next_code != src_code:
-                dup = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == next_code).first()
-                if dup:
-                    raise HTTPException(status_code=409, detail="Promo code already exists")
-                row.code = next_code
-
-        if payload.promo_type is not None:
-            ptype = (payload.promo_type or "").strip().lower()
-            if ptype not in {"discount", "days"}:
-                raise HTTPException(status_code=400, detail="promo_type must be discount or days")
-            row.promo_type = ptype
-        if payload.value is not None:
-            row.value = int(payload.value)
-        if payload.uses_left is not None:
-            row.uses_left = int(payload.uses_left)
-        if "expires_at" in payload.model_fields_set:
-            row.expires_at = _parse_optional_datetime(payload.expires_at)
-
-        s.commit()
-        out_code = row.code
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_promo_update", meta={"from": src_code, "to": out_code})
-    return {"ok": True, "code": out_code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.update",
+        target_type="promo",
+        target_id=src_code,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/promos/{code}")
-async def admin_promos_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_delete(
+    code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_code = (code or "").strip().upper()
-    s = SessionLocal()
-    try:
-        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Promo not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_promo_delete", meta={"code": src_code})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.delete",
+        target_type="promo",
+        target_id=src_code,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/plans")
@@ -16546,87 +16748,58 @@ async def admin_plans(x_telegram_init_data: str = Header(default=""), include_in
 
 
 @app.post("/api/admin/plans")
-async def admin_plans_create(payload: AdminPlanCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_create(
+    payload: AdminPlanCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = (payload.code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        exists = s.query(PlanCatalog.id).filter(func.lower(PlanCatalog.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Plan already exists")
-        now = _utcnow()
-        row = PlanCatalog(
-            code=code,
-            label=payload.label.strip(),
-            amount_rub=int(payload.amount_rub),
-            amount_stars=int(payload.amount_stars),
-            days=int(payload.days),
-            device_limit=int(payload.device_limit),
-            node_policy=(payload.node_policy or "").strip()[:32] or None,
-            badge=(payload.badge or "").strip()[:32] or None,
-            is_active=bool(payload.is_active),
-            sort_order=int(payload.sort_order),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_create", meta={"code": code})
-    return {"ok": True, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.create",
+        target_type="plan",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/plans/{code}")
-async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_update(
+    code: str,
+    payload: AdminPlanUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     target = (code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Plan not found")
-        if payload.label is not None:
-            row.label = payload.label.strip()
-        if payload.amount_rub is not None:
-            row.amount_rub = int(payload.amount_rub)
-        if payload.amount_stars is not None:
-            row.amount_stars = int(payload.amount_stars)
-        if payload.days is not None:
-            row.days = int(payload.days)
-        if payload.device_limit is not None:
-            row.device_limit = int(payload.device_limit)
-        if payload.node_policy is not None:
-            row.node_policy = (payload.node_policy or "").strip()[:32] or None
-        if payload.badge is not None:
-            row.badge = (payload.badge or "").strip()[:32] or None
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.sort_order is not None:
-            row.sort_order = int(payload.sort_order)
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_update", meta={"code": target})
-    return {"ok": True, "code": target}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.update",
+        target_type="plan",
+        target_id=target,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/plans/{code}")
-async def admin_plans_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_delete(
+    code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     target = (code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Plan not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_delete", meta={"code": target})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.delete",
+        target_type="plan",
+        target_id=target,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/live-updates")
@@ -16666,97 +16839,55 @@ async def admin_live_updates(x_telegram_init_data: str = Header(default=""), inc
 
 
 @app.post("/api/admin/live-updates")
-async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_create(
+    payload: AdminLiveUpdateCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
-    post_id = int(payload.post_id or 0) if payload.post_id is not None else None
-    if post_id is not None and not channel_username:
-        raise HTTPException(status_code=400, detail="channel_username is required when post_id is provided")
-    final_link = _build_tg_post_link(
-        channel_username=channel_username,
-        post_id=post_id,
-        fallback_link=payload.link,
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.create",
+        target_type="live_update",
+        target_id="new",
+        payload=payload.model_dump(),
+        request=request,
     )
-    if not final_link:
-        raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
-    s = SessionLocal()
-    try:
-        now = _utcnow()
-        row = LiveUpdate(
-            title=payload.title.strip(),
-            summary=payload.summary.strip(),
-            link=final_link,
-            channel_username=channel_username,
-            post_id=post_id,
-            published_at=_parse_optional_datetime(payload.published_at),
-            is_active=bool(payload.is_active),
-            sort_order=int(payload.sort_order),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        update_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_create", meta={"id": update_id})
-    return {"ok": True, "id": update_id}
 
 
 @app.patch("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_update(
+    update_id: int,
+    payload: AdminLiveUpdateUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Live update not found")
-        if payload.title is not None:
-            row.title = payload.title.strip()
-        if payload.summary is not None:
-            row.summary = payload.summary.strip()
-        if payload.link is not None:
-            row.link = payload.link.strip()
-        if "channel_username" in payload.model_fields_set:
-            row.channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
-        if "post_id" in payload.model_fields_set:
-            row.post_id = int(payload.post_id or 0) or None
-        if "published_at" in payload.model_fields_set:
-            row.published_at = _parse_optional_datetime(payload.published_at)
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.sort_order is not None:
-            row.sort_order = int(payload.sort_order)
-        row.link = _build_tg_post_link(
-            channel_username=getattr(row, "channel_username", None),
-            post_id=getattr(row, "post_id", None),
-            fallback_link=str(row.link or "").strip(),
-        )
-        if not str(row.link or "").strip():
-            raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_update", meta={"id": int(update_id)})
-    return {"ok": True, "id": int(update_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.update",
+        target_type="live_update",
+        target_id=str(update_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_delete(update_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_delete(
+    update_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Live update not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_delete", meta={"id": int(update_id)})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.delete",
+        target_type="live_update",
+        target_id=str(update_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/start-links")
@@ -16789,82 +16920,56 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
 
 
 @app.post("/api/admin/start-links")
-async def admin_start_links_create(payload: AdminStartLinkCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_create(
+    payload: AdminStartLinkCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
-    if len(code) < 2:
-        raise HTTPException(status_code=400, detail="Invalid code")
-    s = SessionLocal()
-    try:
-        exists = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Start link already exists")
-        now = _utcnow()
-        row = StartLink(
-            code=code,
-            description=str(payload.description or "").strip()[:240] or None,
-            target_action=str(payload.target_action or "").strip()[:64] or None,
-            is_active=bool(payload.is_active),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        row_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_create", meta={"id": row_id, "code": code})
-    return {"ok": True, "id": row_id, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.create",
+        target_type="start_link",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/start-links/{link_id}")
-async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_update(
+    link_id: int,
+    payload: AdminStartLinkUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Start link not found")
-        if payload.code is not None:
-            code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
-            if len(code) < 2:
-                raise HTTPException(status_code=400, detail="Invalid code")
-            if code != str(row.code or "").strip().lower():
-                dup = s.query(StartLink.id).filter(func.lower(StartLink.code) == code, StartLink.id != row.id).first()
-                if dup:
-                    raise HTTPException(status_code=409, detail="Start link already exists")
-                row.code = code
-        if "description" in payload.model_fields_set:
-            row.description = str(payload.description or "").strip()[:240] or None
-        if "target_action" in payload.model_fields_set:
-            row.target_action = str(payload.target_action or "").strip()[:64] or None
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        row.updated_at = _utcnow()
-        s.commit()
-        out_code = str(row.code or "").strip().lower()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_update", meta={"id": int(link_id), "code": out_code})
-    return {"ok": True, "id": int(link_id), "code": out_code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.update",
+        target_type="start_link",
+        target_id=str(link_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/start-links/{link_id}")
-async def admin_start_links_delete(link_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_delete(
+    link_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Start link not found")
-        row.is_active = False
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_deactivate", meta={"id": int(link_id)})
-    return {"ok": True, "id": int(link_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.delete",
+        target_type="start_link",
+        target_id=str(link_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/wheel-config")
@@ -16879,21 +16984,20 @@ async def admin_wheel_config_get(x_telegram_init_data: str = Header(default=""))
 
 
 @app.put("/api/admin/wheel-config")
-async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_wheel_config_put(
+    payload: AdminWheelConfigIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_wheel_config(payload.model_dump())
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key="wheel_config", value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_wheel_config_update",
-        meta={"preset": normalized.get("preset"), "cooldown_hours": normalized.get("cooldown_hours")},
+        action="wheel_config.update",
+        target_type="config",
+        target_id="wheel",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "wheel_config": normalized}
 
 
 @app.get("/api/admin/network-rollout-config")
@@ -16907,161 +17011,37 @@ async def admin_network_rollout_config_get(x_telegram_init_data: str = Header(de
 
 
 @app.put("/api/admin/network-rollout-config")
-async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_network_rollout_config_put(
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = normalized_network_rollout_config(payload if isinstance(payload, dict) else {})
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_network_rollout_config_put",
-        meta={
-            "version": normalized.get("version"),
-            "default_transport_profile": ((normalized.get("defaults") or {}).get("transport_profile")),
-        },
+        action="network_rollout_config.update",
+        target_type="config",
+        target_id="network-rollout",
+        payload=payload if isinstance(payload, dict) else {},
+        request=request,
     )
-    return {"ok": True, "network_rollout_config": normalized}
 
 
 @app.put("/api/admin/client/warp/material")
 async def admin_client_warp_material_put(
     payload: AdminWarpMaterialPutIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    row_id = 0
-    audit_meta: dict[str, Any] = {}
-    user_for_failure: User | None = None
-    install_id_for_failure: str | None = None
-    try:
-        user = s.query(User).filter(User.tg_id == int(payload.tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user_for_failure = user
-        install_id = (
-            str(payload.install_id or getattr(user, "app_install_id", "") or "").strip()
-            or None
-        )
-        install_id_for_failure = install_id
-        limit, window_seconds = _warp_material_provision_limit()
-        if limit and _warp_event_count(
-            s,
-            user=user,
-            install_id=install_id,
-            event_name="material_provisioned",
-            window_seconds=window_seconds,
-        ) >= limit:
-            policy = public_warp_policy_for_user(
-                s,
-                user=user,
-                install_id=install_id,
-                rollout_config=load_network_rollout_config(session=s),
-            )
-            record_warp_event(
-                s,
-                user=user,
-                install_id=install_id,
-                policy=policy,
-                event_name="material_provision_rate_limited",
-                state="rate_limited",
-                reason_code="provision_limit",
-                consented=False,
-                meta={"source": "admin", "actor_tg_id": actor},
-            )
-            s.commit()
-            raise HTTPException(
-                status_code=429,
-                detail=_warp_rate_limit_detail(
-                    code="warp_material_rate_limited",
-                    limit=limit,
-                    window_seconds=window_seconds,
-                ),
-            )
-        row = provision_warp_material(
-            s,
-            user=user,
-            install_id=install_id,
-            wireguard_config=dict(payload.wireguard_config or {}),
-            account=dict(payload.account or {}),
-            source=payload.source,
-            mode=payload.mode,
-        )
-        s.flush()
-        policy = public_warp_policy_for_user(
-            s,
-            user=user,
-            install_id=install_id,
-            rollout_config=load_network_rollout_config(session=s),
-        )
-        record_warp_event(
-            s,
-            user=user,
-            install_id=install_id,
-            policy=policy,
-            event_name="material_provisioned",
-            state="ready_to_consent",
-            reason_code="admin_provisioned",
-            consented=False,
-            meta={"source": "admin", "actor_tg_id": actor, "material_id": int(row.id or 0)},
-        )
-        s.commit()
-        s.refresh(row)
-        row_id = int(row.id or 0)
-        policy = public_warp_policy_for_user(
-            s,
-            user=user,
-            install_id=install_id,
-            rollout_config=load_network_rollout_config(session=s),
-        )
-        material = warp_material_public_payload(row, policy=policy)
-        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
-        audit_meta = {
-            "material_id": row_id,
-            "install_id": install_id,
-            "material_hash": material.get("material_hash"),
-            "runtime_ready": bool(material.get("runtime_ready")),
-            "source": material.get("source"),
-        }
-        return {"ok": True, "material": material, "warp_status": status}
-    except ValueError as exc:
-        s.rollback()
-        if user_for_failure is not None:
-            policy = public_warp_policy_for_user(
-                s,
-                user=user_for_failure,
-                install_id=install_id_for_failure,
-                rollout_config=load_network_rollout_config(session=s),
-            )
-            record_warp_event(
-                s,
-                user=user_for_failure,
-                install_id=install_id_for_failure,
-                policy=policy,
-                event_name="material_provision_failed",
-                state="provision_failed",
-                reason_code="invalid_material",
-                consented=False,
-                meta={"source": "admin", "actor_tg_id": actor},
-            )
-            s.commit()
-        raise HTTPException(status_code=400, detail={"code": "invalid_warp_material", "message": str(exc)}) from exc
-    except RuntimeError as exc:
-        s.rollback()
-        raise HTTPException(status_code=503, detail={"code": "warp_material_store_unavailable", "message": str(exc)}) from exc
-    finally:
-        s.close()
-        if row_id:
-            _audit_admin(
-                actor_tg_id=actor,
-                action="admin_warp_material_put",
-                target_tg_id=int(payload.tg_id),
-                meta=audit_meta,
-            )
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="warp_material.replace",
+        target_type="warp_material",
+        target_id=str(payload.tg_id),
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.get("/api/admin/client/warp/summary")
@@ -17101,22 +17081,20 @@ async def admin_promo_slots_get(x_telegram_init_data: str = Header(default="")) 
 
 
 @app.put("/api/admin/promo-slots")
-async def admin_promo_slots_put(payload: AdminPromoSlotsPutIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+async def admin_promo_slots_put(
+    payload: AdminPromoSlotsPutIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_promo_slots_config({"assignments": payload.model_dump().get("assignments") or []}, strict=True)
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key=PROMO_SLOTS_CONFIG_KEY, value={"assignments": normalized.get("assignments") or []})
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_promo_slots_put",
-        meta={"assignments": len(list(normalized.get("assignments") or []))},
+        action="promo_slots.update",
+        target_type="config",
+        target_id="promo-slots",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "promo_slots": normalized}
 
 
 @app.post("/api/admin/campaign-links/build")
@@ -17172,6 +17150,44 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
     }
 
 
+def _admin_referral_basis(session, row: ReferralBonusQueue, *, now: datetime) -> str:
+    status = str(row.status or "").strip().lower()
+    if status != "pending":
+        return status or "unknown"
+    if row.ready_at and row.ready_at > now:
+        return "waiting_ready_at"
+    referred = session.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+    referrer = session.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+    if referred is None or referrer is None:
+        return "rejected_missing_user"
+    has_activity = (
+        session.query(Event.id)
+        .filter(
+            Event.tg_id == int(referred.tg_id),
+            Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
+            Event.event_name.in_(["connected_ok", "clicked_connect"]),
+        )
+        .first()
+        is not None
+    )
+    if not has_activity:
+        queued_at = row.queued_at or now
+        age_hours = max(0, int((now - queued_at).total_seconds() // 3600))
+        return (
+            "rejected_no_activity"
+            if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS)
+            else "waiting_for_activity"
+        )
+    if not (
+        bool(referrer.is_active)
+        and str(referrer.sub_type or "").strip().upper() == "PAID"
+        and referrer.expiry_at is not None
+        and referrer.expiry_at > now
+    ):
+        return "rejected_referrer_inactive"
+    return "reward_ready"
+
+
 @app.get("/api/admin/referrals/pending")
 async def admin_referrals_pending(
     x_telegram_init_data: str = Header(default=""),
@@ -17179,13 +17195,18 @@ async def admin_referrals_pending(
     status: str = "",
 ) -> dict:
     _require_admin(x_telegram_init_data)
+    now = _utcnow()
     s = SessionLocal()
     try:
         q = s.query(ReferralBonusQueue)
         status_norm = str(status or "").strip().lower()
         if status_norm:
             q = q.filter(func.lower(ReferralBonusQueue.status) == status_norm)
-        rows = q.order_by(ReferralBonusQueue.id.desc()).limit(max(1, min(int(limit), 1000))).all()
+        rows = (
+            q.order_by(ReferralBonusQueue.ready_at.asc(), ReferralBonusQueue.id.asc())
+            .limit(max(1, min(int(limit), 1000)))
+            .all()
+        )
         return {
             "rows": [
                 {
@@ -17197,7 +17218,11 @@ async def admin_referrals_pending(
                     "ready_at": _safe_iso(r.ready_at),
                     "status": str(r.status or ""),
                     "processed_at": _safe_iso(r.processed_at),
-                    "meta": _json_obj(getattr(r, "meta", None)),
+                    "basis": _admin_referral_basis(s, r, now=now),
+                    "meta_present": bool(str(getattr(r, "meta", "") or "").strip()),
+                    "meta_sha256": hashlib.sha256(
+                        str(getattr(r, "meta", "") or "").encode("utf-8")
+                    ).hexdigest(),
                 }
                 for r in rows
             ]
@@ -17207,15 +17232,20 @@ async def admin_referrals_pending(
 
 
 @app.post("/api/admin/referrals/process")
-async def admin_referrals_process(payload: AdminReferralQueueProcessIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_referrals_process(
+    payload: AdminReferralQueueProcessIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    out = _process_referral_bonus_queue(limit=int(payload.limit), force_without_activity=bool(payload.force_without_activity))
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_referrals_process",
-        meta={"limit": int(payload.limit), "force_without_activity": bool(payload.force_without_activity), **out},
+        action="referral.process",
+        target_type="referral_queue",
+        target_id="ready",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, **out}
 
 
 @app.get("/api/admin/loyalty-config")
@@ -17229,17 +17259,20 @@ async def admin_loyalty_config_get(x_telegram_init_data: str = Header(default=""
 
 
 @app.put("/api/admin/loyalty-config")
-async def admin_loyalty_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_loyalty_config_put(
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_loyalty_config(payload if isinstance(payload, dict) else {})
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key="loyalty_config", value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_loyalty_config_put", meta=normalized)
-    return {"ok": True, "loyalty_config": normalized}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="loyalty_config.update",
+        target_type="config",
+        target_id="loyalty",
+        payload=payload if isinstance(payload, dict) else {},
+        request=request,
+    )
 
 
 @app.get("/api/admin/campaigns")
@@ -17280,97 +17313,55 @@ async def admin_campaigns_get(x_telegram_init_data: str = Header(default=""), li
 
 
 @app.post("/api/admin/campaigns")
-async def admin_campaigns_create(payload: AdminCampaignCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_campaigns_create(
+    payload: AdminCampaignCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    ctype = str(payload.campaign_type or "").strip().lower()
-    if ctype not in {"promo", "gift"}:
-        raise HTTPException(status_code=400, detail="campaign_type must be promo or gift")
-    starts_at = _parse_optional_datetime(payload.starts_at)
-    ends_at = _parse_optional_datetime(payload.ends_at)
-    if starts_at and ends_at and starts_at > ends_at:
-        raise HTTPException(status_code=400, detail="starts_at must be <= ends_at")
-    now = _utcnow()
-    s = SessionLocal()
-    try:
-        row = IncentiveCampaign(
-            name=str(payload.name or "").strip()[:120],
-            campaign_type=ctype,
-            target_value=str(payload.target_value or "").strip().upper()[:64],
-            segment=str(payload.segment or "all_active").strip().lower()[:32],
-            starts_at=starts_at,
-            ends_at=ends_at,
-            max_activations=int(payload.max_activations),
-            activations_count=0,
-            auto_disable=bool(payload.auto_disable),
-            is_active=bool(payload.is_active),
-            created_by=actor,
-            metadata_json=json.dumps(payload.metadata or {}, ensure_ascii=False, separators=(",", ":")),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        out_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_create", meta={"campaign_id": out_id, "campaign_type": ctype})
-    return {"ok": True, "id": out_id}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.create",
+        target_type="campaign",
+        target_id="new",
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/campaigns/{campaign_id}")
 async def admin_campaigns_patch(
     campaign_id: int,
     payload: AdminCampaignUpdateIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        if payload.name is not None:
-            row.name = str(payload.name).strip()[:120]
-        if payload.segment is not None:
-            row.segment = str(payload.segment).strip().lower()[:32]
-        if payload.starts_at is not None:
-            row.starts_at = _parse_optional_datetime(payload.starts_at)
-        if payload.ends_at is not None:
-            row.ends_at = _parse_optional_datetime(payload.ends_at)
-        if row.starts_at and row.ends_at and row.starts_at > row.ends_at:
-            raise HTTPException(status_code=400, detail="starts_at must be <= ends_at")
-        if payload.max_activations is not None:
-            row.max_activations = int(payload.max_activations)
-        if payload.auto_disable is not None:
-            row.auto_disable = bool(payload.auto_disable)
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.metadata is not None:
-            row.metadata_json = json.dumps(payload.metadata or {}, ensure_ascii=False, separators=(",", ":"))
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_patch", meta={"campaign_id": int(campaign_id)})
-    return {"ok": True, "id": int(campaign_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.update",
+        target_type="campaign",
+        target_id=str(campaign_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/campaigns/{campaign_id}")
-async def admin_campaigns_delete(campaign_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_campaigns_delete(
+    campaign_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        row.is_active = False
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_disable", meta={"campaign_id": int(campaign_id)})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.delete",
+        target_type="campaign",
+        target_id=str(campaign_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/templates")
@@ -17391,65 +17382,56 @@ async def admin_templates(x_telegram_init_data: str = Header(default=""), limit:
 
 
 @app.post("/api/admin/templates")
-async def admin_templates_create(payload: AdminTemplateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_create(
+    payload: AdminTemplateCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     key = (payload.key or "").strip().lower()
-    text_val = (payload.text or "").strip()
-    s = SessionLocal()
-    try:
-        exists = s.query(Template.id).filter(func.lower(Template.key) == key).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Template already exists")
-        row = Template(key=key, text=text_val)
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_create", meta={"key": key})
-    return {"ok": True, "key": key}
-
-
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.create",
+        target_type="template",
+        target_id=key,
+        payload=payload.model_dump(),
+        request=request,
+    )
 @app.patch("/api/admin/templates/{key}")
-async def admin_templates_update(key: str, payload: AdminTemplateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_update(
+    key: str,
+    payload: AdminTemplateUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_key = (key or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Template not found")
-        if payload.new_key is not None and payload.new_key.strip():
-            new_key = payload.new_key.strip().lower()
-            if new_key != src_key:
-                exists = s.query(Template.id).filter(func.lower(Template.key) == new_key).first()
-                if exists:
-                    raise HTTPException(status_code=409, detail="Template key already exists")
-                row.key = new_key
-        if payload.text is not None:
-            row.text = payload.text.strip()
-        s.commit()
-        out_key = row.key
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_update", meta={"from": src_key, "to": out_key})
-    return {"ok": True, "key": out_key}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.update",
+        target_type="template",
+        target_id=src_key,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/templates/{key}")
-async def admin_templates_delete(key: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_delete(
+    key: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_key = (key or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Template not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_delete", meta={"key": src_key})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.delete",
+        target_type="template",
+        target_id=src_key,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/gift-codes")
@@ -17479,69 +17461,39 @@ async def admin_gift_codes(x_telegram_init_data: str = Header(default=""), limit
 
 
 @app.post("/api/admin/access-keys/issue")
-async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+async def admin_access_keys_issue(
+    payload: AdminAccessKeyIssueIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     plan_code = str(payload.plan_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        plan = _resolve_plan_config(s=s, code=plan_code)
-        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
-        if not normalized_plan:
-            raise HTTPException(status_code=400, detail="Unsupported plan_code")
-
-        issued: list[dict[str, Any]] = []
-        for _ in range(int(payload.quantity or 1)):
-            code = _generate_gift_code_for_admin(s)
-            row = GiftCard(code=code, card_type=normalized_plan["code"], created_by=actor)
-            s.add(row)
-            issued.append(
-                {
-                    "key": code,
-                    "plan": normalized_plan,
-                    "issued_at": _safe_iso(_utcnow()),
-                }
-            )
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_access_keys_issue",
-        meta={"plan_code": plan_code, "quantity": int(payload.quantity or 1)},
+        action="access_key.issue",
+        target_type="access_key_batch",
+        target_id=plan_code,
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {
-        "ok": True,
-        "plan": normalized_plan,
-        "issued": issued,
-    }
 
 
 @app.post("/api/admin/gift-codes")
-async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_gift_codes_create(
+    payload: AdminGiftCodeCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     card_type = (payload.card_type or "").strip().lower()
-    card = GIFT_CARD_TYPES.get(card_type)
-    if not card:
-        raise HTTPException(status_code=400, detail="Unsupported card_type")
-    s = SessionLocal()
-    try:
-        code = _generate_gift_code_for_admin(s)
-        row = GiftCard(code=code, card_type=card_type, created_by=actor)
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_gift_code_create", meta={"code": code, "card_type": card_type})
-    return {
-        "ok": True,
-        "gift_code": {
-            "code": code,
-            "card_type": card_type,
-            "days": int(card.get("days", 0)),
-            "stars": int(card.get("stars", 0)),
-        },
-    }
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="gift_code.create",
+        target_type="gift_code",
+        target_id=card_type,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.get("/api/admin/tickets")
@@ -17561,78 +17513,65 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
             )
         else:
             rows = list_active_tickets(s, limit=lim)
-        return {"tickets": [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in rows]}
+        return {"tickets": [_ticket_summary_row(t, list_ticket_messages(s, t.id, limit=1)) for t in rows]}
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/tickets/{ticket_id}")
+async def admin_ticket_detail(ticket_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(s, int(ticket_id))
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        messages = list_ticket_messages(s, ticket.id, limit=100)
+        return {"ticket": _ticket_detail_row(ticket, messages)}
     finally:
         s.close()
 
 
 @app.post("/api/admin/tickets/{ticket_id}/reply")
-async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_ticket_reply(
+    ticket_id: int,
+    payload: AdminTicketReplyIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    reference = _support_attachment_reference(payload)
-    with _support_attachment_bind_lock(reference):
-        s = SessionLocal()
-        try:
-            account_id = resolve_support_account_id(s, user_tg_id=actor)
-            ticket = get_ticket_by_id(s, ticket_id)
-            if not ticket:
-                raise HTTPException(status_code=404, detail="Ticket not found")
-            attachment, media = _resolve_ticket_attachment(
-                s,
-                payload=payload,
-                actor_tg_id=actor,
-                account_id=account_id,
-            )
-            message = add_ticket_message(
-                s,
-                ticket_id=ticket.id,
-                sender_tg_id=actor,
-                sender_role="admin",
-                body=payload.body,
-                **media,
-            )
-            if attachment is not None:
-                _bind_ticket_attachment(
-                    s,
-                    row=attachment,
-                    ticket_id=int(ticket.id),
-                    message_id=int(message.id),
-                )
-            set_ticket_status(s, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=actor)
-            s.commit()
-            msgs = list_ticket_messages(s, ticket.id, limit=100)
-        except Exception:
-            s.rollback()
-            raise
-        finally:
-            s.close()
-
-    await _telegram_send_message(int(ticket.user_tg_id), f"💬 Ответ оператора в обращении #{ticket.id}.")
-    _audit_admin(actor_tg_id=actor, action="admin_ticket_reply", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id})
-    return {"ticket": _ticket_row(ticket, msgs)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="ticket.reply",
+        target_type="ticket",
+        target_id=str(ticket_id),
+        payload={
+            "body": payload.body,
+            "attachment_id": payload.attachment_id,
+            "media_type": payload.media_type,
+            "media_file_id": payload.media_file_id,
+            "media_payload": payload.media_payload,
+        },
+        request=request,
+    )
 
 
 @app.post("/api/admin/tickets/{ticket_id}/status")
-async def admin_ticket_status(ticket_id: int, payload: AdminTicketStatusIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_ticket_status(
+    ticket_id: int,
+    payload: AdminTicketStatusIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    new_status = (payload.status or "").strip().lower()
-    if new_status not in {STATUS_OPEN, STATUS_IN_PROGRESS, STATUS_CLOSED}:
-        raise HTTPException(status_code=400, detail="Unsupported status")
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        set_ticket_status(s, ticket=ticket, status=new_status, assigned_admin_tg_id=actor if new_status == STATUS_IN_PROGRESS else None)
-        s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_ticket_status", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id, "status": new_status})
-    if new_status == STATUS_CLOSED:
-        await _telegram_send_message(int(ticket.user_tg_id), f"✅ Обращение #{ticket.id} закрыто оператором.")
-    return {"ticket": _ticket_row(ticket, msgs)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="ticket.status",
+        target_type="ticket",
+        target_id=str(ticket_id),
+        payload={"status": payload.status},
+        request=request,
+    )
 
 
 @app.get("/api/admin/nodes/health")
@@ -17710,10 +17649,23 @@ def _provider_quota_bytes_from_payload(payload: AdminProviderQuotaIn | AdminProv
     return max(0, int(existing or 0))
 
 
-def _provider_quota_audit_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
+def _provider_quota_safe_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
     if not row:
         return None
-    return _ops_provider_quota_payload(row)
+    payload = _ops_provider_quota_payload(row)
+    notes = str(payload.pop("notes", "") or "")
+    payload.update(
+        {
+            "notes_present": bool(notes),
+            "notes_length": len(notes),
+            "notes_sha256": hashlib.sha256(notes.encode("utf-8")).hexdigest(),
+        }
+    )
+    return payload
+
+
+def _provider_quota_audit_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
+    return _provider_quota_safe_payload(row)
 
 
 def _add_provider_quota_audit(
@@ -17792,113 +17744,64 @@ async def admin_provider_quotas(x_telegram_init_data: str = Header(default="")) 
     s = SessionLocal()
     try:
         rows = s.query(ProviderTrafficQuota).order_by(ProviderTrafficQuota.node_code.asc()).all()
-        return {"ok": True, "quotas": [_ops_provider_quota_payload(row) for row in rows]}
+        return {"ok": True, "quotas": [_provider_quota_safe_payload(row) for row in rows]}
     finally:
         s.close()
 
 
 @app.post("/api/admin/provider-quotas")
-async def admin_provider_quota_create(payload: AdminProviderQuotaIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_create(
+    payload: AdminProviderQuotaIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     node_code = str(payload.node_code or "").strip().lower()
-    if not node_code:
-        raise HTTPException(status_code=400, detail="node_code is required")
-    if float(payload.warning_ratio or 0.0) >= float(payload.critical_ratio or 0.0):
-        raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == node_code).first()
-        before = _provider_quota_audit_payload(row)
-        now = _utcnow()
-        if not row:
-            row = ProviderTrafficQuota(node_code=node_code, created_at=now)
-            s.add(row)
-            action = "create"
-        else:
-            action = "update"
-        row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
-        row.reset_day = int(payload.reset_day or 1)
-        row.timezone = str(payload.timezone or "UTC").strip()[:64] or "UTC"
-        row.warning_ratio = float(payload.warning_ratio or 0.8)
-        row.critical_ratio = float(payload.critical_ratio or 0.95)
-        row.enabled = bool(payload.enabled)
-        row.notes = str(payload.notes or "").strip()[:1000] or None
-        row.updated_by = int(actor)
-        row.updated_at = now
-        s.flush()
-        after = _ops_provider_quota_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=node_code, actor=actor, action=action, before=before, after=after)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_upsert", meta={"node_code": node_code, "action": action})
-        return {"ok": True, "quota": after}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.create",
+        target_type="provider_quota",
+        target_id=node_code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/provider-quotas/{node_code}")
-async def admin_provider_quota_update(node_code: str, payload: AdminProviderQuotaPatchIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_update(
+    node_code: str,
+    payload: AdminProviderQuotaPatchIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Provider quota not found")
-        before = _provider_quota_audit_payload(row)
-        data = payload.model_dump(exclude_unset=True)
-        if "included_bytes" in data or "included_gb" in data:
-            row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
-        if data.get("reset_day") is not None:
-            row.reset_day = int(data["reset_day"])
-        if data.get("timezone") is not None:
-            row.timezone = str(data["timezone"] or "UTC").strip()[:64] or "UTC"
-        if data.get("warning_ratio") is not None:
-            row.warning_ratio = float(data["warning_ratio"])
-        if data.get("critical_ratio") is not None:
-            row.critical_ratio = float(data["critical_ratio"])
-        if float(row.warning_ratio or 0.0) >= float(row.critical_ratio or 0.0):
-            raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
-        if data.get("enabled") is not None:
-            row.enabled = bool(data["enabled"])
-        if "notes" in data:
-            row.notes = str(data.get("notes") or "").strip()[:1000] or None
-        row.updated_by = int(actor)
-        row.updated_at = _utcnow()
-        after = _ops_provider_quota_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="update", before=before, after=after)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_update", meta={"node_code": wanted})
-        return {"ok": True, "quota": after}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.update",
+        target_type="provider_quota",
+        target_id=wanted,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/provider-quotas/{node_code}")
-async def admin_provider_quota_delete(node_code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_delete(
+    node_code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Provider quota not found")
-        before = _provider_quota_audit_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="delete", before=before, after=None)
-        s.delete(row)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_delete", meta={"node_code": wanted})
-        return {"ok": True, "node_code": wanted}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.delete",
+        target_type="provider_quota",
+        target_id=wanted,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/provider-quotas/status")
@@ -18016,6 +17919,199 @@ async def admin_traffic_summary(
             "to": to_dt.date().isoformat(),
             "rows": rows,
             "totals_by_pool": {pool: {"traffic_bytes": value, "traffic_gb": _ops_bytes_to_gb(value)} for pool, value in sorted(totals_by_pool.items())},
+        }
+    finally:
+        s.close()
+
+
+def _parse_ru_history_datetime(raw: str, *, field: str) -> datetime | None:
+    value = str(raw or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, OverflowError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid RU history {field}",
+        ) from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _ru_read_model_http_error(error: RuProbeReadModelError) -> HTTPException:
+    messages = {
+        "invalid_cursor": "Invalid RU history cursor",
+        "invalid_limit": "Invalid RU history limit",
+        "invalid_from": "Invalid RU history from",
+        "invalid_to": "Invalid RU history to",
+        "invalid_range": "Invalid RU history range",
+        "invalid_verdict": "Invalid RU history verdict",
+        "invalid_node_code": "Invalid RU history node_code",
+        "invalid_now": "Invalid RU read timestamp",
+    }
+    return HTTPException(
+        status_code=400,
+        detail=messages.get(error.code, "Invalid RU read request"),
+    )
+
+
+@app.get("/api/admin/probes/ru-origin/latest")
+async def admin_ru_probe_latest(
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return get_latest_ru_status(s, now=_utcnow())
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/probes/ru-origin/runs")
+async def admin_ru_probe_runs(
+    x_telegram_init_data: str = Header(default=""),
+    node_code: str = Query(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default=""),
+    verdict: str = Query(default=""),
+    limit: int = Query(default=50),
+    cursor: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return get_ru_run_history(
+                s,
+                node_code=node_code or None,
+                from_at=_parse_ru_history_datetime(from_, field="from"),
+                to_at=_parse_ru_history_datetime(to, field="to"),
+                verdict=verdict or None,
+                limit=limit,
+                cursor=cursor or None,
+            )
+        except RuProbeReadModelError as exc:
+            raise _ru_read_model_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/probes/ru-origin/uploader-status")
+async def admin_ru_probe_uploader_status(
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return get_ru_uploader_status(s, now=_utcnow())
+    finally:
+        s.close()
+
+
+def _release_read_http_error(error: ReleaseEvidenceReadError) -> HTTPException:
+    return HTTPException(
+        status_code=400,
+        detail={
+            "code": error.code,
+            "message": "Invalid release evidence read request",
+        },
+    )
+
+
+@app.get("/api/admin/releases/candidates")
+async def admin_release_candidates(
+    x_telegram_init_data: str = Header(default=""),
+    limit: int = Query(default=50),
+    cursor: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return list_release_candidates(
+                s,
+                limit=limit,
+                cursor=cursor or None,
+                now=_utcnow(),
+            )
+        except ReleaseEvidenceReadError as exc:
+            raise _release_read_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/releases/{candidate_id}/readiness")
+async def admin_release_candidate_readiness(
+    candidate_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return get_release_readiness(s, candidate_id, now=_utcnow())
+        except ReleaseEvidenceNotFound as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": exc.code, "message": "Release candidate not found"},
+            ) from exc
+        except ReleaseEvidenceReadError as exc:
+            raise _release_read_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/nodes/{node_code}/observability")
+async def admin_node_observability(
+    node_code: str,
+    include_ru_history: bool = Query(default=True),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        payload = _ops_build_node_observability(
+            s=s,
+            node_code=node_code,
+            now=_utcnow(),
+            metrics_stale_after_seconds=max(
+                300,
+                int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")),
+            ),
+            include_ru_history=include_ru_history,
+        )
+        if payload is None:
+            raise HTTPException(status_code=404, detail="Node not found")
+        return payload
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/search")
+async def admin_global_search(
+    q: str = Query(default=""),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    normalized = str(q or "").strip()
+    if len(normalized) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Search query must contain at least 2 characters",
+        )
+    if len(normalized) > 128:
+        raise HTTPException(status_code=400, detail="Search query is too long")
+    s = SessionLocal()
+    try:
+        return {
+            "ok": True,
+            "results": _ops_admin_search_results(
+                s=s,
+                q=normalized,
+                limit=20,
+            ),
         }
     finally:
         s.close()
@@ -18200,6 +18296,26 @@ def _pressure_reasons(row: KeyPressureState) -> list[str]:
     return [str(item) for item in parsed if str(item or "").strip()] if isinstance(parsed, list) else []
 
 
+def _admin_online_row_id(*, tg_id: int | None, panel_email: str, client_uuid: str, node_code: str) -> str:
+    if tg_id is not None:
+        return f"user:{int(tg_id)}"
+    subject = str(panel_email or "").strip().lower() or str(client_uuid or "").strip() or str(node_code or "").strip().lower()
+    digest = hashlib.sha256(f"admin-online-row-v1\0{subject}".encode("utf-8")).hexdigest()[:24]
+    return f"panel:{digest}"
+
+
+def _safe_admin_online_panel_errors(errors: list[dict]) -> list[dict[str, str | None]]:
+    allowed_codes = {"missing_node_code", "panel_request_failed", "panel_unavailable"}
+    safe: list[dict[str, str | None]] = []
+    for item in errors:
+        raw_node_code = str((item or {}).get("node_code") or "").strip().lower()
+        node_code = raw_node_code if re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,31}", raw_node_code) else None
+        raw_code = str((item or {}).get("evidence_code") or (item or {}).get("error_code") or "").strip().lower()
+        evidence_code = raw_code if raw_code in allowed_codes else "panel_request_failed"
+        safe.append({"node_code": node_code, "evidence_code": evidence_code})
+    return safe
+
+
 def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict], limit: int) -> dict[str, Any]:
     tg_ids = sorted(
         {
@@ -18257,11 +18373,16 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
         if user is None and email_key:
             user = users_by_email.get(email_key)
         effective_tg_id = int(user.tg_id) if user else tg_id
-        identity = f"tg:{effective_tg_id}" if effective_tg_id is not None else f"panel:{email_key or live.get('client_uuid') or live.get('node_code')}"
+        row_id = _admin_online_row_id(
+            tg_id=effective_tg_id,
+            panel_email=email_key,
+            client_uuid=str(live.get("client_uuid") or ""),
+            node_code=str(live.get("node_code") or ""),
+        )
         agg = aggregates.setdefault(
-            identity,
+            row_id,
             {
-                "identity": identity,
+                "row_id": row_id,
                 "tg_id": effective_tg_id,
                 "username": getattr(user, "username", None) if user else None,
                 "display_name": getattr(user, "display_name", None) if user else None,
@@ -18335,7 +18456,7 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
 
     rows: list[dict[str, Any]] = []
     for agg in aggregates.values():
-        panel_emails_out = sorted({str(email) for email in agg.pop("panel_email_set", set()) if str(email).strip()})
+        agg.pop("panel_email_set", None)
         nodes_online = sorted({str(code) for code in agg.pop("nodes_online_set", set()) if str(code).strip()})
         agg.pop("last_online_dt", None)
         risk_flags = sorted({str(flag) for flag in agg.pop("risk_flags", set()) if str(flag).strip()})
@@ -18345,9 +18466,6 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
                 "nodes_online": nodes_online,
                 "nodes_online_count": len(nodes_online),
                 "risk_flags": risk_flags,
-                "panel_email": panel_emails_out[0] if panel_emails_out and agg.get("tg_id") is None else None,
-                "panel_email_count": len(panel_emails_out),
-                "raw_ip_exposed": False,
                 "traffic_gb_24h": round(float(agg.get("traffic_gb_24h") or 0.0), 3),
                 "pressure_score": round(float(agg.get("pressure_score") or 0.0), 1),
             }
@@ -18361,6 +18479,7 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
         )
     )
     bounded = rows[: max(1, min(int(limit), 500))]
+    safe_errors = _safe_admin_online_panel_errors(errors)
     return {
         "ok": True,
         "generated_at": _safe_iso(_utcnow()),
@@ -18373,13 +18492,13 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
             "unknown_online_keys": sum(1 for row in rows if row.get("tg_id") is None),
             "online_keys_now": sum(int(row.get("online_keys_now") or 0) for row in rows),
             "online_connections_now": sum(int(row.get("online_connections_now") or 0) for row in rows),
-            "nodes_with_panel_errors": len(errors),
+            "nodes_with_panel_errors": len(safe_errors),
             "raw_ip_exposed": False,
         },
-        "panel_errors": errors,
+        "panel_errors": safe_errors,
         "notes": [
-            "Список построен по live panel online state.",
-            "IP-адреса здесь не возвращаются; raw IP видны только в карточке конкретного пользователя через observer block.",
+            "Список построен по оперативному состоянию панели.",
+            "IP-адреса здесь не возвращаются; исходные IP-адреса доступны только через отдельный запрос расследования пользователя.",
         ],
     }
 
@@ -18413,55 +18532,18 @@ async def admin_online_users(
 async def admin_key_rotate_request(
     key_id: int,
     payload: AdminKeyRotateIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        key_row = s.query(AccessKey).filter(AccessKey.id == int(key_id)).first()
-        if not key_row:
-            raise HTTPException(status_code=404, detail="Access key not found")
-        if bool(payload.dry_run):
-            return {
-                "ok": True,
-                "dry_run": True,
-                "key_id": int(key_id),
-                "tg_id": int(key_row.tg_id),
-                "node_code": str(key_row.node_code or "") or None,
-                "planned_job_type": "rotate_access_key",
-            }
-        key_row.state = "rotation_requested"
-        key_row.updated_at = _utcnow()
-        job = NodeProvisioningJob(
-            tg_id=int(key_row.tg_id),
-            key_id=int(key_row.id),
-            node_code=str(key_row.node_code or "") or None,
-            job_type="rotate_access_key",
-            status="queued",
-            desired_state_json=json.dumps(
-                {
-                    "reason": str(payload.reason or "manual_review").strip()[:160],
-                    "requested_by": int(actor),
-                    "pool_code": str(key_row.pool_code or ""),
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            ),
-            created_at=_utcnow(),
-            updated_at=_utcnow(),
-        )
-        s.add(job)
-        s.commit()
-        job_id = int(job.id)
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_key_rotate_request",
-        target_tg_id=int(getattr(key_row, "tg_id", 0) or 0),
-        meta={"key_id": int(key_id), "job_id": job_id, "reason": str(payload.reason or "")[:160]},
+        action="key.rotate",
+        target_type="key",
+        target_id=str(key_id),
+        payload={"reason": payload.reason, "dry_run": bool(payload.dry_run)},
+        request=request,
     )
-    return {"ok": True, "key_id": int(key_id), "job_id": job_id, "status": "queued"}
 
 
 @app.get("/api/admin/nodes/runtime")
@@ -18506,313 +18588,2360 @@ async def admin_nodes_drift(
 
 
 @app.post("/api/admin/nodes/sync")
-async def admin_nodes_sync(payload: AdminNodeSyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_nodes_sync(
+    payload: AdminNodeSyncIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        if payload.tg_id:
-            users = s.query(User).filter(User.tg_id == int(payload.tg_id)).all()
-        else:
-            segment = (payload.segment or "active").strip().lower()
-            q = s.query(User).filter(User.tg_id > 0)
-            if segment == "active":
-                q = q.filter(User.is_active == True)
-            elif segment == "free":
-                q = q.filter(func.upper(User.sub_type) == "FREE")
-            elif segment == "paid":
-                q = q.filter(func.upper(User.sub_type) == "PAID")
-            else:
-                raise HTTPException(status_code=400, detail="Unsupported sync segment")
-            users = q.order_by(User.created_at.asc()).limit(max(1, min(int(payload.limit), 1000))).all()
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    synced = 0
-    failed = 0
-    try:
-        await panel.login()
-        for u in users:
-            ok = await panel.enable_client(u.uuid, True)
-            if ok:
-                synced += 1
-            else:
-                failed += 1
-    finally:
-        await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_nodes_sync",
-        meta={"synced": synced, "failed": failed, "count": len(users), "segment": payload.segment, "tg_id": payload.tg_id},
+        action="node.sync_global",
+        target_type="node_sync",
+        target_id="global",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "synced": synced, "failed": failed, "count": len(users)}
 
 
 @app.post("/api/admin/nodes/{node_code}/drain")
-async def admin_node_drain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_drain(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = False
-        node.is_draining = True
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_drain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.drain",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/enable")
-async def admin_node_enable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_enable(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = True
-        node.is_draining = False
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_enable", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.enable",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/undrain")
-async def admin_node_undrain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_undrain(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = True
-        node.is_draining = False
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_undrain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
-
-
-@app.post("/api/admin/nodes/{node_code}/disable")
-async def admin_node_disable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        if int(mapped_users) > 0 and not bool(payload.force):
-            raise HTTPException(status_code=409, detail="Node still has mapped users. Run resync first or use force.")
-        node.enabled = False
-        node.accepting_new_clients = False
-        node.is_draining = False
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_node_action(
         actor_tg_id=actor,
-        action="admin_node_disable",
-        meta={"node_code": wanted, "mapped_users": int(mapped_users), "forced": bool(payload.force)},
+        action="node.undrain",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
     )
-    return {"ok": True, "node": payload_node}
 
 
-@app.post("/api/admin/nodes/{node_code}/resync")
-async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not source:
-            raise HTTPException(status_code=404, detail="Node not found")
-        rows = (
-            s.query(UserNode, User)
-            .join(User, User.tg_id == UserNode.tg_id)
-            .filter(UserNode.node_id == int(source.id))
-            .order_by(UserNode.created_at.asc(), UserNode.id.asc())
-            .limit(max(1, min(int(payload.limit), 1000)))
-            .all()
+def _raise_action_intent_http(error: ActionIntentError) -> None:
+    detail: dict[str, Any] = {
+        "code": str(error.code),
+        "message": str(error.message),
+    }
+    if error.intent_id:
+        detail["intent_id"] = str(error.intent_id)
+    if error.audit_id is not None:
+        detail["audit_id"] = int(error.audit_id)
+    raise HTTPException(
+        status_code=int(error.status_code),
+        detail=detail,
+    )
+
+
+def _raise_action_intent_header_required(
+    *,
+    actor_tg_id: int,
+    intent_id: str,
+    code: str,
+    message: str,
+) -> None:
+    owned_intent_id, audit_id = _action_intent_error_identifiers(
+        session_factory=SessionLocal,
+        actor_tg_id=actor_tg_id,
+        intent_id=intent_id,
+    )
+    _raise_action_intent_http(
+        ActionIntentError(
+            code,
+            status_code=428,
+            message=message,
+            intent_id=owned_intent_id,
+            audit_id=audit_id,
         )
-    finally:
-        s.close()
+    )
+
+
+async def _execute_node_resync_external(context: dict[str, Any]) -> dict[str, Any]:
+    execution = context.get("execution")
+    if not isinstance(execution, dict):
+        raise RuntimeError("missing frozen resync execution context")
+    source_node_id = int(execution.get("source_node_id") or 0)
+    source_code = str(execution.get("source_node_code") or "").strip().lower()
+    selection = execution.get("selection")
+    dry_run = bool(execution.get("dry_run", False))
+    if source_node_id <= 0 or not source_code or not isinstance(selection, list):
+        raise RuntimeError("invalid frozen resync execution context")
+
+    selected_count = len(selection)
+    skipped = sum(
+        1
+        for item in selection
+        if isinstance(item, dict) and not item.get("target_nodes")
+    )
+    if dry_run:
+        return {
+            "ok": True,
+            "code": "resync_dry_run_completed",
+            "count": selected_count,
+            "changed": 0,
+            "failed": 0,
+            "skipped": skipped,
+        }
 
     panel = ControlPanel()
     migrated = 0
     failed = 0
-    skipped = 0
-    details: list[dict[str, Any]] = []
     try:
-        if not payload.dry_run:
-            await panel.login()
-        for _user_node, user in rows:
-            s = SessionLocal()
-            try:
-                target_codes = _target_node_codes_for_resync(s, user, wanted, enabled_nodes(s))
-            finally:
-                s.close()
-            if not target_codes:
-                skipped += 1
-                details.append({"tg_id": int(user.tg_id), "status": "no_target", "target_codes": []})
-                continue
-            if payload.dry_run:
-                details.append({"tg_id": int(user.tg_id), "status": "planned", "target_codes": target_codes})
+        await panel.login()
+        for item in selection:
+            if not isinstance(item, dict):
+                raise RuntimeError("invalid frozen resync item")
+            source_user_node_id = int(item.get("source_user_node_id") or 0)
+            recipient_fingerprint = str(item.get("recipient_fingerprint") or "")
+            raw_target_nodes = item.get("target_nodes")
+            if not isinstance(raw_target_nodes, list):
+                raise RuntimeError("invalid frozen target nodes")
+            target_nodes: list[dict[str, Any]] = []
+            seen_target_ids: set[int] = set()
+            seen_target_codes: set[str] = set()
+            for raw_target in raw_target_nodes:
+                if not isinstance(raw_target, dict):
+                    raise RuntimeError("invalid frozen target node")
+                target_node_id = int(raw_target.get("id") or 0)
+                target_code = str(raw_target.get("code") or "").strip().lower()
+                if (
+                    target_node_id <= 0
+                    or not target_code
+                    or target_node_id in seen_target_ids
+                    or target_code in seen_target_codes
+                ):
+                    raise RuntimeError("invalid frozen target node")
+                seen_target_ids.add(target_node_id)
+                seen_target_codes.add(target_code)
+                target_nodes.append({"id": target_node_id, "code": target_code})
+            target_codes = [str(target["code"]) for target in target_nodes]
+            if source_user_node_id <= 0:
+                raise RuntimeError("invalid frozen source mapping")
+            if not target_nodes:
                 continue
 
-            sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+            session = SessionLocal()
+            try:
+                row = (
+                    session.query(UserNode, User)
+                    .join(User, User.tg_id == UserNode.tg_id)
+                    .filter(
+                        UserNode.id == source_user_node_id,
+                        UserNode.node_id == source_node_id,
+                    )
+                    .first()
+                )
+                if row is None:
+                    failed += 1
+                    continue
+                source_mapping, user = row
+                source_node = session.query(Node).filter(Node.id == source_node_id).first()
+                if (
+                    source_node is None
+                    or str(source_node.code or "").strip().lower() != source_code
+                ):
+                    failed += 1
+                    continue
+                tg_id = int(user.tg_id)
+                client_uuid = str(user.uuid)
+                panel_email = str(user.email)
+                sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+                current_recipient_fingerprint = _node_resync_recipient_fingerprint(
+                    tg_id=tg_id,
+                    mapping_client_uuid=str(source_mapping.client_uuid or ""),
+                    mapping_panel_email=str(source_mapping.panel_email or ""),
+                    user_uuid=client_uuid,
+                    user_email=panel_email,
+                    sub_id=sub_id,
+                )
+                if not hmac.compare_digest(
+                    recipient_fingerprint,
+                    current_recipient_fingerprint,
+                ):
+                    failed += 1
+                    continue
+            finally:
+                session.close()
+
             ensure_results = await panel.ensure_user_on_all_nodes(
-                tg_id=int(user.tg_id),
-                client_uuid=str(user.uuid),
-                email=str(user.email),
+                tg_id=tg_id,
+                client_uuid=client_uuid,
+                email=panel_email,
                 sub_id=sub_id,
                 enable=True,
                 only_node_codes=target_codes,
             )
-            if not any(bool(v) for v in ensure_results.values()):
+            successful_codes = {
+                str(code or "").strip().lower()
+                for code, value in ensure_results.items()
+                if bool(value) and str(code or "").strip().lower() in seen_target_codes
+            }
+            if not successful_codes:
                 failed += 1
-                details.append(
-                    {
-                        "tg_id": int(user.tg_id),
-                        "status": "ensure_failed",
-                        "target_codes": target_codes,
-                        "ensure_results": ensure_results,
-                    }
-                )
                 continue
 
             disable_results = await panel.set_existing_user_enabled_on_nodes(
-                tg_id=int(user.tg_id),
-                node_codes=[wanted],
+                tg_id=tg_id,
+                node_codes=[source_code],
                 enable=False,
                 sub_id=sub_id,
             )
-            if not any(bool(v) for v in disable_results.values()):
+            source_disabled = any(
+                str(code or "").strip().lower() == source_code and bool(value)
+                for code, value in disable_results.items()
+            )
+            if not source_disabled:
                 failed += 1
-                details.append(
-                    {
-                        "tg_id": int(user.tg_id),
-                        "status": "disable_failed",
-                        "target_codes": target_codes,
-                        "ensure_results": ensure_results,
-                        "disable_results": disable_results,
-                    }
-                )
                 continue
 
-            s = SessionLocal()
+            session = SessionLocal()
             try:
-                source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-                target_nodes = (
-                    s.query(Node)
-                    .filter(func.lower(Node.code).in_([code.lower() for code in target_codes]))
-                    .all()
+                target_ids = [int(target["id"]) for target in target_nodes]
+                dialect = str(session.get_bind().dialect.name)
+                if dialect == "postgresql":
+                    for locked_node_id in sorted({source_node_id, *target_ids}):
+                        session.execute(
+                            sql_text(
+                                "SELECT pg_advisory_xact_lock(:lock_namespace, :node_id)"
+                            ),
+                            {
+                                "lock_namespace": NODE_MAPPING_LOCK_NAMESPACE,
+                                "node_id": int(locked_node_id),
+                            },
+                        )
+                source_query = session.query(Node).filter(Node.id == source_node_id)
+                target_query = session.query(Node).filter(Node.id.in_(target_ids))
+                if dialect == "postgresql":
+                    source_query = source_query.with_for_update()
+                    target_query = target_query.with_for_update()
+                current_source = source_query.first()
+                current_targets = target_query.all()
+                current_by_id = {int(node.id): node for node in current_targets}
+                frozen_targets_match = (
+                    current_source is not None
+                    and str(current_source.code or "").strip().lower() == source_code
+                    and len(current_by_id) == len(target_nodes)
+                    and all(
+                        int(target["id"]) in current_by_id
+                        and str(current_by_id[int(target["id"])].code or "").strip().lower()
+                        == str(target["code"])
+                        for target in target_nodes
+                    )
                 )
+                if not frozen_targets_match:
+                    session.rollback()
+                    failed += 1
+                    continue
+                successful_targets = [
+                    current_by_id[int(target["id"])]
+                    for target in target_nodes
+                    if str(target["code"]) in successful_codes
+                ]
+                successful_targets_valid = bool(successful_targets) and all(
+                    bool(target.enabled)
+                    and bool(target.accepting_new_clients)
+                    and not bool(target.is_draining)
+                    for target in successful_targets
+                )
+                if not successful_targets_valid:
+                    session.rollback()
+                    failed += 1
+                    continue
                 existing_node_ids = {
                     int(row.node_id)
-                    for row in s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id)).all()
+                    for row in session.query(UserNode)
+                    .filter(UserNode.tg_id == tg_id)
+                    .all()
                 }
-                for target_node in target_nodes:
+                for target_node in successful_targets:
                     if int(target_node.id) in existing_node_ids:
                         continue
-                    s.add(
+                    session.add(
                         UserNode(
-                            tg_id=int(user.tg_id),
+                            tg_id=tg_id,
                             node_id=int(target_node.id),
-                            client_uuid=str(user.uuid),
-                            panel_email=str(user.email),
+                            client_uuid=client_uuid,
+                            panel_email=panel_email,
                         )
                     )
-                if source:
-                    s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id), UserNode.node_id == int(source.id)).delete()
-                s.commit()
+                deleted = session.query(UserNode).filter(
+                    UserNode.id == source_user_node_id,
+                    UserNode.node_id == source_node_id,
+                ).delete(synchronize_session=False)
+                if deleted != 1:
+                    session.rollback()
+                    failed += 1
+                    continue
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
             finally:
-                s.close()
+                session.close()
             migrated += 1
-            details.append(
-                {
-                    "tg_id": int(user.tg_id),
-                    "status": "migrated",
-                    "target_codes": target_codes,
-                    "ensure_results": ensure_results,
-                    "disable_results": disable_results,
-                }
-            )
     finally:
-        if not payload.dry_run:
-            await panel.close()
+        await panel.close()
 
-    _audit_admin(
-        actor_tg_id=actor,
-        action="admin_node_resync",
-        meta={
-            "node_code": wanted,
-            "count": len(rows),
-            "migrated": migrated,
-            "failed": failed,
-            "skipped": skipped,
-            "dry_run": bool(payload.dry_run),
-        },
-    )
     return {
-        "ok": True,
-        "node_code": wanted,
-        "count": len(rows),
-        "migrated": migrated,
+        "ok": failed == 0,
+        "code": "resync_completed" if failed == 0 else "resync_partial",
+        "count": selected_count,
+        "changed": migrated,
         "failed": failed,
         "skipped": skipped,
-        "dry_run": bool(payload.dry_run),
-        "details": details,
     }
+
+
+_TASK20_DB_ACTIONS = frozenset(
+    {
+        "plan.create",
+        "plan.update",
+        "plan.delete",
+        "live_update.create",
+        "live_update.update",
+        "live_update.delete",
+        "start_link.create",
+        "start_link.update",
+        "start_link.delete",
+        "wheel_config.update",
+        "network_rollout_config.update",
+        "warp_material.replace",
+        "promo_slots.update",
+        "loyalty_config.update",
+        "campaign.create",
+        "campaign.update",
+        "campaign.delete",
+        "template.create",
+        "template.update",
+        "template.delete",
+        "access_key.issue",
+        "gift_code.create",
+    }
+)
+
+
+def _execute_task20_admin_action_db(
+    session,
+    state,
+    runtime: dict[str, Any],
+    *,
+    actor_tg_id: int,
+    action: str,
+) -> dict[str, Any]:
+    now = _utcnow()
+
+    if action in {"plan.create", "plan.update", "plan.delete"}:
+        row = state.entity
+        if action == "plan.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="План не найден.")
+            code = str(row.code or "").strip().lower()
+            session.delete(row)
+            session.flush()
+            return {"code": code, "deleted": True}
+        if action == "plan.create":
+            if row is not None:
+                raise ActionIntentError("target_exists", status_code=409, message="План уже существует.")
+            row = PlanCatalog(code=str(runtime["code"]), created_at=now)
+            session.add(row)
+        for field in (
+            "label",
+            "amount_rub",
+            "amount_stars",
+            "days",
+            "device_limit",
+            "node_policy",
+            "badge",
+            "is_active",
+            "sort_order",
+        ):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        row.updated_at = now
+        session.flush()
+        return {"code": str(row.code or "").strip().lower()}
+
+    if action in {"live_update.create", "live_update.update", "live_update.delete"}:
+        row = state.entity
+        if action == "live_update.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Новость не найдена.")
+            update_id = int(row.id)
+            session.delete(row)
+            session.flush()
+            return {"id": update_id, "deleted": True}
+        if action == "live_update.create":
+            row = LiveUpdate(created_at=now, updated_at=now)
+            session.add(row)
+        for field in ("title", "summary", "is_active", "sort_order"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        if "link" in runtime and runtime["link"] is not None:
+            row.link = str(runtime["link"])
+        if "channel_username" in runtime:
+            row.channel_username = runtime["channel_username"]
+        if "post_id" in runtime:
+            row.post_id = runtime["post_id"]
+        if "published_at" in runtime:
+            row.published_at = (
+                datetime.fromisoformat(str(runtime["published_at"]))
+                if runtime["published_at"]
+                else None
+            )
+        row.link = _build_tg_post_link(
+            channel_username=getattr(row, "channel_username", None),
+            post_id=getattr(row, "post_id", None),
+            fallback_link=str(getattr(row, "link", "") or "").strip(),
+        )
+        if not str(row.link or "").strip():
+            raise ActionIntentError("invalid_payload", status_code=422, message="Нужна ссылка или Telegram post target.")
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id)}
+
+    if action in {"start_link.create", "start_link.update", "start_link.delete"}:
+        row = state.entity
+        if action == "start_link.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Start link не найден.")
+            row.is_active = False
+            row.updated_at = now
+            session.flush()
+            return {"id": int(row.id), "code": str(row.code or "").strip().lower(), "deleted": True}
+        if action == "start_link.create":
+            row = StartLink(code=str(runtime["code"]), created_at=now, updated_at=now)
+            session.add(row)
+        if "code" in runtime and str(runtime["code"]) != str(row.code or "").strip().lower():
+            duplicate = session.query(StartLink.id).filter(
+                func.lower(StartLink.code) == str(runtime["code"]),
+                StartLink.id != int(row.id),
+            ).first()
+            if duplicate:
+                raise ActionIntentError("target_exists", status_code=409, message="Start link уже существует.")
+            row.code = str(runtime["code"])
+        for field in ("description", "target_action", "is_active"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id), "code": str(row.code or "").strip().lower()}
+
+    if action == "wheel_config.update":
+        normalized = _normalized_wheel_config(runtime)
+        _set_app_setting_json(s=session, key="wheel_config", value=normalized)
+        session.flush()
+        return {"wheel_config": normalized}
+
+    if action == "network_rollout_config.update":
+        normalized = normalized_network_rollout_config(runtime)
+        _set_app_setting_json(s=session, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
+        session.flush()
+        return {"network_rollout_config": normalized}
+
+    if action == "promo_slots.update":
+        normalized = _normalized_promo_slots_config(runtime, strict=True)
+        _set_app_setting_json(
+            s=session,
+            key=PROMO_SLOTS_CONFIG_KEY,
+            value={"assignments": normalized.get("assignments") or []},
+        )
+        session.flush()
+        return {"promo_slots": normalized}
+
+    if action == "loyalty_config.update":
+        normalized = _normalized_loyalty_config(runtime)
+        _set_app_setting_json(s=session, key="loyalty_config", value=normalized)
+        session.flush()
+        return {"loyalty_config": normalized}
+
+    if action == "warp_material.replace":
+        user = state.entity
+        install_id = str(runtime.get("install_id") or getattr(user, "app_install_id", "") or "").strip() or None
+        limit, window_seconds = _warp_material_provision_limit()
+        if limit and _warp_event_count(
+            session,
+            user=user,
+            install_id=install_id,
+            event_name="material_provisioned",
+            window_seconds=window_seconds,
+        ) >= limit:
+            raise ActionIntentError(
+                "warp_material_rate_limited",
+                status_code=429,
+                message="Лимит замены WARP material исчерпан.",
+            )
+        try:
+            row = provision_warp_material(
+                session,
+                user=user,
+                install_id=install_id,
+                wireguard_config=dict(runtime["wireguard_config"]),
+                account=dict(runtime.get("account") or {}),
+                source=str(runtime["source"]),
+                mode=str(runtime["mode"]),
+            )
+            session.flush()
+            policy = public_warp_policy_for_user(
+                session,
+                user=user,
+                install_id=install_id,
+                rollout_config=load_network_rollout_config(session=session),
+            )
+            record_warp_event(
+                session,
+                user=user,
+                install_id=install_id,
+                policy=policy,
+                event_name="material_provisioned",
+                state="ready_to_consent",
+                reason_code="admin_provisioned",
+                consented=False,
+                meta={"source": "admin", "actor_tg_id": int(actor_tg_id), "material_id": int(row.id or 0)},
+            )
+            session.flush()
+        except ValueError:
+            raise ActionIntentError("invalid_warp_material", status_code=422, message="WARP material не прошёл проверку.") from None
+        except RuntimeError:
+            raise ActionIntentError("warp_material_store_unavailable", status_code=503, message="Хранилище WARP material недоступно.") from None
+        material = warp_material_public_payload(row, policy=policy)
+        status = build_warp_status(session, user=user, install_id=install_id, policy=policy)
+        return {"material": material, "warp_status": status}
+
+    if action in {"campaign.create", "campaign.update", "campaign.delete"}:
+        row = state.entity
+        if action == "campaign.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Кампания не найдена.")
+            row.is_active = False
+            row.updated_at = now
+            session.flush()
+            return {"id": int(row.id), "deleted": True}
+        if action == "campaign.create":
+            row = IncentiveCampaign(
+                campaign_type=str(runtime["campaign_type"]),
+                target_value=str(runtime["target_value"]),
+                activations_count=0,
+                created_by=int(actor_tg_id),
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+        for field in ("name", "segment", "max_activations", "auto_disable", "is_active"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        for field in ("starts_at", "ends_at"):
+            if field in runtime:
+                setattr(row, field, datetime.fromisoformat(str(runtime[field])) if runtime[field] else None)
+        if row.starts_at and row.ends_at and row.starts_at > row.ends_at:
+            raise ActionIntentError("invalid_payload", status_code=422, message="starts_at должен быть не позже ends_at.")
+        if "metadata" in runtime:
+            row.metadata_json = json.dumps(runtime["metadata"], ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id)}
+
+    if action in {"template.create", "template.update", "template.delete"}:
+        row = state.entity
+        if action == "template.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Шаблон не найден.")
+            key = str(row.key or "").strip().lower()
+            session.delete(row)
+            session.flush()
+            return {"key": key, "deleted": True}
+        if action == "template.create":
+            row = Template(key=str(runtime["key"]), text=str(runtime["text"]), created_at=now)
+            session.add(row)
+        new_key = runtime.get("new_key")
+        if new_key and str(new_key) != str(row.key or "").strip().lower():
+            duplicate = session.query(Template.id).filter(
+                func.lower(Template.key) == str(new_key),
+                Template.id != int(row.id),
+            ).first()
+            if duplicate:
+                raise ActionIntentError("target_exists", status_code=409, message="Ключ шаблона уже существует.")
+            row.key = str(new_key)
+        if "text" in runtime:
+            row.text = str(runtime["text"])
+        session.flush()
+        return {"key": str(row.key or "").strip().lower()}
+
+    if action == "access_key.issue":
+        plan_code = str(runtime["plan_code"])
+        plan = _resolve_plan_config(s=session, code=plan_code)
+        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
+        if not normalized_plan:
+            raise ActionIntentError("invalid_payload", status_code=422, message="plan_code не поддерживается.")
+        issued: list[dict[str, Any]] = []
+        issued_rows: list[GiftCard] = []
+        for _ in range(int(runtime["quantity"])):
+            code = _generate_gift_code_for_admin(session)
+            row = GiftCard(
+                code=code,
+                card_type=normalized_plan["code"],
+                created_by=int(actor_tg_id),
+                created_at=now,
+            )
+            session.add(row)
+            issued_rows.append(row)
+            issued.append({"key": code, "plan": normalized_plan, "issued_at": _safe_iso(now)})
+        session.flush()
+        return {
+            "plan": normalized_plan,
+            "issued": issued,
+            "_issued_card_ids": [int(row.id) for row in issued_rows],
+        }
+
+    if action == "gift_code.create":
+        card_type = str(runtime["card_type"])
+        card = GIFT_CARD_TYPES.get(card_type)
+        if not card:
+            raise ActionIntentError("invalid_payload", status_code=422, message="card_type не поддерживается.")
+        code = _generate_gift_code_for_admin(session)
+        row = GiftCard(
+            code=code,
+            card_type=card_type,
+            created_by=int(actor_tg_id),
+            created_at=now,
+        )
+        session.add(row)
+        session.flush()
+        return {
+            "_issued_card_ids": [int(row.id)],
+            "gift_code": {
+                "code": code,
+                "card_type": card_type,
+                "days": int(card.get("days", 0)),
+                "stars": int(card.get("stars", 0)),
+            }
+        }
+
+    raise ActionIntentError("executor_unavailable", status_code=503, message="DB-исполнитель действия недоступен.")
+
+
+def _execute_admin_client_action_db(
+    session,
+    state,
+    payload: dict[str, Any],
+    _runtime_payload: dict[str, Any],
+    *,
+    actor_tg_id: int,
+    action: str,
+) -> dict[str, Any]:
+    if action in _TASK20_DB_ACTIONS:
+        return _execute_task20_admin_action_db(
+            session,
+            state,
+            dict(_runtime_payload),
+            actor_tg_id=actor_tg_id,
+            action=action,
+        )
+
+    if action == "payment.reconcile":
+        order = state.entity
+        next_status = str(state.context["to_status"])
+        operator_note = str(_runtime_payload["note"])
+        order_meta = _json_obj(order.meta_json)
+        existing = order_meta.get("admin_reconciliations")
+        reconciliations = [
+            item
+            for item in (existing[-49:] if isinstance(existing, list) else [])
+            if isinstance(item, dict)
+        ]
+        reconciliations.append(
+            {
+                "at": _safe_iso(_utcnow()),
+                "actor_tg_id": int(actor_tg_id),
+                "from_status": str(state.context["from_status"]),
+                "to_status": next_status,
+                "note": operator_note,
+            }
+        )
+        order_meta["admin_reconciliations"] = reconciliations
+        order.meta_json = json.dumps(order_meta, ensure_ascii=False, separators=(",", ":"))
+        order.status = next_status
+        if next_status == "paid" and not order.paid_at:
+            order.paid_at = _utcnow()
+        session.flush()
+        return {
+            "order_db_id": int(order.id),
+            "provider": str(order.provider or ""),
+            "order_id": str(order.order_id or ""),
+            "order_status": str(order.status or ""),
+        }
+
+    if action in {"promo.create", "promo.update", "promo.delete"}:
+        promo = state.entity
+        if action == "promo.delete":
+            if promo is None:
+                raise ActionIntentError(
+                    "target_not_found",
+                    status_code=404,
+                    message="Промокод не найден.",
+                )
+            deleted_code = str(promo.code or "").upper()
+            session.delete(promo)
+            session.flush()
+            return {"code": deleted_code, "deleted": True}
+
+        after = dict(state.context["after_snapshot"])
+        if action == "promo.create":
+            if promo is not None:
+                raise ActionIntentError(
+                    "target_exists",
+                    status_code=409,
+                    message="Промокод уже существует.",
+                )
+            promo = PromoCode(created_at=_utcnow())
+            session.add(promo)
+        promo.code = str(after["promo_code"])
+        promo.promo_type = str(after["promo_type"])
+        promo.value = int(after["value"])
+        promo.uses_left = int(after["uses_left"])
+        promo.expires_at = (
+            datetime.fromisoformat(str(after["expires_at"]))
+            if after.get("expires_at")
+            else None
+        )
+        session.flush()
+        return {"code": str(promo.code or "").upper(), "deleted": False}
+
+    if action == "referral.process":
+        now = _utcnow()
+        processed = 0
+        rewarded = 0
+        waiting = 0
+        rejected = 0
+        queue_ids: list[int] = []
+        for row in list(state.entity):
+            processed += 1
+            queue_ids.append(int(row.id))
+            referred = session.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+            referrer = session.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+            if referred is None or referrer is None:
+                row.status = "rejected_missing_user"
+                row.processed_at = now
+                rejected += 1
+                continue
+            has_activity = (
+                session.query(Event.id)
+                .filter(
+                    Event.tg_id == int(referred.tg_id),
+                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
+                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
+                )
+                .first()
+                is not None
+            )
+            age_hours = max(
+                0,
+                int((now - (row.queued_at or now)).total_seconds() // 3600),
+            )
+            if not has_activity and not bool(payload["force_without_activity"]):
+                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
+                    row.status = "rejected_no_activity"
+                    row.processed_at = now
+                    rejected += 1
+                else:
+                    row.ready_at = now + timedelta(hours=6)
+                    waiting += 1
+                continue
+            ref_sub = str(referrer.sub_type or "").upper().strip()
+            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
+            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
+                row.status = "rejected_referrer_inactive"
+                row.processed_at = now
+                rejected += 1
+                continue
+            row_meta = _json_obj(getattr(row, "meta", None))
+            if not bool(row_meta.get("counted")):
+                referrer.referral_count = int(referrer.referral_count or 0) + 1
+            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
+            referrer.is_active = True
+            row.status = "rewarded"
+            row.processed_at = now
+            rewarded += 1
+        session.flush()
+        return {
+            "processed": processed,
+            "rewarded": rewarded,
+            "waiting": waiting,
+            "rejected": rejected,
+            "queue_ids": queue_ids,
+        }
+
+    if action in {"provider_quota.create", "provider_quota.update"}:
+        node_code = str(state.context["node_code"])
+        row = state.entity
+        before = _provider_quota_audit_payload(row)
+        now = _utcnow()
+        if action == "provider_quota.create":
+            if row is not None:
+                raise ActionIntentError(
+                    "target_exists",
+                    status_code=409,
+                    message="Квота провайдера для этой ноды уже настроена.",
+                )
+            row = ProviderTrafficQuota(node_code=node_code, created_at=now)
+            session.add(row)
+            quota_action = "create"
+        else:
+            if row is None:
+                raise ActionIntentError(
+                    "target_not_found",
+                    status_code=404,
+                    message="Квота провайдера не найдена.",
+                )
+            quota_action = "update"
+        proposed = dict(state.context.get("proposed_config") or {})
+        row.included_bytes = int(proposed["included_bytes"])
+        row.reset_day = int(proposed["reset_day"])
+        row.timezone = str(proposed["timezone"])
+        row.warning_ratio = float(proposed["warning_ratio"])
+        row.critical_ratio = float(proposed["critical_ratio"])
+        row.enabled = bool(proposed["enabled"])
+        row.notes = proposed.get("notes")
+        row.updated_by = int(actor_tg_id)
+        row.updated_at = now
+        session.flush()
+        after = _provider_quota_safe_payload(row)
+        assert after is not None
+        _add_provider_quota_audit(
+            s=session,
+            quota=row,
+            node_code=node_code,
+            actor=actor_tg_id,
+            action=quota_action,
+            before=before,
+            after=after,
+        )
+        return {"quota": after, "node_code": node_code}
+
+    if action == "provider_quota.delete":
+        row = state.entity
+        node_code = str(state.context["node_code"])
+        if row is None:
+            raise ActionIntentError(
+                "target_not_found",
+                status_code=404,
+                message="Квота провайдера не найдена.",
+            )
+        before = _provider_quota_audit_payload(row)
+        _add_provider_quota_audit(
+            s=session,
+            quota=row,
+            node_code=node_code,
+            actor=actor_tg_id,
+            action="delete",
+            before=before,
+            after=None,
+        )
+        session.delete(row)
+        session.flush()
+        return {"node_code": node_code, "deleted": True}
+
+    if action == "user.extend":
+        user = state.entity
+        now = _utcnow()
+        current = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+        candidate = current + timedelta(days=int(payload["delta_days"]))
+        if candidate <= now:
+            if not bool(payload["allow_deactivate"]):
+                raise ActionIntentError(
+                    "would_deactivate",
+                    status_code=409,
+                    message="Операция деактивирует пользователя; подтвердите allow_deactivate=true.",
+                )
+            user.expiry_at = now
+            user.is_active = False
+        else:
+            user.expiry_at = candidate
+            user.is_active = True
+        session.flush()
+        return {
+            "expiry_at": _safe_iso(user.expiry_at),
+            "is_active": bool(user.is_active),
+            "delta_days": int(payload["delta_days"]),
+        }
+
+    if action == "user.key_limits":
+        tg_id = int(state.context["tg_id"])
+        node = str(payload["node_code"])
+        row = (
+            session.query(UserKeyPolicy)
+            .filter(
+                UserKeyPolicy.tg_id == tg_id,
+                func.lower(UserKeyPolicy.node_code) == node,
+            )
+            .first()
+        )
+        if row is None:
+            row = UserKeyPolicy(tg_id=tg_id, node_code=node)
+            session.add(row)
+        row.burst_mbps = payload["burst_mbps"]
+        row.soft_cap_gb = payload["soft_cap_gb"]
+        row.hard_cap_gb = payload["hard_cap_gb"]
+        row.notify_soft = bool(payload["notify_soft"])
+        row.notify_hard = bool(payload["notify_hard"])
+        row.auto_disable_on_hard = bool(payload["auto_disable_on_hard"])
+        row.updated_by = int(actor_tg_id)
+        row.updated_at = _utcnow()
+        session.flush()
+        row_payload = _serialize_key_policy(row)
+        session.add(
+            KeyActionHistory(
+                tg_id=tg_id,
+                node_code=node,
+                action="key_limits_update",
+                actor_tg_id=int(actor_tg_id),
+                source="admin",
+                meta=json.dumps(
+                    {"policy": row_payload, "apply_now": False, "applied": None},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                created_at=_utcnow(),
+            )
+        )
+        return {"policy": row_payload, "applied": None}
+
+    if action == "user.preset_run" and payload["preset"] == "extend_1d":
+        user = state.entity
+        now = _utcnow()
+        base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+        user.expiry_at = base + timedelta(days=1)
+        user.is_active = True
+        session.flush()
+        return {
+            "preset": "extend_1d",
+            "expiry_at": _safe_iso(user.expiry_at),
+        }
+
+    if action == "user.bulk_key_action" and bool(payload["dry_run"]):
+        return {
+            "action": str(payload["action"]),
+            "dry_run": True,
+            "users": int(state.context["selected_count"]),
+            "selection_hash": str(state.context["selection_hash"]),
+            "preview_tg_ids": [
+                int(value)
+                for value in list(state.context["selected_tg_ids"])[:50]
+            ],
+        }
+
+    if action == "key.rotate":
+        key_row = state.entity
+        if bool(payload["dry_run"]):
+            return {
+                "dry_run": True,
+                "key_id": int(key_row.id),
+                "tg_id": int(key_row.tg_id),
+                "node_code": str(key_row.node_code or "") or None,
+                "planned_job_type": "rotate_access_key",
+            }
+        key_row.state = "rotation_requested"
+        key_row.updated_at = _utcnow()
+        job = NodeProvisioningJob(
+            tg_id=int(key_row.tg_id),
+            key_id=int(key_row.id),
+            node_code=str(key_row.node_code or "") or None,
+            job_type="rotate_access_key",
+            status="queued",
+            desired_state_json=json.dumps(
+                {
+                    "reason_sha256": str(payload["reason"]["sha256"]),
+                    "reason_length": int(payload["reason"]["length"]),
+                    "requested_by": int(actor_tg_id),
+                    "pool_code": str(key_row.pool_code or ""),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            created_at=_utcnow(),
+            updated_at=_utcnow(),
+        )
+        session.add(job)
+        session.flush()
+        return {
+            "key_id": int(key_row.id),
+            "job_id": int(job.id),
+            "job_status": "queued",
+        }
+
+    if action == "ticket.status":
+        ticket = state.entity
+        new_status = str(payload["status"])
+        set_ticket_status(
+            session,
+            ticket=ticket,
+            status=new_status,
+            assigned_admin_tg_id=(
+                int(actor_tg_id) if new_status == STATUS_IN_PROGRESS else None
+            ),
+        )
+        session.flush()
+        return {"ticket_id": int(ticket.id)}
+
+    raise ActionIntentError(
+        "executor_unavailable",
+        status_code=503,
+        message="DB-исполнитель действия недоступен.",
+    )
+
+
+async def _execute_admin_client_action_external(
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    action = str(context["action"])
+    actor = int(context["actor_tg_id"])
+    runtime = dict(context.get("runtime_payload") or {})
+    execution = dict(context.get("execution") or {})
+
+    if action == "user.manual_create":
+        tg_id = int(execution["candidate_tg_id"])
+        session = SessionLocal()
+        try:
+            if session.query(User).filter(User.tg_id == tg_id).first() is not None:
+                return {"ok": False, "code": "manual_id_conflict", "tg_id": tg_id}
+            now = _utcnow()
+            user = User(
+                tg_id=tg_id,
+                username=None,
+                uuid=str(uuid.uuid4()),
+                email=f"MANUAL_{abs(tg_id)}",
+                sub_type="MANUAL",
+                current_plan_code="manual",
+                created_at=now,
+                expiry_at=now + timedelta(days=int(runtime["days"])),
+                is_active=True,
+                stars_paid=0,
+                total_gb=0,
+                trial_used=False,
+                tos_accepted=True,
+                first_purchase_done=True,
+                sub_token=_generate_sub_token(),
+                is_manual=True,
+                created_by_admin=actor,
+                display_name=str(runtime["display_name"]),
+            )
+            session.add(user)
+            ensure_user_account_foundation(session, user, now=now)
+            session.commit()
+            session.refresh(user)
+            user_uuid = str(user.uuid or "")
+            email = str(user.email or "")
+            sub_token = str(user.sub_token or "")
+        except IntegrityError:
+            session.rollback()
+            return {"ok": False, "code": "manual_id_conflict", "tg_id": tg_id}
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            synced = await panel.ensure_user_on_all_nodes(
+                tg_id=tg_id,
+                client_uuid=user_uuid,
+                email=email,
+                sub_id=sub_token or str(tg_id),
+                enable=True,
+                only_node_codes=None,
+            )
+            sync_ok = bool(any(synced.values())) if synced else False
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="manual_create",
+            actor_tg_id=actor,
+            meta={"days": int(runtime["days"]), "sync_ok": sync_ok},
+        )
+        return {
+            "ok": True,
+            "code": "manual_created",
+            "tg_id": tg_id,
+            "sync_ok": sync_ok,
+        }
+
+    if action == "user.block":
+        tg_id = int(execution["tg_id"])
+        active = not bool(runtime["blocked"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            user.is_active = active
+            user_uuid = str(user.uuid or "")
+            session.commit()
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            await panel.enable_client(user_uuid, enable=active)
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="manual_block" if runtime["blocked"] else "manual_unblock",
+            actor_tg_id=actor,
+            meta={"blocked": bool(runtime["blocked"])},
+        )
+        return {
+            "ok": True,
+            "code": "user_block_updated",
+            "tg_id": tg_id,
+            "is_active": active,
+        }
+
+    if action == "user.regenerate_token":
+        tg_id = int(execution["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            user.sub_token = _generate_sub_token()
+            user_uuid = str(user.uuid or "")
+            active = bool(user.is_active)
+            session.commit()
+        finally:
+            session.close()
+        _process_referral_bonus_queue(limit=100, force_without_activity=False)
+        sync_ok = False
+        if user_uuid:
+            panel = ControlPanel()
+            try:
+                await panel.login()
+                sync_ok = bool(await panel.enable_client(user_uuid, enable=active))
+            finally:
+                await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="token_regenerate",
+            actor_tg_id=actor,
+            meta={"sync_ok": sync_ok},
+        )
+        return {
+            "ok": True,
+            "code": "token_regenerated",
+            "tg_id": tg_id,
+            "sync_ok": sync_ok,
+        }
+
+    if action in {"user.safe_delete", "user.delete_test"}:
+        tg_id = int(execution["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            if not _is_manual_test_user(user):
+                return {"ok": False, "code": "user_not_deletable", "tg_id": tg_id}
+            session.query(UserNode).filter(UserNode.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(KeyActionHistory).filter(KeyActionHistory.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(Event).filter(Event.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.delete(user)
+            session.commit()
+        finally:
+            session.close()
+        panel_deleted = False
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            panel_deleted = bool(await panel.delete_client(tg_id))
+        except Exception as exc:
+            logger.warning(
+                "admin guarded delete panel cleanup failed tg_id=%s error_type=%s intent_id=%s",
+                tg_id,
+                type(exc).__name__,
+                str(context.get("action_intent_id") or ""),
+            )
+        finally:
+            await panel.close()
+        return {
+            "ok": True,
+            "code": "user_deleted",
+            "tg_id": tg_id,
+            "panel_deleted": panel_deleted,
+        }
+
+    if action in {
+        "user.key_toggle",
+        "user.key_reset_traffic",
+        "user.key_resync_subid",
+    }:
+        tg_id = int(execution["tg_id"])
+        node_code = str(runtime["node_code"])
+        hard_cap = dict(execution.get("hard_caps") or {}).get(node_code)
+        sub_id = str(execution.get("sub_token") or tg_id)
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            if action == "user.key_toggle":
+                changed = await panel.set_user_key_enabled_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                    enable=bool(runtime["enable"]),
+                    sub_id=sub_id,
+                    hard_cap_gb=hard_cap,
+                )
+            elif action == "user.key_reset_traffic":
+                changed = await panel.reset_user_key_traffic_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                )
+            else:
+                changed = await panel.resync_user_key_subid_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                    sub_id=sub_id,
+                    hard_cap_gb=hard_cap,
+                )
+        finally:
+            await panel.close()
+        if changed is None:
+            return {
+                "ok": False,
+                "code": "key_not_found",
+                "tg_id": tg_id,
+                "node_code": node_code,
+            }
+        if not changed:
+            return {
+                "ok": False,
+                "code": "panel_update_failed",
+                "tg_id": tg_id,
+                "node_code": node_code,
+            }
+        history_action = {
+            "user.key_toggle": "key_enable" if runtime["enable"] else "key_disable",
+            "user.key_reset_traffic": "key_reset_traffic",
+            "user.key_resync_subid": "key_resync_subid",
+        }[action]
+        _key_history_log(
+            tg_id=tg_id,
+            action=history_action,
+            node_code=node_code,
+            actor_tg_id=actor,
+            meta=(
+                {"enabled": bool(runtime["enable"])}
+                if action == "user.key_toggle"
+                else None
+            ),
+        )
+        result: dict[str, Any] = {
+            "ok": True,
+            "code": "key_updated",
+            "tg_id": tg_id,
+            "node_code": node_code,
+        }
+        if action == "user.key_toggle":
+            result["enabled"] = bool(runtime["enable"])
+        return result
+
+    if action == "user.key_limits":
+        tg_id = int(execution["tg_id"])
+        node_code = str(runtime["node_code"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            row = (
+                session.query(UserKeyPolicy)
+                .filter(
+                    UserKeyPolicy.tg_id == tg_id,
+                    func.lower(UserKeyPolicy.node_code) == node_code,
+                )
+                .first()
+            )
+            if row is None:
+                row = UserKeyPolicy(tg_id=tg_id, node_code=node_code)
+                session.add(row)
+            row.burst_mbps = runtime["burst_mbps"]
+            row.soft_cap_gb = runtime["soft_cap_gb"]
+            row.hard_cap_gb = runtime["hard_cap_gb"]
+            row.notify_soft = bool(runtime["notify_soft"])
+            row.notify_hard = bool(runtime["notify_hard"])
+            row.auto_disable_on_hard = bool(runtime["auto_disable_on_hard"])
+            row.updated_by = actor
+            row.updated_at = _utcnow()
+            sub_id = str(user.sub_token or user.tg_id)
+            row_payload = _serialize_key_policy(row)
+            session.commit()
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            applied = await panel.apply_user_key_limits_on_node(
+                tg_id=tg_id,
+                node_code=node_code,
+                hard_cap_gb=runtime["hard_cap_gb"],
+                sub_id=sub_id,
+            )
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="key_limits_update",
+            node_code=node_code,
+            actor_tg_id=actor,
+            meta={"policy": row_payload, "apply_now": True, "applied": applied},
+        )
+        return {
+            "ok": True,
+            "code": "key_limits_updated",
+            "tg_id": tg_id,
+            "node_code": node_code,
+            "applied": applied,
+        }
+
+    if action == "user.loyalty_grant":
+        tg_id = int(execution["tg_id"])
+        tier_days = int(runtime["tier_days"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            loyalty = _user_loyalty_snapshot(s=session, user=user)
+            tier = next(
+                (
+                    row
+                    for row in loyalty.get("tiers", [])
+                    if int(row.get("days") or 0) == tier_days
+                ),
+                None,
+            )
+            if tier is None:
+                return {"ok": False, "code": "tier_not_found", "tg_id": tg_id}
+            if not bool(tier.get("unlocked")):
+                return {"ok": False, "code": "tier_locked", "tg_id": tg_id}
+            if bool(tier.get("claimed")):
+                return {"ok": False, "code": "tier_claimed", "tg_id": tg_id}
+            now = _utcnow()
+            base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+            user.expiry_at = base + timedelta(days=max(1, int(tier.get("bonus_days") or 0)))
+            user.is_active = True
+            session.add(
+                RewardClaim(
+                    tg_id=tg_id,
+                    reward_key=str(tier.get("reward_key") or ""),
+                    meta=json.dumps({"tier": tier_days}, ensure_ascii=False),
+                )
+            )
+            session.commit()
+            try:
+                sync_ok = bool(await _sync_user_after_paid_bonus(user))
+            except Exception as exc:
+                logger.warning(
+                    "loyalty grant sync failed tg_id=%s error_type=%s intent_id=%s",
+                    tg_id,
+                    type(exc).__name__,
+                    str(context.get("action_intent_id") or ""),
+                )
+                sync_ok = False
+        except IntegrityError:
+            session.rollback()
+            return {"ok": False, "code": "tier_claimed", "tg_id": tg_id}
+        finally:
+            session.close()
+        return {
+            "ok": True,
+            "code": "loyalty_granted",
+            "tg_id": tg_id,
+            "tier_days": tier_days,
+            "sync_ok": sync_ok,
+        }
+
+    if action == "user.preset_run":
+        tg_id = int(execution["tg_id"])
+        preset = str(runtime["preset"])
+        if preset == "send_guide":
+            ok = await _telegram_send_message(
+                tg_id,
+                "Инструкция по подключению:\n"
+                "1) Откройте раздел Устройства.\n"
+                "2) Импортируйте ключ.\n"
+                "3) Проверьте статус и перезапустите приложение.",
+            )
+            return {
+                "ok": bool(ok),
+                "code": "guide_sent" if ok else "telegram_failed",
+                "tg_id": tg_id,
+                "preset": preset,
+            }
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            nodes = enabled_nodes(session)
+        finally:
+            session.close()
+        keys_state = await _admin_user_keys_state(user, nodes=nodes)
+        keys = [row for row in keys_state.get("keys", []) if bool(row.get("exists"))]
+        expected_sub_id = str(user.sub_token or user.tg_id)
+        changed = 0
+        failed = 0
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            if preset == "reset_key":
+                for key in keys:
+                    code = str(key.get("node_code") or "")
+                    ok = await panel.reset_user_key_traffic_on_node(
+                        tg_id=tg_id,
+                        node_code=code,
+                    )
+                    if ok:
+                        changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action="key_reset_traffic",
+                            node_code=code,
+                            actor_tg_id=actor,
+                            source="preset",
+                        )
+                    else:
+                        failed += 1
+            elif preset == "rotate_link":
+                rotate_session = SessionLocal()
+                try:
+                    db_user = rotate_session.query(User).filter(User.tg_id == tg_id).first()
+                    if db_user is None:
+                        return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+                    db_user.sub_token = _generate_sub_token()
+                    rotate_session.commit()
+                    expected_sub_id = str(db_user.sub_token or db_user.tg_id)
+                finally:
+                    rotate_session.close()
+                for key in keys:
+                    code = str(key.get("node_code") or "")
+                    cap_session = SessionLocal()
+                    try:
+                        hard_cap = _get_user_node_hard_cap_gb(
+                            s=cap_session,
+                            tg_id=tg_id,
+                            node_code=code,
+                        )
+                    finally:
+                        cap_session.close()
+                    ok = await panel.resync_user_key_subid_on_node(
+                        tg_id=tg_id,
+                        node_code=code,
+                        sub_id=expected_sub_id,
+                        hard_cap_gb=hard_cap,
+                    )
+                    if ok:
+                        changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action="key_resync_subid",
+                            node_code=code,
+                            actor_tg_id=actor,
+                            source="preset",
+                        )
+                    else:
+                        failed += 1
+                _key_history_log(
+                    tg_id=tg_id,
+                    action="token_regenerate",
+                    actor_tg_id=actor,
+                    source="preset",
+                )
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "preset_completed" if failed == 0 else "preset_partial",
+            "tg_id": tg_id,
+            "preset": preset,
+            "changed": changed,
+            "failed": failed,
+        }
+
+    if action == "user.bulk_key_action":
+        selected = [int(value) for value in execution["selected_tg_ids"]]
+        bulk_action = str(execution["action"])
+        if len(selected) > 50 and not bool(execution["force"]):
+            return {
+                "ok": False,
+                "code": "force_required",
+                "action": bulk_action,
+                "users": len(selected),
+                "requires_force": True,
+            }
+        panel = ControlPanel()
+        changed = 0
+        failed = 0
+        details: list[dict[str, int]] = []
+        try:
+            await panel.login()
+            for tg_id in selected:
+                user_changed = 0
+                user_failed = 0
+                session = SessionLocal()
+                try:
+                    user = session.query(User).filter(User.tg_id == tg_id).first()
+                    if user is None:
+                        failed += 1
+                        user_failed += 1
+                        details.append(
+                            {"tg_id": tg_id, "changed": 0, "failed": user_failed}
+                        )
+                        continue
+                    sub_id = str(user.sub_token or user.tg_id)
+                finally:
+                    session.close()
+                node_codes = list(execution["node_codes"])
+                if not node_codes:
+                    snapshots = await panel.get_user_key_snapshots(tg_id=tg_id)
+                    node_codes = [
+                        str(row.get("node_code") or "").strip().lower()
+                        for row in snapshots
+                        if str(row.get("node_code") or "").strip()
+                    ]
+                for node_code in node_codes:
+                    cap_session = SessionLocal()
+                    try:
+                        hard_cap = _get_user_node_hard_cap_gb(
+                            s=cap_session,
+                            tg_id=tg_id,
+                            node_code=node_code,
+                        )
+                    finally:
+                        cap_session.close()
+                    if bulk_action == "disable":
+                        ok = await panel.set_user_key_enabled_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            enable=False,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    elif bulk_action == "enable":
+                        ok = await panel.set_user_key_enabled_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            enable=True,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    elif bulk_action == "reset":
+                        ok = await panel.reset_user_key_traffic_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                        )
+                    else:
+                        ok = await panel.resync_user_key_subid_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    if ok:
+                        changed += 1
+                        user_changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action={
+                                "disable": "key_disable",
+                                "enable": "key_enable",
+                                "reset": "key_reset_traffic",
+                                "resync": "key_resync_subid",
+                            }[bulk_action],
+                            node_code=node_code,
+                            actor_tg_id=actor,
+                            source="bulk",
+                        )
+                    else:
+                        failed += 1
+                        user_failed += 1
+                details.append(
+                    {
+                        "tg_id": tg_id,
+                        "changed": user_changed,
+                        "failed": user_failed,
+                    }
+                )
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "bulk_completed" if failed == 0 else "bulk_partial",
+            "action": bulk_action,
+            "users": len(selected),
+            "changed": changed,
+            "failed": failed,
+            "details": details,
+        }
+
+    if action == "node.sync_global":
+        selection = [dict(item) for item in execution["selection"]]
+        if len(selection) != int(execution["selected_count"]):
+            raise RuntimeError("frozen global sync selection is unavailable")
+        panel = ControlPanel()
+        changed = 0
+        failed = 0
+        try:
+            await panel.login()
+            for item in selection:
+                ok = await panel.enable_client(str(item["uuid"]), True)
+                if ok:
+                    changed += 1
+                else:
+                    failed += 1
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "global_sync_completed" if failed == 0 else "global_sync_partial",
+            "count": len(selection),
+            "changed": changed,
+            "failed": failed,
+        }
+
+    if action == "broadcast.send":
+        recipients = [int(value) for value in execution["selected_tg_ids"]]
+        if (
+            recipients != sorted(set(recipients))
+            or len(recipients) != int(execution["recipient_count"])
+        ):
+            raise RuntimeError("frozen broadcast plan is unavailable")
+        sent = 0
+        failed = 0
+        for tg_id in recipients:
+            if await _telegram_send_message(tg_id, str(runtime["text"])):
+                sent += 1
+            else:
+                failed += 1
+        return {
+            "ok": failed == 0,
+            "code": "broadcast_sent" if failed == 0 else "broadcast_partial",
+            "attempted": len(recipients),
+            "sent": sent,
+            "failed": failed,
+        }
+
+    if action == "user.message":
+        tg_id = int(execution["tg_id"])
+        ok = await _telegram_send_message(tg_id, str(runtime["text"]))
+        return {
+            "ok": bool(ok),
+            "code": "message_sent" if ok else "telegram_failed",
+            "tg_id": tg_id,
+        }
+
+    if action == "ticket.reply":
+        ticket_id = int(execution["ticket_id"])
+        user_tg_id = int(execution["user_tg_id"])
+        message_payload = TicketMessageIn(
+            body=str(runtime["body"]),
+            attachment_id=runtime.get("attachment_id"),
+            media_type=runtime.get("media_type"),
+            media_file_id=runtime.get("media_file_id"),
+            media_payload=runtime.get("media_payload"),
+        )
+        reference = _support_attachment_reference(message_payload)
+        with _support_attachment_bind_lock(reference):
+            session = SessionLocal()
+            try:
+                account_id = resolve_support_account_id(session, user_tg_id=actor)
+                ticket = get_ticket_by_id(session, ticket_id)
+                if ticket is None:
+                    return {"ok": False, "code": "ticket_not_found", "ticket_id": ticket_id}
+                attachment, media = _resolve_ticket_attachment(
+                    session,
+                    payload=message_payload,
+                    actor_tg_id=actor,
+                    account_id=account_id,
+                )
+                message = add_ticket_message(
+                    session,
+                    ticket_id=ticket_id,
+                    sender_tg_id=actor,
+                    sender_role="admin",
+                    body=message_payload.body,
+                    **media,
+                )
+                if attachment is not None:
+                    _bind_ticket_attachment(
+                        session,
+                        row=attachment,
+                        ticket_id=ticket_id,
+                        message_id=int(message.id),
+                    )
+                set_ticket_status(
+                    session,
+                    ticket=ticket,
+                    status=STATUS_IN_PROGRESS,
+                    assigned_admin_tg_id=actor,
+                )
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+        sent = await _telegram_send_message(
+            user_tg_id,
+            f"💬 Ответ оператора в обращении #{ticket_id}.",
+        )
+        return {
+            "ok": bool(sent),
+            "code": "ticket_replied" if sent else "telegram_failed",
+            "ticket_id": ticket_id,
+        }
+
+    raise RuntimeError("guarded external executor is unavailable")
+
+
+async def _execute_admin_post_commit(context: dict[str, Any]) -> dict[str, Any]:
+    if str(context.get("action") or "") != "ticket.status":
+        return {"ok": True, "code": "post_commit_not_required"}
+    execution = dict(context.get("execution") or {})
+    ticket_id = int(execution["ticket_id"])
+    user_tg_id = int(execution["user_tg_id"])
+    sent = await _telegram_send_message(
+        user_tg_id,
+        f"✅ Обращение #{ticket_id} закрыто оператором.",
+    )
+    return {"ok": bool(sent), "code": "ticket_close_notified" if sent else "telegram_failed"}
+
+
+def _saved_bulk_preview_ids(value: object) -> list[int]:
+    if not isinstance(value, list) or len(value) > 50:
+        return []
+    ids: list[int] = []
+    for item in value:
+        if type(item) is not int or not -(2**63) <= item < 2**63:
+            return []
+        ids.append(int(item))
+    return ids if len(set(ids)) == len(ids) else []
+
+
+def _saved_bulk_details(value: object) -> list[dict[str, int]]:
+    if not isinstance(value, list) or len(value) > 500:
+        return []
+    details: list[dict[str, int]] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"tg_id", "changed", "failed"}:
+            return []
+        tg_id = item["tg_id"]
+        changed = item["changed"]
+        failed = item["failed"]
+        if (
+            type(tg_id) is not int
+            or not -(2**63) <= tg_id < 2**63
+            or type(changed) is not int
+            or type(failed) is not int
+            or not 0 <= changed <= 1_000_000
+            or not 0 <= failed <= 1_000_000
+        ):
+            return []
+        details.append(
+            {"tg_id": int(tg_id), "changed": int(changed), "failed": int(failed)}
+        )
+    return (
+        details
+        if len({item["tg_id"] for item in details}) == len(details)
+        else []
+    )
+
+
+def _admin_guarded_action_response(
+    *,
+    action: str,
+    target_id: str,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    known_status = str(result.get("status") or "")
+    if known_status not in {"completed", "failed"}:
+        return result
+    if known_status == "failed" and (
+        action,
+        str(result.get("result_code") or ""),
+    ) not in {
+        ("user.preset_run", "preset_partial"),
+        ("user.bulk_key_action", "bulk_partial"),
+        ("user.bulk_key_action", "force_required"),
+        ("ticket.reply", "telegram_failed"),
+        ("broadcast.send", "broadcast_partial"),
+        ("node.sync_global", "global_sync_partial"),
+    }:
+        return result
+    facts = result.get("result") if isinstance(result.get("result"), dict) else {}
+    metadata = {
+        "status": result.get("status"),
+        "action_intent_id": result.get("action_intent_id"),
+        "audit_id": result.get("audit_id"),
+    }
+
+    def merged(legacy: dict[str, Any]) -> dict[str, Any]:
+        merged_result = {**result, **legacy, **metadata}
+        merged_result["ok"] = bool(
+            known_status == "completed" and legacy.get("ok", True)
+        )
+        return merged_result
+
+    if action == "payment.reconcile":
+        session = SessionLocal()
+        try:
+            order = session.query(ExternalOrder).filter(ExternalOrder.id == int(target_id)).first()
+            if order is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "order": _admin_payment_order_payload(s=session, order=order),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.manual_create":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "user": {
+                        "tg_id": tg_id,
+                        "display_name": str(user.display_name or ""),
+                        "sub_type": str(user.sub_type or ""),
+                        "is_active": bool(user.is_active),
+                        "expiry_at": _safe_iso(user.expiry_at),
+                        "subscription_url": build_subscription_url(str(user.sub_token or "")),
+                    },
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.block":
+        return merged({"ok": True, "is_active": bool(facts.get("is_active"))})
+
+    if action == "user.regenerate_token":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "subscription_url": build_subscription_url(str(user.sub_token or "")),
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action in {"user.safe_delete", "user.delete_test"}:
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "panel_deleted": bool(facts.get("panel_deleted")),
+            }
+        )
+
+    if action == "user.key_toggle":
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "node_code": str(facts["node_code"]),
+                "enabled": bool(facts.get("enabled")),
+            }
+        )
+
+    if action == "user.key_reset_traffic":
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "node_code": str(facts["node_code"]),
+            }
+        )
+
+    if action == "user.key_resync_subid":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "tg_id": tg_id,
+                    "node_code": str(facts["node_code"]),
+                    "expected_sub_id": str(user.sub_token or user.tg_id),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.key_limits":
+        tg_id = int(facts.get("tg_id") or target_id)
+        node_code = str(facts.get("node_code") or "")
+        session = SessionLocal()
+        try:
+            row = (
+                session.query(UserKeyPolicy)
+                .filter(
+                    UserKeyPolicy.tg_id == tg_id,
+                    func.lower(UserKeyPolicy.node_code) == node_code,
+                )
+                .first()
+            )
+            if row is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "policy": _serialize_key_policy(row),
+                    "applied": facts.get("applied"),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.loyalty_grant":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "tier_days": int(facts["tier_days"]),
+                    "expiry_at": _safe_iso(user.expiry_at),
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.preset_run" and facts:
+        preset = str(facts["preset"])
+        legacy: dict[str, Any] = {"ok": True, "preset": preset}
+        if preset in {"reset_key", "rotate_link"}:
+            tg_id = int(facts["tg_id"])
+            session = SessionLocal()
+            try:
+                user = session.query(User).filter(User.tg_id == tg_id).first()
+                if user is not None:
+                    legacy["subscription_url"] = build_subscription_url(
+                        str(user.sub_token or user.tg_id)
+                    )
+            finally:
+                session.close()
+            legacy["changed"] = int(facts.get("changed") or 0)
+            legacy["failed"] = int(facts.get("failed") or 0)
+        return merged(legacy)
+
+    if action == "user.bulk_key_action":
+        if facts:
+            requires_force = bool(facts.get("requires_force"))
+            return merged(
+                {
+                    "ok": not requires_force,
+                    "requires_force": requires_force or None,
+                    "action": str(facts.get("action") or ""),
+                    "users": int(facts.get("users") or 0),
+                    "changed": int(facts.get("changed") or 0),
+                    "failed": int(facts.get("failed") or 0),
+                    "details": _saved_bulk_details(facts.get("details")),
+                    **(
+                        {"message": "Для массового действия более чем над 50 пользователями нужен force=true"}
+                        if requires_force
+                        else {}
+                    ),
+                }
+            )
+        return merged(
+            {
+                "ok": True,
+                "action": str(result.get("action") or ""),
+                "dry_run": True,
+                "users": int(result.get("users") or 0),
+                "preview_tg_ids": _saved_bulk_preview_ids(
+                    result.get("preview_tg_ids")
+                ),
+            }
+        )
+
+    if action == "user.message":
+        return merged({"ok": True})
+
+    if action == "broadcast.send":
+        return merged(
+            {
+                "attempted": int(facts.get("attempted") or 0),
+                "sent": int(facts.get("sent") or 0),
+                "failed": int(facts.get("failed") or 0),
+            }
+        )
+
+    if action == "node.sync_global":
+        return merged(
+            {
+                "synced": int(facts.get("changed") or 0),
+                "failed": int(facts.get("failed") or 0),
+                "count": int(facts.get("count") or 0),
+            }
+        )
+
+    if action in {"ticket.reply", "ticket.status"}:
+        ticket_id = int(facts.get("ticket_id") or result.get("ticket_id") or target_id)
+        session = SessionLocal()
+        try:
+            ticket = get_ticket_by_id(session, ticket_id)
+            if ticket is None:
+                return result
+            messages = list_ticket_messages(session, ticket_id, limit=100)
+            return merged({"ticket": _ticket_detail_row(ticket, messages)})
+        finally:
+            session.close()
+
+    return result
+
+
+async def _execute_admin_guarded_action(
+    *,
+    actor_tg_id: int,
+    action: str,
+    target_type: str,
+    target_id: str,
+    payload: dict[str, Any],
+    request: Request,
+) -> dict[str, Any]:
+    intent_id = str(request.headers.get("X-Admin-Intent-Id") or "")
+    idempotency_key = str(request.headers.get("X-Admin-Idempotency-Key") or "")
+    confirmation = str(request.headers.get("X-Admin-Confirmation-SHA256") or "")
+    if not intent_id.strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "intent_required",
+                "message": "Сначала создайте защищённое намерение через серверный предпросмотр.",
+            },
+        )
+    if not idempotency_key.strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="idempotency_required",
+            message="Нужен клиентский ключ идемпотентности.",
+        )
+    if not confirmation.strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="confirmation_required",
+            message="Нужно подтверждение серверной проверочной фразы.",
+        )
+    try:
+        execution_result = await _execute_action_intent(
+            session_factory=SessionLocal,
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            idempotency_key=idempotency_key,
+            confirmation_sha256_header=confirmation,
+            action=action,
+            target={"type": target_type, "id": target_id},
+            payload=payload,
+            audit_writer=_add_admin_audit,
+            db_executor=lambda session, state, normalized, runtime: (
+                _execute_admin_client_action_db(
+                    session,
+                    state,
+                    dict(normalized),
+                    dict(runtime),
+                    actor_tg_id=actor_tg_id,
+                    action=action,
+                )
+            ),
+            external_executor=_execute_admin_client_action_external,
+            post_commit_executor=_execute_admin_post_commit,
+            external_timeout_seconds=(
+                300.0
+                if action in {"user.bulk_key_action", "user.preset_run"}
+                else 30.0
+            ),
+            return_replay_state=True,
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    result, replayed = execution_result
+    if replayed and action != "broadcast.send":
+        return result
+    return _admin_guarded_action_response(
+        action=action,
+        target_id=target_id,
+        result=result,
+    )
+
+
+async def _execute_admin_node_action(
+    *,
+    actor_tg_id: int,
+    action: str,
+    node_code: str,
+    payload: dict[str, Any],
+    intent_id: str,
+    idempotency_key: str,
+    confirmation_sha256: str,
+) -> dict[str, Any]:
+    if not str(intent_id or "").strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "intent_required",
+                "message": "Сначала создайте защищённое намерение через серверный предпросмотр.",
+            },
+        )
+    if not str(idempotency_key or "").strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="idempotency_required",
+            message="Нужен клиентский ключ идемпотентности.",
+        )
+    if not str(confirmation_sha256 or "").strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="confirmation_required",
+            message="Нужно подтверждение серверной проверочной фразы.",
+        )
+    try:
+        return await _execute_action_intent(
+            session_factory=SessionLocal,
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            idempotency_key=idempotency_key,
+            confirmation_sha256_header=confirmation_sha256,
+            action=action,
+            target={"type": "node", "id": node_code},
+            payload=payload,
+            audit_writer=_add_admin_audit,
+            external_executor=(
+                _execute_node_resync_external
+                if action == "node.resync"
+                else None
+            ),
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+
+
+@app.post("/api/admin/action-intents")
+async def admin_action_intent_prepare(
+    payload: AdminActionIntentPrepareIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    session = SessionLocal()
+    try:
+        result = _prepare_action_intent(
+            session=session,
+            actor_tg_id=actor,
+            action=payload.action,
+            target={"type": payload.target.type, "id": payload.target.id},
+            payload=dict(payload.payload),
+        )
+        session.commit()
+        return result
+    except ActionIntentError as error:
+        session.rollback()
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "intent_prepare_failed",
+                "message": "Не удалось подготовить действие.",
+            },
+        ) from None
+    finally:
+        session.close()
+
+
+@app.get("/api/admin/action-intents/{intent_id}")
+async def admin_action_intent_status(
+    intent_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    session = SessionLocal()
+    try:
+        return _get_action_intent_status(
+            session=session,
+            actor_tg_id=actor,
+            intent_id=intent_id,
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    finally:
+        session.close()
+
+
+@app.post("/api/admin/nodes/{node_code}/disable")
+async def admin_node_disable(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.disable",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
+
+
+@app.post("/api/admin/nodes/{node_code}/resync")
+async def admin_node_resync(
+    node_code: str,
+    payload: AdminNodeResyncIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.resync",
+        node_code=wanted,
+        payload={"limit": int(payload.limit), "dry_run": bool(payload.dry_run)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 def _transport_profiles_payload(node: Any) -> dict[str, dict[str, Any]]:
@@ -19864,6 +21993,7 @@ def _serialize_admin_node(
     return {
         "code": n.code,
         "name": n.name,
+        "country_code": _node_country_code(str(n.code or "")).upper(),
         "enabled": bool(n.enabled),
         "accepting_new_clients": bool(getattr(n, "accepting_new_clients", True)),
         "is_draining": bool(getattr(n, "is_draining", False)),
@@ -20562,7 +22692,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "2096")))
-
-
-
-

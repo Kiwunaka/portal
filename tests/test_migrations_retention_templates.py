@@ -6,6 +6,8 @@ import unittest
 import uuid
 from pathlib import Path
 
+from sqlalchemy import inspect
+
 
 class RetentionTemplateSeedTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -134,6 +136,20 @@ class RetentionTemplateSeedTests(unittest.TestCase):
             self.assertIn("ipv4_health", sample_names)
             self.assertIn("ipv6_health", sample_names)
             self.assertIn("transport_health_json", sample_names)
+
+    def test_init_db_creates_ru_probe_tables_idempotently(self) -> None:
+        self.db.init_db()
+        self.db.init_db()
+
+        table_names = set(inspect(self.db.engine).get_table_names())
+        self.assertTrue(
+            {
+                "ru_probe_runs",
+                "ru_probe_target_results",
+                "ru_probe_uploader_heartbeats",
+                "internal_ingest_nonces",
+            }.issubset(table_names)
+        )
 
 
 if __name__ == "__main__":

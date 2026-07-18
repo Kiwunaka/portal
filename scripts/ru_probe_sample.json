@@ -1,87 +1,78 @@
 {
-  "timestamp_utc": "2026-03-23T12:00:00Z",
-  "probe_host": "mini-rf-1",
-  "probe_public_ip": "203.0.113.10",
-  "google_reachable": true,
-  "classifications": [
-    "canonical_host_problem",
-    "eu_node_problem",
-    "foreign_edge_problem",
-    "xhttp_alive"
-  ],
-  "reserve": {
-    "host": "rf1.pokrov.space",
-    "xhttp_alive": true,
-    "hysteria_alive": false
+  "schema_version": 2,
+  "run_id": "1207b65e-c12e-4681-8436-e70432c4f53a",
+  "origin": "ru",
+  "probe_host": {
+    "id": "mini",
+    "label": "Мини — российская проба",
+    "public_ip": "203.0.113.10"
   },
+  "runner_version": "2.0",
+  "manifest_revision": "aadaf941df4d1a0689292d747da92be9bee891c82becdb35264c012cdef72183",
+  "started_at": "2026-07-15T12:00:00Z",
+  "finished_at": "2026-07-15T12:00:20Z",
+  "execution_status": "completed",
+  "evidence_code": null,
   "targets": [
     {
-      "name": "google",
-      "kind": "internet",
-      "host": "google.com",
-      "port": 443,
-      "ok": true,
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "http_ok": true,
-      "udp_ok": null,
-      "detail": "http 301"
-    },
-    {
-      "name": "pokrov-space",
-      "kind": "canonical",
-      "host": "pokrov.space",
-      "port": 443,
-      "ok": false,
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": false,
-      "http_ok": false,
-      "udp_ok": null,
-      "detail": "certificate names do not match expected reality target"
-    },
-    {
-      "name": "reserve-xhttp",
-      "kind": "reserve_xhttp",
-      "host": "rf1.pokrov.space",
-      "port": 443,
-      "ok": true,
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "http_ok": null,
-      "udp_ok": null,
-      "detail": "tls ok"
-    },
-    {
-      "name": "reserve-hysteria",
-      "kind": "reserve_hysteria",
-      "host": "rf1.pokrov.space",
-      "port": 443,
-      "ok": false,
-      "dns_ok": true,
-      "tcp_ok": null,
-      "tls_ok": null,
-      "http_ok": null,
-      "udp_ok": false,
-      "detail": "udp_probe_failed"
+      "target_id": "node:sample",
+      "target_kind": "delivery_node",
+      "scope": "release_required",
+      "node_code": "sample",
+      "endpoint": {
+        "host": "203.0.113.20",
+        "port": 443,
+        "sni": "front.example.net",
+        "address_families": [
+          "ipv4",
+          "ipv6"
+        ],
+        "transport_profile": "legacy_reality_fallback",
+        "probe_mode": "delivery_tls",
+        "http_path": null,
+        "min_body_bytes": null,
+        "local_probe_profile_id": null
+      },
+      "endpoint_fingerprint": "9c1993349aa06ed81f43ffda48769b15ffa2de89f66eb88baa0078ee42a7f776",
+      "stages": {
+        "dns": {
+          "status": "pass",
+          "latency_ms": 12,
+          "code": null
+        },
+        "tcp": {
+          "status": "pass",
+          "latency_ms": 20,
+          "code": null
+        },
+        "tls": {
+          "status": "fail",
+          "latency_ms": 25,
+          "code": "tls_handshake_failed"
+        },
+        "http_large_body": {
+          "status": "not_applicable",
+          "latency_ms": null,
+          "code": null
+        },
+        "transport_handshake": {
+          "status": "not_applicable",
+          "latency_ms": null,
+          "code": null
+        }
+      },
+      "address_family_status": {
+        "ipv4": "pass",
+        "ipv6": "not_run"
+      },
+      "transport": {
+        "profile_code": "legacy_reality_fallback",
+        "handshake_status": "not_applicable",
+        "classification": "not_applicable",
+        "detail_code": null
+      },
+      "detail_code": "tls_handshake_failed",
+      "detail": null
     }
-  ],
-  "nodes": {
-    "pl": {
-      "address": "82.40.38.84:443",
-      "reachable": false,
-      "detail": "timeout"
-    },
-    "nl": {
-      "address": "82.24.195.93:443",
-      "reachable": true,
-      "detail": "tls ok"
-    }
-  },
-  "notes": [
-    "Probe executed from external RU host outside the control plane.",
-    "UDP checks are best-effort and should be interpreted as a viability hint for Hysteria2, not a full QUIC handshake guarantee."
   ]
 }
