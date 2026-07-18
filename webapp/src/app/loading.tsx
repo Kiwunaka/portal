@@ -1,46 +1,37 @@
+import { SkeletonBlock, SkeletonLine, SkeletonRegion } from "@/components/ui/skeleton";
+
+/**
+ * Route-level cold-start fallback. Mirrors the persistent cabinet shell so a
+ * hard load paints one stable, server-renderable skeleton without client hooks.
+ * This stays a div because the streamed page owns the document's main landmark.
+ */
 export default function Loading() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8" aria-busy="true" aria-live="polite">
-      <div className="grid gap-4 lg:grid-cols-[260px,1fr]">
-        <aside className="glass-card hidden p-5 lg:block">
-          <div className="h-4 w-24 motion-safe:animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
-          <div className="mt-6 space-y-3">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="h-11 motion-safe:animate-pulse rounded-2xl bg-[color:var(--atlas-border)]" />
-            ))}
-          </div>
-        </aside>
-
-        <div className="glass-card overflow-hidden p-6 sm:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-[color:var(--atlas-status-success-text)]">Открываем кабинет</p>
-          <h1 className="mt-3 font-display text-3xl font-bold text-[color:var(--atlas-text)]">POKROV готовит рабочее пространство</h1>
-          <p className="mt-3 max-w-2xl text-sm text-[color:var(--atlas-text-soft)]">
-            Обновляем данные по доступу и устройствам. Оболочка кабинета останется на месте после первого входа.
-          </p>
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1.6fr,1fr]">
-            <div className="space-y-3 rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-5">
-              <div className="h-3 w-32 motion-safe:animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
-              <div className="h-10 w-full max-w-xl motion-safe:animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
-              <div className="h-4 w-full motion-safe:animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
-              <div className="h-4 w-5/6 motion-safe:animate-pulse rounded-full bg-[color:var(--atlas-border)]" />
-              <div className="mt-4 flex flex-wrap gap-3">
-                <div className="h-11 w-36 motion-safe:animate-pulse rounded-xl bg-[color:var(--atlas-border)]" />
-                <div className="h-11 w-36 motion-safe:animate-pulse rounded-xl bg-[color:var(--atlas-border)]" />
-              </div>
+    <div
+      className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-4 lg:px-5"
+      style={{ minHeight: "var(--tg-viewport-height, 100dvh)" }}
+    >
+      <SkeletonRegion label="Открываем кабинет POKROV">
+        <div className="grid min-h-[calc(100dvh-2rem)] gap-4 lg:grid-cols-[252px_1fr]">
+          <aside className="hidden rounded-panel border border-line bg-surface p-4 shadow-soft lg:block">
+            <SkeletonLine className="h-11 w-36" />
+            <div className="mt-5 space-y-2">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <SkeletonBlock key={index} className="h-[52px]" />
+              ))}
             </div>
-            <div className="grid gap-3">
-              <div className="h-28 motion-safe:animate-pulse rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]" />
-              <div className="h-28 motion-safe:animate-pulse rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]" />
-            </div>
-          </div>
+          </aside>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-24 motion-safe:animate-pulse rounded-2xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)]" />
-            ))}
-          </div>
+          <section className="min-w-0 pb-[calc(2rem+var(--tg-safe-area-bottom,0px))] lg:pb-8">
+            <div className="mx-auto w-full max-w-[760px] space-y-4">
+              <p className="text-sm font-semibold text-ink-soft">Открываем кабинет — проверяем сессию и данные доступа.</p>
+              <SkeletonBlock className="h-32" />
+              <SkeletonBlock className="h-44" />
+              <SkeletonBlock className="h-32" />
+            </div>
+          </section>
         </div>
-      </div>
+      </SkeletonRegion>
     </div>
   );
 }

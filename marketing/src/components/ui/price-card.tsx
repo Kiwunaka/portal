@@ -1,9 +1,8 @@
-import type { ReactNode } from "react";
-
 import { Button } from "./button";
 import { cn } from "../utils";
 
 export type PriceCardProps = {
+  badge?: string;
   className?: string;
   ctaHref: string;
   ctaLabel: string;
@@ -17,6 +16,7 @@ export type PriceCardProps = {
 };
 
 export function PriceCard({
+  badge,
   className,
   ctaHref,
   ctaLabel,
@@ -42,7 +42,14 @@ export function PriceCard({
         </span>
       ) : null}
       <div className="flex flex-col gap-1">
-        <span className="text-[0.9375rem] font-semibold text-ink-soft">{title}</span>
+        <span className="flex items-center gap-2">
+          <span className="text-[0.9375rem] font-semibold text-ink-soft">{title}</span>
+          {badge ? (
+            <span className="inline-flex shrink-0 items-center rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-strong">
+              {badge}
+            </span>
+          ) : null}
+        </span>
         <div className="flex items-baseline gap-2">
           <span className="font-display text-[2rem] font-bold tracking-[-0.01em] text-ink">{price}</span>
           <span className="text-sm text-ink-soft">{durationNote}</span>
