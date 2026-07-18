@@ -257,3 +257,39 @@ def test_tool_continuation_replays_exact_call_and_removes_pre_retrieval_bodies()
     }
     assert continuation.supplied_topic_ids == tuple(hit.topic_id for hit in tool_hits)
     assert all(hit.body not in serialized for hit in pre_hits if hit.topic_id not in continuation.supplied_topic_ids)
+
+
+def test_lower_runtime_context_and_retrieval_ceilings_are_honored() -> None:
+    from support_agent_context import ContextBuildError, SupportContextBuilder
+
+    policy, store, knowledge = _snapshots()
+    baseline = SupportContextBuilder().build(
+        policy=policy,
+        knowledge=knowledge,
+        session=None,
+        redacted_message="Безопасный вопрос",
+        retrieved_hits=(),
+        tool_choice="auto",
+    )
+
+    with pytest.raises(ContextBuildError, match="provider_request_too_large"):
+        SupportContextBuilder(max_provider_request_chars=baseline.serialized_chars - 1).build(
+            policy=policy,
+            knowledge=knowledge,
+            session=None,
+            redacted_message="Безопасный вопрос",
+            retrieved_hits=(),
+            tool_choice="auto",
+        )
+
+    hits = store.search("подключено но нет интернета", limit=3)
+    bounded = SupportContextBuilder(max_retrieval_zone_chars=100).build(
+        policy=policy,
+        knowledge=knowledge,
+        session=None,
+        redacted_message="Подключено, но интернета нет",
+        retrieved_hits=hits,
+        tool_choice="auto",
+    )
+    assert bounded.supplied_topic_ids == ()
+    assert all(hit.body not in json.dumps(bounded.messages, ensure_ascii=False) for hit in hits)

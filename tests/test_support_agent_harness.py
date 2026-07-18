@@ -423,6 +423,34 @@ def test_each_provider_timeout_is_capped_by_remaining_wall_deadline() -> None:
     assert result.latency_ms == 1000
 
 
+def test_lower_runtime_request_and_tool_budgets_are_enforced() -> None:
+    from support_agent_provider import ProviderCallError
+
+    retry_adapter = _SequenceAdapter(
+        [
+            ProviderCallError(retryable=True, code="provider_timeout", status=0),
+            _final_turn("connected_no_internet"),
+        ]
+    )
+    retry_harness, _, _, _ = _harness(retry_adapter, max_provider_requests=1)
+    retry_result = _run(retry_harness)
+
+    assert retry_result.status == "fallback"
+    assert retry_result.provider_request_count == 1
+    assert retry_result.retry_count == 0
+    assert len(retry_adapter.requests) == 1
+
+    tool_adapter = _SequenceAdapter([_tool_turn()])
+    tool_harness, _, _, _ = _harness(tool_adapter, max_tool_calls=0)
+    tool_result = _run(tool_harness)
+
+    assert tool_result.status == "fallback"
+    assert tool_result.escalation_reason == "tool_call_budget_exhausted"
+    assert tool_result.provider_request_count == 1
+    assert tool_result.tool_call_count == 0
+    assert tool_adapter.requests[0]["tool_choice"] == "none"
+
+
 class _BlockingAdapter:
     def __init__(self, turn) -> None:
         self.turn = turn

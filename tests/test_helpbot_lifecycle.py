@@ -134,6 +134,14 @@ class HelpbotLifecycleTests(unittest.TestCase):
             "copy_catalog",
             "telegram_buttons",
             "support_ai_service",
+            "support_agent_context",
+            "support_agent_harness",
+            "support_agent_knowledge",
+            "support_agent_policy",
+            "support_agent_provider",
+            "support_agent_safety",
+            "support_agent_service",
+            "support_agent_sessions",
             "helpbot",
         ):
             sys.modules.pop(module_name, None)
@@ -147,7 +155,22 @@ class HelpbotLifecycleTests(unittest.TestCase):
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
-        for module_name in ("helpbot", "support_ai_service", "tickets_repo", "db", "models", "migrations"):
+        for module_name in (
+            "helpbot",
+            "support_ai_service",
+            "support_agent_context",
+            "support_agent_harness",
+            "support_agent_knowledge",
+            "support_agent_policy",
+            "support_agent_provider",
+            "support_agent_safety",
+            "support_agent_service",
+            "support_agent_sessions",
+            "tickets_repo",
+            "db",
+            "models",
+            "migrations",
+        ):
             sys.modules.pop(module_name, None)
         try:
             close_all_sessions()
@@ -196,17 +219,27 @@ class HelpbotLifecycleTests(unittest.TestCase):
 
     def test_user_text_receives_ai_support_hint_when_enabled(self) -> None:
         bot = _FakeBot()
+        from support_agent_service import SupportReplyResult
 
-        async def fake_generate(user_text, *, ticket_id, user_tg_id, config):
-            self.assertEqual(user_text, "How do I get the trial?")
+        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None):
+            self.assertEqual(surface, "helpbot")
+            self.assertEqual(authenticated_owner_id, "1001")
+            self.assertEqual(message, "How do I get the trial?")
             self.assertGreater(ticket_id, 0)
-            self.assertEqual(user_tg_id, 1001)
-            return "**Коротко:** Откройте приложение POKROV и нажмите `Try free`."
+            self.assertIsNone(assistant_session_id)
+            self.assertEqual(validated_sender_id, 1001)
+            return SupportReplyResult(
+                reply="**Коротко:** Откройте приложение POKROV и нажмите `Try free`.",
+                assistant_session_id="stable-helpbot-session-id",
+                suggested_actions=(),
+                should_escalate=False,
+                source="support_agent",
+            )
 
         self.helpbot.SUPPORT_AI_CONFIG.enabled = True
         self.helpbot.SUPPORT_AI_CONFIG.api_key = "sk-test"
         self.helpbot.SUPPORT_AI_CONFIG.min_interval_seconds = 0
-        self.helpbot.generate_support_reply = fake_generate
+        self.helpbot.SUPPORT_AGENT_SERVICE.generate = fake_generate
 
         start = _FakeMessage(1001, "/start ticket_new", bot=bot)
         asyncio.run(self.helpbot.start(start))

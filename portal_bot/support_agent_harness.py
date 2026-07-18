@@ -167,6 +167,8 @@ class SupportAgentHarness:
         in_flight_guard: SessionInFlightGuard,
         adapter: object,
         context_builder: SupportContextBuilder | None = None,
+        max_provider_requests: int = 2,
+        max_tool_calls: int = 1,
         max_concurrency: int = 2,
         concurrency_wait_seconds: float = 0.25,
         run_deadline_seconds: float = 25.0,
@@ -179,7 +181,11 @@ class SupportAgentHarness:
         trace_callback: Callable[[SupportAgentTrace], object] | None = None,
     ) -> None:
         if (
-            type(max_concurrency) is not int
+            type(max_provider_requests) is not int
+            or not 1 <= max_provider_requests <= 2
+            or type(max_tool_calls) is not int
+            or not 0 <= max_tool_calls <= 1
+            or type(max_concurrency) is not int
             or not 1 <= max_concurrency <= 2
             or not math.isfinite(concurrency_wait_seconds)
             or not 0.001 <= concurrency_wait_seconds <= 0.25
@@ -201,6 +207,8 @@ class SupportAgentHarness:
         self.in_flight_guard = in_flight_guard
         self.adapter = adapter
         self.context_builder = context_builder or SupportContextBuilder()
+        self.max_provider_requests = max_provider_requests
+        self.max_tool_calls = max_tool_calls
         self.max_concurrency = max_concurrency
         self.process_semaphore = asyncio.Semaphore(max_concurrency)
         self.concurrency_wait_seconds = float(concurrency_wait_seconds)
@@ -227,7 +235,7 @@ class SupportAgentHarness:
         stats: _RunStats,
         started: float,
     ) -> ModelTurn:
-        if stats.provider_request_count >= 2:
+        if stats.provider_request_count >= self.max_provider_requests:
             raise _HarnessFailure("provider_request_budget_exhausted")
         remaining = self._remaining(started)
         if remaining < _MIN_PROVIDER_WINDOW_SECONDS:
@@ -328,7 +336,7 @@ class SupportAgentHarness:
             session=session,
             redacted_message=boundary.model_text,
             retrieved_hits=pre_hits,
-            tool_choice="auto",
+            tool_choice="auto" if self.max_tool_calls else "none",
         )
         stats.stable_prefix_hash = first_context.stable_prefix_hash
         stats.add_topics(first_context.supplied_topic_ids)
@@ -337,7 +345,7 @@ class SupportAgentHarness:
             first_turn = await self._provider_call(first_context, stats, started)
         except ProviderCallError as exc:
             stats.error_code = exc.code
-            if not exc.retryable or stats.provider_request_count >= 2:
+            if not exc.retryable or stats.provider_request_count >= self.max_provider_requests:
                 raise _HarnessFailure(exc.code) from exc
             remaining = self._remaining(started)
             backoff = min(0.05 + max(0.0, min(float(self.jitter()), 1.0)) * 0.05, max(0.0, remaining - 0.1))
@@ -356,6 +364,10 @@ class SupportAgentHarness:
             return self._validate_final(retried_turn, first_context.supplied_topic_ids)
 
         if first_turn.tool_calls or first_turn.finish_reason == "tool_calls":
+            if self.max_tool_calls < 1:
+                raise _HarnessFailure("tool_call_budget_exhausted")
+            if stats.provider_request_count >= self.max_provider_requests:
+                raise _HarnessFailure("provider_request_budget_exhausted")
             call, query = self._validate_tool_turn(first_turn)
             stats.tool_call_count = 1
             try:

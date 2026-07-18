@@ -1552,18 +1552,28 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_ticket_create_appends_ai_hint_when_enabled(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        from support_agent_service import SupportReplyResult
 
-        async def fake_generate(user_text, *, ticket_id, user_tg_id, config):
-            self.assertEqual(user_text, "How do I start the trial?")
+        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None):
+            self.assertEqual(surface, "ticket")
+            self.assertEqual(authenticated_owner_id, "1001")
+            self.assertEqual(message, "How do I start the trial?")
             self.assertGreater(ticket_id, 0)
-            self.assertEqual(user_tg_id, 1001)
-            return "Откройте приложение POKROV и нажмите Try free."
+            self.assertIsNone(assistant_session_id)
+            self.assertIsNone(validated_sender_id)
+            return SupportReplyResult(
+                reply="Откройте приложение POKROV и нажмите Try free.",
+                assistant_session_id="stable-ticket-session-id",
+                suggested_actions=(),
+                should_escalate=False,
+                source="support_agent",
+            )
 
         self.api.SUPPORT_AI_CONFIG.enabled = True
         self.api.SUPPORT_AI_CONFIG.api_key = "sk-test"
         self.api.SUPPORT_AI_CONFIG.min_interval_seconds = 0
 
-        with patch.object(self.api, "generate_support_reply", side_effect=fake_generate), patch.object(
+        with patch.object(self.api.SUPPORT_AGENT_SERVICE, "generate", side_effect=fake_generate), patch.object(
             self.api, "_telegram_send_message", new_callable=AsyncMock
         ):
             create = self.client.post(
@@ -1580,6 +1590,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
     def test_ticket_followup_appends_ai_hint_for_user_messages_only(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        from support_agent_service import SupportReplyResult
 
         create = self.client.post(
             "/api/tickets",
@@ -1589,15 +1600,26 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(create.status_code, 200, create.text)
         ticket_id = create.json()["ticket"]["id"]
 
-        async def fake_generate(user_text, *, ticket_id, user_tg_id, config):
-            self.assertEqual(user_text, "Connection is slow")
-            return "Попробуйте обновить профиль и выбрать другое направление."
+        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None):
+            self.assertEqual(surface, "ticket")
+            self.assertEqual(authenticated_owner_id, "1001")
+            self.assertEqual(message, "Connection is slow")
+            self.assertGreater(ticket_id, 0)
+            self.assertIsNone(assistant_session_id)
+            self.assertIsNone(validated_sender_id)
+            return SupportReplyResult(
+                reply="Попробуйте обновить профиль и выбрать другое направление.",
+                assistant_session_id="stable-ticket-session-id",
+                suggested_actions=(),
+                should_escalate=False,
+                source="support_agent",
+            )
 
         self.api.SUPPORT_AI_CONFIG.enabled = True
         self.api.SUPPORT_AI_CONFIG.api_key = "sk-test"
         self.api.SUPPORT_AI_CONFIG.min_interval_seconds = 0
 
-        with patch.object(self.api, "generate_support_reply", side_effect=fake_generate) as ai_call, patch.object(
+        with patch.object(self.api.SUPPORT_AGENT_SERVICE, "generate", side_effect=fake_generate) as ai_call, patch.object(
             self.api, "_telegram_send_message", new_callable=AsyncMock
         ):
             user_reply = self.client.post(

@@ -204,7 +204,7 @@ def _history_candidates(session: SessionState | None) -> tuple[Mapping[str, obje
     return tuple(reversed(selected_newest_first))
 
 
-def _validate_continuation(value: ToolContinuation) -> None:
+def _validate_continuation(value: ToolContinuation, *, max_tool_result_chars: int) -> None:
     try:
         assistant_chars = len(_canonical_json(value.assistant_message))
     except (TypeError, ValueError) as exc:
@@ -217,7 +217,7 @@ def _validate_continuation(value: ToolContinuation) -> None:
         or not 1 <= len(value.tool_call_id) <= 128
         or value.tool_name != "search_support_docs"
         or not isinstance(value.tool_result, str)
-        or len(value.tool_result) > MAX_RETRIEVAL_ZONE_CHARS
+        or len(value.tool_result) > max_tool_result_chars
         or not isinstance(value.supplied_topic_ids, tuple)
         or len(value.supplied_topic_ids) > 5
         or len(set(value.supplied_topic_ids)) != len(value.supplied_topic_ids)
@@ -227,6 +227,22 @@ def _validate_continuation(value: ToolContinuation) -> None:
 
 
 class SupportContextBuilder:
+    def __init__(
+        self,
+        *,
+        max_provider_request_chars: int = MAX_PROVIDER_REQUEST_CHARS,
+        max_retrieval_zone_chars: int = MAX_RETRIEVAL_ZONE_CHARS,
+    ) -> None:
+        if (
+            type(max_provider_request_chars) is not int
+            or not 1_000 <= max_provider_request_chars <= MAX_PROVIDER_REQUEST_CHARS
+            or type(max_retrieval_zone_chars) is not int
+            or not 1 <= max_retrieval_zone_chars <= MAX_RETRIEVAL_ZONE_CHARS
+        ):
+            raise ContextBuildError("context_limits_invalid")
+        self.max_provider_request_chars = max_provider_request_chars
+        self.max_retrieval_zone_chars = max_retrieval_zone_chars
+
     def build(
         self,
         *,
@@ -258,7 +274,10 @@ class SupportContextBuilder:
 
         tail: list[Mapping[str, object]] = [current_message]
         if continuation is not None:
-            _validate_continuation(continuation)
+            _validate_continuation(
+                continuation,
+                max_tool_result_chars=self.max_retrieval_zone_chars,
+            )
             tail.extend(
                 (
                     dict(continuation.assistant_message),
@@ -271,7 +290,7 @@ class SupportContextBuilder:
                 )
             )
         baseline = [stable_message, *tail]
-        if _request_chars(baseline, tools, tool_choice) > MAX_PROVIDER_REQUEST_CHARS:
+        if _request_chars(baseline, tools, tool_choice) > self.max_provider_request_chars:
             raise ContextBuildError("provider_request_too_large")
 
         admitted_topics: list[Mapping[str, object]] = []
@@ -284,10 +303,10 @@ class SupportContextBuilder:
             for hit in ordered_hits:
                 message = _topic_message(hit)
                 size = len(_canonical_json(message))
-                if retrieval_chars + size > MAX_RETRIEVAL_ZONE_CHARS:
+                if retrieval_chars + size > self.max_retrieval_zone_chars:
                     break
                 candidate = [stable_message, *admitted_topics, message, *tail]
-                if _request_chars(candidate, tools, tool_choice) > MAX_PROVIDER_REQUEST_CHARS:
+                if _request_chars(candidate, tools, tool_choice) > self.max_provider_request_chars:
                     break
                 admitted_topics.append(message)
                 admitted_topic_ids.append(hit.topic_id)
@@ -299,7 +318,7 @@ class SupportContextBuilder:
         for message in reversed([*state_messages, *history]):
             candidate_session = [message, *admitted_session]
             candidate = [stable_message, *admitted_topics, *candidate_session, *tail]
-            if _request_chars(candidate, tools, tool_choice) <= MAX_PROVIDER_REQUEST_CHARS:
+            if _request_chars(candidate, tools, tool_choice) <= self.max_provider_request_chars:
                 admitted_session = candidate_session
 
         messages = tuple([stable_message, *admitted_topics, *admitted_session, *tail])

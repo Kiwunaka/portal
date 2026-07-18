@@ -139,7 +139,8 @@ from tickets_repo import (
     resolve_ticket_notification_tg_id,
     set_ticket_status,
 )
-from support_ai_service import SupportAIConfig, generate_support_reply
+from support_ai_service import SupportAIConfig
+from support_agent_service import SupportAgentService, support_fallback_reply
 from nodes_repo import enabled_nodes
 from node_policy import (
     CAPACITY_AWARE_NODE_SELECTION,
@@ -503,6 +504,7 @@ WEB_SESSION_COOKIE_DOMAIN = (os.getenv("WEB_SESSION_COOKIE_DOMAIN") or ".pokrov.
 WEB_SESSION_COOKIE_SAMESITE = (os.getenv("WEB_SESSION_COOKIE_SAMESITE") or "lax").strip().lower() or "lax"
 PAYMENT_CALLBACK_MAX_BYTES = max(1024, env_int("PAYMENT_CALLBACK_MAX_BYTES", 256 * 1024))
 SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
+SUPPORT_AGENT_SERVICE = SupportAgentService(config=SUPPORT_AI_CONFIG)
 support_ai_last_reply_at: dict[int, float] = {}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
@@ -1107,6 +1109,8 @@ class ClientPushRegisterIn(BaseModel):
 class ClientSupportAssistantIn(BaseModel):
     ticket_id: int | None = Field(default=None, ge=1)
     ticketId: int | None = Field(default=None, ge=1)
+    assistant_session_id: str | None = Field(default=None, max_length=128)
+    assistantSessionId: str | None = Field(default=None, max_length=128)
     message: str = Field(min_length=1, max_length=2000)
     scope: str = Field(default="support", min_length=2, max_length=32)
     safeDiagnostics: dict[str, Any] = Field(default_factory=dict)
@@ -6571,25 +6575,27 @@ async def _maybe_append_support_ai_reply(
     text: str,
     has_attachment: bool = False,
 ) -> bool:
-    if has_attachment or not SUPPORT_AI_CONFIG.enabled or not SUPPORT_AI_CONFIG.api_key:
+    if has_attachment or not SUPPORT_AI_CONFIG.enabled:
         return False
     body = (text or "").strip()
     if not body:
         return False
 
-    now = time.monotonic()
-    min_interval = max(0.0, float(SUPPORT_AI_CONFIG.min_interval_seconds))
-    last = support_ai_last_reply_at.get(int(user_tg_id), 0.0)
-    if min_interval and now - last < min_interval:
-        return False
-    support_ai_last_reply_at[int(user_tg_id)] = now
+    if not SUPPORT_AGENT_SERVICE.settings.agent_enabled:
+        now = time.monotonic()
+        min_interval = max(0.0, float(SUPPORT_AI_CONFIG.min_interval_seconds))
+        last = support_ai_last_reply_at.get(int(user_tg_id), 0.0)
+        if min_interval and now - last < min_interval:
+            return False
+        support_ai_last_reply_at[int(user_tg_id)] = now
 
-    reply = await generate_support_reply(
-        body,
+    result = await SUPPORT_AGENT_SERVICE.generate(
+        surface="ticket",
+        authenticated_owner_id=str(int(user_tg_id)),
+        message=body,
         ticket_id=int(ticket_id),
-        user_tg_id=int(user_tg_id),
-        config=SUPPORT_AI_CONFIG,
     )
+    reply = str(result.reply or "").strip()
     if not reply:
         return False
 
@@ -9921,30 +9927,36 @@ def _client_notification_items(*, user: User, access_policy: dict[str, Any], rea
     return items
 
 
-def _support_assistant_fallback_reply(message: str) -> str:
-    text = str(message or "").strip().lower()
-    if "err_connection_closed" in text or "не откры" in text or "не работает" in text:
-        return (
-            "Похоже, подключение поднялось, но трафик не проходит. "
-            "Отключите POKROV, включите снова и приложите диагностику из чата поддержки, если ошибка повторится."
-        )
-    if "оплат" in text or "ключ" in text or "подпис" in text:
-        return (
-            "Проверим доступ по аккаунту. Если есть код активации или письмо с ключом, вставьте код в приложении, "
-            "а данные карты отправлять не нужно."
-        )
-    return "Я рядом. Опишите, что нажали и что увидели на экране, а POKROV приложит безопасную диагностику к обращению."
+ASSISTANT_DIAGNOSTIC_KEYS = frozenset(
+    {
+        "app_version",
+        "platform",
+        "route_mode",
+        "connection_status",
+    }
+)
 
 
-def _support_assistant_actions(message: str) -> list[dict[str, str]]:
-    text = str(message or "").strip().lower()
-    actions = [{"key": "send_diagnostics", "label": "Attach diagnostics"}]
-    if "err_connection_closed" in text or "не откры" in text or "не работает" in text:
-        actions.insert(0, {"key": "retry_connect", "label": "Reconnect"})
-    if "оплат" in text or "ключ" in text or "подпис" in text:
-        actions.append({"key": "open_subscription", "label": "Check access"})
-    actions.append({"key": "create_ticket", "label": "Write to support"})
-    return actions
+def _admit_support_assistant_diagnostics(raw_value: Any) -> dict[str, str | int | bool | None]:
+    if not isinstance(raw_value, dict) or len(raw_value) > 20:
+        raise HTTPException(status_code=422, detail="Invalid safe diagnostics")
+    admitted: dict[str, str | int | bool | None] = {}
+    for key in ASSISTANT_DIAGNOSTIC_KEYS:
+        if key not in raw_value:
+            continue
+        value = raw_value[key]
+        if isinstance(value, str):
+            if len(value) > 512 or any(ord(char) < 32 and char not in "\t\n\r" for char in value):
+                raise HTTPException(status_code=422, detail="Invalid safe diagnostics")
+            admitted[key] = value
+        elif type(value) in {int, bool} or value is None:
+            admitted[key] = value
+        else:
+            raise HTTPException(status_code=422, detail="Invalid safe diagnostics")
+    serialized = json.dumps(admitted, ensure_ascii=False, separators=(",", ":"))
+    if len(serialized) > 4096:
+        raise HTTPException(status_code=422, detail="Invalid safe diagnostics")
+    return admitted
 
 
 @app.get("/api/client/locations")
@@ -10275,6 +10287,8 @@ async def client_support_assistant(
 ) -> dict[str, Any]:
     s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
     try:
+        if str(payload.scope or "").strip().casefold() != "support":
+            raise HTTPException(status_code=422, detail="Invalid assistant scope")
         ticket_id = int(payload.ticket_id or payload.ticketId or 0)
         if ticket_id:
             ticket = get_ticket_by_id(s, ticket_id)
@@ -10282,17 +10296,18 @@ async def client_support_assistant(
                 raise HTTPException(status_code=404, detail="Ticket not found")
             if int(ticket.user_tg_id) != int(user.tg_id):
                 raise HTTPException(status_code=403, detail="Access denied")
-        diagnostics = dict(payload.safeDiagnostics or {})
+        diagnostics = _admit_support_assistant_diagnostics(payload.safeDiagnostics)
         message = str(payload.message or "").strip()
-        reply = await generate_support_reply(
-            message,
-            ticket_id=ticket_id or 0,
-            user_tg_id=int(user.tg_id),
-            config=SUPPORT_AI_CONFIG,
+        supplied_session_id = payload.assistant_session_id or payload.assistantSessionId
+        owner_id = str(getattr(user, "account_id", "") or "").strip() or f"tg:{int(user.tg_id)}"
+        result = await SUPPORT_AGENT_SERVICE.generate(
+            surface="app",
+            authenticated_owner_id=owner_id,
+            message=message,
+            assistant_session_id=supplied_session_id,
+            ticket_id=ticket_id or None,
         )
-        assistant_source = "support_ai" if reply else "local_fallback"
-        if not reply:
-            reply = _support_assistant_fallback_reply(message)
+        reply = str(result.reply or "").strip() or support_fallback_reply(message)
 
         if ticket_id and reply:
             add_ticket_message(
@@ -10303,27 +10318,26 @@ async def client_support_assistant(
                 body=reply[:2000],
             )
 
-        text_lower = message.lower()
-        should_escalate = any(marker in text_lower for marker in ("err_", "не работает", "не откры", "оплат", "ключ"))
         _record_client_event(
             s,
             user=user,
             event_name="client_support_assistant",
             source="app",
             meta={
-                "scope": str(payload.scope or "support").strip().lower(),
-                "source": assistant_source,
+                "scope": "support",
+                "source": result.source,
                 "ticket_id": ticket_id or None,
-                "should_escalate": bool(should_escalate),
-                "diagnostics_keys": sorted(str(key)[:64] for key in diagnostics.keys())[:20],
+                "should_escalate": bool(result.should_escalate),
+                "diagnostics_keys": sorted(diagnostics),
             },
         )
         s.commit()
         return {
             "reply": reply,
-            "suggestedActions": _support_assistant_actions(message),
-            "shouldEscalate": bool(should_escalate),
-            "source": assistant_source,
+            "assistantSessionId": result.assistant_session_id,
+            "suggestedActions": list(result.suggested_actions),
+            "shouldEscalate": bool(result.should_escalate),
+            "source": result.source,
         }
     finally:
         s.close()

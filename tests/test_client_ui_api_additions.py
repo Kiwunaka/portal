@@ -56,6 +56,14 @@ def _load_api(monkeypatch, tmp_path: Path):
         "transport_catalog",
         "node_policy",
         "support_ai_service",
+        "support_agent_context",
+        "support_agent_harness",
+        "support_agent_knowledge",
+        "support_agent_policy",
+        "support_agent_provider",
+        "support_agent_safety",
+        "support_agent_service",
+        "support_agent_sessions",
     ]:
         sys.modules.pop(name, None)
 
@@ -286,29 +294,231 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     assert push_body["tokenHash"] == hashlib.sha256(b"local-test-token").hexdigest()
 
 
-def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_path) -> None:
+def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_path, caplog) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
     _seed_rollout(api)
     _add_node(api, code="nl-ams-01")
 
+    from support_ai_service import SupportAIConfig
+    from support_agent_harness import SupportAgentHarness
+    from support_agent_knowledge import SupportKnowledgeStore
+    from support_agent_policy import SupportAgentPolicyStore
+    from support_agent_provider import ModelTurn, ProviderUsage
+    from support_agent_service import SupportAgentService
+    from support_agent_sessions import OwnerRateLimiter, SessionInFlightGuard, SupportSessionStore
+
+    class _RepeatAdapter:
+        def __init__(self) -> None:
+            self.requests = []
+
+        async def complete(self, **request):
+            self.requests.append(request)
+            content = json.dumps(
+                {
+                    "schema_version": "1",
+                    "status": "answer",
+                    "reply": "Переподключитесь и повторите проверку доступа.",
+                    "source_topic_ids": ["connected_no_internet"],
+                    "session_state": {
+                        "issue_topic_id": "connected_no_internet",
+                        "attempted_steps": ["reconnect"],
+                        "last_outcome": "not_reported",
+                        "escalation_requested": False,
+                    },
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            return ModelTurn(
+                content=content,
+                finish_reason="stop",
+                tool_calls=(),
+                normalized_assistant_message={"role": "assistant", "content": content},
+                usage=ProviderUsage(prompt_tokens=100, completion_tokens=20, cached_tokens=80),
+                latency_ms=5,
+            )
+
+    class _RecordingHarness:
+        def __init__(self, wrapped) -> None:
+            self.wrapped = wrapped
+            self.requests = []
+
+        async def run(self, request):
+            self.requests.append(request)
+            return await self.wrapped.run(request)
+
+    policy = SupportAgentPolicyStore().load(Path(api.__file__).resolve().parents[1] / "shared" / "support-agent-policy.json")
+    knowledge_store = SupportKnowledgeStore()
+    knowledge = knowledge_store.load(Path(api.__file__).resolve().parents[1] / "shared" / "support-ai-knowledge.json")
+    adapter = _RepeatAdapter()
+    recording_harness = _RecordingHarness(
+        SupportAgentHarness(
+            policy=policy,
+            knowledge_store=knowledge_store,
+            knowledge=knowledge,
+            session_store=SupportSessionStore(),
+            rate_limiter=OwnerRateLimiter(),
+            in_flight_guard=SessionInFlightGuard(),
+            adapter=adapter,
+        )
+    )
+    api.SUPPORT_AGENT_SERVICE = SupportAgentService(
+        config=SupportAIConfig(
+            enabled=True,
+            api_key="sk-test",
+            api_base_url="https://enterprise.xcody.dev/v1",
+            model="minimax-m3",
+            reasoning_effort="medium",
+        ),
+        env={"SUPPORT_AI_AGENT_ENABLED": "true"},
+        harness_factory=lambda _config, _settings: recording_harness,
+        time_source=lambda: 100.0,
+    )
+
     start_body = _start_trial(client, install_id="support-p1-device")
     headers = _auth_headers(start_body)
+
+    invalid_scope = client.post(
+        "/api/client/support/assistant",
+        headers=headers,
+        json={"message": "Подключено, но интернета нет", "scope": "billing"},
+    )
+    assert invalid_scope.status_code == 422
+
+    too_many_diagnostics = client.post(
+        "/api/client/support/assistant",
+        headers=headers,
+        json={
+            "message": "Подключено, но интернета нет",
+            "scope": "support",
+            "safeDiagnostics": {f"unknown_{index}": "value" for index in range(21)},
+        },
+    )
+    assert too_many_diagnostics.status_code == 422
+    assert recording_harness.requests == []
+
+    oversized_diagnostics = client.post(
+        "/api/client/support/assistant",
+        headers=headers,
+        json={
+            "message": "Подключено, но интернета нет",
+            "scope": "support",
+            "safeDiagnostics": {"platform": "x" * 513},
+        },
+    )
+    assert oversized_diagnostics.status_code == 422
+    assert recording_harness.requests == []
+
+    attacker_value = "vless://private-profile sk-private-token"
 
     assistant = client.post(
         "/api/client/support/assistant",
         headers=headers,
         json={
-            "message": "VPN включился, но сайты не открываются.",
+            "message": "Подключено, но интернета нет",
             "scope": "support",
-            "safeDiagnostics": {"platform": "windows", "phase": "running"},
+            "safeDiagnostics": {
+                "app_version": "1.0.0",
+                "platform": "windows",
+                "route_mode": "all_except_ru",
+                "connection_status": "connected",
+                "attacker_key": attacker_value,
+            },
         },
     )
     assert assistant.status_code == 200, assistant.text
     assistant_body = assistant.json()
     assert assistant_body["reply"]
     assert assistant_body["suggestedActions"]
-    assert assistant_body["shouldEscalate"] in {True, False}
+    assert assistant_body["shouldEscalate"] is False
+    assert assistant_body["source"] == "support_agent"
+    generated_session_id = assistant_body["assistantSessionId"]
+    assert 16 <= len(generated_session_id) <= 64
+
+    supplied = client.post(
+        "/api/client/support/assistant",
+        headers=headers,
+        json={
+            "message": "Подключено, но интернета нет",
+            "scope": "support",
+            "assistant_session_id": generated_session_id,
+        },
+    )
+    assert supplied.status_code == 200, supplied.text
+    assert supplied.json()["assistantSessionId"] == generated_session_id
+
+    invalid_session = client.post(
+        "/api/client/support/assistant",
+        headers=headers,
+        json={
+            "message": "Подключено, но интернета нет",
+            "scope": "support",
+            "assistantSessionId": "../../invalid",
+        },
+    )
+    assert invalid_session.status_code == 200, invalid_session.text
+    assert invalid_session.json()["assistantSessionId"] != "../../invalid"
+
+    for _index in range(3):
+        response = client.post(
+            "/api/client/support/assistant",
+            headers=headers,
+            json={
+                "message": "Подключено, но интернета нет",
+                "scope": "support",
+                "assistantSessionId": generated_session_id,
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["source"] == "support_agent"
+
+    seventh = client.post(
+        "/api/client/support/assistant",
+        headers=headers,
+        json={
+            "message": "Подключено, но интернета нет",
+            "scope": "support",
+            "assistantSessionId": generated_session_id,
+        },
+    )
+    assert seventh.status_code == 200, seventh.text
+    assert seventh.json()["source"] == "local_fallback"
+    assert seventh.json()["shouldEscalate"] is True
+    assert len(adapter.requests) == 6
+
+    second_start = _start_trial(client, install_id="support-p2-device")
+    second_headers = _auth_headers(second_start)
+    cross_owner = client.post(
+        "/api/client/support/assistant",
+        headers=second_headers,
+        json={
+            "message": "Подключено, но интернета нет",
+            "scope": "support",
+            "assistantSessionId": generated_session_id,
+        },
+    )
+    assert cross_owner.status_code == 200, cross_owner.text
+    assert cross_owner.json()["source"] == "support_agent"
+    assert recording_harness.requests[0].session_scope.client_session_id == generated_session_id
+    assert recording_harness.requests[-1].session_scope.client_session_id == generated_session_id
+    assert (
+        recording_harness.requests[0].session_scope.internal_session_key
+        != recording_harness.requests[-1].session_scope.internal_session_key
+    )
+
+    from models import Event
+
+    event_session = api.SessionLocal()
+    try:
+        events = event_session.query(Event).filter(Event.event_name == "client_support_assistant").all()
+        serialized_events = "\n".join(str(event.meta_json or "") for event in events)
+    finally:
+        event_session.close()
+    assert '"diagnostics_keys":["app_version","connection_status","platform","route_mode"]' in serialized_events
+    assert "attacker_key" not in serialized_events
+    assert attacker_value not in serialized_events
+    assert attacker_value not in caplog.text
 
     ticket = client.post(
         "/api/tickets",
@@ -321,3 +531,17 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     assert ticket_body["operatorTyping"] is False
     assert isinstance(ticket_body["unreadForUser"], int)
     assert "slaHint" in ticket_body
+
+    calls_before_denial = len(recording_harness.requests)
+    denied_ticket = client.post(
+        "/api/client/support/assistant",
+        headers=second_headers,
+        json={
+            "ticketId": ticket_body["id"],
+            "message": "Подключено, но интернета нет",
+            "scope": "support",
+            "assistantSessionId": generated_session_id,
+        },
+    )
+    assert denied_ticket.status_code == 403
+    assert len(recording_harness.requests) == calls_before_denial

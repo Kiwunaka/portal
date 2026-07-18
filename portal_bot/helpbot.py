@@ -46,7 +46,8 @@ from tickets_repo import (
     resolve_ticket_notification_tg_id,
     set_ticket_status,
 )
-from support_ai_service import SupportAIConfig, generate_support_reply
+from support_ai_service import SupportAIConfig
+from support_agent_service import SupportAgentService
 
 # Keep existing helpbot keyboard construction while routing every button through
 # the Bot API 9.4/9.5 style and custom-emoji helper.
@@ -59,6 +60,7 @@ MAIN_BOT_USERNAME = (os.getenv("BOT_USERNAME") or "pokrov_vpnbot").lstrip("@")
 HELPBOT_START_MEDIA_PATH = (os.getenv("HELPBOT_START_MEDIA_PATH") or "").strip()
 HELPBOT_START_MEDIA_TYPE = (os.getenv("HELPBOT_START_MEDIA_TYPE") or "photo").strip().lower()
 SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
+SUPPORT_AGENT_SERVICE = SupportAgentService(config=SUPPORT_AI_CONFIG)
 
 if not HELP_BOT_TOKEN:
     raise SystemExit("HELP_BOT_TOKEN is empty")
@@ -222,22 +224,25 @@ async def _notify_admin(bot: Bot, text: str) -> None:
 
 async def _maybe_generate_support_ai_reply(message: Message, *, ticket_id: int, text: str) -> str | None:
     tg_id = int(message.from_user.id)
-    if tg_id == ADMIN_ID or not SUPPORT_AI_CONFIG.enabled or not SUPPORT_AI_CONFIG.api_key:
+    if tg_id == ADMIN_ID or not SUPPORT_AI_CONFIG.enabled:
         return None
 
-    now = time.monotonic()
-    min_interval = max(0.0, float(SUPPORT_AI_CONFIG.min_interval_seconds))
-    last = support_ai_last_reply_at.get(tg_id, 0.0)
-    if min_interval and now - last < min_interval:
-        return None
-    support_ai_last_reply_at[tg_id] = now
+    if not SUPPORT_AGENT_SERVICE.settings.agent_enabled:
+        now = time.monotonic()
+        min_interval = max(0.0, float(SUPPORT_AI_CONFIG.min_interval_seconds))
+        last = support_ai_last_reply_at.get(tg_id, 0.0)
+        if min_interval and now - last < min_interval:
+            return None
+        support_ai_last_reply_at[tg_id] = now
 
-    reply = await generate_support_reply(
-        text,
+    result = await SUPPORT_AGENT_SERVICE.generate(
+        surface="helpbot",
+        authenticated_owner_id=str(tg_id),
+        message=text,
         ticket_id=ticket_id,
-        user_tg_id=tg_id,
-        config=SUPPORT_AI_CONFIG,
+        validated_sender_id=tg_id,
     )
+    reply = str(result.reply or "").strip()
     if not reply:
         return None
 
