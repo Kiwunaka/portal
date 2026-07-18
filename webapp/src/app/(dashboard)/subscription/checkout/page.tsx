@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CalendarClock, CircleCheck, CreditCard, KeyRound, LifeBuoy, TriangleAlert } from "lucide-react";
+import { ArrowLeft, CalendarClock, CircleCheck, CreditCard, KeyRound, LifeBuoy, Loader2, TriangleAlert } from "lucide-react";
 
 import { StatusHero } from "@/components/cabinet/status-hero";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
 import { getCheckoutTariffPlans, getCopyText, getPricingPreviewDiscountPercent, normalizePlanCode, tariffPlanAllowsDiscount } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -72,6 +73,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>(() => normalizePaymentMethod(searchParams.get("payment_method")));
   const [providerCode, setProviderCode] = useState("");
   const [providerState, setProviderState] = useState<RubPaymentProvidersResult | null>(null);
+  const [providerProbePending, setProviderProbePending] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
@@ -111,7 +113,7 @@ export default function CheckoutPage() {
       } catch (nextError) {
         if (!cancelled) {
           setPlans(SHARED_PLANS);
-          setCatalogError(String((nextError as { message?: string })?.message || nextError || ""));
+          setCatalogError(userFacingErrorMessage(nextError, "Проверьте соединение и обновите страницу."));
         }
       }
     };
@@ -129,12 +131,14 @@ export default function CheckoutPage() {
         if (!cancelled) {
           setProviderState(payload);
           setProviderCode(payload.ok && !payload.blocked ? String(payload.providers?.[0]?.code || "") : "");
+          setProviderProbePending(false);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setProviderState(null);
           setProviderCode("");
+          setProviderProbePending(false);
         }
       });
     return () => {
@@ -173,15 +177,16 @@ export default function CheckoutPage() {
       }
       window.location.assign(paymentUrl);
     } catch (error) {
-      setCheckoutError(String((error as { message?: string })?.message || error || "Оплата сейчас недоступна."));
+      setCheckoutError(userFacingErrorMessage(error, "Оплата сейчас недоступна. Попробуйте позже или откройте поддержку."));
     } finally {
       setCheckoutBusy(false);
     }
   };
 
-  const providerWarning = !checkoutReady
+  const providerWarning = !providerProbePending && !checkoutReady
     ? "Оплата временно недоступна. Попробуйте позже или откройте поддержку."
     : "";
+  const heroTone = checkoutReady ? "success" : providerProbePending ? "neutral" : "warning";
 
   return (
     <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
@@ -189,8 +194,8 @@ export default function CheckoutPage() {
         title={getCopyText("webapp.checkout.title", "Продлить доступ")}
         meta={resolvePlanLabel(dash, user)}
         body={getCopyText("webapp.checkout.subtitle", "Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле.")}
-        tone={checkoutReady ? "success" : "warning"}
-        icon={checkoutReady ? CreditCard : TriangleAlert}
+        tone={heroTone}
+        icon={checkoutReady || providerProbePending ? CreditCard : TriangleAlert}
         action={
           <Button
             onClick={startCheckout}
@@ -239,7 +244,7 @@ export default function CheckoutPage() {
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-0.5 block truncate text-[13px] leading-5 text-ink-muted">
+                <span className="mt-0.5 block truncate text-[13px] leading-5 text-ink-soft">
                   {formatDuration(plan.days)} · {formatDevicesLimit(plan.deviceLimit)}
                 </span>
               </span>
@@ -308,13 +313,19 @@ export default function CheckoutPage() {
           <Button onClick={startCheckout} loading={checkoutBusy} disabled={!checkoutReady} block>
             Перейти к оплате
           </Button>
+          {providerProbePending ? (
+            <p className="flex items-center gap-2 text-sm text-ink-soft" role="status">
+              <Loader2 size={15} strokeWidth={2.2} className="shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              Проверяем способы оплаты…
+            </p>
+          ) : null}
           {providerWarning ? <p className="text-sm text-warn-text">{providerWarning}</p> : null}
           {checkoutError ? <p className="text-sm text-danger-text">{checkoutError}</p> : null}
         </div>
       </GroupedSection>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Что дальше</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Что дальше</h2>
         <ActionGrid className="sm:grid-cols-3">
           <ActionCard icon={KeyRound} title="У меня уже есть код" hint="Активировать оплату, подарок или промокод" href="/redeem/" />
           <ActionCard icon={LifeBuoy} title="Оплата не обновилась" hint="Откройте одно обращение в поддержке" href="/support/" />

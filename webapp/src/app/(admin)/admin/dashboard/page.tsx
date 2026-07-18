@@ -36,8 +36,8 @@ import {
   type AdminMetricsPoint,
   type AdminMetricsStatus,
   type AdminSummaryPayload,
+  type AdminTicketSummary,
   type AdminUserRow,
-  type TicketInfo,
 } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -144,7 +144,7 @@ export default function AdminDashboardPage() {
   const [metrics, setMetrics] = useState<AdminMetricsStatus | null>(null);
   const [series, setSeries] = useState<AdminMetricsPoint[]>([]);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
-  const [tickets, setTickets] = useState<TicketInfo[]>([]);
+  const [tickets, setTickets] = useState<AdminTicketSummary[]>([]);
   const [warpSummary, setWarpSummary] = useState<AdminClientWarpSummaryPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

@@ -4,6 +4,8 @@ import json
 import os
 import sys
 import tempfile
+import concurrent.futures
+import threading
 import unittest
 import uuid
 import time
@@ -93,10 +95,26 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             importlib.reload(sys.modules["points_service"])
         if "gift_cards_service" in sys.modules:
             importlib.reload(sys.modules["gift_cards_service"])
+        if "account_foundation_service" in sys.modules:
+            importlib.reload(sys.modules["account_foundation_service"])
+        if "economy_service" in sys.modules:
+            importlib.reload(sys.modules["economy_service"])
+        if "events_service" in sys.modules:
+            importlib.reload(sys.modules["events_service"])
+        if "channel_bonus_service" in sys.modules:
+            importlib.reload(sys.modules["channel_bonus_service"])
         if "api" in sys.modules:
             importlib.reload(sys.modules["api"])
         self.api = importlib.import_module("api")
         importlib.reload(self.api)
+        self._telegram_send_patcher = patch.object(
+            self.api,
+            "_telegram_send_message",
+            new_callable=AsyncMock,
+            return_value=True,
+        )
+        self.telegram_send_mock = self._telegram_send_patcher.start()
+        self.addCleanup(self._telegram_send_patcher.stop)
         self.client = TestClient(self.api.app)
 
         from db import SessionLocal
@@ -179,6 +197,106 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_telegram_delivery_is_offline_by_default(self) -> None:
+        self.assertIsInstance(self.api._telegram_send_message, AsyncMock)
+
+    def test_normal_session_support_assistant_accepts_safe_diagnostics(self) -> None:
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        response = self.client.post(
+            "/api/client/support/assistant",
+            headers=headers,
+            json={
+                "message": "Connection diagnostic question",
+                "scope": "support",
+                "safeDiagnostics": {
+                    "platform": "windows",
+                    "runtimeState": "disconnected",
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["source"], "local_fallback")
+        events = self._event_rows("client_support_assistant")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(
+            events[0]["meta"]["diagnostics_keys"],
+            ["platform", "runtimeState"],
+        )
+
+    def _upload_support_attachment(
+        self,
+        headers: dict[str, str],
+        *,
+        name: str = "diagnostic.txt",
+        content: bytes = b"private diagnostic",
+    ):
+        return self.client.post(
+            "/api/tickets/uploads",
+            headers={**headers, "Content-Type": "text/plain", "X-Upload-Filename": name},
+            content=content,
+        )
+
+    def _execute_node_intent(self, *, action: str, node_code: str, payload: dict):
+        return self._execute_admin_intent(
+            action=action,
+            target_type="node",
+            target_id=node_code,
+            method="POST",
+            path=f"/api/admin/nodes/{node_code}/{action.split('.', 1)[1]}",
+            payload=payload,
+        )
+
+    def _prepare_admin_intent(
+        self,
+        *,
+        action: str,
+        target_type: str,
+        target_id: str | int,
+        payload: dict,
+    ):
+        admin_headers = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        return self.client.post(
+            "/api/admin/action-intents",
+            headers=admin_headers,
+            json={
+                "action": action,
+                "target": {"type": target_type, "id": str(target_id)},
+                "payload": payload,
+            },
+        )
+
+    def _execute_admin_intent(
+        self,
+        *,
+        action: str,
+        target_type: str,
+        target_id: str | int,
+        method: str,
+        path: str,
+        payload: dict,
+    ):
+        admin_headers = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        prepared = self._prepare_admin_intent(
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            payload=payload,
+        )
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        challenge = str(prepared.json()["confirmation_challenge"])
+        return self.client.request(
+            method,
+            path,
+            headers={
+                **admin_headers,
+                "X-Admin-Intent-Id": str(prepared.json()["intent_id"]),
+                "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+                "X-Admin-Confirmation-SHA256": hashlib.sha256(challenge.encode("utf-8")).hexdigest(),
+            },
+            json=payload,
+        )
+
     def test_admin_endpoint_requires_admin_guard(self) -> None:
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         r = self.client.get("/api/admin/summary", headers=hdrs)
@@ -186,7 +304,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_admin_users_supports_effective_status_origin_and_extended_search(self) -> None:
         from db import SessionLocal
-        from models import User
+        from models import NodeProvisioningJob, User
 
         now = _utcnow()
         s = SessionLocal()
@@ -284,11 +402,30 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_admin_delete_test_user_rejects_real_user_and_deletes_manual_user(self) -> None:
         from db import SessionLocal
-        from models import Event, User, UserKeyPolicy, UserNode
+        from models import Event, Node, User, UserKeyPolicy, UserNode
 
         now = _utcnow()
         s = SessionLocal()
         try:
+            node = Node(
+                code="delete-test",
+                name="Delete test node",
+                host="delete.example.test",
+                vless_port=443,
+                reality_sni="delete.example.test",
+                reality_pbk="pbk-delete",
+                reality_sid="sid-delete",
+                panel_base_url="https://delete.example.test:8444",
+                panel_path="/panel",
+                panel_user="admin",
+                panel_pass="pass",
+                inbound_id=1,
+                enabled=True,
+                accepting_new_clients=True,
+                access_role="paid",
+            )
+            s.add(node)
+            s.flush()
             user = User(
                 tg_id=-777,
                 username=None,
@@ -305,8 +442,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             )
             s.add(user)
             s.flush()
-            s.add(UserNode(tg_id=-777, node_id=1, client_uuid=str(user.uuid), panel_email=str(user.email)))
-            s.add(UserKeyPolicy(tg_id=-777, node_code="nl"))
+            s.add(UserNode(tg_id=-777, node_id=node.id, client_uuid=str(user.uuid), panel_email=str(user.email)))
+            s.add(UserKeyPolicy(tg_id=-777, node_code=node.code))
             s.add(Event(tg_id=-777, event_name="opened_webapp", source="tests"))
             s.commit()
         finally:
@@ -327,10 +464,22 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         try:
             admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-            real = self.client.post("/api/admin/users/1001/delete-test-user", headers=admin_hdrs)
-            self.assertEqual(real.status_code, 400, real.text)
+            real = self._prepare_admin_intent(
+                action="user.delete_test",
+                target_type="user",
+                target_id=1001,
+                payload={},
+            )
+            self.assertEqual(real.status_code, 409, real.text)
 
-            deleted = self.client.post("/api/admin/users/-777/delete-test-user", headers=admin_hdrs)
+            deleted = self._execute_admin_intent(
+                action="user.delete_test",
+                target_type="user",
+                target_id=-777,
+                method="POST",
+                path="/api/admin/users/-777/delete-test-user",
+                payload={},
+            )
             self.assertEqual(deleted.status_code, 200, deleted.text)
             self.assertTrue(bool(deleted.json()["panel_deleted"]))
         finally:
@@ -765,7 +914,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_dashboard_downgrades_expired_premium_to_free_monthly(self) -> None:
         from db import SessionLocal
-        from models import User
+        from models import NodeProvisioningJob, User
 
         s = SessionLocal()
         try:
@@ -818,12 +967,17 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user = s.query(User).filter_by(tg_id=1001).first()
             assert user is not None
             self.assertEqual(user.current_plan_code, "free_monthly")
+            self.assertEqual(user.free_profile_state, "reset_pending")
+            self.assertEqual(
+                s.query(NodeProvisioningJob).filter_by(tg_id=1001, job_type="free_to_standard").count(),
+                1,
+            )
         finally:
             s.close()
 
-    def test_dashboard_marks_free_soft_mode_after_monthly_quota(self) -> None:
+    def test_dashboard_queues_soft_transition_but_does_not_claim_active_from_bytes(self) -> None:
         from db import SessionLocal
-        from models import User
+        from models import NodeProvisioningJob, User
 
         gib = 1024 ** 3
         s = SessionLocal()
@@ -836,6 +990,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.is_active = True
             user.sub_token = "free-soft-token-1001"
             user.free_cycle_next_reset_at = _utcnow() + timedelta(days=11)
+            user.free_profile_state = "standard"
+            user.free_profile_active_role = "free_standard"
             s.commit()
         finally:
             s.close()
@@ -863,12 +1019,80 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             response = self.client.get("/api/dashboard", headers=hdrs)
             self.assertEqual(response.status_code, 200, response.text)
             body = response.json()
-            self.assertEqual(body["access_state"], "free_soft_mode")
-            self.assertEqual(body["traffic_policy"]["kind"], "soft_limited")
+            self.assertEqual(body["access_state"], "free_monthly")
+            self.assertEqual(body["traffic_policy"]["kind"], "metered")
             self.assertEqual(body["traffic_limit_gb"], 5.0)
             self.assertEqual(body["traffic_remaining_gb"], 0.0)
-            self.assertTrue(body["soft_mode_active"])
+            self.assertFalse(body["soft_mode_active"])
+            self.assertEqual(body["free_profile_state"], "soft_transition_pending")
+            self.assertEqual(body["free_profile_active_role"], "free_standard")
+            self.assertEqual(body["free_caps"]["transition_state"], "soft_transition_pending")
+            self.assertEqual(body["free_caps"]["active_role"], "free_standard")
             self.assertTrue(body["next_reset_at"])
+
+            replay = self.client.get("/api/dashboard", headers=hdrs)
+            self.assertEqual(replay.status_code, 200, replay.text)
+        finally:
+            self.api._get_user_runtime_summary = original_runtime
+            self.api._get_panel_usage_legacy = original_legacy
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).one()
+            self.assertEqual(user.free_profile_state, "soft_transition_pending")
+            self.assertEqual(
+                s.query(NodeProvisioningJob).filter_by(tg_id=1001, job_type="free_to_soft").count(),
+                1,
+            )
+        finally:
+            s.close()
+
+    def test_dashboard_soft_active_legacy_remaining_stays_zero_on_fresh_counter(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        gib = 1024 ** 3
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = _utcnow() + timedelta(days=365)
+            user.is_active = True
+            user.free_profile_state = "soft_active"
+            user.free_profile_active_role = "free_soft"
+            user.free_profile_observed_bytes = 5 * gib
+            s.commit()
+        finally:
+            s.close()
+
+        async def fake_runtime(*, s, user, nodes=None):
+            return {
+                "panel_state": "ok",
+                "known_nodes": 1,
+                "active_nodes": 1,
+                "enabled_nodes": 1,
+                "active_connections": 1,
+                "active_connections_source": "panel_ip_count",
+                "traffic_total_bytes": gib // 16,
+                "status": "online",
+                "last_online_at": "2030-01-01T00:00:00Z",
+                "last_online_age_seconds": 30,
+            }
+
+        original_runtime = self.api._get_user_runtime_summary
+        original_legacy = self.api._get_panel_usage_legacy
+        self.api._get_user_runtime_summary = fake_runtime
+        self.api._get_panel_usage_legacy = AsyncMock(return_value=None)
+        try:
+            hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+            response = self.client.get("/api/dashboard", headers=hdrs)
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertEqual(body["access_state"], "free_soft_mode")
+            self.assertTrue(body["soft_mode_active"])
+            self.assertEqual(body["remaining_gb"], 0.0)
+            self.assertEqual(body["traffic_remaining_gb"], 0.0)
         finally:
             self.api._get_user_runtime_summary = original_runtime
             self.api._get_panel_usage_legacy = original_legacy
@@ -903,8 +1127,11 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         r = self.client.post("/api/admin/nodes/pl/disable", headers=admin_hdrs, json={})
-        self.assertEqual(r.status_code, 409, r.text)
-        self.assertIn("resync", r.text.lower())
+        self.assertEqual(r.status_code, 428, r.text)
+        self.assertEqual(r.json()["detail"]["code"], "intent_required")
+        guarded = self._execute_node_intent(action="node.disable", node_code="pl", payload={"force": False})
+        self.assertEqual(guarded.status_code, 409, guarded.text)
+        self.assertEqual(guarded.json()["detail"]["code"], "node_has_mapped_users")
 
     def test_admin_node_resync_moves_mapping_off_draining_node(self) -> None:
         from db import SessionLocal
@@ -972,12 +1199,15 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         original_panel = self.api.ControlPanel
         self.api.ControlPanel = FakePanel
         try:
-            admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
-            drained = self.client.post("/api/admin/nodes/pl/drain", headers=admin_hdrs, json={})
+            drained = self._execute_node_intent(action="node.drain", node_code="pl", payload={"force": False})
             self.assertEqual(drained.status_code, 200, drained.text)
-            resync = self.client.post("/api/admin/nodes/pl/resync", headers=admin_hdrs, json={"limit": 50})
+            resync = self._execute_node_intent(
+                action="node.resync",
+                node_code="pl",
+                payload={"limit": 50, "dry_run": False},
+            )
             self.assertEqual(resync.status_code, 200, resync.text)
-            self.assertEqual(int(resync.json().get("migrated") or 0), 1)
+            self.assertEqual(int((resync.json().get("result") or {}).get("changed") or 0), 1)
         finally:
             self.api.ControlPanel = original_panel
 
@@ -1309,10 +1539,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(ticket["messages"][0]["media_type"], "photo")
         ticket_id = ticket["id"]
 
-        reply = self.client.post(
-            f"/api/admin/tickets/{ticket_id}/reply",
-            headers=admin_hdrs,
-            json={"body": "Проверили, уже исправлено"},
+        reply = self._execute_admin_intent(
+            action="ticket.reply",
+            target_type="ticket",
+            target_id=ticket_id,
+            method="POST",
+            path=f"/api/admin/tickets/{ticket_id}/reply",
+            payload={"body": "Проверили, уже исправлено"},
         )
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()["ticket"]["status"], "in_progress")
@@ -1417,6 +1650,980 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(fetched.headers.get("x-content-type-options"), "nosniff")
         self.assertEqual(fetched.content, b"\x89PNG\r\n\x1a\nbinary-test")
 
+    def test_ticket_upload_stages_opaque_id_with_default_expiry(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        before = _utcnow()
+        response = self._upload_support_attachment(headers)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        attachment_id = str(payload.get("attachment_id") or "")
+        self.assertTrue(attachment_id)
+        self.assertEqual(
+            payload["attachment_payload"]["url"],
+            f"/api/tickets/attachments/{attachment_id}",
+        )
+        self.assertEqual(payload["attachment"]["media_file_id"], f"support/{attachment_id}")
+
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(stored_name=attachment_id).one()
+            self.assertIsNone(row.ticket_id)
+            self.assertIsNone(row.message_id)
+            self.assertIsNone(row.attached_at)
+            self.assertGreaterEqual(row.expires_at, before + timedelta(hours=23, minutes=59))
+            self.assertLessEqual(row.expires_at, before + timedelta(hours=24, minutes=1))
+        finally:
+            session.close()
+
+    def test_ticket_upload_cleanup_and_pending_quota_boundaries(self) -> None:
+        from db import SessionLocal
+        from models import Account, SecurityEvent, SupportAttachment, User
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        upload_dir = Path(self.api.SUPPORT_UPLOAD_DIR)
+        now = _utcnow()
+        session = SessionLocal()
+        try:
+            account = Account(id="attachment-quota-account", status="active", created_source="test")
+            session.add(account)
+            session.query(User).filter_by(tg_id=1001).one().account_id = account.id
+            rows = [
+                SupportAttachment(
+                    stored_name="20260714-expiredrow.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=account.id,
+                    original_name="expired.txt",
+                    content_type="text/plain",
+                    size_bytes=7,
+                    media_type="file",
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+                SupportAttachment(
+                    stored_name="20260714-legacyrow.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=None,
+                    original_name="legacy.txt",
+                    content_type="text/plain",
+                    size_bytes=6,
+                    media_type="file",
+                    expires_at=None,
+                    created_at=now - timedelta(days=30),
+                ),
+                SupportAttachment(
+                    stored_name="20260714-boundrow.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=account.id,
+                    original_name="bound.txt",
+                    content_type="text/plain",
+                    size_bytes=5,
+                    media_type="file",
+                    ticket_id=77,
+                    message_id=88,
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+                SupportAttachment(
+                    stored_name="20260714-otherowner.txt",
+                    owner_tg_id=2002,
+                    owner_account_id="other-attachment-owner",
+                    original_name="other-owner.txt",
+                    content_type="text/plain",
+                    size_bytes=11,
+                    media_type="file",
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+                SupportAttachment(
+                    stored_name="nested/20260714-otherowner.txt",
+                    owner_tg_id=1001,
+                    owner_account_id=account.id,
+                    original_name="malformed.txt",
+                    content_type="text/plain",
+                    size_bytes=9,
+                    media_type="file",
+                    expires_at=now - timedelta(minutes=1),
+                    created_at=now - timedelta(hours=25),
+                ),
+            ]
+            session.add_all(rows)
+            session.commit()
+        finally:
+            session.close()
+        for name in (
+            "20260714-expiredrow.txt",
+            "20260714-legacyrow.txt",
+            "20260714-boundrow.txt",
+            "20260714-otherowner.txt",
+        ):
+            (upload_dir / name).write_bytes(name.encode("ascii"))
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5), patch.object(
+            self.api, "SUPPORT_PENDING_UPLOAD_MAX_BYTES", 50 * 1024 * 1024
+        ):
+            accepted = self._upload_support_attachment(headers, name="fresh.txt", content=b"fresh")
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertFalse((upload_dir / "20260714-expiredrow.txt").exists())
+        self.assertTrue((upload_dir / "20260714-legacyrow.txt").exists())
+        self.assertTrue((upload_dir / "20260714-boundrow.txt").exists())
+        self.assertTrue((upload_dir / "20260714-otherowner.txt").exists())
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", 1):
+            count_limited = self._upload_support_attachment(headers, name="over-count.txt", content=b"x")
+        self.assertEqual(count_limited.status_code, 429, count_limited.text)
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5), patch.object(
+            self.api, "SUPPORT_PENDING_UPLOAD_MAX_BYTES", 5
+        ):
+            bytes_limited = self._upload_support_attachment(headers, name="over-bytes.txt", content=b"x")
+        self.assertEqual(bytes_limited.status_code, 429, bytes_limited.text)
+
+        session = SessionLocal()
+        try:
+            names = {row.stored_name for row in session.query(SupportAttachment).all()}
+        finally:
+            session.close()
+        self.assertNotIn("20260714-expiredrow.txt", names)
+        self.assertIn("20260714-legacyrow.txt", names)
+        self.assertIn("20260714-boundrow.txt", names)
+        self.assertIn("20260714-otherowner.txt", names)
+        session = SessionLocal()
+        try:
+            reasons = [
+                row.reason
+                for row in session.query(SecurityEvent)
+                .filter(SecurityEvent.event_type == "support_upload_reject")
+                .order_by(SecurityEvent.id.asc())
+                .all()
+            ]
+        finally:
+            session.close()
+        self.assertEqual(reasons, ["pending_count_quota", "pending_bytes_quota"])
+
+    def test_ticket_upload_rejection_telemetry_is_single_bounded_and_redacted(self) -> None:
+        from db import SessionLocal
+        from models import SecurityEvent
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        marker = "private-filename-marker"
+
+        unsupported = self.client.post(
+            "/api/tickets/uploads",
+            headers={
+                **headers,
+                "Content-Type": "application/octet-stream",
+                "X-Upload-Filename": f"{marker}.bin",
+            },
+            content=b"private-body-marker",
+        )
+        self.assertEqual(unsupported.status_code, 400, unsupported.text)
+
+        session = SessionLocal()
+        try:
+            rows = (
+                session.query(SecurityEvent)
+                .filter(SecurityEvent.event_type == "support_upload_reject")
+                .order_by(SecurityEvent.id.asc())
+                .all()
+            )
+            self.assertEqual([row.reason for row in rows], ["unsupported_type"])
+            serialized = "\n".join(f"{row.reason}\n{row.meta_json or ''}" for row in rows)
+            self.assertNotIn(marker, serialized)
+            self.assertNotIn("private-body-marker", serialized)
+        finally:
+            session.close()
+
+        with patch.object(self.api, "SUPPORT_UPLOAD_MAX_BYTES", 3):
+            oversized = self.client.post(
+                "/api/tickets/uploads",
+                headers={
+                    **headers,
+                    "Content-Type": "text/plain",
+                    "X-Upload-Filename": f"{marker}.txt",
+                },
+                content=b"oversized-private-body",
+            )
+        self.assertEqual(oversized.status_code, 413, oversized.text)
+
+        session = SessionLocal()
+        try:
+            rows = (
+                session.query(SecurityEvent)
+                .filter(SecurityEvent.event_type == "support_upload_reject")
+                .order_by(SecurityEvent.id.asc())
+                .all()
+            )
+            self.assertEqual([row.reason for row in rows], ["unsupported_type", "body_too_large"])
+            serialized = "\n".join(f"{row.reason}\n{row.meta_json or ''}" for row in rows)
+            self.assertNotIn(marker, serialized)
+            self.assertNotIn("oversized-private-body", serialized)
+        finally:
+            session.close()
+
+    def _run_concurrent_pending_uploads(
+        self,
+        *,
+        owners: tuple[tuple[int, str | None], tuple[int, str | None]],
+        payloads: tuple[bytes, bytes],
+        max_count: int,
+        max_bytes: int,
+    ) -> tuple[list[tuple[str, int | str]], int]:
+        from fastapi import HTTPException
+        from sqlalchemy.orm import Query
+
+        barrier = threading.Barrier(2)
+        arrivals = 0
+        arrivals_lock = threading.Lock()
+        original_one = Query.one
+
+        def coordinated_one(query):
+            nonlocal arrivals
+            statement = str(query.statement).lower()
+            if "support_attachments" in statement and "count(" in statement:
+                with arrivals_lock:
+                    arrivals += 1
+                try:
+                    barrier.wait(timeout=0.4)
+                except threading.BrokenBarrierError:
+                    pass
+            return original_one(query)
+
+        def store(index: int) -> tuple[str, int | str]:
+            owner_tg_id, owner_account_id = owners[index]
+            try:
+                self.api._store_support_upload(
+                    owner_tg_id=owner_tg_id,
+                    owner_account_id=owner_account_id,
+                    filename=f"concurrent-{index}.txt",
+                    content_type="text/plain",
+                    raw_bytes=payloads[index],
+                )
+                return ("ok", 200)
+            except HTTPException as exc:
+                return ("http", int(exc.status_code))
+            except Exception as exc:  # The RED path may expose a SQLite write race.
+                return ("error", type(exc).__name__)
+
+        with patch.object(self.api, "SUPPORT_PENDING_UPLOAD_MAX_COUNT", max_count), patch.object(
+            self.api, "SUPPORT_PENDING_UPLOAD_MAX_BYTES", max_bytes
+        ), patch.object(Query, "one", new=coordinated_one):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                results = list(executor.map(store, (0, 1)))
+        return results, arrivals
+
+    def test_concurrent_pending_upload_count_is_serialized_by_canonical_account(self) -> None:
+        results, arrivals = self._run_concurrent_pending_uploads(
+            owners=((1001, "shared-quota-owner"), (1002, "shared-quota-owner")),
+            payloads=(b"one", b"two"),
+            max_count=1,
+            max_bytes=1024,
+        )
+
+        self.assertEqual(sorted(results), [("http", 429), ("ok", 200)])
+        self.assertEqual(arrivals, 2)
+
+    def test_concurrent_pending_upload_bytes_are_serialized_by_legacy_tg_owner(self) -> None:
+        results, arrivals = self._run_concurrent_pending_uploads(
+            owners=((1001, None), (1001, None)),
+            payloads=(b"abc", b"def"),
+            max_count=5,
+            max_bytes=5,
+        )
+
+        self.assertEqual(sorted(results), [("http", 429), ("ok", 200)])
+        self.assertEqual(arrivals, 2)
+
+    def test_pending_upload_owner_keys_and_advisory_keys_keep_distinct_owners_separate(self) -> None:
+        shared_from_first_tg = self.api._support_upload_owner_key(
+            owner_tg_id=1001,
+            owner_account_id="shared",
+        )
+        shared_from_second_tg = self.api._support_upload_owner_key(
+            owner_tg_id=1002,
+            owner_account_id="shared",
+        )
+        other_account = self.api._support_upload_owner_key(
+            owner_tg_id=1001,
+            owner_account_id="other",
+        )
+        legacy_owner = self.api._support_upload_owner_key(owner_tg_id=1001, owner_account_id=None)
+
+        self.assertEqual(shared_from_first_tg, shared_from_second_tg)
+        self.assertEqual(len(self.api._SUPPORT_UPLOAD_OWNER_LOCKS), 256)
+        self.assertIsInstance(self.api._SUPPORT_UPLOAD_OWNER_LOCKS, tuple)
+        advisory_keys = {
+            self.api._support_upload_advisory_lock_key(owner_key)
+            for owner_key in (shared_from_first_tg, other_account, legacy_owner)
+        }
+        self.assertEqual(len(advisory_keys), 3)
+
+    def test_pending_upload_postgres_uses_transaction_advisory_owner_lock(self) -> None:
+        class _Session:
+            def __init__(self, dialect_name: str):
+                self.bind = SimpleNamespace(dialect=SimpleNamespace(name=dialect_name))
+                self.calls: list[tuple[str, dict[str, int]]] = []
+
+            def execute(self, statement, params):
+                self.calls.append((str(statement), dict(params)))
+
+        postgres = _Session("postgresql")
+        sqlite = _Session("sqlite")
+
+        self.api._lock_support_upload_owner_in_db(postgres, "account:shared")
+        self.api._lock_support_upload_owner_in_db(sqlite, "account:shared")
+
+        self.assertEqual(len(postgres.calls), 1)
+        self.assertIn("pg_advisory_xact_lock", postgres.calls[0][0])
+        self.assertIsInstance(postgres.calls[0][1]["lock_key"], int)
+        self.assertEqual(sqlite.calls, [])
+
+    def test_pending_upload_db_owner_lock_is_reacquired_after_cleanup_commit(self) -> None:
+        from db import SessionLocal
+
+        sessions = []
+        lock_boundaries: list[int] = []
+        boundary_events: list[str] = []
+
+        class _RecordingSession:
+            def __init__(self, inner):
+                self._inner = inner
+                self.commit_count = 0
+
+            def commit(self):
+                self._inner.commit()
+                self.commit_count += 1
+                boundary_events.append(f"commit:{self.commit_count}")
+
+            def query(self, *entities, **kwargs):
+                if any("count(" in str(entity).lower() for entity in entities):
+                    boundary_events.append(f"quota:{self.commit_count}")
+                return self._inner.query(*entities, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+        def session_factory():
+            session = _RecordingSession(SessionLocal())
+            sessions.append(session)
+            return session
+
+        def record_lock(session, _owner_key: str):
+            lock_boundaries.append(session.commit_count)
+            boundary_events.append(f"lock:{session.commit_count}")
+
+        with patch.object(self.api, "SessionLocal", new=session_factory), patch.object(
+            self.api, "_lock_support_upload_owner_in_db", new=record_lock
+        ):
+            self.api._store_support_upload(
+                owner_tg_id=1001,
+                owner_account_id="lock-order-owner",
+                filename="lock-order.txt",
+                content_type="text/plain",
+                raw_bytes=b"lock order",
+            )
+
+        self.assertEqual(lock_boundaries, [0, 1])
+        self.assertEqual(sessions[0].commit_count, 2)
+        self.assertEqual(
+            boundary_events,
+            ["lock:0", "commit:1", "lock:1", "quota:1", "commit:2"],
+        )
+
+    def test_attachment_id_binds_create_and_reply_with_conflict_and_owner_checks(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, SupportTicketMessage, User
+
+        alice = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        admin = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        first_upload = self._upload_support_attachment(alice, name="create.txt", content=b"create payload")
+        self.assertEqual(first_upload.status_code, 200, first_upload.text)
+        first_id = first_upload.json()["attachment_id"]
+
+        created = self.client.post(
+            "/api/tickets",
+            headers=alice,
+            json={"subject": "Private", "body": "Create with staged file", "attachment_id": first_id},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        ticket = created.json()["ticket"]
+        ticket_id = int(ticket["id"])
+        message = ticket["messages"][-1]
+        self.assertEqual(message["media_file_id"], f"support/{first_id}")
+        self.assertEqual(json.loads(message["media_payload"])["name"], "create.txt")
+
+        second_upload = self._upload_support_attachment(alice, name="reply.txt", content=b"reply payload")
+        second_id = second_upload.json()["attachment_id"]
+        replied = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={"body": "Reply with staged file", "attachment_id": second_id},
+        )
+        self.assertEqual(replied.status_code, 200, replied.text)
+
+        before_count = len(replied.json()["ticket"]["messages"])
+        duplicate = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={"body": "Must roll back", "attachment_id": second_id},
+        )
+        self.assertEqual(duplicate.status_code, 409, duplicate.text)
+        self.assertEqual(duplicate.headers.get("x-pokrov-auth-error"), "support_attachment_already_bound")
+
+        mixed_upload = self._upload_support_attachment(alice, name="mixed.txt", content=b"mixed")
+        mixed = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={
+                "body": "Mixed",
+                "attachment_id": mixed_upload.json()["attachment_id"],
+                "media_type": "file",
+            },
+        )
+        self.assertEqual(mixed.status_code, 400, mixed.text)
+        self.assertEqual(mixed.headers.get("x-pokrov-auth-error"), "support_attachment_invalid")
+
+        expired_upload = self._upload_support_attachment(alice, name="expired.txt", content=b"expired")
+        expired_id = expired_upload.json()["attachment_id"]
+        session = SessionLocal()
+        try:
+            session.query(SupportAttachment).filter_by(stored_name=expired_id).update(
+                {SupportAttachment.expires_at: _utcnow() - timedelta(seconds=1)}
+            )
+            session.add(
+                User(
+                    tg_id=1002,
+                    username="bob",
+                    uuid=str(uuid.uuid4()),
+                    email="user_1002",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+        expired = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=alice,
+            json={"body": "Expired", "attachment_id": expired_id},
+        )
+        self.assertEqual(expired.status_code, 404, expired.text)
+        self.assertEqual(expired.headers.get("x-pokrov-auth-error"), "support_attachment_not_found")
+
+        bob = {"X-Telegram-Init-Data": self._init_data(1002, "bob")}
+        foreign_upload = self._upload_support_attachment(bob, name="foreign.txt", content=b"foreign")
+        foreign = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=admin,
+            json={"body": "Admin cannot steal staged upload", "attachment_id": foreign_upload.json()["attachment_id"]},
+        )
+        self.assertEqual(foreign.status_code, 404, foreign.text)
+        self.assertEqual(foreign.headers.get("x-pokrov-auth-error"), "support_attachment_not_found")
+
+        session = SessionLocal()
+        try:
+            self.assertEqual(
+                session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).count(),
+                before_count,
+            )
+            bound = session.query(SupportAttachment).filter_by(stored_name=first_id).one()
+            self.assertEqual(bound.ticket_id, ticket_id)
+            self.assertIsNotNone(bound.message_id)
+            self.assertIsNotNone(bound.attached_at)
+            self.assertIsNone(bound.expires_at)
+        finally:
+            session.close()
+
+    def test_old_private_triplet_is_verified_and_nonprivate_triplet_remains_compatible(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        uploaded = self._upload_support_attachment(headers, name="old-client.txt", content=b"old client")
+        body = uploaded.json()
+        legacy = self.client.post(
+            "/api/tickets",
+            headers=headers,
+            json={"subject": "Old client", "body": "Legacy private triplet", **body["attachment"]},
+        )
+        self.assertEqual(legacy.status_code, 200, legacy.text)
+        ticket_id = int(legacy.json()["ticket"]["id"])
+        session = SessionLocal()
+        try:
+            self.assertIsNotNone(
+                session.query(SupportAttachment).filter_by(stored_name=body["attachment_id"]).one().message_id
+            )
+        finally:
+            session.close()
+
+        forged_upload = self._upload_support_attachment(headers, name="forged.txt", content=b"forged")
+        forged_attachment = dict(forged_upload.json()["attachment"])
+        forged_payload = json.loads(forged_attachment["media_payload"])
+        forged_payload["name"] = "different.txt"
+        forged_attachment["media_payload"] = json.dumps(forged_payload)
+        forged = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=headers,
+            json={"body": "Forged metadata", **forged_attachment},
+        )
+        self.assertEqual(forged.status_code, 400, forged.text)
+        self.assertEqual(forged.headers.get("x-pokrov-auth-error"), "support_attachment_invalid")
+
+        missing = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=headers,
+            json={
+                "body": "Forged reference",
+                "media_type": "file",
+                "media_file_id": "support/20260714-doesnotexist.txt",
+                "media_payload": "{}",
+            },
+        )
+        self.assertEqual(missing.status_code, 404, missing.text)
+        self.assertEqual(missing.headers.get("x-pokrov-auth-error"), "support_attachment_not_found")
+
+        telegram = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=headers,
+            json={
+                "body": "Telegram compatibility",
+                "media_type": "photo",
+                "media_file_id": "telegram-file-id",
+                "media_payload": '{"file_unique_id":"telegram-unique"}',
+            },
+        )
+        self.assertEqual(telegram.status_code, 200, telegram.text)
+        self.assertEqual(telegram.json()["ticket"]["messages"][-1]["media_file_id"], "telegram-file-id")
+
+    def test_bound_download_follows_ticket_access_while_unbound_uses_owner_fallback(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, User
+
+        alice = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        bob = {"X-Telegram-Init-Data": self._init_data(1002, "bob")}
+        admin = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+        session = SessionLocal()
+        try:
+            session.add(
+                User(
+                    tg_id=1002,
+                    username="bob",
+                    uuid=str(uuid.uuid4()),
+                    email="user_1002",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        bound_upload = self._upload_support_attachment(alice, name="bound.txt", content=b"bound")
+        bound_id = bound_upload.json()["attachment_id"]
+        created = self.client.post(
+            "/api/tickets",
+            headers=alice,
+            json={"subject": "Bound ACL", "body": "Bound", "attachment_id": bound_id},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        bound_url = bound_upload.json()["attachment_payload"]["url"]
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(stored_name=bound_id).one()
+            row.owner_tg_id = 1002
+            row.owner_account_id = None
+            session.commit()
+        finally:
+            session.close()
+        self.assertEqual(self.client.get(bound_url, headers=alice).status_code, 200)
+        self.assertEqual(self.client.get(bound_url, headers=bob).status_code, 403)
+        self.assertEqual(self.client.get(bound_url, headers=admin).status_code, 200)
+
+        unbound_upload = self._upload_support_attachment(bob, name="unbound.txt", content=b"unbound")
+        unbound_url = unbound_upload.json()["attachment_payload"]["url"]
+        self.assertEqual(self.client.get(unbound_url, headers=bob).status_code, 200)
+        self.assertEqual(self.client.get(unbound_url, headers=alice).status_code, 403)
+        self.assertEqual(self.client.get(unbound_url, headers=admin).status_code, 200)
+
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(stored_name=unbound_upload.json()["attachment_id"]).one()
+            row.expires_at = _utcnow() - timedelta(seconds=1)
+            session.commit()
+        finally:
+            session.close()
+        self.assertEqual(self.client.get(unbound_url, headers=bob).status_code, 404)
+        self.assertEqual(self.client.get(unbound_url, headers=admin).status_code, 404)
+
+    def test_upload_commit_ack_loss_preserves_durable_row_and_final_file(self) -> None:
+        from db import SessionLocal
+        from models import SecurityEvent, SupportAttachment
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        replace_calls: list[tuple[Path, Path]] = []
+        finalization_events: list[str] = []
+        original_replace = self.api.os.replace
+        original_parent_fsync = self.api._fsync_parent_directory
+
+        def recording_replace(source, destination):
+            finalization_events.append("replace")
+            replace_calls.append((Path(source), Path(destination)))
+            return original_replace(source, destination)
+
+        def recording_parent_fsync(path):
+            finalization_events.append("parent_fsync")
+            return original_parent_fsync(path)
+
+        class _FailingCommitSession:
+            def __init__(self, inner):
+                self._inner = inner
+                self.commit_count = 0
+
+            def commit(self):
+                self.commit_count += 1
+                finalization_events.append(f"commit_{self.commit_count}")
+                if self.commit_count == 2:
+                    self._inner.commit()
+                    finalization_events.append("commit_2_durable")
+                    raise RuntimeError("forced attachment commit acknowledgement loss")
+                return self._inner.commit()
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+        calls = 0
+        failing_sessions: list[_FailingCommitSession] = []
+
+        def _session_factory():
+            nonlocal calls
+            calls += 1
+            inner = SessionLocal()
+            if calls == 1:
+                return inner
+            failing = _FailingCommitSession(inner)
+            failing_sessions.append(failing)
+            return failing
+
+        with patch.object(self.api, "SessionLocal", new=_session_factory), patch.object(
+            self.api.os, "replace", new=recording_replace
+        ), patch.object(
+            self.api, "_fsync_parent_directory", new=recording_parent_fsync
+        ):
+            with self.assertRaises(RuntimeError):
+                self._upload_support_attachment(headers, name="atomic.txt", content=b"atomic")
+        self.assertEqual(len(replace_calls), 1)
+        self.assertIn(2, [session.commit_count for session in failing_sessions])
+        self.assertLess(finalization_events.index("replace"), finalization_events.index("parent_fsync"))
+        self.assertLess(finalization_events.index("parent_fsync"), finalization_events.index("commit_2"))
+        self.assertLess(finalization_events.index("commit_2"), finalization_events.index("commit_2_durable"))
+        self.assertFalse(replace_calls[0][0].exists())
+        self.assertTrue(replace_calls[0][1].exists())
+        session = SessionLocal()
+        try:
+            row = session.query(SupportAttachment).filter_by(original_name="atomic.txt").one()
+            self.assertEqual(replace_calls[0][1].name, row.stored_name)
+            events = session.query(SecurityEvent).filter_by(event_type="support_upload_reject").all()
+            self.assertEqual([row.reason for row in events], ["store_failed"])
+        finally:
+            session.close()
+
+    def test_upload_precommit_failure_leaves_rowless_final_for_grace_reconciliation(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment
+
+        cleanup = importlib.import_module("support_attachment_cleanup_service")
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        replace_calls: list[tuple[Path, Path]] = []
+        original_replace = self.api.os.replace
+
+        def recording_replace(source, destination):
+            replace_calls.append((Path(source), Path(destination)))
+            return original_replace(source, destination)
+
+        class _FailingAddSession:
+            def __init__(self, inner):
+                self._inner = inner
+
+            def add(self, value):
+                if isinstance(value, SupportAttachment):
+                    raise RuntimeError("forced pre-commit attachment persistence failure")
+                return self._inner.add(value)
+
+            def __getattr__(self, name):
+                return getattr(self._inner, name)
+
+        calls = 0
+
+        def _session_factory():
+            nonlocal calls
+            calls += 1
+            inner = SessionLocal()
+            return inner if calls == 1 else _FailingAddSession(inner)
+
+        with patch.object(self.api, "SessionLocal", new=_session_factory), patch.object(
+            self.api.os, "replace", new=recording_replace
+        ):
+            with self.assertRaises(RuntimeError):
+                self._upload_support_attachment(headers, name="precommit.txt", content=b"precommit")
+
+        self.assertEqual(len(replace_calls), 1)
+        temp_path, final_path = replace_calls[0]
+        self.assertFalse(temp_path.exists())
+        self.assertTrue(final_path.exists())
+        session = SessionLocal()
+        try:
+            self.assertEqual(session.query(SupportAttachment).filter_by(original_name="precommit.txt").count(), 0)
+        finally:
+            session.close()
+
+        now = _utcnow()
+        recent = cleanup.reconcile_support_attachments(
+            SessionLocal,
+            upload_dir=Path(self.api.SUPPORT_UPLOAD_DIR),
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=20,
+        )
+        self.assertEqual(recent["orphan_files_removed"], 0)
+        self.assertTrue(final_path.exists())
+
+        old_timestamp = (now - timedelta(hours=2)).replace(tzinfo=timezone.utc).timestamp()
+        os.utime(final_path, (old_timestamp, old_timestamp))
+        expired = cleanup.reconcile_support_attachments(
+            SessionLocal,
+            upload_dir=Path(self.api.SUPPORT_UPLOAD_DIR),
+            now=now,
+            grace_seconds=3600,
+            batch_size=10,
+            scan_limit=20,
+        )
+        self.assertEqual(expired["orphan_files_removed"], 1)
+        self.assertFalse(final_path.exists())
+
+    def test_support_upload_parent_directory_fsync_is_posix_only(self) -> None:
+        target = Path(self.api.SUPPORT_UPLOAD_DIR) / "20260714-fsynctest.txt"
+        expected_flags = self.api.os.O_RDONLY | getattr(self.api.os, "O_DIRECTORY", 0)
+        with patch.object(self.api.os, "name", "posix"), patch.object(
+            self.api.os, "open", return_value=73
+        ) as open_mock, patch.object(self.api.os, "fsync") as fsync_mock, patch.object(
+            self.api.os, "close"
+        ) as close_mock:
+            self.api._fsync_parent_directory(target)
+
+        open_mock.assert_called_once_with(str(target.parent), expected_flags)
+        fsync_mock.assert_called_once_with(73)
+        close_mock.assert_called_once_with(73)
+
+    def test_concurrent_attachment_bind_has_one_winner_and_no_duplicate_message(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, SupportTicketMessage
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        created = self.client.post(
+            "/api/tickets",
+            headers=headers,
+            json={"subject": "Concurrency", "body": "Initial"},
+        )
+        ticket_id = int(created.json()["ticket"]["id"])
+        upload = self._upload_support_attachment(headers, name="race.txt", content=b"race")
+        attachment_id = upload.json()["attachment_id"]
+
+        def _bind(body: str):
+            with TestClient(self.api.app) as client:
+                return client.post(
+                    f"/api/tickets/{ticket_id}/messages",
+                    headers=headers,
+                    json={"body": body, "attachment_id": attachment_id},
+                )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            responses = list(executor.map(_bind, ("racer one", "racer two")))
+        self.assertEqual(sorted(response.status_code for response in responses), [200, 409])
+
+        session = SessionLocal()
+        try:
+            messages = session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).all()
+            self.assertEqual(len(messages), 2)
+            attachment = session.query(SupportAttachment).filter_by(stored_name=attachment_id).one()
+            self.assertIn(attachment.message_id, {message.id for message in messages})
+        finally:
+            session.close()
+
+    def test_attachment_bind_boundary_expiry_or_deletion_is_not_found_and_rolls_back_message(self) -> None:
+        from db import SessionLocal
+        from models import SupportAttachment, SupportTicketMessage
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        created = self.client.post(
+            "/api/tickets",
+            headers=headers,
+            json={"subject": "Bind boundary", "body": "Initial"},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        ticket_id = int(created.json()["ticket"]["id"])
+        original_bind = self.api._bind_ticket_attachment
+
+        for boundary in ("expired", "deleted"):
+            with self.subTest(boundary=boundary):
+                upload = self._upload_support_attachment(
+                    headers,
+                    name=f"boundary-{boundary}.txt",
+                    content=boundary.encode("ascii"),
+                )
+                self.assertEqual(upload.status_code, 200, upload.text)
+                attachment_id = upload.json()["attachment_id"]
+                body = f"must roll back {boundary} boundary"
+
+                session = SessionLocal()
+                try:
+                    before_count = session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).count()
+                finally:
+                    session.close()
+
+                def boundary_bind(session, *, row, ticket_id, message_id):
+                    query = session.query(SupportAttachment).filter(SupportAttachment.id == row.id)
+                    if boundary == "expired":
+                        query.update(
+                            {SupportAttachment.expires_at: _utcnow() - timedelta(seconds=1)},
+                            synchronize_session=False,
+                        )
+                    else:
+                        query.delete(synchronize_session=False)
+                    return original_bind(
+                        session,
+                        row=row,
+                        ticket_id=ticket_id,
+                        message_id=message_id,
+                    )
+
+                with patch.object(self.api, "_bind_ticket_attachment", new=boundary_bind):
+                    response = self.client.post(
+                        f"/api/tickets/{ticket_id}/messages",
+                        headers=headers,
+                        json={"body": body, "attachment_id": attachment_id},
+                    )
+
+                self.assertEqual(response.status_code, 404, response.text)
+                self.assertEqual(
+                    response.headers.get("x-pokrov-auth-error"),
+                    "support_attachment_not_found",
+                )
+                session = SessionLocal()
+                try:
+                    self.assertEqual(
+                        session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id).count(),
+                        before_count,
+                    )
+                    self.assertEqual(
+                        session.query(SupportTicketMessage).filter_by(ticket_id=ticket_id, body=body).count(),
+                        0,
+                    )
+                    restored = session.query(SupportAttachment).filter_by(stored_name=attachment_id).one()
+                    self.assertIsNone(restored.ticket_id)
+                    self.assertIsNone(restored.message_id)
+                    self.assertGreater(restored.expires_at, _utcnow())
+                finally:
+                    session.close()
+
+    def test_linked_account_sessions_share_tickets_and_uploads_with_strict_nonnull_owner(self) -> None:
+        from db import SessionLocal
+        from models import Account, SupportAttachment, SupportTicket, User
+
+        s = SessionLocal()
+        try:
+            shared = Account(id="shared-support-account", status="active", created_source="test")
+            other = Account(id="other-support-account", status="active", created_source="test")
+            alice = s.query(User).filter_by(tg_id=1001).one()
+            alice.account_id = shared.id
+            linked = User(
+                tg_id=1002,
+                account_id=shared.id,
+                username="linked",
+                uuid=str(uuid.uuid4()),
+                email="user_1002",
+                sub_type="FREE",
+                is_active=True,
+                tos_accepted=True,
+            )
+            s.add_all([shared, other, linked])
+            s.commit()
+        finally:
+            s.close()
+
+        alice_headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        linked_headers = {"X-Telegram-Init-Data": self._init_data(1002, "linked")}
+        admin_headers = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
+
+        created = self.client.post(
+            "/api/tickets",
+            headers=alice_headers,
+            json={"subject": "Shared", "body": "Created from Telegram identity one"},
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        ticket_payload = created.json()["ticket"]
+        ticket_id = int(ticket_payload["id"])
+        self.assertNotIn("account_id", ticket_payload)
+
+        listed = self.client.get("/api/tickets", headers=linked_headers)
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertIn(ticket_id, [int(row["id"]) for row in listed.json()["tickets"]])
+
+        opened = self.client.get(f"/api/tickets/{ticket_id}", headers=linked_headers)
+        self.assertEqual(opened.status_code, 200, opened.text)
+        replied = self.client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=linked_headers,
+            json={"body": "Reply from Telegram identity two"},
+        )
+        self.assertEqual(replied.status_code, 200, replied.text)
+
+        uploaded = self.client.post(
+            "/api/tickets/uploads",
+            headers={**alice_headers, "Content-Type": "image/png", "X-Upload-Filename": "shared.png"},
+            content=b"\x89PNG\r\n\x1a\nshared-account",
+        )
+        self.assertEqual(uploaded.status_code, 200, uploaded.text)
+        file_url = uploaded.json()["attachment_payload"]["url"]
+        downloaded = self.client.get(file_url, headers=linked_headers)
+        self.assertEqual(downloaded.status_code, 200, downloaded.text)
+
+        s = SessionLocal()
+        try:
+            ticket = s.query(SupportTicket).filter_by(id=ticket_id).one()
+            attachment = s.query(SupportAttachment).order_by(SupportAttachment.id.desc()).first()
+            self.assertEqual(ticket.account_id, "shared-support-account")
+            self.assertEqual(attachment.owner_account_id, "shared-support-account")
+            attachment.owner_tg_id = 1002
+            attachment.owner_account_id = "other-support-account"
+            tempting = SupportTicket(
+                user_tg_id=1002,
+                account_id="other-support-account",
+                status="open",
+                created_at=_utcnow(),
+                updated_at=_utcnow(),
+            )
+            s.add(tempting)
+            s.commit()
+            tempting_id = int(tempting.id)
+        finally:
+            s.close()
+
+        denied = self.client.get(f"/api/tickets/{tempting_id}", headers=linked_headers)
+        self.assertEqual(denied.status_code, 403, denied.text)
+        denied_attachment = self.client.get(file_url, headers=linked_headers)
+        self.assertEqual(denied_attachment.status_code, 403, denied_attachment.text)
+        admin_opened = self.client.get(f"/api/tickets/{tempting_id}", headers=admin_headers)
+        self.assertEqual(admin_opened.status_code, 200, admin_opened.text)
+        admin_downloaded = self.client.get(file_url, headers=admin_headers)
+        self.assertEqual(admin_downloaded.status_code, 200, admin_downloaded.text)
+
     def test_ticket_upload_rejects_svg_and_octet_stream(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
@@ -1520,13 +2727,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         body = r.json()
         self.assertTrue(body["ok"])
         self.assertFalse(body["already_claimed"])
-        self.assertEqual(body["premium_days"], 10)
+        self.assertEqual(body["premium_days"], 5)
         self.assertEqual(body["sub_type"], "BONUS")
         self.assertTrue(body["sync_ok"])
         activated_events = self._event_rows("promo_channel_activated")
         self.assertEqual(len(activated_events), 1)
         self.assertEqual(activated_events[0]["source"], "webapp")
-        self.assertEqual(int(activated_events[0]["meta"].get("days") or 0), 10)
+        self.assertEqual(int(activated_events[0]["meta"].get("days") or 0), 5)
         self.assertTrue(bool(activated_events[0]["meta"].get("sync_ok")))
 
         # Second claim should be idempotent.
@@ -1666,10 +2873,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.api.ControlPanel = FakePanel
 
-        created = self.client.post(
-            "/api/admin/users/manual",
-            headers=admin_hdrs,
-            json={"display_name": "Offline Client", "days": 30},
+        created = self._execute_admin_intent(
+            action="user.manual_create",
+            target_type="user",
+            target_id="manual",
+            method="POST",
+            path="/api/admin/users/manual",
+            payload={"display_name": "Offline Client", "days": 30},
         )
         self.assertEqual(created.status_code, 200, created.text)
         body = created.json()
@@ -1685,60 +2895,81 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             session.close()
 
-        extend = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"delta_days": 7},
+        extend = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"delta_days": 7},
         )
         self.assertEqual(extend.status_code, 200, extend.text)
         self.assertTrue(extend.json()["ok"])
         self.assertEqual(int(extend.json().get("delta_days") or 0), 7)
         self.assertIsInstance(datetime.fromisoformat(extend.json()["expiry_at"]), datetime)
 
-        alias_extend = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual-extend",
-            headers=admin_hdrs,
-            json={"delta_days": 1},
+        alias_extend = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual-extend",
+            payload={"delta_days": 1},
         )
         self.assertEqual(alias_extend.status_code, 200, alias_extend.text)
         self.assertEqual(int(alias_extend.json().get("delta_days") or 0), 1)
 
-        backwards_compat = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"days": 3},
+        backwards_compat = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"days": 3},
         )
         self.assertEqual(backwards_compat.status_code, 200, backwards_compat.text)
         self.assertEqual(int(backwards_compat.json().get("delta_days") or 0), 3)
 
-        reject_negative = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"delta_days": -3650},
+        reject_negative = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"delta_days": -3650},
         )
-        self.assertEqual(reject_negative.status_code, 400, reject_negative.text)
+        self.assertEqual(reject_negative.status_code, 409, reject_negative.text)
 
-        allow_negative = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/extend",
-            headers=admin_hdrs,
-            json={"delta_days": -3650, "allow_deactivate": True},
+        allow_negative = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/extend",
+            payload={"delta_days": -3650, "allow_deactivate": True},
         )
         self.assertEqual(allow_negative.status_code, 200, allow_negative.text)
         self.assertFalse(bool(allow_negative.json().get("is_active")))
 
-        block = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/block",
-            headers=admin_hdrs,
-            json={"blocked": True},
+        block = self._execute_admin_intent(
+            action="user.block",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/block",
+            payload={"blocked": True},
         )
         self.assertEqual(block.status_code, 200, block.text)
         self.assertTrue(block.json()["ok"])
         self.assertFalse(block.json()["is_active"])
 
-        regen = self.client.post(
-            f"/api/admin/users/{manual_tg_id}/manual/regenerate-token",
-            headers=admin_hdrs,
-            json={},
+        regen = self._execute_admin_intent(
+            action="user.regenerate_token",
+            target_type="user",
+            target_id=manual_tg_id,
+            method="POST",
+            path=f"/api/admin/users/{manual_tg_id}/manual/regenerate-token",
+            payload={},
         )
         self.assertEqual(regen.status_code, 200, regen.text)
         self.assertTrue(regen.json()["ok"])
@@ -1905,18 +3136,24 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-        inactive_resp = self.client.post(
-            "/api/admin/users/keys/bulk-action",
-            headers=admin_hdrs,
-            json={"action": "disable", "segment": "inactive", "dry_run": True},
+        inactive_resp = self._execute_admin_intent(
+            action="user.bulk_key_action",
+            target_type="users",
+            target_id="bulk",
+            method="POST",
+            path="/api/admin/users/keys/bulk-action",
+            payload={"action": "disable", "segment": "inactive", "dry_run": True},
         )
         self.assertEqual(inactive_resp.status_code, 200, inactive_resp.text)
         self.assertIn(2101, inactive_resp.json().get("preview_tg_ids", []))
 
-        manual_resp = self.client.post(
-            "/api/admin/users/keys/bulk-action",
-            headers=admin_hdrs,
-            json={"action": "disable", "segment": "manual_test", "dry_run": True},
+        manual_resp = self._execute_admin_intent(
+            action="user.bulk_key_action",
+            target_type="users",
+            target_id="bulk",
+            method="POST",
+            path="/api/admin/users/keys/bulk-action",
+            payload={"action": "disable", "segment": "manual_test", "dry_run": True},
         )
         self.assertEqual(manual_resp.status_code, 200, manual_resp.text)
         self.assertIn(-10060, manual_resp.json().get("preview_tg_ids", []))
@@ -1961,17 +3198,21 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-        reject_real = self.client.post(
-            "/api/admin/users/1001/safe-delete",
-            headers=admin_hdrs,
-            json={"confirm": True},
+        reject_real = self._prepare_admin_intent(
+            action="user.safe_delete",
+            target_type="user",
+            target_id=1001,
+            payload={"confirm": True},
         )
-        self.assertEqual(reject_real.status_code, 400, reject_real.text)
+        self.assertEqual(reject_real.status_code, 409, reject_real.text)
 
-        deleted = self.client.post(
-            "/api/admin/users/-10070/safe-delete",
-            headers=admin_hdrs,
-            json={"confirm": True},
+        deleted = self._execute_admin_intent(
+            action="user.safe_delete",
+            target_type="user",
+            target_id=-10070,
+            method="POST",
+            path="/api/admin/users/-10070/safe-delete",
+            payload={"confirm": True},
         )
         self.assertEqual(deleted.status_code, 200, deleted.text)
         self.assertTrue(bool(deleted.json().get("ok")))
@@ -1987,10 +3228,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
-        created_promo = self.client.post(
-            "/api/admin/promos",
-            headers=admin_hdrs,
-            json={"code": "WELCOME14", "promo_type": "days", "value": 14, "uses_left": 100},
+        created_promo = self._execute_admin_intent(
+            action="promo.create",
+            target_type="promo",
+            target_id="WELCOME14",
+            method="POST",
+            path="/api/admin/promos",
+            payload={"code": "WELCOME14", "promo_type": "days", "value": 14, "uses_left": 100},
         )
         self.assertEqual(created_promo.status_code, 200, created_promo.text)
 
@@ -1998,20 +3242,33 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(promo_list.status_code, 200, promo_list.text)
         self.assertTrue(any((p.get("code") or "") == "WELCOME14" for p in promo_list.json().get("promos", [])))
 
-        updated_promo = self.client.patch(
-            "/api/admin/promos/WELCOME14",
-            headers=admin_hdrs,
-            json={"value": 21, "uses_left": 50},
+        updated_promo = self._execute_admin_intent(
+            action="promo.update",
+            target_type="promo",
+            target_id="WELCOME14",
+            method="PATCH",
+            path="/api/admin/promos/WELCOME14",
+            payload={"value": 21, "uses_left": 50},
         )
         self.assertEqual(updated_promo.status_code, 200, updated_promo.text)
 
-        deleted_promo = self.client.delete("/api/admin/promos/WELCOME14", headers=admin_hdrs)
+        deleted_promo = self._execute_admin_intent(
+            action="promo.delete",
+            target_type="promo",
+            target_id="WELCOME14",
+            method="DELETE",
+            path="/api/admin/promos/WELCOME14",
+            payload={},
+        )
         self.assertEqual(deleted_promo.status_code, 200, deleted_promo.text)
 
-        created_tpl = self.client.post(
-            "/api/admin/templates",
-            headers=admin_hdrs,
-            json={"key": "retention_t3", "text": "Подписка скоро завершится. Продлите доступ."},
+        created_tpl = self._execute_admin_intent(
+            action="template.create",
+            target_type="template",
+            target_id="retention_t3",
+            method="POST",
+            path="/api/admin/templates",
+            payload={"key": "retention_t3", "text": "Подписка скоро завершится. Продлите доступ."},
         )
         self.assertEqual(created_tpl.status_code, 200, created_tpl.text)
 
@@ -2019,20 +3276,33 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(tpl_list.status_code, 200, tpl_list.text)
         self.assertTrue(any((t.get("key") or "") == "retention_t3" for t in tpl_list.json().get("templates", [])))
 
-        updated_tpl = self.client.patch(
-            "/api/admin/templates/retention_t3",
-            headers=admin_hdrs,
-            json={"text": "Напоминаем: продлите доступ, чтобы не было паузы."},
+        updated_tpl = self._execute_admin_intent(
+            action="template.update",
+            target_type="template",
+            target_id="retention_t3",
+            method="PATCH",
+            path="/api/admin/templates/retention_t3",
+            payload={"text": "Напоминаем: продлите доступ, чтобы не было паузы."},
         )
         self.assertEqual(updated_tpl.status_code, 200, updated_tpl.text)
 
-        deleted_tpl = self.client.delete("/api/admin/templates/retention_t3", headers=admin_hdrs)
+        deleted_tpl = self._execute_admin_intent(
+            action="template.delete",
+            target_type="template",
+            target_id="retention_t3",
+            method="DELETE",
+            path="/api/admin/templates/retention_t3",
+            payload={},
+        )
         self.assertEqual(deleted_tpl.status_code, 200, deleted_tpl.text)
 
-        gift_created = self.client.post(
-            "/api/admin/gift-codes",
-            headers=admin_hdrs,
-            json={"card_type": "standard"},
+        gift_created = self._execute_admin_intent(
+            action="gift_code.create",
+            target_type="gift_code",
+            target_id="standard",
+            method="POST",
+            path="/api/admin/gift-codes",
+            payload={"card_type": "standard"},
         )
         self.assertEqual(gift_created.status_code, 200, gift_created.text)
         code = gift_created.json().get("gift_code", {}).get("code")
@@ -2064,10 +3334,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
-        cfg = self.client.put(
-            "/api/admin/loyalty-config",
-            headers=admin_hdrs,
-            json={"enabled": True, "tiers": [{"days": 30, "bonus_days": 5, "perk": "loyal_30"}]},
+        cfg = self._execute_admin_intent(
+            action="loyalty_config.update",
+            target_type="config",
+            target_id="loyalty",
+            method="PUT",
+            path="/api/admin/loyalty-config",
+            payload={"enabled": True, "tiers": [{"days": 30, "bonus_days": 5, "perk": "loyal_30"}]},
         )
         self.assertEqual(cfg.status_code, 200, cfg.text)
 
@@ -2079,10 +3352,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         self.api._sync_user_after_paid_bonus = fake_sync
 
-        granted = self.client.post(
-            "/api/admin/users/1001/loyalty/grant",
-            headers=admin_hdrs,
-            json={"tier_days": 30},
+        granted = self._execute_admin_intent(
+            action="user.loyalty_grant",
+            target_type="user",
+            target_id=1001,
+            method="POST",
+            path="/api/admin/users/1001/loyalty/grant",
+            payload={"tier_days": 30},
         )
         self.assertEqual(granted.status_code, 200, granted.text)
         self.assertTrue(granted.json().get("ok"))
@@ -2093,10 +3369,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
-        created = self.client.post(
-            "/api/admin/gift-codes",
-            headers=admin_hdrs,
-            json={"card_type": "standard"},
+        created = self._execute_admin_intent(
+            action="gift_code.create",
+            target_type="gift_code",
+            target_id="standard",
+            method="POST",
+            path="/api/admin/gift-codes",
+            payload={"card_type": "standard"},
         )
         self.assertEqual(created.status_code, 200, created.text)
         code = str(created.json().get("gift_code", {}).get("code") or "")
@@ -2157,10 +3436,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
-        created = self.client.post(
-            "/api/admin/promos",
-            headers=admin_hdrs,
-            json={"code": "FOREVER20", "promo_type": "discount", "value": 20, "uses_left": -1},
+        created = self._execute_admin_intent(
+            action="promo.create",
+            target_type="promo",
+            target_id="FOREVER20",
+            method="POST",
+            path="/api/admin/promos",
+            payload={"code": "FOREVER20", "promo_type": "discount", "value": 20, "uses_left": -1},
         )
         self.assertEqual(created.status_code, 200, created.text)
 
@@ -3351,10 +4633,13 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
     def test_admin_start_links_and_wheel_config(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
-        created = self.client.post(
-            "/api/admin/start-links",
-            headers=admin_hdrs,
-            json={
+        created = self._execute_admin_intent(
+            action="start_link.create",
+            target_type="start_link",
+            target_id="launch14",
+            method="POST",
+            path="/api/admin/start-links",
+            payload={
                 "code": "launch14",
                 "description": "Campaign launch link",
                 "target_action": "opening_bonus",
@@ -3369,24 +4654,37 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(rows.status_code, 200, rows.text)
         self.assertTrue(any((r.get("code") or "") == "launch14" for r in rows.json().get("start_links", [])))
 
-        patched = self.client.patch(
-            f"/api/admin/start-links/{link_id}",
-            headers=admin_hdrs,
-            json={"description": "Updated", "is_active": False},
+        patched = self._execute_admin_intent(
+            action="start_link.update",
+            target_type="start_link",
+            target_id=link_id,
+            method="PATCH",
+            path=f"/api/admin/start-links/{link_id}",
+            payload={"description": "Updated", "is_active": False},
         )
         self.assertEqual(patched.status_code, 200, patched.text)
 
-        removed = self.client.delete(f"/api/admin/start-links/{link_id}", headers=admin_hdrs)
+        removed = self._execute_admin_intent(
+            action="start_link.delete",
+            target_type="start_link",
+            target_id=link_id,
+            method="DELETE",
+            path=f"/api/admin/start-links/{link_id}",
+            payload={},
+        )
         self.assertEqual(removed.status_code, 200, removed.text)
 
         cfg_get = self.client.get("/api/admin/wheel-config", headers=admin_hdrs)
         self.assertEqual(cfg_get.status_code, 200, cfg_get.text)
         self.assertIn("wheel_config", cfg_get.json())
 
-        cfg_put = self.client.put(
-            "/api/admin/wheel-config",
-            headers=admin_hdrs,
-            json={
+        cfg_put = self._execute_admin_intent(
+            action="wheel_config.update",
+            target_type="config",
+            target_id="wheel",
+            method="PUT",
+            path="/api/admin/wheel-config",
+            payload={
                 "preset": "manual",
                 "weights": [
                     {"days": 1, "weight": 50},

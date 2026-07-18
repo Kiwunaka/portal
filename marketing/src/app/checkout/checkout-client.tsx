@@ -296,15 +296,16 @@ export function CheckoutLoadingFallback() {
 export default function CheckoutClient() {
   const searchParams = useSearchParams();
   const queryPlan = normalizePlanCode(searchParams.get("plan"), "start_99");
+  const initialKeyInput = (searchParams.get("key") || "").trim().toUpperCase();
   const [catalog, setCatalog] = useState<PublicCatalogResponse | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>(() => fallbackPlans());
   const [selectedPlan, setSelectedPlan] = useState(queryPlan);
   const [promoCode, setPromoCode] = useState((searchParams.get("promo") || "").trim().toUpperCase());
-  const [keyInput, setKeyInput] = useState((searchParams.get("key") || "").trim().toUpperCase());
+  const [keyInput, setKeyInput] = useState(initialKeyInput);
   const [keyStatus, setKeyStatus] = useState<AccessKeyStatusResponse | null>(null);
   const [providerState, setProviderState] = useState<PaymentProviderState | null>(null);
   const [statusText, setStatusText] = useState("");
-  const [keyBusy, setKeyBusy] = useState(false);
+  const [keyBusy, setKeyBusy] = useState(initialKeyInput.length >= 6);
   const [buyerEmail, setBuyerEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>("sbp");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -330,9 +331,9 @@ export default function CheckoutClient() {
       setCatalog(nextCatalog);
       if (nextPlans.length) {
         setPlans(nextPlans);
-        if (!nextPlans.some((plan) => plan.code === selectedPlan)) {
-          setSelectedPlan(nextPlans[0].code);
-        }
+        setSelectedPlan((current) =>
+          nextPlans.some((plan) => plan.code === current) ? current : nextPlans[0].code,
+        );
       }
     };
 
@@ -340,7 +341,7 @@ export default function CheckoutClient() {
     return () => {
       cancelled = true;
     };
-  }, [selectedPlan]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -357,28 +358,40 @@ export default function CheckoutClient() {
   }, []);
 
   useEffect(() => {
-    if (!keyInput) {
-      setKeyStatus(null);
-      return;
-    }
     const normalized = keyInput.trim().toUpperCase();
     if (normalized.length < 6) {
       return;
     }
-    setKeyBusy(true);
-    setStatusText("");
+    let cancelled = false;
     void fetchAccessKeyStatus(normalized)
       .then((payload) => {
-        setKeyStatus(payload);
+        if (!cancelled) {
+          setKeyStatus(payload);
+        }
       })
       .catch((error) => {
-        setKeyStatus(null);
-        setStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
+        if (!cancelled) {
+          setKeyStatus(null);
+          setStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
+        }
       })
       .finally(() => {
-        setKeyBusy(false);
+        if (!cancelled) {
+          setKeyBusy(false);
+        }
       });
+    return () => {
+      cancelled = true;
+    };
   }, [keyInput]);
+
+  const updateKeyInput = (rawValue: string): void => {
+    const normalized = rawValue.toUpperCase().trim();
+    setKeyInput(normalized);
+    setKeyStatus(null);
+    setStatusText("");
+    setKeyBusy(normalized.length >= 6);
+  };
 
   const activePlan = useMemo(
     () => plans.find((plan) => plan.code === selectedPlan) || plans[0] || fallbackPlans()[0],
@@ -481,14 +494,26 @@ export default function CheckoutClient() {
                   type="button"
                   onClick={() => setSelectedPlan(plan.code)}
                   className={cn(
-                    "flex min-h-11 items-center justify-between gap-4 rounded-(--radius-control) border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-(--ease-apple)",
+                    "flex min-h-11 items-center justify-between gap-4 rounded-(--radius-control) border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
                     selectedPlan === plan.code
                       ? "border-brand bg-brand-soft shadow-soft"
                       : "border-line bg-surface hover:border-line-strong",
                   )}
                 >
                   <span className="flex flex-col gap-0.5">
-                    <strong className="text-[0.9375rem] font-semibold text-ink">{plan.label}</strong>
+                    <span className="flex items-center gap-2">
+                      <strong className="text-[0.9375rem] font-semibold text-ink">{plan.label}</strong>
+                      {plan.badge ? (
+                        <span
+                          className={cn(
+                            "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold text-brand-strong",
+                            selectedPlan === plan.code ? "bg-surface" : "bg-brand-soft",
+                          )}
+                        >
+                          {plan.badge}
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="text-[0.8125rem] text-ink-soft">
                       {plan.days} дней • до {plan.device_limit} устройств
                     </span>
@@ -520,7 +545,7 @@ export default function CheckoutClient() {
               placeholder="Например: POKROV10"
               className={INPUT_CLASS}
             />
-            <p className="text-[0.8125rem] text-ink-muted">
+            <p className="text-[0.8125rem] text-ink-soft">
               {activePlanDiscountBlocked
                 ? "Для приветственного тарифа 99 ₽ промокод не применяется."
                 : discountPercent > 0
@@ -533,11 +558,11 @@ export default function CheckoutClient() {
             <strong className="text-[0.9375rem] font-semibold text-ink">Уже есть код?</strong>
             <input
               value={keyInput}
-              onChange={(event) => setKeyInput(event.target.value.toUpperCase().trim())}
+              onChange={(event) => updateKeyInput(event.target.value)}
               placeholder="POKROV-XXXX-XXXX"
               className={INPUT_CLASS}
             />
-            {keyBusy ? <p className="text-[0.8125rem] text-ink-muted">Проверяем статус кода…</p> : null}
+            {keyBusy ? <p className="text-[0.8125rem] text-ink-soft">Проверяем статус кода…</p> : null}
             {keyStatus ? (
               <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-[0.875rem] text-ink-soft">
                 <li>Код: {maskAccessKey(keyStatus.key)}</li>
@@ -605,7 +630,7 @@ export default function CheckoutClient() {
                       type="button"
                       onClick={() => setPaymentMethod(option.code)}
                       className={cn(
-                        "min-h-11 rounded-(--radius-control) border px-3 py-2 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple)",
+                        "min-h-11 rounded-(--radius-control) border px-3 py-2 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
                         selected ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
                       )}
                       aria-pressed={selected}
@@ -633,7 +658,7 @@ export default function CheckoutClient() {
           )}
 
           {!checkoutReady ? (
-            <p className="text-[0.8125rem] leading-relaxed text-ink-muted">
+            <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
               {checkoutBlockedReasons.length
                 ? "Оплата временно недоступна. Откройте кабинет или напишите в поддержку — подскажем следующий шаг."
                 : "Проверяем доступность оплаты. Если кнопка не появится, продолжайте через поддержку или кабинет."}
@@ -655,7 +680,7 @@ export default function CheckoutClient() {
             </Button>
           </div>
 
-          <p className="text-[0.8125rem] leading-relaxed text-ink-muted">
+          <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
             Email нужен для чека и кода активации. Уже начали в приложении? Введите код именно там или откройте кабинет
             из приложения, чтобы продлить тот же профиль.
           </p>

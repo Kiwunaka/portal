@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-12
+Last updated: 2026-07-17
 
 ## Document Status
 
@@ -144,12 +144,200 @@ Observer-lite canary install:
 python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-code pl --run-now
 ```
 
+### Antiabuse retention incident and rollback
+
+`portal-worker` owns the frequent antiabuse privacy sweep. Its interval is
+clamped to 60-900 seconds. Cleanup runs outside the shared asyncio event loop;
+one chunk is capped by `ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN`, and remaining
+backlog schedules another chunk after one second. Every database batch commits
+separately.
+
+Read-only backlog inspection:
+
+```powershell
+python scripts/cleanup_antiabuse_retention.py
+```
+
+Explicit one-shot drain:
+
+```powershell
+python scripts/cleanup_antiabuse_retention.py --apply
+```
+
+The command reads `DATABASE_URL` through normal backend configuration but never
+prints it. Its JSON output contains counts only. Do not pass a database URL on
+the command line, and do not treat a dry run as cleanup evidence.
+
+Before a rollback to code without `antiabuse_retention_job`:
+
+- retain a dry-run and applied count report with no secrets or row contents;
+- verify `after` is all zero;
+- install an equivalent scheduled cleanup in the rollback revision before
+  stopping the new worker;
+- keep antiabuse/security/user audit rows and null only the overdue sensitive
+  fields;
+- treat stopped worker or post-drain non-zero backlog as an incident, not a
+  successful rollback.
+
+The retention windows are an operational SLO, not a PostgreSQL TTL. Worker
+outage or persistent backlog can exceed them and blocks a production readiness
+claim until the backlog is drained and monitoring is restored.
+
+### SQLite to PostgreSQL rehearsal
+
+The guarded rehearsal entrypoint is:
+
+```powershell
+python scripts/migrate_sqlite_to_postgres.py inventory `
+  --sqlite-path .tmp\migration\source.db `
+  --output .tmp\migration\source-counts.json
+
+# Review every table count before continuing.
+python scripts/migrate_sqlite_to_postgres.py rehearse `
+  --sqlite-path .tmp\migration\source.db `
+  --snapshot-path .tmp\migration\source.snapshot.db `
+  --source-manifest .tmp\migration\source-counts.json `
+  --postgres-url-env REHEARSAL_POSTGRES_URL `
+  --confirm-target portal_rehearsal `
+  --reset-target `
+  --rerun-check `
+  --report .tmp\migration\rehearsal-report.json
+```
+
+Set `REHEARSAL_POSTGRES_URL` outside git and command-line arguments. The target
+database name must exactly match `--confirm-target` and end in `_rehearsal`.
+The command refuses to overwrite an existing snapshot. Both source and snapshot
+may contain customer data and must stay outside git, docs, chat and ordinary
+artifacts.
+
+`inventory` is read-only and writes counts only. It is not automatic approval:
+an operator must review the manifest against expected production totals. The
+snapshot must contain required core tables and exactly match every manifest
+table/count before any target reset begins.
+
+The command:
+
+- snapshots SQLite through `sqlite3.Connection.backup()` and runs
+  `PRAGMA quick_check`;
+- creates/migrates the disposable target under the canonical schema lock;
+- resets, streams, backfills and validates target data in one transaction;
+- synchronizes owned integer sequences after explicit copy and before backfill,
+  then records final sequence state after the successful data commit;
+- optionally repeats the replace and compares normalized report plus streamed
+  target-content digests;
+- writes an atomic JSON report containing names, hashes, counts and statuses,
+  never URLs, passwords or row values.
+
+Unexpected database/runtime failures expose only a generic error class in the
+report and terminal. SQL `DETAIL` and bound parameters are never copied into
+rehearsal evidence.
+
+`backup_restore.status=AVAILABLE_NOT_RUN` is still not restore proof. If local
+`pg_dump`/`pg_restore` are absent, the report says
+`SKIPPED_TOOL_UNAVAILABLE`. A real redacted snapshot, source quiescence,
+PostgreSQL credentials, backup/restore execution and cutover approval remain
+manual owner gates.
+
+The older no-subcommand copier remains compatibility-only for existing operator
+automation. Do not use `--truncate-target` as rehearsal evidence. The remote
+production cutover script is not hardened or executed by this slice.
+
+### Production PostgreSQL encrypted clone and candidate gate
+
+Use `remote_postgres_backup_restore_gate.py` when the live database is already
+PostgreSQL and an encrypted production-to-rehearsal clone is required. The
+source guard accepts only the exact confirmed `portal` database. The target
+must be separately confirmed, end in `_rehearsal`, and differ from the source.
+The script never prints a database URL or passphrase and does not retain a
+plaintext dump:
+
+```powershell
+$env:POKROV_POSTGRES_BACKUP_PASSPHRASE = <read from the local protected secret store>
+python scripts/remote_postgres_backup_restore_gate.py `
+  --brain-ip <brain-ip> `
+  --source-db portal `
+  --confirm-source portal `
+  --target-db portal_candidate_rehearsal `
+  --confirm-target portal_candidate_rehearsal `
+  --report C:\path\outside-git\postgres-backup-restore.json
+
+# Review PLAN_ONLY before adding --apply. Use --reset-target only for an
+# explicitly approved disposable target.
+Remove-Item Env:POKROV_POSTGRES_BACKUP_PASSPHRASE
+```
+
+The apply path exports one repeatable-read snapshot, streams `pg_dump -Fc`
+directly into AES-256-CBC/PBKDF2 encryption, and verifies the encrypted stream.
+Its evidence connection begins with a repeatable-read `READ ONLY` transaction
+as the first database statement, imports the exported snapshot, and emits one
+aggregate JSON record per read-only query through psql `\gexec`. It must not use
+temporary tables or any source DDL/DML.
+It resolves the ordinary login role from the live `DATABASE_URL` entirely on
+the control plane, checks that the URL still names the confirmed source, creates
+the target owned by that role, removes database/schema access from `PUBLIC`,
+grants the role explicit `USAGE, CREATE` on `public`, and restores with
+`--no-owner --no-privileges --role=<resolved role>`. Neither the URL nor role is
+included in reports.
+
+After restore, the gate proves that the role owns the target, the `public`
+schema, and every supported namespaced public object: all relations and indexes,
+routines, types, extensions, collations, conversions, operators and
+operator classes/families, text-search dictionaries/configurations, extended
+statistics, and schema-scoped default ACLs. It proves the role can create in
+`public` and that `PUBLIC` database/schema access remains revoked, then compares
+exact aggregate table counts. The encrypted archive, report, and protected
+passphrase material stay outside Git. A count match is restore proof for the
+cloned target, not approval to mutate the source or deploy application code. If
+target creation, ACL setup, restore, or ownership evidence fails, retain the
+encrypted backup and treat the target as tainted; reset only the separately
+confirmed `_rehearsal` database on the next approved run. Do not use
+cluster-wide `REASSIGN OWNED` as repair.
+
+Run the exact application candidate only after the clone is retained. Build the
+archive from a clean `portal_bot` tree at `HEAD`; keep it outside Git:
+
+```powershell
+$commit = (git rev-parse HEAD).Trim()
+git archive --format=tar --output C:\path\outside-git\portal-bot-candidate.tar $commit portal_bot shared
+$sha256 = (Get-FileHash C:\path\outside-git\portal-bot-candidate.tar -Algorithm SHA256).Hash.ToLowerInvariant()
+
+python scripts/remote_postgres_candidate_gate.py `
+  --brain-ip <brain-ip> `
+  --candidate-archive C:\path\outside-git\portal-bot-candidate.tar `
+  --candidate-sha256 $sha256 `
+  --candidate-commit $commit `
+  --source-db portal `
+  --confirm-source portal `
+  --target-db portal_candidate_rehearsal `
+  --confirm-target portal_candidate_rehearsal `
+  --report C:\path\outside-git\postgres-candidate-plan.json
+```
+
+The archive contains the exact tracked backend plus its tracked `shared/`
+runtime truth; dirty scoped files, untracked files, and secret-like filenames
+are rejected. The exact tracked `.env.example` template is the only environment
+filename exception; real `.env`, credential, password, private-key, and
+keystore paths remain forbidden. Review
+`PLAN_ONLY`, use a new no-clobber report path, then add `--apply`. The
+candidate gate derives the target URL in remote process memory, imports only the
+uploaded archive, and connects only to the rehearsal database. Before reading
+application rows or running DDL it proves target/session identity, ordinary
+login-role attributes, database ownership, schema privileges, `users` read
+access, and ownership of every public application object. It then checks
+additive DDL and index lock timeouts, the schema advisory lock, two idempotent
+`db.init_db()` runs, `FOR UPDATE SKIP LOCKED`, concurrent attachment bind/retry,
+and a real PostgreSQL protocol-level lost commit acknowledgement. Reports carry
+only boolean/count access evidence, never a role or URL. Synthetic rows and
+probe DDL must be confirmed absent before the report can say `PASS`.
+The script does not create, drop, or reset a database and does not deploy or
+restart a service.
+
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out`, `webapp/out`, and `adminapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp,adminapp}` symlinks
 - `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out`, `webapp/out`, and `adminapp/out` without opening SSH; local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
-- before bundling, static deploy appends the release id as `?v=<release>` to exported `/_next/static/*` script/style references so browsers do not keep stale cabinet/admin chunks after a deploy; `/_next/static/media/*` font/media references are not query-busted because the filenames are content-hashed and CSS may request the same files without the query string
+- before bundling, static deploy removes only the legacy `v=<release>` query field from exported `/_next/static/*` references while preserving unrelated query fields and fragments; Next chunk, CSS, font, and media filenames are content-hashed, HTML is revalidated, and inconsistent query-busted chunk identities can prevent soft navigation from committing
 - `app.pokrov.space` and `admin.pokrov.space`/`www.admin.pokrov.space` should serve HTML with `Cache-Control: no-cache, must-revalidate`, while `/_next/static/*` assets should serve `Cache-Control: public, max-age=31536000, immutable`
 - `admin.pokrov.space` serves the dedicated `adminapp/` static export and must route API calls to `https://api.pokrov.space`; `https://admin.pokrov.space` is part of the default credentialed API CORS allowlist, reuses the existing POKROV admin auth model, and does not make `webapp/` the admin host
 - public Caddy on `brain` should keep HTTP/3 disabled with `servers { protocols h1 h2 }` and should serve `Alt-Svc: clear` on public HTTPS responses while browsers may still have the previous `h3=":8444"` alternative cached; this avoids user networks that fail QUIC or non-standard UDP paths while preserving standard HTTPS on `443`
@@ -177,6 +365,7 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
   - `python scripts/release_orchestrator.py --brain-ip 82.21.114.104 --stage verify`
 - wrapper steps stream child output, print heartbeat lines during quiet long-running steps, and enforce per-step timeouts unless the matching `--*-timeout-sec 0` option is used
 - the GitHub Actions release orchestrator is manual-only; its default mode is `dry-run`, and `full` should be selected only after current gates and operator deploy intent are explicit
+- dispatch inputs are passed through step environment variables and Bash argument arrays rather than interpolated into shell source; `NODE_PASS_BRAIN` is scoped to the orchestrator step, and secret-bearing remote runs are rejected unless `brain_ip` is the canonical `82.21.114.104` host with `pokrov.space` / `api.pokrov.space` domains
 
 ### Release handoff sync
 
@@ -186,6 +375,37 @@ python scripts/remote_install_node_observer.py --brain-ip 82.21.114.104 --node-c
 - bridge-era `release-links.env` is a compatibility fallback only
 - canonical stable metadata pointer when maintained: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
 - schema reference: [release_handoff_metadata.schema.json](C:/Users/kiwun/Documents/ai/VPN/scripts/release_handoff_metadata.schema.json)
+
+Exact-candidate evidence boundary:
+
+- runtime download metadata sync and operations-evidence import are separate
+  actions; neither one silently performs the other
+- before import, compute the canonical candidate from `component`, `version`,
+  `revision`, and `artifact_sha256`, and compare its derived `candidate_id`
+  with the retained artifact bundle
+- import only a redacted evidence envelope through the exact
+  `POST /api/internal/releases/candidates` path using an approved
+  HMAC-authenticated client and the dedicated `release:evidence` key scope
+- keep `current`, `brain`, and `ru` evidence as separate rows with explicit
+  labels; accepted labels include `PASS`, `FAIL`, `MANUAL_OWNER_TEST`,
+  `OPERATOR_ATTESTED`, `SKIPPED_BY_OWNER`, `SKIPPED_BY_OPERATOR`,
+  `BLOCKED_BY_ACCESS`, and `MISSING`
+- an RU `PASS` is accepted only when it binds to the exact stored, eligible,
+  current-manifest RU run; successful binding places that run on retention hold
+- retention hold prevents normal 180-day cleanup of the evidence run, but does
+  not prove a deploy, refresh an old run, or transfer evidence to another
+  candidate
+- do not include a secret value, raw log, provider payload, subscription URL,
+  personal identifier, host credential, or arbitrary metadata in the import
+- after import, read `/api/admin/releases/candidates` and
+  `/api/admin/releases/{candidate_id}/readiness` and compare every origin with
+  the retained source record
+
+Local unit/contract tests, `adminapp` build/lint/E2E, and a clean diff are
+candidate checks from the current workstation only. Even when all are green,
+production deploy, `brain-origin`, RU-origin, live timer installation and live
+secret/key state remain `NOT_REQUESTED`, `MANUAL_OWNER_TEST`, or
+`BLOCKED_BY_ACCESS` until separately executed and retained.
 
 ### API-only lifecycle smoke
 
@@ -306,6 +526,8 @@ Transport policy rule:
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
 - capacity-aware app routing uses `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
 - subscription rendering dynamically orders nodes while `SUBSCRIPTION_DYNAMIC_ORDERING=true`; `SUBSCRIPTION_EXCLUDE_HARD_REJECT=false` is the default so paid/trial subscriptions keep fallback countries even when a node is penalized by low `health_score`; `true` is an emergency opt-in that can temporarily hide explicitly hard-rejected nodes without deleting metrics or keys
+- observer-lite deployments whose Xray access log emits naive timestamps must set `PORTAL_OBSERVER_SOURCE_TIMEZONE` (or pass `--source-timezone`) to `UTC`, `Z`, or a strict fixed offset such as `+03:00` or `-04:00`; IANA names, absent settings, and invalid or out-of-bounds offsets make each affected line a counted parse error and no observation is sent for that line
+- offset-aware observer timestamps are converted to canonical UTC `Z` before batching; the collector never interprets a naive timestamp as server-local time or UTC implicitly
 - core rollout/rollback flags are `CAPACITY_AWARE_NODE_SELECTION`, `SUBSCRIPTION_DYNAMIC_ORDERING`, `SUBSCRIPTION_EXCLUDE_HARD_REJECT`, `KEY_PRESSURE_SCORING`, `KEY_PRESSURE_FAIR_USE_ROUTING`, `APP_NODES_SELECT_ENDPOINT`, `XRAY_METRICS_COLLECTOR`, `NODE_AGENT_METRICS`, and `USERNODE_MAPPING_AS_CANDIDATE_LIMIT`
 - as of `2026-06-29`, rolling maintenance updated non-current delivery nodes `free`, `it`, `nl`, `pl`, and `us` to 3x-ui `3.4.1` with bundled Xray `26.6.22`; each node has a root-only backup under `/root/pokrov-xui-backups/*-v3.4.1`, while `de` was intentionally left untouched because it was the operator's active connection node during the rollout
 - 3x-ui `3.x` requires CSRF for session-authenticated unsafe panel API requests; `PanelClient` must fetch `/csrf-token`, send `X-CSRF-Token` on panel POSTs, and keep an unsafe cookie jar for IP-based panel hosts such as `de`
@@ -530,6 +752,7 @@ At minimum, verify:
 - `tc -s qdisc` on the shaped interface
 - `scripts/remote_node_qdisc_smoke.py` results for heavy-flow saturation and small-probe latency
 - when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
+- observer-lite promotion requires a manual exact-candidate proof that a retained Xray log timestamp and its configured source zone produce the expected UTC `Z` observation, trial activation at that UTC instant, and expiry exactly `5 days` later; also prove that a naive fixture with the setting removed is skipped and increments batch `parse_error_count`
 - after any REALITY target rotation, verify the node inbound `dest/serverNames`, the `brain` `nodes.reality_sni` row, and `python scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104` in the same handoff
 
 Release gate rule:

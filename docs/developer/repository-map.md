@@ -25,7 +25,7 @@ categories, and verification entrypoints. Start task-specific navigation at the
 
 | Path | Responsibility | Start here |
 | --- | --- | --- |
-| portal_bot/ | FastAPI backend, Telegram bots, workers, account projection, payments, entitlements, support, node/control integration | portal_bot/api.py, service/repository modules, focused tests |
+| portal_bot/ | FastAPI backend, Telegram bots, workers, canonical accounts, device sessions and recovery, anti-abuse, economy, payments, entitlements, private support, and node/control integration | portal_bot/api.py, domain service/repository modules, focused tests |
 | adminapp/ | Primary operator surface for users, nodes, payments, alerts, release, and guarded actions | adminapp/README.md, adminapp/src/, adminapp/e2e/, tests/test_admin_ops_api.py |
 | webapp/ | User cabinet plus temporary admin parity fallback | webapp/README.md, webapp/src/app/(dashboard)/ for cabinet, webapp/src/app/(admin)/admin/ for fallback, webapp/src/lib/api.ts, webapp/e2e/ |
 | marketing/ | Public acquisition, checkout entry, install help, legal and SEO surfaces | marketing/src/, shared public facts and copy, marketing checks |

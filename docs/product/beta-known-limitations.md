@@ -1,6 +1,6 @@
 # Beta Known Limitations
 
-Last updated: 2026-07-12
+Last updated: 2026-07-18
 
 Structured source: `shared/beta-known-limitations.json`
 
@@ -19,9 +19,12 @@ contract. Keep it aligned with `docs/launch/known-issues.md`.
   `2026-05-15` beta evidence pack and must be rechecked through
   `/api/client/apps` before a new artifact, URL, or release-candidate
   announcement.
-- `windows_unsigned`: Windows beta may remain unsigned and may show Microsoft
-  Defender SmartScreen or unknown-publisher warnings. Do not claim trusted
-  Windows signing, SmartScreen reputation, Microsoft Store, or WinGet readiness.
+- `windows_unsigned`: the published `1.0.0-beta` Windows artifact was distributed
+  unsigned under the recorded beta-wave owner decision and may show Microsoft
+  Defender SmartScreen or unknown-publisher warnings. That accepted skip is
+  exact-candidate historical evidence only. Any rebuild, replacement, runtime
+  re-sync, or later public candidate requires trusted-signing `PASS` for that
+  exact artifact; unsigned outputs are non-public engineering smoke.
 - `downloads_limited`: published beta binaries are publicly reachable through
   the official cabinet and GitHub Releases, but every new candidate still
   requires exact URL and runtime handoff verification. Do not claim store

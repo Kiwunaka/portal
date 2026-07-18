@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/schemas/ru-probe-payload-v2.json",
+  "title": "POKROV RU-origin probe run v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "origin",
+    "probe_host",
+    "runner_version",
+    "manifest_revision",
+    "started_at",
+    "finished_at",
+    "execution_status",
+    "evidence_code",
+    "targets"
+  ],
+  "properties": {
+    "schema_version": {"const": 2},
+    "run_id": {"type": "string", "format": "uuid"},
+    "origin": {"const": "ru"},
+    "probe_host": {"$ref": "#/$defs/probe_host"},
+    "runner_version": {"$ref": "#/$defs/code32"},
+    "manifest_revision": {"$ref": "#/$defs/sha256"},
+    "started_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "finished_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "execution_status": {
+      "enum": ["completed", "partial", "runner_error", "blocked_by_access"]
+    },
+    "evidence_code": {
+      "anyOf": [
+        {"type": "null"},
+        {
+          "enum": [
+            "network_access_blocked",
+            "probe_host_unavailable",
+            "probe_host_credentials_missing",
+            "probe_profile_unavailable"
+          ]
+        }
+      ]
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/target"}
+    },
+    "ok": {"type": "boolean"},
+    "google_reachable": {"type": "boolean"},
+    "xhttp_alive": {"type": "boolean"},
+    "hysteria_alive": {"type": "boolean"},
+    "classifications": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/code64"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"execution_status": {"const": "blocked_by_access"}},
+        "required": ["execution_status"]
+      },
+      "then": {
+        "properties": {
+          "evidence_code": {
+            "enum": [
+              "network_access_blocked",
+              "probe_host_unavailable",
+              "probe_host_credentials_missing",
+              "probe_profile_unavailable"
+            ]
+          },
+          "targets": {"items": {"$ref": "#/$defs/blocked_target"}}
+        }
+      },
+      "else": {"properties": {"evidence_code": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "code20": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"
+    },
+    "code32": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"
+    },
+    "code64": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:+-]*$"
+    },
+    "host": {
+      "anyOf": [
+        {"type": "string", "minLength": 1, "maxLength": 253, "format": "hostname"},
+        {"type": "string", "minLength": 1, "maxLength": 45, "format": "ipv4"},
+        {"type": "string", "minLength": 2, "maxLength": 45, "format": "ipv6"}
+      ]
+    },
+    "sni": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 253,
+      "format": "hostname"
+    },
+    "probe_host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "public_ip"],
+      "properties": {
+        "id": {"$ref": "#/$defs/code64"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 100},
+        "public_ip": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "string", "format": "ipv4"},
+            {"type": "string", "format": "ipv6"}
+          ]
+        }
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "port",
+        "sni",
+        "address_families",
+        "transport_profile",
+        "probe_mode",
+        "http_path",
+        "min_body_bytes",
+        "local_probe_profile_id"
+      ],
+      "properties": {
+        "host": {"$ref": "#/$defs/host"},
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "sni": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/sni"}]},
+        "address_families": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"enum": ["ipv4", "ipv6"]}
+        },
+        "transport_profile": {"$ref": "#/$defs/code64"},
+        "probe_mode": {
+          "enum": [
+            "google_https",
+            "canonical_https_large_body",
+            "delivery_tls",
+            "xhttp_handshake",
+            "hysteria_handshake"
+          ]
+        },
+        "http_path": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^/"}
+          ]
+        },
+        "min_body_bytes": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "integer", "minimum": 1, "maximum": 16777216}
+          ]
+        },
+        "local_probe_profile_id": {
+          "anyOf": [{"type": "null"}, {"$ref": "#/$defs/code64"}]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "probe_mode": {"enum": ["google_https", "canonical_https_large_body"]}
+            },
+            "required": ["probe_mode"]
+          },
+          "then": {
+            "properties": {
+              "http_path": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^/"},
+              "min_body_bytes": {"type": "integer", "minimum": 65536, "maximum": 16777216},
+              "local_probe_profile_id": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"probe_mode": {"const": "delivery_tls"}},
+            "required": ["probe_mode"]
+          },
+          "then": {
+            "properties": {
+              "http_path": {"type": "null"},
+              "min_body_bytes": {"type": "null"},
+              "local_probe_profile_id": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"probe_mode": {"const": "xhttp_handshake"}},
+            "required": ["probe_mode"]
+          },
+          "then": {
+            "properties": {
+              "http_path": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^/"},
+              "min_body_bytes": {"type": "null"},
+              "local_probe_profile_id": {"$ref": "#/$defs/code64"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"probe_mode": {"const": "hysteria_handshake"}},
+            "required": ["probe_mode"]
+          },
+          "then": {
+            "properties": {
+              "http_path": {"type": "null"},
+              "min_body_bytes": {"type": "null"},
+              "local_probe_profile_id": {"$ref": "#/$defs/code64"}
+            }
+          }
+        }
+      ]
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "latency_ms", "code"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "not_run", "not_applicable"]},
+        "latency_ms": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "integer", "minimum": 0, "maximum": 3600000}
+          ]
+        },
+        "code": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/code64"}]}
+      }
+    },
+    "blocked_target": {
+      "allOf": [
+        {"$ref": "#/$defs/target"},
+        {
+          "properties": {
+            "stages": {
+              "properties": {
+                "dns": {"properties": {"status": {"not": {"const": "pass"}}}},
+                "tcp": {"properties": {"status": {"not": {"const": "pass"}}}},
+                "tls": {"properties": {"status": {"not": {"const": "pass"}}}},
+                "http_large_body": {"properties": {"status": {"not": {"const": "pass"}}}},
+                "transport_handshake": {"properties": {"status": {"not": {"const": "pass"}}}}
+              }
+            },
+            "address_family_status": {
+              "properties": {
+                "ipv4": {"not": {"const": "pass"}},
+                "ipv6": {"not": {"const": "pass"}}
+              }
+            },
+            "transport": {
+              "properties": {
+                "handshake_status": {"not": {"const": "pass"}}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_id",
+        "target_kind",
+        "scope",
+        "node_code",
+        "endpoint",
+        "endpoint_fingerprint",
+        "stages",
+        "address_family_status",
+        "transport",
+        "detail_code",
+        "detail"
+      ],
+      "properties": {
+        "target_id": {"$ref": "#/$defs/target_id"},
+        "target_kind": {
+          "enum": [
+            "environment",
+            "canonical_public",
+            "delivery_node",
+            "reserve_xhttp",
+            "reserve_hysteria",
+            "diagnostic"
+          ]
+        },
+        "scope": {"enum": ["release_required", "diagnostic"]},
+        "node_code": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/code20"}]},
+        "endpoint": {"$ref": "#/$defs/endpoint"},
+        "endpoint_fingerprint": {"$ref": "#/$defs/sha256"},
+        "stages": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dns", "tcp", "tls", "http_large_body", "transport_handshake"],
+          "properties": {
+            "dns": {"$ref": "#/$defs/stage"},
+            "tcp": {"$ref": "#/$defs/stage"},
+            "tls": {"$ref": "#/$defs/stage"},
+            "http_large_body": {"$ref": "#/$defs/stage"},
+            "transport_handshake": {"$ref": "#/$defs/stage"}
+          }
+        },
+        "address_family_status": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ipv4", "ipv6"],
+          "properties": {
+            "ipv4": {"enum": ["pass", "fail", "not_run", "not_applicable"]},
+            "ipv6": {"enum": ["pass", "fail", "not_run", "not_applicable"]}
+          }
+        },
+        "transport": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["profile_code", "handshake_status", "classification", "detail_code"],
+          "properties": {
+            "profile_code": {"$ref": "#/$defs/code64"},
+            "handshake_status": {"enum": ["pass", "fail", "not_run", "not_applicable"]},
+            "classification": {"$ref": "#/$defs/code64"},
+            "detail_code": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/code64"}]}
+          }
+        },
+        "detail_code": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/code64"}]},
+        "detail": {
+          "anyOf": [
+            {"type": "null"},
+            {"enum": ["TLS-проверка отклонена удалённой стороной"]}
+          ]
+        }
+      }
+    }
+  }
+}

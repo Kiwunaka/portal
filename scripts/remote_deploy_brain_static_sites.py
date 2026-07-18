@@ -36,7 +36,6 @@ FORBIDDEN_STATIC_CONTENT = (
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-from node_access import connect_node
 
 
 def _parse_passwords(path: Path) -> str:
@@ -98,27 +97,37 @@ def _build_static_bundle(local_dir: Path, bundle_path: Path, *, label: str) -> N
     _safe_print(f"[bundle] {label}: {_format_bytes(bundle_path.stat().st_size)} in {elapsed}s")
 
 
-_NEXT_STATIC_REF_RE = re.compile(r"(?P<url>/_next/static/[^\"'\\\s<>?]+)(?:\?v=[A-Za-z0-9_-]+)?")
+_NEXT_STATIC_REF_RE = re.compile(
+    r"(?P<url>/_next/static/[^\"'\\\s<>?#]+)"
+    r"(?:\?(?P<query>[^\"'\\\s<>#]*))?"
+    r"(?P<fragment>#[^\"'\\\s<>]*)?"
+)
 
 
-def _cache_bust_next_static_refs(local_dir: Path, *, release_id: str, label: str) -> None:
+def _strip_next_static_cache_busting(local_dir: Path, *, label: str) -> None:
+    """Remove only the legacy `v` query field from exported Next static refs.
+
+    Next chunk filenames are content-hashed and HTML is revalidated, so a
+    release-id query is redundant and can desynchronize runtime chunk identity
+    during soft navigation. Unrelated query fields and fragments are preserved.
+    """
     touched = 0
-    suffix = f"?v={release_id}"
     for html_path in sorted(local_dir.rglob("*.html")):
         raw = html_path.read_text(encoding="utf-8", errors="replace")
 
         def repl(match: re.Match[str]) -> str:
             url = match.group("url")
-            if url.startswith("/_next/static/media/"):
-                return url
-            return f"{url}{suffix}"
+            query = str(match.group("query") or "")
+            fragment = str(match.group("fragment") or "")
+            kept = [part for part in query.split("&") if part and part.split("=", 1)[0] != "v"]
+            return f"{url}{'?' + '&'.join(kept) if kept else ''}{fragment}"
 
         updated = _NEXT_STATIC_REF_RE.sub(repl, raw)
         if updated == raw:
             continue
         html_path.write_text(updated, encoding="utf-8")
         touched += 1
-    _safe_print(f"[cache-bust] {label}: {touched} html files")
+    _safe_print(f"[cache-normalize] {label}: {touched} html files")
 
 
 def _local_static_output_validation_failures(*, local_webapp: Path, local_adminapp: Path, local_marketing: Path) -> list[str]:
@@ -205,9 +214,9 @@ def _build_local_static_bundles(*, local_webapp: Path, local_adminapp: Path, loc
         webapp_bundle = temp_dir / f"webapp-{release_id}.tar.gz"
         adminapp_bundle = temp_dir / f"adminapp-{release_id}.tar.gz"
         marketing_bundle = temp_dir / f"marketing-{release_id}.tar.gz"
-        _cache_bust_next_static_refs(local_webapp, release_id=release_id, label="webapp")
-        _cache_bust_next_static_refs(local_adminapp, release_id=release_id, label="adminapp")
-        _cache_bust_next_static_refs(local_marketing, release_id=release_id, label="marketing")
+        _strip_next_static_cache_busting(local_webapp, label="webapp")
+        _strip_next_static_cache_busting(local_adminapp, label="adminapp")
+        _strip_next_static_cache_busting(local_marketing, label="marketing")
         _build_static_bundle(local_webapp, webapp_bundle, label="webapp")
         _build_static_bundle(local_adminapp, adminapp_bundle, label="adminapp")
         _build_static_bundle(local_marketing, marketing_bundle, label="marketing")
@@ -329,6 +338,8 @@ def main() -> int:
         _safe_print("[plan-only] local static bundles validated and built; SSH deploy skipped")
         return 0
 
+    from node_access import connect_node
+
     ssh, auth_method = connect_node(
         code="brain",
         host=args.brain_ip,
@@ -353,9 +364,9 @@ def main() -> int:
             webapp_bundle = temp_dir / f"webapp-{release_id}.tar.gz"
             adminapp_bundle = temp_dir / f"adminapp-{release_id}.tar.gz"
             marketing_bundle = temp_dir / f"marketing-{release_id}.tar.gz"
-            _cache_bust_next_static_refs(local_webapp, release_id=release_id, label="webapp")
-            _cache_bust_next_static_refs(local_adminapp, release_id=release_id, label="adminapp")
-            _cache_bust_next_static_refs(local_mkt, release_id=release_id, label="marketing")
+            _strip_next_static_cache_busting(local_webapp, label="webapp")
+            _strip_next_static_cache_busting(local_adminapp, label="adminapp")
+            _strip_next_static_cache_busting(local_mkt, label="marketing")
             _build_static_bundle(local_webapp, webapp_bundle, label="webapp")
             _build_static_bundle(local_adminapp, adminapp_bundle, label="adminapp")
             _build_static_bundle(local_mkt, marketing_bundle, label="marketing")

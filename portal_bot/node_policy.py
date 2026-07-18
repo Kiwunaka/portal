@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
 FREE_NODE_CODE_PREFERENCES = ("nl-free", "nl_free", "free", "pl_free")
 _PREMIUM_PLAN_CODES = {"trial", "channel_bonus", "start_99"}
+NODE_ACCESS_ROLES = frozenset({"free_standard", "free_soft", "paid", "operator_lab"})
+FREE_STANDARD_ROLE = "free_standard"
+FREE_SOFT_ROLE = "free_soft"
+PAID_ROLE = "paid"
+OPERATOR_LAB_ROLE = "operator_lab"
+FREE_STANDARD_QUOTA_BYTES = 5 * 1024**3
+FREE_TRIAL_RESERVATION_MAX_AGE = timedelta(days=7, minutes=5)
+
+
+class NodeAccessRoleError(ValueError):
+    pass
 
 
 def _env_int(name: str, default: int, *, minimum: int = 0, maximum: int = 1_000_000) -> int:
@@ -79,8 +90,70 @@ def node_code_base(code: str) -> str:
     return raw
 
 
+def node_access_role(value: Any, *, strict: bool = False) -> str:
+    raw = str(getattr(value, "access_role", "") or "").strip().lower()
+    if raw in NODE_ACCESS_ROLES:
+        return raw
+    if strict:
+        code = node_code(value) or "<unknown>"
+        reason = "missing" if not raw else f"invalid:{raw}"
+        raise NodeAccessRoleError(f"node {code} has {reason} access_role")
+
+    # Compatibility for legacy/test rows before the additive migration writes
+    # an explicit access_role. Provisioning paths always use strict=True.
+    code = node_code(value).lower()
+    if "operator" in code or code.endswith("_lab") or code.endswith("-lab"):
+        return OPERATOR_LAB_ROLE
+    if "free" in code and "soft" in code:
+        return FREE_SOFT_ROLE
+    if "free" in code:
+        return FREE_STANDARD_ROLE
+    return PAID_ROLE
+
+
+def nodes_for_access_role(nodes: list[Any], access_role: str, *, required: bool = False) -> list[Any]:
+    wanted = str(access_role or "").strip().lower()
+    if wanted not in NODE_ACCESS_ROLES:
+        raise NodeAccessRoleError(f"invalid requested access_role: {wanted or '<empty>'}")
+    selected = [node for node in nodes if node_access_role(node, strict=True) == wanted]
+    if required and not selected:
+        raise NodeAccessRoleError(f"required access_role {wanted} is not configured")
+    return selected
+
+
+def validate_node_access_roles(nodes: list[Any], *, require_free_pair: bool = False) -> dict[str, list[Any]]:
+    bindings: dict[str, list[Any]] = {role: [] for role in sorted(NODE_ACCESS_ROLES)}
+    inbound_owners: dict[tuple[str, str, int], str] = {}
+    for node in nodes:
+        role = node_access_role(node, strict=True)
+        inbound_id = int(getattr(node, "inbound_id", 0) or 0)
+        code = node_code(node) or "<unknown>"
+        if inbound_id <= 0:
+            raise NodeAccessRoleError(f"node {code} access_role {role} requires a positive inbound_id")
+        panel_base = str(getattr(node, "panel_base_url", "") or "").strip().lower().rstrip("/")
+        panel_path = str(getattr(node, "panel_path", "") or "").strip().lower().strip("/")
+        binding = (panel_base, panel_path, inbound_id)
+        previous = inbound_owners.get(binding)
+        if previous is not None:
+            raise NodeAccessRoleError(
+                f"duplicate panel inbound binding for nodes {previous} and {code}: inbound_id={inbound_id}"
+            )
+        inbound_owners[binding] = code
+        bindings[role].append(node)
+
+    if require_free_pair:
+        for role in (FREE_STANDARD_ROLE, FREE_SOFT_ROLE):
+            if not bindings[role]:
+                raise NodeAccessRoleError(f"required access_role {role} is not configured")
+    return bindings
+
+
 def node_is_free(value: Any) -> bool:
-    return "free" in node_code(value).lower()
+    return node_access_role(value) in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE}
+
+
+def node_is_free_soft(value: Any) -> bool:
+    return node_access_role(value) == FREE_SOFT_ROLE
 
 
 def node_is_delivery_ready(node: Any) -> bool:
@@ -457,14 +530,26 @@ def rank_nodes_for_key_pressure(
     )
 
 
-def user_uses_free_pool(user: Any) -> bool:
+def free_user_has_bounded_premium_trial(user: Any, *, now: datetime | None = None) -> bool:
+    sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
+    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    if sub_type != "FREE" or plan_code != "trial" or not bool(getattr(user, "is_active", False)):
+        return False
+    current_now = _normalize_utc_naive(now) or _utcnow()
+    expiry = _normalize_utc_naive(getattr(user, "expiry_at", None))
+    if expiry is None or expiry <= current_now:
+        return False
+    return expiry - current_now <= FREE_TRIAL_RESERVATION_MAX_AGE
+
+
+def user_uses_free_pool(user: Any, *, now: datetime | None = None) -> bool:
     sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
 
+    if sub_type == "FREE":
+        return not free_user_has_bounded_premium_trial(user, now=now)
     if plan_code in _PREMIUM_PLAN_CODES:
         return False
-    if sub_type == "FREE":
-        return True
     if sub_type in {"", "PENDING"}:
         return True
     if sub_type.startswith("TRIAL"):
@@ -478,10 +563,19 @@ def user_uses_free_pool(user: Any) -> bool:
     return True
 
 
-def canonical_free_node_code(nodes: list[Any]) -> str | None:
+def user_free_access_role(user: Any) -> str:
+    active_role = str(getattr(user, "free_profile_active_role", "") or "").strip().lower()
+    state = str(getattr(user, "free_profile_state", "") or "").strip().lower()
+    if active_role == FREE_SOFT_ROLE and state in {"soft_active", "reset_pending", "error"}:
+        return FREE_SOFT_ROLE
+    return FREE_STANDARD_ROLE
+
+
+def canonical_free_node_code(nodes: list[Any], *, access_role: str = FREE_STANDARD_ROLE) -> str | None:
+    role_nodes = [node for node in nodes if node_access_role(node) == str(access_role or "").strip().lower()]
     pools = (
-        [node for node in nodes if node_is_free(node) and node_is_delivery_ready(node)],
-        [node for node in nodes if node_is_free(node)],
+        [node for node in role_nodes if node_is_delivery_ready(node)],
+        list(role_nodes),
     )
     for pool in pools:
         if not pool:
@@ -497,16 +591,24 @@ def canonical_free_node_code(nodes: list[Any]) -> str | None:
     return None
 
 
-def free_pool_node_codes(nodes: list[Any]) -> list[str]:
-    code = canonical_free_node_code(nodes)
+def free_pool_node_codes(nodes: list[Any], *, access_role: str = FREE_STANDARD_ROLE) -> list[str]:
+    code = canonical_free_node_code(nodes, access_role=access_role)
     return [code] if code else []
 
 
+def free_soft_node_codes(nodes: list[Any]) -> list[str]:
+    return free_pool_node_codes(nodes, access_role=FREE_SOFT_ROLE)
+
+
 def paid_pool_nodes(nodes: list[Any]) -> list[Any]:
-    ready = [node for node in nodes if node_is_delivery_ready(node) and not node_is_free(node) and node_code(node)]
+    ready = [
+        node
+        for node in nodes
+        if node_is_delivery_ready(node) and node_access_role(node) == PAID_ROLE and node_code(node)
+    ]
     if ready:
         return ready
-    return [node for node in nodes if not node_is_free(node) and node_code(node)]
+    return [node for node in nodes if node_access_role(node) == PAID_ROLE and node_code(node)]
 
 
 def paid_pool_node_codes(nodes: list[Any]) -> list[str]:

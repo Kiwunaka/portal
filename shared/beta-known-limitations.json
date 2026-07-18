@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-10",
+  "version": "2026-07-18",
   "scope": "outside-store-public-beta",
   "source_docs": [
     "docs/product/beta-known-limitations.md",
@@ -21,8 +21,8 @@
     {
       "id": "windows_unsigned",
       "severity": "manual_gate",
-      "summary": "The Windows file may remain unsigned during beta and may show Microsoft Defender SmartScreen or unknown-publisher warnings.",
-      "operator_note": "Do not claim trusted Windows signing, SmartScreen reputation, Microsoft Store, or WinGet readiness."
+      "summary": "The published 1.0.0-beta Windows artifact was distributed unsigned under the recorded beta-wave owner decision and may show Microsoft Defender SmartScreen or unknown-publisher warnings.",
+      "operator_note": "That accepted skip is exact-candidate historical evidence only. Any rebuild, replacement, runtime re-sync, or later public candidate requires trusted-signing PASS for that exact artifact; unsigned outputs are non-public engineering smoke."
     },
     {
       "id": "downloads_limited",

@@ -34,8 +34,8 @@ export function Reveal({ as: Tag = "div", children, className, delay = 0, id }: 
     const node = ref.current;
     if (!node) return;
     if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
+      const fallbackTimer = window.setTimeout(() => setVisible(true), 0);
+      return () => window.clearTimeout(fallbackTimer);
     }
     const observer = new IntersectionObserver(
       (entries) => {

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 POKROV API for Telegram WebApp and Subscription endpoint.
 
@@ -10,6 +10,7 @@ POKROV API for Telegram WebApp and Subscription endpoint.
 from __future__ import annotations
 
 import base64
+import contextlib
 import contextvars
 import hashlib
 import hmac
@@ -21,9 +22,11 @@ import mimetypes
 import os
 import re
 import secrets
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -31,11 +34,12 @@ from urllib.parse import parse_qsl, urlencode, urlparse
 
 import aiohttp
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, or_, case, func
+from sqlalchemy import and_, or_, case, func, text
+from sqlalchemy import text as sql_text
 from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -46,11 +50,16 @@ from config import Settings, env_bool, env_int
 from db import SessionLocal, init_db
 from models import (
     AccessKey,
+    AccountDevice,
+    ConnectionEvidence,
     Achievement,
     AdminAudit,
     AppSetting,
+    AuthSession,
+    AntiAbuseEvent,
     CampaignSend,
     Event,
+    EntitlementGrant,
     ExternalOrder,
     ExternalPaymentEvent,
     FamilySlot,
@@ -69,15 +78,18 @@ from models import (
     NodePoolMembership,
     NodeProvisioningJob,
     NodeRuntimeMetric,
+    ObserverBatch,
     ObserverUserState,
     OpsAlert,
     PlanCatalog,
     PromoCode,
     PromoUsage,
     PayAttempt,
+    PaymentEntitlementClaim,
     ProviderTrafficQuota,
     ProviderTrafficQuotaAudit,
     ReferralBonusQueue,
+    ReferralRelationship,
     RenderedSubscriptionSnapshot,
     Review,
     RewardClaim,
@@ -114,12 +126,17 @@ from tickets_repo import (
     STATUS_IN_PROGRESS,
     STATUS_OPEN,
     add_ticket_message,
+    can_access_support_attachment,
+    can_access_ticket,
+    claim_legacy_ticket,
     create_ticket,
     get_ticket_by_id,
     get_user_active_ticket,
     list_active_tickets,
     list_ticket_messages,
     list_user_tickets,
+    resolve_support_account_id,
+    resolve_ticket_notification_tg_id,
     set_ticket_status,
 )
 from support_ai_service import SupportAIConfig, generate_support_reply
@@ -133,7 +150,9 @@ from node_policy import (
     SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT,
     SUBSCRIPTION_DYNAMIC_ORDERING,
     SUBSCRIPTION_EXCLUDE_HARD_REJECT,
+    PAID_ROLE,
     canonical_free_node_code,
+    node_access_role,
     node_capacity_status,
     node_backend_penalty,
     node_cpu_penalty,
@@ -145,6 +164,8 @@ from node_policy import (
     node_tx_mbps,
     rank_nodes_for_app,
     rank_nodes_for_subscription,
+    free_user_has_bounded_premium_trial,
+    user_free_access_role,
     user_uses_free_pool,
 )
 from control_panel import ControlPanel
@@ -160,7 +181,13 @@ from points_service import (
     preview_redeemable_points,
     referral_tier_snapshot,
 )
-from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_free
+from free_cycle_service import (
+    FREE_STANDARD_QUOTA_BYTES,
+    ensure_user_free_cycle_state,
+    mark_user_became_free,
+    queue_free_profile_reentry,
+    reconcile_free_profile_usage,
+)
 from email_auth_service import (
     DuplicateEmailIdentityError,
     InvalidEmailCredentialsError,
@@ -168,8 +195,11 @@ from email_auth_service import (
     InvalidEmailTokenError,
     authenticate_email_identity,
     build_debug_payload as build_email_auth_debug_payload,
+    consume_login_otp,
     deliver_auth_message,
+    email_login_otp_configured,
     get_verified_identity_for_user,
+    issue_login_otp,
     register_email_identity,
     start_password_reset,
     validate_email_input,
@@ -177,7 +207,34 @@ from email_auth_service import (
     finish_password_reset,
 )
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
+from account_security_errors import AccountRecoveryError, EmailOtpError
+from antiabuse_privacy_service import record_antiabuse_event
+from economy_service import (
+    create_referral_relationship,
+    migrate_pending_legacy_referral_queue,
+    queue_first_payment_referrer_reward,
+    read_trial_projection,
+    rebuild_account_entitlement_projection,
+    record_successful_payment_grant,
+    release_due_referrer_rewards,
+)
+from payment_entitlement_service import (
+    PaymentEntitlementNotFoundError,
+    ensure_fallback_gift_card,
+    ensure_pending_claim,
+    mark_paid_and_fulfill_attached_claim,
+    mark_paid as mark_payment_entitlement_paid,
+    redeem_payment_fallback,
+    record_claim_error as record_payment_entitlement_claim_error,
+    reverse_claim as reverse_payment_entitlement_claim,
+)
+from account_recovery_service import (
+    complete_access_reissue,
+    exchange_recovery_code,
+    rotate_recovery_code,
+)
 import app_first_service
+import auth_session_service
 import channel_bonus_service
 from account_foundation_service import ensure_user_account_foundation
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
@@ -186,6 +243,8 @@ from observer_service import (
     build_admin_observer_block,
     get_observer_state_map,
     ingest_observer_batch,
+    is_observer_batch_unique_conflict,
+    observer_batch_replay_response,
     observer_stale_after_seconds,
 )
 from network_rollout import (
@@ -229,10 +288,12 @@ from warp_service import (
     warp_material_public_payload,
 )
 from admin_ops_service import (
+    admin_search_results as _ops_admin_search_results,
     admin_nodes_capacity_payload as _ops_admin_nodes_capacity_payload,
     alert_payload as _ops_alert_payload,
     build_admin_metrics_status_snapshot as _ops_build_admin_metrics_status_snapshot,
     build_alert_candidates as _ops_build_alert_candidates,
+    build_node_observability as _ops_build_node_observability,
     bytes_to_gb as _ops_bytes_to_gb,
     free_tier_summary as _ops_free_tier_summary,
     free_tier_user_rows as _ops_free_tier_user_rows,
@@ -243,6 +304,43 @@ from admin_ops_service import (
     refresh_ops_alerts_for_current_state as _ops_refresh_alerts_for_current_state,
     refresh_ops_alerts as _ops_refresh_alerts,
     traffic_summary_rows as _ops_traffic_summary_rows,
+)
+from admin_action_intent_service import (
+    NODE_MAPPING_LOCK_NAMESPACE,
+    ActionIntentError,
+    action_intent_error_identifiers as _action_intent_error_identifiers,
+    execute_action_intent as _execute_action_intent,
+    get_action_intent_status as _get_action_intent_status,
+    node_resync_recipient_fingerprint as _node_resync_recipient_fingerprint,
+    prepare_action_intent as _prepare_action_intent,
+)
+from internal_request_auth import (
+    InternalAuthError,
+    authenticate_internal_request,
+    load_internal_service_key_registry,
+)
+from ru_probe_contract import RuProbeContractError, validate_run_payload
+from ru_probe_service import (
+    RuProbeConfigurationError,
+    RuProbePayloadConflict,
+    RuProbeReadModelError,
+    build_ru_manifest,
+    evaluate_ru_run,
+    get_latest_ru_status,
+    get_ru_run_history,
+    get_ru_uploader_status,
+    store_evaluated_ru_run,
+    store_ru_heartbeat,
+    validate_ru_heartbeat,
+)
+from release_evidence_service import (
+    ReleaseEvidenceConflict,
+    ReleaseEvidenceNotFound,
+    ReleaseEvidenceReadError,
+    ReleaseEvidenceValidationError,
+    get_release_readiness,
+    import_release_evidence,
+    list_release_candidates,
 )
 
 
@@ -315,16 +413,16 @@ def _shared_telegram_username(key: str, fallback: str) -> str:
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", int(_FREE_TIER_FACTS.get("traffic_limit_gb", 5) or 5))
-FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", int(_FREE_TIER_FACTS.get("device_limit", 1) or 1))
+FREE_TOTAL_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
+FREE_STANDARD_QUOTA_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
+FREE_LIMIT_IP = 1
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 FREE_SPEED_LIMIT_KBPS = env_int(
     "FREE_SPEED_LIMIT_KBPS",
     int(round(float(_FREE_TIER_FACTS.get("speed_limit_mbps", 50) or 50) * 125)),
 )
-FREE_SOFT_MODE_SPEED_LIMIT_KBPS = env_int(
-    "FREE_SOFT_MODE_SPEED_LIMIT_KBPS",
-    int(round(float(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps", 2) or 2) * 125)),
+FREE_SOFT_MODE_SPEED_LIMIT_KBPS = int(
+    round(float(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps", 2) or 2) * 125)
 )
 SUPPORT_USERNAME = (
     os.getenv("SUPPORT_USERNAME") or _shared_telegram_username("support_bot_username", "@pokrov_supportbot")
@@ -335,9 +433,9 @@ BOT_USERNAME = (os.getenv("BOT_USERNAME") or _shared_telegram_username("bot_user
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
-CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("bonus_days", 10) or 10)))
-APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", int(_TRIAL_FACTS.get("trial_days", 5) or 5)))
-APP_TRIAL_MAX_DAYS = APP_TRIAL_DEFAULT_DAYS
+CHANNEL_PREMIUM_DAYS = 5
+APP_TRIAL_DEFAULT_DAYS = 5
+APP_TRIAL_MAX_DAYS = 5
 WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
@@ -370,7 +468,11 @@ WEBAPP_DEV_AUTH = env_bool("WEBAPP_DEV_AUTH", default=False)
 WEBAPP_DEV_TG_ID = env_int("WEBAPP_DEV_TG_ID", 0)
 PROFILE_UPDATE_INTERVAL_HOURS = max(1, env_int("PROFILE_UPDATE_INTERVAL_HOURS", 6))
 PAYMENT_CALLBACK_TOLERANT_MODE = env_bool("PAYMENT_CALLBACK_TOLERANT_MODE", default=False)
-SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=True)
+FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED = env_bool(
+    "FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED",
+    default=False,
+)
+SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
 ADMIN_WEB_SESSION_TTL_SECONDS = max(300, env_int("ADMIN_WEB_SESSION_TTL_SECONDS", 3600))
 CABINET_HANDOFF_TTL_SECONDS = max(60, min(120, env_int("CABINET_HANDOFF_TTL_SECONDS", 120)))
@@ -389,6 +491,12 @@ SUPPORT_UPLOAD_DIR = Path(
 ).resolve()
 SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uploads/support').strip().strip('/')}"
 SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
+SUPPORT_PENDING_UPLOAD_TTL_HOURS = max(1, env_int("SUPPORT_PENDING_UPLOAD_TTL_HOURS", 24))
+SUPPORT_PENDING_UPLOAD_MAX_COUNT = max(1, env_int("SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5))
+SUPPORT_PENDING_UPLOAD_MAX_BYTES = max(
+    1,
+    env_int("SUPPORT_PENDING_UPLOAD_MAX_BYTES", 50 * 1024 * 1024),
+)
 SUPPORT_ATTACHMENT_URL_PREFIX = f"/{(os.getenv('SUPPORT_ATTACHMENT_URL_PREFIX') or 'api/tickets/attachments').strip().strip('/')}"
 WEB_SESSION_COOKIE_NAME = (os.getenv("WEB_SESSION_COOKIE_NAME") or "portal_web_session").strip() or "portal_web_session"
 WEB_SESSION_COOKIE_DOMAIN = (os.getenv("WEB_SESSION_COOKIE_DOMAIN") or ".pokrov.space").strip() or ".pokrov.space"
@@ -396,7 +504,6 @@ WEB_SESSION_COOKIE_SAMESITE = (os.getenv("WEB_SESSION_COOKIE_SAMESITE") or "lax"
 PAYMENT_CALLBACK_MAX_BYTES = max(1024, env_int("PAYMENT_CALLBACK_MAX_BYTES", 256 * 1024))
 SUPPORT_AI_CONFIG = SupportAIConfig.from_env()
 support_ai_last_reply_at: dict[int, float] = {}
-API_LOCALHOST_DEV_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEBAPP_DEV_ALLOWED_ORIGINS = {
     x.strip().lower().rstrip("/")
     for x in (
@@ -694,14 +801,10 @@ def _fk_shop_configs() -> dict[str, dict[str, str]]:
 
 def _fk_shop_by_source(source: str) -> dict[str, str]:
     shops = _fk_shop_configs()
-    src = (source or "site").strip().lower()
-    if src in shops:
-        return shops[src]
-    if "site" in shops:
-        return shops["site"]
-    if "bot" in shops:
-        return shops["bot"]
-    return {}
+    src = str(source or "").strip().lower()
+    if src not in {"site", "bot"}:
+        return {}
+    return shops.get(src, {})
 
 
 def _fk_shop_by_merchant_id(merchant_id: str) -> dict[str, str]:
@@ -712,6 +815,16 @@ def _fk_shop_by_merchant_id(merchant_id: str) -> dict[str, str]:
         if str(cfg.get("shop_id") or "").strip() == mid:
             return cfg
     return {}
+
+
+def _fk_source_by_merchant_id(merchant_id: str) -> str:
+    mid = str(merchant_id or "").strip()
+    if not mid:
+        return ""
+    for source, cfg in _fk_shop_configs().items():
+        if str(cfg.get("shop_id") or "").strip() == mid:
+            return source
+    return ""
 
 
 def _fk_flatten_values(value: Any) -> list[str]:
@@ -839,6 +952,7 @@ def _is_loopback_ip(ip: str) -> bool:
 
 class TicketMessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
+    attachment_id: str | None = Field(default=None, max_length=160)
     media_type: str | None = Field(default=None, max_length=32)
     media_file_id: str | None = Field(default=None, max_length=256)
     media_payload: str | None = Field(default=None, max_length=2000)
@@ -886,6 +1000,22 @@ class EmailLoginIn(BaseModel):
     password: str = Field(min_length=8, max_length=200)
 
 
+class EmailOtpStartIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+
+
+class EmailOtpFinishIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+    code: str = Field(min_length=6, max_length=6)
+    install_id: str | None = Field(default=None, min_length=8, max_length=128)
+    device_name: str | None = Field(default=None, max_length=120)
+    platform: str | None = Field(default=None, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+
+
 class EmailRecoveryStartIn(BaseModel):
     email: str = Field(min_length=5, max_length=200)
 
@@ -903,6 +1033,25 @@ class AppStartTrialIn(BaseModel):
     app_version: str | None = Field(default=None, max_length=32)
     locale: str | None = Field(default=None, max_length=32)
     time_zone: str | None = Field(default=None, max_length=64)
+
+
+class AppSessionRefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=32, max_length=512)
+
+
+class RecoveryCodeExchangeIn(BaseModel):
+    code: str = Field(min_length=18, max_length=32)
+    install_id: str = Field(min_length=8, max_length=128)
+    device_name: str = Field(min_length=2, max_length=120)
+    platform: str = Field(min_length=2, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+
+
+class AccessReissueIn(BaseModel):
+    mode: str = Field(min_length=3, max_length=32)
 
 
 class AccessKeyRedeemIn(BaseModel):
@@ -1012,6 +1161,17 @@ class AdminNodeSyncIn(BaseModel):
 
 class AdminNodeLifecycleIn(BaseModel):
     force: bool = False
+
+
+class AdminActionIntentTargetIn(BaseModel):
+    type: str = Field(min_length=1, max_length=32)
+    id: str = Field(min_length=1, max_length=128)
+
+
+class AdminActionIntentPrepareIn(BaseModel):
+    action: str = Field(min_length=1, max_length=64)
+    target: AdminActionIntentTargetIn
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class AdminNodeResyncIn(BaseModel):
@@ -1294,6 +1454,10 @@ class DashboardResponse(BaseModel):
     traffic_remaining_gb: float | None = None
     next_reset_at: str | None = None
     soft_mode_active: bool = False
+    free_profile_state: str = "standard"
+    free_profile_active_role: str = "free_standard"
+    free_profile_job_id: int | None = None
+    free_profile_error_code: str | None = None
     active_sessions: int
     active_sessions_source: str | None = None
     device_limit: int
@@ -1512,12 +1676,15 @@ def _plan_total_gb(user: User) -> int:
         plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
         if plan_code == "trial":
             return 0
-        return max(0, int(FREE_TOTAL_GB))
+        return FREE_STANDARD_QUOTA_GB
     return 0
 
 
 def _plan_device_limit(user: User) -> int:
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    st = (user.sub_type or "").upper()
+    if st == "FREE":
+        return 1
     if plan_code:
         s = SessionLocal()
         try:
@@ -1528,9 +1695,6 @@ def _plan_device_limit(user: User) -> int:
             s.close()
     if plan_code == "start_99":
         return 1
-    st = (user.sub_type or "").upper()
-    if st == "FREE":
-        return max(0, int(FREE_LIMIT_IP))
     return max(0, int(PAID_LIMIT_IP))
 
 
@@ -1562,8 +1726,18 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
     active_window = bool(getattr(user, "is_active", False) and expiry and expiry > current_now)
     used_gb = round((int(used_bytes or 0) / (1024**3)), 3) if used_bytes else 0.0
     next_reset_at = _safe_iso(getattr(user, "free_cycle_next_reset_at", None)) if sub_type == "FREE" else None
+    free_profile_state = str(getattr(user, "free_profile_state", "") or "standard").strip().lower()
+    free_profile_active_role = str(
+        getattr(user, "free_profile_active_role", "") or "free_standard"
+    ).strip().lower()
+    free_profile_facts = {
+        "free_profile_state": free_profile_state,
+        "free_profile_active_role": free_profile_active_role,
+        "free_profile_job_id": getattr(user, "free_profile_job_id", None),
+        "free_profile_error_code": str(getattr(user, "free_profile_error_code", "") or "").strip() or None,
+    }
 
-    if sub_type == "FREE" and active_window and plan_code == "trial":
+    if sub_type == "FREE" and free_user_has_bounded_premium_trial(user, now=current_now):
         access_state = "bonus_premium" if getattr(user, "channel_bonus_claimed_at", None) else "trial_premium"
         return {
             "access_state": access_state,
@@ -1575,12 +1749,37 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
             "traffic_remaining_gb": None,
             "next_reset_at": None,
             "soft_mode_active": False,
+            **free_profile_facts,
+        }
+
+    if active_window and (
+        sub_type.startswith("TRIAL")
+        or sub_type.startswith("BONUS")
+        or sub_type in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}
+    ):
+        access_state = "trial_premium" if sub_type.startswith("TRIAL") else "bonus_premium"
+        return {
+            "access_state": access_state,
+            "traffic_policy": {
+                "kind": "unlimited",
+                "label": "premium_unlimited",
+            },
+            "traffic_limit_gb": None,
+            "traffic_remaining_gb": None,
+            "next_reset_at": None,
+            "soft_mode_active": False,
+            **free_profile_facts,
         }
 
     if sub_type == "FREE":
-        limit_gb = float(max(0, int(FREE_TOTAL_GB)))
+        limit_gb = float(FREE_STANDARD_QUOTA_BYTES) / float(1024**3)
         remaining_gb = max(round(limit_gb - used_gb, 3), 0.0) if limit_gb > 0 else 0.0
-        soft_mode_active = bool(limit_gb > 0 and int(used_bytes or 0) >= _gb_to_bytes(int(limit_gb)))
+        soft_mode_active = bool(
+            free_profile_active_role == "free_soft"
+            and free_profile_state in {"soft_active", "reset_pending", "error"}
+        )
+        if soft_mode_active:
+            remaining_gb = 0.0
         if active_window:
             access_state = "free_soft_mode" if soft_mode_active else "free_monthly"
         else:
@@ -1598,6 +1797,7 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
             "traffic_remaining_gb": remaining_gb,
             "next_reset_at": next_reset_at,
             "soft_mode_active": soft_mode_active,
+            **free_profile_facts,
         }
 
     access_state = "paid_unlimited" if active_window else "expired_or_blocked"
@@ -1611,7 +1811,29 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
         "traffic_remaining_gb": None,
         "next_reset_at": None,
         "soft_mode_active": False,
+        **free_profile_facts,
     }
+
+
+def _build_reconciled_access_policy(
+    *,
+    session,
+    user: User,
+    used_bytes: int,
+    source: str,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    current = now or _utcnow()
+    if str(getattr(user, "sub_type", "") or "").strip().upper() == "FREE":
+        reconcile_free_profile_usage(
+            session,
+            user=user,
+            used_bytes=max(0, int(used_bytes or 0)),
+            source=source,
+            now=current,
+        )
+        session.commit()
+    return _build_access_policy(user=user, used_bytes=used_bytes, now=current)
 
 
 def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
@@ -1640,11 +1862,8 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
             s.commit()
             return True
 
-        user.sub_type = "FREE"
-        user.current_plan_code = "free_monthly"
         user.expiry_at = _utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
-        user.is_active = True
-        mark_user_became_free(user)
+        queue_free_profile_reentry(s, user=user, source="api_expired_to_free")
         s.commit()
         return True
     except Exception:
@@ -1700,7 +1919,7 @@ def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
         secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
-        if calculated_hash != check_hash:
+        if not hmac.compare_digest(calculated_hash, check_hash):
             return None
         return json.loads(parsed.get("user", "{}"))
     except Exception:
@@ -1831,13 +2050,24 @@ def _resolve_plan_config(*, s, code: str) -> dict[str, Any] | None:
     return None
 
 
-def _has_paid_lavatop_order(*, s, tg_id: int) -> bool:
-    if int(tg_id or 0) <= 0:
+def _has_successful_provider_payment(*, s, user: User) -> bool:
+    account_id = str(getattr(user, "account_id", "") or "").strip()
+    if account_id and (
+        s.query(EntitlementGrant.id)
+        .filter(
+            EntitlementGrant.account_id == account_id,
+            EntitlementGrant.source == "provider_payment",
+            EntitlementGrant.status.in_(["active", "recorded", "expired"]),
+        )
+        .first()
+    ):
+        return True
+    tg_id = int(getattr(user, "tg_id", 0) or 0)
+    if tg_id <= 0:
         return False
     row = (
         s.query(ExternalOrder.id)
         .filter(ExternalOrder.tg_id == int(tg_id))
-        .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "lavatop")
         .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
         .first()
     )
@@ -1847,8 +2077,7 @@ def _has_paid_lavatop_order(*, s, tg_id: int) -> bool:
 def _ensure_start99_available_for_user(*, s, user: User | None, plan_code: str) -> None:
     if (plan_code or "").strip().lower() != "start_99" or not user:
         return
-    tg_id = int(getattr(user, "tg_id", 0) or 0)
-    if bool(getattr(user, "first_purchase_done", False)) or _has_paid_lavatop_order(s=s, tg_id=tg_id):
+    if _has_successful_provider_payment(s=s, user=user):
         raise HTTPException(status_code=409, detail="start_99 is available only once per user")
 
 
@@ -1938,6 +2167,22 @@ def _looks_like_subscription_or_proxy_link(value: str) -> bool:
 
 def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
     meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+    payment_claim = (
+        s.query(PaymentEntitlementClaim)
+        .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+        .one_or_none()
+    )
+    if payment_claim is not None:
+        plan_code = str(payment_claim.plan_code or "").strip().lower()
+        current_plan = dict((meta or {}).get("plan") or {})
+        current_plan["code"] = plan_code
+        meta = {
+            **(meta or {}),
+            "kind": "plan",
+            "plan": current_plan,
+            "days": max(1, int(payment_claim.duration_days or 0)),
+            "legacy_type": None,
+        }
     return {
         "key": str(card.code or "").strip(),
         "exists": True,
@@ -1979,8 +2224,6 @@ def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime
     user.expiry_at = current_expiry + timedelta(days=days)
     user.sub_type = "PAID"
     user.is_active = True
-    user.first_purchase_done = True
-
     plan_code = str(meta.get("plan_code") or "").strip().lower()
     if plan_code:
         user.current_plan_code = plan_code
@@ -2054,6 +2297,10 @@ def _free_caps_payload(*, user: User, access_policy: dict[str, Any]) -> dict[str
         "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
         "active": free_active,
         "next_reset_at": access_policy.get("next_reset_at"),
+        "transition_state": str(access_policy.get("free_profile_state") or "standard"),
+        "active_role": str(access_policy.get("free_profile_active_role") or "free_standard"),
+        "provisioning_job_id": access_policy.get("free_profile_job_id"),
+        "error_code": access_policy.get("free_profile_error_code"),
     }
 
 
@@ -2478,19 +2725,9 @@ def _is_allowed_dev_origin(raw: str) -> bool:
 
 
 def _is_local_request(request: Request | None) -> bool:
-    if request is None:
+    if request is None or request.client is None:
         return False
-    host = (request.url.hostname or "").strip().lower()
-    is_loopback_host = False
-    if host in API_LOCALHOST_DEV_HOSTS:
-        is_loopback_host = True
-    else:
-        try:
-            ip = ipaddress.ip_address(host)
-            is_loopback_host = ip.is_loopback
-        except Exception:
-            is_loopback_host = False
-    if not is_loopback_host:
+    if not _is_loopback_ip(request.client.host):
         return False
 
     origin = request.headers.get("origin", "")
@@ -2535,6 +2772,96 @@ def _auth_http_exception(*, detail: str, code: str, status_code: int = 401) -> H
     return HTTPException(status_code=status_code, detail=detail, headers={"X-POKROV-Auth-Error": code})
 
 
+def _auth_session_http_exception(exc: auth_session_service.AuthSessionError) -> HTTPException:
+    status_by_code = {
+        "device_recovery_required": 409,
+        "fresh_auth_required": 409,
+        "device_not_found": 404,
+        "session_not_configured": 500,
+    }
+    detail_by_code = {
+        "device_recovery_required": "Устройство уже зарегистрировано. Обновите сессию или восстановите доступ.",
+        "fresh_auth_required": "Для отзыва устройства подтвердите вход ещё раз.",
+        "device_not_found": "Устройство не найдено.",
+        "refresh_token_invalid": "Refresh-токен не подтвердился.",
+        "refresh_reuse_detected": "Refresh-токен уже использован. Все сессии этой семьи отозваны.",
+        "refresh_expired": "Refresh-сессия истекла. Восстановите доступ.",
+        "session_revoked": "Сессия отозвана.",
+        "access_expired": "Access-сессия истекла.",
+        "device_revoked": "Устройство отозвано.",
+        "device_credential_changed": "Учётные данные устройства изменились.",
+        "session_epoch_changed": "Сессии аккаунта были обновлены. Войдите снова.",
+        "session_not_configured": "Сервис сессий не настроен.",
+    }
+    code = str(exc.code or "session_invalid")
+    return _auth_http_exception(
+        detail=detail_by_code.get(code, "Не удалось подтвердить сессию устройства."),
+        code=code,
+        status_code=int(status_by_code.get(code, 401)),
+    )
+
+
+def _account_recovery_http_exception(exc: AccountRecoveryError) -> HTTPException:
+    status_by_code = {
+        "email_otp_invalid": 401,
+        "email_otp_expired": 401,
+        "email_otp_not_configured": 503,
+        "fresh_auth_required": 409,
+        "device_identity_conflict": 409,
+        "device_limit_reached": 409,
+        "recovery_code_invalid": 401,
+        "recovery_session_invalid": 401,
+        "recovery_not_configured": 503,
+        "account_unavailable": 409,
+        "reissue_mode_invalid": 400,
+    }
+    detail_by_code = {
+        "email_otp_invalid": "Код не подтвердился или уже использован.",
+        "email_otp_expired": "Код истёк. Запросите новый.",
+        "email_otp_not_configured": "Email OTP пока не настроен.",
+        "fresh_auth_required": "Сначала подтвердите вход одноразовым кодом.",
+        "device_identity_conflict": "Это устройство уже связано с другим аккаунтом.",
+        "device_limit_reached": "Достигнут лимит устройств. Отзовите старое устройство или используйте lockdown.",
+        "recovery_code_invalid": "Код восстановления не подтвердился или уже использован.",
+        "recovery_session_invalid": "Recovery-сессия истекла или уже использована.",
+        "recovery_not_configured": "Контур восстановления пока не настроен.",
+        "account_unavailable": "Аккаунт недоступен для восстановления.",
+        "reissue_mode_invalid": "Неизвестный режим перевыпуска доступа.",
+    }
+    code = str(exc.code or "account_recovery_failed")
+    return _auth_http_exception(
+        detail=detail_by_code.get(code, "Не удалось подтвердить восстановление доступа."),
+        code=code,
+        status_code=int(status_by_code.get(code, 401)),
+    )
+
+
+_RECOVERY_SCOPE_ROUTE_ALLOWLIST = frozenset(
+    {
+        ("GET", "/api/auth/session"),
+        ("POST", "/api/client/session/revoke"),
+        ("POST", "/api/client/access/reissue"),
+        ("GET", "/api/client/devices"),
+        ("DELETE", "/api/client/devices/{device_id}"),
+        ("GET", "/api/tickets"),
+        ("POST", "/api/tickets"),
+        ("GET", "/api/tickets/{ticket_id}"),
+        ("POST", "/api/tickets/{ticket_id}/messages"),
+    }
+)
+
+
+def _recovery_scope_request_allowed(request: Request | None) -> bool:
+    if request is None:
+        return False
+    method = str(getattr(request, "method", "") or "").upper()
+    route = (getattr(request, "scope", None) or {}).get("route")
+    route_path = str(getattr(route, "path", "") or "")
+    if not method or not route_path:
+        return False
+    return (method, route_path) in _RECOVERY_SCOPE_ROUTE_ALLOWLIST
+
+
 def _optional_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any] | None:
     init_data = (x_telegram_init_data or "").strip()
     web_token = _extract_web_session_token(request)
@@ -2546,6 +2873,24 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
                     detail="Этот короткий переход нужно обменять в кабинете перед использованием.",
                     code="web_session_exchange_required",
                 )
+            if str(payload.get("session_id") or "").strip():
+                auth_session = SessionLocal()
+                try:
+                    payload = auth_session_service.validate_access_session(
+                        auth_session,
+                        payload=payload,
+                        now=_utcnow(),
+                    )
+                except auth_session_service.AuthSessionError as exc:
+                    raise _auth_session_http_exception(exc) from exc
+                finally:
+                    auth_session.close()
+                if str(payload.get("scope") or "").strip() == "recovery" and not _recovery_scope_request_allowed(request):
+                    raise _auth_http_exception(
+                        detail="Recovery-сессия не открывает этот раздел. Сначала перевыпустите доступ.",
+                        code="recovery_scope_forbidden",
+                        status_code=403,
+                    )
             return payload
         if init_data:
             user_data = _verify_telegram_data(init_data)
@@ -2686,6 +3031,7 @@ def _record_security_event(
             safe_meta[key_text] = str(value)[:240] if value is not None else None
     s = SessionLocal()
     try:
+        occurred_at = _utcnow()
         s.add(
             SecurityEvent(
                 event_type=str(event_type or "").strip()[:64] or "security_event",
@@ -2695,8 +3041,17 @@ def _record_security_event(
                 subject=str(subject or "").strip()[:160] or None,
                 reason=str(reason or "").strip()[:160] or None,
                 meta_json=json.dumps(safe_meta, ensure_ascii=False, separators=(",", ":"))[:2000] if safe_meta else None,
-                created_at=_utcnow(),
+                created_at=occurred_at,
             )
+        )
+        record_antiabuse_event(
+            s,
+            event_kind=event_type,
+            source="api_security",
+            occurred_at=occurred_at,
+            raw_ip=client_ip,
+            reasons=[reason] if reason else None,
+            metadata={"scope": scope, **safe_meta},
         )
         s.commit()
     except Exception:
@@ -2795,6 +3150,8 @@ def _enforce_durable_rate_limit(scope: str, fingerprint: str, *, limit: int, win
 
 _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "start_trial": 12,
+    "session_refresh": 10,
+    "session_refresh_ip": 600,
     "access_key_status": 60,
     "access_key_redeem": 20,
     "unified_redeem": 20,
@@ -2802,6 +3159,16 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "cabinet_handoff_exchange": 30,
     "telegram_auth": 30,
     "email_auth": 20,
+    "email_otp_start": 5,
+    "email_otp_start_ip": 20,
+    "email_otp_finish": 8,
+    "email_otp_finish_ip": 30,
+    "email_otp_finish_install": 8,
+    "recovery_exchange": 5,
+    "recovery_exchange_ip": 30,
+    "recovery_exchange_install": 5,
+    "recovery_rotate": 5,
+    "access_reissue": 5,
     "ticket_create": 20,
     "ticket_upload": 30,
     "ticket_attachment_download": 120,
@@ -2950,7 +3317,12 @@ def _require_email_public_ready() -> dict[str, Any]:
     )
 
 
-def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
+def _ensure_user_row_for_login(
+    *,
+    tg_id: int,
+    username: str | None = None,
+    include_legacy_payment_authority: bool = True,
+) -> None:
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -2958,7 +3330,12 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
             normalized = str(username or "").strip()[:100] or None
             if username is not None and user.username != normalized:
                 user.username = normalized
-            ensure_user_account_foundation(s, user, now=_utcnow())
+            ensure_user_account_foundation(
+                s,
+                user,
+                now=_utcnow(),
+                include_legacy_payment_authority=include_legacy_payment_authority,
+            )
             s.commit()
             return
 
@@ -2982,7 +3359,12 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
         )
         mark_user_became_free(row, now=now)
         s.add(row)
-        ensure_user_account_foundation(s, row, now=now)
+        ensure_user_account_foundation(
+            s,
+            row,
+            now=now,
+            include_legacy_payment_authority=include_legacy_payment_authority,
+        )
         s.commit()
     except Exception:
         s.rollback()
@@ -3101,7 +3483,8 @@ def _apply_admin_user_search(query, q: str):
         User.linked_telegram_username.ilike(f"%{q_norm}%"),
         User.app_install_id.ilike(f"%{q_norm}%"),
     ]
-    if q_norm.isdigit():
+    is_signed_integer = q_norm.isdigit() or (q_norm.startswith("-") and q_norm[1:].isdigit())
+    if is_signed_integer and int(q_norm) != 0:
         filters.extend(
             [
                 User.tg_id == int(q_norm),
@@ -3291,30 +3674,49 @@ def _auth_actor_tg_id(auth_user: dict[str, Any] | None) -> int:
     direct_id = int((auth_user or {}).get("actor_tg_id") or (auth_user or {}).get("telegram_id") or 0)
     if direct_id > 0:
         return direct_id
-    account_id = int((auth_user or {}).get("id") or 0)
-    if account_id <= 0 or _is_admin_tg(account_id):
-        return account_id
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == account_id).first()
-        linked_id = _linked_telegram_id(user)
-        return linked_id or account_id
-    finally:
-        s.close()
+    return int((auth_user or {}).get("id") or 0)
+
+
+def _auth_user_is_recovery_scope(auth_user: dict[str, Any] | None) -> bool:
+    return str((auth_user or {}).get("scope") or "").strip() == "recovery"
+
+
+def _reject_recovery_ticket_media(*, auth_user: dict[str, Any] | None, payload: Any) -> None:
+    if not _auth_user_is_recovery_scope(auth_user):
+        return
+    media_values = (
+        getattr(payload, "attachment_id", None),
+        getattr(payload, "media_type", None),
+        getattr(payload, "media_file_id", None),
+        getattr(payload, "media_payload", None),
+    )
+    if any(value is not None and str(value) != "" for value in media_values):
+        raise _auth_http_exception(
+            detail="Recovery-сессия поддерживает только текстовые обращения.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
 
 
 def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User | None) -> bool:
+    if _auth_user_is_recovery_scope(auth_user):
+        return False
     candidates = [
         int((auth_user or {}).get("id") or 0),
         _auth_actor_tg_id(auth_user),
         int(getattr(user, "tg_id", 0) or 0) if user else 0,
-        _linked_telegram_id(user),
     ]
     return any(_is_admin_tg(candidate) for candidate in candidates if candidate)
 
 
 def _require_admin(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
     user_data = _require_auth_user(x_telegram_init_data, request=request)
+    if _auth_user_is_recovery_scope(user_data):
+        raise _auth_http_exception(
+            detail="Recovery-сессия не даёт административных прав.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
     account_id = int(user_data.get("id", 0))
     actor_id = _auth_actor_tg_id(user_data)
     if not _is_admin_tg(actor_id):
@@ -3752,22 +4154,150 @@ _PAYMENT_REDACT_KEY_RE = re.compile(
     re.IGNORECASE,
 )
 
+_EXTERNAL_ORDER_META_JSON_LIMIT = 4000
+_PAYMENT_EVENT_JSON_LIMIT = 16000
 
-def _redact_payment_payload(value: Any) -> Any:
+
+def _compact_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _bounded_json_value(value: Any, *, depth: int = 0) -> Any:
+    if depth >= 5:
+        return "[nested]"
     if isinstance(value, dict):
         out: dict[str, Any] = {}
-        for key, item in value.items():
-            key_text = str(key)
-            if _PAYMENT_REDACT_KEY_RE.search(key_text):
-                out[key_text] = "[redacted]"
-            else:
-                out[key_text] = _redact_payment_payload(item)
+        items = list(value.items())
+        for key, item in items[:32]:
+            key_text = str(key or "")[:64]
+            if key_text:
+                out[key_text] = _bounded_json_value(item, depth=depth + 1)
+        if len(items) > 32:
+            out["_pokrov_entries_omitted"] = len(items) - 32
         return out
     if isinstance(value, list):
-        return [_redact_payment_payload(item) for item in value[:50]]
+        out = [_bounded_json_value(item, depth=depth + 1) for item in value[:20]]
+        if len(value) > 20:
+            out.append({"_pokrov_entries_omitted": len(value) - 20})
+        return out
     if isinstance(value, str):
-        return value[:512]
-    return value
+        return value[:256]
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    return str(value)[:128]
+
+
+def _bounded_mapping(
+    value: dict[str, Any],
+    *,
+    max_serialized: int,
+    priority_keys: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    for key, item in value.items():
+        key_text = str(key or "")[:64]
+        if key_text:
+            normalized[key_text] = _bounded_json_value(item, depth=1)
+    ordered_keys = [key for key in priority_keys if key in normalized]
+    ordered_keys.extend(key for key in normalized if key not in ordered_keys)
+    result: dict[str, Any] = {}
+    omitted = 0
+    for key in ordered_keys:
+        trial = {**result, key: normalized[key]}
+        if len(_compact_json(trial)) <= max_serialized:
+            result[key] = normalized[key]
+        else:
+            omitted += 1
+    if omitted:
+        summary = {
+            "omitted_fields": omitted,
+            "fingerprint": hashlib.sha256(_compact_json(normalized).encode("utf-8")).hexdigest()[:16],
+        }
+        trial = {**result, "_pokrov_metadata_summary": summary}
+        if len(_compact_json(trial)) <= max_serialized:
+            result["_pokrov_metadata_summary"] = summary
+    return result
+
+
+def _redact_payment_payload(value: Any, *, max_serialized: int = 12000) -> Any:
+    def _redact(item: Any, *, depth: int = 0) -> Any:
+        if depth >= 5:
+            return "[nested]"
+        if isinstance(item, dict):
+            out: dict[str, Any] = {}
+            entries = list(item.items())
+            for key, child in entries[:32]:
+                key_text = str(key or "")[:64]
+                if not key_text:
+                    continue
+                if _PAYMENT_REDACT_KEY_RE.search(key_text):
+                    out[key_text] = "[redacted]"
+                else:
+                    out[key_text] = _redact(child, depth=depth + 1)
+            if len(entries) > 32:
+                out["_pokrov_entries_omitted"] = len(entries) - 32
+            return out
+        if isinstance(item, list):
+            out = [_redact(child, depth=depth + 1) for child in item[:20]]
+            if len(item) > 20:
+                out.append({"_pokrov_entries_omitted": len(item) - 20})
+            return out
+        if isinstance(item, str):
+            return item[:256]
+        if item is None or isinstance(item, (bool, int, float)):
+            return item
+        return str(item)[:128]
+
+    redacted = _redact(value)
+    serialized = _compact_json(redacted)
+    if len(serialized) <= max_serialized:
+        return redacted
+
+    result: dict[str, Any] = {}
+    if isinstance(redacted, dict) and "_pokrov_processing_error" in redacted:
+        result["_pokrov_processing_error"] = redacted["_pokrov_processing_error"]
+    result["_pokrov_payload_summary"] = {
+        "truncated": True,
+        "fingerprint": hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16],
+        "serialized_length": len(serialized),
+        "entry_count": len(redacted) if isinstance(redacted, dict) else None,
+    }
+    if isinstance(redacted, dict):
+        for key in (
+            "eventType",
+            "status",
+            "payment_status",
+            "amount",
+            "currency",
+            "contractId",
+            "order_id",
+            "clientUtm",
+            "plan_code",
+            "provider",
+        ):
+            if key not in redacted or key in result:
+                continue
+            trial = {**result, key: redacted[key]}
+            if len(_compact_json(trial)) <= max_serialized:
+                result[key] = redacted[key]
+    return result
+
+
+def _serialize_payment_event_payload(value: dict[str, Any]) -> str:
+    bounded = _redact_payment_payload(value, max_serialized=_PAYMENT_EVENT_JSON_LIMIT - 512)
+    serialized = _compact_json(bounded)
+    if len(serialized) <= _PAYMENT_EVENT_JSON_LIMIT:
+        return serialized
+    error_code = bounded.get("_pokrov_processing_error") if isinstance(bounded, dict) else None
+    summary = {
+        "_pokrov_processing_error": error_code,
+        "_pokrov_payload_summary": {
+            "truncated": True,
+            "fingerprint": hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16],
+            "serialized_length": len(serialized),
+        },
+    }
+    return _compact_json(summary)
 
 
 def _verify_lavatop_callback_auth(request: Request) -> tuple[bool, str]:
@@ -3813,11 +4343,15 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
     # Freekassa SCI notify signature:
     # md5(MERCHANT_ID:AMOUNT:SECRET_WORD_2:MERCHANT_ORDER_ID)
     if p == "freekassa":
-        merchant_id = _payload_value(payload, "MERCHANT_ID", "merchant_id", "shopId")
-        amount = _payload_value(payload, "AMOUNT", "amount")
-        order_id = _payload_value(payload, "MERCHANT_ORDER_ID", "merchant_order_id", "order_id")
-        provided = _payload_value(payload, "SIGN", "sign", "signature")
-        if merchant_id and amount and order_id and provided:
+        sci_keys = {"MERCHANT_ID", "AMOUNT", "MERCHANT_ORDER_ID", "SIGN"}
+        present_sci_keys = sci_keys.intersection(payload.keys())
+        if present_sci_keys:
+            if present_sci_keys != sci_keys or any(not _payload_value(payload, key) for key in sci_keys):
+                return False, "incomplete_sci_payload"
+            merchant_id = _payload_value(payload, "MERCHANT_ID")
+            amount = _payload_value(payload, "AMOUNT")
+            order_id = _payload_value(payload, "MERCHANT_ORDER_ID")
+            provided = _payload_value(payload, "SIGN")
             shop = _fk_shop_by_merchant_id(merchant_id)
             secret2 = (shop.get("secret_word_2") or "").strip()
             if not secret2:
@@ -3831,6 +4365,8 @@ def _verify_callback_signature(*, provider: str, payload: dict[str, Any], raw: b
             if hmac.compare_digest(str(provided).lower(), expected.lower()):
                 return True, "ok"
             return False, "invalid_signature"
+        if not FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED:
+            return False, "generic_hmac_disabled"
     if p == "lavatop":
         return _verify_lavatop_callback_auth(request)
     if p in {"cardlink", "pally", "platima"}:
@@ -3936,22 +4472,129 @@ def _external_order_meta(row: ExternalOrder | None) -> dict[str, Any]:
         return {}
 
 
+def _serialize_external_order_meta(meta: dict[str, Any]) -> str:
+    source = dict(meta or {})
+    prepared: dict[str, Any] = {}
+    section_contracts = {
+        "fulfillment": (
+            1100,
+            (
+                "mode",
+                "status",
+                "buyer_email",
+                "access_key",
+                "email_delivery",
+                "error_code",
+                "tg_id",
+                "activated_at",
+                "access_key_issued_at",
+            ),
+        ),
+        "reversal": (
+            1000,
+            (
+                "operator_action_required",
+                "reconciliation_status",
+                "recorded_at",
+                "event_type",
+                "provider",
+                "order_id",
+                "reason",
+                "external_id",
+            ),
+        ),
+        "pricing": (
+            900,
+            (
+                "base_amount_rub",
+                "final_amount_rub",
+                "discount_pct",
+                "discount_applied",
+                "pending_discount_code",
+                "direct_discount_pct",
+                "direct_discount_code",
+                "direct_discount_source",
+                "referral_discount_eligible",
+            ),
+        ),
+    }
+    for key, value in source.items():
+        if key == "callback":
+            prepared[key] = _redact_payment_payload(value, max_serialized=1000)
+        elif key in section_contracts and isinstance(value, dict):
+            max_serialized, priority = section_contracts[key]
+            prepared[key] = _bounded_mapping(
+                value,
+                max_serialized=max_serialized,
+                priority_keys=priority,
+            )
+        else:
+            prepared[key] = _bounded_json_value(value)
+
+    bounded = _bounded_mapping(
+        prepared,
+        max_serialized=_EXTERNAL_ORDER_META_JSON_LIMIT,
+        priority_keys=(
+            "fulfillment",
+            "entitlement_snapshot",
+            "reversal",
+            "pricing",
+            "buyer_email",
+            "order_id",
+            "tg_id",
+            "plan_code",
+            "provider",
+            "source",
+            "campaign",
+            "requested_promo_code",
+            "promo_code",
+            "payment_method",
+            "lavatop_payment_provider",
+            "lavatop_payment_method",
+            "plan_label",
+            "callback",
+        ),
+    )
+    return _compact_json(bounded)
+
+
 def _set_external_order_meta(row: ExternalOrder, meta: dict[str, Any]) -> None:
-    row.meta_json = json.dumps(dict(meta or {}), ensure_ascii=False, separators=(",", ":"))[:4000]
+    row.meta_json = _serialize_external_order_meta(meta)
 
 
 def _payload_amount(payload: dict[str, Any]) -> float:
     return _safe_float(
-        _payload_value(payload, "amount", "sum", "amount_paid", "OutSum")
+        _payload_value(payload, "amount", "AMOUNT", "sum", "amount_paid", "OutSum")
         or _payload_nested_value(payload, "contract", "amount")
         or _payload_nested_value(payload, "invoice", "amount")
         or _payload_nested_value(payload, "payment", "amount")
     )
 
 
+def _payload_amount_decimal(payload: dict[str, Any]) -> Decimal | None:
+    raw_amount = (
+        _payload_value(payload, "amount", "AMOUNT", "sum", "amount_paid", "OutSum")
+        or _payload_nested_value(payload, "contract", "amount")
+        or _payload_nested_value(payload, "invoice", "amount")
+        or _payload_nested_value(payload, "payment", "amount")
+    )
+    if not raw_amount:
+        return None
+    try:
+        amount = Decimal(raw_amount)
+    except (InvalidOperation, ValueError):
+        return None
+    if not amount.is_finite() or amount <= 0:
+        return None
+    scale = max(0, -int(amount.as_tuple().exponent))
+    if scale > 2:
+        return None
+    return amount
+
+
 def _payload_currency(payload: dict[str, Any]) -> str:
     return (
-        _payload_value(payload, "currency", "cur", "ccy")
+        _payload_value(payload, "currency", "CURRENCY", "cur", "ccy")
         or _payload_nested_value(payload, "contract", "currency")
         or _payload_nested_value(payload, "invoice", "currency")
         or _payload_nested_value(payload, "payment", "currency")
@@ -3990,9 +4633,77 @@ def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: b
         return "manual_review"
     if state in {"created", "pending", "processing", "new", "waiting"}:
         return "pending"
-    if _normalize_provider(provider) == "freekassa" and event == "result" and not state:
+    if (
+        _normalize_provider(provider) == "freekassa"
+        and event == "result"
+        and not state
+        and all(_payload_value(payload, key) for key in ("MERCHANT_ID", "AMOUNT", "MERCHANT_ORDER_ID", "SIGN"))
+    ):
         return "paid"
     return "manual_review"
+
+
+def _payment_order_correlation(*, provider: str, order_id: str) -> str:
+    material = f"{_normalize_provider(provider)}|{str(order_id or '').strip()}"
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+
+
+def _safe_payment_processing_error(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    allowed = {
+        "access_key_issue_failed",
+        "access_key_email_delivery_error",
+        "delivery_evidence_failed",
+        "account_conflict",
+        "claim_definition_conflict",
+        "claim_reversed",
+        "db_error",
+        "fallback_creator_conflict",
+        "fallback_missing",
+        "fallback_ownership_conflict",
+        "fallback_redeemed_conflict",
+        "fallback_type_conflict",
+        "grant_fulfillment_failed",
+        "grant_not_found",
+        "manual_review",
+        "missing_buyer_email",
+        "missing_entitlement_snapshot",
+        "missing_tg_id",
+        "invalid_entitlement_snapshot",
+        "order_not_found",
+        "order_reversed",
+        "payment_pending",
+        "unsupported_plan",
+        "user_create_failed",
+        "verified_email_mismatch",
+    }
+    return normalized if normalized in allowed else "durable_fulfillment_failed"
+
+
+_TERMINAL_PAYMENT_FULFILLMENT_CODES = {
+    "account_conflict",
+    "claim_definition_conflict",
+    "claim_reversed",
+    "fallback_creator_conflict",
+    "fallback_missing",
+    "fallback_ownership_conflict",
+    "fallback_redeemed_conflict",
+    "fallback_type_conflict",
+    "manual_review",
+    "missing_buyer_email",
+    "missing_entitlement_snapshot",
+    "invalid_entitlement_snapshot",
+    "order_reversed",
+    "unsupported_plan",
+    "verified_email_mismatch",
+}
+
+_TERMINAL_PAYMENT_REVERSAL_CODES = {
+    "claim_reversed",
+    "fallback_missing",
+    "grant_not_found",
+    "manual_review",
+}
 
 
 def _upsert_external_order(
@@ -4003,40 +4714,88 @@ def _upsert_external_order(
     payload: dict[str, Any],
     status: str,
     mark_paid: bool,
-) -> None:
+) -> ExternalOrder | None:
     if not order_id:
-        return
+        return None
     row = (
         s.query(ExternalOrder)
         .filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id)
+        .with_for_update()
+        .populate_existing()
         .first()
     )
-    if not row:
+    created = row is None
+    if created and _normalize_provider(provider) == "freekassa":
+        # FreeKassa callbacks may report an order, but only a locally created
+        # order is allowed to become product authority.
+        return None
+    if created:
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
-    row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = _payload_plan_code(payload) or row.plan_code
-    row.source = (
-        _payload_value(payload, "source", "checkout_source", "us_source")
-        or _payload_nested_value(payload, "clientUtm", "utm_medium")
-        or row.source
-    )
-    row.campaign = (
-        _payload_value(payload, "campaign", "utm_campaign")
-        or _payload_nested_value(payload, "clientUtm", "utm_campaign")
-        or row.campaign
-    )
-    row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
+        row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
+        row.plan_code = _payload_plan_code(payload) or row.plan_code
+    callback_can_define_authority = _normalize_provider(provider) != "freekassa"
+    if callback_can_define_authority:
+        row.source = (
+            _payload_value(payload, "source", "checkout_source", "us_source")
+            or _payload_nested_value(payload, "clientUtm", "utm_medium")
+            or row.source
+        )
+        row.campaign = (
+            _payload_value(payload, "campaign", "utm_campaign")
+            or _payload_nested_value(payload, "clientUtm", "utm_campaign")
+            or row.campaign
+        )
+        row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
     meta = _external_order_meta(row)
-    meta["callback"] = _redact_payment_payload(payload)
+    meta["callback"] = _redact_payment_payload(payload, max_serialized=1000)
     _set_external_order_meta(row, meta)
-    callback_amount = _payload_amount(payload)
-    if callback_amount > 0 and float(row.amount or 0) <= 0:
-        row.amount = callback_amount
-    row.currency = _payload_currency(payload) or row.currency or "RUB"
-    row.status = status
+    if callback_can_define_authority:
+        callback_amount = _payload_amount(payload)
+        if callback_amount > 0 and float(row.amount or 0) <= 0:
+            row.amount = callback_amount
+        row.currency = _payload_currency(payload) or row.currency or "RUB"
+    current_status = str(row.status or "").strip().lower()
+    incoming_status = str(status or "").strip().lower()
+    if current_status == "chargeback":
+        incoming_status = "chargeback"
+    elif current_status == "refunded" and incoming_status != "chargeback":
+        incoming_status = "refunded"
+    elif current_status == "paid" and incoming_status in {
+        "created",
+        "pending",
+        "pending_verification",
+        "failed",
+        "cancelled",
+        "manual_review",
+    }:
+        incoming_status = "paid"
+    row.status = incoming_status or current_status or "created"
     if mark_paid and not row.paid_at:
         row.paid_at = _utcnow()
+    return row
+
+
+def _mark_payment_reversal_pending(
+    *,
+    row: ExternalOrder,
+    provider: str,
+    event_type: str,
+) -> None:
+    meta = _external_order_meta(row)
+    fulfillment = dict(meta.get("fulfillment") or {})
+    fulfillment["status"] = "reversal_pending_operator_action"
+    meta["fulfillment"] = fulfillment
+    meta["reversal"] = {
+        "event_type": re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal",
+        "provider": _normalize_provider(provider),
+        "order_id": str(row.order_id or "")[:128],
+        "reason": "provider_reversal",
+        "operator_action_required": True,
+        "reconciliation_status": "pending",
+        "recorded_at": _safe_iso(_utcnow()),
+    }
+    _set_external_order_meta(row, meta)
 
 
 def _record_external_payment_event(
@@ -4050,7 +4809,7 @@ def _record_external_payment_event(
     processed_ok: bool,
     status: str | None = None,
 ) -> tuple[bool, bool]:
-    persist_payload = _redact_payment_payload(payload)
+    persist_payload = _redact_payment_payload(payload, max_serialized=_PAYMENT_EVENT_JSON_LIMIT - 512)
     s = SessionLocal()
     try:
         exists = (
@@ -4060,26 +4819,30 @@ def _record_external_payment_event(
                 ExternalPaymentEvent.event_type == event_type,
                 ExternalPaymentEvent.external_id == external_id,
             )
+            .with_for_update()
             .first()
         )
         if exists:
-            if bool(getattr(exists, "signature_ok", False)):
+            if bool(getattr(exists, "signature_ok", False)) and bool(getattr(exists, "processed_ok", False)):
                 return True, True
             if not signature_ok:
                 return True, True
             exists.order_id = order_id or None
-            exists.payload_json = json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000]
+            exists.payload_json = _serialize_payment_event_payload(persist_payload)
             exists.signature_ok = True
             exists.processed_ok = bool(processed_ok)
             event_status = status or _status_from_event(event_type, payload, signature_ok=True, provider=provider)
-            _upsert_external_order(
-                s,
-                provider=provider,
-                order_id=order_id,
-                payload=payload,
-                status=event_status,
-                mark_paid=event_status == "paid",
-            )
+            if str(payload.get("_pokrov_validation_error") or "") != "unknown_order":
+                order_row = _upsert_external_order(
+                    s,
+                    provider=provider,
+                    order_id=order_id,
+                    payload=payload,
+                    status=event_status,
+                    mark_paid=event_status == "paid",
+                )
+                if order_row is not None and event_type in {"refund", "chargeback"}:
+                    _mark_payment_reversal_pending(row=order_row, provider=provider, event_type=event_type)
             s.commit()
             return False, True
 
@@ -4088,7 +4851,7 @@ def _record_external_payment_event(
             event_type=event_type,
             external_id=external_id,
             order_id=order_id or None,
-            payload_json=json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000],
+            payload_json=_serialize_payment_event_payload(persist_payload),
             signature_ok=bool(signature_ok),
             processed_ok=bool(processed_ok),
             created_at=_utcnow(),
@@ -4096,27 +4859,99 @@ def _record_external_payment_event(
         s.add(event)
 
         event_status = status or _status_from_event(event_type, payload, signature_ok=signature_ok, provider=provider)
-        _upsert_external_order(
-            s,
-            provider=provider,
-            order_id=order_id,
-            payload=payload,
-            status=event_status,
-            mark_paid=event_status == "paid",
-        )
+        if signature_ok and str(payload.get("_pokrov_validation_error") or "") != "unknown_order":
+            order_row = _upsert_external_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+                payload=payload,
+                status=event_status,
+                mark_paid=event_status == "paid",
+            )
+            if order_row is not None and event_type in {"refund", "chargeback"}:
+                _mark_payment_reversal_pending(row=order_row, provider=provider, event_type=event_type)
         s.commit()
         return False, True
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("payment callback persistence failed: provider=%s event=%s err=%s", provider, event_type, exc)
+        logger.error(
+            "payment callback persistence failed code=callback_persistence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, False
     finally:
         s.close()
 
 
+def _complete_external_payment_event(
+    *,
+    provider: str,
+    event_type: str,
+    external_id: str,
+    processed_ok: bool,
+    error_code: str | None = None,
+) -> bool:
+    s = SessionLocal()
+    try:
+        event = (
+            s.query(ExternalPaymentEvent)
+            .filter(
+                ExternalPaymentEvent.provider == str(provider),
+                ExternalPaymentEvent.event_type == str(event_type),
+                ExternalPaymentEvent.external_id == str(external_id),
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if event is None:
+            return False
+        event.processed_ok = bool(processed_ok)
+        if error_code:
+            try:
+                stored = json.loads(str(event.payload_json or "{}"))
+                if not isinstance(stored, dict):
+                    stored = {}
+            except Exception:
+                stored = {}
+            stored["_pokrov_processing_error"] = _safe_payment_processing_error(error_code)
+            event.payload_json = _serialize_payment_event_payload(stored)
+        s.commit()
+        return True
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment callback completion persistence failed code=callback_completion_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=external_id),
+        )
+        return False
+    finally:
+        s.close()
+
+
+def _record_payment_entitlement_retry_error(*, provider: str, order_id: str, error_code: str) -> None:
+    s = SessionLocal()
+    try:
+        record_payment_entitlement_claim_error(
+            s,
+            provider=provider,
+            order_id=order_id,
+            error_code=error_code,
+            now=_utcnow(),
+        )
+        s.commit()
+    except PaymentEntitlementNotFoundError:
+        s.rollback()
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment entitlement retry evidence persistence failed code=retry_evidence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+    finally:
+        s.close()
+
+
 def _validate_paid_callback_against_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
-    if _normalize_provider(provider) != "lavatop":
-        return True, "ok"
     if not order_id:
         return False, "missing_order_id"
     s = SessionLocal()
@@ -4130,6 +4965,49 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return False, "unknown_order"
         if str(row.provider or "").strip().lower() != str(provider).strip().lower():
             return False, "provider_mismatch"
+        persisted_tg_id = int(row.tg_id) if row.tg_id is not None else None
+        callback_tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
+        if persisted_tg_id is not None and callback_tg_id is not None and persisted_tg_id != callback_tg_id:
+            return False, "order_owner_mismatch"
+        normalized_provider = _normalize_provider(provider)
+        if normalized_provider == "freekassa":
+            expected_source = str(row.source or "").strip().lower()
+            if expected_source not in {"site", "bot"}:
+                return False, "invalid_order_source"
+            merchant_id = _payload_value(payload, "MERCHANT_ID")
+            if merchant_id:
+                merchant_source = _fk_source_by_merchant_id(merchant_id)
+                if not merchant_source or merchant_source != expected_source:
+                    return False, "merchant_source_mismatch"
+            callback_source = _payload_value(payload, "source", "checkout_source", "us_source")
+            if callback_source and callback_source.strip().lower() != expected_source:
+                return False, "source_mismatch"
+            expected_plan = str(row.plan_code or "").strip().lower()
+            if not expected_plan:
+                return False, "missing_order_plan"
+            actual_plan = _payload_plan_code(payload)
+            if actual_plan and actual_plan != expected_plan:
+                return False, "plan_mismatch"
+            expected_currency = str(row.currency or "").strip().upper()
+            if expected_currency != "RUB":
+                return False, "invalid_order_currency"
+            actual_currency = _payload_currency(payload)
+            if actual_currency and actual_currency != expected_currency:
+                return False, "currency_mismatch"
+            actual_amount = _payload_amount_decimal(payload)
+            if actual_amount is None:
+                return False, "invalid_amount"
+            try:
+                expected_amount = Decimal(str(row.amount))
+            except (InvalidOperation, ValueError):
+                return False, "invalid_order_amount"
+            if not expected_amount.is_finite() or expected_amount <= 0:
+                return False, "invalid_order_amount"
+            if actual_amount != expected_amount:
+                return False, "amount_mismatch"
+            return True, "ok"
+        if normalized_provider != "lavatop":
+            return True, "ok"
         expected_amount = float(row.amount or 0)
         actual_amount = _payload_amount(payload)
         if expected_amount > 0 and actual_amount <= 0:
@@ -4178,6 +5056,65 @@ def _rub_plan_days(plan_code: str) -> int:
     return max(1, int(fallback.get("days") or 30))
 
 
+def _validated_external_order_entitlement_snapshot(row: ExternalOrder) -> tuple[dict[str, Any] | None, str]:
+    snapshot = _external_order_meta(row).get("entitlement_snapshot")
+    if not isinstance(snapshot, dict):
+        return None, "missing_entitlement_snapshot"
+    plan_code = str(snapshot.get("plan_code") or "").strip().lower()
+    if not plan_code or plan_code != str(row.plan_code or "").strip().lower():
+        return None, "invalid_entitlement_snapshot"
+    try:
+        duration_days = int(snapshot.get("duration_days") or 0)
+    except (TypeError, ValueError):
+        return None, "invalid_entitlement_snapshot"
+    if duration_days <= 0 or duration_days > 3650:
+        return None, "invalid_entitlement_snapshot"
+    source = str(snapshot.get("source") or "").strip().lower()
+    if source not in {"site", "bot"} or source != str(row.source or "").strip().lower():
+        return None, "invalid_entitlement_snapshot"
+    currency = str(snapshot.get("currency") or "").strip().upper()
+    if currency != "RUB" or currency != str(row.currency or "").strip().upper():
+        return None, "invalid_entitlement_snapshot"
+    try:
+        snapshot_amount = Decimal(str(snapshot.get("amount_rub") or ""))
+        order_amount = Decimal(str(row.amount))
+    except (InvalidOperation, ValueError):
+        return None, "invalid_entitlement_snapshot"
+    if (
+        not snapshot_amount.is_finite()
+        or not order_amount.is_finite()
+        or snapshot_amount <= 0
+        or snapshot_amount != order_amount
+        or max(0, -int(snapshot_amount.as_tuple().exponent)) > 2
+    ):
+        return None, "invalid_entitlement_snapshot"
+    return {
+        "plan_code": plan_code,
+        "duration_days": duration_days,
+        "source": source,
+        "currency": currency,
+        "amount_rub": snapshot_amount,
+    }, "ok"
+
+
+def _external_order_has_reversal_state(row: ExternalOrder, meta: dict[str, Any]) -> bool:
+    if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
+        return True
+    fulfillment = meta.get("fulfillment") if isinstance(meta.get("fulfillment"), dict) else {}
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    if fulfillment_status in {"reversed", "reversal_pending_operator_action"}:
+        return True
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    reconciliation = str(reversal.get("reconciliation_status") or "").strip().lower()
+    return bool(reversal.get("operator_action_required") is True or reconciliation in {
+        "pending",
+        "reversed",
+        "already_reversed",
+        "fallback_missing",
+        "grant_not_found",
+    })
+
+
 def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
     s = SessionLocal()
     try:
@@ -4189,68 +5126,108 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
                 .with_for_update()
                 .first()
             )
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
-        if tg_id is None and ext_order and ext_order.tg_id is not None:
-            tg_id = int(ext_order.tg_id)
+        if ext_order is None:
+            return False, "order_not_found"
+        tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
         if tg_id is None:
             return False, "missing_tg_id"
         ext_meta = _external_order_meta(ext_order) if ext_order else {}
         fulfillment = dict(ext_meta.get("fulfillment") or {})
+        if _external_order_has_reversal_state(ext_order, ext_meta):
+            return False, "order_reversed"
         if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
             return True, "already_applied"
-
-        plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
-            payload, "clientUtm", "utm_term"
-        )
-        if not plan_code and ext_order and ext_order.plan_code:
-            plan_code = str(ext_order.plan_code)
-        plan_code = (plan_code or "1_month").strip().lower()
-        plan_cfg = _resolve_plan_config(s=s, code=plan_code)
-        if not plan_cfg:
-            plan_code = "1_month"
-        days = _rub_plan_days(plan_code)
+        entitlement_snapshot: dict[str, Any] | None = None
+        if _normalize_provider(provider) == "freekassa":
+            entitlement_snapshot, snapshot_reason = _validated_external_order_entitlement_snapshot(ext_order)
+            if entitlement_snapshot is None:
+                return False, snapshot_reason
 
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
         if not user:
             s.rollback()
-            _ensure_user_row_for_login(tg_id=int(tg_id), username=None)
+            _ensure_user_row_for_login(
+                tg_id=int(tg_id),
+                username=None,
+                include_legacy_payment_authority=False,
+            )
+            ext_order = (
+                s.query(ExternalOrder)
+                .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+                .with_for_update()
+                .populate_existing()
+                .one_or_none()
+            )
+            if ext_order is None:
+                return False, "order_not_found"
+            refreshed_tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
+            if refreshed_tg_id != tg_id:
+                return False, "account_conflict"
+            ext_meta = _external_order_meta(ext_order)
+            fulfillment = dict(ext_meta.get("fulfillment") or {})
+            if _external_order_has_reversal_state(ext_order, ext_meta):
+                return False, "order_reversed"
+            if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
+                return True, "already_applied"
             user = s.query(User).filter(User.tg_id == int(tg_id)).first()
             if not user:
                 return False, "user_create_failed"
 
+        plan_code = str(ext_order.plan_code or "").strip().lower()
+        if not plan_code:
+            return False, "unsupported_plan"
+        plan_cfg = _resolve_plan_config(s=s, code=plan_code)
+        if not plan_cfg:
+            return False, "unsupported_plan"
+        days = (
+            int(entitlement_snapshot["duration_days"])
+            if entitlement_snapshot is not None
+            else max(1, int(plan_cfg.get("days") or plan_cfg.get("duration_days") or 30))
+        )
+
         now = _utcnow()
         old_sub = (user.sub_type or "").upper().strip()
-        first_paid_purchase = not bool(getattr(user, "first_purchase_done", False))
         referrer_id = int(getattr(user, "referrer_id", 0) or 0)
+        new_referral_relationship = False
         plan_amount_stars = int(plan_cfg.get("amount_stars") or API_PLAN_PRICES.get(plan_code) or 0)
-        if old_sub == "FREE":
-            start_from = now
-        else:
-            start_from = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = start_from + timedelta(days=days)
-        user.sub_type = "PAID"
-        user.current_plan_code = plan_code
-        user.is_active = True
-        user.first_purchase_done = True
+        ensure_user_account_foundation(s, user, now=now)
+        s.flush()
+        if referrer_id > 0:
+            referrer = s.query(User).filter(User.tg_id == referrer_id).one_or_none()
+            if referrer is not None:
+                ensure_user_account_foundation(s, referrer, now=now)
+                s.flush()
+                existing_relationship = s.query(ReferralRelationship.id).filter_by(
+                    referred_account_id=str(user.account_id)
+                ).first()
+                create_referral_relationship(
+                    s,
+                    referred_account_id=str(user.account_id),
+                    referrer_account_id=str(referrer.account_id),
+                    source="legacy_referrer_projection",
+                    now=now,
+                )
+                new_referral_relationship = existing_relationship is None
+        payment_result = record_successful_payment_grant(
+            s,
+            account_id=str(user.account_id),
+            legacy_tg_id=int(user.tg_id),
+            provider=str(provider),
+            order_id=str(order_id),
+            plan_code=plan_code,
+            duration_days=days,
+            paid_at=now,
+        )
+        first_paid_purchase = bool(payment_result.is_first_payment)
+        if first_paid_purchase and new_referral_relationship and referrer_id > 0:
+            referrer.referral_count = int(referrer.referral_count or 0) + 1
         user.pending_discount_pct = None
         user.pending_discount_code = None
         user.pending_discount_set_at = None
 
-        # Anti-fraud referral flow:
-        # queue inviter reward and release it after the confirmation window + activity signal.
-        if first_paid_purchase and referrer_id > 0:
-            _queue_referral_bonus(
-                s=s,
-                order_id=str(order_id or f"{provider}:{int(tg_id)}:{int(now.timestamp())}"),
-                referrer_tg_id=int(referrer_id),
-                referred_tg_id=int(tg_id),
-                now=now,
-            )
-
         if ext_order:
             ext_order.status = "paid"
             ext_order.paid_at = ext_order.paid_at or now
-            ext_order.tg_id = ext_order.tg_id or int(tg_id)
             ext_order.plan_code = plan_code
             fulfillment.update(
                 {
@@ -4267,9 +5244,12 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             ext_order_id = None
         s.commit()
         s.refresh(user)
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("external order activation failed: order_id=%s err=%s", order_id, exc)
+        logger.error(
+            "external order activation failed code=account_grant_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, "db_error"
     finally:
         s.close()
@@ -4282,17 +5262,51 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
                 ref_tg_id=int(tg_id),
                 pay_attempt_id=ext_order_id,
             )
-        except Exception as exc:
+        except Exception:
             logger.warning(
-                "referral points award failed for provider=%s order_id=%s referrer=%s referred=%s err=%s",
-                provider,
-                order_id,
-                referrer_id,
-                tg_id,
-                exc,
+                "referral points award failed code=referral_award_failed correlation=%s",
+                _payment_order_correlation(provider=provider, order_id=order_id),
             )
 
     return True, "ok"
+
+
+def _payment_fallback_delivery_payload(
+    *,
+    row: ExternalOrder,
+    claim: PaymentEntitlementClaim,
+    card: GiftCard,
+    fulfillment: dict[str, Any],
+    buyer_email: str,
+    plan_label: str,
+) -> dict[str, Any]:
+    delivery_status = str((fulfillment.get("email_delivery") or {}).get("status") or "").strip().lower()
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    if fulfillment_status == "email_sent" or delivery_status in {"sent", "debug_echo"}:
+        return {}
+    return {
+        "buyer_email": buyer_email,
+        "access_key": str(card.code or "").strip().upper(),
+        "order_id": str(row.order_id),
+        "plan_code": str(claim.plan_code),
+        "plan_label": str(plan_label or claim.plan_code),
+        "days": int(claim.duration_days or 0),
+    }
+
+
+def _mark_payment_order_manual_review(
+    *,
+    row: ExternalOrder,
+    meta: dict[str, Any],
+    fulfillment: dict[str, Any],
+    error_code: str,
+) -> None:
+    if str(row.status or "").strip().lower() not in {"refunded", "chargeback"}:
+        row.status = "manual_review"
+    fulfillment["status"] = "manual_review"
+    fulfillment["error_code"] = _safe_payment_processing_error(error_code)
+    meta["fulfillment"] = fulfillment
+    _set_external_order_meta(row, meta)
 
 
 def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
@@ -4308,42 +5322,292 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             return False, "order_not_found", {}
         meta = _external_order_meta(row)
         fulfillment = dict(meta.get("fulfillment") or {})
+        existing_claim = (
+            s.query(PaymentEntitlementClaim)
+            .filter(
+                PaymentEntitlementClaim.provider == str(provider),
+                PaymentEntitlementClaim.order_id == str(order_id),
+            )
+            .one_or_none()
+        )
+        if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
+            if existing_claim is not None and str(existing_claim.status or "").strip().lower() == "reversed":
+                return False, "claim_reversed", {}
+            return False, "order_reversed", {}
         buyer_email = str(
-            fulfillment.get("buyer_email")
-            or meta.get("buyer_email")
-            or _payload_value(payload, "buyer_email", "email", "buyerEmail")
-            or ""
+            existing_claim.buyer_email_norm
+            if existing_claim is not None
+            else (
+                fulfillment.get("buyer_email")
+                or meta.get("buyer_email")
+                or _payload_value(payload, "buyer_email", "email", "buyerEmail")
+                or ""
+            )
         ).strip()
         try:
             buyer_email = validate_email_input(buyer_email)
         except InvalidEmailInputError:
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="missing_buyer_email",
+            )
+            s.commit()
             return False, "missing_buyer_email", {}
 
-        plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
-        plan = _resolve_plan_config(s=s, code=plan_code)
-        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
-        if not normalized_plan:
-            return False, "unsupported_plan", {}
+        if existing_claim is not None:
+            plan_code = str(existing_claim.plan_code or "").strip().lower()
+            duration_days = max(1, int(existing_claim.duration_days or 0))
+            display_plan = _resolve_plan_config(s=s, code=plan_code) or {}
+            plan_label = _normalize_mojibake(str(display_plan.get("label") or plan_code).strip()) or plan_code
+        else:
+            plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
+            normalized_plan = _normalized_plan_payload(
+                _resolve_plan_config(s=s, code=plan_code),
+                fallback_code=plan_code,
+            )
+            if not normalized_plan:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code="unsupported_plan",
+                )
+                s.commit()
+                return False, "unsupported_plan", {}
+            plan_code = str(normalized_plan["code"])
+            duration_days = max(1, int(normalized_plan.get("days") or 30))
+            plan_label = str(normalized_plan.get("label") or plan_code)
+
+        if existing_claim is not None and existing_claim.account_id:
+            fulfilled = mark_paid_and_fulfill_attached_claim(
+                s,
+                provider=provider,
+                order_id=order_id,
+                buyer_email=buyer_email,
+                plan_code=plan_code,
+                duration_days=duration_days,
+                paid_at=row.paid_at or _utcnow(),
+            )
+            if fulfilled.code not in {"fulfilled", "already_fulfilled"}:
+                if fulfilled.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                    _mark_payment_order_manual_review(
+                        row=row,
+                        meta=meta,
+                        fulfillment=fulfillment,
+                        error_code=fulfilled.code,
+                    )
+                s.commit()
+                return False, fulfilled.code, {}
+            now = _utcnow()
+            row.status = "paid"
+            row.paid_at = row.paid_at or fulfilled.claim.paid_at or now
+            fulfillment.update(
+                {
+                    "mode": "account_claim",
+                    "status": "account_extended",
+                    "activated_at": _safe_iso(fulfilled.claim.fulfilled_at or now),
+                }
+            )
+            fulfillment.pop("access_key", None)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            s.commit()
+            return True, fulfilled.code, {}
+
+        claim_result = ensure_pending_claim(
+            s,
+            provider=provider,
+            order_id=order_id,
+            buyer_email=buyer_email,
+            plan_code=plan_code,
+            duration_days=duration_days,
+            now=row.created_at,
+        )
+        if claim_result.code == "claim_definition_conflict":
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code=claim_result.code,
+            )
+            s.commit()
+            return False, "claim_definition_conflict", {}
+        paid_result = mark_payment_entitlement_paid(
+            s,
+            provider=provider,
+            order_id=order_id,
+            paid_at=row.paid_at or _utcnow(),
+        )
+        if paid_result.code in {"claim_reversed", "manual_review"}:
+            if paid_result.code == "manual_review":
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code=paid_result.code,
+                )
+            s.commit()
+            return False, paid_result.code, {}
+        claim = paid_result.claim
+        if claim.account_id:
+            s.commit()
+            return _issue_payment_access_key_for_order(provider=provider, order_id=order_id, payload=payload)
+
+        if claim.fallback_gift_card_id:
+            fallback_result = ensure_fallback_gift_card(
+                s,
+                provider=provider,
+                order_id=order_id,
+                gift_code="unused-existing-fallback",
+                now=claim.paid_at,
+            )
+            if fallback_result.code != "fallback_already_exists":
+                if fallback_result.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                    _mark_payment_order_manual_review(
+                        row=row,
+                        meta=meta,
+                        fulfillment=fulfillment,
+                        error_code=fallback_result.code,
+                    )
+                s.commit()
+                return False, fallback_result.code, {}
+            claim = fallback_result.claim
+            card = (
+                s.query(GiftCard)
+                .filter(GiftCard.id == int(claim.fallback_gift_card_id))
+                .with_for_update()
+                .one_or_none()
+            )
+            if card is None:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code="fallback_missing",
+                )
+                s.commit()
+                return False, "fallback_missing", {}
+            fulfillment.pop("access_key", None)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            row.status = "paid"
+            row.paid_at = row.paid_at or claim.paid_at
+            row.plan_code = str(claim.plan_code)
+            delivery_payload = _payment_fallback_delivery_payload(
+                row=row,
+                claim=claim,
+                card=card,
+                fulfillment=fulfillment,
+                buyer_email=buyer_email,
+                plan_label=plan_label,
+            )
+            if delivery_payload and not delivery_payload.get("access_key"):
+                record_payment_entitlement_claim_error(
+                    s,
+                    provider=provider,
+                    order_id=order_id,
+                    error_code="fallback_missing",
+                    now=_utcnow(),
+                )
+                s.commit()
+                return False, "fallback_missing", {}
+            s.commit()
+            return True, "claim_fallback_already_durable", delivery_payload
 
         existing_key = str(fulfillment.get("access_key") or "").strip().upper()
-        if existing_key:
-            key_code = existing_key
-            reason = "access_key_already_issued"
-        else:
-            key_code = _generate_gift_code_for_admin(s)
-            s.add(GiftCard(code=key_code, card_type=str(normalized_plan["code"]), created_by=0))
-            reason = "access_key_issued"
+        key_code = existing_key or _generate_gift_code_for_admin(s)
+        fallback_result = ensure_fallback_gift_card(
+            s,
+            provider=provider,
+            order_id=order_id,
+            gift_code=key_code,
+            now=claim.paid_at,
+        )
+        if fallback_result.code not in {
+            "fallback_created",
+            "fallback_already_exists",
+            "fallback_linked_existing",
+        }:
+            if fallback_result.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code=fallback_result.code,
+                )
+            s.commit()
+            return False, fallback_result.code, {}
+        claim = fallback_result.claim
+        card = (
+            s.query(GiftCard)
+            .filter(GiftCard.id == int(claim.fallback_gift_card_id or 0))
+            .with_for_update()
+            .one_or_none()
+        )
+        if card is None or int(claim.fallback_gift_card_id or 0) != int(card.id):
+            record_payment_entitlement_claim_error(
+                s,
+                provider=provider,
+                order_id=order_id,
+                error_code="fallback_missing",
+                now=_utcnow(),
+            )
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="fallback_missing",
+            )
+            s.commit()
+            return False, "fallback_missing", {}
+        key_code = str(card.code or "").strip().upper()
+        if not key_code:
+            record_payment_entitlement_claim_error(
+                s,
+                provider=provider,
+                order_id=order_id,
+                error_code="fallback_missing",
+                now=_utcnow(),
+            )
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="fallback_missing",
+            )
+            s.commit()
+            return False, "fallback_missing", {}
+        reason = "access_key_relinked" if existing_key else "access_key_issued"
+
+        prior_delivery_status = str((fulfillment.get("email_delivery") or {}).get("status") or "").strip().lower()
+        already_delivered = bool(
+            existing_key
+            and (
+                str(fulfillment.get("status") or "").strip().lower() == "email_sent"
+                or prior_delivery_status in {"sent", "debug_echo"}
+            )
+        )
+        fulfillment.pop("access_key", None)
+        if already_delivered:
+            row.status = "paid"
+            row.paid_at = row.paid_at or claim.paid_at or _utcnow()
+            row.plan_code = str(claim.plan_code)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            s.commit()
+            return True, reason, {}
 
         now = _utcnow()
         row.status = "paid"
         row.paid_at = row.paid_at or now
-        row.plan_code = str(normalized_plan["code"])
+        row.plan_code = str(claim.plan_code)
         fulfillment.update(
             {
                 "mode": "access_key_email",
                 "status": "email_pending",
                 "buyer_email": buyer_email,
-                "access_key": key_code,
                 "access_key_issued_at": _safe_iso(now),
             }
         )
@@ -4354,47 +5618,149 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             "buyer_email": buyer_email,
             "access_key": key_code,
             "order_id": str(row.order_id),
-            "plan_code": str(normalized_plan["code"]),
-            "plan_label": str(normalized_plan.get("label") or normalized_plan["code"]),
-            "days": int(normalized_plan.get("days") or 0),
+            "plan_code": str(claim.plan_code),
+            "plan_label": plan_label,
+            "days": int(claim.duration_days or 0),
         }
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("payment access key issue failed: provider=%s order_id=%s err=%s", provider, order_id, exc)
+        logger.error(
+            "payment access key issue failed code=access_key_issue_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, "access_key_issue_failed", {}
     finally:
         s.close()
 
 
-def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery: dict[str, Any]) -> None:
+def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery: dict[str, Any]) -> bool:
     s = SessionLocal()
     try:
         row = (
             s.query(ExternalOrder)
             .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .with_for_update()
             .first()
         )
         if not row:
-            return
+            return False
         meta = _external_order_meta(row)
         fulfillment = dict(meta.get("fulfillment") or {})
-        delivery_status = str((delivery or {}).get("status") or "").strip()
+        reversal_status = str(row.status or "").strip().lower() in {"refunded", "chargeback"}
+        prior_delivery = fulfillment.get("email_delivery") if isinstance(fulfillment.get("email_delivery"), dict) else {}
+        prior_status = str(prior_delivery.get("status") or "").strip().lower()
+        if str(fulfillment.get("status") or "").strip().lower() == "email_sent" or prior_status in {"sent", "debug_echo"}:
+            s.commit()
+            return True
+        raw_status = str((delivery or {}).get("status") or "").strip().lower()
+        delivery_status = raw_status if raw_status in {
+            "sent",
+            "debug_echo",
+            "not_configured",
+            "delivery_error",
+            "failed",
+        } else "delivery_error"
+        raw_mode = str((delivery or {}).get("mode") or "").strip().lower()
+        delivery_mode = raw_mode if raw_mode in {"webhook", "not_configured"} else None
+        raw_http_status = _safe_int((delivery or {}).get("http_status"))
+        http_status = raw_http_status if raw_http_status is not None and 100 <= raw_http_status <= 599 else None
+        if delivery_status in {"sent", "debug_echo"}:
+            error_code = None
+        elif delivery_status == "not_configured":
+            error_code = "delivery_not_configured"
+        elif http_status is not None and http_status >= 500:
+            error_code = "delivery_upstream_5xx"
+        elif http_status is not None and http_status >= 400:
+            error_code = "delivery_upstream_4xx"
+        else:
+            error_code = "delivery_not_sent"
         fulfillment["email_delivery"] = {
             "status": delivery_status,
-            "mode": str((delivery or {}).get("mode") or "").strip() or None,
-            "http_status": (delivery or {}).get("http_status"),
-            "detail": (delivery or {}).get("detail"),
+            "mode": delivery_mode,
+            "http_status": http_status,
+            "error_code": error_code,
         }
-        if delivery_status == "sent":
+        if reversal_status:
+            pass
+        elif delivery_status in {"sent", "debug_echo"}:
             fulfillment["status"] = "email_sent"
         elif delivery_status:
             fulfillment["status"] = "email_delivery_error"
         meta["fulfillment"] = fulfillment
         _set_external_order_meta(row, meta)
         s.commit()
+        return True
     except Exception:
         s.rollback()
-        logger.exception("failed to record access key email delivery provider=%s order_id=%s", provider, order_id)
+        logger.error(
+            "access key delivery evidence failed code=delivery_evidence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False
+    finally:
+        s.close()
+
+
+def _finalize_paid_event_after_delivery(
+    *,
+    provider: str,
+    order_id: str,
+    event_type: str,
+    external_id: str,
+    delivery_succeeded: bool,
+) -> tuple[bool, str]:
+    s = SessionLocal()
+    try:
+        event = (
+            s.query(ExternalPaymentEvent)
+            .filter(
+                ExternalPaymentEvent.provider == str(provider),
+                ExternalPaymentEvent.event_type == str(event_type),
+                ExternalPaymentEvent.external_id == str(external_id),
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if event is None:
+            return False, "delivery_evidence_failed"
+        order = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .with_for_update()
+            .populate_existing()
+            .one_or_none()
+        )
+        if order is None:
+            return False, "delivery_evidence_failed"
+
+        terminal_reason = ""
+        if str(order.status or "").strip().lower() in {"refunded", "chargeback"}:
+            terminal_reason = "claim_reversed"
+            event.processed_ok = True
+        elif delivery_succeeded:
+            event.processed_ok = True
+        else:
+            terminal_reason = "access_key_email_delivery_error"
+            event.processed_ok = False
+
+        if terminal_reason:
+            try:
+                stored = json.loads(str(event.payload_json or "{}"))
+                if not isinstance(stored, dict):
+                    stored = {}
+            except Exception:
+                stored = {}
+            stored["_pokrov_processing_error"] = _safe_payment_processing_error(terminal_reason)
+            event.payload_json = _serialize_payment_event_payload(stored)
+        s.commit()
+        return True, terminal_reason
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment delivery completion failed code=callback_completion_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False, "delivery_evidence_failed"
     finally:
         s.close()
 
@@ -4406,10 +5772,12 @@ def _record_payment_reversal_operator_action(
     event_type: str,
     payload: dict[str, Any],
     reason: str = "provider_reversal",
-) -> None:
+) -> tuple[bool, str]:
     normalized_provider = _normalize_provider(provider)
     normalized_event = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal"
     tg_id: int | None = None
+    reconciled = False
+    result_code = "order_not_found"
     s = SessionLocal()
     try:
         row = (
@@ -4419,17 +5787,62 @@ def _record_payment_reversal_operator_action(
             .first()
         )
         if row:
+            if normalized_event == "chargeback":
+                row.status = "chargeback"
+            elif str(row.status or "").strip().lower() != "chargeback":
+                row.status = "refunded"
             tg_id = int(row.tg_id) if row.tg_id is not None else None
+            reversal_reason = str(reason or normalized_event or "provider_reversal")[:64]
+            try:
+                reversal = reverse_payment_entitlement_claim(
+                    s,
+                    provider=normalized_provider,
+                    order_id=str(order_id),
+                    reason=reversal_reason,
+                    reversed_at=_utcnow(),
+                )
+                reconciled = reversal.code in {"reversed", "already_reversed"}
+                result_code = reversal.code
+            except PaymentEntitlementNotFoundError:
+                grant = (
+                    s.query(EntitlementGrant)
+                    .filter(
+                        EntitlementGrant.provider == normalized_provider,
+                        EntitlementGrant.external_order_id == str(order_id),
+                        EntitlementGrant.source == "provider_payment",
+                    )
+                    .with_for_update()
+                    .one_or_none()
+                )
+                if grant is not None:
+                    if grant.reversed_at is None:
+                        reversed_at = _utcnow()
+                        grant.status = "reversed"
+                        grant.reversed_at = reversed_at
+                        grant.reversal_reason = reversal_reason
+                        grant.updated_at = reversed_at
+                        rebuild_account_entitlement_projection(
+                            s,
+                            account_id=str(grant.account_id),
+                            now=reversed_at,
+                        )
+                        result_code = "reversed"
+                    else:
+                        result_code = "already_reversed"
+                    reconciled = True
+                else:
+                    result_code = "grant_not_found"
             meta = _external_order_meta(row)
             fulfillment = dict(meta.get("fulfillment") or {})
-            fulfillment["status"] = "reversal_pending_operator_action"
+            fulfillment["status"] = "reversed" if reconciled else "reversal_pending_operator_action"
             meta["fulfillment"] = fulfillment
             meta["reversal"] = {
                 "event_type": normalized_event,
                 "provider": normalized_provider,
                 "order_id": str(order_id or ""),
                 "reason": str(reason or "provider_reversal")[:120],
-                "operator_action_required": True,
+                "operator_action_required": not reconciled,
+                "reconciliation_status": result_code,
                 "recorded_at": _safe_iso(_utcnow()),
                 "external_id": str(_callback_ids(normalized_provider, payload, b"")[1] or "")[:160],
             }
@@ -4439,23 +5852,33 @@ def _record_payment_reversal_operator_action(
             s.rollback()
     except Exception:
         s.rollback()
-        logger.exception("failed to mark payment reversal operator action provider=%s order_id=%s", provider, order_id)
+        result_code = "reversal_persistence_failed"
+        logger.error(
+            "payment reversal persistence failed code=reversal_persistence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
     finally:
         s.close()
     _record_security_event(
-        "payment_reversal_pending",
+        "payment_reversal_reconciled" if reconciled else "payment_reversal_pending",
         scope="payments",
         subject=f"{normalized_provider}:{str(order_id or '')[:96]}",
         reason=normalized_event,
-        meta={"operator_action_required": True},
+        meta={"operator_action_required": not reconciled, "reconciliation_status": result_code},
     )
     if tg_id:
         track_event(
             tg_id=int(tg_id),
             event_name="payment_reversal_pending",
             source="payment_callback",
-            meta={"provider": normalized_provider, "order_id": str(order_id or "")[:96], "event_type": normalized_event},
+            meta={
+                "provider": normalized_provider,
+                "order_id": str(order_id or "")[:96],
+                "event_type": normalized_event,
+                "reconciliation_status": result_code,
+            },
         )
+    return reconciled, result_code
 
 
 def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
@@ -4466,9 +5889,9 @@ def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[
             .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
             .first()
         ) if order_id else None
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
-        if tg_id is None and ext_order and ext_order.tg_id is not None:
-            tg_id = int(ext_order.tg_id)
+        if ext_order is None:
+            return False, "order_not_found", {}
+        tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
     finally:
         s.close()
 
@@ -4515,7 +5938,18 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
             payload = dict(payload)
             payload["_pokrov_validation_error"] = validation_reason
             callback_status = "manual_review"
-    processed_ok = bool(signature_ok and callback_status not in {"manual_review", "pending_verification"})
+    requires_durable_completion = bool(
+        signature_ok
+        and (
+            (et == "result" and callback_status == "paid")
+            or et in {"refund", "chargeback"}
+        )
+    )
+    processed_ok = bool(
+        signature_ok
+        and callback_status != "pending_verification"
+        and not requires_durable_completion
+    )
     duplicate, persist_ok = _record_external_payment_event(
         provider=p,
         event_type=et,
@@ -4526,6 +5960,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         processed_ok=processed_ok,
         status=callback_status,
     )
+    if not persist_ok:
+        raise HTTPException(status_code=503, detail="Payment callback persistence is retryable")
 
     if not signature_ok:
         _record_security_event(
@@ -4548,34 +5984,131 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         if not PAYMENT_CALLBACK_TOLERANT_MODE:
             raise HTTPException(status_code=400, detail=f"Invalid signature: {signature_reason}")
 
-    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
-        _record_payment_reversal_operator_action(
-            provider=p,
-            order_id=order_id,
-            event_type=et,
-            payload=payload,
-            reason=callback_status,
-        )
-
     activated = False
     activation_reason = ""
     sync_ok = None
+    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
+        try:
+            reversed_ok, reversal_code = _record_payment_reversal_operator_action(
+                provider=p,
+                order_id=order_id,
+                event_type=et,
+                payload=payload,
+                reason=callback_status,
+            )
+        except Exception:
+            logger.error(
+                "payment reversal failed code=reversal_persistence_failed correlation=%s",
+                _payment_order_correlation(provider=p, order_id=order_id),
+            )
+            reversed_ok, reversal_code = False, "reversal_persistence_failed"
+        if not reversed_ok:
+            if reversal_code in _TERMINAL_PAYMENT_REVERSAL_CODES:
+                if not _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=True,
+                    error_code=reversal_code,
+                ):
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                activation_reason = reversal_code
+            else:
+                _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=False,
+                    error_code=reversal_code,
+                )
+                raise HTTPException(status_code=503, detail="Payment reversal is retryable")
+        elif not _complete_external_payment_event(
+            provider=p,
+            event_type=et,
+            external_id=external_id,
+            processed_ok=True,
+        ):
+            raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+
     if (not duplicate) and signature_ok and et == "result" and callback_status == "paid":
         activated, activation_reason, fulfillment = _fulfill_external_paid_order(provider=p, order_id=order_id, payload=payload)
-        if activated:
-            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
-                delivery = await deliver_payment_access_key(
-                    email=str(fulfillment["buyer_email"]),
-                    access_key=str(fulfillment["access_key"]),
-                    order_id=str(fulfillment.get("order_id") or order_id),
-                    plan_code=str(fulfillment.get("plan_code") or ""),
-                    plan_label=str(fulfillment.get("plan_label") or ""),
-                    days=int(fulfillment.get("days") or 0),
+        if not activated:
+            safe_reason = _safe_payment_processing_error(activation_reason or "durable_fulfillment_failed")
+            if safe_reason in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                if not _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=True,
+                    error_code=safe_reason,
+                ):
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                activation_reason = safe_reason
+            else:
+                _record_payment_entitlement_retry_error(
+                    provider=p,
+                    order_id=order_id,
+                    error_code=safe_reason,
                 )
-                _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
-                if str(delivery.get("status") or "") != "sent":
-                    activation_reason = "access_key_email_delivery_error"
-            tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id")) or fulfillment.get("tg_id")
+                _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=False,
+                    error_code=safe_reason,
+                )
+                raise HTTPException(status_code=503, detail="Payment fulfillment is retryable")
+        else:
+            delivery_finalized = False
+            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
+                try:
+                    delivery = await deliver_payment_access_key(
+                        email=str(fulfillment["buyer_email"]),
+                        access_key=str(fulfillment["access_key"]),
+                        order_id=str(fulfillment.get("order_id") or order_id),
+                        plan_code=str(fulfillment.get("plan_code") or ""),
+                        plan_label=str(fulfillment.get("plan_label") or ""),
+                        days=int(fulfillment.get("days") or 0),
+                    )
+                except Exception:
+                    delivery = {"status": "delivery_error", "mode": "webhook"}
+                evidence_ok = _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
+                if not evidence_ok:
+                    _complete_external_payment_event(
+                        provider=p,
+                        event_type=et,
+                        external_id=external_id,
+                        processed_ok=False,
+                        error_code="delivery_evidence_failed",
+                    )
+                    raise HTTPException(status_code=503, detail="Payment delivery evidence is retryable")
+                delivery_ok = str(delivery.get("status") or "").strip().lower() in {"sent", "debug_echo"}
+                completion_ok, completion_reason = _finalize_paid_event_after_delivery(
+                    provider=p,
+                    order_id=order_id,
+                    event_type=et,
+                    external_id=external_id,
+                    delivery_succeeded=delivery_ok,
+                )
+                if not completion_ok:
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                delivery_finalized = True
+                if completion_reason == "claim_reversed":
+                    activated = False
+                    activation_reason = completion_reason
+                    fulfillment = {}
+                elif completion_reason:
+                    raise HTTPException(status_code=503, detail="Payment access delivery is retryable")
+            if (not delivery_finalized) and not _complete_external_payment_event(
+                provider=p,
+                event_type=et,
+                external_id=external_id,
+                processed_ok=True,
+            ):
+                raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+            if activated and fulfillment.get("access_key") and fulfillment.get("buyer_email"):
+                activation_reason = activation_reason or "access_key_email_sent"
+            tg_id = fulfillment.get("tg_id")
             if tg_id is not None:
                 try:
                     sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
@@ -4588,11 +6121,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
                     )
                 except Exception:
                     logger.warning(
-                        "telegram paid access notification failed: provider=%s order_id=%s tg_id=%s",
-                        p,
-                        order_id,
-                        tg_id,
-                        exc_info=True,
+                        "telegram paid access notification failed code=telegram_notification_failed correlation=%s",
+                        _payment_order_correlation(provider=p, order_id=order_id),
                     )
     elif (not duplicate) and signature_ok and et == "result":
         activation_reason = validation_reason or callback_status
@@ -4825,7 +6355,7 @@ async def _sync_user_after_paid_bonus(user: User) -> bool:
             free_codes = [
                 (getattr(n, "code", "") or "").strip()
                 for n in nodes
-                if "free" in (getattr(n, "code", "") or "").lower()
+                if node_is_free(n)
             ]
             if free_codes:
                 await panel.set_existing_user_enabled_on_nodes(
@@ -4862,16 +6392,85 @@ def _ticket_status_title(status: str) -> str:
     return st or "Неизвестно"
 
 
-def _ticket_message_row(msg) -> dict[str, Any]:
-    return {
+def _ticket_message_row(msg, *, include_media: bool = True) -> dict[str, Any]:
+    row = {
         "id": msg.id,
         "ticket_id": msg.ticket_id,
         "sender_tg_id": msg.sender_tg_id,
         "sender_role": msg.sender_role,
         "body": msg.body,
-        "media_type": getattr(msg, "media_type", None),
-        "media_file_id": getattr(msg, "media_file_id", None),
-        "media_payload": getattr(msg, "media_payload", None),
+        "created_at": _safe_iso(msg.created_at),
+    }
+    if include_media:
+        row.update(
+            {
+                "media_type": getattr(msg, "media_type", None),
+                "media_file_id": getattr(msg, "media_file_id", None),
+                "media_payload": getattr(msg, "media_payload", None),
+            }
+        )
+    return row
+
+
+_TICKET_ATTACHMENT_URL_RE = re.compile(
+    r"^/api/tickets/attachments/\d{8}-[A-Za-z0-9]{8,64}\.(?:png|jpg|jpeg|webp|pdf|txt)$"
+)
+
+
+def _safe_ticket_attachment(msg) -> dict[str, Any] | None:
+    media_type = str(getattr(msg, "media_type", "") or "").strip().lower()[:32]
+    media_file_id = str(getattr(msg, "media_file_id", "") or "").strip()
+    payload = _json_obj(getattr(msg, "media_payload", None))
+    if not (media_type or media_file_id or payload):
+        return None
+
+    raw_name = str(payload.get("name") or payload.get("file_name") or "").strip()
+    name = _sanitize_ticket_upload_name(raw_name) if raw_name else None
+    raw_content_type = str(
+        payload.get("content_type") or payload.get("mime_type") or ""
+    ).strip().lower()[:80]
+    content_type = (
+        raw_content_type
+        if re.fullmatch(
+            r"[a-z0-9][a-z0-9.+-]*/[a-z0-9][a-z0-9.+-]*",
+            raw_content_type,
+        )
+        else None
+    )
+    try:
+        parsed_size = int(payload.get("size") or payload.get("file_size") or 0)
+        size_bytes = parsed_size if 0 < parsed_size <= 10 * 1024 * 1024 * 1024 else 0
+    except (TypeError, ValueError):
+        size_bytes = 0
+    raw_url = str(payload.get("url") or "").strip()
+    download_url = raw_url if _TICKET_ATTACHMENT_URL_RE.fullmatch(raw_url) else None
+    attachment_kind = str(payload.get("kind") or media_type).strip().lower()
+    safe_type = {
+        "photo": "image",
+        "image": "image",
+        "document": "file",
+        "file": "file",
+        "video": "video",
+        "audio": "audio",
+        "voice": "audio",
+    }.get(attachment_kind, "attachment")
+    return {
+        "type": safe_type,
+        "name": name,
+        "content_type": content_type,
+        "size_bytes": size_bytes or None,
+        "download_url": download_url,
+    }
+
+
+def _ticket_message_detail_row(msg) -> dict[str, Any]:
+    return {
+        "id": msg.id,
+        "ticket_id": msg.ticket_id,
+        "sender_tg_id": msg.sender_tg_id,
+        "sender_role": msg.sender_role,
+        "body": str(msg.body or "")[:2000],
+        "attachment": _safe_ticket_attachment(msg),
         "created_at": _safe_iso(msg.created_at),
     }
 
@@ -4898,8 +6497,41 @@ def _ticket_unread_for_user(messages: list | None) -> int:
     return unread
 
 
-def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
+def _ticket_summary_row(ticket, messages: list | None = None) -> dict[str, Any]:
     rows = messages if messages is not None else []
+    last_message = rows[-1] if rows else None
+    last_message_preview = (str(getattr(last_message, "body", "") or "").strip()[:200] if last_message else "")
+    has_attachment = bool(last_message and _safe_ticket_attachment(last_message))
+    if not last_message_preview and has_attachment:
+        last_message_preview = "Вложение"
+    return {
+        "id": ticket.id,
+        "user_tg_id": ticket.user_tg_id,
+        "status": ticket.status,
+        "status_title": _ticket_status_title(ticket.status),
+        "subject": ticket.subject,
+        "created_at": _safe_iso(ticket.created_at),
+        "updated_at": _safe_iso(ticket.updated_at),
+        "closed_at": _safe_iso(ticket.closed_at),
+        "last_message_preview": last_message_preview,
+        "has_attachment": has_attachment,
+        "operatorPresence": _ticket_operator_presence(ticket),
+        "operatorTyping": False,
+        "unreadForUser": _ticket_unread_for_user(rows),
+        "slaHint": None if str(ticket.status or "").strip().lower() == STATUS_CLOSED else "support_queue",
+    }
+
+
+def _ticket_detail_row(ticket, messages: list | None = None) -> dict[str, Any]:
+    rows = list(messages or [])
+    return {
+        **_ticket_summary_row(ticket, rows),
+        "messages": [_ticket_message_detail_row(message) for message in rows],
+    }
+
+
+def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = True) -> dict[str, Any]:
+    rows = list(messages or [])
     last_message = rows[-1] if rows else None
     return {
         "id": ticket.id,
@@ -4911,7 +6543,7 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
-        "messages": [_ticket_message_row(m) for m in rows],
+        "messages": [_ticket_message_row(message, include_media=include_media) for message in rows],
         "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
         "operatorPresence": _ticket_operator_presence(ticket),
         "operatorTyping": False,
@@ -4920,14 +6552,14 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
     }
 
 
-def _load_ticket_row(ticket_id: int, *, message_limit: int = 100) -> dict[str, Any]:
+def _load_ticket_row(ticket_id: int, *, message_limit: int = 100, include_media: bool = True) -> dict[str, Any]:
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, int(ticket_id))
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
         msgs = list_ticket_messages(s, ticket.id, limit=max(1, min(int(message_limit), 100)))
-        return _ticket_row(ticket, msgs)
+        return _ticket_row(ticket, msgs, include_media=include_media)
     finally:
         s.close()
 
@@ -4975,24 +6607,48 @@ async def _maybe_append_support_ai_reply(
         )
         s.commit()
         return True
-    except Exception as exc:
-        s.rollback()
-        logger.warning("support AI ticket append failed ticket=%s err=%s", ticket_id, exc)
+    except Exception:
+        try:
+            s.rollback()
+        except Exception:
+            pass
+        logger.warning("support AI ticket append failed code=support_reply_persist_error")
         return False
     finally:
-        s.close()
+        try:
+            s.close()
+        except Exception:
+            logger.warning("support AI ticket session cleanup failed code=support_reply_cleanup_error")
+
+
+def _add_admin_audit(
+    session,
+    actor_tg_id: int,
+    action: str,
+    target_tg_id: int | None = None,
+    meta: dict[str, Any] | None = None,
+) -> AdminAudit:
+    row = AdminAudit(
+        actor_tg_id=int(actor_tg_id),
+        action=(action or "").strip()[:64],
+        target_tg_id=int(target_tg_id) if target_tg_id is not None else None,
+        meta=json.dumps(meta or {}, ensure_ascii=False, separators=(",", ":"))[:2000],
+    )
+    session.add(row)
+    session.flush()
+    return row
 
 
 def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = None, meta: dict[str, Any] | None = None) -> None:
     s = SessionLocal()
     try:
-        row = AdminAudit(
-            actor_tg_id=int(actor_tg_id),
-            action=(action or "").strip()[:64],
-            target_tg_id=int(target_tg_id) if target_tg_id is not None else None,
-            meta=json.dumps(meta or {}, ensure_ascii=False, separators=(",", ":"))[:2000],
+        _add_admin_audit(
+            s,
+            actor_tg_id=actor_tg_id,
+            action=action,
+            target_tg_id=target_tg_id,
+            meta=meta,
         )
-        s.add(row)
         s.commit()
     except Exception:
         s.rollback()
@@ -5028,6 +6684,480 @@ async def _read_limited_request_body(request: Request, *, max_bytes: int, scope:
     return b"".join(chunks)
 
 
+def _support_upload_reject_reason(exc: HTTPException) -> str:
+    detail = str(exc.detail or "").strip().lower()
+    if "body is too large" in detail:
+        return "body_too_large"
+    if "pending attachment byte quota" in detail:
+        return "pending_bytes_quota"
+    if "pending attachment quota" in detail:
+        return "pending_count_quota"
+    if "unsupported attachment type" in detail:
+        return "unsupported_type"
+    if "attachment is empty" in detail:
+        return "empty_attachment"
+    if "attachment is too large" in detail:
+        return "attachment_too_large"
+    return f"http_{int(exc.status_code)}"
+_RU_MANIFEST_PATH = "/api/internal/probes/ru-origin/manifest"
+_RU_RUNS_PATH = "/api/internal/probes/ru-origin/runs"
+_RU_HEARTBEAT_PATH = "/api/internal/probes/ru-origin/heartbeat"
+_RELEASE_CANDIDATES_PATH = "/api/internal/releases/candidates"
+_RU_RUN_MAX_BODY_BYTES = 512 * 1024
+_RU_HEARTBEAT_MAX_BODY_BYTES = 64 * 1024
+_RELEASE_EVIDENCE_MAX_BODY_BYTES = 256 * 1024
+_RU_CORRELATION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+class _RuProbeHttpError(RuntimeError):
+    def __init__(self, status_code: int, code: str) -> None:
+        self.status_code = int(status_code)
+        self.code = str(code)
+        super().__init__(self.code)
+
+
+def _ru_probe_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _ru_probe_correlation_id(request: Request) -> str:
+    supplied = str(request.headers.get("x-correlation-id") or "")
+    if _RU_CORRELATION_RE.fullmatch(supplied) is not None:
+        return supplied
+    return uuid.uuid4().hex
+
+
+def _ru_probe_headers(request: Request) -> dict[str, str]:
+    required = {
+        "x-internal-key-id",
+        "x-internal-timestamp",
+        "x-internal-nonce",
+        "x-internal-signature",
+    }
+    headers: dict[str, str] = {}
+    for raw_name, raw_value in request.scope.get("headers", []):
+        name = raw_name.decode("latin-1").lower()
+        if name not in required:
+            continue
+        if name in headers:
+            raise InternalAuthError(401, "malformed_auth_header")
+        headers[name] = raw_value.decode("latin-1")
+    return headers
+
+
+def _require_exact_ru_probe_route(
+    request: Request,
+    expected_path: str,
+) -> None:
+    expected_raw_path = expected_path.encode("ascii")
+    if (
+        request.scope.get("path") != expected_path
+        or request.scope.get("raw_path") != expected_raw_path
+        or request.scope.get("query_string", b"") != b""
+    ):
+        raise InternalAuthError(400, "invalid_signed_path")
+
+
+def _ru_probe_unique_json_object(
+    pairs: list[tuple[str, object]],
+) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate JSON member")
+        result[name] = value
+    return result
+
+
+def _ru_probe_reject_json_constant(_value: str) -> object:
+    raise ValueError("non-finite JSON number")
+
+
+def _ru_probe_json(raw_body: bytes) -> object:
+    if not raw_body:
+        raise _RuProbeHttpError(422, "invalid_payload")
+    try:
+        return json.loads(
+            raw_body.decode("utf-8"),
+            object_pairs_hook=_ru_probe_unique_json_object,
+            parse_constant=_ru_probe_reject_json_constant,
+        )
+    except (UnicodeError, ValueError, RecursionError):
+        raise _RuProbeHttpError(422, "invalid_payload") from None
+
+
+def _ru_probe_error_response(
+    *,
+    status_code: int,
+    code: str,
+    correlation_id: str,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=int(status_code),
+        content={
+            "code": str(code)[:64],
+            "correlation_id": correlation_id,
+        },
+    )
+
+
+def _ru_probe_auth_error(error: InternalAuthError) -> tuple[int, str]:
+    if error.status_code == 409 and error.code == "replayed_nonce":
+        return 409, "replayed_nonce"
+    if error.status_code == 413:
+        return 413, "request_too_large"
+    if error.status_code == 403:
+        return 403, "key_scope_forbidden"
+    if error.status_code == 401:
+        return 401, "key_disabled"
+    if error.status_code == 400:
+        return 400, "invalid_request"
+    return 500, "temporary"
+
+
+def _ru_probe_http_exception(error: HTTPException) -> tuple[int, str]:
+    if int(error.status_code) == 413:
+        return 413, "request_too_large"
+    if 400 <= int(error.status_code) < 500:
+        return 400, "invalid_request"
+    return 500, "temporary"
+
+
+def _ru_probe_contract_error(error: RuProbeContractError) -> tuple[int, str]:
+    if error.code == "unsupported_schema_version":
+        return 422, "unsupported_schema"
+    return 422, "invalid_payload"
+
+
+def _ru_probe_response_for_exception(
+    error: Exception,
+    *,
+    correlation_id: str,
+) -> JSONResponse:
+    if isinstance(error, _RuProbeHttpError):
+        return _ru_probe_error_response(
+            status_code=error.status_code,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    if isinstance(error, InternalAuthError):
+        status_code, code = _ru_probe_auth_error(error)
+    elif isinstance(error, HTTPException):
+        status_code, code = _ru_probe_http_exception(error)
+    elif isinstance(error, RuProbeContractError):
+        status_code, code = _ru_probe_contract_error(error)
+    elif isinstance(error, RuProbePayloadConflict):
+        status_code, code = 409, "payload_conflict"
+    elif isinstance(error, RuProbeConfigurationError):
+        status_code, code = 500, "temporary"
+    else:
+        status_code, code = 500, "temporary"
+    return _ru_probe_error_response(
+        status_code=status_code,
+        code=code,
+        correlation_id=correlation_id,
+    )
+
+
+def _authenticate_ru_probe_request(
+    session,
+    request: Request,
+    *,
+    raw_body: bytes,
+    required_scope: str,
+    expected_path: str,
+    now: datetime,
+):
+    return authenticate_internal_request(
+        session,
+        load_internal_service_key_registry(),
+        method=request.method,
+        path=expected_path,
+        raw_body=raw_body,
+        headers=_ru_probe_headers(request),
+        required_scope=required_scope,
+        required_origin="ru",
+        now=now,
+    )
+
+
+async def _reject_ru_probe_route_alias(request: Request) -> JSONResponse:
+    return _ru_probe_error_response(
+        status_code=400,
+        code="invalid_request",
+        correlation_id=_ru_probe_correlation_id(request),
+    )
+
+
+app.add_api_route(
+    f"{_RU_MANIFEST_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["GET"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    f"{_RU_RUNS_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+app.add_api_route(
+    f"{_RU_HEARTBEAT_PATH}/",
+    _reject_ru_probe_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+
+
+async def _reject_release_evidence_route_alias(request: Request) -> JSONResponse:
+    return _ru_probe_error_response(
+        status_code=400,
+        code="invalid_request",
+        correlation_id=_ru_probe_correlation_id(request),
+    )
+
+
+app.add_api_route(
+    f"{_RELEASE_CANDIDATES_PATH}/",
+    _reject_release_evidence_route_alias,
+    methods=["POST"],
+    include_in_schema=False,
+)
+
+
+@app.get(_RU_MANIFEST_PATH)
+async def internal_ru_probe_manifest(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_MANIFEST_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=0,
+            scope="RU probe manifest",
+        )
+        now = _ru_probe_now()
+        _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:manifest",
+            expected_path=_RU_MANIFEST_PATH,
+            now=now,
+        )
+        manifest = build_ru_manifest(session, now=now)
+        session.commit()
+        return JSONResponse(status_code=200, content=manifest)
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+@app.post(_RU_RUNS_PATH)
+async def internal_ru_probe_run(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_RUNS_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RU_RUN_MAX_BODY_BYTES,
+            scope="RU probe run",
+        )
+        now = _ru_probe_now()
+        authenticated = _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:ingest",
+            expected_path=_RU_RUNS_PATH,
+            now=now,
+        )
+        payload = _ru_probe_json(raw_body)
+        validated = validate_run_payload(payload)
+        if authenticated.subject != validated["probe_host"]["id"]:
+            raise _RuProbeHttpError(403, "key_scope_forbidden")
+        evaluated = evaluate_ru_run(session, validated, now=now)
+        stored = store_evaluated_ru_run(
+            session,
+            evaluated,
+            artifact_sha256=hashlib.sha256(raw_body).hexdigest(),
+            ingest_key_id=authenticated.key_id,
+            received_at=now,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created",
+                "run_db_id": stored.run_db_id,
+                "run_id": stored.run_id,
+                "created": stored.created,
+                "current_eligible": stored.current_eligible,
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+@app.post(_RU_HEARTBEAT_PATH)
+async def internal_ru_probe_heartbeat(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RU_HEARTBEAT_PATH)
+    except Exception as error:
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RU_HEARTBEAT_MAX_BODY_BYTES,
+            scope="RU probe heartbeat",
+        )
+        now = _ru_probe_now()
+        authenticated = _authenticate_ru_probe_request(
+            session,
+            request,
+            raw_body=raw_body,
+            required_scope="ru_probe:heartbeat",
+            expected_path=_RU_HEARTBEAT_PATH,
+            now=now,
+        )
+        heartbeat = validate_ru_heartbeat(_ru_probe_json(raw_body), now=now)
+        if authenticated.subject != heartbeat.probe_host_id:
+            raise _RuProbeHttpError(403, "key_scope_forbidden")
+        stored = store_ru_heartbeat(
+            session,
+            heartbeat,
+            received_at=now,
+            ingest_key_id=authenticated.key_id,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created",
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _ru_probe_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
+def _release_evidence_response_for_exception(
+    error: Exception,
+    *,
+    correlation_id: str,
+) -> JSONResponse:
+    if isinstance(error, ReleaseEvidenceConflict):
+        return _ru_probe_error_response(
+            status_code=409,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    if isinstance(error, ReleaseEvidenceValidationError):
+        return _ru_probe_error_response(
+            status_code=422,
+            code=error.code,
+            correlation_id=correlation_id,
+        )
+    return _ru_probe_response_for_exception(
+        error,
+        correlation_id=correlation_id,
+    )
+
+
+@app.post(_RELEASE_CANDIDATES_PATH)
+async def internal_release_candidate_import(request: Request):
+    correlation_id = _ru_probe_correlation_id(request)
+    try:
+        _require_exact_ru_probe_route(request, _RELEASE_CANDIDATES_PATH)
+    except Exception as error:
+        return _release_evidence_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    session = SessionLocal()
+    try:
+        raw_body = await _read_limited_request_body(
+            request,
+            max_bytes=_RELEASE_EVIDENCE_MAX_BODY_BYTES,
+            scope="Release evidence",
+        )
+        now = _ru_probe_now()
+        authenticated = authenticate_internal_request(
+            session,
+            load_internal_service_key_registry(),
+            method=request.method,
+            path=_RELEASE_CANDIDATES_PATH,
+            raw_body=raw_body,
+            headers=_ru_probe_headers(request),
+            required_scope="release:evidence",
+            required_origin="release",
+            now=now,
+        )
+        payload = _ru_probe_json(raw_body)
+        stored = import_release_evidence(
+            session,
+            payload,
+            ingest_key_id=authenticated.key_id,
+            imported_at=now,
+        )
+        session.commit()
+        return JSONResponse(
+            status_code=201 if stored.created else 200,
+            content={
+                "code": "created" if stored.created else "already_imported",
+                "candidate_id": stored.candidate_id,
+                "created": stored.created,
+                "candidate_created": stored.candidate_created,
+                "evidence_created": stored.evidence_created,
+                "correlation_id": correlation_id,
+            },
+        )
+    except Exception as error:
+        session.rollback()
+        return _release_evidence_response_for_exception(
+            error,
+            correlation_id=correlation_id,
+        )
+    finally:
+        session.close()
+
+
 def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: bytes) -> tuple[str, str, str]:
     declared = str(content_type or "").split(";", 1)[0].strip().lower()
     suffix = Path(filename).suffix.lower().strip()
@@ -5051,15 +7181,84 @@ def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: 
     raise HTTPException(status_code=400, detail="Unsupported attachment type")
 
 
-def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_type: str | None, raw_bytes: bytes) -> dict[str, Any]:
+_SUPPORT_UPLOAD_OWNER_LOCKS = tuple(threading.Lock() for _ in range(256))
+
+
+def _support_upload_owner_key(*, owner_tg_id: int, owner_account_id: str | None) -> str:
+    canonical_owner = str(owner_account_id or "").strip()
+    return f"account:{canonical_owner}" if canonical_owner else f"tg:{int(owner_tg_id)}"
+
+
+def _support_upload_owner_lock(owner_key: str) -> threading.Lock:
+    digest = hashlib.sha256(str(owner_key).encode("utf-8")).digest()
+    return _SUPPORT_UPLOAD_OWNER_LOCKS[int.from_bytes(digest[:2], "big") % len(_SUPPORT_UPLOAD_OWNER_LOCKS)]
+
+
+def _support_upload_advisory_lock_key(owner_key: str) -> int:
+    return int.from_bytes(hashlib.sha256(str(owner_key).encode("utf-8")).digest()[:8], "big", signed=True)
+
+
+def _lock_support_upload_owner_in_db(session, owner_key: str) -> None:
+    if session.bind is None or session.bind.dialect.name != "postgresql":
+        return
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_key)"),
+        {"lock_key": _support_upload_advisory_lock_key(owner_key)},
+    )
+
+
+def _fsync_parent_directory(path: Path) -> None:
+    if os.name != "posix":
+        return
+    descriptor = os.open(str(path.parent), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _store_support_upload(
+    *,
+    owner_tg_id: int,
+    owner_account_id: str | None = None,
+    filename: str | None,
+    content_type: str | None,
+    raw_bytes: bytes,
+) -> dict[str, Any]:
+    owner_key = _support_upload_owner_key(
+        owner_tg_id=owner_tg_id,
+        owner_account_id=owner_account_id,
+    )
+    with _support_upload_owner_lock(owner_key):
+        return _store_support_upload_locked(
+            owner_tg_id=owner_tg_id,
+            owner_account_id=owner_account_id,
+            filename=filename,
+            content_type=content_type,
+            raw_bytes=raw_bytes,
+            owner_key=owner_key,
+        )
+
+
+def _store_support_upload_locked(
+    *,
+    owner_tg_id: int,
+    owner_account_id: str | None,
+    filename: str | None,
+    content_type: str | None,
+    raw_bytes: bytes,
+    owner_key: str,
+) -> dict[str, Any]:
     original_name = _sanitize_ticket_upload_name(filename)
     content_type, media_type, suffix = _detect_support_upload_type(
         filename=original_name,
         content_type=str(content_type or ""),
         raw_bytes=raw_bytes,
     )
-    stored_name = f"{_utcnow().strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
+    now = _utcnow()
+    stored_name = f"{now.strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
     stored_path = SUPPORT_UPLOAD_DIR / stored_name
+    temp_path = SUPPORT_UPLOAD_DIR / f".{stored_name}.{secrets.token_hex(8)}.tmp"
 
     total_size = len(raw_bytes or b"")
     if total_size <= 0:
@@ -5067,30 +7266,109 @@ def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_typ
     if total_size > SUPPORT_UPLOAD_MAX_BYTES:
         raise HTTPException(status_code=413, detail="Attachment is too large")
 
+    s = SessionLocal()
     try:
-        stored_path.write_bytes(raw_bytes)
-        s = SessionLocal()
-        try:
-            s.add(
-                SupportAttachment(
-                    stored_name=stored_name,
-                    owner_tg_id=int(owner_tg_id),
-                    original_name=original_name,
-                    content_type=content_type,
-                    size_bytes=int(total_size),
-                    media_type=media_type,
-                    created_at=_utcnow(),
-                )
+        _lock_support_upload_owner_in_db(s, owner_key)
+        canonical_owner = str(owner_account_id or "").strip()
+        owner_filter = (
+            SupportAttachment.owner_account_id == canonical_owner
+            if canonical_owner
+            else and_(
+                SupportAttachment.owner_account_id.is_(None),
+                SupportAttachment.owner_tg_id == int(owner_tg_id),
             )
-            s.commit()
-        except Exception:
-            s.rollback()
-            stored_path.unlink(missing_ok=True)
-            raise
-        finally:
-            s.close()
+        )
+        expired_rows = (
+            s.query(SupportAttachment)
+            .filter(
+                SupportAttachment.ticket_id.is_(None),
+                SupportAttachment.message_id.is_(None),
+                SupportAttachment.expires_at.isnot(None),
+                SupportAttachment.expires_at <= now,
+                owner_filter,
+            )
+            .order_by(SupportAttachment.id.asc())
+            .all()
+        )
+        removed_names: list[str] = []
+        for expired in expired_rows:
+            removed = (
+                s.query(SupportAttachment)
+                .filter(
+                    SupportAttachment.id == expired.id,
+                    SupportAttachment.ticket_id.is_(None),
+                    SupportAttachment.message_id.is_(None),
+                    SupportAttachment.expires_at.isnot(None),
+                    SupportAttachment.expires_at <= now,
+                    owner_filter,
+                )
+                .delete(synchronize_session=False)
+            )
+            if removed:
+                removed_names.append(str(expired.stored_name))
+                s.expunge(expired)
+        s.commit()
+        _lock_support_upload_owner_in_db(s, owner_key)
+        for expired_name in removed_names:
+            clean_expired_name = Path(expired_name).name
+            if clean_expired_name != expired_name or not re.fullmatch(
+                r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)",
+                clean_expired_name,
+            ):
+                continue
+            row_reappeared = (
+                s.query(SupportAttachment.id)
+                .filter(SupportAttachment.stored_name == clean_expired_name)
+                .first()
+                is not None
+            )
+            if not row_reappeared:
+                (SUPPORT_UPLOAD_DIR / clean_expired_name).unlink(missing_ok=True)
+
+        pending = s.query(
+            func.count(SupportAttachment.id),
+            func.coalesce(func.sum(SupportAttachment.size_bytes), 0),
+        ).filter(
+            SupportAttachment.ticket_id.is_(None),
+            SupportAttachment.message_id.is_(None),
+            SupportAttachment.expires_at.isnot(None),
+            SupportAttachment.expires_at > now,
+            owner_filter,
+        )
+        pending_count, pending_bytes = pending.one()
+        if int(pending_count or 0) >= SUPPORT_PENDING_UPLOAD_MAX_COUNT:
+            raise HTTPException(status_code=429, detail="Pending attachment quota exceeded")
+        if int(pending_bytes or 0) + total_size > SUPPORT_PENDING_UPLOAD_MAX_BYTES:
+            raise HTTPException(status_code=429, detail="Pending attachment byte quota exceeded")
+
+        descriptor = os.open(str(temp_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as temp_file:
+            temp_file.write(raw_bytes)
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+        os.replace(temp_path, stored_path)
+        _fsync_parent_directory(stored_path)
+        s.add(
+            SupportAttachment(
+                stored_name=stored_name,
+                owner_tg_id=int(owner_tg_id),
+                owner_account_id=str(owner_account_id or "").strip() or None,
+                original_name=original_name,
+                content_type=content_type,
+                size_bytes=int(total_size),
+                media_type=media_type,
+                expires_at=now + timedelta(hours=SUPPORT_PENDING_UPLOAD_TTL_HOURS),
+                created_at=now,
+            )
+        )
+        s.commit()
+    except HTTPException:
+        s.rollback()
+        temp_path.unlink(missing_ok=True)
+        raise
     except Exception:
-        stored_path.unlink(missing_ok=True)
+        s.rollback()
+        temp_path.unlink(missing_ok=True)
         _record_security_event(
             "support_upload_reject",
             scope="ticket_upload",
@@ -5099,6 +7377,8 @@ def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_typ
             reason="store_failed",
         )
         raise
+    finally:
+        s.close()
 
     file_url = f"{SUPPORT_ATTACHMENT_URL_PREFIX.rstrip('/')}/{stored_name}"
     payload = {
@@ -5113,7 +7393,171 @@ def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_typ
         "media_file_id": f"support/{stored_name}",
         "media_payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
     }
-    return {"attachment": attachment, "attachment_payload": payload}
+    return {"attachment_id": stored_name, "attachment": attachment, "attachment_payload": payload}
+
+
+_SUPPORT_ATTACHMENT_BIND_LOCKS = tuple(threading.Lock() for _ in range(64))
+
+
+def _support_attachment_error(*, code: str, status_code: int) -> HTTPException:
+    details = {
+        "support_attachment_invalid": "Attachment reference is invalid",
+        "support_attachment_not_found": "Attachment not found",
+        "support_attachment_already_bound": "Attachment is already bound",
+    }
+    return _auth_http_exception(detail=details[code], code=code, status_code=status_code)
+
+
+def _support_attachment_reference(payload: TicketMessageIn) -> str:
+    attachment_id = str(payload.attachment_id or "").strip()
+    if attachment_id:
+        return attachment_id
+    media_file_id = str(payload.media_file_id or "").strip()
+    return media_file_id.removeprefix("support/") if media_file_id.startswith("support/") else ""
+
+
+def _support_attachment_bind_lock(reference: str):
+    if not reference:
+        return contextlib.nullcontext()
+    digest = hashlib.sha256(reference.encode("utf-8")).digest()
+    return _SUPPORT_ATTACHMENT_BIND_LOCKS[digest[0] % len(_SUPPORT_ATTACHMENT_BIND_LOCKS)]
+
+
+def _canonical_support_attachment(row: SupportAttachment) -> dict[str, Any]:
+    stored_name = str(row.stored_name)
+    payload = {
+        "url": f"{SUPPORT_ATTACHMENT_URL_PREFIX.rstrip('/')}/{stored_name}",
+        "name": str(row.original_name),
+        "content_type": str(row.content_type),
+        "size": int(row.size_bytes or 0),
+        "private": True,
+    }
+    return {
+        "media_type": str(row.media_type),
+        "media_file_id": f"support/{stored_name}",
+        "media_payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+    }
+
+
+def _support_attachment_owned_by(
+    row: SupportAttachment,
+    *,
+    actor_tg_id: int,
+    account_id: str | None,
+) -> bool:
+    return can_access_support_attachment(
+        row,
+        int(actor_tg_id),
+        0,
+        account_id=str(account_id or "").strip() or None,
+    )
+
+
+def _resolve_ticket_attachment(
+    session,
+    *,
+    payload: TicketMessageIn,
+    actor_tg_id: int,
+    account_id: str | None,
+) -> tuple[SupportAttachment | None, dict[str, Any]]:
+    attachment_id = str(payload.attachment_id or "").strip()
+    media_values = (payload.media_type, payload.media_file_id, payload.media_payload)
+    has_media = any(value is not None and str(value).strip() for value in media_values)
+    if attachment_id and has_media:
+        raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+
+    media_file_id = str(payload.media_file_id or "").strip()
+    legacy_private = not attachment_id and media_file_id.startswith("support/")
+    if not attachment_id and not legacy_private:
+        return None, {
+            "media_type": payload.media_type,
+            "media_file_id": payload.media_file_id,
+            "media_payload": payload.media_payload,
+        }
+    stored_name = attachment_id or media_file_id.removeprefix("support/")
+    if (
+        not stored_name
+        or Path(stored_name).name != stored_name
+        or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", stored_name)
+    ):
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+
+    query = session.query(SupportAttachment).filter(SupportAttachment.stored_name == stored_name)
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        query = query.with_for_update()
+    row = query.first()
+    now = _utcnow()
+    if not row or not _support_attachment_owned_by(
+        row,
+        actor_tg_id=actor_tg_id,
+        account_id=account_id,
+    ):
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+    if row.expires_at is not None and row.expires_at <= now:
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+    if row.ticket_id is not None or row.message_id is not None:
+        raise _support_attachment_error(code="support_attachment_already_bound", status_code=409)
+
+    canonical = _canonical_support_attachment(row)
+    if legacy_private:
+        try:
+            supplied_payload = json.loads(str(payload.media_payload or ""))
+            canonical_payload = json.loads(canonical["media_payload"])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+        accepted_urls = {
+            canonical_payload["url"],
+            f"{SUPPORT_UPLOAD_URL_PREFIX.rstrip('/')}/{stored_name}",
+        }
+        supplied_url = str((supplied_payload or {}).get("url") or "")
+        comparable_keys = ("name", "content_type", "size", "private")
+        if (
+            str(payload.media_type or "") != canonical["media_type"]
+            or media_file_id != canonical["media_file_id"]
+            or not isinstance(supplied_payload, dict)
+            or supplied_url not in accepted_urls
+            or any(supplied_payload.get(key) != canonical_payload[key] for key in comparable_keys)
+        ):
+            raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+    return row, canonical
+
+
+def _bind_ticket_attachment(
+    session,
+    *,
+    row: SupportAttachment,
+    ticket_id: int,
+    message_id: int,
+) -> None:
+    now = _utcnow()
+    filters = [
+        SupportAttachment.id == row.id,
+        SupportAttachment.ticket_id.is_(None),
+        SupportAttachment.message_id.is_(None),
+    ]
+    if row.expires_at is not None:
+        filters.append(SupportAttachment.expires_at > now)
+    updated = session.query(SupportAttachment).filter(*filters).update(
+        {
+            SupportAttachment.ticket_id: int(ticket_id),
+            SupportAttachment.message_id: int(message_id),
+            SupportAttachment.attached_at: now,
+            SupportAttachment.expires_at: None,
+        },
+        synchronize_session=False,
+    )
+    if updated != 1:
+        current = (
+            session.query(SupportAttachment)
+            .filter(SupportAttachment.id == row.id)
+            .populate_existing()
+            .first()
+        )
+        if current is None or (current.expires_at is not None and current.expires_at <= now):
+            raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+        if current.ticket_id is not None or current.message_id is not None:
+            raise _support_attachment_error(code="support_attachment_already_bound", status_code=409)
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
 
 
 def _json_obj(raw: str | None) -> dict[str, Any]:
@@ -5387,8 +7831,8 @@ def _compute_user_risk(*, s, user: User, keys_summary: dict[str, Any] | None = N
     elif observer_state == "suspicious":
         score += 40
         factors.append({"key": "observer_suspicious", "weight": 40, "value": observer_state})
-    if str(user.sub_type or "").upper() == "FREE" and traffic_gb > float(FREE_TOTAL_GB) * 1.2:
-        val = min(25, int((traffic_gb / max(1.0, float(FREE_TOTAL_GB))) * 8))
+    if str(user.sub_type or "").upper() == "FREE" and traffic_gb > float(FREE_STANDARD_QUOTA_GB) * 1.2:
+        val = min(25, int((traffic_gb / max(1.0, float(FREE_STANDARD_QUOTA_GB))) * 8))
         score += val
         factors.append({"key": "anomalous_traffic", "weight": val, "value": round(traffic_gb, 2)})
     score = max(0, min(100, int(score)))
@@ -5420,105 +7864,52 @@ def _queue_referral_bonus(
 ) -> bool:
     if int(referrer_tg_id) <= 0 or int(referred_tg_id) <= 0 or not str(order_id or "").strip():
         return False
-    exists = (
-        s.query(ReferralBonusQueue.id)
-        .filter(
-            ReferralBonusQueue.order_id == str(order_id),
-            ReferralBonusQueue.referrer_tg_id == int(referrer_tg_id),
-            ReferralBonusQueue.referred_tg_id == int(referred_tg_id),
-        )
-        .first()
-    )
-    if exists:
-        return True
     referrer = s.query(User).filter(User.tg_id == int(referrer_tg_id)).first()
-    if referrer:
-        # Backward-compatible behavior: referral count is visible right after
-        # successful first paid purchase, while bonus days are deferred by anti-fraud queue.
-        referrer.referral_count = int(referrer.referral_count or 0) + 1
-    ready_at = now + timedelta(hours=int(REFERRAL_ANTIFRAUD_HOURS))
-    s.add(
-        ReferralBonusQueue(
-            order_id=str(order_id),
-            referrer_tg_id=int(referrer_tg_id),
-            referred_tg_id=int(referred_tg_id),
-            queued_at=now,
-            ready_at=ready_at,
-            status="pending",
-            meta=json.dumps({"source": "payment_callback", "counted": True}, ensure_ascii=False, separators=(",", ":")),
-        )
+    referred = s.query(User).filter(User.tg_id == int(referred_tg_id)).first()
+    if referrer is None or referred is None:
+        return False
+    ensure_user_account_foundation(s, referrer, now=now)
+    ensure_user_account_foundation(s, referred, now=now)
+    s.flush()
+    relationship = create_referral_relationship(
+        s,
+        referred_account_id=str(referred.account_id),
+        referrer_account_id=str(referrer.account_id),
+        source="legacy_referrer_projection",
+        now=now,
     )
+    was_queued = bool(relationship.first_payment_key)
+    queue_first_payment_referrer_reward(
+        s,
+        referred_account_id=str(referred.account_id),
+        payment_key=f"payment:{str(order_id)}",
+        paid_at=now,
+    )
+    if not was_queued:
+        referrer.referral_count = int(referrer.referral_count or 0) + 1
     return True
 
 
 def _process_referral_bonus_queue(*, limit: int = 100, force_without_activity: bool = False) -> dict[str, int]:
     now = _utcnow()
     s = SessionLocal()
-    processed = 0
-    rewarded = 0
-    waiting = 0
-    rejected = 0
     try:
-        rows = (
-            s.query(ReferralBonusQueue)
-            .filter(ReferralBonusQueue.status == "pending", ReferralBonusQueue.ready_at <= now)
-            .order_by(ReferralBonusQueue.id.asc())
-            .limit(max(1, min(int(limit), 1000)))
-            .all()
-        )
-        for row in rows:
-            processed += 1
-            referred = s.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
-            referrer = s.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
-            if not referred or not referrer:
-                row.status = "rejected_missing_user"
-                row.processed_at = now
-                rejected += 1
-                continue
-
-            has_activity = (
-                s.query(Event.id)
-                .filter(
-                    Event.tg_id == int(referred.tg_id),
-                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
-                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
-                )
-                .first()
-                is not None
-            )
-            age_hours = max(0, int((now - (row.queued_at or now)).total_seconds() // 3600))
-            if (not has_activity) and (not force_without_activity):
-                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
-                    row.status = "rejected_no_activity"
-                    row.processed_at = now
-                    rejected += 1
-                else:
-                    row.ready_at = now + timedelta(hours=6)
-                    waiting += 1
-                continue
-
-            ref_sub = str(referrer.sub_type or "").upper().strip()
-            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
-            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
-                row.status = "rejected_referrer_inactive"
-                row.processed_at = now
-                rejected += 1
-                continue
-
-            row_meta = _json_obj(getattr(row, "meta", None))
-            if not bool(row_meta.get("counted")):
-                referrer.referral_count = int(referrer.referral_count or 0) + 1
-            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
-            referrer.is_active = True
-            row.status = "rewarded"
-            row.processed_at = now
-            rewarded += 1
+        migration = migrate_pending_legacy_referral_queue(s, now=now, limit=limit)
+        release = release_due_referrer_rewards(s, now=now)
         s.commit()
+        return {
+            "processed": int(migration["migrated"]),
+            "migrated": int(migration["migrated"]),
+            "retryable": int(migration["retryable"]),
+            "rewarded": int(release["released"]),
+            "waiting": int(release["waiting"]),
+            "rejected": int(release["rejected"]),
+        }
     except Exception:
         s.rollback()
+        return {"processed": 0, "migrated": 0, "retryable": 0, "rewarded": 0, "waiting": 0, "rejected": 0}
     finally:
         s.close()
-    return {"processed": processed, "rewarded": rewarded, "waiting": waiting, "rejected": rejected}
 
 
 _diag_rate_limit: dict[int, float] = {}
@@ -5820,6 +8211,7 @@ async def api_internal_observer_batches(
         raise HTTPException(status_code=401, detail="Observer push timestamp is invalid")
 
     s = SessionLocal()
+    node_id: int | None = None
     try:
         node = _verify_observer_push(
             s=s,
@@ -5828,6 +8220,7 @@ async def api_internal_observer_batches(
             signature=x_portal_signature,
             raw_body=raw_body,
         )
+        node_id = int(node.id)
         result = ingest_observer_batch(
             s=s,
             node=node,
@@ -5842,6 +8235,18 @@ async def api_internal_observer_batches(
     except HTTPException:
         s.rollback()
         raise
+    except IntegrityError as exc:
+        s.rollback()
+        if node_id is not None and is_observer_batch_unique_conflict(exc):
+            existing = (
+                s.query(ObserverBatch)
+                .filter(ObserverBatch.node_id == node_id, ObserverBatch.batch_id == payload.batch_id)
+                .first()
+            )
+            if existing is not None:
+                return observer_batch_replay_response(existing)
+        logger.exception("observer batch integrity failure node=%s", str(x_portal_node or "").strip().lower())
+        raise HTTPException(status_code=500, detail="Observer batch ingest failed")
     except Exception:
         s.rollback()
         logger.exception("observer batch ingest failed node=%s", str(x_portal_node or "").strip().lower())
@@ -6032,7 +8437,16 @@ async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn, response: Res
 
 @app.get("/api/auth/email/status")
 async def auth_email_status() -> dict[str, Any]:
-    return email_delivery_runtime_status()
+    status = dict(email_delivery_runtime_status())
+    otp_configured = email_login_otp_configured()
+    status["otp_configured"] = bool(otp_configured)
+    if not otp_configured:
+        blocked = list(status.get("blocked_reasons") or [])
+        if "otp_secret_missing" not in blocked:
+            blocked.append("otp_secret_missing")
+        status["blocked_reasons"] = blocked
+        status["enabled"] = False
+    return status
 
 
 @app.post("/api/auth/email/register")
@@ -6159,11 +8573,224 @@ async def auth_email_login(payload: EmailLoginIn, request: Request, response: Re
         return {
             "ok": True,
             "token": token,
+            "auth_method": "password_compatibility",
             "token_transport": "cookie_and_legacy_bearer",
             "expires_in": int(SESSION_TTL_SECONDS),
             "user": {
                 "id": int(user.tg_id),
                 "username": str(user.username or "").strip() or None,
+                "email": str(identity.email),
+            },
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+async def _deliver_login_otp_background(
+    *,
+    email: str,
+    code: str,
+    linked_tg_id: int,
+) -> None:
+    try:
+        await deliver_auth_message(
+            kind="login_otp",
+            email=email,
+            token=code,
+            linked_tg_id=linked_tg_id,
+        )
+    except Exception:
+        logger.exception("email OTP background delivery failed")
+
+
+@app.post("/api/auth/email/otp/start")
+async def auth_email_otp_start(
+    payload: EmailOtpStartIn,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    _require_email_public_ready()
+    if not email_login_otp_configured():
+        raise _account_recovery_http_exception(EmailOtpError("email_otp_not_configured"))
+    try:
+        email_norm = validate_email_input(payload.email)
+    except InvalidEmailInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    email_fingerprint = hashlib.sha256(email_norm.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("email_otp_start_ip", request)
+    _enforce_beta_rate_limit("email_otp_start", request, identity=f"email_sha256:{email_fingerprint}")
+
+    s = SessionLocal()
+    try:
+        identity, code = issue_login_otp(s, email=email_norm, now=_utcnow())
+        s.commit()
+        if identity is not None and code is not None:
+            background_tasks.add_task(
+                _deliver_login_otp_background,
+                email=str(identity.email),
+                code=code,
+                linked_tg_id=int(identity.linked_tg_id or 0),
+            )
+        return {
+            "ok": True,
+            "otp_requested": True,
+            "expires_in": 300,
+            "delivery": {"status": "accepted", "kind": "login_otp"},
+        }
+    except (InvalidEmailInputError, EmailOtpError) as exc:
+        s.rollback()
+        if isinstance(exc, EmailOtpError):
+            raise _account_recovery_http_exception(exc) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/auth/email/otp/finish")
+async def auth_email_otp_finish(
+    payload: EmailOtpFinishIn,
+    request: Request,
+    response: Response,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    if not email_login_otp_configured():
+        raise _account_recovery_http_exception(EmailOtpError("email_otp_not_configured"))
+    email_fingerprint = hashlib.sha256(str(payload.email or "").strip().lower().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("email_otp_finish_ip", request)
+    _enforce_beta_rate_limit("email_otp_finish", request, identity=f"email_sha256:{email_fingerprint}")
+    if payload.install_id:
+        install_fingerprint = hashlib.sha256(str(payload.install_id).strip().encode("utf-8")).hexdigest()[:32]
+        _enforce_beta_rate_limit(
+            "email_otp_finish_install",
+            request,
+            identity=f"install_sha256:{install_fingerprint}",
+        )
+    try:
+        current_auth = _optional_auth_user(x_telegram_init_data, request=request)
+    except HTTPException:
+        current_auth = None
+
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        try:
+            identity = consume_login_otp(
+                s,
+                email=payload.email,
+                code=payload.code,
+                now=now,
+            )
+        except (InvalidEmailInputError, EmailOtpError) as exc:
+            raise _account_recovery_http_exception(
+                exc if isinstance(exc, EmailOtpError) else EmailOtpError("email_otp_invalid")
+            ) from exc
+        user = s.query(User).filter(User.tg_id == int(identity.linked_tg_id)).first()
+        if user is None:
+            raise HTTPException(status_code=409, detail="Linked account is missing")
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        if not account_id:
+            raise HTTPException(status_code=409, detail="Canonical account is missing")
+
+        issued_session = None
+        fresh_auth_until = None
+        install_id = str(payload.install_id or "").strip()
+        if install_id:
+            existing_device = s.query(AccountDevice).filter(AccountDevice.install_id == install_id).first()
+            active_devices = (
+                s.query(func.count(AccountDevice.id))
+                .filter(
+                    AccountDevice.account_id == account_id,
+                    AccountDevice.state == "active",
+                    AccountDevice.revoked_at.is_(None),
+                )
+                .scalar()
+                or 0
+            )
+            if existing_device is None and int(active_devices) >= int(_plan_device_limit(user)):
+                raise _account_recovery_http_exception(AccountRecoveryError("device_limit_reached"))
+            try:
+                issued_session = auth_session_service.issue_authenticated_device_session(
+                    s,
+                    account_id=account_id,
+                    install_id=install_id,
+                    device_name=str(payload.device_name or "Authenticated device"),
+                    platform=str(payload.platform or "device"),
+                    os_version=payload.os_version,
+                    app_version=payload.app_version,
+                    locale=payload.locale,
+                    time_zone=payload.time_zone,
+                    scope="client",
+                    auth_origin="email_otp",
+                    now=now,
+                )
+            except auth_session_service.AuthSessionError as exc:
+                raise _auth_session_http_exception(exc) from exc
+            fresh_auth_until = now + timedelta(seconds=auth_session_service.APP_FRESH_AUTH_MAX_AGE_SECONDS)
+        else:
+            current_session_id = str((current_auth or {}).get("session_id") or "").strip()
+            current_account_id = str((current_auth or {}).get("account_id") or "").strip()
+            if current_session_id and current_account_id == account_id:
+                try:
+                    auth_session_service.mark_session_fresh(
+                        s,
+                        account_id=account_id,
+                        session_id=current_session_id,
+                        now=now,
+                    )
+                except auth_session_service.AuthSessionError as exc:
+                    raise _auth_session_http_exception(exc) from exc
+                fresh_auth_until = now + timedelta(seconds=auth_session_service.APP_FRESH_AUTH_MAX_AGE_SECONDS)
+
+        if issued_session is not None:
+            session_payload = issued_session.response_payload(now=now)
+            session_payload["scope"] = "client"
+            s.commit()
+            return {
+                "ok": True,
+                "auth_method": "email_otp",
+                "token": issued_session.access_token,
+                "access_token": issued_session.access_token,
+                "refresh_token": issued_session.refresh_token,
+                "token_transport": "bearer",
+                "fresh_auth_until": _safe_iso(fresh_auth_until),
+                "session": session_payload,
+                "user": {
+                    "id": int(user.tg_id),
+                    "account_id": account_id,
+                    "email": str(identity.email),
+                },
+            }
+
+        token = create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or "").strip() or None,
+            auth_type="email",
+            auth_origin="email_otp",
+            email=str(identity.email),
+        )
+        if not token:
+            raise HTTPException(status_code=500, detail="Web session is not configured")
+        s.commit()
+        _set_web_session_cookie(response, token)
+        return {
+            "ok": True,
+            "auth_method": "email_otp",
+            "token": token,
+            "token_transport": "cookie_and_legacy_bearer",
+            "expires_in": int(SESSION_TTL_SECONDS),
+            "fresh_auth_until": _safe_iso(fresh_auth_until),
+            "user": {
+                "id": int(user.tg_id),
+                "account_id": account_id,
                 "email": str(identity.email),
             },
         }
@@ -6348,19 +8975,53 @@ async def admin_auth_session(request: Request, x_telegram_init_data: str = Heade
 @app.post("/api/client/session/start-trial")
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
     client_policy: dict[str, Any] | None = None
+    session_now = _utcnow()
+    client_ip = _request_client_ip(request)
+    trial_event_id = ""
+    trial_projection: dict[str, Any] | None = None
     s = SessionLocal()
     try:
         install_id = str(payload.install_id or "").strip()[:128]
+        existing_device = s.query(AccountDevice.id).filter(AccountDevice.install_id == install_id).first()
+        if existing_device is not None:
+            session_history = (
+                s.query(AuthSession.id)
+                .filter(AuthSession.device_id == str(existing_device.id))
+                .first()
+            )
+            if session_history is not None:
+                raise _auth_session_http_exception(
+                    auth_session_service.AuthSessionError("device_recovery_required")
+                )
         existing_app_account = s.query(User.tg_id).filter(User.app_install_id == install_id).first()
         if not existing_app_account:
             _enforce_beta_rate_limit("start_trial", request)
         user, created = app_first_service.upsert_app_trial_user(
             s=s,
             payload=payload,
-            now=_utcnow(),
+            now=session_now,
             trial_days=APP_TRIAL_DEFAULT_DAYS,
-            request_client_ip=_request_client_ip(request),
+            request_client_ip=client_ip,
         )
+        account_device = s.query(AccountDevice).filter(AccountDevice.install_id == install_id).one()
+        trial_event = record_antiabuse_event(
+            s,
+            event_kind="trial_reserved" if created else "trial_session_issued",
+            source="client_api",
+            occurred_at=session_now,
+            account_id=str(getattr(user, "account_id", "") or "") or None,
+            device_id=str(account_device.id),
+            install_id=install_id,
+            raw_ip=client_ip,
+            reasons=["first_install"] if created else ["legacy_install_session"],
+            metadata={
+                "platform": payload.platform,
+                "app_version": payload.app_version,
+                "os_major": str(payload.os_version or "").split(".", 1)[0],
+                "device_label": payload.device_name,
+            },
+        )
+        trial_event_id = str(trial_event.id)
         s.commit()
         s.refresh(user)
         client_policy = app_first_service.build_client_policy(
@@ -6369,6 +9030,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
             install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
             carrier=_request_carrier_header(request.headers.get("X-Portal-Carrier")),
         )
+        trial_projection = read_trial_projection(s, account_id=str(user.account_id), now=session_now)
     except HTTPException:
         s.rollback()
         raise
@@ -6421,13 +9083,14 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
 
     start_trial_parts = app_first_service.build_start_trial_response_parts(
         user=user,
-        session_token=session_token,
+        session_token="",
         now=_utcnow(),
         sync_ok=bool(sync_ok),
         build_access_policy=_build_access_policy,
         trial_days=APP_TRIAL_DEFAULT_DAYS,
         channel_bonus_days=CHANNEL_PREMIUM_DAYS,
         client_policy=client_policy,
+        trial_projection=trial_projection,
     )
     payload_s = SessionLocal()
     try:
@@ -6442,24 +9105,315 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     finally:
         payload_s.close()
 
+    credential_now = _utcnow()
+    session_s = SessionLocal()
+    try:
+        session_user = session_s.query(User).filter(User.tg_id == int(user.tg_id)).first()
+        if session_user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        issued_session = auth_session_service.issue_device_session(
+            session_s,
+            user=session_user,
+            install_id=install_id,
+            now=credential_now,
+        )
+        trial_event = (
+            session_s.query(AntiAbuseEvent)
+            .filter(AntiAbuseEvent.id == trial_event_id)
+            .with_for_update()
+            .one()
+        )
+        trial_event.account_id = issued_session.account_id
+        trial_event.device_id = issued_session.device_id
+        trial_event.session_id = issued_session.session_id
+        session_contract = issued_session.response_payload(now=credential_now)
+        start_trial_parts["session"].update(session_contract)
+        response_payload = {
+            "ok": True,
+            "created": bool(created),
+            "session_token": issued_session.access_token,
+            "access_token": issued_session.access_token,
+            "refresh_token": issued_session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_contract["expires_in"],
+            "refresh_expires_in": session_contract["refresh_expires_in"],
+            "canonical_account_id": issued_session.account_id,
+            "account_id": str(int(user.tg_id)),
+            "subscription_url": start_trial_parts["subscription_url"],
+            "sync_ok": bool(sync_ok),
+            "session": start_trial_parts["session"],
+            "client_policy": start_trial_parts["client_policy"],
+            "access": start_trial_parts["access"],
+            "linked_identities": linked_identities,
+            "free_caps": _free_caps_payload(user=user, access_policy=start_trial_parts["access"]),
+            "redeem_eligibility": _redeem_eligibility_payload(
+                user=user,
+                access_policy=start_trial_parts["access"],
+            ),
+            "promo_slots": promo_slots,
+            "hidden_transport_matrix": _hidden_transport_matrix_payload(
+                nodes=payload_nodes,
+                client_policy=client_policy,
+            ),
+            "location_matrix": _location_matrix_payload(
+                user=user,
+                nodes=payload_nodes,
+                client_policy=client_policy,
+            ),
+            "provisioning": start_trial_parts["provisioning"],
+        }
+        session_s.commit()
+    except HTTPException:
+        session_s.rollback()
+        raise
+    except auth_session_service.AuthSessionError as exc:
+        session_s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        session_s.rollback()
+        raise
+    finally:
+        session_s.close()
+    return response_payload
+
+
+@app.post("/api/client/session/refresh")
+async def client_session_refresh(payload: AppSessionRefreshIn, request: Request) -> dict[str, Any]:
+    refresh_fingerprint = hashlib.sha256(payload.refresh_token.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("session_refresh_ip", request)
+    _enforce_beta_rate_limit(
+        "session_refresh",
+        request,
+        identity=f"refresh_sha256:{refresh_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        issued = auth_session_service.rotate_device_session(
+            s,
+            refresh_token=payload.refresh_token,
+            now=now,
+        )
+        s.commit()
+    except auth_session_service.AuthSessionError as exc:
+        if exc.security_state_changed:
+            s.commit()
+        else:
+            s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+    session_payload = issued.response_payload(now=now)
     return {
         "ok": True,
-        "created": bool(created),
-        "session_token": session_token,
-        "account_id": str(int(user.tg_id)),
-        "subscription_url": start_trial_parts["subscription_url"],
-        "sync_ok": bool(sync_ok),
-        "session": start_trial_parts["session"],
-        "client_policy": start_trial_parts["client_policy"],
-        "access": start_trial_parts["access"],
-        "linked_identities": linked_identities,
-        "free_caps": _free_caps_payload(user=user, access_policy=start_trial_parts["access"]),
-        "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=start_trial_parts["access"]),
-        "promo_slots": promo_slots,
-        "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=payload_nodes, client_policy=client_policy),
-        "location_matrix": _location_matrix_payload(user=user, nodes=payload_nodes, client_policy=client_policy),
-        "provisioning": start_trial_parts["provisioning"],
+        **session_payload,
+        "session": dict(session_payload),
     }
+
+
+@app.post("/api/client/session/revoke")
+async def client_session_revoke(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Эта совместимая сессия не поддерживает серверный отзыв.",
+            code="session_not_persisted",
+            status_code=409,
+        )
+
+    s = SessionLocal()
+    try:
+        auth_session_service.revoke_session(
+            s,
+            account_id=account_id,
+            session_id=session_id,
+            now=_utcnow(),
+        )
+        s.commit()
+    except auth_session_service.AuthSessionError as exc:
+        s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    return {"ok": True, "session_id": session_id, "revoked": True}
+
+
+@app.post("/api/client/recovery-code/rotate")
+async def client_recovery_code_rotate(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Эта совместимая сессия не поддерживает recovery-коды.",
+            code="session_not_persisted",
+            status_code=409,
+        )
+    session_fingerprint = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "recovery_rotate",
+        request,
+        identity=f"session_sha256:{session_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        issued = rotate_recovery_code(
+            s,
+            account_id=account_id,
+            actor_session_id=session_id,
+            now=now,
+        )
+        s.commit()
+        return {
+            "ok": True,
+            "recovery_code": issued.code,
+            "code_hint": issued.code_hint,
+            "version": int(issued.version),
+            "shown_once": True,
+        }
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/client/recovery/exchange")
+async def client_recovery_exchange(
+    payload: RecoveryCodeExchangeIn,
+    request: Request,
+) -> dict[str, Any]:
+    code_fingerprint = hashlib.sha256(str(payload.code or "").strip().upper().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("recovery_exchange_ip", request)
+    _enforce_beta_rate_limit(
+        "recovery_exchange",
+        request,
+        identity=f"code_sha256:{code_fingerprint}",
+    )
+    install_fingerprint = hashlib.sha256(str(payload.install_id).strip().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "recovery_exchange_install",
+        request,
+        identity=f"install_sha256:{install_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        exchange = exchange_recovery_code(
+            s,
+            code=payload.code,
+            install_id=payload.install_id,
+            device_name=payload.device_name,
+            platform=payload.platform,
+            os_version=payload.os_version,
+            app_version=payload.app_version,
+            locale=payload.locale,
+            time_zone=payload.time_zone,
+            now=now,
+        )
+        session_payload = exchange.session.response_payload(now=now)
+        session_payload["scope"] = "recovery"
+        response_payload = {
+            "ok": True,
+            "access_token": exchange.session.access_token,
+            "refresh_token": exchange.session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_payload["expires_in"],
+            "refresh_expires_in": session_payload["refresh_expires_in"],
+            "session": session_payload,
+            "allowed_actions": ["status", "support", "reissue", "device_revoke"],
+        }
+        s.commit()
+        return response_payload
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/client/access/reissue")
+async def client_access_reissue(
+    payload: AccessReissueIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Нужна ограниченная recovery-сессия.",
+            code="recovery_session_invalid",
+            status_code=401,
+        )
+    session_fingerprint = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "access_reissue",
+        request,
+        identity=f"session_sha256:{session_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(auth_user.get("id") or 0)).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        result = complete_access_reissue(
+            s,
+            account_id=account_id,
+            recovery_session_id=session_id,
+            mode=payload.mode,
+            device_limit=_plan_device_limit(user),
+            now=now,
+        )
+        session_payload = result.session.response_payload(now=now)
+        session_payload["scope"] = "client"
+        response_payload = {
+            "ok": True,
+            "mode": result.mode,
+            "access_token": result.session.access_token,
+            "refresh_token": result.session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_payload["expires_in"],
+            "refresh_expires_in": session_payload["refresh_expires_in"],
+            "session": session_payload,
+            "provisioning_status": result.provisioning_status,
+            "queued_key_rotations": len(result.provisioning_job_ids),
+            "revoked_devices": int(result.revoked_devices),
+        }
+        s.commit()
+        return response_payload
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
 
 
 def _route_policy_payload(user: User | None) -> dict[str, Any]:
@@ -7015,7 +9969,7 @@ async def client_locations_catalog(
         )
         transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
         all_nodes = enabled_nodes(s)
-        free_pool_code = canonical_free_node_code(all_nodes)
+        free_pool_code = canonical_free_node_code(all_nodes, access_role=user_free_access_role(user))
         nodes_for_user = _nodes_for_user(user, all_nodes, session=s)
         smart_connect = _smart_connect_shortlist(
             session=s,
@@ -7096,9 +10050,11 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(
+        access_policy = _build_reconciled_access_policy(
+            session=s,
             user=user,
             used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="client_subscription_runtime",
         )
         access_state = str(access_policy.get("access_state") or "")
         expiry = getattr(user, "expiry_at", None)
@@ -7119,22 +10075,57 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
 
 @app.get("/api/client/devices")
 async def client_devices(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
         rows = []
-        for item in _build_app_device_rows(user):
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        current_registry_id = str(auth_user.get("device_id") or "").strip()
+        devices = (
+            s.query(AccountDevice)
+            .filter(AccountDevice.account_id == account_id)
+            .order_by(AccountDevice.created_at.asc(), AccountDevice.id.asc())
+            .all()
+            if account_id
+            else []
+        )
+        for device in devices:
+            active = str(device.state or "").strip().lower() == "active" and device.revoked_at is None
             rows.append(
                 {
-                    "id": str(item.get("id") or ""),
-                    "label": str(item.get("name") or "Current device"),
-                    "platform": str(item.get("platform") or "device"),
-                    "osVersion": item.get("os_version"),
-                    "appVersion": item.get("app_version"),
-                    "lastSeen": item.get("last_seen_at"),
-                    "current": bool(item.get("is_current")),
-                    "active": bool(item.get("is_active")),
+                    "id": str(device.install_id),
+                    "registryId": str(device.id),
+                    "label": _normalize_app_device_name(device.label),
+                    "platform": str(device.platform or "device"),
+                    "osVersion": str(device.os_version or "").strip() or None,
+                    "appVersion": str(device.app_version or "").strip() or None,
+                    "lastSeen": _safe_iso(device.last_seen_at),
+                    "current": bool(
+                        str(device.id) == current_registry_id
+                        if current_registry_id
+                        else str(device.install_id) == str(getattr(user, "app_install_id", "") or "")
+                    ),
+                    "active": active,
+                    "state": str(device.state or "active"),
+                    "revokedAt": _safe_iso(device.revoked_at),
                 }
             )
+        if not rows:
+            for item in _build_app_device_rows(user):
+                rows.append(
+                    {
+                        "id": str(item.get("id") or ""),
+                        "registryId": None,
+                        "label": str(item.get("name") or "Current device"),
+                        "platform": str(item.get("platform") or "device"),
+                        "osVersion": item.get("os_version"),
+                        "appVersion": item.get("app_version"),
+                        "lastSeen": item.get("last_seen_at"),
+                        "current": bool(item.get("is_current")),
+                        "active": bool(item.get("is_active")),
+                        "state": "legacy",
+                        "revokedAt": None,
+                    }
+                )
         return {"items": rows, "limit": _plan_device_limit(user)}
     finally:
         s.close()
@@ -7142,18 +10133,52 @@ async def client_devices(request: Request, x_telegram_init_data: str = Header(de
 
 @app.delete("/api/client/devices/{device_id}")
 async def client_device_revoke(device_id: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        current = str(getattr(user, "app_install_id", "") or "").strip()
         target = str(device_id or "").strip()
         if not target:
             raise HTTPException(status_code=404, detail="Device not found")
-        if target == current:
+        account_id = str(auth_user.get("account_id") or getattr(user, "account_id", "") or "").strip()
+        actor_session_id = str(auth_user.get("session_id") or "").strip()
+        device = (
+            s.query(AccountDevice)
+            .filter(
+                AccountDevice.account_id == account_id,
+                or_(AccountDevice.id == target, AccountDevice.install_id == target),
+            )
+            .first()
+            if account_id
+            else None
+        )
+        if device is None:
+            raise HTTPException(status_code=404, detail="Device not found")
+        if not actor_session_id:
             raise HTTPException(
                 status_code=409,
                 detail={"code": "cannot_revoke_current_device", "message": "Current device cannot revoke itself."},
             )
-        raise HTTPException(status_code=404, detail="Device not found")
+        try:
+            revoked = auth_session_service.revoke_device(
+                s,
+                account_id=account_id,
+                device_id=str(device.id),
+                actor_session_id=actor_session_id,
+                now=_utcnow(),
+            )
+            s.commit()
+        except auth_session_service.AuthSessionError as exc:
+            s.rollback()
+            raise _auth_session_http_exception(exc) from exc
+        return {
+            "ok": True,
+            "device": {
+                "id": str(revoked.install_id),
+                "registryId": str(revoked.id),
+                "active": False,
+                "state": str(revoked.state or "revoked"),
+                "revokedAt": _safe_iso(revoked.revoked_at),
+            },
+        }
     finally:
         s.close()
 
@@ -7170,7 +10195,12 @@ async def client_notifications(
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="client_notifications_runtime",
+        )
         read_ids = _client_notification_read_ids(s, user=user)
         items = _client_notification_items(user=user, access_policy=access_policy, read_ids=read_ids)
         return {
@@ -7345,9 +10375,11 @@ async def client_managed_profile(
                 str(getattr(user, "sub_type", "") or ""),
             )
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(
+        access_policy = _build_reconciled_access_policy(
+            session=s,
             user=user,
             used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="managed_profile_runtime",
         )
         effective_nodes = _effective_transport_nodes(
             nodes=nodes_for_user,
@@ -7438,7 +10470,12 @@ async def client_promo_slots(
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="promo_runtime",
+        )
         return _promo_slots_payload_for_surface(
             s=s,
             surface=str(surface or "app").strip().lower(),
@@ -8084,6 +11121,16 @@ async def internal_node_xray_stats(node_code: str, request: Request) -> dict[str
                 total_bytes=max(0, total_bytes),
                 source_ip_hashes=source_ip_hashes if isinstance(source_ip_hashes, list) else [],
             )
+            if tg_id:
+                observed_user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+                if observed_user is not None:
+                    reconcile_free_profile_usage(
+                        s,
+                        user=observed_user,
+                        used_bytes=max(0, total_bytes),
+                        source="node_xray_stats",
+                        now=_utcnow(),
+                    )
             accepted += 1
         s.commit()
         return {"ok": True, "node_code": wanted, "accepted": accepted}
@@ -8617,7 +11664,7 @@ async def _rub_create_order_internal(
             discount_allowed
             and user
             and getattr(user, "referrer_id", None)
-            and not bool(getattr(user, "first_purchase_done", False))
+            and not _has_successful_provider_payment(s=s, user=user)
         )
         working_amount = int(base_amount)
         if referral_discount_eligible and working_amount > 0:
@@ -8638,6 +11685,14 @@ async def _rub_create_order_internal(
         discount_applied = bool(base_amount > 0 and final_amount < base_amount)
         discount_pct = int(round((1.0 - (float(final_amount) / float(base_amount))) * 100)) if discount_applied else 0
         amount_rub = float(final_amount)
+        duration_days = max(1, int(plan.get("duration_days") or plan.get("days") or 30))
+        entitlement_snapshot = {
+            "plan_code": normalized_plan_code,
+            "duration_days": duration_days,
+            "amount_rub": f"{Decimal(str(amount_rub)):.2f}",
+            "currency": (currency or "RUB").strip().upper()[:16] or "RUB",
+            "source": str(source or "").strip().lower(),
+        }
         order_prefix = "fk" if provider == "freekassa" else provider[:12]
         order_subject = str(normalized_tg_id if normalized_tg_id > 0 else "public")
         order_id = f"{order_prefix}_{source}_{order_subject}_{int(time.time())}_{secrets.token_hex(4)}"
@@ -8654,7 +11709,7 @@ async def _rub_create_order_internal(
             amount=float(amount_rub),
             currency=(currency or "RUB").strip().upper()[:16] or "RUB",
             status="created",
-            meta_json=json.dumps(
+            meta_json=_serialize_external_order_meta(
                 {
                     "source": source,
                     "campaign": campaign,
@@ -8668,6 +11723,7 @@ async def _rub_create_order_internal(
                     "lavatop_payment_provider": lavatop_payment_provider or None,
                     "lavatop_payment_method": lavatop_payment_method or None,
                     "plan_label": plan_label,
+                    "entitlement_snapshot": entitlement_snapshot,
                     "fulfillment": {
                         "mode": fulfillment_mode,
                         "status": "pending_payment",
@@ -8684,12 +11740,20 @@ async def _rub_create_order_internal(
                         "referral_discount_eligible": bool(referral_discount_eligible),
                     },
                 },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )[:4000],
+            ),
             created_at=_utcnow(),
         )
         s.add(ext)
+        if normalized_tg_id <= 0:
+            ensure_pending_claim(
+                s,
+                provider=provider,
+                order_id=order_id,
+                buyer_email=buyer_email_norm,
+                plan_code=normalized_plan_code,
+                duration_days=max(1, int(plan.get("duration_days") or plan.get("days") or 30)),
+                now=ext.created_at,
+            )
         if user and consume_pending_discount and discount_applied:
             user.pending_discount_pct = None
             user.pending_discount_code = None
@@ -8768,10 +11832,12 @@ async def _rub_create_order_internal(
         row = s.query(ExternalOrder).filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id).first()
         if row:
             row.status = "pending"
-            row.meta_json = json.dumps(
+            meta = _external_order_meta(row)
+            meta.update(
                 {
                     "request": req_data,
                     "response": {"payment_url": payment_url, "remote": remote_response},
+                    "entitlement_snapshot": entitlement_snapshot,
                     "pricing": {
                         "base_amount_rub": int(base_amount),
                         "final_amount_rub": int(final_amount),
@@ -8794,10 +11860,9 @@ async def _rub_create_order_internal(
                         "lavatop_payment_provider": lavatop_payment_provider or None,
                         "lavatop_payment_method": lavatop_payment_method or None,
                     },
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )[:4000]
+                }
+            )
+            _set_external_order_meta(row, meta)
             s.commit()
     finally:
         s.close()
@@ -9864,11 +12929,17 @@ async def user_data(
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
-        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=used_bytes,
+            source=traffic_source,
+        )
         setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
         total_gb = _plan_total_gb(user)
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0
-        remaining_gb = max(round(total_gb - used_gb, 3), 0) if total_gb > 0 else 0
+        policy_remaining_gb = access_policy.get("traffic_remaining_gb")
+        remaining_gb = float(policy_remaining_gb) if policy_remaining_gb is not None else 0.0
         referral_code = (user.referral_code or "").strip()
         channel_link = f"https://t.me/{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""
         support_link = f"https://t.me/{SUPPORT_USERNAME}" if SUPPORT_USERNAME else ""
@@ -9925,6 +12996,10 @@ async def user_data(
             "traffic_remaining_gb": access_policy["traffic_remaining_gb"],
             "next_reset_at": access_policy["next_reset_at"],
             "soft_mode_active": bool(access_policy["soft_mode_active"]),
+            "free_profile_state": str(access_policy["free_profile_state"]),
+            "free_profile_active_role": str(access_policy["free_profile_active_role"]),
+            "free_profile_job_id": access_policy.get("free_profile_job_id"),
+            "free_profile_error_code": access_policy.get("free_profile_error_code"),
             "limits": {
                 "device_limit": _plan_device_limit(user) + family_slots,
                 "total_gb": total_gb,
@@ -10069,11 +13144,17 @@ async def dashboard_snapshot(
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
-        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=used_bytes,
+            source=traffic_source,
+        )
         setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
         total_gb = float(_plan_total_gb(user))
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0.0
-        remaining = max(round(total_gb - used_gb, 3), 0.0) if total_gb > 0 else 0.0
+        policy_remaining_gb = access_policy.get("traffic_remaining_gb")
+        remaining = float(policy_remaining_gb) if policy_remaining_gb is not None else 0.0
         expiry = user.expiry_at
         active = bool(user.is_active and expiry and expiry > _utcnow())
         segment = _plan_segment(user)
@@ -10104,6 +13185,10 @@ async def dashboard_snapshot(
             traffic_remaining_gb=access_policy["traffic_remaining_gb"],
             next_reset_at=access_policy["next_reset_at"],
             soft_mode_active=bool(access_policy["soft_mode_active"]),
+            free_profile_state=str(access_policy["free_profile_state"]),
+            free_profile_active_role=str(access_policy["free_profile_active_role"]),
+            free_profile_job_id=access_policy.get("free_profile_job_id"),
+            free_profile_error_code=access_policy.get("free_profile_error_code"),
             active_sessions=int(runtime.get("active_connections", 0) or 0),
             active_sessions_source=str(runtime.get("active_connections_source") or "none"),
             device_limit=int(_plan_device_limit(user) + family_slots),
@@ -10622,6 +13707,7 @@ def _bonus_wheel_state_payload(*, s, user: User) -> dict[str, Any]:
         "can_spin": bool(enabled and cooldown["can_spin"]),
         "next_spin_at": cooldown["next_spin_at"],
         "cooldown_hours": cooldown["cooldown_hours"],
+        "sectors": [int(row["days"]) for row in config["weights"]],
         "ledger_ready": True,
         "config_preset": str(config.get("preset") or "balanced"),
     }
@@ -11242,33 +14328,58 @@ async def _redeem_access_key_for_auth_user(
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == code).first()
         if not card:
             raise HTTPException(status_code=404, detail="Access key not found")
-        if card.redeemed_by is not None:
+        payment_claim = (
+            s.query(PaymentEntitlementClaim)
+            .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+            .one_or_none()
+        )
+        if card.redeemed_by is not None and (
+            payment_claim is None or int(card.redeemed_by) != int(tg_id)
+        ):
             raise HTTPException(status_code=400, detail="Access key already redeemed")
         if int(card.created_by or 0) == int(tg_id):
             raise HTTPException(status_code=400, detail="You cannot redeem your own key")
         if not bool(getattr(user, "tos_accepted", False)):
             raise HTTPException(status_code=400, detail="Accept terms before redeeming a key")
 
-        meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
-        if not meta:
-            raise HTTPException(status_code=400, detail="Access key type is not supported")
-
         now = _utcnow()
-        applied = _apply_access_key_to_user(user=user, meta=meta, now=now)
-        updated = (
-            s.query(GiftCard)
-            .filter(GiftCard.id == int(card.id), GiftCard.redeemed_by.is_(None))
-            .update(
-                {
-                    GiftCard.redeemed_by: int(tg_id),
-                    GiftCard.redeemed_at: now,
-                },
-                synchronize_session=False,
+        if payment_claim is not None:
+            ensure_user_account_foundation(s, user, now=now)
+            s.flush()
+            payment_result = redeem_payment_fallback(
+                s,
+                gift_card_id=int(card.id),
+                account_id=str(user.account_id),
+                legacy_tg_id=int(tg_id),
+                now=now,
             )
-        )
-        if int(updated or 0) != 1:
-            s.rollback()
-            raise HTTPException(status_code=400, detail="Access key already redeemed")
+            if payment_result.code not in {"fulfilled", "already_fulfilled"}:
+                s.commit()
+                status_code = 409 if payment_result.code in {"account_conflict", "manual_review"} else 400
+                raise HTTPException(status_code=status_code, detail="Payment access key is not redeemable")
+            applied = {
+                "current_plan_code": str(user.current_plan_code or payment_claim.plan_code),
+                "expiry_at": _safe_iso(user.expiry_at),
+            }
+        else:
+            meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+            if not meta:
+                raise HTTPException(status_code=400, detail="Access key type is not supported")
+            applied = _apply_access_key_to_user(user=user, meta=meta, now=now)
+            updated = (
+                s.query(GiftCard)
+                .filter(GiftCard.id == int(card.id), GiftCard.redeemed_by.is_(None))
+                .update(
+                    {
+                        GiftCard.redeemed_by: int(tg_id),
+                        GiftCard.redeemed_at: now,
+                    },
+                    synchronize_session=False,
+                )
+            )
+            if int(updated or 0) != 1:
+                s.rollback()
+                raise HTTPException(status_code=400, detail="Access key already redeemed")
 
         s.commit()
         s.refresh(user)
@@ -11294,11 +14405,9 @@ async def _redeem_access_key_for_auth_user(
     except Exception:
         s.rollback()
         safe_code = _access_key_safe_meta(code)
-        logger.exception(
-            "access key redeem failed key_fp=%s key_preview=%s tg_id=%s",
+        logger.error(
+            "access key redeem failed code=access_key_redeem_failed correlation=%s",
             safe_code.get("code_fp"),
-            safe_code.get("code_preview"),
-            int(tg_id),
         )
         raise HTTPException(status_code=500, detail="Failed to redeem access key")
     finally:
@@ -11389,6 +14498,12 @@ async def unified_redeem(
     try:
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == normalized).first()
         card_meta = _access_key_meta_from_card_type(s=s, card_type=str(getattr(card, "card_type", "") or "")) if card else None
+        payment_claim_exists = bool(
+            card
+            and s.query(PaymentEntitlementClaim.id)
+            .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+            .first()
+        )
         promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == normalized).first()
     finally:
         s.close()
@@ -11415,7 +14530,7 @@ async def unified_redeem(
             payload_out["summary"] = summary
         return payload_out
 
-    if card and card_meta:
+    if card and (card_meta or payment_claim_exists):
         result = await _redeem_access_key_for_auth_user(
             key=normalized,
             request=request,
@@ -11473,6 +14588,13 @@ async def client_cabinet_token(
         email=str(auth_user.get("email") or "").strip() or None,
         ttl_seconds=CABINET_HANDOFF_TTL_SECONDS,
         purpose="cabinet_handoff",
+        account_id=str(auth_user.get("account_id") or "").strip() or None,
+        session_id=str(auth_user.get("session_id") or "").strip() or None,
+        device_id=str(auth_user.get("device_id") or "").strip() or None,
+        auth_epoch=auth_user.get("auth_epoch"),
+        device_credential_version=auth_user.get("device_credential_version"),
+        scope=str(auth_user.get("scope") or "").strip() or None,
+        token_id=secrets.token_urlsafe(16),
     )
     if not handoff_token:
         raise HTTPException(status_code=500, detail="Cabinet handoff session is not configured")
@@ -11578,6 +14700,15 @@ async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, reque
                     "message": "Cabinet handoff token has expired.",
                 },
             )
+        if str(handoff_auth_user.get("session_id") or "").strip():
+            try:
+                auth_session_service.validate_access_session(
+                    s,
+                    payload=handoff_auth_user,
+                    now=now,
+                )
+            except auth_session_service.AuthSessionError as exc:
+                raise _auth_session_http_exception(exc) from exc
         session_token = create_web_session_token(
             tg_id=int(handoff_auth_user.get("id") or 0),
             username=str(handoff_auth_user.get("username") or "").strip() or None,
@@ -11585,6 +14716,16 @@ async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, reque
             auth_origin="app_cabinet_handoff",
             email=str(handoff_auth_user.get("email") or "").strip() or None,
             purpose="cabinet_session",
+            account_id=str(handoff_auth_user.get("account_id") or "").strip() or None,
+            session_id=str(handoff_auth_user.get("session_id") or "").strip() or None,
+            device_id=str(handoff_auth_user.get("device_id") or "").strip() or None,
+            auth_epoch=handoff_auth_user.get("auth_epoch"),
+            device_credential_version=handoff_auth_user.get("device_credential_version"),
+            scope=(
+                "cabinet_session"
+                if str(handoff_auth_user.get("session_id") or "").strip()
+                else None
+            ),
         )
         if not session_token:
             raise HTTPException(status_code=500, detail="Cabinet session is not configured")
@@ -11673,13 +14814,24 @@ async def create_feedback(payload: FeedbackCreateIn, request: Request, x_telegra
 async def get_tickets(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 20) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    include_media = not _auth_user_is_recovery_scope(auth_user)
     s = SessionLocal()
     try:
-        items = list_user_tickets(s, tg_id, limit=max(1, min(int(limit), 50)))
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=tg_id,
+        )
+        items = list_user_tickets(
+            s,
+            tg_id,
+            limit=max(1, min(int(limit), 50)),
+            account_id=account_id,
+        )
         data = []
         for t in items:
             msgs = list_ticket_messages(s, t.id, limit=1)
-            data.append(_ticket_row(t, msgs))
+            data.append(_ticket_row(t, msgs, include_media=include_media))
         return {"tickets": data}
     finally:
         s.close()
@@ -11694,10 +14846,24 @@ async def upload_ticket_attachment(
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_upload", request, identity=f"tg:{tg_id}")
-    raw_bytes = await _read_limited_request_body(request, max_bytes=SUPPORT_UPLOAD_MAX_BYTES, scope="Attachment")
     try:
+        raw_bytes = await _read_limited_request_body(
+            request,
+            max_bytes=SUPPORT_UPLOAD_MAX_BYTES,
+            scope="Attachment",
+        )
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=tg_id,
+            )
+        finally:
+            s.close()
         uploaded = _store_support_upload(
             owner_tg_id=tg_id,
+            owner_account_id=account_id,
             filename=x_upload_filename,
             content_type=request.headers.get("content-type"),
             raw_bytes=raw_bytes,
@@ -11708,8 +14874,8 @@ async def upload_ticket_attachment(
             scope="ticket_upload",
             client_ip=_request_client_ip(request),
             subject=f"tg:{tg_id}",
-            reason=str(exc.detail or "unsupported_attachment")[:160],
-            meta={"content_type": request.headers.get("content-type"), "filename": x_upload_filename},
+            reason=_support_upload_reject_reason(exc),
+            meta={"status_code": int(exc.status_code)},
         )
         raise
     logger.info(
@@ -11731,6 +14897,12 @@ async def download_ticket_attachment(
     x_telegram_init_data: str = Header(default=""),
 ) -> FileResponse:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    if _auth_user_is_recovery_scope(auth_user):
+        raise _auth_http_exception(
+            detail="Recovery-сессия не открывает вложения.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
     actor = int(auth_user.get("id", 0))
     clean_name = Path(str(stored_name or "")).name
     if clean_name != stored_name or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", clean_name):
@@ -11738,10 +14910,39 @@ async def download_ticket_attachment(
     _enforce_beta_rate_limit("ticket_attachment_download", request, identity=f"tg:{actor}")
     s = SessionLocal()
     try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=actor,
+        )
         row = s.query(SupportAttachment).filter(SupportAttachment.stored_name == clean_name).first()
         if not row:
             raise HTTPException(status_code=404, detail="Attachment not found")
-        if not (_is_admin_tg(actor) or int(row.owner_tg_id) == actor):
+        if (
+            row.ticket_id is None
+            and row.message_id is None
+            and row.expires_at is not None
+            and row.expires_at <= _utcnow()
+        ):
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        bound_ticket = get_ticket_by_id(s, int(row.ticket_id)) if row.ticket_id is not None else None
+        allowed = (
+            can_access_ticket(
+                bound_ticket,
+                actor,
+                int(Settings.ADMIN_ID or 0),
+                account_id=account_id,
+            )
+            if bound_ticket is not None
+            else row.ticket_id is None
+            and can_access_support_attachment(
+                row,
+                actor,
+                int(Settings.ADMIN_ID or 0),
+                account_id=account_id,
+            )
+        )
+        if not allowed:
             _record_security_event(
                 "support_attachment_denied",
                 scope="ticket_attachment_download",
@@ -11777,54 +14978,103 @@ async def download_ticket_attachment(
 @app.post("/api/tickets")
 async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_create", request, identity=f"tg:{tg_id}")
-    s = SessionLocal()
-    try:
-        ticket = get_user_active_ticket(s, tg_id)
-        if not ticket:
-            ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject)
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=tg_id,
-            sender_role="user",
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(s, ticket=ticket, status=STATUS_OPEN)
-        s.commit()
-        ticket_id = int(ticket.id)
-    finally:
-        s.close()
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=tg_id,
+            )
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=tg_id,
+                account_id=account_id,
+            )
+            ticket = get_user_active_ticket(s, tg_id, account_id=account_id)
+            if not ticket:
+                ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject, account_id=account_id)
+            else:
+                claim_legacy_ticket(ticket, actor_tg_id=tg_id, account_id=account_id)
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=tg_id,
+                sender_role="user",
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(s, ticket=ticket, status=STATUS_OPEN)
+            s.commit()
+            ticket_id = int(ticket.id)
+            has_attachment = bool(attachment is not None or media.get("media_type") or media.get("media_file_id"))
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     if Settings.ADMIN_ID:
-        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый обращение #{ticket_id} от пользователя {tg_id}.")
+        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое обращение #{ticket_id} от пользователя {tg_id}.")
     track_event(tg_id=tg_id, event_name="ticket_created", source="webapp", meta={"ticket_id": ticket_id})
     await _maybe_append_support_ai_reply(
         ticket_id=ticket_id,
         user_tg_id=tg_id,
         text=payload.body,
-        has_attachment=bool(payload.media_type or payload.media_file_id),
+        has_attachment=has_attachment,
     )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=20)}
+    return {
+        "ticket": _load_ticket_row(
+            ticket_id,
+            message_limit=20,
+            include_media=not _auth_user_is_recovery_scope(auth_user),
+        )
+    }
 
 
 @app.get("/api/tickets/{ticket_id}")
 async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
+    recovery_scope = _auth_user_is_recovery_scope(auth_user)
+    admin_bypass_tg_id = 0 if recovery_scope else int(Settings.ADMIN_ID or 0)
     s = SessionLocal()
     try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=actor,
+        )
         ticket = get_ticket_by_id(s, ticket_id)
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (_is_admin_tg(actor) or int(ticket.user_tg_id) == actor):
+        if not can_access_ticket(
+            ticket,
+            actor,
+            admin_bypass_tg_id,
+            account_id=account_id,
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
         msgs = list_ticket_messages(s, ticket.id, limit=100)
-        return {"ticket": _ticket_row(ticket, msgs)}
+        return {
+            "ticket": _ticket_row(
+                ticket,
+                msgs,
+                include_media=not recovery_scope,
+            )
+        }
     finally:
         s.close()
 
@@ -11832,38 +15082,77 @@ async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str
 @app.post("/api/tickets/{ticket_id}/messages")
 async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     actor = int(auth_user.get("id", 0))
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (_is_admin_tg(actor) or int(ticket.user_tg_id) == actor):
-            raise HTTPException(status_code=403, detail="Access denied")
-        role = "admin" if _is_admin_tg(actor) else "user"
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=actor,
-            sender_role=role,
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(
-            s,
-            ticket=ticket,
-            status=STATUS_IN_PROGRESS if role == "admin" else STATUS_OPEN,
-            assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
-        )
-        s.commit()
-        ticket_user_tg_id = int(ticket.user_tg_id)
-    finally:
-        s.close()
+    recovery_scope = _auth_user_is_recovery_scope(auth_user)
+    admin_actor = bool(_is_admin_tg(actor) and not recovery_scope)
+    admin_bypass_tg_id = 0 if recovery_scope else int(Settings.ADMIN_ID or 0)
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=actor,
+            )
+            ticket = get_ticket_by_id(s, ticket_id)
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket not found")
+            if not can_access_ticket(
+                ticket,
+                actor,
+                admin_bypass_tg_id,
+                account_id=account_id,
+            ):
+                raise HTTPException(status_code=403, detail="Access denied")
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=actor,
+                account_id=account_id,
+            )
+            role = "admin" if admin_actor else "user"
+            if role == "user":
+                claim_legacy_ticket(ticket, actor_tg_id=actor, account_id=account_id)
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=actor,
+                sender_role=role,
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(
+                s,
+                ticket=ticket,
+                status=STATUS_IN_PROGRESS if role == "admin" else STATUS_OPEN,
+                assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
+            )
+            s.commit()
+            ticket_user_tg_id = resolve_ticket_notification_tg_id(s, ticket)
+            has_attachment = bool(attachment is not None or media.get("media_type") or media.get("media_file_id"))
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     if role == "admin":
-        await _telegram_send_message(int(ticket_user_tg_id), f"💬 Новый ответ оператора в обращении #{ticket_id}.")
+        if ticket_user_tg_id is None:
+            logger.warning(
+                "support ticket notification skipped ticket=%s reason=no_telegram_target",
+                ticket_id,
+            )
+        else:
+            await _telegram_send_message(ticket_user_tg_id, f"💬 Новый ответ оператора в обращении #{ticket_id}.")
     elif Settings.ADMIN_ID:
         await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое сообщение в обращении #{ticket_id} от {actor}.")
     if role == "user":
@@ -11871,9 +15160,15 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             ticket_id=ticket_id,
             user_tg_id=actor,
             text=payload.body,
-            has_attachment=bool(payload.media_type or payload.media_file_id),
+            has_attachment=has_attachment,
         )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=100)}
+    return {
+        "ticket": _load_ticket_row(
+            ticket_id,
+            message_limit=100,
+            include_media=not recovery_scope,
+        )
+    }
 
 
 @app.get("/api/admin/summary")
@@ -12244,6 +15539,36 @@ def _admin_payment_order_payload(*, s, order: ExternalOrder) -> dict[str, Any]:
     }
 
 
+def _payment_reversal_needs_operator(order: ExternalOrder) -> bool:
+    if str(order.status or "").strip().lower() not in {"refunded", "chargeback"}:
+        return False
+    meta = _external_order_meta(order)
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    fulfillment = meta.get("fulfillment") if isinstance(meta.get("fulfillment"), dict) else {}
+    reconciliation_status = str(reversal.get("reconciliation_status") or "").strip().lower()
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    return not bool(
+        reversal.get("operator_action_required") is False
+        and reconciliation_status in {"reversed", "already_reversed"}
+        and fulfillment_status == "reversed"
+    )
+
+
+def _payment_reversal_problem_time(order: ExternalOrder) -> datetime:
+    meta = _external_order_meta(order)
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    raw = str(reversal.get("recorded_at") or "").strip()[:128]
+    if raw:
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if parsed.tzinfo is not None:
+                parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+            return parsed
+        except (TypeError, ValueError, OverflowError):
+            pass
+    return order.created_at or datetime.min
+
+
 def _admin_payment_period_bounds(period: str) -> tuple[str, datetime, datetime]:
     period_norm = str(period or "7d").strip().lower()
     now = _utcnow()
@@ -12298,7 +15623,17 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     }
     pending_count = sum(int(status_counts.get(status, 0)) for status in ("created", "pending", "pending_verification"))
     manual_review_count = int(status_counts.get("manual_review", 0))
-    failed_count = sum(int(status_counts.get(status, 0)) for status in ("failed", "cancelled", "refunded", "chargeback"))
+    reversal_rows = (
+        s.query(ExternalOrder)
+        .filter(ExternalOrder.status.in_(["refunded", "chargeback"]))
+        .all()
+    )
+    reversal_problem_rows = [row for row in reversal_rows if _payment_reversal_needs_operator(row)]
+    reversal_problem_count = len(reversal_problem_rows)
+    failed_count = (
+        sum(int(status_counts.get(status, 0)) for status in ("failed", "cancelled"))
+        + reversal_problem_count
+    )
 
     site_checkout_intent = _count_funnel_sessions(
         s,
@@ -12313,14 +15648,32 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     checkout_started = site_checkout_intent + max(known_checkout_events, pay_attempts_started)
     paid_count = int(primary_revenue.get("paid_count") or 0)
 
-    recent_problem_orders = (
+    ordinary_problem_rows = (
         s.query(ExternalOrder)
         .filter(ExternalOrder.created_at >= from_dt, ExternalOrder.created_at <= to_dt)
-        .filter(func.lower(func.coalesce(ExternalOrder.status, "")).in_(["created", "pending", "pending_verification", "manual_review", "failed"]))
+        .filter(ExternalOrder.status.in_([
+            "created",
+            "pending",
+            "pending_verification",
+            "manual_review",
+            "failed",
+            "cancelled",
+        ]))
         .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
         .limit(25)
         .all()
     )
+    recent_problem_orders = [
+        row
+        for _problem_at, row in sorted(
+            [
+                *((row.created_at or datetime.min, row) for row in ordinary_problem_rows),
+                *((_payment_reversal_problem_time(row), row) for row in reversal_problem_rows),
+            ],
+            key=lambda item: (item[0], int(item[1].id or 0)),
+            reverse=True,
+        )[:25]
+    ]
 
     return {
         "ok": True,
@@ -12413,11 +15766,38 @@ async def admin_payment_orders(
         s.close()
 
 
+@app.get("/api/admin/payments/orders/{provider}/{order_id}")
+async def admin_payment_order_detail(
+    provider: str,
+    order_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    provider_norm = _normalize_provider(provider)
+    order_norm = str(order_id or "").strip()
+    s = SessionLocal()
+    try:
+        order = (
+            s.query(ExternalOrder)
+            .filter(
+                ExternalOrder.provider == provider_norm,
+                ExternalOrder.order_id == order_norm,
+            )
+            .first()
+        )
+        if order is None:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return {"order": _admin_payment_order_payload(s=s, order=order)}
+    finally:
+        s.close()
+
+
 @app.post("/api/admin/payments/orders/{provider}/{order_id}/reconcile")
 async def admin_payment_order_reconcile(
     provider: str,
     order_id: str,
     payload: AdminPaymentReconcileIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
@@ -12425,10 +15805,16 @@ async def admin_payment_order_reconcile(
     order_norm = str(order_id or "").strip()
     if not provider_norm or not order_norm:
         raise HTTPException(status_code=400, detail="Provider and order_id are required")
-    status_norm = str(payload.status or "").strip().lower()
-    if status_norm and status_norm not in ADMIN_PAYMENT_RECONCILE_STATUSES:
-        raise HTTPException(status_code=400, detail="Unsupported payment status")
-    note = str(payload.note or "").strip()
+    guarded_payload = {"note": str(payload.note or ""), "status": payload.status}
+    if not str(request.headers.get("X-Admin-Intent-Id") or "").strip():
+        return await _execute_admin_guarded_action(
+            actor_tg_id=actor,
+            action="payment.reconcile",
+            target_type="payment",
+            target_id="0",
+            payload=guarded_payload,
+            request=request,
+        )
     s = SessionLocal()
     try:
         order = (
@@ -12438,30 +15824,17 @@ async def admin_payment_order_reconcile(
         )
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
-        from_status = str(order.status or "created")
-        if status_norm:
-            order.status = status_norm
-            if status_norm == "paid" and not order.paid_at:
-                order.paid_at = _utcnow()
-        s.commit()
-        s.refresh(order)
-        order_payload = _admin_payment_order_payload(s=s, order=order)
+        target_id = str(int(order.id))
     finally:
         s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_payment_reconcile",
-        target_tg_id=int(order_payload["tg_id"]) if order_payload.get("tg_id") is not None else None,
-        meta={
-            "provider": provider_norm,
-            "order_id": order_norm,
-            "from_status": from_status,
-            "to_status": status_norm or from_status,
-            "note": note,
-        },
+        action="payment.reconcile",
+        target_type="payment",
+        target_id=target_id,
+        payload=guarded_payload,
+        request=request,
     )
-    return {"ok": True, "order": order_payload}
 
 
 @app.get("/api/admin/users")
@@ -12744,6 +16117,14 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
         )
 
     keys.sort(key=lambda item: str(item.get("node_code") or ""))
+    failed_panel_rows = [row for row in panel_rows if str(row.get("error") or "").strip()]
+    usable_panel_rows = [row for row in panel_rows if not str(row.get("error") or "").strip()]
+    if panel_error or (allowed_by_code and not panel_rows) or (failed_panel_rows and not usable_panel_rows):
+        panel_state = "error"
+    elif failed_panel_rows:
+        panel_state = "partial"
+    else:
+        panel_state = "ok"
     active_users_estimate, active_users_source = _estimate_active_users_proxy(
         live_connections=online_connections_now,
         live_nodes=online_count,
@@ -12767,7 +16148,7 @@ async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
             "traffic_down_bytes": int(total_down),
             "traffic_total_bytes": int(total_up + total_down),
             "traffic_total_gb": _bytes_to_gb(total_up + total_down),
-            "panel_state": "error" if panel_error else "ok",
+            "panel_state": panel_state,
             "panel_error": panel_error or None,
             "policies_total": int(len(policy_by_code)),
         },
@@ -12813,7 +16194,11 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         )
         loyalty_snapshot = _user_loyalty_snapshot(s=s, user=user)
         observer_payload = build_admin_observer_block(s=s, tg_id=int(tg_id))
-        sub_token = str(getattr(user, "sub_token", "") or "").strip()
+        observer_summary_payload = {
+            key: value
+            for key, value in observer_payload.items()
+            if key != "recent_ips"
+        }
         user_status = _user_effective_status(user)
         user_origin = _user_origin(user)
         user_payload = {
@@ -12833,8 +16218,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "referral_count": int(user.referral_count or 0),
             "streak_months": int(user.streak_months or 0),
             "created_at": _safe_iso(user.created_at),
-            "subscription_url": _admin_subscription_url(user),
-            "subscription_token": sub_token,
             "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
             "linked_telegram_username": getattr(user, "linked_telegram_username", None),
             "app_install_id": getattr(user, "app_install_id", None),
@@ -12843,7 +16226,7 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "observer_state": observer_payload.get("state", "ok"),
             "observer_updated_at": observer_payload.get("updated_at"),
         }
-        ticket_payload = [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
+        ticket_payload = [_ticket_summary_row(t, list_ticket_messages(s, t.id, limit=1)) for t in tickets]
         policy_payload = [_serialize_key_policy(row) for row in policies]
         history_payload = [
             {
@@ -12852,7 +16235,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
                 "node_code": str(row.node_code or "") or None,
                 "actor_tg_id": int(row.actor_tg_id) if row.actor_tg_id is not None else None,
                 "source": str(row.source or ""),
-                "meta": _json_obj(getattr(row, "meta", None)),
                 "created_at": _safe_iso(row.created_at),
             }
             for row in history_rows
@@ -12863,7 +16245,6 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
                 "actor_tg_id": int(row.actor_tg_id),
                 "action": str(row.action or ""),
                 "target_tg_id": int(row.target_tg_id) if row.target_tg_id is not None else None,
-                "meta": _json_obj(getattr(row, "meta", None)),
                 "created_at": _safe_iso(row.created_at),
             }
             for row in recent_admin_rows
@@ -12878,6 +16259,63 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         risk = _compute_user_risk(s=s2, user=user, keys_summary=(keys_state or {}).get("summary") or {})
     finally:
         s2.close()
+    keys_summary = dict((keys_state or {}).get("summary") or {})
+    raw_panel_state = str(keys_summary.get("panel_state") or "").strip().lower()
+    panel_state = raw_panel_state if raw_panel_state in {"ok", "partial", "error"} else "error"
+
+    def panel_value(key: str) -> Any:
+        return keys_summary.get(key) if panel_state == "ok" else None
+
+    def safe_key_row(row: dict[str, Any]) -> dict[str, Any]:
+        row_panel_state = "error" if row.get("panel_error") else "ok"
+        panel_ok = row_panel_state == "ok"
+        return {
+            "node_code": row.get("node_code"),
+            "node_name": row.get("node_name"),
+            "exists": bool(row.get("exists")) if panel_ok else None,
+            "enabled": bool(row.get("enabled")) if panel_ok else None,
+            "online": row.get("online") if panel_ok and isinstance(row.get("online"), bool) else None,
+            "current_connections": int(row.get("current_connections") or 0) if panel_ok else None,
+            "sub_id_match": bool(row.get("sub_id_match")) if panel_ok else None,
+            "up_bytes": int(row.get("up_bytes") or 0) if panel_ok else None,
+            "down_bytes": int(row.get("down_bytes") or 0) if panel_ok else None,
+            "total_bytes": int(row.get("total_bytes") or 0) if panel_ok else None,
+            "total_gb": float(row.get("total_gb") or 0.0) if panel_ok else None,
+            "last_online_at": row.get("last_online_at") if panel_ok else None,
+            "last_online_age_seconds": row.get("last_online_age_seconds") if panel_ok else None,
+            "panel_state": row_panel_state,
+            "policy": row.get("policy"),
+        }
+
+    safe_keys_state = {
+        "summary": {
+            "nodes_total": panel_value("nodes_total"),
+            "nodes_with_client": panel_value("nodes_with_client"),
+            "nodes_online": panel_value("nodes_online"),
+            "online_keys_now": panel_value("online_keys_now"),
+            "online_connections_now": panel_value("online_connections_now"),
+            "active_users_estimate": panel_value("active_users_estimate"),
+            "active_users_source": panel_value("active_users_source"),
+            "online_node_codes_now": (
+                list(keys_summary.get("online_node_codes_now") or [])
+                if panel_state == "ok"
+                else None
+            ),
+            "nodes_enabled": panel_value("nodes_enabled"),
+            "subid_mismatch_count": panel_value("subid_mismatch_count"),
+            "traffic_up_bytes": panel_value("traffic_up_bytes"),
+            "traffic_down_bytes": panel_value("traffic_down_bytes"),
+            "traffic_total_bytes": panel_value("traffic_total_bytes"),
+            "traffic_total_gb": panel_value("traffic_total_gb"),
+            "panel_state": panel_state,
+            "policies_total": keys_summary.get("policies_total"),
+        },
+        "keys": [
+            safe_key_row(row)
+            for row in list((keys_state or {}).get("keys") or [])
+            if isinstance(row, dict)
+        ],
+    }
     return {
         "user": user_payload,
         "tickets": ticket_payload,
@@ -12886,272 +16324,136 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         "admin_actions": recent_admin_payload,
         "payment_orders": payment_order_payload,
         "risk": risk,
-        "observer": observer_payload,
+        "observer": observer_summary_payload,
         "loyalty": loyalty_snapshot,
-        **keys_state,
+        **safe_keys_state,
     }
 
 
-@app.post("/api/admin/users/manual")
-async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+@app.get("/api/admin/users/{tg_id}/investigation")
+async def admin_user_investigation(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
     s = SessionLocal()
     try:
-        tg_id = _next_manual_tg_id(s)
-        now = _utcnow()
-        user = User(
-            tg_id=tg_id,
-            username=None,
-            uuid=str(uuid.uuid4()),
-            email=f"MANUAL_{abs(tg_id)}",
-            sub_type="MANUAL",
-            current_plan_code="manual",
-            created_at=now,
-            expiry_at=now + timedelta(days=int(payload.days)),
-            is_active=True,
-            stars_paid=0,
-            total_gb=0,
-            trial_used=False,
-            tos_accepted=True,
-            first_purchase_done=True,
-            sub_token=_generate_sub_token(),
-            is_manual=True,
-            created_by_admin=actor,
-            display_name=payload.display_name.strip(),
-        )
-        s.add(user)
-        ensure_user_account_foundation(s, user, now=now)
-        s.commit()
-        s.refresh(user)
-        created = {
-            "tg_id": int(user.tg_id),
-            "uuid": str(user.uuid),
-            "email": str(user.email),
-            "sub_token": str(user.sub_token or ""),
-            "display_name": str(user.display_name or ""),
-            "sub_type": str(user.sub_type or ""),
-            "is_active": bool(user.is_active),
-            "expiry_at": _safe_iso(user.expiry_at),
+        user = s.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "tg_id": int(tg_id),
+            "generated_at": _safe_iso(_utcnow()),
+            "observer": build_admin_observer_block(s=s, tg_id=int(tg_id)),
         }
     finally:
         s.close()
 
-    panel = ControlPanel()
-    sync_ok = False
-    try:
-        await panel.login()
-        res = await panel.ensure_user_on_all_nodes(
-            tg_id=int(created["tg_id"]),
-            client_uuid=str(created["uuid"]),
-            email=str(created["email"]),
-            sub_id=str(created["sub_token"] or created["tg_id"]),
-            enable=True,
-            only_node_codes=None,
-        )
-        sync_ok = bool(any(res.values())) if res else False
-    finally:
-        await panel.close()
 
-    _audit_admin(
+@app.post("/api/admin/users/manual")
+async def admin_create_manual_user(
+    payload: ManualUserCreateRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_manual_create",
-        target_tg_id=int(created["tg_id"]),
-        meta={"days": payload.days, "sync_ok": sync_ok},
+        action="user.manual_create",
+        target_type="user",
+        target_id="manual",
+        payload={"display_name": payload.display_name, "days": int(payload.days)},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(created["tg_id"]),
-        action="manual_create",
-        actor_tg_id=actor,
-        meta={"days": int(payload.days), "sync_ok": bool(sync_ok)},
-    )
-    return {
-        "ok": True,
-        "user": {
-            "tg_id": int(created["tg_id"]),
-            "display_name": created["display_name"],
-            "sub_type": created["sub_type"],
-            "is_active": bool(created["is_active"]),
-            "expiry_at": created["expiry_at"],
-            "subscription_url": build_subscription_url(str(created["sub_token"] or "")),
-        },
-        "sync_ok": sync_ok,
-    }
 
 
 @app.post("/api/admin/users/{tg_id}/manual/extend")
 @app.post("/api/admin/users/{tg_id}/manual-extend")
-async def admin_extend_manual_user(tg_id: int, payload: ManualUserExtendRequest, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_extend_manual_user(
+    tg_id: int,
+    payload: ManualUserExtendRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    delta_days = int(payload.delta_days if payload.delta_days is not None else (payload.days or 0))
-    if delta_days == 0:
-        raise HTTPException(status_code=400, detail="delta_days must be non-zero")
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        now = _utcnow()
-        cur = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        candidate_expiry = cur + timedelta(days=delta_days)
-        if candidate_expiry <= now:
-            if not bool(payload.allow_deactivate):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Operation would deactivate user; pass allow_deactivate=true to confirm",
-                )
-            user.expiry_at = now
-            user.is_active = False
-        else:
-            user.expiry_at = candidate_expiry
-            user.is_active = True
-        s.commit()
-        s.refresh(user)
-        expiry_iso = _safe_iso(user.expiry_at)
-        is_active = bool(user.is_active)
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_manual_extend",
-        target_tg_id=tg_id,
-        meta={"delta_days": int(delta_days), "allow_deactivate": bool(payload.allow_deactivate)},
+        action="user.extend",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={
+            "days": payload.days,
+            "delta_days": payload.delta_days,
+            "allow_deactivate": bool(payload.allow_deactivate),
+        },
+        request=request,
     )
-    return {"ok": True, "expiry_at": expiry_iso, "is_active": is_active, "delta_days": int(delta_days)}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/block")
-async def admin_block_manual_user(tg_id: int, payload: ManualUserBlockRequest, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_block_manual_user(
+    tg_id: int,
+    payload: ManualUserBlockRequest,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user.is_active = not bool(payload.blocked)
-        s.commit()
-        user_uuid = str(user.uuid)
-        active = bool(user.is_active)
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        await panel.enable_client(user_uuid, enable=active)
-    finally:
-        await panel.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_manual_block", target_tg_id=tg_id, meta={"blocked": bool(payload.blocked)})
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="manual_block" if bool(payload.blocked) else "manual_unblock",
-        node_code=None,
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        meta={"blocked": bool(payload.blocked)},
+        action="user.block",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"blocked": bool(payload.blocked)},
+        request=request,
     )
-    return {"ok": True, "is_active": active}
 
 
 @app.post("/api/admin/users/{tg_id}/manual/regenerate-token")
-async def admin_regenerate_manual_token(tg_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_regenerate_manual_token(
+    tg_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter_by(tg_id=tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user.sub_token = _generate_sub_token()
-        s.commit()
-        s.refresh(user)
-        _process_referral_bonus_queue(limit=100, force_without_activity=False)
-        sub_token = str(user.sub_token or "")
-        user_uuid = str(user.uuid or "")
-        is_active = bool(user.is_active)
-    finally:
-        s.close()
-
-    sync_ok = False
-    if user_uuid:
-        panel = ControlPanel()
-        try:
-            await panel.login()
-            sync_ok = bool(await panel.enable_client(user_uuid, enable=is_active))
-        finally:
-            await panel.close()
-    _audit_admin(actor_tg_id=actor, action="admin_manual_regen_token", target_tg_id=tg_id)
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="token_regenerate",
-        node_code=None,
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        meta={"sync_ok": bool(sync_ok)},
+        action="user.regenerate_token",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={},
+        request=request,
     )
-    return {
-        "ok": True,
-        "subscription_url": build_subscription_url(str(sub_token or "")),
-        "sync_ok": bool(sync_ok),
-    }
 
 
 @app.post("/api/admin/users/{tg_id}/safe-delete")
 async def admin_safe_delete_test_user(
     tg_id: int,
     payload: AdminUserSafeDeleteIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    if not bool(payload.confirm):
-        raise HTTPException(status_code=400, detail="confirm=true is required")
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        if not _is_manual_test_user(user):
-            raise HTTPException(status_code=400, detail="Only explicit manual/test users can be deleted")
-        target_meta = {
-            "tg_id": int(user.tg_id),
-            "display_name": str(getattr(user, "display_name", "") or ""),
-            "sub_type": str(getattr(user, "sub_type", "") or ""),
-        }
-        s.query(UserNode).filter(UserNode.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(KeyActionHistory).filter(KeyActionHistory.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.query(Event).filter(Event.tg_id == int(tg_id)).delete(synchronize_session=False)
-        s.delete(user)
-        s.commit()
-    finally:
-        s.close()
-
-    panel_deleted = False
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        panel_deleted = bool(await panel.delete_client(int(tg_id)))
-    except Exception as exc:
-        logger.warning("admin safe delete panel cleanup failed tg_id=%s err=%s", int(tg_id), exc)
-    finally:
-        await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_safe_delete_test_user",
-        target_tg_id=int(tg_id),
-        meta={**target_meta, "panel_deleted": bool(panel_deleted)},
+        action="user.safe_delete",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"confirm": bool(payload.confirm)},
+        request=request,
     )
-    return {"ok": True, "tg_id": int(tg_id), "panel_deleted": bool(panel_deleted)}
 
 
 @app.post("/api/admin/users/{tg_id}/delete-test-user")
 async def admin_delete_test_user_compat(
     tg_id: int,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
-    return await admin_safe_delete_test_user(
-        tg_id=tg_id,
-        payload=AdminUserSafeDeleteIn(confirm=True),
-        x_telegram_init_data=x_telegram_init_data,
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="user.delete_test",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={},
+        request=request,
     )
 
 
@@ -13160,147 +16462,54 @@ async def admin_user_key_toggle(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyToggleIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        hard_cap_gb = _get_user_node_hard_cap_gb(s=s, tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.set_user_key_enabled_on_node(
-            tg_id=int(tg_id),
-            node_code=str(node_code or ""),
-            enable=bool(payload.enable),
-            sub_id=expected_sub_id,
-            hard_cap_gb=hard_cap_gb,
-        )
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel update failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_toggle",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or ""), "enable": bool(payload.enable)},
+        action="user.key_toggle",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code, "enable": bool(payload.enable)},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_enable" if bool(payload.enable) else "key_disable",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-        meta={"enabled": bool(payload.enable)},
-    )
-    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or ""), "enabled": bool(payload.enable)}
 
 
 @app.post("/api/admin/users/{tg_id}/keys/{node_code}/reset-traffic")
 async def admin_user_key_reset_traffic(
     tg_id: int,
     node_code: str,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.reset_user_key_traffic_on_node(tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel reset failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_reset_traffic",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        action="user.key_reset_traffic",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_reset_traffic",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-    )
-    return {"ok": True, "tg_id": int(tg_id), "node_code": str(node_code or "")}
 
 
 @app.post("/api/admin/users/{tg_id}/keys/{node_code}/resync-subid")
 async def admin_user_key_resync_subid(
     tg_id: int,
     node_code: str,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        hard_cap_gb = _get_user_node_hard_cap_gb(s=s, tg_id=int(tg_id), node_code=str(node_code or ""))
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    try:
-        await panel.login()
-        changed = await panel.resync_user_key_subid_on_node(
-            tg_id=int(tg_id),
-            node_code=str(node_code or ""),
-            sub_id=expected_sub_id,
-            hard_cap_gb=hard_cap_gb,
-        )
-    finally:
-        await panel.close()
-
-    if changed is None:
-        raise HTTPException(status_code=404, detail="Key not found on target node")
-    if not changed:
-        raise HTTPException(status_code=502, detail="Panel subId sync failed")
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_resync_subid",
-        target_tg_id=int(tg_id),
-        meta={"node_code": str(node_code or "")},
+        action="user.key_resync_subid",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"node_code": node_code},
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_resync_subid",
-        node_code=str(node_code or ""),
-        actor_tg_id=actor,
-    )
-    return {
-        "ok": True,
-        "tg_id": int(tg_id),
-        "node_code": str(node_code or ""),
-        "expected_sub_id": expected_sub_id,
-    }
 
 
 @app.get("/api/admin/users/{tg_id}/key-history")
@@ -13355,76 +16564,27 @@ async def admin_user_key_limits_put(
     tg_id: int,
     node_code: str,
     payload: AdminUserKeyLimitsIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    node = str(node_code or "").strip().lower()
-    if not node:
-        raise HTTPException(status_code=400, detail="node_code is required")
-    if payload.soft_cap_gb is not None and payload.hard_cap_gb is not None and int(payload.hard_cap_gb) < int(payload.soft_cap_gb):
-        raise HTTPException(status_code=400, detail="hard_cap_gb must be >= soft_cap_gb")
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        row = (
-            s.query(UserKeyPolicy)
-            .filter(UserKeyPolicy.tg_id == int(tg_id), func.lower(UserKeyPolicy.node_code) == node)
-            .first()
-        )
-        if not row:
-            row = UserKeyPolicy(
-                tg_id=int(tg_id),
-                node_code=node,
-                updated_by=actor,
-                updated_at=_utcnow(),
-            )
-            s.add(row)
-        row.burst_mbps = int(payload.burst_mbps) if payload.burst_mbps is not None else None
-        row.soft_cap_gb = int(payload.soft_cap_gb) if payload.soft_cap_gb is not None else None
-        row.hard_cap_gb = int(payload.hard_cap_gb) if payload.hard_cap_gb is not None else None
-        row.notify_soft = bool(payload.notify_soft)
-        row.notify_hard = bool(payload.notify_hard)
-        row.auto_disable_on_hard = bool(payload.auto_disable_on_hard)
-        row.updated_by = actor
-        row.updated_at = _utcnow()
-        s.commit()
-        s.refresh(row)
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        row_payload = _serialize_key_policy(row)
-    finally:
-        s.close()
-
-    applied = None
-    if bool(payload.apply_now):
-        panel = ControlPanel()
-        try:
-            await panel.login()
-            applied = await panel.apply_user_key_limits_on_node(
-                tg_id=int(tg_id),
-                node_code=node,
-                hard_cap_gb=(int(payload.hard_cap_gb) if payload.hard_cap_gb is not None else None),
-                sub_id=expected_sub_id,
-            )
-        finally:
-            await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_key_limits_put",
-        target_tg_id=int(tg_id),
-        meta={"node_code": node, "policy": row_payload, "apply_now": bool(payload.apply_now), "applied": applied},
+        action="user.key_limits",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={
+            "node_code": node_code,
+            "burst_mbps": payload.burst_mbps,
+            "soft_cap_gb": payload.soft_cap_gb,
+            "hard_cap_gb": payload.hard_cap_gb,
+            "notify_soft": bool(payload.notify_soft),
+            "notify_hard": bool(payload.notify_hard),
+            "auto_disable_on_hard": bool(payload.auto_disable_on_hard),
+            "apply_now": bool(payload.apply_now),
+        },
+        request=request,
     )
-    _key_history_log(
-        tg_id=int(tg_id),
-        action="key_limits_update",
-        node_code=node,
-        actor_tg_id=actor,
-        meta={"policy": row_payload, "apply_now": bool(payload.apply_now), "applied": applied},
-    )
-    return {"ok": True, "policy": row_payload, "applied": applied}
 
 
 @app.get("/api/admin/users/{tg_id}/risk")
@@ -13464,269 +16624,62 @@ async def admin_user_loyalty_get(tg_id: int, x_telegram_init_data: str = Header(
 async def admin_user_loyalty_grant(
     tg_id: int,
     payload: AdminLoyaltyGrantIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        loyalty = _user_loyalty_snapshot(s=s, user=user)
-        tier = next((x for x in loyalty.get("tiers", []) if int(x.get("days") or 0) == int(payload.tier_days)), None)
-        if not tier:
-            raise HTTPException(status_code=404, detail="Tier not found")
-        if not bool(tier.get("unlocked")):
-            raise HTTPException(status_code=400, detail="Tier is not unlocked yet")
-        reward_key = str(tier.get("reward_key") or "")
-        if bool(tier.get("claimed")):
-            raise HTTPException(status_code=400, detail="Tier already claimed")
-        bonus_days = int(tier.get("bonus_days") or 0)
-        now = _utcnow()
-        start = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = start + timedelta(days=max(1, bonus_days))
-        user.is_active = True
-        s.add(RewardClaim(tg_id=int(tg_id), reward_key=reward_key, meta=json.dumps({"tier": int(payload.tier_days)}, ensure_ascii=False)))
-        s.commit()
-        try:
-            sync_ok = bool(await _sync_user_after_paid_bonus(user))
-        except Exception as exc:
-            logger.warning("loyalty grant sync failed tg_id=%s err=%s", int(tg_id), exc)
-            sync_ok = False
-        expiry_at = _safe_iso(user.expiry_at)
-    except IntegrityError:
-        s.rollback()
-        raise HTTPException(status_code=400, detail="Tier already claimed")
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_loyalty_grant",
-        target_tg_id=int(tg_id),
-        meta={"tier_days": int(payload.tier_days), "sync_ok": bool(sync_ok)},
+        action="user.loyalty_grant",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"tier_days": int(payload.tier_days)},
+        request=request,
     )
-    return {"ok": True, "tier_days": int(payload.tier_days), "expiry_at": expiry_at, "sync_ok": bool(sync_ok)}
 
 
 @app.post("/api/admin/users/{tg_id}/presets/run")
 async def admin_user_preset_run(
     tg_id: int,
     payload: AdminUserPresetRunIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    preset = str(payload.preset or "").strip().lower()
-    if preset not in {"reset_key", "rotate_link", "extend_1d", "send_guide"}:
-        raise HTTPException(status_code=400, detail="Unsupported preset")
-
-    if preset == "extend_1d":
-        s = SessionLocal()
-        try:
-            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
-            now = _utcnow()
-            base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-            user.expiry_at = base + timedelta(days=1)
-            user.is_active = True
-            s.commit()
-            expiry_at = _safe_iso(user.expiry_at)
-        finally:
-            s.close()
-        _audit_admin(actor_tg_id=actor, action="admin_operator_extend_1d", target_tg_id=int(tg_id))
-        return {"ok": True, "preset": preset, "expiry_at": expiry_at}
-
-    if preset == "send_guide":
-        text = (
-            "Инструкция по подключению:\n"
-            "1) Откройте раздел Устройства.\n"
-            "2) Импортируйте ключ.\n"
-            "3) Проверьте статус и перезапустите приложение."
-        )
-        ok = await _telegram_send_message(int(tg_id), text)
-        _audit_admin(actor_tg_id=actor, action="admin_operator_send_guide", target_tg_id=int(tg_id), meta={"ok": bool(ok)})
-        if not ok:
-            raise HTTPException(status_code=502, detail="Telegram send failed")
-        return {"ok": True, "preset": preset}
-
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-        nodes = enabled_nodes(s)
-    finally:
-        s.close()
-    keys_state = await _admin_user_keys_state(user, nodes=nodes)
-    keys = [k for k in (keys_state.get("keys") or []) if bool(k.get("exists"))]
-
-    panel = ControlPanel()
-    changed = 0
-    failed = 0
-    try:
-        await panel.login()
-        if preset == "reset_key":
-            for k in keys:
-                ok = await panel.reset_user_key_traffic_on_node(tg_id=int(tg_id), node_code=str(k.get("node_code") or ""))
-                if ok:
-                    changed += 1
-                else:
-                    failed += 1
-                    continue
-                _key_history_log(
-                    tg_id=int(tg_id),
-                    action="key_reset_traffic",
-                    node_code=str(k.get("node_code") or ""),
-                    actor_tg_id=actor,
-                    source="preset",
-                )
-        elif preset == "rotate_link":
-            s2 = SessionLocal()
-            try:
-                db_user = s2.query(User).filter(User.tg_id == int(tg_id)).first()
-                if not db_user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                db_user.sub_token = _generate_sub_token()
-                s2.commit()
-                s2.refresh(db_user)
-                expected_sub_id = str(db_user.sub_token or db_user.tg_id)
-            finally:
-                s2.close()
-            for k in keys:
-                code = str(k.get("node_code") or "")
-                hard_cap = None
-                s3 = SessionLocal()
-                try:
-                    hard_cap = _get_user_node_hard_cap_gb(s=s3, tg_id=int(tg_id), node_code=code)
-                finally:
-                    s3.close()
-                ok = await panel.resync_user_key_subid_on_node(
-                    tg_id=int(tg_id),
-                    node_code=code,
-                    sub_id=expected_sub_id,
-                    hard_cap_gb=hard_cap,
-                )
-                if ok:
-                    changed += 1
-                else:
-                    failed += 1
-                    continue
-                _key_history_log(tg_id=int(tg_id), action="key_resync_subid", node_code=code, actor_tg_id=actor, source="preset")
-            _key_history_log(tg_id=int(tg_id), action="token_regenerate", actor_tg_id=actor, source="preset")
-    finally:
-        await panel.close()
-    _audit_admin(actor_tg_id=actor, action=f"admin_operator_{preset}", target_tg_id=int(tg_id), meta={"changed": changed, "failed": failed})
-    return {
-        "ok": True,
-        "preset": preset,
-        "changed": int(changed),
-        "failed": int(failed),
-        "subscription_url": build_subscription_url(expected_sub_id),
-    }
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="user.preset_run",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"preset": payload.preset},
+        request=request,
+    )
 
 
 @app.post("/api/admin/users/keys/bulk-action")
-async def admin_users_keys_bulk_action(payload: AdminUserKeysBulkActionIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_users_keys_bulk_action(
+    payload: AdminUserKeysBulkActionIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    action = str(payload.action or "").strip().lower()
-    if action not in {"disable", "enable", "reset", "resync"}:
-        raise HTTPException(status_code=400, detail="Unsupported action")
-
-    s = SessionLocal()
-    try:
-        users = _admin_select_users_for_segment(
-            s=s,
-            segment=payload.segment,
-            q=payload.q,
-            tg_ids=payload.tg_ids,
-            limit=payload.limit,
-        )
-    finally:
-        s.close()
-    if not users:
-        return {"ok": True, "action": action, "dry_run": bool(payload.dry_run), "users": 0, "changed": 0, "failed": 0, "details": []}
-
-    if len(users) > 50 and not bool(payload.force) and not bool(payload.dry_run):
-        return {
-            "ok": False,
-            "requires_force": True,
-            "action": action,
-            "users": int(len(users)),
-            "message": "Bulk action over 50 users requires force=true",
-        }
-
-    if bool(payload.dry_run):
-        return {
-            "ok": True,
-            "action": action,
-            "dry_run": True,
-            "users": int(len(users)),
-            "preview_tg_ids": [int(u.tg_id) for u in users[:50]],
-        }
-
-    panel = ControlPanel()
-    changed = 0
-    failed = 0
-    details: list[dict[str, Any]] = []
-    try:
-        await panel.login()
-        for user in users:
-            tg_id = int(user.tg_id)
-            nodes = payload.node_codes or []
-            if not nodes:
-                snapshots = await panel.get_user_key_snapshots(tg_id=tg_id)
-                nodes = [str(r.get("node_code") or "") for r in snapshots if str(r.get("node_code") or "").strip()]
-            expected_sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
-            user_changed = 0
-            user_failed = 0
-            for node_code in nodes:
-                code = str(node_code or "").strip().lower()
-                if not code:
-                    continue
-                s2 = SessionLocal()
-                try:
-                    hard_cap_gb = _get_user_node_hard_cap_gb(s=s2, tg_id=tg_id, node_code=code)
-                finally:
-                    s2.close()
-                ok: bool | None
-                if action == "disable":
-                    ok = await panel.set_user_key_enabled_on_node(tg_id=tg_id, node_code=code, enable=False, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                elif action == "enable":
-                    ok = await panel.set_user_key_enabled_on_node(tg_id=tg_id, node_code=code, enable=True, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                elif action == "reset":
-                    ok = await panel.reset_user_key_traffic_on_node(tg_id=tg_id, node_code=code)
-                else:
-                    ok = await panel.resync_user_key_subid_on_node(tg_id=tg_id, node_code=code, sub_id=expected_sub_id, hard_cap_gb=hard_cap_gb)
-                if ok:
-                    changed += 1
-                    user_changed += 1
-                    hist_action = {
-                        "disable": "key_disable",
-                        "enable": "key_enable",
-                        "reset": "key_reset_traffic",
-                        "resync": "key_resync_subid",
-                    }[action]
-                    _key_history_log(tg_id=tg_id, action=hist_action, node_code=code, actor_tg_id=actor, source="bulk")
-                else:
-                    failed += 1
-                    user_failed += 1
-            details.append({"tg_id": tg_id, "changed": user_changed, "failed": user_failed})
-    finally:
-        await panel.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_bulk_key_action",
-        meta={
-            "action": action,
+        action="user.bulk_key_action",
+        target_type="users",
+        target_id="bulk",
+        payload={
+            "action": payload.action,
             "segment": payload.segment,
-            "users": len(users),
-            "changed": changed,
-            "failed": failed,
-            "forced": bool(payload.force),
+            "node_codes": list(payload.node_codes),
+            "tg_ids": list(payload.tg_ids),
+            "q": payload.q,
+            "limit": int(payload.limit),
+            "dry_run": bool(payload.dry_run),
+            "force": bool(payload.force),
         },
+        request=request,
     )
-    return {"ok": True, "action": action, "users": int(len(users)), "changed": int(changed), "failed": int(failed), "details": details}
 
 
 @app.get("/api/admin/audit")
@@ -13770,25 +16723,47 @@ async def admin_audit_log(
 
 
 @app.post("/api/admin/users/{tg_id}/message")
-async def admin_user_message(tg_id: int, payload: AdminMessageIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_user_message(
+    tg_id: int,
+    payload: AdminMessageIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    ok = await _telegram_send_message(tg_id, payload.text)
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_user_message",
-        target_tg_id=tg_id,
-        meta={"ok": ok, "length": len(payload.text)},
+        action="user.message",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={"text": payload.text},
+        request=request,
     )
-    if not ok:
-        raise HTTPException(status_code=502, detail="Telegram send failed")
-    return {"ok": True}
 
 
 @app.post("/api/admin/broadcast")
-async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_broadcast(
+    payload: AdminBroadcastIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     segment = (payload.segment or "all_active").strip().lower()
     limit = max(1, min(int(payload.limit), MAX_BROADCAST_LIMIT))
+
+    if not bool(payload.dry_run):
+        return await _execute_admin_guarded_action(
+            actor_tg_id=actor,
+            action="broadcast.send",
+            target_type="broadcast",
+            target_id="broadcast",
+            payload={
+                "text": payload.text,
+                "segment": segment,
+                "limit": limit,
+                "tg_ids": list(payload.tg_ids),
+            },
+            request=request,
+        )
 
     s = SessionLocal()
     try:
@@ -13811,42 +16786,19 @@ async def admin_broadcast(payload: AdminBroadcastIn, x_telegram_init_data: str =
     finally:
         s.close()
 
-    if bool(payload.dry_run):
-        _audit_admin(
-            actor_tg_id=actor,
-            action="admin_broadcast_preview",
-            meta={"segment": segment, "attempted": min(len(target_ids), limit), "limit": limit},
-        )
-        return {
-            "ok": True,
-            "dry_run": True,
-            "segment": segment,
-            "attempted": min(len(target_ids), limit),
-            "sent": 0,
-            "failed": 0,
-            "sample_tg_ids": [int(value) for value in target_ids[:5]],
-        }
-
-    sent = 0
-    failed = 0
-    errors: list[int] = []
-    for tg_id in target_ids[:limit]:
-        if tg_id == actor:
-            continue
-        ok = await _telegram_send_message(tg_id, payload.text)
-        if ok:
-            sent += 1
-        else:
-            failed += 1
-            if len(errors) < 25:
-                errors.append(tg_id)
-
     _audit_admin(
         actor_tg_id=actor,
-        action="admin_broadcast",
-        meta={"segment": segment, "sent": sent, "failed": failed, "attempted": min(len(target_ids), limit)},
+        action="admin_broadcast_preview",
+        meta={"segment": segment, "attempted": len(target_ids), "limit": limit},
     )
-    return {"ok": True, "segment": segment, "attempted": min(len(target_ids), limit), "sent": sent, "failed": failed, "failed_ids": errors}
+    return {
+        "ok": True,
+        "dry_run": True,
+        "segment": segment,
+        "attempted": len(target_ids),
+        "sent": 0,
+        "failed": 0,
+    }
 
 
 @app.get("/api/admin/promos")
@@ -13881,87 +16833,58 @@ async def admin_promos(x_telegram_init_data: str = Header(default=""), limit: in
 
 
 @app.post("/api/admin/promos")
-async def admin_promos_create(payload: AdminPromoCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_create(
+    payload: AdminPromoCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = (payload.code or "").strip().upper()
-    promo_type = (payload.promo_type or "").strip().lower()
-    if promo_type not in {"discount", "days"}:
-        raise HTTPException(status_code=400, detail="promo_type must be discount or days")
-    s = SessionLocal()
-    try:
-        exists = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Promo code already exists")
-        row = PromoCode(
-            code=code,
-            promo_type=promo_type,
-            value=int(payload.value),
-            uses_left=int(payload.uses_left),
-            expires_at=_parse_optional_datetime(payload.expires_at),
-        )
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_promo_create", meta={"code": code, "promo_type": promo_type})
-    return {"ok": True, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.create",
+        target_type="promo",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/promos/{code}")
-async def admin_promos_update(code: str, payload: AdminPromoUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_update(
+    code: str,
+    payload: AdminPromoUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_code = (code or "").strip().upper()
-    s = SessionLocal()
-    try:
-        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Promo not found")
-
-        if payload.new_code is not None and payload.new_code.strip():
-            next_code = payload.new_code.strip().upper()
-            if next_code != src_code:
-                dup = s.query(PromoCode.id).filter(func.upper(PromoCode.code) == next_code).first()
-                if dup:
-                    raise HTTPException(status_code=409, detail="Promo code already exists")
-                row.code = next_code
-
-        if payload.promo_type is not None:
-            ptype = (payload.promo_type or "").strip().lower()
-            if ptype not in {"discount", "days"}:
-                raise HTTPException(status_code=400, detail="promo_type must be discount or days")
-            row.promo_type = ptype
-        if payload.value is not None:
-            row.value = int(payload.value)
-        if payload.uses_left is not None:
-            row.uses_left = int(payload.uses_left)
-        if "expires_at" in payload.model_fields_set:
-            row.expires_at = _parse_optional_datetime(payload.expires_at)
-
-        s.commit()
-        out_code = row.code
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_promo_update", meta={"from": src_code, "to": out_code})
-    return {"ok": True, "code": out_code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.update",
+        target_type="promo",
+        target_id=src_code,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/promos/{code}")
-async def admin_promos_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_promos_delete(
+    code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_code = (code or "").strip().upper()
-    s = SessionLocal()
-    try:
-        row = s.query(PromoCode).filter(func.upper(PromoCode.code) == src_code).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Promo not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_promo_delete", meta={"code": src_code})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="promo.delete",
+        target_type="promo",
+        target_id=src_code,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/plans")
@@ -13976,87 +16899,58 @@ async def admin_plans(x_telegram_init_data: str = Header(default=""), include_in
 
 
 @app.post("/api/admin/plans")
-async def admin_plans_create(payload: AdminPlanCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_create(
+    payload: AdminPlanCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = (payload.code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        exists = s.query(PlanCatalog.id).filter(func.lower(PlanCatalog.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Plan already exists")
-        now = _utcnow()
-        row = PlanCatalog(
-            code=code,
-            label=payload.label.strip(),
-            amount_rub=int(payload.amount_rub),
-            amount_stars=int(payload.amount_stars),
-            days=int(payload.days),
-            device_limit=int(payload.device_limit),
-            node_policy=(payload.node_policy or "").strip()[:32] or None,
-            badge=(payload.badge or "").strip()[:32] or None,
-            is_active=bool(payload.is_active),
-            sort_order=int(payload.sort_order),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_create", meta={"code": code})
-    return {"ok": True, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.create",
+        target_type="plan",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/plans/{code}")
-async def admin_plans_update(code: str, payload: AdminPlanUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_update(
+    code: str,
+    payload: AdminPlanUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     target = (code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Plan not found")
-        if payload.label is not None:
-            row.label = payload.label.strip()
-        if payload.amount_rub is not None:
-            row.amount_rub = int(payload.amount_rub)
-        if payload.amount_stars is not None:
-            row.amount_stars = int(payload.amount_stars)
-        if payload.days is not None:
-            row.days = int(payload.days)
-        if payload.device_limit is not None:
-            row.device_limit = int(payload.device_limit)
-        if payload.node_policy is not None:
-            row.node_policy = (payload.node_policy or "").strip()[:32] or None
-        if payload.badge is not None:
-            row.badge = (payload.badge or "").strip()[:32] or None
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.sort_order is not None:
-            row.sort_order = int(payload.sort_order)
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_update", meta={"code": target})
-    return {"ok": True, "code": target}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.update",
+        target_type="plan",
+        target_id=target,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/plans/{code}")
-async def admin_plans_delete(code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_plans_delete(
+    code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     target = (code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(PlanCatalog).filter(func.lower(PlanCatalog.code) == target).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Plan not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_plan_delete", meta={"code": target})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="plan.delete",
+        target_type="plan",
+        target_id=target,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/live-updates")
@@ -14096,97 +16990,55 @@ async def admin_live_updates(x_telegram_init_data: str = Header(default=""), inc
 
 
 @app.post("/api/admin/live-updates")
-async def admin_live_updates_create(payload: AdminLiveUpdateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_create(
+    payload: AdminLiveUpdateCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
-    post_id = int(payload.post_id or 0) if payload.post_id is not None else None
-    if post_id is not None and not channel_username:
-        raise HTTPException(status_code=400, detail="channel_username is required when post_id is provided")
-    final_link = _build_tg_post_link(
-        channel_username=channel_username,
-        post_id=post_id,
-        fallback_link=payload.link,
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.create",
+        target_type="live_update",
+        target_id="new",
+        payload=payload.model_dump(),
+        request=request,
     )
-    if not final_link:
-        raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
-    s = SessionLocal()
-    try:
-        now = _utcnow()
-        row = LiveUpdate(
-            title=payload.title.strip(),
-            summary=payload.summary.strip(),
-            link=final_link,
-            channel_username=channel_username,
-            post_id=post_id,
-            published_at=_parse_optional_datetime(payload.published_at),
-            is_active=bool(payload.is_active),
-            sort_order=int(payload.sort_order),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        update_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_create", meta={"id": update_id})
-    return {"ok": True, "id": update_id}
 
 
 @app.patch("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_update(update_id: int, payload: AdminLiveUpdateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_update(
+    update_id: int,
+    payload: AdminLiveUpdateUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Live update not found")
-        if payload.title is not None:
-            row.title = payload.title.strip()
-        if payload.summary is not None:
-            row.summary = payload.summary.strip()
-        if payload.link is not None:
-            row.link = payload.link.strip()
-        if "channel_username" in payload.model_fields_set:
-            row.channel_username = _normalize_channel_username(payload.channel_username) if payload.channel_username else None
-        if "post_id" in payload.model_fields_set:
-            row.post_id = int(payload.post_id or 0) or None
-        if "published_at" in payload.model_fields_set:
-            row.published_at = _parse_optional_datetime(payload.published_at)
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.sort_order is not None:
-            row.sort_order = int(payload.sort_order)
-        row.link = _build_tg_post_link(
-            channel_username=getattr(row, "channel_username", None),
-            post_id=getattr(row, "post_id", None),
-            fallback_link=str(row.link or "").strip(),
-        )
-        if not str(row.link or "").strip():
-            raise HTTPException(status_code=400, detail="Provide either link or channel_username+post_id")
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_update", meta={"id": int(update_id)})
-    return {"ok": True, "id": int(update_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.update",
+        target_type="live_update",
+        target_id=str(update_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/live-updates/{update_id}")
-async def admin_live_updates_delete(update_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_live_updates_delete(
+    update_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(LiveUpdate).filter(LiveUpdate.id == int(update_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Live update not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_live_update_delete", meta={"id": int(update_id)})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="live_update.delete",
+        target_type="live_update",
+        target_id=str(update_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/start-links")
@@ -14219,82 +17071,56 @@ async def admin_start_links(x_telegram_init_data: str = Header(default=""), incl
 
 
 @app.post("/api/admin/start-links")
-async def admin_start_links_create(payload: AdminStartLinkCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_create(
+    payload: AdminStartLinkCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
-    if len(code) < 2:
-        raise HTTPException(status_code=400, detail="Invalid code")
-    s = SessionLocal()
-    try:
-        exists = s.query(StartLink.id).filter(func.lower(StartLink.code) == code).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Start link already exists")
-        now = _utcnow()
-        row = StartLink(
-            code=code,
-            description=str(payload.description or "").strip()[:240] or None,
-            target_action=str(payload.target_action or "").strip()[:64] or None,
-            is_active=bool(payload.is_active),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        row_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_create", meta={"id": row_id, "code": code})
-    return {"ok": True, "id": row_id, "code": code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.create",
+        target_type="start_link",
+        target_id=code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/start-links/{link_id}")
-async def admin_start_links_update(link_id: int, payload: AdminStartLinkUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_update(
+    link_id: int,
+    payload: AdminStartLinkUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Start link not found")
-        if payload.code is not None:
-            code = re.sub(r"[^a-z0-9_-]+", "", str(payload.code or "").strip().lower())[:64]
-            if len(code) < 2:
-                raise HTTPException(status_code=400, detail="Invalid code")
-            if code != str(row.code or "").strip().lower():
-                dup = s.query(StartLink.id).filter(func.lower(StartLink.code) == code, StartLink.id != row.id).first()
-                if dup:
-                    raise HTTPException(status_code=409, detail="Start link already exists")
-                row.code = code
-        if "description" in payload.model_fields_set:
-            row.description = str(payload.description or "").strip()[:240] or None
-        if "target_action" in payload.model_fields_set:
-            row.target_action = str(payload.target_action or "").strip()[:64] or None
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        row.updated_at = _utcnow()
-        s.commit()
-        out_code = str(row.code or "").strip().lower()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_update", meta={"id": int(link_id), "code": out_code})
-    return {"ok": True, "id": int(link_id), "code": out_code}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.update",
+        target_type="start_link",
+        target_id=str(link_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/start-links/{link_id}")
-async def admin_start_links_delete(link_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_start_links_delete(
+    link_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(StartLink).filter(StartLink.id == int(link_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Start link not found")
-        row.is_active = False
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_start_link_deactivate", meta={"id": int(link_id)})
-    return {"ok": True, "id": int(link_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="start_link.delete",
+        target_type="start_link",
+        target_id=str(link_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/wheel-config")
@@ -14309,21 +17135,20 @@ async def admin_wheel_config_get(x_telegram_init_data: str = Header(default=""))
 
 
 @app.put("/api/admin/wheel-config")
-async def admin_wheel_config_put(payload: AdminWheelConfigIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_wheel_config_put(
+    payload: AdminWheelConfigIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_wheel_config(payload.model_dump())
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key="wheel_config", value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_wheel_config_update",
-        meta={"preset": normalized.get("preset"), "cooldown_hours": normalized.get("cooldown_hours")},
+        action="wheel_config.update",
+        target_type="config",
+        target_id="wheel",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "wheel_config": normalized}
 
 
 @app.get("/api/admin/network-rollout-config")
@@ -14337,161 +17162,37 @@ async def admin_network_rollout_config_get(x_telegram_init_data: str = Header(de
 
 
 @app.put("/api/admin/network-rollout-config")
-async def admin_network_rollout_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_network_rollout_config_put(
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = normalized_network_rollout_config(payload if isinstance(payload, dict) else {})
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_network_rollout_config_put",
-        meta={
-            "version": normalized.get("version"),
-            "default_transport_profile": ((normalized.get("defaults") or {}).get("transport_profile")),
-        },
+        action="network_rollout_config.update",
+        target_type="config",
+        target_id="network-rollout",
+        payload=payload if isinstance(payload, dict) else {},
+        request=request,
     )
-    return {"ok": True, "network_rollout_config": normalized}
 
 
 @app.put("/api/admin/client/warp/material")
 async def admin_client_warp_material_put(
     payload: AdminWarpMaterialPutIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    row_id = 0
-    audit_meta: dict[str, Any] = {}
-    user_for_failure: User | None = None
-    install_id_for_failure: str | None = None
-    try:
-        user = s.query(User).filter(User.tg_id == int(payload.tg_id)).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        user_for_failure = user
-        install_id = (
-            str(payload.install_id or getattr(user, "app_install_id", "") or "").strip()
-            or None
-        )
-        install_id_for_failure = install_id
-        limit, window_seconds = _warp_material_provision_limit()
-        if limit and _warp_event_count(
-            s,
-            user=user,
-            install_id=install_id,
-            event_name="material_provisioned",
-            window_seconds=window_seconds,
-        ) >= limit:
-            policy = public_warp_policy_for_user(
-                s,
-                user=user,
-                install_id=install_id,
-                rollout_config=load_network_rollout_config(session=s),
-            )
-            record_warp_event(
-                s,
-                user=user,
-                install_id=install_id,
-                policy=policy,
-                event_name="material_provision_rate_limited",
-                state="rate_limited",
-                reason_code="provision_limit",
-                consented=False,
-                meta={"source": "admin", "actor_tg_id": actor},
-            )
-            s.commit()
-            raise HTTPException(
-                status_code=429,
-                detail=_warp_rate_limit_detail(
-                    code="warp_material_rate_limited",
-                    limit=limit,
-                    window_seconds=window_seconds,
-                ),
-            )
-        row = provision_warp_material(
-            s,
-            user=user,
-            install_id=install_id,
-            wireguard_config=dict(payload.wireguard_config or {}),
-            account=dict(payload.account or {}),
-            source=payload.source,
-            mode=payload.mode,
-        )
-        s.flush()
-        policy = public_warp_policy_for_user(
-            s,
-            user=user,
-            install_id=install_id,
-            rollout_config=load_network_rollout_config(session=s),
-        )
-        record_warp_event(
-            s,
-            user=user,
-            install_id=install_id,
-            policy=policy,
-            event_name="material_provisioned",
-            state="ready_to_consent",
-            reason_code="admin_provisioned",
-            consented=False,
-            meta={"source": "admin", "actor_tg_id": actor, "material_id": int(row.id or 0)},
-        )
-        s.commit()
-        s.refresh(row)
-        row_id = int(row.id or 0)
-        policy = public_warp_policy_for_user(
-            s,
-            user=user,
-            install_id=install_id,
-            rollout_config=load_network_rollout_config(session=s),
-        )
-        material = warp_material_public_payload(row, policy=policy)
-        status = build_warp_status(s, user=user, install_id=install_id, policy=policy)
-        audit_meta = {
-            "material_id": row_id,
-            "install_id": install_id,
-            "material_hash": material.get("material_hash"),
-            "runtime_ready": bool(material.get("runtime_ready")),
-            "source": material.get("source"),
-        }
-        return {"ok": True, "material": material, "warp_status": status}
-    except ValueError as exc:
-        s.rollback()
-        if user_for_failure is not None:
-            policy = public_warp_policy_for_user(
-                s,
-                user=user_for_failure,
-                install_id=install_id_for_failure,
-                rollout_config=load_network_rollout_config(session=s),
-            )
-            record_warp_event(
-                s,
-                user=user_for_failure,
-                install_id=install_id_for_failure,
-                policy=policy,
-                event_name="material_provision_failed",
-                state="provision_failed",
-                reason_code="invalid_material",
-                consented=False,
-                meta={"source": "admin", "actor_tg_id": actor},
-            )
-            s.commit()
-        raise HTTPException(status_code=400, detail={"code": "invalid_warp_material", "message": str(exc)}) from exc
-    except RuntimeError as exc:
-        s.rollback()
-        raise HTTPException(status_code=503, detail={"code": "warp_material_store_unavailable", "message": str(exc)}) from exc
-    finally:
-        s.close()
-        if row_id:
-            _audit_admin(
-                actor_tg_id=actor,
-                action="admin_warp_material_put",
-                target_tg_id=int(payload.tg_id),
-                meta=audit_meta,
-            )
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="warp_material.replace",
+        target_type="warp_material",
+        target_id=str(payload.tg_id),
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.get("/api/admin/client/warp/summary")
@@ -14531,22 +17232,20 @@ async def admin_promo_slots_get(x_telegram_init_data: str = Header(default="")) 
 
 
 @app.put("/api/admin/promo-slots")
-async def admin_promo_slots_put(payload: AdminPromoSlotsPutIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+async def admin_promo_slots_put(
+    payload: AdminPromoSlotsPutIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_promo_slots_config({"assignments": payload.model_dump().get("assignments") or []}, strict=True)
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key=PROMO_SLOTS_CONFIG_KEY, value={"assignments": normalized.get("assignments") or []})
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_promo_slots_put",
-        meta={"assignments": len(list(normalized.get("assignments") or []))},
+        action="promo_slots.update",
+        target_type="config",
+        target_id="promo-slots",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "promo_slots": normalized}
 
 
 @app.post("/api/admin/campaign-links/build")
@@ -14602,6 +17301,44 @@ async def admin_campaign_links_build(payload: AdminCampaignLinksBuildIn, x_teleg
     }
 
 
+def _admin_referral_basis(session, row: ReferralBonusQueue, *, now: datetime) -> str:
+    status = str(row.status or "").strip().lower()
+    if status != "pending":
+        return status or "unknown"
+    if row.ready_at and row.ready_at > now:
+        return "waiting_ready_at"
+    referred = session.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+    referrer = session.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+    if referred is None or referrer is None:
+        return "rejected_missing_user"
+    has_activity = (
+        session.query(Event.id)
+        .filter(
+            Event.tg_id == int(referred.tg_id),
+            Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
+            Event.event_name.in_(["connected_ok", "clicked_connect"]),
+        )
+        .first()
+        is not None
+    )
+    if not has_activity:
+        queued_at = row.queued_at or now
+        age_hours = max(0, int((now - queued_at).total_seconds() // 3600))
+        return (
+            "rejected_no_activity"
+            if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS)
+            else "waiting_for_activity"
+        )
+    if not (
+        bool(referrer.is_active)
+        and str(referrer.sub_type or "").strip().upper() == "PAID"
+        and referrer.expiry_at is not None
+        and referrer.expiry_at > now
+    ):
+        return "rejected_referrer_inactive"
+    return "reward_ready"
+
+
 @app.get("/api/admin/referrals/pending")
 async def admin_referrals_pending(
     x_telegram_init_data: str = Header(default=""),
@@ -14609,13 +17346,18 @@ async def admin_referrals_pending(
     status: str = "",
 ) -> dict:
     _require_admin(x_telegram_init_data)
+    now = _utcnow()
     s = SessionLocal()
     try:
         q = s.query(ReferralBonusQueue)
         status_norm = str(status or "").strip().lower()
         if status_norm:
             q = q.filter(func.lower(ReferralBonusQueue.status) == status_norm)
-        rows = q.order_by(ReferralBonusQueue.id.desc()).limit(max(1, min(int(limit), 1000))).all()
+        rows = (
+            q.order_by(ReferralBonusQueue.ready_at.asc(), ReferralBonusQueue.id.asc())
+            .limit(max(1, min(int(limit), 1000)))
+            .all()
+        )
         return {
             "rows": [
                 {
@@ -14627,7 +17369,11 @@ async def admin_referrals_pending(
                     "ready_at": _safe_iso(r.ready_at),
                     "status": str(r.status or ""),
                     "processed_at": _safe_iso(r.processed_at),
-                    "meta": _json_obj(getattr(r, "meta", None)),
+                    "basis": _admin_referral_basis(s, r, now=now),
+                    "meta_present": bool(str(getattr(r, "meta", "") or "").strip()),
+                    "meta_sha256": hashlib.sha256(
+                        str(getattr(r, "meta", "") or "").encode("utf-8")
+                    ).hexdigest(),
                 }
                 for r in rows
             ]
@@ -14637,15 +17383,20 @@ async def admin_referrals_pending(
 
 
 @app.post("/api/admin/referrals/process")
-async def admin_referrals_process(payload: AdminReferralQueueProcessIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_referrals_process(
+    payload: AdminReferralQueueProcessIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    out = _process_referral_bonus_queue(limit=int(payload.limit), force_without_activity=bool(payload.force_without_activity))
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_referrals_process",
-        meta={"limit": int(payload.limit), "force_without_activity": bool(payload.force_without_activity), **out},
+        action="referral.process",
+        target_type="referral_queue",
+        target_id="ready",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, **out}
 
 
 @app.get("/api/admin/loyalty-config")
@@ -14659,17 +17410,20 @@ async def admin_loyalty_config_get(x_telegram_init_data: str = Header(default=""
 
 
 @app.put("/api/admin/loyalty-config")
-async def admin_loyalty_config_put(payload: dict[str, Any], x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_loyalty_config_put(
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    normalized = _normalized_loyalty_config(payload if isinstance(payload, dict) else {})
-    s = SessionLocal()
-    try:
-        _set_app_setting_json(s=s, key="loyalty_config", value=normalized)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_loyalty_config_put", meta=normalized)
-    return {"ok": True, "loyalty_config": normalized}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="loyalty_config.update",
+        target_type="config",
+        target_id="loyalty",
+        payload=payload if isinstance(payload, dict) else {},
+        request=request,
+    )
 
 
 @app.get("/api/admin/campaigns")
@@ -14710,97 +17464,55 @@ async def admin_campaigns_get(x_telegram_init_data: str = Header(default=""), li
 
 
 @app.post("/api/admin/campaigns")
-async def admin_campaigns_create(payload: AdminCampaignCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_campaigns_create(
+    payload: AdminCampaignCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    ctype = str(payload.campaign_type or "").strip().lower()
-    if ctype not in {"promo", "gift"}:
-        raise HTTPException(status_code=400, detail="campaign_type must be promo or gift")
-    starts_at = _parse_optional_datetime(payload.starts_at)
-    ends_at = _parse_optional_datetime(payload.ends_at)
-    if starts_at and ends_at and starts_at > ends_at:
-        raise HTTPException(status_code=400, detail="starts_at must be <= ends_at")
-    now = _utcnow()
-    s = SessionLocal()
-    try:
-        row = IncentiveCampaign(
-            name=str(payload.name or "").strip()[:120],
-            campaign_type=ctype,
-            target_value=str(payload.target_value or "").strip().upper()[:64],
-            segment=str(payload.segment or "all_active").strip().lower()[:32],
-            starts_at=starts_at,
-            ends_at=ends_at,
-            max_activations=int(payload.max_activations),
-            activations_count=0,
-            auto_disable=bool(payload.auto_disable),
-            is_active=bool(payload.is_active),
-            created_by=actor,
-            metadata_json=json.dumps(payload.metadata or {}, ensure_ascii=False, separators=(",", ":")),
-            created_at=now,
-            updated_at=now,
-        )
-        s.add(row)
-        s.commit()
-        s.refresh(row)
-        out_id = int(row.id)
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_create", meta={"campaign_id": out_id, "campaign_type": ctype})
-    return {"ok": True, "id": out_id}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.create",
+        target_type="campaign",
+        target_id="new",
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/campaigns/{campaign_id}")
 async def admin_campaigns_patch(
     campaign_id: int,
     payload: AdminCampaignUpdateIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        if payload.name is not None:
-            row.name = str(payload.name).strip()[:120]
-        if payload.segment is not None:
-            row.segment = str(payload.segment).strip().lower()[:32]
-        if payload.starts_at is not None:
-            row.starts_at = _parse_optional_datetime(payload.starts_at)
-        if payload.ends_at is not None:
-            row.ends_at = _parse_optional_datetime(payload.ends_at)
-        if row.starts_at and row.ends_at and row.starts_at > row.ends_at:
-            raise HTTPException(status_code=400, detail="starts_at must be <= ends_at")
-        if payload.max_activations is not None:
-            row.max_activations = int(payload.max_activations)
-        if payload.auto_disable is not None:
-            row.auto_disable = bool(payload.auto_disable)
-        if payload.is_active is not None:
-            row.is_active = bool(payload.is_active)
-        if payload.metadata is not None:
-            row.metadata_json = json.dumps(payload.metadata or {}, ensure_ascii=False, separators=(",", ":"))
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_patch", meta={"campaign_id": int(campaign_id)})
-    return {"ok": True, "id": int(campaign_id)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.update",
+        target_type="campaign",
+        target_id=str(campaign_id),
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/campaigns/{campaign_id}")
-async def admin_campaigns_delete(campaign_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_campaigns_delete(
+    campaign_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        row = s.query(IncentiveCampaign).filter(IncentiveCampaign.id == int(campaign_id)).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        row.is_active = False
-        row.updated_at = _utcnow()
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_campaign_disable", meta={"campaign_id": int(campaign_id)})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="campaign.delete",
+        target_type="campaign",
+        target_id=str(campaign_id),
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/templates")
@@ -14821,65 +17533,56 @@ async def admin_templates(x_telegram_init_data: str = Header(default=""), limit:
 
 
 @app.post("/api/admin/templates")
-async def admin_templates_create(payload: AdminTemplateCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_create(
+    payload: AdminTemplateCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     key = (payload.key or "").strip().lower()
-    text_val = (payload.text or "").strip()
-    s = SessionLocal()
-    try:
-        exists = s.query(Template.id).filter(func.lower(Template.key) == key).first()
-        if exists:
-            raise HTTPException(status_code=409, detail="Template already exists")
-        row = Template(key=key, text=text_val)
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_create", meta={"key": key})
-    return {"ok": True, "key": key}
-
-
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.create",
+        target_type="template",
+        target_id=key,
+        payload=payload.model_dump(),
+        request=request,
+    )
 @app.patch("/api/admin/templates/{key}")
-async def admin_templates_update(key: str, payload: AdminTemplateUpdateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_update(
+    key: str,
+    payload: AdminTemplateUpdateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_key = (key or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Template not found")
-        if payload.new_key is not None and payload.new_key.strip():
-            new_key = payload.new_key.strip().lower()
-            if new_key != src_key:
-                exists = s.query(Template.id).filter(func.lower(Template.key) == new_key).first()
-                if exists:
-                    raise HTTPException(status_code=409, detail="Template key already exists")
-                row.key = new_key
-        if payload.text is not None:
-            row.text = payload.text.strip()
-        s.commit()
-        out_key = row.key
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_update", meta={"from": src_key, "to": out_key})
-    return {"ok": True, "key": out_key}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.update",
+        target_type="template",
+        target_id=src_key,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/templates/{key}")
-async def admin_templates_delete(key: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_templates_delete(
+    key: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     src_key = (key or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(Template).filter(func.lower(Template.key) == src_key).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Template not found")
-        s.delete(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_template_delete", meta={"key": src_key})
-    return {"ok": True}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="template.delete",
+        target_type="template",
+        target_id=src_key,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/gift-codes")
@@ -14909,69 +17612,39 @@ async def admin_gift_codes(x_telegram_init_data: str = Header(default=""), limit
 
 
 @app.post("/api/admin/access-keys/issue")
-async def admin_access_keys_issue(payload: AdminAccessKeyIssueIn, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+async def admin_access_keys_issue(
+    payload: AdminAccessKeyIssueIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     plan_code = str(payload.plan_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        plan = _resolve_plan_config(s=s, code=plan_code)
-        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
-        if not normalized_plan:
-            raise HTTPException(status_code=400, detail="Unsupported plan_code")
-
-        issued: list[dict[str, Any]] = []
-        for _ in range(int(payload.quantity or 1)):
-            code = _generate_gift_code_for_admin(s)
-            row = GiftCard(code=code, card_type=normalized_plan["code"], created_by=actor)
-            s.add(row)
-            issued.append(
-                {
-                    "key": code,
-                    "plan": normalized_plan,
-                    "issued_at": _safe_iso(_utcnow()),
-                }
-            )
-        s.commit()
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_access_keys_issue",
-        meta={"plan_code": plan_code, "quantity": int(payload.quantity or 1)},
+        action="access_key.issue",
+        target_type="access_key_batch",
+        target_id=plan_code,
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {
-        "ok": True,
-        "plan": normalized_plan,
-        "issued": issued,
-    }
 
 
 @app.post("/api/admin/gift-codes")
-async def admin_gift_codes_create(payload: AdminGiftCodeCreateIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_gift_codes_create(
+    payload: AdminGiftCodeCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     card_type = (payload.card_type or "").strip().lower()
-    card = GIFT_CARD_TYPES.get(card_type)
-    if not card:
-        raise HTTPException(status_code=400, detail="Unsupported card_type")
-    s = SessionLocal()
-    try:
-        code = _generate_gift_code_for_admin(s)
-        row = GiftCard(code=code, card_type=card_type, created_by=actor)
-        s.add(row)
-        s.commit()
-    finally:
-        s.close()
-    _audit_admin(actor_tg_id=actor, action="admin_gift_code_create", meta={"code": code, "card_type": card_type})
-    return {
-        "ok": True,
-        "gift_code": {
-            "code": code,
-            "card_type": card_type,
-            "days": int(card.get("days", 0)),
-            "stars": int(card.get("stars", 0)),
-        },
-    }
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="gift_code.create",
+        target_type="gift_code",
+        target_id=card_type,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.get("/api/admin/tickets")
@@ -14991,61 +17664,65 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
             )
         else:
             rows = list_active_tickets(s, limit=lim)
-        return {"tickets": [_ticket_row(t, list_ticket_messages(s, t.id, limit=1)) for t in rows]}
+        return {"tickets": [_ticket_summary_row(t, list_ticket_messages(s, t.id, limit=1)) for t in rows]}
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/tickets/{ticket_id}")
+async def admin_ticket_detail(ticket_id: int, x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        ticket = get_ticket_by_id(s, int(ticket_id))
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        messages = list_ticket_messages(s, ticket.id, limit=100)
+        return {"ticket": _ticket_detail_row(ticket, messages)}
     finally:
         s.close()
 
 
 @app.post("/api/admin/tickets/{ticket_id}/reply")
-async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_ticket_reply(
+    ticket_id: int,
+    payload: AdminTicketReplyIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=actor,
-            sender_role="admin",
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(s, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=actor)
-        s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
-    finally:
-        s.close()
-
-    await _telegram_send_message(int(ticket.user_tg_id), f"💬 Ответ оператора в обращении #{ticket.id}.")
-    _audit_admin(actor_tg_id=actor, action="admin_ticket_reply", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id})
-    return {"ticket": _ticket_row(ticket, msgs)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="ticket.reply",
+        target_type="ticket",
+        target_id=str(ticket_id),
+        payload={
+            "body": payload.body,
+            "attachment_id": payload.attachment_id,
+            "media_type": payload.media_type,
+            "media_file_id": payload.media_file_id,
+            "media_payload": payload.media_payload,
+        },
+        request=request,
+    )
 
 
 @app.post("/api/admin/tickets/{ticket_id}/status")
-async def admin_ticket_status(ticket_id: int, payload: AdminTicketStatusIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_ticket_status(
+    ticket_id: int,
+    payload: AdminTicketStatusIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    new_status = (payload.status or "").strip().lower()
-    if new_status not in {STATUS_OPEN, STATUS_IN_PROGRESS, STATUS_CLOSED}:
-        raise HTTPException(status_code=400, detail="Unsupported status")
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        set_ticket_status(s, ticket=ticket, status=new_status, assigned_admin_tg_id=actor if new_status == STATUS_IN_PROGRESS else None)
-        s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_ticket_status", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id, "status": new_status})
-    if new_status == STATUS_CLOSED:
-        await _telegram_send_message(int(ticket.user_tg_id), f"✅ Обращение #{ticket.id} закрыто оператором.")
-    return {"ticket": _ticket_row(ticket, msgs)}
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="ticket.status",
+        target_type="ticket",
+        target_id=str(ticket_id),
+        payload={"status": payload.status},
+        request=request,
+    )
 
 
 @app.get("/api/admin/nodes/health")
@@ -15123,10 +17800,23 @@ def _provider_quota_bytes_from_payload(payload: AdminProviderQuotaIn | AdminProv
     return max(0, int(existing or 0))
 
 
-def _provider_quota_audit_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
+def _provider_quota_safe_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
     if not row:
         return None
-    return _ops_provider_quota_payload(row)
+    payload = _ops_provider_quota_payload(row)
+    notes = str(payload.pop("notes", "") or "")
+    payload.update(
+        {
+            "notes_present": bool(notes),
+            "notes_length": len(notes),
+            "notes_sha256": hashlib.sha256(notes.encode("utf-8")).hexdigest(),
+        }
+    )
+    return payload
+
+
+def _provider_quota_audit_payload(row: ProviderTrafficQuota | None) -> dict[str, Any] | None:
+    return _provider_quota_safe_payload(row)
 
 
 def _add_provider_quota_audit(
@@ -15192,7 +17882,7 @@ async def _refresh_ops_alerts_for_payload(*, s, now: datetime) -> tuple[list[dic
     rows, notifications, _metrics_status, _capacity_payload = _ops_refresh_alerts_for_current_state(
         s=s,
         now=now,
-        free_limit_gb=int(FREE_TOTAL_GB),
+        free_limit_gb=FREE_STANDARD_QUOTA_GB,
         cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         stale_after_seconds=stale_after_seconds,
     )
@@ -15205,113 +17895,64 @@ async def admin_provider_quotas(x_telegram_init_data: str = Header(default="")) 
     s = SessionLocal()
     try:
         rows = s.query(ProviderTrafficQuota).order_by(ProviderTrafficQuota.node_code.asc()).all()
-        return {"ok": True, "quotas": [_ops_provider_quota_payload(row) for row in rows]}
+        return {"ok": True, "quotas": [_provider_quota_safe_payload(row) for row in rows]}
     finally:
         s.close()
 
 
 @app.post("/api/admin/provider-quotas")
-async def admin_provider_quota_create(payload: AdminProviderQuotaIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_create(
+    payload: AdminProviderQuotaIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     node_code = str(payload.node_code or "").strip().lower()
-    if not node_code:
-        raise HTTPException(status_code=400, detail="node_code is required")
-    if float(payload.warning_ratio or 0.0) >= float(payload.critical_ratio or 0.0):
-        raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == node_code).first()
-        before = _provider_quota_audit_payload(row)
-        now = _utcnow()
-        if not row:
-            row = ProviderTrafficQuota(node_code=node_code, created_at=now)
-            s.add(row)
-            action = "create"
-        else:
-            action = "update"
-        row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
-        row.reset_day = int(payload.reset_day or 1)
-        row.timezone = str(payload.timezone or "UTC").strip()[:64] or "UTC"
-        row.warning_ratio = float(payload.warning_ratio or 0.8)
-        row.critical_ratio = float(payload.critical_ratio or 0.95)
-        row.enabled = bool(payload.enabled)
-        row.notes = str(payload.notes or "").strip()[:1000] or None
-        row.updated_by = int(actor)
-        row.updated_at = now
-        s.flush()
-        after = _ops_provider_quota_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=node_code, actor=actor, action=action, before=before, after=after)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_upsert", meta={"node_code": node_code, "action": action})
-        return {"ok": True, "quota": after}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.create",
+        target_type="provider_quota",
+        target_id=node_code,
+        payload=payload.model_dump(),
+        request=request,
+    )
 
 
 @app.patch("/api/admin/provider-quotas/{node_code}")
-async def admin_provider_quota_update(node_code: str, payload: AdminProviderQuotaPatchIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_update(
+    node_code: str,
+    payload: AdminProviderQuotaPatchIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Provider quota not found")
-        before = _provider_quota_audit_payload(row)
-        data = payload.model_dump(exclude_unset=True)
-        if "included_bytes" in data or "included_gb" in data:
-            row.included_bytes = _provider_quota_bytes_from_payload(payload, existing=int(row.included_bytes or 0))
-        if data.get("reset_day") is not None:
-            row.reset_day = int(data["reset_day"])
-        if data.get("timezone") is not None:
-            row.timezone = str(data["timezone"] or "UTC").strip()[:64] or "UTC"
-        if data.get("warning_ratio") is not None:
-            row.warning_ratio = float(data["warning_ratio"])
-        if data.get("critical_ratio") is not None:
-            row.critical_ratio = float(data["critical_ratio"])
-        if float(row.warning_ratio or 0.0) >= float(row.critical_ratio or 0.0):
-            raise HTTPException(status_code=400, detail="warning_ratio must be lower than critical_ratio")
-        if data.get("enabled") is not None:
-            row.enabled = bool(data["enabled"])
-        if "notes" in data:
-            row.notes = str(data.get("notes") or "").strip()[:1000] or None
-        row.updated_by = int(actor)
-        row.updated_at = _utcnow()
-        after = _ops_provider_quota_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="update", before=before, after=after)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_update", meta={"node_code": wanted})
-        return {"ok": True, "quota": after}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.update",
+        target_type="provider_quota",
+        target_id=wanted,
+        payload=payload.model_dump(exclude_unset=True),
+        request=request,
+    )
 
 
 @app.delete("/api/admin/provider-quotas/{node_code}")
-async def admin_provider_quota_delete(node_code: str, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_provider_quota_delete(
+    node_code: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        row = s.query(ProviderTrafficQuota).filter(func.lower(ProviderTrafficQuota.node_code) == wanted).first()
-        if not row:
-            raise HTTPException(status_code=404, detail="Provider quota not found")
-        before = _provider_quota_audit_payload(row)
-        _add_provider_quota_audit(s=s, quota=row, node_code=wanted, actor=actor, action="delete", before=before, after=None)
-        s.delete(row)
-        s.commit()
-        _audit_admin(actor_tg_id=actor, action="admin_provider_quota_delete", meta={"node_code": wanted})
-        return {"ok": True, "node_code": wanted}
-    except Exception:
-        s.rollback()
-        raise
-    finally:
-        s.close()
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="provider_quota.delete",
+        target_type="provider_quota",
+        target_id=wanted,
+        payload={},
+        request=request,
+    )
 
 
 @app.get("/api/admin/provider-quotas/status")
@@ -15328,10 +17969,14 @@ async def admin_provider_quota_status(x_telegram_init_data: str = Header(default
 def _admin_free_tier_facts_payload() -> dict[str, Any]:
     return {
         "node_pool": str(_FREE_TIER_FACTS.get("location_code") or "NL-free"),
-        "traffic_limit_gb": int(FREE_TOTAL_GB),
+        "traffic_limit_gb": FREE_STANDARD_QUOTA_GB,
+        "traffic_limit_bytes": int(FREE_STANDARD_QUOTA_BYTES),
         "cycle_days": int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         "speed_limit_mbps": int(_FREE_TIER_FACTS.get("speed_limit_mbps") or 50),
+        "soft_mode_speed_limit_mbps": int(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps") or 2),
         "device_limit": int(_FREE_TIER_FACTS.get("device_limit") or 1),
+        "standard_access_role": str(_FREE_TIER_FACTS.get("standard_access_role") or "free_standard"),
+        "soft_access_role": str(_FREE_TIER_FACTS.get("soft_access_role") or "free_soft"),
         "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
         "source": "shared_product_facts",
     }
@@ -15348,7 +17993,7 @@ async def admin_free_tier_summary(x_telegram_init_data: str = Header(default="")
             "summary": _ops_free_tier_summary(
                 s=s,
                 now=now,
-                free_limit_gb=int(FREE_TOTAL_GB),
+                free_limit_gb=FREE_STANDARD_QUOTA_GB,
                 cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
             ),
             "facts": _admin_free_tier_facts_payload(),
@@ -15371,7 +18016,7 @@ async def admin_free_tier_users(
         rows, total = _ops_free_tier_user_rows(
             s=s,
             now=now,
-            free_limit_gb=int(FREE_TOTAL_GB),
+            free_limit_gb=FREE_STANDARD_QUOTA_GB,
             cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
             limit=int(limit),
             offset=int(offset),
@@ -15425,6 +18070,199 @@ async def admin_traffic_summary(
             "to": to_dt.date().isoformat(),
             "rows": rows,
             "totals_by_pool": {pool: {"traffic_bytes": value, "traffic_gb": _ops_bytes_to_gb(value)} for pool, value in sorted(totals_by_pool.items())},
+        }
+    finally:
+        s.close()
+
+
+def _parse_ru_history_datetime(raw: str, *, field: str) -> datetime | None:
+    value = str(raw or "").strip()
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, OverflowError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid RU history {field}",
+        ) from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _ru_read_model_http_error(error: RuProbeReadModelError) -> HTTPException:
+    messages = {
+        "invalid_cursor": "Invalid RU history cursor",
+        "invalid_limit": "Invalid RU history limit",
+        "invalid_from": "Invalid RU history from",
+        "invalid_to": "Invalid RU history to",
+        "invalid_range": "Invalid RU history range",
+        "invalid_verdict": "Invalid RU history verdict",
+        "invalid_node_code": "Invalid RU history node_code",
+        "invalid_now": "Invalid RU read timestamp",
+    }
+    return HTTPException(
+        status_code=400,
+        detail=messages.get(error.code, "Invalid RU read request"),
+    )
+
+
+@app.get("/api/admin/probes/ru-origin/latest")
+async def admin_ru_probe_latest(
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return get_latest_ru_status(s, now=_utcnow())
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/probes/ru-origin/runs")
+async def admin_ru_probe_runs(
+    x_telegram_init_data: str = Header(default=""),
+    node_code: str = Query(default=""),
+    from_: str = Query(default="", alias="from"),
+    to: str = Query(default=""),
+    verdict: str = Query(default=""),
+    limit: int = Query(default=50),
+    cursor: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return get_ru_run_history(
+                s,
+                node_code=node_code or None,
+                from_at=_parse_ru_history_datetime(from_, field="from"),
+                to_at=_parse_ru_history_datetime(to, field="to"),
+                verdict=verdict or None,
+                limit=limit,
+                cursor=cursor or None,
+            )
+        except RuProbeReadModelError as exc:
+            raise _ru_read_model_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/probes/ru-origin/uploader-status")
+async def admin_ru_probe_uploader_status(
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        return get_ru_uploader_status(s, now=_utcnow())
+    finally:
+        s.close()
+
+
+def _release_read_http_error(error: ReleaseEvidenceReadError) -> HTTPException:
+    return HTTPException(
+        status_code=400,
+        detail={
+            "code": error.code,
+            "message": "Invalid release evidence read request",
+        },
+    )
+
+
+@app.get("/api/admin/releases/candidates")
+async def admin_release_candidates(
+    x_telegram_init_data: str = Header(default=""),
+    limit: int = Query(default=50),
+    cursor: str = Query(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return list_release_candidates(
+                s,
+                limit=limit,
+                cursor=cursor or None,
+                now=_utcnow(),
+            )
+        except ReleaseEvidenceReadError as exc:
+            raise _release_read_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/releases/{candidate_id}/readiness")
+async def admin_release_candidate_readiness(
+    candidate_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        try:
+            return get_release_readiness(s, candidate_id, now=_utcnow())
+        except ReleaseEvidenceNotFound as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": exc.code, "message": "Release candidate not found"},
+            ) from exc
+        except ReleaseEvidenceReadError as exc:
+            raise _release_read_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/nodes/{node_code}/observability")
+async def admin_node_observability(
+    node_code: str,
+    include_ru_history: bool = Query(default=True),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        payload = _ops_build_node_observability(
+            s=s,
+            node_code=node_code,
+            now=_utcnow(),
+            metrics_stale_after_seconds=max(
+                300,
+                int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")),
+            ),
+            include_ru_history=include_ru_history,
+        )
+        if payload is None:
+            raise HTTPException(status_code=404, detail="Node not found")
+        return payload
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/search")
+async def admin_global_search(
+    q: str = Query(default=""),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    normalized = str(q or "").strip()
+    if len(normalized) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Search query must contain at least 2 characters",
+        )
+    if len(normalized) > 128:
+        raise HTTPException(status_code=400, detail="Search query is too long")
+    s = SessionLocal()
+    try:
+        return {
+            "ok": True,
+            "results": _ops_admin_search_results(
+                s=s,
+                q=normalized,
+                limit=20,
+            ),
         }
     finally:
         s.close()
@@ -15517,7 +18355,7 @@ async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> 
         free_summary = _ops_free_tier_summary(
             s=s,
             now=now,
-            free_limit_gb=int(FREE_TOTAL_GB),
+            free_limit_gb=FREE_STANDARD_QUOTA_GB,
             cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         )
         alert_rows, notifications = await _refresh_ops_alerts_for_payload(s=s, now=now)
@@ -15609,6 +18447,26 @@ def _pressure_reasons(row: KeyPressureState) -> list[str]:
     return [str(item) for item in parsed if str(item or "").strip()] if isinstance(parsed, list) else []
 
 
+def _admin_online_row_id(*, tg_id: int | None, panel_email: str, client_uuid: str, node_code: str) -> str:
+    if tg_id is not None:
+        return f"user:{int(tg_id)}"
+    subject = str(panel_email or "").strip().lower() or str(client_uuid or "").strip() or str(node_code or "").strip().lower()
+    digest = hashlib.sha256(f"admin-online-row-v1\0{subject}".encode("utf-8")).hexdigest()[:24]
+    return f"panel:{digest}"
+
+
+def _safe_admin_online_panel_errors(errors: list[dict]) -> list[dict[str, str | None]]:
+    allowed_codes = {"missing_node_code", "panel_request_failed", "panel_unavailable"}
+    safe: list[dict[str, str | None]] = []
+    for item in errors:
+        raw_node_code = str((item or {}).get("node_code") or "").strip().lower()
+        node_code = raw_node_code if re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,31}", raw_node_code) else None
+        raw_code = str((item or {}).get("evidence_code") or (item or {}).get("error_code") or "").strip().lower()
+        evidence_code = raw_code if raw_code in allowed_codes else "panel_request_failed"
+        safe.append({"node_code": node_code, "evidence_code": evidence_code})
+    return safe
+
+
 def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict], limit: int) -> dict[str, Any]:
     tg_ids = sorted(
         {
@@ -15666,11 +18524,16 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
         if user is None and email_key:
             user = users_by_email.get(email_key)
         effective_tg_id = int(user.tg_id) if user else tg_id
-        identity = f"tg:{effective_tg_id}" if effective_tg_id is not None else f"panel:{email_key or live.get('client_uuid') or live.get('node_code')}"
+        row_id = _admin_online_row_id(
+            tg_id=effective_tg_id,
+            panel_email=email_key,
+            client_uuid=str(live.get("client_uuid") or ""),
+            node_code=str(live.get("node_code") or ""),
+        )
         agg = aggregates.setdefault(
-            identity,
+            row_id,
             {
-                "identity": identity,
+                "row_id": row_id,
                 "tg_id": effective_tg_id,
                 "username": getattr(user, "username", None) if user else None,
                 "display_name": getattr(user, "display_name", None) if user else None,
@@ -15744,7 +18607,7 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
 
     rows: list[dict[str, Any]] = []
     for agg in aggregates.values():
-        panel_emails_out = sorted({str(email) for email in agg.pop("panel_email_set", set()) if str(email).strip()})
+        agg.pop("panel_email_set", None)
         nodes_online = sorted({str(code) for code in agg.pop("nodes_online_set", set()) if str(code).strip()})
         agg.pop("last_online_dt", None)
         risk_flags = sorted({str(flag) for flag in agg.pop("risk_flags", set()) if str(flag).strip()})
@@ -15754,9 +18617,6 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
                 "nodes_online": nodes_online,
                 "nodes_online_count": len(nodes_online),
                 "risk_flags": risk_flags,
-                "panel_email": panel_emails_out[0] if panel_emails_out and agg.get("tg_id") is None else None,
-                "panel_email_count": len(panel_emails_out),
-                "raw_ip_exposed": False,
                 "traffic_gb_24h": round(float(agg.get("traffic_gb_24h") or 0.0), 3),
                 "pressure_score": round(float(agg.get("pressure_score") or 0.0), 1),
             }
@@ -15770,6 +18630,7 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
         )
     )
     bounded = rows[: max(1, min(int(limit), 500))]
+    safe_errors = _safe_admin_online_panel_errors(errors)
     return {
         "ok": True,
         "generated_at": _safe_iso(_utcnow()),
@@ -15782,13 +18643,13 @@ def _admin_online_users_payload(*, s, live_rows: list[dict], errors: list[dict],
             "unknown_online_keys": sum(1 for row in rows if row.get("tg_id") is None),
             "online_keys_now": sum(int(row.get("online_keys_now") or 0) for row in rows),
             "online_connections_now": sum(int(row.get("online_connections_now") or 0) for row in rows),
-            "nodes_with_panel_errors": len(errors),
+            "nodes_with_panel_errors": len(safe_errors),
             "raw_ip_exposed": False,
         },
-        "panel_errors": errors,
+        "panel_errors": safe_errors,
         "notes": [
-            "Список построен по live panel online state.",
-            "IP-адреса здесь не возвращаются; raw IP видны только в карточке конкретного пользователя через observer block.",
+            "Список построен по оперативному состоянию панели.",
+            "IP-адреса здесь не возвращаются; исходные IP-адреса доступны только через отдельный запрос расследования пользователя.",
         ],
     }
 
@@ -15822,55 +18683,18 @@ async def admin_online_users(
 async def admin_key_rotate_request(
     key_id: int,
     payload: AdminKeyRotateIn,
+    request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        key_row = s.query(AccessKey).filter(AccessKey.id == int(key_id)).first()
-        if not key_row:
-            raise HTTPException(status_code=404, detail="Access key not found")
-        if bool(payload.dry_run):
-            return {
-                "ok": True,
-                "dry_run": True,
-                "key_id": int(key_id),
-                "tg_id": int(key_row.tg_id),
-                "node_code": str(key_row.node_code or "") or None,
-                "planned_job_type": "rotate_access_key",
-            }
-        key_row.state = "rotation_requested"
-        key_row.updated_at = _utcnow()
-        job = NodeProvisioningJob(
-            tg_id=int(key_row.tg_id),
-            key_id=int(key_row.id),
-            node_code=str(key_row.node_code or "") or None,
-            job_type="rotate_access_key",
-            status="queued",
-            desired_state_json=json.dumps(
-                {
-                    "reason": str(payload.reason or "manual_review").strip()[:160],
-                    "requested_by": int(actor),
-                    "pool_code": str(key_row.pool_code or ""),
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            ),
-            created_at=_utcnow(),
-            updated_at=_utcnow(),
-        )
-        s.add(job)
-        s.commit()
-        job_id = int(job.id)
-    finally:
-        s.close()
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_key_rotate_request",
-        target_tg_id=int(getattr(key_row, "tg_id", 0) or 0),
-        meta={"key_id": int(key_id), "job_id": job_id, "reason": str(payload.reason or "")[:160]},
+        action="key.rotate",
+        target_type="key",
+        target_id=str(key_id),
+        payload={"reason": payload.reason, "dry_run": bool(payload.dry_run)},
+        request=request,
     )
-    return {"ok": True, "key_id": int(key_id), "job_id": job_id, "status": "queued"}
 
 
 @app.get("/api/admin/nodes/runtime")
@@ -15915,313 +18739,2360 @@ async def admin_nodes_drift(
 
 
 @app.post("/api/admin/nodes/sync")
-async def admin_nodes_sync(payload: AdminNodeSyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_nodes_sync(
+    payload: AdminNodeSyncIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        if payload.tg_id:
-            users = s.query(User).filter(User.tg_id == int(payload.tg_id)).all()
-        else:
-            segment = (payload.segment or "active").strip().lower()
-            q = s.query(User).filter(User.tg_id > 0)
-            if segment == "active":
-                q = q.filter(User.is_active == True)
-            elif segment == "free":
-                q = q.filter(func.upper(User.sub_type) == "FREE")
-            elif segment == "paid":
-                q = q.filter(func.upper(User.sub_type) == "PAID")
-            else:
-                raise HTTPException(status_code=400, detail="Unsupported sync segment")
-            users = q.order_by(User.created_at.asc()).limit(max(1, min(int(payload.limit), 1000))).all()
-    finally:
-        s.close()
-
-    panel = ControlPanel()
-    synced = 0
-    failed = 0
-    try:
-        await panel.login()
-        for u in users:
-            ok = await panel.enable_client(u.uuid, True)
-            if ok:
-                synced += 1
-            else:
-                failed += 1
-    finally:
-        await panel.close()
-
-    _audit_admin(
+    return await _execute_admin_guarded_action(
         actor_tg_id=actor,
-        action="admin_nodes_sync",
-        meta={"synced": synced, "failed": failed, "count": len(users), "segment": payload.segment, "tg_id": payload.tg_id},
+        action="node.sync_global",
+        target_type="node_sync",
+        target_id="global",
+        payload=payload.model_dump(),
+        request=request,
     )
-    return {"ok": True, "synced": synced, "failed": failed, "count": len(users)}
 
 
 @app.post("/api/admin/nodes/{node_code}/drain")
-async def admin_node_drain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_drain(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = False
-        node.is_draining = True
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_drain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.drain",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/enable")
-async def admin_node_enable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_enable(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = True
-        node.is_draining = False
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_enable", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.enable",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/undrain")
-async def admin_node_undrain(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
+async def admin_node_undrain(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
     wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        node.enabled = True
-        node.accepting_new_clients = True
-        node.is_draining = False
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(actor_tg_id=actor, action="admin_node_undrain", meta={"node_code": wanted, "mapped_users": int(mapped_users)})
-    return {"ok": True, "node": payload_node}
-
-
-@app.post("/api/admin/nodes/{node_code}/disable")
-async def admin_node_disable(node_code: str, payload: AdminNodeLifecycleIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        node = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not node:
-            raise HTTPException(status_code=404, detail="Node not found")
-        mapped_users = (
-            s.query(func.count(func.distinct(UserNode.tg_id)))
-            .filter(UserNode.node_id == int(node.id))
-            .scalar()
-            or 0
-        )
-        if int(mapped_users) > 0 and not bool(payload.force):
-            raise HTTPException(status_code=409, detail="Node still has mapped users. Run resync first or use force.")
-        node.enabled = False
-        node.accepting_new_clients = False
-        node.is_draining = False
-        s.commit()
-        s.refresh(node)
-        payload_node = _serialize_admin_node(node, mapped_users=int(mapped_users))
-    finally:
-        s.close()
-
-    _audit_admin(
+    return await _execute_admin_node_action(
         actor_tg_id=actor,
-        action="admin_node_disable",
-        meta={"node_code": wanted, "mapped_users": int(mapped_users), "forced": bool(payload.force)},
+        action="node.undrain",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
     )
-    return {"ok": True, "node": payload_node}
 
 
-@app.post("/api/admin/nodes/{node_code}/resync")
-async def admin_node_resync(node_code: str, payload: AdminNodeResyncIn, x_telegram_init_data: str = Header(default="")) -> dict:
-    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    wanted = str(node_code or "").strip().lower()
-    s = SessionLocal()
-    try:
-        source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-        if not source:
-            raise HTTPException(status_code=404, detail="Node not found")
-        rows = (
-            s.query(UserNode, User)
-            .join(User, User.tg_id == UserNode.tg_id)
-            .filter(UserNode.node_id == int(source.id))
-            .order_by(UserNode.created_at.asc(), UserNode.id.asc())
-            .limit(max(1, min(int(payload.limit), 1000)))
-            .all()
+def _raise_action_intent_http(error: ActionIntentError) -> None:
+    detail: dict[str, Any] = {
+        "code": str(error.code),
+        "message": str(error.message),
+    }
+    if error.intent_id:
+        detail["intent_id"] = str(error.intent_id)
+    if error.audit_id is not None:
+        detail["audit_id"] = int(error.audit_id)
+    raise HTTPException(
+        status_code=int(error.status_code),
+        detail=detail,
+    )
+
+
+def _raise_action_intent_header_required(
+    *,
+    actor_tg_id: int,
+    intent_id: str,
+    code: str,
+    message: str,
+) -> None:
+    owned_intent_id, audit_id = _action_intent_error_identifiers(
+        session_factory=SessionLocal,
+        actor_tg_id=actor_tg_id,
+        intent_id=intent_id,
+    )
+    _raise_action_intent_http(
+        ActionIntentError(
+            code,
+            status_code=428,
+            message=message,
+            intent_id=owned_intent_id,
+            audit_id=audit_id,
         )
-    finally:
-        s.close()
+    )
+
+
+async def _execute_node_resync_external(context: dict[str, Any]) -> dict[str, Any]:
+    execution = context.get("execution")
+    if not isinstance(execution, dict):
+        raise RuntimeError("missing frozen resync execution context")
+    source_node_id = int(execution.get("source_node_id") or 0)
+    source_code = str(execution.get("source_node_code") or "").strip().lower()
+    selection = execution.get("selection")
+    dry_run = bool(execution.get("dry_run", False))
+    if source_node_id <= 0 or not source_code or not isinstance(selection, list):
+        raise RuntimeError("invalid frozen resync execution context")
+
+    selected_count = len(selection)
+    skipped = sum(
+        1
+        for item in selection
+        if isinstance(item, dict) and not item.get("target_nodes")
+    )
+    if dry_run:
+        return {
+            "ok": True,
+            "code": "resync_dry_run_completed",
+            "count": selected_count,
+            "changed": 0,
+            "failed": 0,
+            "skipped": skipped,
+        }
 
     panel = ControlPanel()
     migrated = 0
     failed = 0
-    skipped = 0
-    details: list[dict[str, Any]] = []
     try:
-        if not payload.dry_run:
-            await panel.login()
-        for _user_node, user in rows:
-            s = SessionLocal()
-            try:
-                target_codes = _target_node_codes_for_resync(s, user, wanted, enabled_nodes(s))
-            finally:
-                s.close()
-            if not target_codes:
-                skipped += 1
-                details.append({"tg_id": int(user.tg_id), "status": "no_target", "target_codes": []})
-                continue
-            if payload.dry_run:
-                details.append({"tg_id": int(user.tg_id), "status": "planned", "target_codes": target_codes})
+        await panel.login()
+        for item in selection:
+            if not isinstance(item, dict):
+                raise RuntimeError("invalid frozen resync item")
+            source_user_node_id = int(item.get("source_user_node_id") or 0)
+            recipient_fingerprint = str(item.get("recipient_fingerprint") or "")
+            raw_target_nodes = item.get("target_nodes")
+            if not isinstance(raw_target_nodes, list):
+                raise RuntimeError("invalid frozen target nodes")
+            target_nodes: list[dict[str, Any]] = []
+            seen_target_ids: set[int] = set()
+            seen_target_codes: set[str] = set()
+            for raw_target in raw_target_nodes:
+                if not isinstance(raw_target, dict):
+                    raise RuntimeError("invalid frozen target node")
+                target_node_id = int(raw_target.get("id") or 0)
+                target_code = str(raw_target.get("code") or "").strip().lower()
+                if (
+                    target_node_id <= 0
+                    or not target_code
+                    or target_node_id in seen_target_ids
+                    or target_code in seen_target_codes
+                ):
+                    raise RuntimeError("invalid frozen target node")
+                seen_target_ids.add(target_node_id)
+                seen_target_codes.add(target_code)
+                target_nodes.append({"id": target_node_id, "code": target_code})
+            target_codes = [str(target["code"]) for target in target_nodes]
+            if source_user_node_id <= 0:
+                raise RuntimeError("invalid frozen source mapping")
+            if not target_nodes:
                 continue
 
-            sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+            session = SessionLocal()
+            try:
+                row = (
+                    session.query(UserNode, User)
+                    .join(User, User.tg_id == UserNode.tg_id)
+                    .filter(
+                        UserNode.id == source_user_node_id,
+                        UserNode.node_id == source_node_id,
+                    )
+                    .first()
+                )
+                if row is None:
+                    failed += 1
+                    continue
+                source_mapping, user = row
+                source_node = session.query(Node).filter(Node.id == source_node_id).first()
+                if (
+                    source_node is None
+                    or str(source_node.code or "").strip().lower() != source_code
+                ):
+                    failed += 1
+                    continue
+                tg_id = int(user.tg_id)
+                client_uuid = str(user.uuid)
+                panel_email = str(user.email)
+                sub_id = str(getattr(user, "sub_token", "") or user.tg_id)
+                current_recipient_fingerprint = _node_resync_recipient_fingerprint(
+                    tg_id=tg_id,
+                    mapping_client_uuid=str(source_mapping.client_uuid or ""),
+                    mapping_panel_email=str(source_mapping.panel_email or ""),
+                    user_uuid=client_uuid,
+                    user_email=panel_email,
+                    sub_id=sub_id,
+                )
+                if not hmac.compare_digest(
+                    recipient_fingerprint,
+                    current_recipient_fingerprint,
+                ):
+                    failed += 1
+                    continue
+            finally:
+                session.close()
+
             ensure_results = await panel.ensure_user_on_all_nodes(
-                tg_id=int(user.tg_id),
-                client_uuid=str(user.uuid),
-                email=str(user.email),
+                tg_id=tg_id,
+                client_uuid=client_uuid,
+                email=panel_email,
                 sub_id=sub_id,
                 enable=True,
                 only_node_codes=target_codes,
             )
-            if not any(bool(v) for v in ensure_results.values()):
+            successful_codes = {
+                str(code or "").strip().lower()
+                for code, value in ensure_results.items()
+                if bool(value) and str(code or "").strip().lower() in seen_target_codes
+            }
+            if not successful_codes:
                 failed += 1
-                details.append(
-                    {
-                        "tg_id": int(user.tg_id),
-                        "status": "ensure_failed",
-                        "target_codes": target_codes,
-                        "ensure_results": ensure_results,
-                    }
-                )
                 continue
 
             disable_results = await panel.set_existing_user_enabled_on_nodes(
-                tg_id=int(user.tg_id),
-                node_codes=[wanted],
+                tg_id=tg_id,
+                node_codes=[source_code],
                 enable=False,
                 sub_id=sub_id,
             )
-            if not any(bool(v) for v in disable_results.values()):
+            source_disabled = any(
+                str(code or "").strip().lower() == source_code and bool(value)
+                for code, value in disable_results.items()
+            )
+            if not source_disabled:
                 failed += 1
-                details.append(
-                    {
-                        "tg_id": int(user.tg_id),
-                        "status": "disable_failed",
-                        "target_codes": target_codes,
-                        "ensure_results": ensure_results,
-                        "disable_results": disable_results,
-                    }
-                )
                 continue
 
-            s = SessionLocal()
+            session = SessionLocal()
             try:
-                source = s.query(Node).filter(func.lower(Node.code) == wanted).first()
-                target_nodes = (
-                    s.query(Node)
-                    .filter(func.lower(Node.code).in_([code.lower() for code in target_codes]))
-                    .all()
+                target_ids = [int(target["id"]) for target in target_nodes]
+                dialect = str(session.get_bind().dialect.name)
+                if dialect == "postgresql":
+                    for locked_node_id in sorted({source_node_id, *target_ids}):
+                        session.execute(
+                            sql_text(
+                                "SELECT pg_advisory_xact_lock(:lock_namespace, :node_id)"
+                            ),
+                            {
+                                "lock_namespace": NODE_MAPPING_LOCK_NAMESPACE,
+                                "node_id": int(locked_node_id),
+                            },
+                        )
+                source_query = session.query(Node).filter(Node.id == source_node_id)
+                target_query = session.query(Node).filter(Node.id.in_(target_ids))
+                if dialect == "postgresql":
+                    source_query = source_query.with_for_update()
+                    target_query = target_query.with_for_update()
+                current_source = source_query.first()
+                current_targets = target_query.all()
+                current_by_id = {int(node.id): node for node in current_targets}
+                frozen_targets_match = (
+                    current_source is not None
+                    and str(current_source.code or "").strip().lower() == source_code
+                    and len(current_by_id) == len(target_nodes)
+                    and all(
+                        int(target["id"]) in current_by_id
+                        and str(current_by_id[int(target["id"])].code or "").strip().lower()
+                        == str(target["code"])
+                        for target in target_nodes
+                    )
                 )
+                if not frozen_targets_match:
+                    session.rollback()
+                    failed += 1
+                    continue
+                successful_targets = [
+                    current_by_id[int(target["id"])]
+                    for target in target_nodes
+                    if str(target["code"]) in successful_codes
+                ]
+                successful_targets_valid = bool(successful_targets) and all(
+                    bool(target.enabled)
+                    and bool(target.accepting_new_clients)
+                    and not bool(target.is_draining)
+                    for target in successful_targets
+                )
+                if not successful_targets_valid:
+                    session.rollback()
+                    failed += 1
+                    continue
                 existing_node_ids = {
                     int(row.node_id)
-                    for row in s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id)).all()
+                    for row in session.query(UserNode)
+                    .filter(UserNode.tg_id == tg_id)
+                    .all()
                 }
-                for target_node in target_nodes:
+                for target_node in successful_targets:
                     if int(target_node.id) in existing_node_ids:
                         continue
-                    s.add(
+                    session.add(
                         UserNode(
-                            tg_id=int(user.tg_id),
+                            tg_id=tg_id,
                             node_id=int(target_node.id),
-                            client_uuid=str(user.uuid),
-                            panel_email=str(user.email),
+                            client_uuid=client_uuid,
+                            panel_email=panel_email,
                         )
                     )
-                if source:
-                    s.query(UserNode).filter(UserNode.tg_id == int(user.tg_id), UserNode.node_id == int(source.id)).delete()
-                s.commit()
+                deleted = session.query(UserNode).filter(
+                    UserNode.id == source_user_node_id,
+                    UserNode.node_id == source_node_id,
+                ).delete(synchronize_session=False)
+                if deleted != 1:
+                    session.rollback()
+                    failed += 1
+                    continue
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
             finally:
-                s.close()
+                session.close()
             migrated += 1
-            details.append(
-                {
-                    "tg_id": int(user.tg_id),
-                    "status": "migrated",
-                    "target_codes": target_codes,
-                    "ensure_results": ensure_results,
-                    "disable_results": disable_results,
-                }
-            )
     finally:
-        if not payload.dry_run:
-            await panel.close()
+        await panel.close()
 
-    _audit_admin(
-        actor_tg_id=actor,
-        action="admin_node_resync",
-        meta={
-            "node_code": wanted,
-            "count": len(rows),
-            "migrated": migrated,
-            "failed": failed,
-            "skipped": skipped,
-            "dry_run": bool(payload.dry_run),
-        },
-    )
     return {
-        "ok": True,
-        "node_code": wanted,
-        "count": len(rows),
-        "migrated": migrated,
+        "ok": failed == 0,
+        "code": "resync_completed" if failed == 0 else "resync_partial",
+        "count": selected_count,
+        "changed": migrated,
         "failed": failed,
         "skipped": skipped,
-        "dry_run": bool(payload.dry_run),
-        "details": details,
     }
+
+
+_TASK20_DB_ACTIONS = frozenset(
+    {
+        "plan.create",
+        "plan.update",
+        "plan.delete",
+        "live_update.create",
+        "live_update.update",
+        "live_update.delete",
+        "start_link.create",
+        "start_link.update",
+        "start_link.delete",
+        "wheel_config.update",
+        "network_rollout_config.update",
+        "warp_material.replace",
+        "promo_slots.update",
+        "loyalty_config.update",
+        "campaign.create",
+        "campaign.update",
+        "campaign.delete",
+        "template.create",
+        "template.update",
+        "template.delete",
+        "access_key.issue",
+        "gift_code.create",
+    }
+)
+
+
+def _execute_task20_admin_action_db(
+    session,
+    state,
+    runtime: dict[str, Any],
+    *,
+    actor_tg_id: int,
+    action: str,
+) -> dict[str, Any]:
+    now = _utcnow()
+
+    if action in {"plan.create", "plan.update", "plan.delete"}:
+        row = state.entity
+        if action == "plan.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="План не найден.")
+            code = str(row.code or "").strip().lower()
+            session.delete(row)
+            session.flush()
+            return {"code": code, "deleted": True}
+        if action == "plan.create":
+            if row is not None:
+                raise ActionIntentError("target_exists", status_code=409, message="План уже существует.")
+            row = PlanCatalog(code=str(runtime["code"]), created_at=now)
+            session.add(row)
+        for field in (
+            "label",
+            "amount_rub",
+            "amount_stars",
+            "days",
+            "device_limit",
+            "node_policy",
+            "badge",
+            "is_active",
+            "sort_order",
+        ):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        row.updated_at = now
+        session.flush()
+        return {"code": str(row.code or "").strip().lower()}
+
+    if action in {"live_update.create", "live_update.update", "live_update.delete"}:
+        row = state.entity
+        if action == "live_update.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Новость не найдена.")
+            update_id = int(row.id)
+            session.delete(row)
+            session.flush()
+            return {"id": update_id, "deleted": True}
+        if action == "live_update.create":
+            row = LiveUpdate(created_at=now, updated_at=now)
+            session.add(row)
+        for field in ("title", "summary", "is_active", "sort_order"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        if "link" in runtime and runtime["link"] is not None:
+            row.link = str(runtime["link"])
+        if "channel_username" in runtime:
+            row.channel_username = runtime["channel_username"]
+        if "post_id" in runtime:
+            row.post_id = runtime["post_id"]
+        if "published_at" in runtime:
+            row.published_at = (
+                datetime.fromisoformat(str(runtime["published_at"]))
+                if runtime["published_at"]
+                else None
+            )
+        row.link = _build_tg_post_link(
+            channel_username=getattr(row, "channel_username", None),
+            post_id=getattr(row, "post_id", None),
+            fallback_link=str(getattr(row, "link", "") or "").strip(),
+        )
+        if not str(row.link or "").strip():
+            raise ActionIntentError("invalid_payload", status_code=422, message="Нужна ссылка или Telegram post target.")
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id)}
+
+    if action in {"start_link.create", "start_link.update", "start_link.delete"}:
+        row = state.entity
+        if action == "start_link.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Start link не найден.")
+            row.is_active = False
+            row.updated_at = now
+            session.flush()
+            return {"id": int(row.id), "code": str(row.code or "").strip().lower(), "deleted": True}
+        if action == "start_link.create":
+            row = StartLink(code=str(runtime["code"]), created_at=now, updated_at=now)
+            session.add(row)
+        if "code" in runtime and str(runtime["code"]) != str(row.code or "").strip().lower():
+            duplicate = session.query(StartLink.id).filter(
+                func.lower(StartLink.code) == str(runtime["code"]),
+                StartLink.id != int(row.id),
+            ).first()
+            if duplicate:
+                raise ActionIntentError("target_exists", status_code=409, message="Start link уже существует.")
+            row.code = str(runtime["code"])
+        for field in ("description", "target_action", "is_active"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id), "code": str(row.code or "").strip().lower()}
+
+    if action == "wheel_config.update":
+        normalized = _normalized_wheel_config(runtime)
+        _set_app_setting_json(s=session, key="wheel_config", value=normalized)
+        session.flush()
+        return {"wheel_config": normalized}
+
+    if action == "network_rollout_config.update":
+        normalized = normalized_network_rollout_config(runtime)
+        _set_app_setting_json(s=session, key=NETWORK_ROLLOUT_CONFIG_KEY, value=normalized)
+        session.flush()
+        return {"network_rollout_config": normalized}
+
+    if action == "promo_slots.update":
+        normalized = _normalized_promo_slots_config(runtime, strict=True)
+        _set_app_setting_json(
+            s=session,
+            key=PROMO_SLOTS_CONFIG_KEY,
+            value={"assignments": normalized.get("assignments") or []},
+        )
+        session.flush()
+        return {"promo_slots": normalized}
+
+    if action == "loyalty_config.update":
+        normalized = _normalized_loyalty_config(runtime)
+        _set_app_setting_json(s=session, key="loyalty_config", value=normalized)
+        session.flush()
+        return {"loyalty_config": normalized}
+
+    if action == "warp_material.replace":
+        user = state.entity
+        install_id = str(runtime.get("install_id") or getattr(user, "app_install_id", "") or "").strip() or None
+        limit, window_seconds = _warp_material_provision_limit()
+        if limit and _warp_event_count(
+            session,
+            user=user,
+            install_id=install_id,
+            event_name="material_provisioned",
+            window_seconds=window_seconds,
+        ) >= limit:
+            raise ActionIntentError(
+                "warp_material_rate_limited",
+                status_code=429,
+                message="Лимит замены WARP material исчерпан.",
+            )
+        try:
+            row = provision_warp_material(
+                session,
+                user=user,
+                install_id=install_id,
+                wireguard_config=dict(runtime["wireguard_config"]),
+                account=dict(runtime.get("account") or {}),
+                source=str(runtime["source"]),
+                mode=str(runtime["mode"]),
+            )
+            session.flush()
+            policy = public_warp_policy_for_user(
+                session,
+                user=user,
+                install_id=install_id,
+                rollout_config=load_network_rollout_config(session=session),
+            )
+            record_warp_event(
+                session,
+                user=user,
+                install_id=install_id,
+                policy=policy,
+                event_name="material_provisioned",
+                state="ready_to_consent",
+                reason_code="admin_provisioned",
+                consented=False,
+                meta={"source": "admin", "actor_tg_id": int(actor_tg_id), "material_id": int(row.id or 0)},
+            )
+            session.flush()
+        except ValueError:
+            raise ActionIntentError("invalid_warp_material", status_code=422, message="WARP material не прошёл проверку.") from None
+        except RuntimeError:
+            raise ActionIntentError("warp_material_store_unavailable", status_code=503, message="Хранилище WARP material недоступно.") from None
+        material = warp_material_public_payload(row, policy=policy)
+        status = build_warp_status(session, user=user, install_id=install_id, policy=policy)
+        return {"material": material, "warp_status": status}
+
+    if action in {"campaign.create", "campaign.update", "campaign.delete"}:
+        row = state.entity
+        if action == "campaign.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Кампания не найдена.")
+            row.is_active = False
+            row.updated_at = now
+            session.flush()
+            return {"id": int(row.id), "deleted": True}
+        if action == "campaign.create":
+            row = IncentiveCampaign(
+                campaign_type=str(runtime["campaign_type"]),
+                target_value=str(runtime["target_value"]),
+                activations_count=0,
+                created_by=int(actor_tg_id),
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+        for field in ("name", "segment", "max_activations", "auto_disable", "is_active"):
+            if field in runtime:
+                setattr(row, field, runtime[field])
+        for field in ("starts_at", "ends_at"):
+            if field in runtime:
+                setattr(row, field, datetime.fromisoformat(str(runtime[field])) if runtime[field] else None)
+        if row.starts_at and row.ends_at and row.starts_at > row.ends_at:
+            raise ActionIntentError("invalid_payload", status_code=422, message="starts_at должен быть не позже ends_at.")
+        if "metadata" in runtime:
+            row.metadata_json = json.dumps(runtime["metadata"], ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        row.updated_at = now
+        session.flush()
+        return {"id": int(row.id)}
+
+    if action in {"template.create", "template.update", "template.delete"}:
+        row = state.entity
+        if action == "template.delete":
+            if row is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Шаблон не найден.")
+            key = str(row.key or "").strip().lower()
+            session.delete(row)
+            session.flush()
+            return {"key": key, "deleted": True}
+        if action == "template.create":
+            row = Template(key=str(runtime["key"]), text=str(runtime["text"]), created_at=now)
+            session.add(row)
+        new_key = runtime.get("new_key")
+        if new_key and str(new_key) != str(row.key or "").strip().lower():
+            duplicate = session.query(Template.id).filter(
+                func.lower(Template.key) == str(new_key),
+                Template.id != int(row.id),
+            ).first()
+            if duplicate:
+                raise ActionIntentError("target_exists", status_code=409, message="Ключ шаблона уже существует.")
+            row.key = str(new_key)
+        if "text" in runtime:
+            row.text = str(runtime["text"])
+        session.flush()
+        return {"key": str(row.key or "").strip().lower()}
+
+    if action == "access_key.issue":
+        plan_code = str(runtime["plan_code"])
+        plan = _resolve_plan_config(s=session, code=plan_code)
+        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
+        if not normalized_plan:
+            raise ActionIntentError("invalid_payload", status_code=422, message="plan_code не поддерживается.")
+        issued: list[dict[str, Any]] = []
+        issued_rows: list[GiftCard] = []
+        for _ in range(int(runtime["quantity"])):
+            code = _generate_gift_code_for_admin(session)
+            row = GiftCard(
+                code=code,
+                card_type=normalized_plan["code"],
+                created_by=int(actor_tg_id),
+                created_at=now,
+            )
+            session.add(row)
+            issued_rows.append(row)
+            issued.append({"key": code, "plan": normalized_plan, "issued_at": _safe_iso(now)})
+        session.flush()
+        return {
+            "plan": normalized_plan,
+            "issued": issued,
+            "_issued_card_ids": [int(row.id) for row in issued_rows],
+        }
+
+    if action == "gift_code.create":
+        card_type = str(runtime["card_type"])
+        card = GIFT_CARD_TYPES.get(card_type)
+        if not card:
+            raise ActionIntentError("invalid_payload", status_code=422, message="card_type не поддерживается.")
+        code = _generate_gift_code_for_admin(session)
+        row = GiftCard(
+            code=code,
+            card_type=card_type,
+            created_by=int(actor_tg_id),
+            created_at=now,
+        )
+        session.add(row)
+        session.flush()
+        return {
+            "_issued_card_ids": [int(row.id)],
+            "gift_code": {
+                "code": code,
+                "card_type": card_type,
+                "days": int(card.get("days", 0)),
+                "stars": int(card.get("stars", 0)),
+            }
+        }
+
+    raise ActionIntentError("executor_unavailable", status_code=503, message="DB-исполнитель действия недоступен.")
+
+
+def _execute_admin_client_action_db(
+    session,
+    state,
+    payload: dict[str, Any],
+    _runtime_payload: dict[str, Any],
+    *,
+    actor_tg_id: int,
+    action: str,
+) -> dict[str, Any]:
+    if action in _TASK20_DB_ACTIONS:
+        return _execute_task20_admin_action_db(
+            session,
+            state,
+            dict(_runtime_payload),
+            actor_tg_id=actor_tg_id,
+            action=action,
+        )
+
+    if action == "payment.reconcile":
+        order = state.entity
+        next_status = str(state.context["to_status"])
+        operator_note = str(_runtime_payload["note"])
+        order_meta = _json_obj(order.meta_json)
+        existing = order_meta.get("admin_reconciliations")
+        reconciliations = [
+            item
+            for item in (existing[-49:] if isinstance(existing, list) else [])
+            if isinstance(item, dict)
+        ]
+        reconciliations.append(
+            {
+                "at": _safe_iso(_utcnow()),
+                "actor_tg_id": int(actor_tg_id),
+                "from_status": str(state.context["from_status"]),
+                "to_status": next_status,
+                "note": operator_note,
+            }
+        )
+        order_meta["admin_reconciliations"] = reconciliations
+        order.meta_json = json.dumps(order_meta, ensure_ascii=False, separators=(",", ":"))
+        order.status = next_status
+        if next_status == "paid" and not order.paid_at:
+            order.paid_at = _utcnow()
+        session.flush()
+        return {
+            "order_db_id": int(order.id),
+            "provider": str(order.provider or ""),
+            "order_id": str(order.order_id or ""),
+            "order_status": str(order.status or ""),
+        }
+
+    if action in {"promo.create", "promo.update", "promo.delete"}:
+        promo = state.entity
+        if action == "promo.delete":
+            if promo is None:
+                raise ActionIntentError(
+                    "target_not_found",
+                    status_code=404,
+                    message="Промокод не найден.",
+                )
+            deleted_code = str(promo.code or "").upper()
+            session.delete(promo)
+            session.flush()
+            return {"code": deleted_code, "deleted": True}
+
+        after = dict(state.context["after_snapshot"])
+        if action == "promo.create":
+            if promo is not None:
+                raise ActionIntentError(
+                    "target_exists",
+                    status_code=409,
+                    message="Промокод уже существует.",
+                )
+            promo = PromoCode(created_at=_utcnow())
+            session.add(promo)
+        promo.code = str(after["promo_code"])
+        promo.promo_type = str(after["promo_type"])
+        promo.value = int(after["value"])
+        promo.uses_left = int(after["uses_left"])
+        promo.expires_at = (
+            datetime.fromisoformat(str(after["expires_at"]))
+            if after.get("expires_at")
+            else None
+        )
+        session.flush()
+        return {"code": str(promo.code or "").upper(), "deleted": False}
+
+    if action == "referral.process":
+        now = _utcnow()
+        processed = 0
+        rewarded = 0
+        waiting = 0
+        rejected = 0
+        queue_ids: list[int] = []
+        for row in list(state.entity):
+            processed += 1
+            queue_ids.append(int(row.id))
+            referred = session.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
+            referrer = session.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
+            if referred is None or referrer is None:
+                row.status = "rejected_missing_user"
+                row.processed_at = now
+                rejected += 1
+                continue
+            has_activity = (
+                session.query(Event.id)
+                .filter(
+                    Event.tg_id == int(referred.tg_id),
+                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
+                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
+                )
+                .first()
+                is not None
+            )
+            age_hours = max(
+                0,
+                int((now - (row.queued_at or now)).total_seconds() // 3600),
+            )
+            if not has_activity and not bool(payload["force_without_activity"]):
+                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
+                    row.status = "rejected_no_activity"
+                    row.processed_at = now
+                    rejected += 1
+                else:
+                    row.ready_at = now + timedelta(hours=6)
+                    waiting += 1
+                continue
+            ref_sub = str(referrer.sub_type or "").upper().strip()
+            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
+            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
+                row.status = "rejected_referrer_inactive"
+                row.processed_at = now
+                rejected += 1
+                continue
+            row_meta = _json_obj(getattr(row, "meta", None))
+            if not bool(row_meta.get("counted")):
+                referrer.referral_count = int(referrer.referral_count or 0) + 1
+            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
+            referrer.is_active = True
+            row.status = "rewarded"
+            row.processed_at = now
+            rewarded += 1
+        session.flush()
+        return {
+            "processed": processed,
+            "rewarded": rewarded,
+            "waiting": waiting,
+            "rejected": rejected,
+            "queue_ids": queue_ids,
+        }
+
+    if action in {"provider_quota.create", "provider_quota.update"}:
+        node_code = str(state.context["node_code"])
+        row = state.entity
+        before = _provider_quota_audit_payload(row)
+        now = _utcnow()
+        if action == "provider_quota.create":
+            if row is not None:
+                raise ActionIntentError(
+                    "target_exists",
+                    status_code=409,
+                    message="Квота провайдера для этой ноды уже настроена.",
+                )
+            row = ProviderTrafficQuota(node_code=node_code, created_at=now)
+            session.add(row)
+            quota_action = "create"
+        else:
+            if row is None:
+                raise ActionIntentError(
+                    "target_not_found",
+                    status_code=404,
+                    message="Квота провайдера не найдена.",
+                )
+            quota_action = "update"
+        proposed = dict(state.context.get("proposed_config") or {})
+        row.included_bytes = int(proposed["included_bytes"])
+        row.reset_day = int(proposed["reset_day"])
+        row.timezone = str(proposed["timezone"])
+        row.warning_ratio = float(proposed["warning_ratio"])
+        row.critical_ratio = float(proposed["critical_ratio"])
+        row.enabled = bool(proposed["enabled"])
+        row.notes = proposed.get("notes")
+        row.updated_by = int(actor_tg_id)
+        row.updated_at = now
+        session.flush()
+        after = _provider_quota_safe_payload(row)
+        assert after is not None
+        _add_provider_quota_audit(
+            s=session,
+            quota=row,
+            node_code=node_code,
+            actor=actor_tg_id,
+            action=quota_action,
+            before=before,
+            after=after,
+        )
+        return {"quota": after, "node_code": node_code}
+
+    if action == "provider_quota.delete":
+        row = state.entity
+        node_code = str(state.context["node_code"])
+        if row is None:
+            raise ActionIntentError(
+                "target_not_found",
+                status_code=404,
+                message="Квота провайдера не найдена.",
+            )
+        before = _provider_quota_audit_payload(row)
+        _add_provider_quota_audit(
+            s=session,
+            quota=row,
+            node_code=node_code,
+            actor=actor_tg_id,
+            action="delete",
+            before=before,
+            after=None,
+        )
+        session.delete(row)
+        session.flush()
+        return {"node_code": node_code, "deleted": True}
+
+    if action == "user.extend":
+        user = state.entity
+        now = _utcnow()
+        current = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+        candidate = current + timedelta(days=int(payload["delta_days"]))
+        if candidate <= now:
+            if not bool(payload["allow_deactivate"]):
+                raise ActionIntentError(
+                    "would_deactivate",
+                    status_code=409,
+                    message="Операция деактивирует пользователя; подтвердите allow_deactivate=true.",
+                )
+            user.expiry_at = now
+            user.is_active = False
+        else:
+            user.expiry_at = candidate
+            user.is_active = True
+        session.flush()
+        return {
+            "expiry_at": _safe_iso(user.expiry_at),
+            "is_active": bool(user.is_active),
+            "delta_days": int(payload["delta_days"]),
+        }
+
+    if action == "user.key_limits":
+        tg_id = int(state.context["tg_id"])
+        node = str(payload["node_code"])
+        row = (
+            session.query(UserKeyPolicy)
+            .filter(
+                UserKeyPolicy.tg_id == tg_id,
+                func.lower(UserKeyPolicy.node_code) == node,
+            )
+            .first()
+        )
+        if row is None:
+            row = UserKeyPolicy(tg_id=tg_id, node_code=node)
+            session.add(row)
+        row.burst_mbps = payload["burst_mbps"]
+        row.soft_cap_gb = payload["soft_cap_gb"]
+        row.hard_cap_gb = payload["hard_cap_gb"]
+        row.notify_soft = bool(payload["notify_soft"])
+        row.notify_hard = bool(payload["notify_hard"])
+        row.auto_disable_on_hard = bool(payload["auto_disable_on_hard"])
+        row.updated_by = int(actor_tg_id)
+        row.updated_at = _utcnow()
+        session.flush()
+        row_payload = _serialize_key_policy(row)
+        session.add(
+            KeyActionHistory(
+                tg_id=tg_id,
+                node_code=node,
+                action="key_limits_update",
+                actor_tg_id=int(actor_tg_id),
+                source="admin",
+                meta=json.dumps(
+                    {"policy": row_payload, "apply_now": False, "applied": None},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                created_at=_utcnow(),
+            )
+        )
+        return {"policy": row_payload, "applied": None}
+
+    if action == "user.preset_run" and payload["preset"] == "extend_1d":
+        user = state.entity
+        now = _utcnow()
+        base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+        user.expiry_at = base + timedelta(days=1)
+        user.is_active = True
+        session.flush()
+        return {
+            "preset": "extend_1d",
+            "expiry_at": _safe_iso(user.expiry_at),
+        }
+
+    if action == "user.bulk_key_action" and bool(payload["dry_run"]):
+        return {
+            "action": str(payload["action"]),
+            "dry_run": True,
+            "users": int(state.context["selected_count"]),
+            "selection_hash": str(state.context["selection_hash"]),
+            "preview_tg_ids": [
+                int(value)
+                for value in list(state.context["selected_tg_ids"])[:50]
+            ],
+        }
+
+    if action == "key.rotate":
+        key_row = state.entity
+        if bool(payload["dry_run"]):
+            return {
+                "dry_run": True,
+                "key_id": int(key_row.id),
+                "tg_id": int(key_row.tg_id),
+                "node_code": str(key_row.node_code or "") or None,
+                "planned_job_type": "rotate_access_key",
+            }
+        key_row.state = "rotation_requested"
+        key_row.updated_at = _utcnow()
+        job = NodeProvisioningJob(
+            tg_id=int(key_row.tg_id),
+            key_id=int(key_row.id),
+            node_code=str(key_row.node_code or "") or None,
+            job_type="rotate_access_key",
+            status="queued",
+            desired_state_json=json.dumps(
+                {
+                    "reason_sha256": str(payload["reason"]["sha256"]),
+                    "reason_length": int(payload["reason"]["length"]),
+                    "requested_by": int(actor_tg_id),
+                    "pool_code": str(key_row.pool_code or ""),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
+            created_at=_utcnow(),
+            updated_at=_utcnow(),
+        )
+        session.add(job)
+        session.flush()
+        return {
+            "key_id": int(key_row.id),
+            "job_id": int(job.id),
+            "job_status": "queued",
+        }
+
+    if action == "ticket.status":
+        ticket = state.entity
+        new_status = str(payload["status"])
+        set_ticket_status(
+            session,
+            ticket=ticket,
+            status=new_status,
+            assigned_admin_tg_id=(
+                int(actor_tg_id) if new_status == STATUS_IN_PROGRESS else None
+            ),
+        )
+        session.flush()
+        return {"ticket_id": int(ticket.id)}
+
+    raise ActionIntentError(
+        "executor_unavailable",
+        status_code=503,
+        message="DB-исполнитель действия недоступен.",
+    )
+
+
+async def _execute_admin_client_action_external(
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    action = str(context["action"])
+    actor = int(context["actor_tg_id"])
+    runtime = dict(context.get("runtime_payload") or {})
+    execution = dict(context.get("execution") or {})
+
+    if action == "user.manual_create":
+        tg_id = int(execution["candidate_tg_id"])
+        session = SessionLocal()
+        try:
+            if session.query(User).filter(User.tg_id == tg_id).first() is not None:
+                return {"ok": False, "code": "manual_id_conflict", "tg_id": tg_id}
+            now = _utcnow()
+            user = User(
+                tg_id=tg_id,
+                username=None,
+                uuid=str(uuid.uuid4()),
+                email=f"MANUAL_{abs(tg_id)}",
+                sub_type="MANUAL",
+                current_plan_code="manual",
+                created_at=now,
+                expiry_at=now + timedelta(days=int(runtime["days"])),
+                is_active=True,
+                stars_paid=0,
+                total_gb=0,
+                trial_used=False,
+                tos_accepted=True,
+                first_purchase_done=True,
+                sub_token=_generate_sub_token(),
+                is_manual=True,
+                created_by_admin=actor,
+                display_name=str(runtime["display_name"]),
+            )
+            session.add(user)
+            ensure_user_account_foundation(session, user, now=now)
+            session.commit()
+            session.refresh(user)
+            user_uuid = str(user.uuid or "")
+            email = str(user.email or "")
+            sub_token = str(user.sub_token or "")
+        except IntegrityError:
+            session.rollback()
+            return {"ok": False, "code": "manual_id_conflict", "tg_id": tg_id}
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            synced = await panel.ensure_user_on_all_nodes(
+                tg_id=tg_id,
+                client_uuid=user_uuid,
+                email=email,
+                sub_id=sub_token or str(tg_id),
+                enable=True,
+                only_node_codes=None,
+            )
+            sync_ok = bool(any(synced.values())) if synced else False
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="manual_create",
+            actor_tg_id=actor,
+            meta={"days": int(runtime["days"]), "sync_ok": sync_ok},
+        )
+        return {
+            "ok": True,
+            "code": "manual_created",
+            "tg_id": tg_id,
+            "sync_ok": sync_ok,
+        }
+
+    if action == "user.block":
+        tg_id = int(execution["tg_id"])
+        active = not bool(runtime["blocked"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            user.is_active = active
+            user_uuid = str(user.uuid or "")
+            session.commit()
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            await panel.enable_client(user_uuid, enable=active)
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="manual_block" if runtime["blocked"] else "manual_unblock",
+            actor_tg_id=actor,
+            meta={"blocked": bool(runtime["blocked"])},
+        )
+        return {
+            "ok": True,
+            "code": "user_block_updated",
+            "tg_id": tg_id,
+            "is_active": active,
+        }
+
+    if action == "user.regenerate_token":
+        tg_id = int(execution["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            user.sub_token = _generate_sub_token()
+            user_uuid = str(user.uuid or "")
+            active = bool(user.is_active)
+            session.commit()
+        finally:
+            session.close()
+        _process_referral_bonus_queue(limit=100, force_without_activity=False)
+        sync_ok = False
+        if user_uuid:
+            panel = ControlPanel()
+            try:
+                await panel.login()
+                sync_ok = bool(await panel.enable_client(user_uuid, enable=active))
+            finally:
+                await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="token_regenerate",
+            actor_tg_id=actor,
+            meta={"sync_ok": sync_ok},
+        )
+        return {
+            "ok": True,
+            "code": "token_regenerated",
+            "tg_id": tg_id,
+            "sync_ok": sync_ok,
+        }
+
+    if action in {"user.safe_delete", "user.delete_test"}:
+        tg_id = int(execution["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            if not _is_manual_test_user(user):
+                return {"ok": False, "code": "user_not_deletable", "tg_id": tg_id}
+            session.query(UserNode).filter(UserNode.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(UserKeyPolicy).filter(UserKeyPolicy.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(KeyActionHistory).filter(KeyActionHistory.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.query(Event).filter(Event.tg_id == tg_id).delete(
+                synchronize_session=False
+            )
+            session.delete(user)
+            session.commit()
+        finally:
+            session.close()
+        panel_deleted = False
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            panel_deleted = bool(await panel.delete_client(tg_id))
+        except Exception as exc:
+            logger.warning(
+                "admin guarded delete panel cleanup failed tg_id=%s error_type=%s intent_id=%s",
+                tg_id,
+                type(exc).__name__,
+                str(context.get("action_intent_id") or ""),
+            )
+        finally:
+            await panel.close()
+        return {
+            "ok": True,
+            "code": "user_deleted",
+            "tg_id": tg_id,
+            "panel_deleted": panel_deleted,
+        }
+
+    if action in {
+        "user.key_toggle",
+        "user.key_reset_traffic",
+        "user.key_resync_subid",
+    }:
+        tg_id = int(execution["tg_id"])
+        node_code = str(runtime["node_code"])
+        hard_cap = dict(execution.get("hard_caps") or {}).get(node_code)
+        sub_id = str(execution.get("sub_token") or tg_id)
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            if action == "user.key_toggle":
+                changed = await panel.set_user_key_enabled_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                    enable=bool(runtime["enable"]),
+                    sub_id=sub_id,
+                    hard_cap_gb=hard_cap,
+                )
+            elif action == "user.key_reset_traffic":
+                changed = await panel.reset_user_key_traffic_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                )
+            else:
+                changed = await panel.resync_user_key_subid_on_node(
+                    tg_id=tg_id,
+                    node_code=node_code,
+                    sub_id=sub_id,
+                    hard_cap_gb=hard_cap,
+                )
+        finally:
+            await panel.close()
+        if changed is None:
+            return {
+                "ok": False,
+                "code": "key_not_found",
+                "tg_id": tg_id,
+                "node_code": node_code,
+            }
+        if not changed:
+            return {
+                "ok": False,
+                "code": "panel_update_failed",
+                "tg_id": tg_id,
+                "node_code": node_code,
+            }
+        history_action = {
+            "user.key_toggle": "key_enable" if runtime["enable"] else "key_disable",
+            "user.key_reset_traffic": "key_reset_traffic",
+            "user.key_resync_subid": "key_resync_subid",
+        }[action]
+        _key_history_log(
+            tg_id=tg_id,
+            action=history_action,
+            node_code=node_code,
+            actor_tg_id=actor,
+            meta=(
+                {"enabled": bool(runtime["enable"])}
+                if action == "user.key_toggle"
+                else None
+            ),
+        )
+        result: dict[str, Any] = {
+            "ok": True,
+            "code": "key_updated",
+            "tg_id": tg_id,
+            "node_code": node_code,
+        }
+        if action == "user.key_toggle":
+            result["enabled"] = bool(runtime["enable"])
+        return result
+
+    if action == "user.key_limits":
+        tg_id = int(execution["tg_id"])
+        node_code = str(runtime["node_code"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            row = (
+                session.query(UserKeyPolicy)
+                .filter(
+                    UserKeyPolicy.tg_id == tg_id,
+                    func.lower(UserKeyPolicy.node_code) == node_code,
+                )
+                .first()
+            )
+            if row is None:
+                row = UserKeyPolicy(tg_id=tg_id, node_code=node_code)
+                session.add(row)
+            row.burst_mbps = runtime["burst_mbps"]
+            row.soft_cap_gb = runtime["soft_cap_gb"]
+            row.hard_cap_gb = runtime["hard_cap_gb"]
+            row.notify_soft = bool(runtime["notify_soft"])
+            row.notify_hard = bool(runtime["notify_hard"])
+            row.auto_disable_on_hard = bool(runtime["auto_disable_on_hard"])
+            row.updated_by = actor
+            row.updated_at = _utcnow()
+            sub_id = str(user.sub_token or user.tg_id)
+            row_payload = _serialize_key_policy(row)
+            session.commit()
+        finally:
+            session.close()
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            applied = await panel.apply_user_key_limits_on_node(
+                tg_id=tg_id,
+                node_code=node_code,
+                hard_cap_gb=runtime["hard_cap_gb"],
+                sub_id=sub_id,
+            )
+        finally:
+            await panel.close()
+        _key_history_log(
+            tg_id=tg_id,
+            action="key_limits_update",
+            node_code=node_code,
+            actor_tg_id=actor,
+            meta={"policy": row_payload, "apply_now": True, "applied": applied},
+        )
+        return {
+            "ok": True,
+            "code": "key_limits_updated",
+            "tg_id": tg_id,
+            "node_code": node_code,
+            "applied": applied,
+        }
+
+    if action == "user.loyalty_grant":
+        tg_id = int(execution["tg_id"])
+        tier_days = int(runtime["tier_days"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            loyalty = _user_loyalty_snapshot(s=session, user=user)
+            tier = next(
+                (
+                    row
+                    for row in loyalty.get("tiers", [])
+                    if int(row.get("days") or 0) == tier_days
+                ),
+                None,
+            )
+            if tier is None:
+                return {"ok": False, "code": "tier_not_found", "tg_id": tg_id}
+            if not bool(tier.get("unlocked")):
+                return {"ok": False, "code": "tier_locked", "tg_id": tg_id}
+            if bool(tier.get("claimed")):
+                return {"ok": False, "code": "tier_claimed", "tg_id": tg_id}
+            now = _utcnow()
+            base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
+            user.expiry_at = base + timedelta(days=max(1, int(tier.get("bonus_days") or 0)))
+            user.is_active = True
+            session.add(
+                RewardClaim(
+                    tg_id=tg_id,
+                    reward_key=str(tier.get("reward_key") or ""),
+                    meta=json.dumps({"tier": tier_days}, ensure_ascii=False),
+                )
+            )
+            session.commit()
+            try:
+                sync_ok = bool(await _sync_user_after_paid_bonus(user))
+            except Exception as exc:
+                logger.warning(
+                    "loyalty grant sync failed tg_id=%s error_type=%s intent_id=%s",
+                    tg_id,
+                    type(exc).__name__,
+                    str(context.get("action_intent_id") or ""),
+                )
+                sync_ok = False
+        except IntegrityError:
+            session.rollback()
+            return {"ok": False, "code": "tier_claimed", "tg_id": tg_id}
+        finally:
+            session.close()
+        return {
+            "ok": True,
+            "code": "loyalty_granted",
+            "tg_id": tg_id,
+            "tier_days": tier_days,
+            "sync_ok": sync_ok,
+        }
+
+    if action == "user.preset_run":
+        tg_id = int(execution["tg_id"])
+        preset = str(runtime["preset"])
+        if preset == "send_guide":
+            ok = await _telegram_send_message(
+                tg_id,
+                "Инструкция по подключению:\n"
+                "1) Откройте раздел Устройства.\n"
+                "2) Импортируйте ключ.\n"
+                "3) Проверьте статус и перезапустите приложение.",
+            )
+            return {
+                "ok": bool(ok),
+                "code": "guide_sent" if ok else "telegram_failed",
+                "tg_id": tg_id,
+                "preset": preset,
+            }
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+            nodes = enabled_nodes(session)
+        finally:
+            session.close()
+        keys_state = await _admin_user_keys_state(user, nodes=nodes)
+        keys = [row for row in keys_state.get("keys", []) if bool(row.get("exists"))]
+        expected_sub_id = str(user.sub_token or user.tg_id)
+        changed = 0
+        failed = 0
+        panel = ControlPanel()
+        try:
+            await panel.login()
+            if preset == "reset_key":
+                for key in keys:
+                    code = str(key.get("node_code") or "")
+                    ok = await panel.reset_user_key_traffic_on_node(
+                        tg_id=tg_id,
+                        node_code=code,
+                    )
+                    if ok:
+                        changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action="key_reset_traffic",
+                            node_code=code,
+                            actor_tg_id=actor,
+                            source="preset",
+                        )
+                    else:
+                        failed += 1
+            elif preset == "rotate_link":
+                rotate_session = SessionLocal()
+                try:
+                    db_user = rotate_session.query(User).filter(User.tg_id == tg_id).first()
+                    if db_user is None:
+                        return {"ok": False, "code": "user_not_found", "tg_id": tg_id}
+                    db_user.sub_token = _generate_sub_token()
+                    rotate_session.commit()
+                    expected_sub_id = str(db_user.sub_token or db_user.tg_id)
+                finally:
+                    rotate_session.close()
+                for key in keys:
+                    code = str(key.get("node_code") or "")
+                    cap_session = SessionLocal()
+                    try:
+                        hard_cap = _get_user_node_hard_cap_gb(
+                            s=cap_session,
+                            tg_id=tg_id,
+                            node_code=code,
+                        )
+                    finally:
+                        cap_session.close()
+                    ok = await panel.resync_user_key_subid_on_node(
+                        tg_id=tg_id,
+                        node_code=code,
+                        sub_id=expected_sub_id,
+                        hard_cap_gb=hard_cap,
+                    )
+                    if ok:
+                        changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action="key_resync_subid",
+                            node_code=code,
+                            actor_tg_id=actor,
+                            source="preset",
+                        )
+                    else:
+                        failed += 1
+                _key_history_log(
+                    tg_id=tg_id,
+                    action="token_regenerate",
+                    actor_tg_id=actor,
+                    source="preset",
+                )
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "preset_completed" if failed == 0 else "preset_partial",
+            "tg_id": tg_id,
+            "preset": preset,
+            "changed": changed,
+            "failed": failed,
+        }
+
+    if action == "user.bulk_key_action":
+        selected = [int(value) for value in execution["selected_tg_ids"]]
+        bulk_action = str(execution["action"])
+        if len(selected) > 50 and not bool(execution["force"]):
+            return {
+                "ok": False,
+                "code": "force_required",
+                "action": bulk_action,
+                "users": len(selected),
+                "requires_force": True,
+            }
+        panel = ControlPanel()
+        changed = 0
+        failed = 0
+        details: list[dict[str, int]] = []
+        try:
+            await panel.login()
+            for tg_id in selected:
+                user_changed = 0
+                user_failed = 0
+                session = SessionLocal()
+                try:
+                    user = session.query(User).filter(User.tg_id == tg_id).first()
+                    if user is None:
+                        failed += 1
+                        user_failed += 1
+                        details.append(
+                            {"tg_id": tg_id, "changed": 0, "failed": user_failed}
+                        )
+                        continue
+                    sub_id = str(user.sub_token or user.tg_id)
+                finally:
+                    session.close()
+                node_codes = list(execution["node_codes"])
+                if not node_codes:
+                    snapshots = await panel.get_user_key_snapshots(tg_id=tg_id)
+                    node_codes = [
+                        str(row.get("node_code") or "").strip().lower()
+                        for row in snapshots
+                        if str(row.get("node_code") or "").strip()
+                    ]
+                for node_code in node_codes:
+                    cap_session = SessionLocal()
+                    try:
+                        hard_cap = _get_user_node_hard_cap_gb(
+                            s=cap_session,
+                            tg_id=tg_id,
+                            node_code=node_code,
+                        )
+                    finally:
+                        cap_session.close()
+                    if bulk_action == "disable":
+                        ok = await panel.set_user_key_enabled_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            enable=False,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    elif bulk_action == "enable":
+                        ok = await panel.set_user_key_enabled_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            enable=True,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    elif bulk_action == "reset":
+                        ok = await panel.reset_user_key_traffic_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                        )
+                    else:
+                        ok = await panel.resync_user_key_subid_on_node(
+                            tg_id=tg_id,
+                            node_code=node_code,
+                            sub_id=sub_id,
+                            hard_cap_gb=hard_cap,
+                        )
+                    if ok:
+                        changed += 1
+                        user_changed += 1
+                        _key_history_log(
+                            tg_id=tg_id,
+                            action={
+                                "disable": "key_disable",
+                                "enable": "key_enable",
+                                "reset": "key_reset_traffic",
+                                "resync": "key_resync_subid",
+                            }[bulk_action],
+                            node_code=node_code,
+                            actor_tg_id=actor,
+                            source="bulk",
+                        )
+                    else:
+                        failed += 1
+                        user_failed += 1
+                details.append(
+                    {
+                        "tg_id": tg_id,
+                        "changed": user_changed,
+                        "failed": user_failed,
+                    }
+                )
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "bulk_completed" if failed == 0 else "bulk_partial",
+            "action": bulk_action,
+            "users": len(selected),
+            "changed": changed,
+            "failed": failed,
+            "details": details,
+        }
+
+    if action == "node.sync_global":
+        selection = [dict(item) for item in execution["selection"]]
+        if len(selection) != int(execution["selected_count"]):
+            raise RuntimeError("frozen global sync selection is unavailable")
+        panel = ControlPanel()
+        changed = 0
+        failed = 0
+        try:
+            await panel.login()
+            for item in selection:
+                ok = await panel.enable_client(str(item["uuid"]), True)
+                if ok:
+                    changed += 1
+                else:
+                    failed += 1
+        finally:
+            await panel.close()
+        return {
+            "ok": failed == 0,
+            "code": "global_sync_completed" if failed == 0 else "global_sync_partial",
+            "count": len(selection),
+            "changed": changed,
+            "failed": failed,
+        }
+
+    if action == "broadcast.send":
+        recipients = [int(value) for value in execution["selected_tg_ids"]]
+        if (
+            recipients != sorted(set(recipients))
+            or len(recipients) != int(execution["recipient_count"])
+        ):
+            raise RuntimeError("frozen broadcast plan is unavailable")
+        sent = 0
+        failed = 0
+        for tg_id in recipients:
+            if await _telegram_send_message(tg_id, str(runtime["text"])):
+                sent += 1
+            else:
+                failed += 1
+        return {
+            "ok": failed == 0,
+            "code": "broadcast_sent" if failed == 0 else "broadcast_partial",
+            "attempted": len(recipients),
+            "sent": sent,
+            "failed": failed,
+        }
+
+    if action == "user.message":
+        tg_id = int(execution["tg_id"])
+        ok = await _telegram_send_message(tg_id, str(runtime["text"]))
+        return {
+            "ok": bool(ok),
+            "code": "message_sent" if ok else "telegram_failed",
+            "tg_id": tg_id,
+        }
+
+    if action == "ticket.reply":
+        ticket_id = int(execution["ticket_id"])
+        user_tg_id = int(execution["user_tg_id"])
+        message_payload = TicketMessageIn(
+            body=str(runtime["body"]),
+            attachment_id=runtime.get("attachment_id"),
+            media_type=runtime.get("media_type"),
+            media_file_id=runtime.get("media_file_id"),
+            media_payload=runtime.get("media_payload"),
+        )
+        reference = _support_attachment_reference(message_payload)
+        with _support_attachment_bind_lock(reference):
+            session = SessionLocal()
+            try:
+                account_id = resolve_support_account_id(session, user_tg_id=actor)
+                ticket = get_ticket_by_id(session, ticket_id)
+                if ticket is None:
+                    return {"ok": False, "code": "ticket_not_found", "ticket_id": ticket_id}
+                attachment, media = _resolve_ticket_attachment(
+                    session,
+                    payload=message_payload,
+                    actor_tg_id=actor,
+                    account_id=account_id,
+                )
+                message = add_ticket_message(
+                    session,
+                    ticket_id=ticket_id,
+                    sender_tg_id=actor,
+                    sender_role="admin",
+                    body=message_payload.body,
+                    **media,
+                )
+                if attachment is not None:
+                    _bind_ticket_attachment(
+                        session,
+                        row=attachment,
+                        ticket_id=ticket_id,
+                        message_id=int(message.id),
+                    )
+                set_ticket_status(
+                    session,
+                    ticket=ticket,
+                    status=STATUS_IN_PROGRESS,
+                    assigned_admin_tg_id=actor,
+                )
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+        sent = await _telegram_send_message(
+            user_tg_id,
+            f"💬 Ответ оператора в обращении #{ticket_id}.",
+        )
+        return {
+            "ok": bool(sent),
+            "code": "ticket_replied" if sent else "telegram_failed",
+            "ticket_id": ticket_id,
+        }
+
+    raise RuntimeError("guarded external executor is unavailable")
+
+
+async def _execute_admin_post_commit(context: dict[str, Any]) -> dict[str, Any]:
+    if str(context.get("action") or "") != "ticket.status":
+        return {"ok": True, "code": "post_commit_not_required"}
+    execution = dict(context.get("execution") or {})
+    ticket_id = int(execution["ticket_id"])
+    user_tg_id = int(execution["user_tg_id"])
+    sent = await _telegram_send_message(
+        user_tg_id,
+        f"✅ Обращение #{ticket_id} закрыто оператором.",
+    )
+    return {"ok": bool(sent), "code": "ticket_close_notified" if sent else "telegram_failed"}
+
+
+def _saved_bulk_preview_ids(value: object) -> list[int]:
+    if not isinstance(value, list) or len(value) > 50:
+        return []
+    ids: list[int] = []
+    for item in value:
+        if type(item) is not int or not -(2**63) <= item < 2**63:
+            return []
+        ids.append(int(item))
+    return ids if len(set(ids)) == len(ids) else []
+
+
+def _saved_bulk_details(value: object) -> list[dict[str, int]]:
+    if not isinstance(value, list) or len(value) > 500:
+        return []
+    details: list[dict[str, int]] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"tg_id", "changed", "failed"}:
+            return []
+        tg_id = item["tg_id"]
+        changed = item["changed"]
+        failed = item["failed"]
+        if (
+            type(tg_id) is not int
+            or not -(2**63) <= tg_id < 2**63
+            or type(changed) is not int
+            or type(failed) is not int
+            or not 0 <= changed <= 1_000_000
+            or not 0 <= failed <= 1_000_000
+        ):
+            return []
+        details.append(
+            {"tg_id": int(tg_id), "changed": int(changed), "failed": int(failed)}
+        )
+    return (
+        details
+        if len({item["tg_id"] for item in details}) == len(details)
+        else []
+    )
+
+
+def _admin_guarded_action_response(
+    *,
+    action: str,
+    target_id: str,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    known_status = str(result.get("status") or "")
+    if known_status not in {"completed", "failed"}:
+        return result
+    if known_status == "failed" and (
+        action,
+        str(result.get("result_code") or ""),
+    ) not in {
+        ("user.preset_run", "preset_partial"),
+        ("user.bulk_key_action", "bulk_partial"),
+        ("user.bulk_key_action", "force_required"),
+        ("ticket.reply", "telegram_failed"),
+        ("broadcast.send", "broadcast_partial"),
+        ("node.sync_global", "global_sync_partial"),
+    }:
+        return result
+    facts = result.get("result") if isinstance(result.get("result"), dict) else {}
+    metadata = {
+        "status": result.get("status"),
+        "action_intent_id": result.get("action_intent_id"),
+        "audit_id": result.get("audit_id"),
+    }
+
+    def merged(legacy: dict[str, Any]) -> dict[str, Any]:
+        merged_result = {**result, **legacy, **metadata}
+        merged_result["ok"] = bool(
+            known_status == "completed" and legacy.get("ok", True)
+        )
+        return merged_result
+
+    if action == "payment.reconcile":
+        session = SessionLocal()
+        try:
+            order = session.query(ExternalOrder).filter(ExternalOrder.id == int(target_id)).first()
+            if order is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "order": _admin_payment_order_payload(s=session, order=order),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.manual_create":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "user": {
+                        "tg_id": tg_id,
+                        "display_name": str(user.display_name or ""),
+                        "sub_type": str(user.sub_type or ""),
+                        "is_active": bool(user.is_active),
+                        "expiry_at": _safe_iso(user.expiry_at),
+                        "subscription_url": build_subscription_url(str(user.sub_token or "")),
+                    },
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.block":
+        return merged({"ok": True, "is_active": bool(facts.get("is_active"))})
+
+    if action == "user.regenerate_token":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "subscription_url": build_subscription_url(str(user.sub_token or "")),
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action in {"user.safe_delete", "user.delete_test"}:
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "panel_deleted": bool(facts.get("panel_deleted")),
+            }
+        )
+
+    if action == "user.key_toggle":
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "node_code": str(facts["node_code"]),
+                "enabled": bool(facts.get("enabled")),
+            }
+        )
+
+    if action == "user.key_reset_traffic":
+        return merged(
+            {
+                "ok": True,
+                "tg_id": int(facts["tg_id"]),
+                "node_code": str(facts["node_code"]),
+            }
+        )
+
+    if action == "user.key_resync_subid":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "tg_id": tg_id,
+                    "node_code": str(facts["node_code"]),
+                    "expected_sub_id": str(user.sub_token or user.tg_id),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.key_limits":
+        tg_id = int(facts.get("tg_id") or target_id)
+        node_code = str(facts.get("node_code") or "")
+        session = SessionLocal()
+        try:
+            row = (
+                session.query(UserKeyPolicy)
+                .filter(
+                    UserKeyPolicy.tg_id == tg_id,
+                    func.lower(UserKeyPolicy.node_code) == node_code,
+                )
+                .first()
+            )
+            if row is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "policy": _serialize_key_policy(row),
+                    "applied": facts.get("applied"),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.loyalty_grant":
+        tg_id = int(facts["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return result
+            return merged(
+                {
+                    "ok": True,
+                    "tier_days": int(facts["tier_days"]),
+                    "expiry_at": _safe_iso(user.expiry_at),
+                    "sync_ok": bool(facts.get("sync_ok")),
+                }
+            )
+        finally:
+            session.close()
+
+    if action == "user.preset_run" and facts:
+        preset = str(facts["preset"])
+        legacy: dict[str, Any] = {"ok": True, "preset": preset}
+        if preset in {"reset_key", "rotate_link"}:
+            tg_id = int(facts["tg_id"])
+            session = SessionLocal()
+            try:
+                user = session.query(User).filter(User.tg_id == tg_id).first()
+                if user is not None:
+                    legacy["subscription_url"] = build_subscription_url(
+                        str(user.sub_token or user.tg_id)
+                    )
+            finally:
+                session.close()
+            legacy["changed"] = int(facts.get("changed") or 0)
+            legacy["failed"] = int(facts.get("failed") or 0)
+        return merged(legacy)
+
+    if action == "user.bulk_key_action":
+        if facts:
+            requires_force = bool(facts.get("requires_force"))
+            return merged(
+                {
+                    "ok": not requires_force,
+                    "requires_force": requires_force or None,
+                    "action": str(facts.get("action") or ""),
+                    "users": int(facts.get("users") or 0),
+                    "changed": int(facts.get("changed") or 0),
+                    "failed": int(facts.get("failed") or 0),
+                    "details": _saved_bulk_details(facts.get("details")),
+                    **(
+                        {"message": "Для массового действия более чем над 50 пользователями нужен force=true"}
+                        if requires_force
+                        else {}
+                    ),
+                }
+            )
+        return merged(
+            {
+                "ok": True,
+                "action": str(result.get("action") or ""),
+                "dry_run": True,
+                "users": int(result.get("users") or 0),
+                "preview_tg_ids": _saved_bulk_preview_ids(
+                    result.get("preview_tg_ids")
+                ),
+            }
+        )
+
+    if action == "user.message":
+        return merged({"ok": True})
+
+    if action == "broadcast.send":
+        return merged(
+            {
+                "attempted": int(facts.get("attempted") or 0),
+                "sent": int(facts.get("sent") or 0),
+                "failed": int(facts.get("failed") or 0),
+            }
+        )
+
+    if action == "node.sync_global":
+        return merged(
+            {
+                "synced": int(facts.get("changed") or 0),
+                "failed": int(facts.get("failed") or 0),
+                "count": int(facts.get("count") or 0),
+            }
+        )
+
+    if action in {"ticket.reply", "ticket.status"}:
+        ticket_id = int(facts.get("ticket_id") or result.get("ticket_id") or target_id)
+        session = SessionLocal()
+        try:
+            ticket = get_ticket_by_id(session, ticket_id)
+            if ticket is None:
+                return result
+            messages = list_ticket_messages(session, ticket_id, limit=100)
+            return merged({"ticket": _ticket_detail_row(ticket, messages)})
+        finally:
+            session.close()
+
+    return result
+
+
+async def _execute_admin_guarded_action(
+    *,
+    actor_tg_id: int,
+    action: str,
+    target_type: str,
+    target_id: str,
+    payload: dict[str, Any],
+    request: Request,
+) -> dict[str, Any]:
+    intent_id = str(request.headers.get("X-Admin-Intent-Id") or "")
+    idempotency_key = str(request.headers.get("X-Admin-Idempotency-Key") or "")
+    confirmation = str(request.headers.get("X-Admin-Confirmation-SHA256") or "")
+    if not intent_id.strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "intent_required",
+                "message": "Сначала создайте защищённое намерение через серверный предпросмотр.",
+            },
+        )
+    if not idempotency_key.strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="idempotency_required",
+            message="Нужен клиентский ключ идемпотентности.",
+        )
+    if not confirmation.strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="confirmation_required",
+            message="Нужно подтверждение серверной проверочной фразы.",
+        )
+    try:
+        execution_result = await _execute_action_intent(
+            session_factory=SessionLocal,
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            idempotency_key=idempotency_key,
+            confirmation_sha256_header=confirmation,
+            action=action,
+            target={"type": target_type, "id": target_id},
+            payload=payload,
+            audit_writer=_add_admin_audit,
+            db_executor=lambda session, state, normalized, runtime: (
+                _execute_admin_client_action_db(
+                    session,
+                    state,
+                    dict(normalized),
+                    dict(runtime),
+                    actor_tg_id=actor_tg_id,
+                    action=action,
+                )
+            ),
+            external_executor=_execute_admin_client_action_external,
+            post_commit_executor=_execute_admin_post_commit,
+            external_timeout_seconds=(
+                300.0
+                if action in {"user.bulk_key_action", "user.preset_run"}
+                else 30.0
+            ),
+            return_replay_state=True,
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    result, replayed = execution_result
+    if replayed and action != "broadcast.send":
+        return result
+    return _admin_guarded_action_response(
+        action=action,
+        target_id=target_id,
+        result=result,
+    )
+
+
+async def _execute_admin_node_action(
+    *,
+    actor_tg_id: int,
+    action: str,
+    node_code: str,
+    payload: dict[str, Any],
+    intent_id: str,
+    idempotency_key: str,
+    confirmation_sha256: str,
+) -> dict[str, Any]:
+    if not str(intent_id or "").strip():
+        raise HTTPException(
+            status_code=428,
+            detail={
+                "code": "intent_required",
+                "message": "Сначала создайте защищённое намерение через серверный предпросмотр.",
+            },
+        )
+    if not str(idempotency_key or "").strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="idempotency_required",
+            message="Нужен клиентский ключ идемпотентности.",
+        )
+    if not str(confirmation_sha256 or "").strip():
+        _raise_action_intent_header_required(
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            code="confirmation_required",
+            message="Нужно подтверждение серверной проверочной фразы.",
+        )
+    try:
+        return await _execute_action_intent(
+            session_factory=SessionLocal,
+            actor_tg_id=actor_tg_id,
+            intent_id=intent_id,
+            idempotency_key=idempotency_key,
+            confirmation_sha256_header=confirmation_sha256,
+            action=action,
+            target={"type": "node", "id": node_code},
+            payload=payload,
+            audit_writer=_add_admin_audit,
+            external_executor=(
+                _execute_node_resync_external
+                if action == "node.resync"
+                else None
+            ),
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+
+
+@app.post("/api/admin/action-intents")
+async def admin_action_intent_prepare(
+    payload: AdminActionIntentPrepareIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    session = SessionLocal()
+    try:
+        result = _prepare_action_intent(
+            session=session,
+            actor_tg_id=actor,
+            action=payload.action,
+            target={"type": payload.target.type, "id": payload.target.id},
+            payload=dict(payload.payload),
+        )
+        session.commit()
+        return result
+    except ActionIntentError as error:
+        session.rollback()
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "intent_prepare_failed",
+                "message": "Не удалось подготовить действие.",
+            },
+        ) from None
+    finally:
+        session.close()
+
+
+@app.get("/api/admin/action-intents/{intent_id}")
+async def admin_action_intent_status(
+    intent_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    session = SessionLocal()
+    try:
+        return _get_action_intent_status(
+            session=session,
+            actor_tg_id=actor,
+            intent_id=intent_id,
+        )
+    except ActionIntentError as error:
+        _raise_action_intent_http(error)
+        raise AssertionError("unreachable")
+    finally:
+        session.close()
+
+
+@app.post("/api/admin/nodes/{node_code}/disable")
+async def admin_node_disable(
+    node_code: str,
+    payload: AdminNodeLifecycleIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.disable",
+        node_code=wanted,
+        payload={"force": bool(payload.force)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
+
+
+@app.post("/api/admin/nodes/{node_code}/resync")
+async def admin_node_resync(
+    node_code: str,
+    payload: AdminNodeResyncIn,
+    x_telegram_init_data: str = Header(default=""),
+    x_admin_intent_id: str = Header(default="", alias="X-Admin-Intent-Id"),
+    x_admin_idempotency_key: str = Header(
+        default="",
+        alias="X-Admin-Idempotency-Key",
+    ),
+    x_admin_confirmation_sha256: str = Header(
+        default="",
+        alias="X-Admin-Confirmation-SHA256",
+    ),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    wanted = str(node_code or "").strip().lower()
+    return await _execute_admin_node_action(
+        actor_tg_id=actor,
+        action="node.resync",
+        node_code=wanted,
+        payload={"limit": int(payload.limit), "dry_run": bool(payload.dry_run)},
+        intent_id=x_admin_intent_id,
+        idempotency_key=x_admin_idempotency_key,
+        confirmation_sha256=x_admin_confirmation_sha256,
+    )
 
 
 def _transport_profiles_payload(node: Any) -> dict[str, dict[str, Any]]:
@@ -17095,7 +21966,7 @@ def _node_allowed_for_plan(
     if user_uses_free_pool(user):
         return bool(free_code) and code == str(free_code).strip().lower()
 
-    return not node_is_free(node)
+    return node_access_role(node) == PAID_ROLE
 
 
 def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
@@ -17109,7 +21980,9 @@ def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
     out: list[Any] = []
     seen: set[str] = set()
     excluded_codes = _subscription_excluded_codes()
-    free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+    free_code = str(
+        canonical_free_node_code(nodes, access_role=user_free_access_role(user)) or ""
+    ).strip().lower()
     for row in rows:
         node = node_by_id.get(int(getattr(row, "node_id", 0) or 0))
         if not node:
@@ -17133,7 +22006,7 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
     """
     Per-plan node visibility.
     - FREE: dedicated free pool only.
-    - PAID: all enabled non-free nodes.
+    - PAID: all enabled paid-role nodes.
     """
     if not nodes:
         return nodes
@@ -17164,10 +22037,15 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
         candidate_nodes = list(nodes)
 
     if not user_uses_free_pool(user):
-        paid = [n for n in candidate_nodes if not node_is_free(n)]
+        paid = [n for n in candidate_nodes if node_access_role(n) == PAID_ROLE]
         return _apply_node_filters(paid)
 
-    free_code = str(canonical_free_node_code(candidate_nodes) or canonical_free_node_code(nodes) or "").strip().lower()
+    free_role = user_free_access_role(user)
+    free_code = str(
+        canonical_free_node_code(candidate_nodes, access_role=free_role)
+        or canonical_free_node_code(nodes, access_role=free_role)
+        or ""
+    ).strip().lower()
     free_nodes = [n for n in candidate_nodes if str(getattr(n, "code", "") or "").strip().lower() == free_code]
     return _apply_node_filters(free_nodes)
 
@@ -17266,6 +22144,7 @@ def _serialize_admin_node(
     return {
         "code": n.code,
         "name": n.name,
+        "country_code": _node_country_code(str(n.code or "")).upper(),
         "enabled": bool(n.enabled),
         "accepting_new_clients": bool(getattr(n, "accepting_new_clients", True)),
         "is_draining": bool(getattr(n, "is_draining", False)),
@@ -17964,7 +22843,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "2096")))
-
-
-
-

@@ -4,13 +4,16 @@ import calendar
 import json
 import os
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 from typing import Any
 
-from sqlalchemy import String, func
+from sqlalchemy import String, func, or_
 
 from models import (
     AccessKey,
+    AccountDevice,
+    ExternalOrder,
     KeyPressureState,
     KeyUsageRollup,
     Node,
@@ -21,12 +24,27 @@ from models import (
     ProviderTrafficQuota,
     SecurityEvent,
     User,
+    UserNode,
 )
 from node_policy import node_capacity_status
 from observer_service import observer_stale_after_seconds
+from ru_probe_service import (
+    RU_RUN_STALE_AFTER_SECONDS,
+    get_latest_ru_status,
+    get_ru_run_history,
+    get_ru_uploader_status,
+)
+from transport_catalog import node_transport_profiles
 
 
-MANAGED_ALERT_SOURCES = {"node_metrics", "node_capacity", "provider_quota", "free_tier", "security"}
+MANAGED_ALERT_SOURCES = {
+    "node_metrics",
+    "node_capacity",
+    "provider_quota",
+    "free_tier",
+    "security",
+    "ru_probe",
+}
 
 
 def _env_float(name: str, default: float) -> float:
@@ -79,6 +97,16 @@ def _json_loads(value: str | None, fallback: Any) -> Any:
         return fallback
 
 
+def _json_object(value: str | None) -> dict[str, Any]:
+    parsed = _json_loads(value, {})
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _panel_state_from_json(value: str | None) -> str | None:
+    state = str(_json_object(value).get("panel_state") or "").strip().lower()
+    return state or None
+
+
 def _month_boundary(*, year: int, month: int, day: int, tz: ZoneInfo) -> datetime:
     last_day = calendar.monthrange(year, month)[1]
     return datetime(year, month, min(max(1, int(day or 1)), last_day), tzinfo=tz)
@@ -99,7 +127,7 @@ def provider_quota_cycle_bounds(
     try:
         tz = ZoneInfo(tz_name)
     except Exception:
-        tz = ZoneInfo("UTC")
+        tz = timezone.utc
     now_aware = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
     local_now = now_aware.astimezone(tz)
     current = _month_boundary(year=local_now.year, month=local_now.month, day=reset_day, tz=tz)
@@ -333,6 +361,10 @@ def free_tier_user_rows(
                 "used_ratio": round(used_ratio, 4),
                 "used_pct": round(used_ratio * 100.0, 1),
                 "state": state,
+                "transition_state": str(getattr(user, "free_profile_state", "") or "standard"),
+                "active_role": str(getattr(user, "free_profile_active_role", "") or "free_standard"),
+                "provisioning_job_id": getattr(user, "free_profile_job_id", None),
+                "provisioning_error_code": str(getattr(user, "free_profile_error_code", "") or "") or None,
                 "cycle_start": safe_iso(start),
                 "cycle_end": safe_iso(end),
                 "next_reset_at": safe_iso(getattr(user, "free_cycle_next_reset_at", None)),
@@ -766,6 +798,576 @@ def admin_nodes_capacity_payload(*, s, now: datetime) -> dict[str, Any]:
     return {"ok": True, "updated_at": safe_iso(now), "nodes": nodes_payload}
 
 
+def _ops_utc_naive(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _source_age_seconds(*, now: datetime, sampled_at: datetime | None) -> int | None:
+    normalized_now = _ops_utc_naive(now)
+    normalized_sample = _ops_utc_naive(sampled_at)
+    if normalized_now is None or normalized_sample is None:
+        return None
+    return max(0, int((normalized_now - normalized_sample).total_seconds()))
+
+
+def _source_row(
+    *,
+    status: str,
+    sampled_at: datetime | None,
+    now: datetime,
+    threshold_seconds: int,
+    reason_code: str,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "status": str(status),
+        "sampled_at": safe_iso(_ops_utc_naive(sampled_at)),
+        "age_seconds": _source_age_seconds(now=now, sampled_at=sampled_at),
+        "threshold_seconds": int(threshold_seconds),
+        "reason_code": str(reason_code),
+        "details": details or {},
+    }
+
+
+def _safe_transport_rows(node: Node) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for profile in node_transport_profiles(node, include_disabled=True):
+        name = str(profile.get("name") or "").strip()
+        if not name:
+            continue
+        rows.append(
+            {
+                "name": name,
+                "enabled": bool(profile.get("enabled")),
+                "kind": str(profile.get("kind") or "unknown"),
+                "port": int(profile.get("port") or 0) or None,
+                "has_inbound": int(profile.get("inbound_id") or 0) > 0,
+            }
+        )
+    return rows
+
+
+def _compact_node_alert(row: OpsAlert, *, now: datetime) -> dict[str, Any]:
+    payload = alert_payload(row, now=now)
+    return {
+        key: payload.get(key)
+        for key in (
+            "id",
+            "fingerprint",
+            "source",
+            "severity",
+            "status",
+            "title",
+            "first_seen_at",
+            "last_seen_at",
+            "resolved_at",
+            "acknowledged_at",
+            "silence_until",
+        )
+    }
+
+
+def build_node_observability(
+    *,
+    s,
+    node_code: str,
+    now: datetime,
+    metrics_stale_after_seconds: int,
+    include_ru_history: bool = True,
+) -> dict[str, Any] | None:
+    wanted = str(node_code or "").strip().lower()
+    node = s.query(Node).filter(func.lower(Node.code) == wanted).one_or_none()
+    if node is None:
+        return None
+    normalized_now = _ops_utc_naive(now) or now
+    stale_threshold = max(300, int(metrics_stale_after_seconds))
+    observer_threshold = max(60, int(observer_stale_after_seconds()))
+    latest_sample = (
+        s.query(NodeHealthSample)
+        .filter(func.lower(NodeHealthSample.node_code) == wanted)
+        .order_by(NodeHealthSample.sampled_at.desc(), NodeHealthSample.id.desc())
+        .first()
+    )
+    latest_runtime = (
+        s.query(NodeRuntimeMetric)
+        .filter(func.lower(NodeRuntimeMetric.node_code) == wanted)
+        .order_by(NodeRuntimeMetric.sampled_at.desc(), NodeRuntimeMetric.id.desc())
+        .first()
+    )
+    brain_panel_state = _panel_state_from_json(
+        getattr(latest_sample, "transport_health_json", None)
+    )
+    sample_time = getattr(latest_sample, "sampled_at", None) or getattr(
+        node, "last_health_at", None
+    )
+    sample_age = _source_age_seconds(
+        now=normalized_now,
+        sampled_at=sample_time,
+    )
+    if sample_time is None:
+        brain_status, brain_reason = "missing", "brain_metrics_missing"
+    elif sample_age is not None and sample_age > stale_threshold:
+        brain_status, brain_reason = "stale", "brain_metrics_stale"
+    elif brain_panel_state == "unavailable":
+        brain_status, brain_reason = "unavailable", "brain_panel_unavailable"
+    elif brain_panel_state in {"failed", "error"}:
+        brain_status, brain_reason = "failed", "brain_panel_failed"
+    elif latest_sample is not None and not bool(latest_sample.is_healthy):
+        brain_status, brain_reason = "failed", "brain_probe_failed"
+    else:
+        brain_status, brain_reason = "ok", "brain_metrics_fresh"
+    has_brain_source = sample_time is not None
+    brain_details = {
+        "cpu_percent": (
+            None
+            if latest_sample is not None
+            and brain_panel_state in {"failed", "error", "unavailable"}
+            and float(latest_sample.cpu_percent or 0.0) == 0.0
+            else float(latest_sample.cpu_percent)
+            if latest_sample is not None
+            and latest_sample.cpu_percent is not None
+            else float(getattr(node, "cpu_percent", 0.0) or 0.0)
+            if has_brain_source
+            else None
+        ),
+        "memory_used_mb": (
+            int(latest_sample.memory_used_mb)
+            if latest_sample is not None
+            and latest_sample.memory_used_mb is not None
+            else getattr(node, "memory_used_mb", None) if has_brain_source else None
+        ),
+        "memory_total_mb": (
+            int(latest_sample.memory_total_mb)
+            if latest_sample is not None
+            and latest_sample.memory_total_mb is not None
+            else getattr(node, "memory_total_mb", None) if has_brain_source else None
+        ),
+        "disk_used_gb": (
+            float(latest_sample.disk_used_gb)
+            if latest_sample is not None
+            and latest_sample.disk_used_gb is not None
+            else getattr(node, "disk_used_gb", None) if has_brain_source else None
+        ),
+        "disk_total_gb": (
+            float(latest_sample.disk_total_gb)
+            if latest_sample is not None
+            and latest_sample.disk_total_gb is not None
+            else getattr(node, "disk_total_gb", None) if has_brain_source else None
+        ),
+        "network_rx_mbps": (
+            latest_sample.network_rx_mbps
+            if latest_sample is not None
+            else getattr(node, "network_rx_mbps", None) if has_brain_source else None
+        ),
+        "network_tx_mbps": (
+            latest_sample.network_tx_mbps
+            if latest_sample is not None
+            else getattr(node, "network_tx_mbps", None) if has_brain_source else None
+        ),
+        "network_total_mbps": (
+            latest_sample.network_total_mbps
+            if latest_sample is not None
+            else getattr(node, "network_total_mbps", None) if has_brain_source else None
+        ),
+        "panel_latency_ms": (
+            latest_sample.panel_latency_ms
+            if latest_sample is not None
+            else getattr(node, "panel_latency_ms", None) if has_brain_source else None
+        ),
+        "panel_error_rate": (
+            float(latest_sample.panel_error_rate or 0.0)
+            if latest_sample is not None
+            else float(getattr(node, "panel_error_rate", 0.0) or 0.0)
+            if has_brain_source
+            else None
+        ),
+        "probe_stage": (
+            str(latest_sample.probe_stage or "") or None
+            if latest_sample is not None
+            else (str(getattr(node, "last_probe_stage", "") or "") or None)
+            if has_brain_source
+            else None
+        ),
+        "probe_error_kind": (
+            str(latest_sample.probe_error_kind or "") or None
+            if latest_sample is not None
+            else (str(getattr(node, "last_probe_error_kind", "") or "") or None)
+            if has_brain_source
+            else None
+        ),
+        "probe_classification": (
+            str(latest_sample.probe_classification or "") or None
+            if latest_sample is not None
+            else (str(getattr(node, "last_probe_classification", "") or "") or None)
+            if has_brain_source
+            else None
+        ),
+    }
+
+    runtime_time = getattr(latest_runtime, "sampled_at", None)
+    runtime_panel_state = _panel_state_from_json(
+        getattr(latest_runtime, "meta_json", None)
+    )
+    runtime_age = _source_age_seconds(
+        now=normalized_now,
+        sampled_at=runtime_time,
+    )
+    if runtime_time is None:
+        runtime_status, runtime_reason = "missing", "runtime_missing"
+    elif runtime_age is not None and runtime_age > stale_threshold:
+        runtime_status, runtime_reason = "stale", "runtime_stale"
+    elif runtime_panel_state == "unavailable":
+        runtime_status, runtime_reason = "unavailable", "runtime_panel_unavailable"
+    elif runtime_panel_state in {"failed", "error"}:
+        runtime_status, runtime_reason = "failed", "runtime_panel_failed"
+    else:
+        runtime_status, runtime_reason = "ok", "runtime_fresh"
+    runtime_panel_available = runtime_panel_state not in {
+        "failed",
+        "error",
+        "unavailable",
+    }
+    runtime_details = {
+        "source": str(getattr(latest_runtime, "source", "") or "") or None,
+        "provisioned_clients_count": (
+            int(latest_runtime.provisioned_clients_count or 0)
+            if latest_runtime is not None and runtime_panel_available
+            else None
+        ),
+        "online_connections_hint": (
+            int(latest_runtime.online_connections_hint or 0)
+            if latest_runtime is not None and runtime_panel_available
+            else None
+        ),
+        "network_rx_mbps_1m": getattr(latest_runtime, "network_rx_mbps_1m", None),
+        "network_tx_mbps_1m": getattr(latest_runtime, "network_tx_mbps_1m", None),
+        "network_rx_mbps_5m": getattr(latest_runtime, "network_rx_mbps_5m", None),
+        "network_tx_mbps_5m": getattr(latest_runtime, "network_tx_mbps_5m", None),
+        "capacity_score": getattr(latest_runtime, "capacity_score", None),
+        "capacity_state": (
+            str(getattr(latest_runtime, "capacity_state", "") or "")
+            or str(getattr(node, "capacity_state", "") or "unknown")
+        ),
+        "reject_reason": (
+            str(getattr(latest_runtime, "reject_reason", "") or "")
+            or str(getattr(node, "capacity_reject_reason", "") or "")
+            or None
+        ),
+    }
+
+    observer_time = getattr(node, "observer_last_push_at", None)
+    observer_age = _source_age_seconds(
+        now=normalized_now,
+        sampled_at=observer_time,
+    )
+    if observer_time is None:
+        observer_status, observer_reason = "missing", "observer_missing"
+    elif observer_age is not None and observer_age > observer_threshold:
+        observer_status, observer_reason = "stale", "observer_stale"
+    else:
+        observer_status, observer_reason = "ok", "observer_fresh"
+
+    ru_latest = get_latest_ru_status(s, now=normalized_now)
+    ru_node = next(
+        (
+            row
+            for row in list(ru_latest.get("nodes") or [])
+            if str(row.get("node_code") or "").strip().lower() == wanted
+        ),
+        None,
+    )
+    if ru_node is None:
+        ru_node = {
+            "status": "missing",
+            "sampled_at": None,
+            "age_seconds": None,
+            "threshold_seconds": RU_RUN_STALE_AFTER_SECONDS,
+            "reason_code": "ru_target_missing",
+            "target": None,
+        }
+    ru_history = (
+        get_ru_run_history(s, node_code=wanted, limit=10)
+        if include_ru_history
+        else None
+    )
+    policy = _node_capacity_policy_by_code(s).get(wanted)
+    capacity = node_capacity_status(node, policy=policy, now=normalized_now)
+    mapped_users = int(
+        s.query(func.count(func.distinct(UserNode.tg_id)))
+        .filter(UserNode.node_id == int(node.id))
+        .scalar()
+        or 0
+    )
+    alerts = (
+        s.query(OpsAlert)
+        .filter(func.lower(func.coalesce(OpsAlert.node_code, "")) == wanted)
+        .filter(OpsAlert.status != "resolved")
+        .order_by(OpsAlert.severity.asc(), OpsAlert.last_seen_at.desc())
+        .limit(100)
+        .all()
+    )
+    return {
+        "ok": True,
+        "generated_at": safe_iso(normalized_now),
+        "node": {
+            "code": wanted,
+            "name": str(node.name or ""),
+            "hoster_family": str(node.hoster_family or "") or None,
+            "hoster_asn": str(node.hoster_asn or "") or None,
+            "subnet": str(node.hoster_subnet or "") or None,
+            "weight": int(node.weight or 0),
+        },
+        "lifecycle": {
+            "enabled": bool(node.enabled),
+            "accepting_new_clients": bool(node.accepting_new_clients),
+            "is_draining": bool(node.is_draining),
+            "mapped_users": mapped_users,
+        },
+        "capacity": {
+            "state": str(capacity.get("state") or "unknown"),
+            "score": capacity.get("score"),
+            "reject_reason": capacity.get("reject_reason"),
+            "tx_mbps": capacity.get("tx_mbps"),
+            "tx_ratio": capacity.get("tx_ratio"),
+            "capacity_mbps": capacity.get("capacity_mbps"),
+            "provisioned_clients_count": runtime_details["provisioned_clients_count"],
+            "online_connections_hint": runtime_details["online_connections_hint"],
+        },
+        "sources": {
+            "brain_metrics": _source_row(
+                status=brain_status,
+                sampled_at=sample_time,
+                now=normalized_now,
+                threshold_seconds=stale_threshold,
+                reason_code=brain_reason,
+                details=brain_details,
+            ),
+            "runtime": _source_row(
+                status=runtime_status,
+                sampled_at=runtime_time,
+                now=normalized_now,
+                threshold_seconds=stale_threshold,
+                reason_code=runtime_reason,
+                details=runtime_details,
+            ),
+            "observer": _source_row(
+                status=observer_status,
+                sampled_at=observer_time,
+                now=normalized_now,
+                threshold_seconds=observer_threshold,
+                reason_code=observer_reason,
+                details={
+                    "last_batch_id": str(node.observer_last_batch_id or "") or None,
+                    "unmatched_count": int(node.observer_unmatched_count or 0),
+                    "parse_error_count": int(node.observer_parse_error_count or 0),
+                },
+            ),
+            "ru_origin": dict(ru_node),
+        },
+        "network": {
+            "ipv4_health": str(node.ipv4_health or "") or None,
+            "ipv6_health": str(node.ipv6_health or "") or None,
+            "dataplane_ok": node.dataplane_ok,
+            "dataplane_rtt_ms": node.dataplane_rtt_ms,
+            "packet_loss_percent": node.packet_loss_percent,
+            "tcp_retrans_percent": node.tcp_retrans_percent,
+            "probe_classification": str(node.last_probe_classification or "")
+            or None,
+            "last_probe_stage": str(node.last_probe_stage or "") or None,
+            "last_probe_error_kind": str(node.last_probe_error_kind or "") or None,
+        },
+        "transports": _safe_transport_rows(node),
+        "ru": {
+            "latest": dict(ru_node),
+            **({"history": ru_history} if include_ru_history else {}),
+        },
+        "alerts": [_compact_node_alert(row, now=normalized_now) for row in alerts],
+    }
+
+
+def admin_search_results(
+    *,
+    s,
+    q: str,
+    limit: int = 20,
+) -> list[dict[str, str]]:
+    query_text = str(q or "").strip()
+    if not 2 <= len(query_text) <= 128:
+        raise ValueError("invalid_search_query")
+    normalized_limit = max(1, min(int(limit), 20))
+    escaped_query = (
+        query_text.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+    like = f"%{escaped_query.lower()}%"
+    numeric_like = f"%{escaped_query}%"
+    results: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(item: dict[str, str]) -> None:
+        key = (item["kind"], item["id"])
+        if key in seen or len(results) >= normalized_limit:
+            return
+        seen.add(key)
+        results.append(item)
+
+    user_filter = or_(
+        func.cast(User.tg_id, String).like(numeric_like, escape="\\"),
+        func.lower(func.coalesce(User.username, "")).like(like, escape="\\"),
+        func.lower(func.coalesce(User.display_name, "")).like(like, escape="\\"),
+        func.lower(func.coalesce(User.app_install_id, "")).like(like, escape="\\"),
+        func.lower(func.coalesce(User.email, "")).like(like, escape="\\"),
+    )
+    users = (
+        s.query(User)
+        .filter(user_filter)
+        .order_by(User.tg_id.asc())
+        .limit(normalized_limit)
+        .all()
+    )
+    matching_devices = (
+        s.query(AccountDevice)
+        .filter(func.lower(AccountDevice.install_id).like(like, escape="\\"))
+        .order_by(AccountDevice.last_seen_at.desc(), AccountDevice.id.asc())
+        .limit(normalized_limit)
+        .all()
+    )
+    account_ids = [
+        str(row.account_id)
+        for row in matching_devices
+        if str(row.account_id or "").strip()
+    ]
+    if account_ids:
+        users_by_account = {
+            str(row.account_id): row
+            for row in s.query(User)
+            .filter(User.account_id.in_(account_ids))
+            .order_by(User.tg_id.asc())
+            .all()
+            if str(row.account_id or "").strip()
+        }
+        for device in matching_devices:
+            user = users_by_account.get(str(device.account_id or ""))
+            if user is not None and all(
+                int(existing.tg_id) != int(user.tg_id) for existing in users
+            ):
+                users.append(user)
+    for user in users:
+        access = "Активный доступ" if bool(user.is_active) else "Доступ выключен"
+        username = str(user.username or "").strip()
+        title = (
+            str(user.display_name or "").strip()
+            or (f"@{username}" if username else f"Пользователь {int(user.tg_id)}")
+        )
+        add(
+            {
+                "kind": "user",
+                "id": str(int(user.tg_id)),
+                "title": title,
+                "subtitle": f"{access}, Telegram ID {int(user.tg_id)}",
+                "href": f"/users?selected={int(user.tg_id)}",
+            }
+        )
+
+    nodes = (
+        s.query(Node)
+        .filter(
+            or_(
+                func.lower(func.coalesce(Node.code, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.name, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.hoster_family, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.hoster_asn, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(Node.hoster_subnet, "")).like(like, escape="\\"),
+            )
+        )
+        .order_by(Node.code.asc())
+        .limit(normalized_limit)
+        .all()
+    )
+    for node in nodes:
+        code = str(node.code or "").strip().lower()
+        lifecycle = (
+            "Выводится из эксплуатации"
+            if bool(node.is_draining)
+            else "Включена"
+            if bool(node.enabled)
+            else "Выключена"
+        )
+        hoster = str(node.hoster_family or "").strip()
+        subtitle = f"{lifecycle}, {hoster}" if hoster else lifecycle
+        add(
+            {
+                "kind": "node",
+                "id": code,
+                "title": f"Нода {code.upper()}",
+                "subtitle": subtitle,
+                "href": f"/nodes?selected={quote(code, safe='')}",
+            }
+        )
+
+    orders = (
+        s.query(ExternalOrder)
+        .filter(
+            or_(
+                func.lower(ExternalOrder.order_id).like(like, escape="\\"),
+                func.cast(ExternalOrder.tg_id, String).like(numeric_like, escape="\\"),
+            )
+        )
+        .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
+        .limit(normalized_limit)
+        .all()
+    )
+    for order in orders:
+        order_id = str(order.order_id or "")
+        add(
+            {
+                "kind": "order",
+                "id": order_id,
+                "title": f"Заказ {order_id}",
+                "subtitle": (
+                    f"Статус {str(order.status or 'unknown')}, "
+                    f"провайдер {str(order.provider or 'unknown')}"
+                ),
+                "href": f"/payments?selected={quote(order_id, safe='')}",
+            }
+        )
+
+    key_filter = or_(
+        func.lower(AccessKey.key_uuid).like(like, escape="\\"),
+        func.lower(AccessKey.panel_email).like(like, escape="\\"),
+        func.cast(AccessKey.id, String).like(numeric_like, escape="\\"),
+        func.cast(AccessKey.tg_id, String).like(numeric_like, escape="\\"),
+    )
+    keys = (
+        s.query(AccessKey)
+        .filter(key_filter)
+        .order_by(AccessKey.id.asc())
+        .limit(normalized_limit)
+        .all()
+    )
+    for key in keys:
+        key_id = str(int(key.id))
+        node_code = str(key.node_code or "").strip().lower() or "не назначена"
+        add(
+            {
+                "kind": "key",
+                "id": key_id,
+                "title": f"Ключ #{key_id}",
+                "subtitle": (
+                    f"Нода {node_code}, пользователь {int(key.tg_id)}, "
+                    f"состояние {str(key.state or 'unknown')}"
+                ),
+                "href": f"/users?selected={int(key.tg_id)}&tab=access",
+            }
+        )
+    return results
+
+
 def refresh_ops_alerts_for_current_state(
     *,
     s,
@@ -778,7 +1380,16 @@ def refresh_ops_alerts_for_current_state(
     provider_status = provider_quota_status_rows(s=s, now=now)
     free_summary = free_tier_summary(s=s, now=now, free_limit_gb=free_limit_gb, cycle_days=cycle_days)
     capacity_payload = admin_nodes_capacity_payload(s=s, now=now)
-    candidates = build_alert_candidates(metrics_status=metrics_status, provider_status=provider_status, free_summary=free_summary, capacity_rows=list(capacity_payload.get("nodes") or []))
+    ru_status = get_latest_ru_status(s, now=now)
+    ru_uploader_status = get_ru_uploader_status(s, now=now)
+    candidates = build_alert_candidates(
+        metrics_status=metrics_status,
+        provider_status=provider_status,
+        free_summary=free_summary,
+        capacity_rows=list(capacity_payload.get("nodes") or []),
+        ru_status=ru_status,
+        ru_uploader_status=ru_uploader_status,
+    )
     rows, notifications = refresh_ops_alerts(s=s, now=now, candidates=candidates)
     return [alert_payload(row, now=now) for row in rows], notifications, metrics_status, capacity_payload
 
@@ -789,6 +1400,8 @@ def build_alert_candidates(
     provider_status: list[dict[str, Any]],
     free_summary: dict[str, Any],
     capacity_rows: list[dict[str, Any]],
+    ru_status: dict[str, Any] | None = None,
+    ru_uploader_status: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for alert in list(metrics_status.get("active_alerts") or []):
@@ -877,6 +1490,123 @@ def build_alert_candidates(
                 "metadata": security,
             }
         )
+    ru = dict(ru_status or {})
+    if str(ru.get("status") or "") == "stale":
+        candidates.append(
+            {
+                "fingerprint": "ru_probe_run_stale",
+                "source": "ru_probe",
+                "severity": "critical",
+                "title": "Запуск RU-origin устарел",
+                "body": (
+                    f"Возраст последнего пригодного запуска: {ru.get('age_seconds')} сек.; "
+                    f"порог: {ru.get('threshold_seconds')} сек."
+                ),
+                "metadata": {
+                    "status": ru.get("status"),
+                    "age_seconds": ru.get("age_seconds"),
+                    "threshold_seconds": ru.get("threshold_seconds"),
+                    "reason_code": ru.get("reason_code"),
+                    "sampled_at": ru.get("sampled_at"),
+                },
+            }
+        )
+    uploader = dict(ru_uploader_status or {})
+    if str(uploader.get("status") or "") == "stale":
+        candidates.append(
+            {
+                "fingerprint": "ru_probe_uploader_heartbeat_stale",
+                "source": "ru_probe",
+                "severity": "critical",
+                "title": "Сигнал RU-загрузчика устарел",
+                "body": (
+                    f"Возраст последнего принятого сигнала: {uploader.get('age_seconds')} сек.; "
+                    f"порог: {uploader.get('threshold_seconds')} сек."
+                ),
+                "metadata": {
+                    "status": uploader.get("status"),
+                    "age_seconds": uploader.get("age_seconds"),
+                    "threshold_seconds": uploader.get("threshold_seconds"),
+                    "reason_code": uploader.get("reason_code"),
+                    "sampled_at": uploader.get("sampled_at"),
+                },
+            }
+        )
+    heartbeat = uploader.get("heartbeat")
+    if isinstance(heartbeat, dict):
+        pending_count = int(heartbeat.get("pending_count") or 0)
+        blocked_count = int(heartbeat.get("blocked_count") or 0)
+        quarantine_count = int(heartbeat.get("quarantine_count") or 0)
+        if pending_count > 0:
+            candidates.append(
+                {
+                    "fingerprint": "ru_probe_uploader_backlog",
+                    "source": "ru_probe",
+                    "severity": "warning",
+                    "title": "Очередь RU-загрузчика не пуста",
+                    "body": f"Ожидают отправки: {pending_count}.",
+                    "metadata": {
+                        "pending_count": pending_count,
+                        "oldest_pending_at": heartbeat.get("oldest_pending_at"),
+                    },
+                }
+            )
+        if blocked_count > 0:
+            candidates.append(
+                {
+                    "fingerprint": "ru_probe_uploader_blocked",
+                    "source": "ru_probe",
+                    "severity": "critical",
+                    "title": "RU-загрузчик: есть заблокированные артефакты",
+                    "body": f"Заблокировано: {blocked_count}.",
+                    "metadata": {"blocked_count": blocked_count},
+                }
+            )
+        if quarantine_count > 0:
+            candidates.append(
+                {
+                    "fingerprint": "ru_probe_uploader_quarantine",
+                    "source": "ru_probe",
+                    "severity": "warning",
+                    "title": "Карантин RU-загрузчика не пуст",
+                    "body": f"Требуют проверки оператором: {quarantine_count}.",
+                    "metadata": {"quarantine_count": quarantine_count},
+                }
+            )
+        if heartbeat.get("archive_write_ok") is False:
+            candidates.append(
+                {
+                    "fingerprint": "ru_probe_uploader_archive",
+                    "source": "ru_probe",
+                    "severity": "critical",
+                    "title": "RU-загрузчик не записал архив",
+                    "body": "Последний принятый сигнал сообщает об ошибке записи архива.",
+                    "metadata": {
+                        "archive_write_ok": False,
+                        "last_error_code": heartbeat.get("last_error_code"),
+                    },
+                }
+            )
+        disk_state = str(heartbeat.get("disk_state") or "unknown")
+        if disk_state in {"low", "critical"}:
+            disk_state_text = (
+                "критически мало места"
+                if disk_state == "critical"
+                else "мало места"
+            )
+            candidates.append(
+                {
+                    "fingerprint": "ru_probe_uploader_disk",
+                    "source": "ru_probe",
+                    "severity": "critical" if disk_state == "critical" else "warning",
+                    "title": f"Диск RU-загрузчика: {disk_state_text}",
+                    "body": "Последний принятый сигнал сообщает о нехватке места.",
+                    "metadata": {
+                        "disk_state": disk_state,
+                        "disk_free_bytes": heartbeat.get("disk_free_bytes"),
+                    },
+                }
+            )
     return candidates
 
 

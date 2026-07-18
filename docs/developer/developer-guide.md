@@ -134,6 +134,19 @@ Pop-Location
 Keep current-origin, brain-origin, and RU-origin evidence separate. A local
 green test does not prove a deployed host or external origin.
 
+### Release orchestration
+
+- The GitHub Actions release orchestrator is manual-only and defaults to
+  `dry-run`; use `full` only with explicit operator deploy intent and current
+  gates.
+- Dispatch inputs are passed through step environment variables and Bash
+  argument arrays, not interpolated into shell source. `NODE_PASS_BRAIN` is
+  scoped to the orchestrator step.
+- A secret-bearing remote run is allowed only for the canonical brain host
+  `82.21.114.104` with `pokrov.space` and `api.pokrov.space`. The local
+  `scripts/release_orchestrator.py` enforces the same brain-host boundary when
+  `NODE_PASS_BRAIN` is present.
+
 ### Active client boundary
 
 ~~~powershell

@@ -44,6 +44,6 @@ def public_connect_host() -> str:
 
 def build_subscription_url(token_or_id: str | int) -> str:
     target = str(token_or_id or "").strip()
-    if not target:
-        return public_connect_base_url()
+    if not target or target.isdigit():
+        return ""
     return f"{public_connect_base_url()}/s8Kx2mP7qR4wT/{target}"

@@ -5,23 +5,44 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
     Float,
+    ForeignKey,
+    Identity,
+    Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
+    text as sql_text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
 
 Base = declarative_base()
 
+_RU_PROBE_SNAPSHOT_JSON = JSON().with_variant(JSONB(), "postgresql")
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _default_node_access_role(context) -> str:
+    params = context.get_current_parameters() if context is not None else {}
+    code = str((params or {}).get("code") or "").strip().lower()
+    if "operator" in code or code.endswith("_lab") or code.endswith("-lab"):
+        return "operator_lab"
+    if "free" in code and "soft" in code:
+        return "free_soft"
+    if "free" in code:
+        return "free_standard"
+    return "paid"
 
 
 class User(Base):
@@ -72,6 +93,17 @@ class User(Base):
     free_cycle_anchor_at = Column(DateTime, nullable=True)
     free_cycle_last_reset_at = Column(DateTime, nullable=True)
     free_cycle_next_reset_at = Column(DateTime, nullable=True)
+    free_profile_state = Column(String(32), default="standard", nullable=False)
+    free_profile_active_role = Column(String(32), default="free_standard", nullable=False)
+    free_profile_source = Column(String(64), default="legacy_backfill", nullable=False)
+    free_profile_state_changed_at = Column(DateTime, nullable=True)
+    free_profile_job_id = Column(Integer, index=True, nullable=True)
+    free_profile_error_code = Column(String(64), nullable=True)
+    free_profile_standard_node_code = Column(String(32), nullable=True)
+    free_profile_soft_node_code = Column(String(32), nullable=True)
+    free_profile_observed_bytes = Column(BigInteger, default=0, nullable=False)
+    free_profile_observed_at = Column(DateTime, nullable=True)
+    free_profile_observation_source = Column(String(64), nullable=True)
     app_install_id = Column(String(128), index=True, nullable=True)
     app_device_name = Column(String(120), nullable=True)
     app_platform = Column(String(32), nullable=True)
@@ -186,8 +218,23 @@ class RecoveryCode(Base):
     replaced_by_code_id = Column(String(36), nullable=True)
 
 
-class EntitlementGrant(Base):
+class LegacyEntitlementGrant(Base):
     __tablename__ = "entitlement_grants"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, nullable=False)
+    activation_key_code = Column(String(64), nullable=False)
+    plan_code = Column(String(32), nullable=False)
+    source = Column(String(32), nullable=True)
+    duration_days = Column(Integer, nullable=False)
+    granted_from = Column(DateTime, nullable=False)
+    granted_until = Column(DateTime, nullable=False)
+    meta_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class EntitlementGrant(Base):
+    __tablename__ = "account_entitlement_grants"
 
     id = Column(String(36), primary_key=True)
     account_id = Column(String(36), index=True, nullable=False)
@@ -199,6 +246,11 @@ class EntitlementGrant(Base):
     plan_code = Column(String(32), nullable=True)
     starts_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, index=True, nullable=True)
+    reserved_at = Column(DateTime, nullable=True)
+    reservation_expires_at = Column(DateTime, index=True, nullable=True)
+    activated_at = Column(DateTime, nullable=True)
+    duration_days = Column(Integer, nullable=True)
+    activation_evidence_id = Column(String(36), index=True, nullable=True)
     provider = Column(String(32), nullable=True)
     external_order_id = Column(String(160), nullable=True)
     metadata_json = Column(Text, nullable=True)
@@ -206,6 +258,82 @@ class EntitlementGrant(Base):
     reversal_reason = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class PaymentEntitlementClaim(Base):
+    __tablename__ = "payment_entitlement_claims"
+    __table_args__ = (
+        UniqueConstraint("provider", "order_id", name="uq_payment_entitlement_claim_provider_order"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider = Column(String(32), nullable=False, index=True)
+    order_id = Column(String(128), nullable=False, index=True)
+    buyer_email_norm = Column(String(255), nullable=False, index=True)
+    account_id = Column(String(36), nullable=True, index=True)
+    status = Column(String(32), default="pending_payment", nullable=False, index=True)
+    plan_code = Column(String(32), nullable=False)
+    duration_days = Column(Integer, nullable=False)
+    grant_id = Column(String(36), nullable=True, index=True)
+    fallback_gift_card_id = Column(Integer, unique=True, nullable=True, index=True)
+    paid_at = Column(DateTime, nullable=True)
+    attached_at = Column(DateTime, nullable=True)
+    fulfilled_at = Column(DateTime, nullable=True)
+    reversed_at = Column(DateTime, nullable=True)
+    reversal_reason = Column(String(64), nullable=True)
+    last_error = Column(String(120), nullable=True)
+    last_error_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ConnectionEvidence(Base):
+    __tablename__ = "connection_evidence"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    device_id = Column(String(36), index=True, nullable=True)
+    node_id = Column(Integer, index=True, nullable=False)
+    evidence_kind = Column(String(40), index=True, nullable=False)
+    observed_at = Column(DateTime, index=True, nullable=False)
+    evidence_key = Column(String(160), unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ReferralRelationship(Base):
+    __tablename__ = "referral_relationships"
+
+    id = Column(String(36), primary_key=True)
+    referred_account_id = Column(String(36), unique=True, index=True, nullable=False)
+    referrer_account_id = Column(String(36), index=True, nullable=False)
+    source = Column(String(32), nullable=False)
+    status = Column(String(24), default="linked", index=True, nullable=False)
+    review_status = Column(String(24), default="clear", index=True, nullable=False)
+    friend_evidence_id = Column(String(36), index=True, nullable=True)
+    friend_grant_id = Column(String(36), nullable=True)
+    friend_granted_at = Column(DateTime, nullable=True)
+    first_payment_key = Column(String(160), unique=True, index=True, nullable=True)
+    first_payment_at = Column(DateTime, nullable=True)
+    hold_until = Column(DateTime, index=True, nullable=True)
+    referrer_grant_id = Column(String(36), nullable=True)
+    referrer_granted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ReferralTransition(Base):
+    __tablename__ = "referral_transitions"
+
+    id = Column(String(36), primary_key=True)
+    relationship_id = Column(String(36), index=True, nullable=False)
+    referred_account_id = Column(String(36), index=True, nullable=False)
+    referrer_account_id = Column(String(36), index=True, nullable=False)
+    transition_key = Column(String(160), unique=True, index=True, nullable=False)
+    transition_kind = Column(String(40), index=True, nullable=False)
+    status = Column(String(24), nullable=False)
+    occurred_at = Column(DateTime, index=True, nullable=False)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class AntiAbuseEvent(Base):
@@ -415,6 +543,8 @@ class Node(Base):
     panel_user = Column(String(128))
     panel_pass = Column(String(255))
     inbound_id = Column(Integer)
+    access_role = Column(String(32), default=_default_node_access_role, nullable=False, index=True)
+    access_role_legacy = Column(String(32), nullable=True)
 
     enabled = Column(Boolean, default=True)
     accepting_new_clients = Column(Boolean, default=True)
@@ -675,9 +805,15 @@ class NodeProvisioningJob(Base):
     status = Column(String(32), index=True, default="queued", nullable=False)
     desired_state_json = Column(Text, nullable=True)
     result_json = Column(Text, nullable=True)
+    idempotency_key = Column(String(160), unique=True, index=True, nullable=True)
     attempts = Column(Integer, default=0, nullable=False)
     next_run_at = Column(DateTime, nullable=True)
     locked_at = Column(DateTime, nullable=True)
+    lock_token = Column(String(64), index=True, nullable=True)
+    last_error_code = Column(String(64), nullable=True)
+    replacement_key_uuid = Column(String(36), nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    manual_review_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
@@ -740,6 +876,297 @@ class OpsAlert(Base):
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class RuProbeRun(Base):
+    __tablename__ = "ru_probe_runs"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    run_id = Column(String(36), nullable=False)
+    schema_version = Column(Integer, nullable=False)
+    origin = Column(String(16), nullable=False)
+    probe_host_id = Column(String(64), nullable=False)
+    probe_host_label = Column(String(128), nullable=False)
+    probe_public_ip = Column(String(64), nullable=True)
+    runner_version = Column(String(64), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False)
+    manifest_revision = Column(String(64), nullable=False)
+    execution_status = Column(String(32), nullable=False)
+    evidence_code = Column(String(64), nullable=True)
+    environment_verdict = Column(String(32), nullable=False)
+    release_verdict = Column(String(32), nullable=False)
+    current_eligible = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    ineligible_reason = Column(String(64), nullable=True)
+    google_reachable = Column(Boolean, nullable=True)
+    xhttp_alive = Column(Boolean, nullable=True)
+    hysteria_alive = Column(Boolean, nullable=True)
+    server_reason = Column(String(500), nullable=True)
+    server_summary = Column(String(1000), nullable=True)
+    artifact_sha256 = Column(String(64), nullable=False)
+    ingest_key_id = Column(String(128), nullable=False)
+    retention_hold = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    retention_hold_reason = Column(String(500), nullable=True)
+    retention_held_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("run_id", name="uq_ru_probe_runs_run_id"),
+        Index("ix_ru_probe_runs_finished_at", finished_at),
+        Index("ix_ru_probe_runs_release_verdict", release_verdict),
+        Index("ix_ru_probe_runs_current_eligible", current_eligible),
+        Index("ix_ru_probe_runs_probe_host_label", probe_host_label),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class RuProbeTargetResult(Base):
+    __tablename__ = "ru_probe_target_results"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    run_db_id = Column(
+        Integer,
+        ForeignKey(
+            "ru_probe_runs.id",
+            name="fk_ru_probe_target_results_run",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    target_id = Column(String(128), nullable=False)
+    target_kind = Column(String(32), nullable=False)
+    scope = Column(String(32), nullable=False)
+    node_code = Column(String(32), nullable=True)
+    endpoint_fingerprint = Column(String(64), nullable=False)
+    endpoint_host = Column(String(255), nullable=False)
+    endpoint_port = Column(Integer, nullable=False)
+    endpoint_sni = Column(String(255), nullable=True)
+    requested_address_families_json = Column(
+        _RU_PROBE_SNAPSHOT_JSON,
+        nullable=False,
+    )
+    transport_metadata_json = Column(_RU_PROBE_SNAPSHOT_JSON, nullable=False)
+    transport_profile = Column(String(64), nullable=False)
+    probe_mode = Column(String(64), nullable=False)
+    http_path = Column(String(512), nullable=True)
+    min_body_bytes = Column(Integer, nullable=True)
+    local_probe_profile_id = Column(String(128), nullable=True)
+    observed_at = Column(DateTime(timezone=True), nullable=False)
+    overall_status = Column(String(32), nullable=False)
+    current_eligible = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    ineligible_reason = Column(String(64), nullable=True)
+    dns_status = Column(String(32), nullable=False)
+    dns_latency_ms = Column(Integer, nullable=True)
+    tcp_status = Column(String(32), nullable=False)
+    tcp_latency_ms = Column(Integer, nullable=True)
+    tls_status = Column(String(32), nullable=False)
+    tls_latency_ms = Column(Integer, nullable=True)
+    http_large_body_status = Column(String(32), nullable=False)
+    http_large_body_latency_ms = Column(Integer, nullable=True)
+    transport_handshake_status = Column(String(32), nullable=False)
+    transport_handshake_latency_ms = Column(Integer, nullable=True)
+    ipv4_status = Column(String(32), nullable=False)
+    ipv6_status = Column(String(32), nullable=False)
+    reported_transport_handshake_status = Column(String(32), nullable=False)
+    reported_transport_classification = Column(String(64), nullable=False)
+    server_reason_code = Column(String(64), nullable=True)
+    server_detail = Column(String(500), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "run_db_id",
+            "target_id",
+            name="uq_ru_probe_target_run_target",
+        ),
+        Index("ix_ru_probe_target_results_node_code", node_code),
+        Index("ix_ru_probe_target_results_target_kind", target_kind),
+        Index("ix_ru_probe_target_results_overall_status", overall_status),
+        Index(
+            "ix_ru_probe_target_results_node_observed_at",
+            node_code,
+            observed_at.desc(),
+        ),
+        Index("ix_ru_probe_target_results_run_node", run_db_id, node_code),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class RuProbeUploaderHeartbeat(Base):
+    __tablename__ = "ru_probe_uploader_heartbeats"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    probe_host_id = Column(String(64), nullable=False)
+    observed_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False)
+    service_version = Column(String(64), nullable=False)
+    pending_count = Column(
+        Integer,
+        default=0,
+        server_default=sql_text("0"),
+        nullable=False,
+    )
+    blocked_count = Column(
+        Integer,
+        default=0,
+        server_default=sql_text("0"),
+        nullable=False,
+    )
+    quarantine_count = Column(
+        Integer,
+        default=0,
+        server_default=sql_text("0"),
+        nullable=False,
+    )
+    oldest_pending_at = Column(DateTime(timezone=True), nullable=True)
+    archive_write_ok = Column(
+        Boolean,
+        default=False,
+        server_default=sql_text("false"),
+        nullable=False,
+    )
+    disk_free_bytes = Column(BigInteger, nullable=True)
+    disk_state = Column(String(32), nullable=False)
+    last_error_code = Column(String(64), nullable=True)
+    ingest_key_id = Column(String(128), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "probe_host_id",
+            "observed_at",
+            name="uq_ru_probe_uploader_heartbeat_host_observed",
+        ),
+        Index("ix_ru_probe_uploader_heartbeats_received_at", received_at),
+        Index("ix_ru_probe_uploader_heartbeats_probe_host_id", probe_host_id),
+        Index(
+            "ix_ru_probe_uploader_heartbeats_host_observed_at",
+            probe_host_id,
+            observed_at.desc(),
+        ),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class InternalIngestNonce(Base):
+    __tablename__ = "internal_ingest_nonces"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    key_scope = Column(String(64), nullable=False)
+    key_id = Column(String(128), nullable=False)
+    nonce_hash = Column(String(64), nullable=False)
+    request_path = Column(String(512), nullable=False)
+    request_timestamp = Column(DateTime(timezone=True), nullable=False)
+    body_sha256 = Column(String(64), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "key_scope",
+            "key_id",
+            "nonce_hash",
+            name="uq_internal_ingest_nonce_scope_key_hash",
+        ),
+        Index("ix_internal_ingest_nonces_expires_at", expires_at),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class ReleaseCandidate(Base):
+    __tablename__ = "release_candidates"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    candidate_id = Column(String(64), nullable=False)
+    component = Column(String(64), nullable=False)
+    version = Column(String(128), nullable=False)
+    revision = Column(String(128), nullable=False)
+    artifact_sha256 = Column(String(64), nullable=False)
+    canonical_descriptor_json = Column(Text, nullable=False)
+    descriptor_sha256 = Column(String(64), nullable=False)
+    ingest_key_id = Column(String(128), nullable=False)
+    imported_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_id",
+            name="uq_release_candidates_candidate_id",
+        ),
+        Index("ix_release_candidates_imported_at", imported_at),
+        Index("ix_release_candidates_component", component),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class ReleaseOriginEvidence(Base):
+    __tablename__ = "release_origin_evidence"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    candidate_id = Column(
+        String(64),
+        ForeignKey(
+            "release_candidates.candidate_id",
+            name="fk_release_origin_evidence_candidate",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+    )
+    origin = Column(String(16), nullable=False)
+    check_name = Column(String(128), nullable=False)
+    status = Column(String(32), nullable=False)
+    evidence_sha256 = Column(String(64), nullable=False)
+    observed_at = Column(DateTime(timezone=True), nullable=False)
+    detail_json = Column(Text, nullable=False)
+    ru_probe_run_id = Column(
+        Integer,
+        ForeignKey(
+            "ru_probe_runs.id",
+            name="fk_release_origin_evidence_ru_probe_run",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+    imported_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "evidence_sha256",
+            name="uq_release_origin_evidence_hash",
+        ),
+        Index(
+            "ix_release_origin_evidence_candidate_origin",
+            candidate_id,
+            origin,
+        ),
+        Index("ix_release_origin_evidence_observed_at", observed_at),
+        Index("ix_release_origin_evidence_ru_probe_run_id", ru_probe_run_id),
+        {"sqlite_autoincrement": True},
+    )
+
+
 class AdminAudit(Base):
     __tablename__ = "admin_audit"
 
@@ -749,6 +1176,114 @@ class AdminAudit(Base):
     target_tg_id = Column(BigInteger, index=True, nullable=True)
     meta = Column(String(2000), nullable=True)
     created_at = Column(DateTime, default=_utcnow)
+
+
+class AdminActionIntent(Base):
+    __tablename__ = "admin_action_intents"
+
+    id = Column(String(36), primary_key=True, nullable=False)
+    actor_tg_id = Column(BigInteger, nullable=False)
+    action = Column(String(64), nullable=False)
+    target_type = Column(String(32), nullable=False)
+    target_id = Column(String(128), nullable=False)
+    risk_level = Column(String(8), nullable=False)
+    executor_kind = Column(String(16), nullable=False)
+    canonical_payload_json = Column(Text, nullable=False)
+    payload_hash = Column(String(64), nullable=False)
+    preview_snapshot_json = Column(Text, nullable=False)
+    snapshot_hash = Column(String(64), nullable=False)
+    confirmation_challenge_kind = Column(String(32), nullable=False)
+    confirmation_challenge_hash = Column(String(64), nullable=False)
+    entity_version_hash = Column(String(64), nullable=False)
+    status = Column(
+        String(16),
+        default="prepared",
+        server_default=sql_text("'prepared'"),
+        nullable=False,
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    consumed_at = Column(DateTime(timezone=True), nullable=True)
+    client_idempotency_key = Column(String(36), nullable=True)
+    result_code = Column(String(64), nullable=True)
+    result_summary_json = Column(Text, nullable=True)
+    result_hash = Column(String(64), nullable=True)
+    external_error_hash = Column(String(64), nullable=True)
+    admin_audit_id = Column(
+        Integer,
+        ForeignKey(
+            "admin_audit.id",
+            name="fk_admin_action_intents_audit",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "client_idempotency_key",
+            name="uq_admin_action_intents_idempotency",
+        ),
+        Index("ix_admin_action_intents_actor", actor_tg_id),
+        Index("ix_admin_action_intents_status", status),
+        Index("ix_admin_action_intents_expires_at", expires_at),
+        Index("ix_admin_action_intents_action", action),
+        Index(
+            "ix_admin_action_intents_target",
+            target_type,
+            target_id,
+        ),
+    )
+
+
+class AdminBroadcastRecipientPlan(Base):
+    __tablename__ = "admin_broadcast_recipient_plan"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    intent_id = Column(
+        String(36),
+        ForeignKey(
+            "admin_action_intents.id",
+            name="fk_admin_broadcast_plan_intent",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    ordinal = Column(Integer, nullable=False)
+    tg_id = Column(BigInteger, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "intent_id",
+            "ordinal",
+            name="uq_admin_broadcast_plan_intent_ordinal",
+        ),
+        UniqueConstraint(
+            "intent_id",
+            "tg_id",
+            name="uq_admin_broadcast_plan_intent_tg_id",
+        ),
+        CheckConstraint(
+            "ordinal >= 0 AND ordinal < 1000",
+            name="ck_admin_broadcast_plan_ordinal",
+        ),
+        CheckConstraint("tg_id > 0", name="ck_admin_broadcast_plan_tg_id"),
+        Index("ix_admin_broadcast_plan_intent", intent_id),
+    )
 
 
 class SecurityRateLimitBucket(Base):
@@ -866,6 +1401,7 @@ class SupportTicket(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_tg_id = Column(BigInteger, index=True, nullable=False)
+    account_id = Column(String(36), index=True, nullable=True)
     status = Column(String(20), default="open", nullable=False)  # open / in_progress / closed
     subject = Column(String(200), nullable=True)
     assigned_admin_tg_id = Column(BigInteger, nullable=True)
@@ -880,10 +1416,15 @@ class SupportAttachment(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     stored_name = Column(String(160), unique=True, index=True, nullable=False)
     owner_tg_id = Column(BigInteger, index=True, nullable=False)
+    owner_account_id = Column(String(36), index=True, nullable=True)
     original_name = Column(String(160), nullable=False)
     content_type = Column(String(80), nullable=False)
     size_bytes = Column(Integer, default=0, nullable=False)
     media_type = Column(String(32), nullable=False)
+    ticket_id = Column(Integer, index=True, nullable=True)
+    message_id = Column(Integer, unique=True, index=True, nullable=True)
+    attached_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
@@ -1134,7 +1675,10 @@ class ExternalOrder(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     paid_at = Column(DateTime, nullable=True)
 
-    __table_args__ = (UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),)
+    __table_args__ = (
+        UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),
+        Index("ix_external_orders_status_created_at_id", "status", "created_at", "id"),
+    )
 
 
 class ExternalPaymentEvent(Base):

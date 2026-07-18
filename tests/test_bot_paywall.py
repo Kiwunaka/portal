@@ -1,6 +1,8 @@
 import asyncio
+import hashlib
 import importlib
 import inspect
+import json
 import os
 import sys
 import tempfile
@@ -47,6 +49,42 @@ class _FakeMessage:
         self.answers.append((str(text), dict(kwargs)))
         return None
 
+
+class _FakeSuccessfulPayment:
+    def __init__(self, *, payload: str, charge_id: str, amount: int = 299):
+        self.invoice_payload = payload
+        self.telegram_payment_charge_id = charge_id
+        self.provider_payment_charge_id = f"provider-{charge_id}"
+        self.total_amount = int(amount)
+        self.currency = "XTR"
+
+
+class _FakePaymentMessage(_FakeMessage):
+    def __init__(self, *, tg_id: int, payload: str, charge_id: str, amount: int = 299):
+        super().__init__()
+        self.from_user = _FakeUser(tg_id)
+        self.successful_payment = _FakeSuccessfulPayment(
+            payload=payload,
+            charge_id=charge_id,
+            amount=amount,
+        )
+
+
+def _owned_panel_client(
+    *,
+    token: str,
+    client_uuid: str | None = None,
+    node_code: str = "NL-test",
+    node_id: int = 0,
+) -> dict:
+    return {
+        "id": client_uuid or "12345678-1234-4234-9234-123456789abc",
+        "email": "User_1001",
+        "subId": token,
+        "tgId": "1001",
+        "_node_code": node_code,
+        "_node_id": node_id,
+    }
 
 class _FakeUser:
     def __init__(self, tg_id: int):
@@ -114,6 +152,90 @@ class BotPaywallTests(unittest.TestCase):
         self.bot_module = importlib.import_module("bot")
         importlib.reload(self.bot_module)
 
+    def test_admin_resync_respects_persisted_free_role_and_blocks_transitions(self) -> None:
+        nodes = [
+            types.SimpleNamespace(
+                code="nl-free-standard",
+                access_role="free_standard",
+                enabled=True,
+                accepting_new_clients=True,
+                is_draining=False,
+            ),
+            types.SimpleNamespace(
+                code="nl-free-soft",
+                access_role="free_soft",
+                enabled=True,
+                accepting_new_clients=True,
+                is_draining=False,
+            ),
+        ]
+        old_enabled_nodes = self.bot_module._bot_enabled_nodes
+        self.bot_module._bot_enabled_nodes = lambda: nodes
+        try:
+            soft_user = types.SimpleNamespace(
+                sub_type="FREE",
+                current_plan_code="free_monthly",
+                free_profile_state="soft_active",
+                free_profile_active_role="free_soft",
+            )
+            pending_user = types.SimpleNamespace(
+                sub_type="FREE",
+                current_plan_code="free_monthly",
+                free_profile_state="soft_transition_pending",
+                free_profile_active_role="free_standard",
+            )
+            paid_pending_user = types.SimpleNamespace(
+                sub_type="PAID",
+                current_plan_code="paid_30d",
+                free_profile_state="soft_transition_pending",
+                free_profile_active_role="free_standard",
+            )
+
+            self.assertEqual(self.bot_module._bot_resync_node_codes(soft_user), ["nl-free-soft"])
+            with self.assertRaisesRegex(ValueError, "transition"):
+                self.bot_module._bot_resync_node_codes(pending_user)
+            with self.assertRaisesRegex(ValueError, "transition"):
+                self.bot_module._bot_resync_node_codes(paid_pending_user)
+        finally:
+            self.bot_module._bot_enabled_nodes = old_enabled_nodes
+
+        bulk_source = inspect.getsource(self.bot_module.admin_sync_free_pl)
+        self.assertIn("_bot_resync_node_codes", bulk_source)
+        self.assertNotIn("only_node_codes=free_codes", bulk_source)
+
+    def test_expiry_monitor_uses_durable_reentry_instead_of_direct_panel_mutation(self) -> None:
+        source = inspect.getsource(self.bot_module.monitor_expiry)
+
+        self.assertIn("_queue_expired_user_reentry", source)
+        self.assertNotIn("ensure_user_on_all_nodes", source)
+        self.assertNotIn("set_existing_user_enabled_on_nodes", source)
+
+    def test_soft_profile_copy_uses_shared_two_mbps_fact(self) -> None:
+        user = types.SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="free_monthly",
+            free_profile_state="soft_active",
+            free_profile_active_role="free_soft",
+        )
+
+        self.assertEqual(self.bot_module.FREE_SOFT_SPEED_MBIT, 2)
+        self.assertIn("2 Мбит/с", self.bot_module._plan_mode_label("FREE", user=user))
+        self.assertIn("2 Мбит/с", self.bot_module._free_access_note(user))
+        self.assertNotIn("50 Мбит/с", self.bot_module._free_access_note(user))
+        self.assertEqual(asyncio.run(self.bot_module._free_remaining_gb(1001, user=user)), (0.0, 5.0))
+
+        trial_user = types.SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=self.bot_module._utcnow() + timedelta(days=5),
+            free_profile_state="standard",
+            free_profile_active_role="free_standard",
+        )
+        trial_label = self.bot_module._plan_mode_label("FREE", user=trial_user)
+        self.assertIn("премиум", trial_label)
+        self.assertNotIn("5 ГБ", trial_label)
+
     def tearDown(self) -> None:
         for k, v in self._saved_env.items():
             if v is None:
@@ -125,6 +247,55 @@ class BotPaywallTests(unittest.TestCase):
         else:
             sys.modules["qrcode"] = self._saved_qrcode
         self._tmp.cleanup()
+
+    def test_app_link_rejects_admin_telegram_for_non_admin_account(self) -> None:
+        account_tg_id = 424242
+        admin_tg_id = 9999
+        code = "appadminbind"
+        session = self.bot_module.Session()
+        try:
+            session.add(
+                self.bot_module.User(
+                    tg_id=account_tg_id,
+                    username="attacker_app",
+                    uuid=str(uuid.uuid4()),
+                    sub_token="attacker-token",
+                )
+            )
+            session.add(
+                self.bot_module.User(
+                    tg_id=admin_tg_id,
+                    username="admin_owner",
+                    uuid=str(uuid.uuid4()),
+                    sub_token="admin-token",
+                )
+            )
+            session.add(
+                self.bot_module.StartLink(
+                    code=code,
+                    target_action=f"app_link:{account_tg_id}",
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        status = self.bot_module._bind_app_account_to_telegram(
+            account_tg_id=account_tg_id,
+            telegram_id=admin_tg_id,
+            telegram_username="admin_owner",
+            start_code=code,
+        )
+
+        self.assertEqual(status, "telegram_already_linked")
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=account_tg_id).first()
+            self.assertIsNotNone(user)
+            self.assertIsNone(user.linked_telegram_id)
+        finally:
+            session.close()
 
     def test_build_subscription_link_uses_canonical_connect_host(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
@@ -230,6 +401,82 @@ class BotPaywallTests(unittest.TestCase):
         fake = _FakeBot(fail=True)
         ok = asyncio.run(self.bot_module.check_subscription(1001, fake))
         self.assertFalse(ok)
+
+    def test_channel_acquisition_gate_cannot_block_customer_critical_actions(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="new-lead")
+        new_lead = self.bot_module.get_user(1001)
+        self.assertTrue(
+            self.bot_module._channel_acquisition_gate_blocks(
+                user=new_lead,
+                action="trial",
+                is_member=False,
+            )
+        )
+        for action in ("payment", "renewal", "recovery", "support"):
+            self.assertFalse(
+                self.bot_module._channel_acquisition_gate_blocks(
+                    user=new_lead,
+                    action=action,
+                    is_member=False,
+                )
+            )
+
+        session = self.bot_module.Session()
+        try:
+            customer = session.query(self.bot_module.User).filter_by(tg_id=1001).one()
+            customer.first_purchase_done = True
+            customer.is_active = False
+            customer.expiry_at = self.bot_module._utcnow() - timedelta(days=1)
+            session.commit()
+        finally:
+            session.close()
+        former_customer = self.bot_module.get_user(1001)
+        for action in ("acquisition", "trial", "payment", "renewal", "recovery", "support"):
+            self.assertFalse(
+                self.bot_module._channel_acquisition_gate_blocks(
+                    user=former_customer,
+                    action=action,
+                    is_member=False,
+                )
+            )
+
+    def test_trial_handler_enforces_channel_gate_only_for_new_lead(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="new-lead")
+        calls: list[int] = []
+
+        async def _fake_create_subscription(message, tg_id, tariff, bot, **_kwargs):
+            calls.append(int(tg_id))
+            return True
+
+        old_create_subscription = self.bot_module.create_subscription
+        self.bot_module.create_subscription = _fake_create_subscription
+        try:
+            blocked = _FakeCallback(1001, data="trial_direct")
+            asyncio.run(
+                self.bot_module._activate_trial_tariff(
+                    blocked,
+                    _FakeBot(status="left"),
+                    retry_callback_data="trial_direct",
+                )
+            )
+            self.assertEqual(calls, [])
+            self.assertTrue(blocked.message.answers)
+            blocked_markup = blocked.message.answers[-1][1].get("reply_markup")
+            blocked_buttons = [button for row in blocked_markup.inline_keyboard for button in row]
+            self.assertTrue(any(getattr(button, "url", None) for button in blocked_buttons))
+            self.assertTrue(any(getattr(button, "callback_data", None) == "trial_direct" for button in blocked_buttons))
+
+            allowed = _FakeCallback(1001, data="trial_direct")
+            asyncio.run(
+                self.bot_module._activate_trial_tariff(
+                    allowed,
+                    _FakeBot(status="member"),
+                    retry_callback_data="trial_direct",
+                )
+            )
+            self.assertEqual(calls, [1001])
+        finally:
+            self.bot_module.create_subscription = old_create_subscription
 
     def test_sync_telegram_identity_updates_primary_and_linked_usernames(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="old_name")
@@ -454,7 +701,7 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(label1, label2)
         self.assertIn(label1, set(self.bot_module.MAIN_CONNECT_CTA_LABELS.values()))
 
-    def test_friend_gift_activation_is_one_time(self) -> None:
+    def test_friend_gift_link_waits_for_server_connection_evidence(self) -> None:
         self.bot_module.FRIEND_GIFT_ENABLED = True
         self.bot_module.FRIEND_GIFT_DAYS = 3
         self.bot_module.FRIEND_GIFT_CAMPAIGN_KEY = "friend_gift_3d"
@@ -500,12 +747,967 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.create_subscription = old_create_subscription
 
         self.assertTrue(ok1)
-        self.assertEqual(reason1, "activated")
+        self.assertEqual(reason1, "linked_waiting_evidence")
         self.assertFalse(ok2)
-        self.assertEqual(reason2, "already_claimed")
-        self.assertEqual(calls, [1001])
+        self.assertEqual(reason2, "already_linked")
+        self.assertEqual(calls, [])
+        from models import EntitlementGrant, ReferralRelationship, User
 
-    def test_friend_gift_does_not_burn_campaign_claim_on_subscription_failure(self) -> None:
+        session = self.bot_module.Session()
+        try:
+            referred = session.query(User).filter_by(tg_id=1001).one()
+            referrer = session.query(User).filter_by(tg_id=2002).one()
+            relationship = session.query(ReferralRelationship).filter_by(referred_account_id=referred.account_id).one()
+            self.assertEqual(relationship.referrer_account_id, referrer.account_id)
+            self.assertEqual(session.query(EntitlementGrant).filter_by(source="referral_friend").count(), 0)
+            self.assertEqual(referred.referrer_id, 2002)
+        finally:
+            session.close()
+
+    def test_first_stars_payment_preserves_expiry_and_queues_72h_referral_hold(self) -> None:
+        from models import EntitlementGrant, ReferralRelationship, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.ensure_pending_user(2002, username="referrer")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            referrer = session.query(User).filter_by(tg_id=2002).one()
+            user.expiry_at = now + timedelta(days=5)
+            user.sub_type = "FREE"
+            user.current_plan_code = "trial"
+            user.first_purchase_done = False
+            session.add(
+                EntitlementGrant(
+                    id=str(uuid.uuid4()), account_id=str(user.account_id), legacy_tg_id=1001,
+                    idempotency_key="stars-referral-typed-trial", source="premium_trial",
+                    status="active", grant_kind="premium_trial", plan_code="trial",
+                    starts_at=now, expires_at=now + timedelta(days=5), activated_at=now,
+                    duration_days=5, provider="internal_economy", created_at=now, updated_at=now,
+                )
+            )
+            referrer.expiry_at = now + timedelta(days=20)
+            referrer.sub_type = "PAID"
+            referrer.current_plan_code = "1_month"
+            referrer.is_active = True
+            session.commit()
+            user_expiry_before = user.expiry_at
+            referrer_expiry_before = referrer.expiry_at
+        finally:
+            session.close()
+        self.assertTrue(self.bot_module.set_referrer(1001, 2002))
+
+        class _Panel:
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(token="first_stars_panel_token_123")
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                return True
+
+        old_panel = self.bot_module.panel
+        self.bot_module.panel = _Panel()
+        try:
+            asyncio.run(
+                self.bot_module.create_subscription(
+                    _FakeMessage(),
+                    1001,
+                    {"stars": 299, "days": 30, "gb": 0, "subId": "1_MONTH", "sub_type": "PAID"},
+                    _FakeBot(status="member"),
+                    paid_amount_stars=299,
+                    pay_attempt_id=501,
+                )
+            )
+        finally:
+            self.bot_module.panel = old_panel
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            referrer = session.query(User).filter_by(tg_id=2002).one()
+            relationship = session.query(ReferralRelationship).filter_by(referred_account_id=user.account_id).one()
+            self.assertGreaterEqual(user.expiry_at, user_expiry_before + timedelta(days=30))
+            self.assertEqual(referrer.expiry_at, referrer_expiry_before)
+            self.assertEqual(relationship.status, "holding")
+            self.assertEqual(relationship.hold_until - relationship.first_payment_at, timedelta(hours=72))
+            self.assertEqual(session.query(EntitlementGrant).filter_by(source="referral_referrer").count(), 0)
+        finally:
+            session.close()
+
+    def test_paid_attempt_without_grant_replay_applies_renewal_once(self) -> None:
+        from models import EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.expiry_at = now + timedelta(days=10)
+            user.first_purchase_done = True
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="paid", invoice_payload="portal_1_month_1001_buy_a1",
+                started_at=now, updated_at=now, paid_at=now,
+            )
+            session.add(attempt)
+            session.commit()
+            attempt_id = int(attempt.id)
+            original_expiry = user.expiry_at
+        finally:
+            session.close()
+
+        payload = f"portal_1_month_1001_buy_a{attempt_id}"
+        session = self.bot_module.Session()
+        try:
+            session.query(PayAttempt).filter_by(id=attempt_id).update({PayAttempt.invoice_payload: payload})
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            def __init__(self):
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(token="crash_confirmed_panel_token_123")
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                return True
+
+        panel = _Panel()
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module.panel = panel
+        self.bot_module._send_text_with_specs = _sent
+        try:
+            message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-crash-confirmed")
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grants = session.query(EntitlementGrant).filter_by(source="provider_payment").all()
+            attempt = session.query(PayAttempt).filter_by(id=attempt_id).one()
+            self.assertEqual(len(grants), 1)
+            self.assertEqual(attempt.paid_at, now)
+            self.assertEqual(user.expiry_at, original_expiry + timedelta(days=30))
+            self.assertIn('"projection_already_applied":true', str(grants[0].metadata_json))
+            self.assertEqual(panel.updates, 1)
+        finally:
+            session.close()
+
+    def test_existing_stars_payment_fact_with_pending_projection_is_finished_on_replay(self) -> None:
+        from economy_service import _provider_payment_key
+        from models import EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        charge_id = "stars-pending-projection"
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            original_expiry = user.expiry_at
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="paid", invoice_payload="portal_1_month_1001_buy_a2",
+                started_at=now, updated_at=now, paid_at=now,
+            )
+            session.add(attempt)
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.add(
+                EntitlementGrant(
+                    id=str(uuid.uuid4()), account_id=str(user.account_id), legacy_tg_id=1001,
+                    idempotency_key=_provider_payment_key("stars", charge_id), source="provider_payment",
+                    status="recorded", grant_kind="payment_fact", plan_code="1_month",
+                    activated_at=now, duration_days=0, provider="stars", external_order_id=charge_id,
+                    metadata_json='{"is_first_payment":true,"projection_already_applied":false}',
+                    created_at=now, updated_at=now,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(token="pending_projection_panel_token_123")
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                return True
+
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+        self.bot_module.panel = _Panel()
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module._send_text_with_specs = _sent
+        try:
+            asyncio.run(
+                self.bot_module.payment_success(
+                    _FakePaymentMessage(tg_id=1001, payload=payload, charge_id=charge_id),
+                    _FakeBot(status="member"),
+                )
+            )
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grant = session.query(EntitlementGrant).filter_by(external_order_id=charge_id).one()
+            self.assertEqual(grant.grant_kind, "paid_access")
+            self.assertEqual(grant.duration_days, 30)
+            self.assertEqual(user.expiry_at, grant.expires_at)
+        finally:
+            session.close()
+
+    def test_stars_projection_survives_panel_failure_and_replay_retries_side_effect(self) -> None:
+        from models import EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            original_expiry = user.expiry_at
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a3",
+                started_at=now, updated_at=now,
+            )
+            session.add(attempt)
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            def __init__(self):
+                self.fail = True
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(token="panel_retry_token_123456789")
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                if self.fail:
+                    raise RuntimeError("panel unavailable")
+                return True
+
+        panel = _Panel()
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+        self.bot_module.panel = panel
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module._send_text_with_specs = _sent
+        message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-panel-retry")
+        try:
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            session = self.bot_module.Session()
+            try:
+                user = session.query(User).filter_by(tg_id=1001).one()
+                grant = session.query(EntitlementGrant).filter_by(external_order_id="stars-panel-retry").one()
+                expiry_after_failure = user.expiry_at
+                self.assertEqual(expiry_after_failure, original_expiry + timedelta(days=30))
+                self.assertIn('"projection_already_applied":true', str(grant.metadata_json))
+            finally:
+                session.close()
+
+            retry_actions = [
+                button.callback_data
+                for _text, kwargs in message.answers
+                for row in getattr(kwargs.get("reply_markup"), "inline_keyboard", [])
+                for button in row
+                if str(getattr(button, "callback_data", "")).startswith("retry_stars:")
+            ]
+            self.assertEqual(len(retry_actions), 1)
+            panel.fail = False
+            asyncio.run(
+                self.bot_module.retry_stars_fulfillment(
+                    _FakeCallback(1001, data=str(retry_actions[0])),
+                    _FakeBot(status="member"),
+                )
+            )
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            self.assertEqual(user.expiry_at, expiry_after_failure)
+            self.assertEqual(session.query(EntitlementGrant).filter_by(source="provider_payment").count(), 1)
+            self.assertEqual(panel.updates, 2)
+        finally:
+            session.close()
+
+    def test_existing_panel_false_update_remains_unprocessed_and_replays_without_duplicate_duration(self) -> None:
+        from models import EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a31",
+                started_at=now, updated_at=now,
+            )
+            session.add(attempt)
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            def __init__(self):
+                self.succeed = False
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(token="false_then_true_panel_token_123")
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                return self.succeed
+
+        panel = _Panel()
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module.panel = panel
+        self.bot_module._send_text_with_specs = _sent
+        charge_id = "stars-false-update-retry"
+        first_message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id=charge_id)
+        try:
+            asyncio.run(self.bot_module.payment_success(first_message, _FakeBot(status="member")))
+            self.assertFalse(self.bot_module._stars_payment_already_processed(charge_id))
+            self.assertFalse(any("Доступ готов" in text for text, _kwargs in first_message.answers))
+            retry_actions = [
+                button.callback_data
+                for _text, kwargs in first_message.answers
+                for row in getattr(kwargs.get("reply_markup"), "inline_keyboard", [])
+                for button in row
+                if str(getattr(button, "callback_data", "")).startswith("retry_stars:")
+            ]
+            self.assertEqual(len(retry_actions), 1)
+            session = self.bot_module.Session()
+            try:
+                expiry_after_failure = session.query(User).filter_by(tg_id=1001).one().expiry_at
+            finally:
+                session.close()
+
+            panel.succeed = True
+            retry_callback = _FakeCallback(1001, data=str(retry_actions[0]))
+            asyncio.run(self.bot_module.retry_stars_fulfillment(retry_callback, _FakeBot(status="member")))
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grant = session.query(EntitlementGrant).filter_by(external_order_id=charge_id).one()
+            self.assertEqual(user.expiry_at, expiry_after_failure)
+            self.assertEqual(grant.expires_at, expiry_after_failure)
+            self.assertEqual(grant.duration_days, 30)
+            self.assertEqual(panel.updates, 2)
+            self.assertTrue(self.bot_module._stars_payment_already_processed(charge_id))
+        finally:
+            session.close()
+
+    def test_completed_stars_payment_duplicate_replay_returns_without_panel_or_duration_change(self) -> None:
+        from models import EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow()
+        session = self.bot_module.Session()
+        try:
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a4",
+                started_at=now, updated_at=now,
+            )
+            session.add(attempt)
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            def __init__(self):
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(token="complete_duplicate_panel_token_123")
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                return True
+
+        panel = _Panel()
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+        self.bot_module.panel = panel
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module._send_text_with_specs = _sent
+        message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-complete-duplicate")
+        try:
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            session = self.bot_module.Session()
+            try:
+                expiry = session.query(User).filter_by(tg_id=1001).one().expiry_at
+            finally:
+                session.close()
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+
+        session = self.bot_module.Session()
+        try:
+            self.assertEqual(session.query(User).filter_by(tg_id=1001).one().expiry_at, expiry)
+            self.assertEqual(session.query(EntitlementGrant).filter_by(source="provider_payment").count(), 1)
+            self.assertEqual(panel.updates, 1)
+        finally:
+            session.close()
+
+    def test_new_panel_client_provisioning_cannot_erase_applied_stars_projection(self) -> None:
+        from models import EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a5",
+                started_at=now, updated_at=now,
+            )
+            session.add(attempt)
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            def __init__(self):
+                self.client = None
+
+            async def get_existing_client(self, _tg_id):
+                return dict(self.client) if self.client else None
+
+            async def add_client(self, user_uuid, email, _sub_type, _gb, tg_id, sub_token):
+                self.client = _owned_panel_client(token=sub_token, client_uuid=user_uuid)
+                self.client["email"] = email
+                self.client["tgId"] = str(tg_id)
+                return True
+
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+        self.bot_module.panel = _Panel()
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module._send_text_with_specs = _sent
+        try:
+            asyncio.run(
+                self.bot_module.payment_success(
+                    _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-new-panel-client"),
+                    _FakeBot(status="member"),
+                )
+            )
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grant = session.query(EntitlementGrant).filter_by(external_order_id="stars-new-panel-client").one()
+            self.assertEqual(user.expiry_at, grant.expires_at)
+            self.assertEqual(user.sub_type, "PAID")
+            self.assertEqual(grant.expires_at - grant.starts_at, timedelta(days=30))
+        finally:
+            session.close()
+
+    def test_add_client_success_then_local_reconcile_failure_replays_exact_panel_credentials(self) -> None:
+        from models import AccessKey, EntitlementGrant, Node, PayAttempt, User, UserNode
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a6",
+                started_at=now, updated_at=now,
+            )
+            session.add_all(
+                [
+                    attempt,
+                    Node(
+                        id=77,
+                        code="NL-test",
+                        name="NL test",
+                        enabled=True,
+                        accepting_new_clients=True,
+                    ),
+                ]
+            )
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            def __init__(self):
+                self.client = None
+                self.adds = 0
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return dict(self.client) if self.client else None
+
+            async def add_client(self, user_uuid, email, _sub_type, _gb, tg_id, sub_token):
+                self.adds += 1
+                self.client = _owned_panel_client(
+                    token=sub_token,
+                    client_uuid=user_uuid,
+                    node_id=77,
+                )
+                self.client["email"] = email
+                self.client["tgId"] = str(tg_id)
+                return True
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                return True
+
+        panel = _Panel()
+        original_reconcile = getattr(self.bot_module, "_reconcile_owned_panel_client", None)
+        reconcile_calls = 0
+
+        def _fail_first_reconcile(*args, **kwargs):
+            nonlocal reconcile_calls
+            reconcile_calls += 1
+            if reconcile_calls == 1:
+                raise RuntimeError("forced local credential commit failure")
+            if original_reconcile is None:
+                raise AssertionError("missing credential reconciliation")
+            return original_reconcile(*args, **kwargs)
+
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+        old_reconcile = getattr(self.bot_module, "_reconcile_owned_panel_client", None)
+        self.bot_module.panel = panel
+        self.bot_module._reconcile_owned_panel_client = _fail_first_reconcile
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module._send_text_with_specs = _sent
+        message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-local-reconcile-retry")
+        try:
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            session = self.bot_module.Session()
+            try:
+                grant = session.query(EntitlementGrant).filter_by(external_order_id="stars-local-reconcile-retry").one()
+                expiry_after_failure = grant.expires_at
+                self.assertEqual(session.query(User).filter_by(tg_id=1001).one().expiry_at, expiry_after_failure)
+            finally:
+                session.close()
+
+            retry_actions = [
+                button.callback_data
+                for _text, kwargs in message.answers
+                for row in getattr(kwargs.get("reply_markup"), "inline_keyboard", [])
+                for button in row
+                if str(getattr(button, "callback_data", "")).startswith("retry_stars:")
+            ]
+            self.assertEqual(len(retry_actions), 1)
+            asyncio.run(
+                self.bot_module.retry_stars_fulfillment(
+                    _FakeCallback(1001, data=str(retry_actions[0])),
+                    _FakeBot(status="member"),
+                )
+            )
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+            if old_reconcile is None:
+                delattr(self.bot_module, "_reconcile_owned_panel_client")
+            else:
+                self.bot_module._reconcile_owned_panel_client = old_reconcile
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grant = session.query(EntitlementGrant).filter_by(external_order_id="stars-local-reconcile-retry").one()
+            key = session.query(AccessKey).filter_by(tg_id=1001, node_code="NL-test").one()
+            node = session.query(UserNode).filter_by(tg_id=1001, node_id=77).one()
+            self.assertEqual(user.uuid, panel.client["id"])
+            self.assertEqual(user.email, panel.client["email"])
+            self.assertEqual(user.sub_token, panel.client["subId"])
+            self.assertTrue(self.bot_module.build_subscription_link(1001).endswith(f"/{panel.client['subId']}"))
+            self.assertEqual(key.key_uuid, panel.client["id"])
+            self.assertEqual(key.panel_email, panel.client["email"])
+            self.assertEqual(node.client_uuid, panel.client["id"])
+            self.assertEqual(node.panel_email, panel.client["email"])
+            self.assertEqual(user.expiry_at, expiry_after_failure)
+            self.assertEqual(grant.expires_at, expiry_after_failure)
+            self.assertEqual(panel.adds, 1)
+            self.assertEqual(reconcile_calls, 2)
+        finally:
+            session.close()
+
+    def test_marker_failure_replay_reconciles_existing_panel_client_without_duplicate_duration(self) -> None:
+        from models import AccessKey, EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_token = "different_local_token_123"
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a7",
+                started_at=now, updated_at=now,
+            )
+            session.add_all(
+                [
+                    attempt,
+                    AccessKey(
+                        tg_id=1001,
+                        key_uuid="87654321-4321-4321-8321-cba987654321",
+                        panel_email="User_1001",
+                        node_code="NL-test",
+                        pool_code="free_pool",
+                        state="active",
+                        source="legacy_user",
+                        is_primary=True,
+                        created_at=now,
+                        updated_at=now,
+                    ),
+                ]
+            )
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        panel_token = "exact_panel_token_123456789"
+
+        class _Panel:
+            def __init__(self):
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(token=panel_token)
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                return True
+
+        panel = _Panel()
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+        original_marker = self.bot_module._mark_stars_payment_processed
+        marker_calls = 0
+
+        def _drop_first_marker(**kwargs):
+            nonlocal marker_calls
+            marker_calls += 1
+            if marker_calls > 1:
+                original_marker(**kwargs)
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module.panel = panel
+        self.bot_module._send_text_with_specs = _sent
+        self.bot_module._mark_stars_payment_processed = _drop_first_marker
+        message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-marker-retry")
+        try:
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            session = self.bot_module.Session()
+            try:
+                first_expiry = session.query(User).filter_by(tg_id=1001).one().expiry_at
+            finally:
+                session.close()
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+            self.bot_module._mark_stars_payment_processed = original_marker
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grant = session.query(EntitlementGrant).filter_by(external_order_id="stars-marker-retry").one()
+            key = session.query(AccessKey).filter_by(tg_id=1001, node_code="NL-test").one()
+            self.assertEqual(user.sub_token, panel_token)
+            self.assertEqual(key.key_uuid, "12345678-1234-4234-9234-123456789abc")
+            self.assertEqual(user.expiry_at, first_expiry)
+            self.assertEqual(grant.expires_at, first_expiry)
+            self.assertEqual(grant.duration_days, 30)
+            self.assertEqual(panel.updates, 2)
+            self.assertEqual(marker_calls, 2)
+        finally:
+            session.close()
+
+    def test_legacy_panel_lane_without_db_node_id_reconciles_and_replays_idempotently(self) -> None:
+        from models import AccessKey, EntitlementGrant, PayAttempt, User, UserNode
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a8",
+                started_at=now, updated_at=now,
+            )
+            session.add(attempt)
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        panel_token = "legacy_lane_exact_token_123456"
+
+        class _Panel:
+            def __init__(self):
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(
+                    token=panel_token,
+                    node_code="legacy-nl",
+                    node_id=0,
+                )
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                return True
+
+        panel = _Panel()
+        old_panel = self.bot_module.panel
+        old_send = self.bot_module._send_text_with_specs
+
+        async def _sent(**_kwargs):
+            return True
+
+        self.bot_module.panel = panel
+        self.bot_module._send_text_with_specs = _sent
+        message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-legacy-panel-lane")
+        try:
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            session = self.bot_module.Session()
+            try:
+                first_expiry = session.query(User).filter_by(tg_id=1001).one().expiry_at
+            finally:
+                session.close()
+            asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+        finally:
+            self.bot_module.panel = old_panel
+            self.bot_module._send_text_with_specs = old_send
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grant = session.query(EntitlementGrant).filter_by(external_order_id="stars-legacy-panel-lane").one()
+            key = session.query(AccessKey).filter_by(tg_id=1001, node_code="legacy-nl").one()
+            self.assertEqual(user.sub_token, panel_token)
+            self.assertEqual(key.key_uuid, user.uuid)
+            self.assertEqual(session.query(UserNode).filter_by(tg_id=1001).count(), 0)
+            self.assertEqual(user.expiry_at, first_expiry)
+            self.assertEqual(grant.expires_at, first_expiry)
+            self.assertEqual(grant.duration_days, 30)
+            self.assertEqual(panel.updates, 1)
+        finally:
+            session.close()
+
+    def test_panel_client_without_node_id_or_node_code_remains_retryable_failure(self) -> None:
+        with self.assertRaisesRegex(ValueError, "node"):
+            self.bot_module._validated_owned_panel_client(
+                tg_id=1001,
+                panel_client=_owned_panel_client(
+                    token="missing_lane_identity_token_123",
+                    node_code="",
+                    node_id=0,
+                ),
+            )
+
+    def test_access_key_node_provenance_mismatch_is_retryable_without_duplicate_duration(self) -> None:
+        from models import AccessKey, EntitlementGrant, PayAttempt, User
+
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        now = self.bot_module._utcnow().replace(microsecond=0)
+        client_uuid = "12345678-1234-4234-9234-123456789abc"
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.expiry_at = now
+            attempt = PayAttempt(
+                tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
+                currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a32",
+                started_at=now, updated_at=now,
+            )
+            session.add_all(
+                [
+                    attempt,
+                    AccessKey(
+                        tg_id=1001,
+                        key_uuid=client_uuid,
+                        panel_email="User_1001",
+                        node_code="conflicting-node",
+                        pool_code="free_pool",
+                        state="active",
+                        source="legacy_user",
+                        is_primary=True,
+                        created_at=now,
+                        updated_at=now,
+                    ),
+                ]
+            )
+            session.flush()
+            payload = f"portal_1_month_1001_buy_a{attempt.id}"
+            attempt.invoice_payload = payload
+            session.commit()
+        finally:
+            session.close()
+
+        class _Panel:
+            def __init__(self):
+                self.updates = 0
+
+            async def get_existing_client(self, _tg_id):
+                return _owned_panel_client(
+                    token="provenance_mismatch_token_123",
+                    client_uuid=client_uuid,
+                    node_code="NL-test",
+                    node_id=0,
+                )
+
+            async def update_client_traffic(self, _tg_id, _gb):
+                self.updates += 1
+                return True
+
+        panel = _Panel()
+        old_panel = self.bot_module.panel
+        self.bot_module.panel = panel
+        charge_id = "stars-provenance-mismatch"
+        first_message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id=charge_id)
+        try:
+            asyncio.run(self.bot_module.payment_success(first_message, _FakeBot(status="member")))
+            retry_actions = [
+                button.callback_data
+                for _text, kwargs in first_message.answers
+                for row in getattr(kwargs.get("reply_markup"), "inline_keyboard", [])
+                for button in row
+                if str(getattr(button, "callback_data", "")).startswith("retry_stars:")
+            ]
+            self.assertEqual(len(retry_actions), 1)
+            session = self.bot_module.Session()
+            try:
+                key = session.query(AccessKey).filter_by(tg_id=1001, key_uuid=client_uuid).one()
+                key.node_code = "NL-test"
+                session.commit()
+            finally:
+                session.close()
+            asyncio.run(
+                self.bot_module.retry_stars_fulfillment(
+                    _FakeCallback(1001, data=str(retry_actions[0])),
+                    _FakeBot(status="member"),
+                )
+            )
+        finally:
+            self.bot_module.panel = old_panel
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            grant = session.query(EntitlementGrant).filter_by(external_order_id=charge_id).one()
+            self.assertEqual(session.query(EntitlementGrant).filter_by(external_order_id=charge_id).count(), 1)
+            self.assertEqual(user.expiry_at, grant.expires_at)
+            self.assertEqual(grant.duration_days, 30)
+            self.assertEqual(panel.updates, 1)
+            self.assertTrue(self.bot_module._stars_payment_already_processed(charge_id))
+        finally:
+            session.close()
+
+    def test_friend_link_does_not_call_subscription_or_burn_campaign_claim(self) -> None:
         self.bot_module.FRIEND_GIFT_ENABLED = True
         self.bot_module.FRIEND_GIFT_DAYS = 3
         self.bot_module.FRIEND_GIFT_CAMPAIGN_KEY = "friend_gift_3d"
@@ -522,23 +1724,19 @@ class BotPaywallTests(unittest.TestCase):
         async def _failing_create_subscription(message, tg_id, tariff, bot, **_kwargs):
             raise RuntimeError("subscription failed")
 
-        async def _ok_create_subscription(message, tg_id, tariff, bot, **_kwargs):
-            return None
-
         old_create_subscription = self.bot_module.create_subscription
         try:
             msg = _Msg(bot=_FakeBot(status="member"))
             self.bot_module.create_subscription = _failing_create_subscription
-            with self.assertRaises(RuntimeError):
-                asyncio.run(
-                    self.bot_module._try_activate_friend_gift_bonus(
-                        message=msg,
-                        bot=msg.bot,
-                        tg_id=1001,
-                        username="alice",
-                        referral_code=ref_code,
-                    )
+            ok, reason = asyncio.run(
+                self.bot_module._try_activate_friend_gift_bonus(
+                    message=msg,
+                    bot=msg.bot,
+                    tg_id=1001,
+                    username="alice",
+                    referral_code=ref_code,
                 )
+            )
 
             self.assertFalse(
                 self.bot_module._campaign_claimed(
@@ -546,9 +1744,7 @@ class BotPaywallTests(unittest.TestCase):
                     campaign_key=self.bot_module.FRIEND_GIFT_CAMPAIGN_KEY,
                 )
             )
-
-            self.bot_module.create_subscription = _ok_create_subscription
-            ok, reason = asyncio.run(
+            replay_ok, replay_reason = asyncio.run(
                 self.bot_module._try_activate_friend_gift_bonus(
                     message=msg,
                     bot=msg.bot,
@@ -561,7 +1757,9 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.create_subscription = old_create_subscription
 
         self.assertTrue(ok)
-        self.assertEqual(reason, "activated")
+        self.assertEqual(reason, "linked_waiting_evidence")
+        self.assertFalse(replay_ok)
+        self.assertEqual(replay_reason, "already_linked")
 
     def test_activate_promo_code_tracks_success_and_denial(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
@@ -620,6 +1818,102 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual([item["event_name"] for item in tracked], ["gift_redeemed", "gift_redeem_denied"])
         self.assertEqual(str(tracked[0]["meta"].get("card_type") or "").lower(), "standard")
         self.assertEqual(str(tracked[1]["meta"].get("reason") or ""), "already_redeemed")
+        for item in tracked:
+            meta = item["meta"]
+            self.assertNotIn("code", meta)
+            self.assertEqual(meta["code_preview"], f"...{gift_code[-4:]}")
+            self.assertEqual(meta["code_fp"], hashlib.sha256(gift_code.encode("utf-8")).hexdigest()[:16])
+            self.assertEqual(meta["code_len"], len(gift_code))
+
+    def test_gift_event_persistence_never_contains_raw_activation_code(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+        code = self.bot_module.create_gift_card(2002, "standard")
+        self.assertTrue(code)
+
+        ok, _message = asyncio.run(self.bot_module.redeem_gift_card(code, 1001, _FakeBot(status="member")))
+        denied, _denied_message = asyncio.run(self.bot_module.redeem_gift_card(code, 1001, _FakeBot(status="member")))
+        self.assertTrue(ok)
+        self.assertFalse(denied)
+
+        session = self.bot_module.Session()
+        try:
+            rows = (
+                session.query(self.bot_module.Event)
+                .filter(self.bot_module.Event.event_name.in_(["gift_redeemed", "gift_redeem_denied"]))
+                .order_by(self.bot_module.Event.id.asc())
+                .all()
+            )
+            self.assertEqual([row.event_name for row in rows], ["gift_redeemed", "gift_redeem_denied"])
+            for row in rows:
+                raw_meta = str(row.meta_json or "")
+                meta = json.loads(raw_meta)
+                self.assertFalse(code in raw_meta)
+                self.assertNotIn("code", meta)
+                self.assertEqual(meta["code_preview"], f"...{code[-4:]}")
+                self.assertEqual(meta["code_fp"], hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
+                self.assertEqual(meta["code_len"], len(code))
+        finally:
+            session.close()
+
+    def test_wrong_account_payment_fallback_denial_event_is_redacted(self) -> None:
+        from account_foundation_service import ensure_user_account_foundation
+        from payment_entitlement_service import ensure_fallback_gift_card, ensure_pending_claim, mark_paid
+
+        for tg_id, username in ((1001, "owner"), (1002, "wrong")):
+            self.bot_module.ensure_pending_user(tg_id, username=username)
+            self.bot_module.set_tos_accepted(tg_id)
+        code = "POKROV-" + "PAYMENT" + "-DENY"
+        session = self.bot_module.Session()
+        try:
+            owner = session.query(self.bot_module.User).filter_by(tg_id=1001).one()
+            wrong = session.query(self.bot_module.User).filter_by(tg_id=1002).one()
+            ensure_user_account_foundation(session, owner, now=self.bot_module._utcnow())
+            ensure_user_account_foundation(session, wrong, now=self.bot_module._utcnow())
+            claim = ensure_pending_claim(
+                session,
+                provider="lavatop",
+                order_id="bot-wrong-account",
+                buyer_email="owner@example.test",
+                plan_code="1_month",
+                duration_days=30,
+                now=self.bot_module._utcnow(),
+            ).claim
+            mark_paid(session, provider="lavatop", order_id="bot-wrong-account", paid_at=self.bot_module._utcnow())
+            ensure_fallback_gift_card(
+                session,
+                provider="lavatop",
+                order_id="bot-wrong-account",
+                gift_code=code,
+                now=self.bot_module._utcnow(),
+            )
+            claim.account_id = str(owner.account_id)
+            claim.status = "paid_attached"
+            session.commit()
+        finally:
+            session.close()
+
+        ok, _message = asyncio.run(self.bot_module.redeem_gift_card(code, 1002, _FakeBot(status="member")))
+        self.assertFalse(ok)
+        session = self.bot_module.Session()
+        try:
+            event = (
+                session.query(self.bot_module.Event)
+                .filter_by(tg_id=1002, event_name="gift_redeem_denied")
+                .order_by(self.bot_module.Event.id.desc())
+                .first()
+            )
+            self.assertIsNotNone(event)
+            raw_meta = str(event.meta_json or "")
+            meta = json.loads(raw_meta)
+            self.assertFalse(code in raw_meta)
+            self.assertNotIn("code", meta)
+            self.assertEqual(meta["reason"], "payment_account_conflict")
+            self.assertEqual(meta["code_preview"], f"...{code[-4:]}")
+            self.assertEqual(meta["code_fp"], hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
+            self.assertEqual(meta["code_len"], len(code))
+        finally:
+            session.close()
 
     def test_redeem_gift_card_accepts_plan_access_key(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

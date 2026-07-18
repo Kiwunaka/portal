@@ -9,8 +9,9 @@ from typing import Any, Callable
 from fastapi import HTTPException
 
 from account_foundation_service import ensure_user_account_foundation
+from economy_service import TRIAL_DURATION_DAYS, reserve_trial
 from free_cycle_service import mark_user_became_free
-from models import StartLink, User
+from models import AccountDevice, StartLink, User
 from network_rollout import resolved_client_policy
 from public_urls import build_subscription_url
 
@@ -229,7 +230,7 @@ def upsert_app_trial_user(
             sub_type="FREE",
             current_plan_code="trial",
             created_at=now,
-            expiry_at=now + timedelta(days=canonical_trial_days),
+            expiry_at=now + timedelta(days=7),
             is_active=True,
             stars_paid=0,
             total_gb=0,
@@ -278,7 +279,7 @@ def upsert_app_trial_user(
         if not user.sub_type:
             user.sub_type = "FREE"
         if not user.expiry_at:
-            user.expiry_at = now + timedelta(days=canonical_trial_days)
+            user.expiry_at = now + timedelta(days=7)
         if user.is_active is None:
             user.is_active = True
         if not str(getattr(user, "route_mode", "") or "").strip():
@@ -289,6 +290,8 @@ def upsert_app_trial_user(
             user.route_requires_elevated_privileges = _default_route_requires_elevated_privileges(user)
 
     ensure_user_account_foundation(s, user, now=now)
+    device = s.query(AccountDevice).filter(AccountDevice.install_id == install_id).one()
+    reserve_trial(s, account_id=str(user.account_id), device_id=str(device.id), now=now)
     return user, created
 
 
@@ -302,6 +305,7 @@ def build_start_trial_response_parts(
     trial_days: int,
     channel_bonus_days: int,
     client_policy: dict[str, Any] | None = None,
+    trial_projection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     subscription_url = build_subscription_url(str(user.sub_token or ""))
     access_policy = build_access_policy(user=user, used_bytes=0, now=now)
@@ -336,7 +340,11 @@ def build_start_trial_response_parts(
             "is_active": bool(getattr(user, "is_active", False) and getattr(user, "expiry_at", None) and getattr(user, "expiry_at", None) > now),
             "expiry_at": getattr(user, "expiry_at", None).isoformat() if getattr(user, "expiry_at", None) else None,
             "subscription_url": subscription_url,
-            "trial_days": int(trial_days),
+            "trial_days": TRIAL_DURATION_DAYS,
+            "trial_state": str((trial_projection or {}).get("state") or "none"),
+            "reserved_at": (trial_projection or {}).get("reserved_at"),
+            "reservation_expires_at": (trial_projection or {}).get("reservation_expires_at"),
+            "activated_at": (trial_projection or {}).get("activated_at"),
             "bonus_days": int(channel_bonus_days),
             "bonus_claimed": bool(getattr(user, "channel_bonus_claimed_at", None)),
         },

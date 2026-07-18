@@ -12,7 +12,19 @@ load_dotenv()
 
 from db import SessionLocal
 from models import User, UserNode
-from node_policy import free_pool_node_codes, node_code_base, paid_pool_nodes, user_uses_free_pool
+from node_policy import (
+    FREE_SOFT_ROLE,
+    FREE_STANDARD_QUOTA_BYTES,
+    FREE_STANDARD_ROLE,
+    NodeAccessRoleError,
+    free_pool_node_codes,
+    node_access_role,
+    node_code_base,
+    paid_pool_nodes,
+    user_free_access_role,
+    user_uses_free_pool,
+    validate_node_access_roles,
+)
 from nodes_repo import enabled_nodes
 from panel_client import PanelClient
 
@@ -38,8 +50,9 @@ class ControlPanel:
         return [((getattr(node, "code", "") or "").strip(), [node]) for node in paid_pool_nodes(nodes)]
 
     @staticmethod
-    def _free_node_codes(nodes: list) -> list[str]:
-        return free_pool_node_codes(nodes)
+    def _free_node_codes(nodes: list, *, user: User | None = None) -> list[str]:
+        access_role = user_free_access_role(user) if user is not None else FREE_STANDARD_ROLE
+        return free_pool_node_codes(nodes, access_role=access_role)
 
     def _requested_node_groups(self, nodes: list, requested_codes: list[str]) -> list[tuple[str, list]]:
         groups: list[tuple[str, list]] = []
@@ -174,7 +187,10 @@ class ControlPanel:
             try:
                 c = await self._clients[n.code].find_client_by_tgid(tg_id)
                 if c:
-                    return c
+                    owned = dict(c)
+                    owned["_node_code"] = str(getattr(n, "code", "") or "")
+                    owned["_node_id"] = int(getattr(n, "id", 0) or 0)
+                    return owned
             except Exception:
                 continue
         return None
@@ -378,13 +394,13 @@ class ControlPanel:
         async def _collect(node):
             code = str(getattr(node, "code", "") or "").strip()
             if not code:
-                return {"node_code": "", "rows": [], "error": "missing_node_code"}
+                return {"node_code": "", "rows": [], "error_code": "missing_node_code"}
             async with semaphore:
                 try:
                     rows = await self._clients[code].get_node_online_clients()
-                    return {"node_code": code, "rows": rows, "error": ""}
-                except Exception as exc:
-                    return {"node_code": code, "rows": [], "error": str(exc)[:300]}
+                    return {"node_code": code, "rows": rows, "error_code": ""}
+                except Exception:
+                    return {"node_code": code, "rows": [], "error_code": "panel_request_failed"}
 
         collected = await asyncio.gather(*[_collect(n) for n in selected_nodes], return_exceptions=False)
         rows: list[dict] = []
@@ -392,8 +408,13 @@ class ControlPanel:
         for item in collected:
             if not item:
                 continue
-            if item.get("error"):
-                errors.append({"node_code": item.get("node_code"), "error": item.get("error")})
+            if item.get("error_code"):
+                errors.append(
+                    {
+                        "node_code": item.get("node_code"),
+                        "evidence_code": item.get("error_code"),
+                    }
+                )
             rows.extend([dict(row or {}) for row in item.get("rows") or []])
         return {"rows": rows, "errors": errors}
 
@@ -463,6 +484,179 @@ class ControlPanel:
             if self._node_base(getattr(n, "code", "")) == wanted_base:
                 return n
         return None
+
+    async def _resolve_exact_role_node(self, node_code: str, expected_access_role: str):
+        wanted = str(node_code or "").strip().lower()
+        nodes = await self.refresh()
+        validate_node_access_roles(nodes)
+        for node in nodes:
+            if str(getattr(node, "code", "") or "").strip().lower() != wanted:
+                continue
+            actual_role = node_access_role(node, strict=True)
+            if actual_role != str(expected_access_role or "").strip().lower():
+                raise NodeAccessRoleError(
+                    f"node {wanted} role mismatch: expected {expected_access_role}, got {actual_role}"
+                )
+            return node
+        return None
+
+    async def ensure_user_profile_on_node(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str,
+        email: str,
+        sub_id: str,
+        node_code: str,
+        expected_access_role: str,
+        total_bytes: int,
+        limit_ip: int,
+    ) -> bool:
+        node = await self._resolve_exact_role_node(node_code, expected_access_role)
+        if node is None:
+            return False
+        return bool(
+            await self._clients[str(node.code)].ensure_client_explicit(
+                tg_id=int(tg_id),
+                client_uuid=str(client_uuid or ""),
+                email=str(email or ""),
+                sub_id=str(sub_id or ""),
+                enable=True,
+                inbound_id=int(node.inbound_id),
+                total_bytes=max(0, int(total_bytes)),
+                limit_ip=max(0, int(limit_ip)),
+            )
+        )
+
+    async def confirm_user_profile_on_node(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str,
+        email: str,
+        node_code: str,
+        expected_access_role: str,
+        total_bytes: int,
+        limit_ip: int,
+    ) -> bool:
+        node = await self._resolve_exact_role_node(node_code, expected_access_role)
+        if node is None:
+            return False
+        return bool(
+            await self._clients[str(node.code)].confirm_client_profile(
+                tg_id=int(tg_id),
+                client_uuid=str(client_uuid or ""),
+                email=str(email or ""),
+                inbound_id=int(node.inbound_id),
+                total_bytes=max(0, int(total_bytes)),
+                limit_ip=max(0, int(limit_ip)),
+                enabled=True,
+            )
+        )
+
+    async def set_user_profile_enabled_on_node(
+        self,
+        *,
+        tg_id: int,
+        node_code: str,
+        expected_access_role: str,
+        enable: bool,
+        sub_id: str | None = None,
+    ) -> bool:
+        node = await self._resolve_exact_role_node(node_code, expected_access_role)
+        if node is None:
+            return False
+        panel_client = self._clients[str(node.code)]
+        matches = await panel_client.find_clients_by_tgid(int(tg_id), include_disabled=True)
+        normalized_role = str(expected_access_role or "").strip().lower()
+        if normalized_role != "paid":
+            matches = [
+                (inbound_id, client)
+                for inbound_id, client in matches
+                if int(inbound_id or 0) == int(node.inbound_id or 0)
+            ]
+        elif enable:
+            matches = [
+                (inbound_id, client)
+                for inbound_id, client in matches
+                if str((client or {}).get("_transport_profile") or "").strip().lower() != "operator_lab"
+            ]
+        if not matches:
+            return not bool(enable)
+        total_bytes = FREE_STANDARD_QUOTA_BYTES if normalized_role == FREE_STANDARD_ROLE else 0
+        limit_ip = 1 if normalized_role in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE} else 5
+        results = []
+        for inbound_id, client in matches:
+            results.append(
+                bool(
+                    await panel_client.update_client_enable(
+                        client,
+                        bool(enable),
+                        sub_id=sub_id,
+                        inbound_id=int(inbound_id),
+                        total_bytes_override=total_bytes,
+                        limit_ip_override=limit_ip,
+                    )
+                )
+            )
+        return all(results)
+
+    async def reset_user_profile_traffic_on_node(
+        self,
+        *,
+        tg_id: int,
+        node_code: str,
+        expected_access_role: str,
+    ) -> bool:
+        node = await self._resolve_exact_role_node(node_code, expected_access_role)
+        if node is None:
+            return False
+        return bool(await self._clients[str(node.code)].reset_client_traffic_by_tgid(int(tg_id)))
+
+    async def rotate_user_key_on_node(
+        self,
+        *,
+        tg_id: int,
+        node_code: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> bool:
+        node = await self._resolve_target_node(node_code)
+        if node is None:
+            return False
+        client = await self._clients[str(node.code)].find_client_by_tgid(int(tg_id))
+        if client is None:
+            return False
+        if str(client.get("id") or "").strip() == str(new_key_uuid or "").strip():
+            return True
+        updated = dict(client)
+        updated["id"] = str(new_key_uuid or "")
+        updated["tgId"] = str(int(tg_id))
+        role = node_access_role(node)
+        total_bytes = FREE_STANDARD_QUOTA_BYTES if role == FREE_STANDARD_ROLE else 0
+        limit_ip = 1 if role in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE} else 5
+        ok = await self._clients[str(node.code)].update_client_enable(
+            updated,
+            bool(client.get("enable", True)),
+            sub_id=str(sub_id or ""),
+            inbound_id=int(node.inbound_id),
+            total_bytes_override=total_bytes,
+            limit_ip_override=limit_ip,
+            lookup_client_uuid=str(client.get("id") or ""),
+        )
+        if not ok:
+            return False
+        return bool(
+            await self._clients[str(node.code)].confirm_client_profile(
+                tg_id=int(tg_id),
+                client_uuid=str(new_key_uuid or ""),
+                email=str(updated.get("email") or ""),
+                inbound_id=int(node.inbound_id),
+                total_bytes=total_bytes,
+                limit_ip=limit_ip,
+                enabled=bool(client.get("enable", True)),
+            )
+        )
 
     async def set_user_key_enabled_on_node(
         self,
@@ -579,7 +773,7 @@ class ControlPanel:
 
         if user_uses_free_pool(user or SimpleNamespace(sub_type=sub_type, current_plan_code=None)):
             nodes = await self.refresh()
-            free_codes = self._free_node_codes(nodes)
+            free_codes = self._free_node_codes(nodes, user=user)
             if not free_codes:
                 return False
             res = await self.ensure_user_on_all_nodes(
@@ -614,7 +808,7 @@ class ControlPanel:
             sub_id = u.sub_token or str(u.tg_id)
             if user_uses_free_pool(u):
                 nodes = await self.refresh()
-                free_codes = self._free_node_codes(nodes)
+                free_codes = self._free_node_codes(nodes, user=u)
                 if not free_codes:
                     return False
                 res = await self.ensure_user_on_all_nodes(

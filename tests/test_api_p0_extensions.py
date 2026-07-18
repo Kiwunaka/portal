@@ -8,6 +8,7 @@ import unittest
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.parse import urlencode
 from unittest.mock import patch
 
@@ -193,25 +194,41 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         )
 
     def test_dev_auth_allows_localhost_without_header(self) -> None:
-        client = TestClient(self.api.app, base_url="http://localhost")
+        client = TestClient(self.api.app, base_url="http://localhost", client=("127.0.0.1", 50000))
         r = client.get("/api/dashboard")
         self.assertEqual(r.status_code, 200, r.text)
         self.assertEqual(r.json()["tg_id"], 1001)
 
     def test_dev_auth_denies_non_localhost_without_header(self) -> None:
-        client = TestClient(self.api.app, base_url="http://example.com")
+        client = TestClient(self.api.app, base_url="http://example.com", client=("203.0.113.7", 50000))
         r = client.get("/api/dashboard")
         self.assertEqual(r.status_code, 401, r.text)
 
     def test_dev_auth_denies_bad_origin_even_on_localhost(self) -> None:
-        client = TestClient(self.api.app, base_url="http://localhost")
+        client = TestClient(self.api.app, base_url="http://localhost", client=("127.0.0.1", 50000))
         r = client.get("/api/dashboard", headers={"Origin": "https://evil.example"})
         self.assertEqual(r.status_code, 401, r.text)
 
     def test_dev_auth_allows_localhost_origin(self) -> None:
-        client = TestClient(self.api.app, base_url="http://localhost")
+        client = TestClient(self.api.app, base_url="http://localhost", client=("127.0.0.1", 50000))
         r = client.get("/api/dashboard", headers={"Origin": "http://localhost:3000"})
         self.assertEqual(r.status_code, 200, r.text)
+
+    def test_dev_auth_rejects_spoofed_localhost_host_header_from_remote_peer(self) -> None:
+        request = SimpleNamespace(
+            client=SimpleNamespace(host="203.0.113.7"),
+            headers={},
+            url=SimpleNamespace(hostname="localhost"),
+        )
+        self.assertFalse(self.api._is_local_request(request))
+
+    def test_dev_auth_uses_peer_ip_not_host_header_for_local_check(self) -> None:
+        request = SimpleNamespace(
+            client=SimpleNamespace(host="127.0.0.1"),
+            headers={},
+            url=SimpleNamespace(hostname="example.com"),
+        )
+        self.assertTrue(self.api._is_local_request(request))
 
     def test_events_whitelist_and_reject_unknown(self) -> None:
         client = TestClient(self.api.app)

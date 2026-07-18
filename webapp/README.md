@@ -90,11 +90,17 @@ Rules:
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
 - public email continuation must stay hidden/marked `soon` unless sender readiness, delivery confirmation, public mode, and debug-echo-off checks are live
 - marketing and cabinet copy should inherit governed text from `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` instead of inventing separate public messaging
+- support upload responses expose `attachment_id`; preferred create/reply requests send only that ID and never resend the server-private media triplet
+- support thread media accepts only canonical `/api/tickets/attachments/*` paths and rewrites retained `/uploads/support/*` history to that endpoint; arbitrary external attachment URLs are not rendered
+- attachment preview/download is user-triggered rather than fetched on thread mount; it uses an authenticated blob request with the same API-base candidates, bearer/init-data headers, and `credentials: include` behavior as normal API calls, then a revocable object URL, and aborts in-flight retrieval on path change or unmount
+- the support picker is limited to PNG, JPEG, WebP, PDF, and UTF-8 TXT; video, SVG, HTML, log aliases, and arbitrary files are not offered
+- client preflight rejects files above the shared 20 MiB constant before reading TXT bytes; the backend `SUPPORT_UPLOAD_MAX_BYTES` check remains authoritative
 
 ## Shell, Theme, And Loading
 
 - Full-screen loading is reserved for true cold start when no useful session state exists.
 - Internal cabinet navigation keeps the shell mounted, shows page-shaped skeleton or route activity feedback, and must not reset the product frame.
+- Internal links warm their static route payload on hover/focus intent (`app-route-link.tsx`, deduplicated per session); hard-navigation auth flows and external links never prefetch.
 - Dashboard and user snapshots may be kept only in React memory as last-good state during warm refresh; do not persist dashboard cache to browser storage.
 - Theme follows the system preference by default. Manual light/dark choice is a browser UI preference and should not store account or dashboard data.
 - Mobile cabinet navigation keeps bottom tabs stable on cabinet routes.

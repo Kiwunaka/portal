@@ -35,9 +35,39 @@ class ReleaseGateCheckTests(unittest.TestCase):
 
     def test_account_foundation_compatibility_suites_are_in_release_pytest_matrix(self) -> None:
         for suite in (
+            "tests/test_antiabuse_privacy.py",
+            "tests/test_antiabuse_retention_script.py",
+            "tests/test_sqlite_postgres_rehearsal.py",
+            "tests/test_account_recovery.py",
+            "tests/test_auth_sessions.py",
             "portal_bot/tests/test_app_first_service.py",
             "portal_bot/tests/test_email_auth.py",
             "tests/test_bot_paywall.py",
+        ):
+            with self.subTest(suite=suite):
+                self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)
+
+    def test_economy_bonus_referral_suites_are_in_release_pytest_matrix(self) -> None:
+        for suite in (
+            "portal_bot/tests/test_economy_bonus_referral_service.py",
+            "portal_bot/tests/test_economy_trial_service.py",
+            "portal_bot/tests/test_channel_bonus_service.py",
+            "tests/test_api_payments_callbacks.py",
+        ):
+            with self.subTest(suite=suite):
+                self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)
+
+    def test_free_profile_suites_are_in_release_pytest_matrix(self) -> None:
+        for suite in (
+            "tests/test_free_soft_profile_contract.py",
+            "tests/test_free_soft_profile_migrations.py",
+            "tests/test_node_provisioning_service.py",
+            "tests/test_panel_client_free_profiles.py",
+            "tests/test_free_soft_inbound_shaper.py",
+            "tests/test_free_cycle_service.py",
+            "tests/test_key_pressure_scoring.py",
+            "tests/test_admin_ops_api.py",
+            "tests/test_plan_policies.py",
         ):
             with self.subTest(suite=suite):
                 self.assertIn(suite, self.module.RELEASE_PYTEST_ARGS)

@@ -6,9 +6,9 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://admin.pokrov.space"),
-  title: "POKROV Admin",
-  description: "POKROV operator dashboard",
-  applicationName: "POKROV Admin",
+  title: "Центр управления POKROV",
+  description: "Операционная админка POKROV: ноды, клиенты, сеть, деньги и управление релизом.",
+  applicationName: "Центр управления POKROV",
   robots: {
     index: false,
     follow: false
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff"
+  colorScheme: "dark",
+  themeColor: "#0b100e"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -82,7 +82,7 @@ def mark_paid(*, attempt_id: int | None = None, invoice_payload: str | None = No
         if not row:
             return False
         row.status = STATUS_PAID
-        row.paid_at = now
+        row.paid_at = row.paid_at or now
         row.updated_at = now
         s.commit()
         return True

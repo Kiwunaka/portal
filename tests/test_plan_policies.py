@@ -87,7 +87,7 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertEqual(paid_client._total_gb_policy(), 0)
         self.assertEqual(paid_client._total_bytes_policy(), 0)
 
-    def test_panel_policy_node_overrides(self) -> None:
+    def test_paid_node_override_does_not_change_exact_free_policy(self) -> None:
         from panel_client import PanelClient
 
         os.environ["FREE_LIMIT_IP"] = "1"
@@ -100,8 +100,8 @@ class PlanPolicyTests(unittest.TestCase):
         free_client = PanelClient(self._node("pl_free"))
         paid_client = PanelClient(self._node("pl"))
 
-        self.assertEqual(free_client._limit_ip_policy(), 3)
-        self.assertEqual(free_client._total_gb_policy(), 8)
+        self.assertEqual(free_client._limit_ip_policy(), 1)
+        self.assertEqual(free_client._total_gb_policy(), 5)
         self.assertEqual(paid_client._limit_ip_policy(), 7)
 
     def test_api_plan_total_gb_policy(self) -> None:
@@ -155,8 +155,8 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertEqual(trial["traffic_policy"]["kind"], "unlimited")
 
         bonus_user = SimpleNamespace(
-            sub_type="FREE",
-            current_plan_code="trial",
+            sub_type="BONUS",
+            current_plan_code="channel_bonus",
             is_active=True,
             expiry_at=now + timedelta(days=10),
             channel_bonus_claimed_at=now,
@@ -173,6 +173,8 @@ class PlanPolicyTests(unittest.TestCase):
             expiry_at=now + timedelta(days=365),
             channel_bonus_claimed_at=None,
             free_cycle_next_reset_at=now + timedelta(days=12),
+            free_profile_state="soft_active",
+            free_profile_active_role="free_soft",
         )
         soft = api._build_access_policy(user=free_user, used_bytes=6 * 1024**3, now=now)
         self.assertEqual(soft["access_state"], "free_soft_mode")
@@ -180,6 +182,56 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertTrue(soft["soft_mode_active"])
         self.assertEqual(soft["traffic_limit_gb"], 5.0)
         self.assertEqual(soft["traffic_remaining_gb"], 0.0)
+
+    def test_free_pool_routing_fails_closed_for_stale_free_plan_labels(self) -> None:
+        from node_policy import user_uses_free_pool
+
+        now = datetime(2030, 1, 10, 12, 0, 0)
+        valid_trial = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=5),
+        )
+        stale_trial = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=3650),
+        )
+
+        self.assertFalse(user_uses_free_pool(valid_trial, now=now))
+        self.assertTrue(user_uses_free_pool(stale_trial, now=now))
+        for plan_code in ("channel_bonus", "start_99", "1_month"):
+            with self.subTest(plan_code=plan_code):
+                user = SimpleNamespace(
+                    sub_type="FREE",
+                    current_plan_code=plan_code,
+                    is_active=True,
+                    expiry_at=now + timedelta(days=3650),
+                )
+                self.assertTrue(user_uses_free_pool(user, now=now))
+
+    def test_access_policy_does_not_promote_unbounded_free_trial_projection(self) -> None:
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        now = datetime(2030, 1, 10, 12, 0, 0)
+        user = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=now + timedelta(days=3650),
+            channel_bonus_claimed_at=None,
+            free_cycle_next_reset_at=now + timedelta(days=30),
+            free_profile_state="standard",
+            free_profile_active_role="free_standard",
+        )
+
+        access = api._build_access_policy(user=user, used_bytes=0, now=now)
+
+        self.assertEqual(access["access_state"], "free_monthly")
+        self.assertEqual(access["traffic_policy"]["kind"], "metered")
 
     def test_api_plan_catalog_fallback_defaults(self) -> None:
         api = importlib.import_module("api")

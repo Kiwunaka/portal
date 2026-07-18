@@ -3,7 +3,9 @@ from __future__ import annotations
 import asyncio
 import importlib
 import sys
+import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -40,9 +42,13 @@ def _load_api(
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("WEBAPP_URL", "https://app.pokrov.test/")
+    monkeypatch.setenv("SUPPORT_UPLOAD_DIR", str((tmp_path / "support-uploads").resolve()))
+    monkeypatch.setenv("SUPPORT_AI_ENABLED", "false")
+    monkeypatch.setenv("SUPPORT_AI_API_KEY", "")
 
     for name in [
         "api",
+        "helpbot",
         "config",
         "db",
         "email_auth_service",
@@ -87,6 +93,103 @@ def _install_fake_panel(monkeypatch, api):
             return None
 
     monkeypatch.setattr(api, "ControlPanel", FakePanel)
+
+
+def _recovery_http_fixture(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("ADMIN_ID", "9000000000000")
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    _install_fake_panel(monkeypatch, api)
+    captured = _capture_auth_delivery(monkeypatch, api)
+
+    async def fake_telegram_send_message(*_args, **_kwargs):
+        return True
+
+    monkeypatch.setattr(api, "_telegram_send_message", fake_telegram_send_message)
+    client = TestClient(api.app)
+
+    start = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-recovery-http-original",
+            "device_name": "Original phone",
+            "platform": "android",
+            "app_version": "1.0.0-rc.1",
+        },
+    )
+    assert start.status_code == 200, "recovery-http-start"
+    normal_headers = {"Authorization": f"Bearer {start.json()['access_token']}"}
+
+    register = client.post(
+        "/api/auth/email/register",
+        headers=normal_headers,
+        json={"email": "recovery-http@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert register.status_code == 200, "recovery-http-register"
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, "recovery-http-verify"
+
+    otp_start = client.post("/api/auth/email/otp/start", json={"email": "recovery-http@pokrov.test"})
+    assert otp_start.status_code == 200, "recovery-http-otp-start"
+    otp_finish = client.post(
+        "/api/auth/email/otp/finish",
+        headers=normal_headers,
+        json={"email": "recovery-http@pokrov.test", "code": str(captured["login_otp"])},
+    )
+    assert otp_finish.status_code == 200, "recovery-http-otp-finish"
+
+    rotate = client.post("/api/client/recovery-code/rotate", headers=normal_headers)
+    assert rotate.status_code == 200, "recovery-http-rotate"
+    exchange = client.post(
+        "/api/client/recovery/exchange",
+        json={
+            "code": str(rotate.json()["recovery_code"]),
+            "install_id": "install-recovery-http-new",
+            "device_name": "New PC",
+            "platform": "windows",
+            "os_version": "11",
+            "app_version": "1.0.0-rc.1",
+        },
+    )
+    assert exchange.status_code == 200, "recovery-http-exchange"
+    recovery_headers = {"Authorization": f"Bearer {exchange.json()['access_token']}"}
+    return api, client, normal_headers, recovery_headers
+
+
+def _seed_ticket_with_private_attachment(client: TestClient, normal_headers: dict[str, str]):
+    upload = client.post(
+        "/api/tickets/uploads",
+        headers={**normal_headers, "Content-Type": "image/png", "X-Upload-Filename": "private-screen.png"},
+        content=b"\x89PNG\r\n\x1a\nprivate-test-payload",
+    )
+    assert upload.status_code == 200, "private-ticket-upload"
+    attachment = dict(upload.json()["attachment"])
+    attachment_payload = dict(upload.json()["attachment_payload"])
+    create = client.post(
+        "/api/tickets",
+        headers=normal_headers,
+        json={
+            "subject": "Private attachment",
+            "body": "Initial message with an attachment",
+            "media_type": attachment["media_type"],
+            "media_file_id": attachment["media_file_id"],
+            "media_payload": attachment["media_payload"],
+        },
+    )
+    assert create.status_code == 200, "private-ticket-create"
+    ticket = dict(create.json()["ticket"])
+    assert any("media_file_id" in message for message in ticket["messages"]), "normal-ticket-media-contract"
+    return int(ticket["id"]), str(attachment_payload["url"])
+
+
+def _assert_recovery_forbidden(response, case_name: str) -> None:
+    assert response.status_code == 403, case_name
+    assert response.headers.get("X-POKROV-Auth-Error") == "recovery_scope_forbidden", case_name
+
+
+def _messages_are_text_only(ticket: dict) -> bool:
+    media_keys = {"media_type", "media_file_id", "media_payload"}
+    messages = list(ticket.get("messages") or [])
+    return bool(messages) and all(media_keys.isdisjoint(message) for message in messages)
 
 
 def test_owned_backend_files_do_not_use_datetime_utcnow():
@@ -424,7 +527,7 @@ def test_email_register_from_app_session_links_to_app_account(monkeypatch, tmp_p
         db.close()
 
 
-def test_email_account_linked_to_admin_telegram_keeps_admin_access(monkeypatch, tmp_path):
+def test_email_account_linked_to_admin_telegram_does_not_grant_admin_access(monkeypatch, tmp_path):
     monkeypatch.setenv("ADMIN_ID", "777001")
     api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
     captured = _capture_auth_delivery(monkeypatch, api)
@@ -464,12 +567,12 @@ def test_email_account_linked_to_admin_telegram_keeps_admin_access(monkeypatch, 
     profile = client.get(f"/api/user/{account_id}", headers=headers)
     assert profile.status_code == 200, profile.text
     profile_body = profile.json()
-    assert profile_body["is_admin"] is True
+    assert profile_body["is_admin"] is False
     assert profile_body["linked_identities"]["telegram"]["id"] == 777001
     assert profile_body["linked_identities"]["email"]["email"] == "operator@pokrov.test"
 
     admin_summary = client.get("/api/admin/summary", headers=headers)
-    assert admin_summary.status_code == 200, admin_summary.text
+    assert admin_summary.status_code == 403, admin_summary.text
 
 
 def test_telegram_session_shows_email_from_linked_email_account(monkeypatch, tmp_path):
@@ -587,3 +690,590 @@ def test_email_register_rejects_duplicate_verified_identity(monkeypatch, tmp_pat
     )
 
     assert duplicate.status_code == 409, duplicate.text
+
+
+def test_email_otp_login_is_generic_single_use_and_password_remains_compatibility(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    captured = _capture_auth_delivery(monkeypatch, api)
+    client = TestClient(api.app)
+
+    register = client.post(
+        "/api/auth/email/register",
+        json={"email": "otp-owner@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert register.status_code == 200, register.text
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, verify.text
+
+    unknown = client.post("/api/auth/email/otp/start", json={"email": "missing@pokrov.test"})
+    assert unknown.status_code == 200, unknown.text
+    assert unknown.json()["otp_requested"] is True
+    assert "identity" not in unknown.json()
+
+    start = client.post("/api/auth/email/otp/start", json={"email": "OTP-OWNER@pokrov.test"})
+    assert start.status_code == 200, start.text
+    assert start.json()["otp_requested"] is True
+    assert start.json() == unknown.json()
+    code = str(captured["login_otp"])
+    assert len(code) == 6 and code.isdigit()
+
+    finish = client.post(
+        "/api/auth/email/otp/finish",
+        json={"email": "otp-owner@pokrov.test", "code": code},
+    )
+    assert finish.status_code == 200, finish.text
+    assert finish.json()["token"]
+    assert finish.json()["auth_method"] == "email_otp"
+
+    replay = client.post(
+        "/api/auth/email/otp/finish",
+        json={"email": "otp-owner@pokrov.test", "code": code},
+    )
+    assert replay.status_code == 401, replay.text
+    assert replay.headers["X-POKROV-Auth-Error"] == "email_otp_invalid"
+
+    compatibility = client.post(
+        "/api/auth/email/login",
+        json={"email": "otp-owner@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert compatibility.status_code == 200, compatibility.text
+    assert compatibility.json()["auth_method"] == "password_compatibility"
+
+
+def test_api_support_ai_persistence_failure_logs_only_fixed_code(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    api.SUPPORT_AI_CONFIG.enabled = True
+    api.SUPPORT_AI_CONFIG.api_key = "synthetic-test-key"
+    api.SUPPORT_AI_CONFIG.min_interval_seconds = 0
+    api.support_ai_last_reply_at.clear()
+
+    async def fake_generate_support_reply(*_args, **_kwargs):
+        return "Synthetic assistant reply"
+
+    class FailingSession:
+        def __init__(self, *, rollback_fails: bool, close_fails: bool):
+            self.rollback_fails = rollback_fails
+            self.close_fails = close_fails
+            self.rollback_attempted = False
+            self.closed = False
+
+        def rollback(self):
+            self.rollback_attempted = True
+            if self.rollback_fails:
+                raise RuntimeError("rollback failure marker")
+
+        def close(self):
+            self.closed = True
+            if self.close_fails:
+                raise RuntimeError("close failure marker")
+
+    monkeypatch.setattr(api, "generate_support_reply", fake_generate_support_reply)
+    monkeypatch.setattr(
+        api,
+        "get_ticket_by_id",
+        lambda _session, ticket_id: SimpleNamespace(id=int(ticket_id), user_tg_id=7101),
+    )
+
+    def fail_to_append(*_args, **_kwargs):
+        raise RuntimeError("synthetic persistence detail echoed the assistant body")
+
+    monkeypatch.setattr(api, "add_ticket_message", fail_to_append)
+    for rollback_fails, close_fails in ((False, False), (True, False), (False, True), (True, True)):
+        session = FailingSession(rollback_fails=rollback_fails, close_fails=close_fails)
+        monkeypatch.setattr(api, "SessionLocal", lambda session=session: session)
+        with unittest.TestCase().assertLogs("api", level="WARNING") as captured:
+            appended = asyncio.run(
+                api._maybe_append_support_ai_reply(
+                    ticket_id=71,
+                    user_tg_id=7101,
+                    text="Synthetic user message",
+                )
+            )
+
+        expected = [
+            "WARNING:api:support AI ticket append failed code=support_reply_persist_error"
+        ]
+        if close_fails:
+            expected.append(
+                "WARNING:api:support AI ticket session cleanup failed code=support_reply_cleanup_error"
+            )
+        fixed_log_only = captured.output == expected
+        assert fixed_log_only, "api-support-ai-persistence-log"
+        assert appended is False, "api-support-ai-persistence-result"
+        assert session.rollback_attempted and session.closed, "api-support-ai-persistence-cleanup"
+
+
+def test_helpbot_support_ai_persistence_failure_logs_only_fixed_code(monkeypatch, tmp_path):
+    monkeypatch.setenv("HELP_BOT_TOKEN", "777000:test-help-bot-token")
+    monkeypatch.setenv("ADMIN_ID", "9000000000000")
+    _load_api(monkeypatch, tmp_path)
+    helpbot = importlib.import_module("helpbot")
+    helpbot.SUPPORT_AI_CONFIG.enabled = True
+    helpbot.SUPPORT_AI_CONFIG.api_key = "synthetic-test-key"
+    helpbot.SUPPORT_AI_CONFIG.min_interval_seconds = 0
+    helpbot.support_ai_last_reply_at.clear()
+
+    async def fake_generate_support_reply(*_args, **_kwargs):
+        return "Synthetic assistant reply"
+
+    class FailingSession:
+        def __init__(self, *, rollback_fails: bool, close_fails: bool):
+            self.rollback_fails = rollback_fails
+            self.close_fails = close_fails
+            self.rollback_attempted = False
+            self.closed = False
+
+        def commit(self):
+            return None
+
+        def rollback(self):
+            self.rollback_attempted = True
+            if self.rollback_fails:
+                raise RuntimeError("rollback failure marker")
+
+        def close(self):
+            self.closed = True
+            if self.close_fails:
+                raise RuntimeError("close failure marker")
+
+    monkeypatch.setattr(helpbot, "generate_support_reply", fake_generate_support_reply)
+
+    def fail_to_append(*_args, **_kwargs):
+        raise RuntimeError("synthetic persistence detail echoed the assistant body")
+
+    monkeypatch.setattr(helpbot, "add_ticket_message", fail_to_append)
+    message = SimpleNamespace(from_user=SimpleNamespace(id=7201))
+    for rollback_fails, close_fails in ((False, False), (True, False), (False, True), (True, True)):
+        session = FailingSession(rollback_fails=rollback_fails, close_fails=close_fails)
+        monkeypatch.setattr(helpbot, "SessionLocal", lambda session=session: session)
+        with unittest.TestCase().assertLogs("helpbot", level="WARNING") as captured:
+            reply = asyncio.run(
+                helpbot._maybe_generate_support_ai_reply(
+                    message,
+                    ticket_id=72,
+                    text="Synthetic user message",
+                )
+            )
+
+        expected = [
+            "WARNING:helpbot:support AI ticket append failed code=support_reply_persist_error"
+        ]
+        if close_fails:
+            expected.append(
+                "WARNING:helpbot:support AI ticket session cleanup failed code=support_reply_cleanup_error"
+            )
+        fixed_log_only = captured.output == expected
+        assert fixed_log_only, "helpbot-support-ai-persistence-log"
+        assert reply is None, "helpbot-support-ai-persistence-result"
+        assert session.rollback_attempted and session.closed, "helpbot-support-ai-persistence-cleanup"
+
+
+def test_sqlalchemy_engine_hides_statement_parameters(monkeypatch, tmp_path):
+    _load_api(monkeypatch, tmp_path)
+    db = importlib.import_module("db")
+
+    engine_hides_parameters = db.engine.hide_parameters is True
+    assert engine_hides_parameters, "db-engine-hide-parameters"
+
+    marker = "synthetic-private-bind-value"
+    rendered = marker
+    try:
+        with db.engine.connect() as connection:
+            connection.execute(
+                db.text("SELECT * FROM missing_support_table WHERE body = :body"),
+                {"body": marker},
+            )
+    except Exception as exc:
+        rendered = str(exc)
+    parameters_hidden = marker not in rendered
+    assert parameters_hidden, "db-exception-hide-parameters"
+
+
+def test_recovery_scope_allowlist_uses_route_templates_and_fails_closed(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+
+    def build_request(method: str, actual_path: str, route_template: str | None):
+        scope = {
+            "type": "http",
+            "http_version": "1.1",
+            "method": method,
+            "scheme": "https",
+            "path": actual_path,
+            "raw_path": actual_path.encode("ascii"),
+            "query_string": b"",
+            "headers": [],
+            "server": ("api.pokrov.test", 443),
+            "client": ("127.0.0.1", 12345),
+        }
+        if route_template is not None:
+            scope["route"] = SimpleNamespace(path=route_template)
+        return api.Request(scope)
+
+    allowed = [
+        ("GET", "/api/auth/session"),
+        ("POST", "/api/client/session/revoke"),
+        ("POST", "/api/client/access/reissue"),
+        ("GET", "/api/client/devices"),
+        ("DELETE", "/api/client/devices/{device_id}"),
+        ("GET", "/api/tickets"),
+        ("POST", "/api/tickets"),
+        ("GET", "/api/tickets/{ticket_id}"),
+        ("POST", "/api/tickets/{ticket_id}/messages"),
+    ]
+    allowed_results = [
+        api._recovery_scope_request_allowed(build_request(method, "/not-authoritative", route_template))
+        for method, route_template in allowed
+    ]
+    assert all(allowed_results), "recovery-route-template-allowlist"
+
+    denied = [
+        build_request("POST", "/api/client/support/assistant", "/api/client/support/assistant"),
+        build_request("GET", "/api/tickets", None),
+        build_request(
+            "POST",
+            "/api/tickets/17/messages",
+            "/api/tickets/{ticket_id}/messages/extra",
+        ),
+        build_request("POST", "/api/tickets/17", "/api/tickets/{ticket_id}"),
+    ]
+    denied_results = [
+        api._recovery_scope_request_allowed(request)
+        for request in denied
+    ]
+    assert not any(denied_results), "recovery-route-template-fail-closed"
+
+
+def test_recovery_scope_http_denies_non_text_and_private_client_surfaces(monkeypatch, tmp_path):
+    _api, client, normal_headers, recovery_headers = _recovery_http_fixture(monkeypatch, tmp_path)
+    _ticket_id, attachment_url = _seed_ticket_with_private_attachment(client, normal_headers)
+
+    session = client.get("/api/auth/session", headers=recovery_headers)
+    assert session.status_code == 200, "recovery-session-status"
+    devices = client.get("/api/client/devices", headers=recovery_headers)
+    assert devices.status_code == 200, "recovery-device-list"
+    missing_device = client.delete("/api/client/devices/not-a-device", headers=recovery_headers)
+    assert missing_device.status_code == 404, "recovery-device-template"
+
+    blocked_requests = [
+        (
+            "standalone-support-ai",
+            "POST",
+            "/api/client/support/assistant",
+            {},
+            {
+                "json": {
+                    "message": "Text-only support question",
+                    "safeDiagnostics": {"platform": "windows", "runtimeState": "disconnected"},
+                }
+            },
+        ),
+        (
+            "ticket-upload",
+            "POST",
+            "/api/tickets/uploads",
+            {"Content-Type": "image/png", "X-Upload-Filename": "blocked.png"},
+            {"content": b"\x89PNG\r\n\x1a\nblocked"},
+        ),
+        ("attachment-download", "GET", attachment_url, {}, {}),
+        ("managed-profile", "GET", "/api/client/profile/managed", {}, {}),
+        ("subscription", "GET", "/api/client/subscription", {}, {}),
+        ("route-policy", "GET", "/api/client/route-policy", {}, {}),
+        ("locations", "GET", "/api/client/locations", {}, {}),
+        ("node-candidates", "GET", "/api/client/nodes/candidates", {}, {}),
+    ]
+    results = []
+    for case_name, method, path, extra_headers, request_kwargs in blocked_requests:
+        response = client.request(
+            method,
+            path,
+            headers={**recovery_headers, **extra_headers},
+            **request_kwargs,
+        )
+        results.append(
+            (
+                case_name,
+                response.status_code == 403,
+                response.headers.get("X-POKROV-Auth-Error") == "recovery_scope_forbidden",
+            )
+        )
+    assert all(status_ok and code_ok for _case, status_ok, code_ok in results), "recovery-http-deny-matrix"
+
+    revoke = client.post("/api/client/session/revoke", headers=recovery_headers)
+    assert revoke.status_code == 200, "recovery-session-revoke"
+    revoked_session = client.get("/api/auth/session", headers=recovery_headers)
+    assert revoked_session.status_code == 401, "recovery-session-revoked"
+
+
+def test_recovery_ticket_http_rejects_nonempty_media_fields(monkeypatch, tmp_path):
+    _api, client, _normal_headers, recovery_headers = _recovery_http_fixture(monkeypatch, tmp_path)
+    text_create = client.post(
+        "/api/tickets",
+        headers=recovery_headers,
+        json={"subject": "Text only", "body": "Initial text message"},
+    )
+    assert text_create.status_code == 200, "recovery-text-ticket-create"
+    ticket_id = int(text_create.json()["ticket"]["id"])
+
+    media_cases = [
+        ("attachment-id", {"attachment_id": "staged-private-id"}),
+        ("media-type", {"media_type": "photo"}),
+        ("media-file-id", {"media_file_id": "private-file-id"}),
+        ("media-payload", {"media_payload": '{"private":true}'}),
+    ]
+    results = []
+    for case_name, media in media_cases:
+        create = client.post(
+            "/api/tickets",
+            headers=recovery_headers,
+            json={"subject": "Blocked media", "body": "Blocked create", **media},
+        )
+        message = client.post(
+            f"/api/tickets/{ticket_id}/messages",
+            headers=recovery_headers,
+            json={"body": "Blocked message", **media},
+        )
+        for operation, response in (("create", create), ("message", message)):
+            results.append(
+                (
+                    f"{operation}-{case_name}",
+                    response.status_code == 403,
+                    response.headers.get("X-POKROV-Auth-Error") == "recovery_scope_forbidden",
+                )
+            )
+    assert all(status_ok and code_ok for _case, status_ok, code_ok in results), "recovery-media-rejection"
+
+    empty_media = client.post(
+        f"/api/tickets/{ticket_id}/messages",
+        headers=recovery_headers,
+        json={
+            "body": "Empty media fields remain text-only",
+            "media_type": "",
+            "media_file_id": "",
+            "media_payload": "",
+        },
+    )
+    assert empty_media.status_code == 200, "recovery-empty-media-fields"
+
+
+def test_recovery_ticket_http_hides_attachment_metadata_and_enforces_ownership(monkeypatch, tmp_path):
+    api, client, normal_headers, recovery_headers = _recovery_http_fixture(monkeypatch, tmp_path)
+    ticket_id, _attachment_url = _seed_ticket_with_private_attachment(client, normal_headers)
+
+    db = api.SessionLocal()
+    try:
+        foreign_ticket = api.SupportTicket(
+            user_tg_id=123456,
+            status="open",
+            subject="Foreign ticket",
+            created_at=api._utcnow(),
+            updated_at=api._utcnow(),
+        )
+        db.add(foreign_ticket)
+        db.commit()
+        foreign_ticket_id = int(foreign_ticket.id)
+    finally:
+        db.close()
+
+    ticket_list = client.get("/api/tickets", headers=recovery_headers)
+    owned_get = client.get(f"/api/tickets/{ticket_id}", headers=recovery_headers)
+    owned_create = client.post(
+        "/api/tickets",
+        headers=recovery_headers,
+        json={"subject": "Recovery follow-up", "body": "Text-only create"},
+    )
+    owned_message = client.post(
+        f"/api/tickets/{ticket_id}/messages",
+        headers=recovery_headers,
+        json={"body": "Text-only follow-up"},
+    )
+    assert all(
+        response.status_code == 200
+        for response in (ticket_list, owned_get, owned_create, owned_message)
+    ), "recovery-owned-ticket-matrix"
+
+    listed = list(ticket_list.json()["tickets"])
+    assert any(int(ticket["id"]) == ticket_id for ticket in listed), "recovery-owned-ticket-listed"
+    assert all(int(ticket["id"]) != foreign_ticket_id for ticket in listed), "recovery-foreign-ticket-not-listed"
+    listed_owned = next(ticket for ticket in listed if int(ticket["id"]) == ticket_id)
+    recovery_tickets = [
+        listed_owned,
+        dict(owned_get.json()["ticket"]),
+        dict(owned_create.json()["ticket"]),
+        dict(owned_message.json()["ticket"]),
+    ]
+    assert all(_messages_are_text_only(ticket) for ticket in recovery_tickets), "recovery-ticket-media-omission"
+
+    foreign_get = client.get(f"/api/tickets/{foreign_ticket_id}", headers=recovery_headers)
+    foreign_message = client.post(
+        f"/api/tickets/{foreign_ticket_id}/messages",
+        headers=recovery_headers,
+        json={"body": "Must not cross account boundary"},
+    )
+    assert foreign_get.status_code == 403, "recovery-foreign-ticket-get"
+    assert foreign_message.status_code == 403, "recovery-foreign-ticket-message"
+
+    normal_get = client.get(f"/api/tickets/{ticket_id}", headers=normal_headers)
+    assert normal_get.status_code == 200, "normal-ticket-get"
+    assert any(
+        "media_file_id" in message
+        for message in normal_get.json()["ticket"]["messages"]
+    ), "normal-ticket-media-compatible"
+
+
+def test_recovery_actor_equal_to_admin_id_cannot_access_foreign_ticket(monkeypatch, tmp_path):
+    api, client, normal_headers, recovery_headers = _recovery_http_fixture(monkeypatch, tmp_path)
+    _owned_ticket_id, attachment_url = _seed_ticket_with_private_attachment(client, normal_headers)
+    session_response = client.get("/api/auth/session", headers=recovery_headers)
+    assert session_response.status_code == 200, session_response.text
+    recovery_actor = int(session_response.json()["user"]["id"])
+
+    db = api.SessionLocal()
+    try:
+        foreign_ticket = api.SupportTicket(
+            user_tg_id=123456,
+            status="open",
+            subject="Foreign ticket",
+            created_at=api._utcnow(),
+            updated_at=api._utcnow(),
+        )
+        db.add(foreign_ticket)
+        db.commit()
+        foreign_ticket_id = int(foreign_ticket.id)
+    finally:
+        db.close()
+
+    monkeypatch.setattr(api.Settings, "ADMIN_ID", recovery_actor)
+
+    foreign_get = client.get(f"/api/tickets/{foreign_ticket_id}", headers=recovery_headers)
+    foreign_message = client.post(
+        f"/api/tickets/{foreign_ticket_id}/messages",
+        headers=recovery_headers,
+        json={"body": "Recovery scope must not inherit admin bypass"},
+    )
+    attachment_download = client.get(attachment_url, headers=recovery_headers)
+
+    assert foreign_get.status_code == 403, "recovery-admin-foreign-ticket-get"
+    assert foreign_message.status_code == 403, "recovery-admin-foreign-ticket-message"
+    assert attachment_download.status_code == 403, "recovery-admin-attachment-download"
+    assert (
+        attachment_download.headers.get("X-POKROV-Auth-Error") == "recovery_scope_forbidden"
+    ), "recovery-admin-attachment-code"
+
+
+def test_email_otp_fresh_auth_recovery_exchange_and_vpn_reissue(monkeypatch, tmp_path):
+    monkeypatch.setenv("ADMIN_ID", "9000000000000")
+    api = _load_api(monkeypatch, tmp_path, email_public_ready=True)
+    _install_fake_panel(monkeypatch, api)
+    captured = _capture_auth_delivery(monkeypatch, api)
+    client = TestClient(api.app)
+
+    start = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-recovery-original",
+            "device_name": "Original phone",
+            "platform": "android",
+            "app_version": "1.0.0-rc.1",
+        },
+    )
+    assert start.status_code == 200, start.text
+    access_token = str(start.json()["access_token"])
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    register = client.post(
+        "/api/auth/email/register",
+        headers=headers,
+        json={"email": "recover-app@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert register.status_code == 200, register.text
+    verify = client.post("/api/auth/email/verify", json={"token": str(captured["verify"])})
+    assert verify.status_code == 200, verify.text
+
+    otp_start = client.post("/api/auth/email/otp/start", json={"email": "recover-app@pokrov.test"})
+    assert otp_start.status_code == 200, otp_start.text
+    otp_finish = client.post(
+        "/api/auth/email/otp/finish",
+        headers=headers,
+        json={"email": "recover-app@pokrov.test", "code": str(captured["login_otp"])},
+    )
+    assert otp_finish.status_code == 200, otp_finish.text
+    assert otp_finish.json()["fresh_auth_until"]
+
+    rotate = client.post("/api/client/recovery-code/rotate", headers=headers)
+    assert rotate.status_code == 200, rotate.text
+    recovery_code = str(rotate.json()["recovery_code"])
+    assert recovery_code.startswith("PKR-")
+
+    exchange = client.post(
+        "/api/client/recovery/exchange",
+        json={
+            "code": recovery_code,
+            "install_id": "install-recovery-new-device",
+            "device_name": "New PC",
+            "platform": "windows",
+            "os_version": "11",
+            "app_version": "1.0.0-rc.1",
+        },
+    )
+    assert exchange.status_code == 200, exchange.text
+    exchange_body = exchange.json()
+    assert exchange_body["session"]["scope"] == "recovery"
+    assert exchange_body["allowed_actions"] == ["status", "support", "reissue", "device_revoke"]
+    assert "subscription_url" not in exchange_body
+
+    recovery_headers = {"Authorization": f"Bearer {exchange_body['access_token']}"}
+    db = api.SessionLocal()
+    try:
+        foreign_ticket = api.SupportTicket(
+            user_tg_id=123456,
+            status="open",
+            subject="Foreign ticket",
+            created_at=api._utcnow(),
+            updated_at=api._utcnow(),
+        )
+        db.add(foreign_ticket)
+        db.commit()
+        foreign_ticket_id = int(foreign_ticket.id)
+    finally:
+        db.close()
+
+    forbidden_foreign_ticket = client.get(f"/api/tickets/{foreign_ticket_id}", headers=recovery_headers)
+    assert forbidden_foreign_ticket.status_code == 403, forbidden_foreign_ticket.text
+
+    forbidden_subscription = client.get("/api/client/subscription", headers=recovery_headers)
+    assert forbidden_subscription.status_code == 403, forbidden_subscription.text
+    assert forbidden_subscription.headers["X-POKROV-Auth-Error"] == "recovery_scope_forbidden"
+
+    forbidden_email_link = client.post(
+        "/api/auth/email/register",
+        headers=recovery_headers,
+        json={"email": "takeover@pokrov.test", "password": "StrongPass123!"},
+    )
+    assert forbidden_email_link.status_code == 403, forbidden_email_link.text
+    assert forbidden_email_link.headers["X-POKROV-Auth-Error"] == "recovery_scope_forbidden"
+
+    over_limit = client.post(
+        "/api/client/access/reissue",
+        headers=recovery_headers,
+        json={"mode": "vpn_credentials"},
+    )
+    assert over_limit.status_code == 409, over_limit.text
+    assert over_limit.headers["X-POKROV-Auth-Error"] == "device_limit_reached"
+
+    reissue = client.post(
+        "/api/client/access/reissue",
+        headers=recovery_headers,
+        json={"mode": "account_lockdown"},
+    )
+    assert reissue.status_code == 200, reissue.text
+    reissue_body = reissue.json()
+    assert reissue_body["mode"] == "account_lockdown"
+    assert reissue_body["session"]["scope"] == "client"
+    assert reissue_body["access_token"] != exchange_body["access_token"]
+
+    replay = client.post(
+        "/api/client/access/reissue",
+        headers=recovery_headers,
+        json={"mode": "vpn_credentials"},
+    )
+    assert replay.status_code == 401, replay.text

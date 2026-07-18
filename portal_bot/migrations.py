@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, event, text
 
 
 def _sqlite_column_exists(conn, table: str, column: str) -> bool:
@@ -20,6 +20,24 @@ def _sqlite_index_exists(conn, index_name: str) -> bool:
         {"name": index_name},
     ).fetchall()
     return bool(rows)
+
+
+def _sqlite_enable_foreign_keys_on_checkout(
+    dbapi_connection,
+    _connection_record,
+    _connection_proxy,
+) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
+
+
+def _configure_sqlite_foreign_keys(engine: Engine) -> None:
+    pool = engine.pool
+    if not event.contains(pool, "checkout", _sqlite_enable_foreign_keys_on_checkout):
+        event.listen(pool, "checkout", _sqlite_enable_foreign_keys_on_checkout)
 
 
 _POSTGRES_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -52,6 +70,22 @@ def _postgres_column_exists(conn, table: str, column: str) -> bool:
     )
 
 
+def _postgres_column_is_not_null(conn, table: str, column: str) -> bool:
+    value = conn.execute(
+        text(
+            """
+            SELECT is_nullable = 'NO'
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name;
+            """
+        ),
+        {"table_name": str(table), "column_name": str(column)},
+    ).scalar()
+    return bool(value)
+
+
 def _postgres_varchar_limit(conn, table: str, column: str) -> int | None:
     value = conn.execute(
         text(
@@ -71,11 +105,593 @@ def _postgres_varchar_limit(conn, table: str, column: str) -> int | None:
         return None
 
 
+def _ensure_economy_domain_sqlite(conn) -> None:
+    if conn.execute(
+        text("SELECT name FROM sqlite_master WHERE type='table' AND name='account_entitlement_grants';")
+    ).fetchone():
+        for column, ddl in (
+            ("reserved_at", "DATETIME"),
+            ("reservation_expires_at", "DATETIME"),
+            ("activated_at", "DATETIME"),
+            ("duration_days", "INTEGER"),
+            ("activation_evidence_id", "VARCHAR(36)"),
+        ):
+            if not _sqlite_column_exists(conn, "account_entitlement_grants", column):
+                conn.execute(text(f"ALTER TABLE account_entitlement_grants ADD COLUMN {column} {ddl};"))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS connection_evidence (
+              id VARCHAR(36) PRIMARY KEY,
+              account_id VARCHAR(36) NOT NULL,
+              device_id VARCHAR(36),
+              node_id INTEGER NOT NULL,
+              evidence_kind VARCHAR(40) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              evidence_key VARCHAR(160) NOT NULL,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_relationships (
+              id VARCHAR(36) PRIMARY KEY,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              source VARCHAR(32) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              review_status VARCHAR(24) NOT NULL DEFAULT 'clear',
+              friend_evidence_id VARCHAR(36),
+              friend_grant_id VARCHAR(36),
+              friend_granted_at DATETIME,
+              first_payment_key VARCHAR(160),
+              first_payment_at DATETIME,
+              hold_until DATETIME,
+              referrer_grant_id VARCHAR(36),
+              referrer_granted_at DATETIME,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_transitions (
+              id VARCHAR(36) PRIMARY KEY,
+              relationship_id VARCHAR(36) NOT NULL,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              transition_key VARCHAR(160) NOT NULL,
+              transition_kind VARCHAR(40) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              occurred_at DATETIME NOT NULL,
+              metadata_json TEXT,
+              created_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    for sql in (
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_reservation_expires_at ON account_entitlement_grants(reservation_expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_activation_evidence_id ON account_entitlement_grants(activation_evidence_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_account_entitlement_grants_premium_trial_account ON account_entitlement_grants(account_id) WHERE source = 'premium_trial';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_connection_evidence_key ON connection_evidence(evidence_key);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_account_id ON connection_evidence(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_node_id ON connection_evidence(node_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_observed_at ON connection_evidence(observed_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_referred_account ON referral_relationships(referred_account_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_first_payment ON referral_relationships(first_payment_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_referrer_account ON referral_relationships(referrer_account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_hold_until ON referral_relationships(hold_until);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_transition_key ON referral_transitions(transition_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_transition_relationship ON referral_transitions(relationship_id);",
+    ):
+        conn.execute(text(sql))
+
+
+def _ensure_economy_domain_postgres(conn) -> None:
+    for column, ddl in (
+        ("reserved_at", "TIMESTAMP"),
+        ("reservation_expires_at", "TIMESTAMP"),
+        ("activated_at", "TIMESTAMP"),
+        ("duration_days", "INTEGER"),
+        ("activation_evidence_id", "VARCHAR(36)"),
+    ):
+        _postgres_add_column_if_missing(conn, "account_entitlement_grants", column, ddl)
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS connection_evidence (
+              id VARCHAR(36) PRIMARY KEY,
+              account_id VARCHAR(36) NOT NULL,
+              device_id VARCHAR(36),
+              node_id INTEGER NOT NULL,
+              evidence_kind VARCHAR(40) NOT NULL,
+              observed_at TIMESTAMP NOT NULL,
+              evidence_key VARCHAR(160) NOT NULL,
+              created_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_relationships (
+              id VARCHAR(36) PRIMARY KEY,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              source VARCHAR(32) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              review_status VARCHAR(24) NOT NULL DEFAULT 'clear',
+              friend_evidence_id VARCHAR(36),
+              friend_grant_id VARCHAR(36),
+              friend_granted_at TIMESTAMP,
+              first_payment_key VARCHAR(160),
+              first_payment_at TIMESTAMP,
+              hold_until TIMESTAMP,
+              referrer_grant_id VARCHAR(36),
+              referrer_granted_at TIMESTAMP,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS referral_transitions (
+              id VARCHAR(36) PRIMARY KEY,
+              relationship_id VARCHAR(36) NOT NULL,
+              referred_account_id VARCHAR(36) NOT NULL,
+              referrer_account_id VARCHAR(36) NOT NULL,
+              transition_key VARCHAR(160) NOT NULL,
+              transition_kind VARCHAR(40) NOT NULL,
+              status VARCHAR(24) NOT NULL,
+              occurred_at TIMESTAMP NOT NULL,
+              metadata_json TEXT,
+              created_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    for sql in (
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_reservation_expires_at ON account_entitlement_grants(reservation_expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_account_entitlement_grants_activation_evidence_id ON account_entitlement_grants(activation_evidence_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_account_entitlement_grants_premium_trial_account ON account_entitlement_grants(account_id) WHERE source = 'premium_trial';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_connection_evidence_key ON connection_evidence(evidence_key);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_account_id ON connection_evidence(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_device_id ON connection_evidence(device_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_node_id ON connection_evidence(node_id);",
+        "CREATE INDEX IF NOT EXISTS ix_connection_evidence_observed_at ON connection_evidence(observed_at);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_referred_account ON referral_relationships(referred_account_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_relationship_first_payment ON referral_relationships(first_payment_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_referrer_account ON referral_relationships(referrer_account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_relationship_hold_until ON referral_relationships(hold_until);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_transition_key ON referral_transitions(transition_key);",
+        "CREATE INDEX IF NOT EXISTS ix_referral_transition_relationship ON referral_transitions(relationship_id);",
+    ):
+        conn.execute(text(sql))
+
+
+def _ensure_payment_entitlement_claims_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS payment_entitlement_claims (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              provider VARCHAR(32) NOT NULL,
+              order_id VARCHAR(128) NOT NULL,
+              buyer_email_norm VARCHAR(255) NOT NULL,
+              account_id VARCHAR(36),
+              status VARCHAR(32) NOT NULL DEFAULT 'pending_payment',
+              plan_code VARCHAR(32) NOT NULL,
+              duration_days INTEGER NOT NULL,
+              grant_id VARCHAR(36),
+              fallback_gift_card_id INTEGER,
+              paid_at DATETIME,
+              attached_at DATETIME,
+              fulfilled_at DATETIME,
+              reversed_at DATETIME,
+              reversal_reason VARCHAR(64),
+              last_error VARCHAR(120),
+              last_error_at DATETIME,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL,
+              UNIQUE(provider, order_id)
+            );
+            """
+        )
+    )
+    for column, ddl in (
+        ("buyer_email_norm", "VARCHAR(255) NOT NULL DEFAULT 'unavailable@invalid.local'"),
+        ("account_id", "VARCHAR(36)"),
+        ("status", "VARCHAR(32) NOT NULL DEFAULT 'manual_review'"),
+        ("plan_code", "VARCHAR(32) NOT NULL DEFAULT 'unknown'"),
+        ("duration_days", "INTEGER NOT NULL DEFAULT 0"),
+        ("grant_id", "VARCHAR(36)"),
+        ("fallback_gift_card_id", "INTEGER"),
+        ("paid_at", "DATETIME"),
+        ("attached_at", "DATETIME"),
+        ("fulfilled_at", "DATETIME"),
+        ("reversed_at", "DATETIME"),
+        ("reversal_reason", "VARCHAR(64)"),
+        ("last_error", "VARCHAR(120)"),
+        ("last_error_at", "DATETIME"),
+        ("created_at", "DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00'"),
+        ("updated_at", "DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00'"),
+    ):
+        if not _sqlite_column_exists(conn, "payment_entitlement_claims", column):
+            conn.execute(text(f"ALTER TABLE payment_entitlement_claims ADD COLUMN {column} {ddl};"))
+    conn.execute(
+        text(
+            """
+            UPDATE payment_entitlement_claims
+            SET buyer_email_norm = COALESCE(NULLIF(TRIM(buyer_email_norm), ''), 'unavailable@invalid.local'),
+                status = 'manual_review',
+                plan_code = COALESCE(NULLIF(TRIM(plan_code), ''), 'unknown'),
+                duration_days = COALESCE(duration_days, 0),
+                last_error = COALESCE(NULLIF(TRIM(last_error), ''), 'migration_incomplete_claim'),
+                last_error_at = COALESCE(last_error_at, CURRENT_TIMESTAMP),
+                created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+                updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+            WHERE buyer_email_norm IS NULL OR TRIM(buyer_email_norm) = ''
+               OR status IS NULL OR TRIM(status) = ''
+               OR plan_code IS NULL OR TRIM(plan_code) = ''
+               OR duration_days IS NULL OR duration_days <= 0
+               OR created_at IS NULL
+               OR updated_at IS NULL;
+            """
+        )
+    )
+    for sql in (
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_provider_order ON payment_entitlement_claims(provider, order_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_fallback_card ON payment_entitlement_claims(fallback_gift_card_id) WHERE fallback_gift_card_id IS NOT NULL;",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_provider ON payment_entitlement_claims(provider);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_order_id ON payment_entitlement_claims(order_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_email ON payment_entitlement_claims(buyer_email_norm);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_account ON payment_entitlement_claims(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_status ON payment_entitlement_claims(status);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_grant ON payment_entitlement_claims(grant_id);",
+    ):
+        conn.execute(text(sql))
+
+
+def _ensure_external_order_attention_index(conn) -> None:
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_external_orders_status_created_at_id "
+            "ON external_orders(status, created_at, id);"
+        )
+    )
+
+
+def _ensure_payment_entitlement_claims_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS payment_entitlement_claims (
+              id SERIAL PRIMARY KEY,
+              provider VARCHAR(32) NOT NULL,
+              order_id VARCHAR(128) NOT NULL,
+              buyer_email_norm VARCHAR(255) NOT NULL,
+              account_id VARCHAR(36),
+              status VARCHAR(32) NOT NULL DEFAULT 'pending_payment',
+              plan_code VARCHAR(32) NOT NULL,
+              duration_days INTEGER NOT NULL,
+              grant_id VARCHAR(36),
+              fallback_gift_card_id INTEGER,
+              paid_at TIMESTAMP,
+              attached_at TIMESTAMP,
+              fulfilled_at TIMESTAMP,
+              reversed_at TIMESTAMP,
+              reversal_reason VARCHAR(64),
+              last_error VARCHAR(120),
+              last_error_at TIMESTAMP,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL,
+              UNIQUE(provider, order_id)
+            );
+            """
+        )
+    )
+    for column, ddl in (
+        ("buyer_email_norm", "VARCHAR(255) NOT NULL DEFAULT 'unavailable@invalid.local'"),
+        ("account_id", "VARCHAR(36)"),
+        ("status", "VARCHAR(32) NOT NULL DEFAULT 'manual_review'"),
+        ("plan_code", "VARCHAR(32) NOT NULL DEFAULT 'unknown'"),
+        ("duration_days", "INTEGER NOT NULL DEFAULT 0"),
+        ("grant_id", "VARCHAR(36)"),
+        ("fallback_gift_card_id", "INTEGER"),
+        ("paid_at", "TIMESTAMP"),
+        ("attached_at", "TIMESTAMP"),
+        ("fulfilled_at", "TIMESTAMP"),
+        ("reversed_at", "TIMESTAMP"),
+        ("reversal_reason", "VARCHAR(64)"),
+        ("last_error", "VARCHAR(120)"),
+        ("last_error_at", "TIMESTAMP"),
+        ("created_at", "TIMESTAMP NOT NULL DEFAULT TIMESTAMP '1970-01-01 00:00:00'"),
+        ("updated_at", "TIMESTAMP NOT NULL DEFAULT TIMESTAMP '1970-01-01 00:00:00'"),
+    ):
+        _postgres_add_column_if_missing(conn, "payment_entitlement_claims", column, ddl)
+    conn.execute(
+        text(
+            """
+            UPDATE payment_entitlement_claims
+            SET buyer_email_norm = COALESCE(NULLIF(BTRIM(buyer_email_norm), ''), 'unavailable@invalid.local'),
+                status = 'manual_review',
+                plan_code = COALESCE(NULLIF(BTRIM(plan_code), ''), 'unknown'),
+                duration_days = COALESCE(duration_days, 0),
+                last_error = COALESCE(NULLIF(BTRIM(last_error), ''), 'migration_incomplete_claim'),
+                last_error_at = COALESCE(last_error_at, CURRENT_TIMESTAMP),
+                created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+                updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+            WHERE buyer_email_norm IS NULL OR BTRIM(buyer_email_norm) = ''
+               OR status IS NULL OR BTRIM(status) = ''
+               OR plan_code IS NULL OR BTRIM(plan_code) = ''
+               OR duration_days IS NULL OR duration_days <= 0
+               OR created_at IS NULL
+               OR updated_at IS NULL;
+            """
+        )
+    )
+    for column in (
+        "buyer_email_norm",
+        "status",
+        "plan_code",
+        "duration_days",
+        "created_at",
+        "updated_at",
+    ):
+        if not _postgres_column_is_not_null(conn, "payment_entitlement_claims", column):
+            conn.execute(
+                text(
+                    f"ALTER TABLE payment_entitlement_claims "
+                    f"ALTER COLUMN {_postgres_ident(column)} SET NOT NULL;"
+                )
+            )
+    for sql in (
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_provider_order ON payment_entitlement_claims(provider, order_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_entitlement_claim_fallback_card ON payment_entitlement_claims(fallback_gift_card_id) WHERE fallback_gift_card_id IS NOT NULL;",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_provider ON payment_entitlement_claims(provider);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_order_id ON payment_entitlement_claims(order_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_email ON payment_entitlement_claims(buyer_email_norm);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_account ON payment_entitlement_claims(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_status ON payment_entitlement_claims(status);",
+        "CREATE INDEX IF NOT EXISTS ix_payment_entitlement_claim_grant ON payment_entitlement_claims(grant_id);",
+    ):
+        conn.execute(text(sql))
+
+
 def _postgres_add_column_if_missing(conn, table: str, column: str, ddl: str) -> bool:
     if _postgres_column_exists(conn, table, column):
         return False
     conn.execute(text(f"ALTER TABLE {_postgres_ident(table)} ADD COLUMN {_postgres_ident(column)} {ddl};"))
     return True
+
+
+def _ensure_support_attachment_binding_postgres(conn) -> None:
+    _postgres_add_column_if_missing(conn, "support_attachments", "ticket_id", "INTEGER")
+    _postgres_add_column_if_missing(conn, "support_attachments", "message_id", "INTEGER")
+    _postgres_add_column_if_missing(conn, "support_attachments", "attached_at", "TIMESTAMP")
+    _postgres_add_column_if_missing(conn, "support_attachments", "expires_at", "TIMESTAMP")
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_attachments_ticket_id ON support_attachments(ticket_id);"))
+    conn.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_support_attachments_message_id "
+            "ON support_attachments(message_id);"
+        )
+    )
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_attachments_expires_at ON support_attachments(expires_at);"))
+
+
+_FREE_PROFILE_USER_COLUMNS = (
+    ("free_profile_state", "VARCHAR(32) NOT NULL DEFAULT 'standard'"),
+    ("free_profile_active_role", "VARCHAR(32) NOT NULL DEFAULT 'free_standard'"),
+    ("free_profile_source", "VARCHAR(64) NOT NULL DEFAULT 'legacy_backfill'"),
+    ("free_profile_state_changed_at", "DATETIME"),
+    ("free_profile_job_id", "INTEGER"),
+    ("free_profile_error_code", "VARCHAR(64)"),
+    ("free_profile_standard_node_code", "VARCHAR(32)"),
+    ("free_profile_soft_node_code", "VARCHAR(32)"),
+    ("free_profile_observed_bytes", "BIGINT NOT NULL DEFAULT 0"),
+    ("free_profile_observed_at", "DATETIME"),
+    ("free_profile_observation_source", "VARCHAR(64)"),
+)
+
+_FREE_PROFILE_JOB_COLUMNS = (
+    ("idempotency_key", "VARCHAR(160)"),
+    ("lock_token", "VARCHAR(64)"),
+    ("last_error_code", "VARCHAR(64)"),
+    ("replacement_key_uuid", "VARCHAR(36)"),
+    ("completed_at", "DATETIME"),
+    ("manual_review_at", "DATETIME"),
+)
+
+
+def _sqlite_table_exists(conn, table: str) -> bool:
+    return bool(
+        conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name;"),
+            {"name": str(table)},
+        ).fetchone()
+    )
+
+
+def _ensure_free_profile_schema_sqlite(conn) -> None:
+    if _sqlite_table_exists(conn, "users"):
+        for column, ddl in _FREE_PROFILE_USER_COLUMNS:
+            if not _sqlite_column_exists(conn, "users", column):
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {column} {ddl};"))
+        conn.execute(
+            text(
+                """
+                UPDATE users
+                SET free_profile_state = COALESCE(NULLIF(trim(free_profile_state), ''), 'standard'),
+                    free_profile_active_role = COALESCE(NULLIF(trim(free_profile_active_role), ''), 'free_standard'),
+                    free_profile_source = COALESCE(NULLIF(trim(free_profile_source), ''), 'legacy_backfill'),
+                    free_profile_observed_bytes = COALESCE(free_profile_observed_bytes, 0);
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_free_profile_job_id ON users(free_profile_job_id);"))
+
+    if _sqlite_table_exists(conn, "nodes"):
+        node_role_added = False
+        if not _sqlite_column_exists(conn, "nodes", "access_role"):
+            conn.execute(text("ALTER TABLE nodes ADD COLUMN access_role VARCHAR(32) NOT NULL DEFAULT 'paid';"))
+            node_role_added = True
+        if not _sqlite_column_exists(conn, "nodes", "access_role_legacy"):
+            conn.execute(text("ALTER TABLE nodes ADD COLUMN access_role_legacy VARCHAR(32);"))
+        if not node_role_added:
+            conn.execute(
+                text(
+                    """
+                    UPDATE nodes
+                    SET access_role_legacy = access_role
+                    WHERE access_role_legacy IS NULL
+                      AND access_role IS NOT NULL
+                      AND trim(access_role) <> ''
+                      AND access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab');
+                    """
+                )
+            )
+        node_role_where = (
+            "1 = 1"
+            if node_role_added
+            else "access_role IS NULL OR trim(access_role) = '' "
+            "OR access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab')"
+        )
+        conn.execute(
+            text(
+                f"""
+                UPDATE nodes
+                SET access_role = CASE
+                    WHEN instr(lower(COALESCE(code, '')), 'operator') > 0
+                      OR substr(lower(COALESCE(code, '')), -4) IN ('_lab', '-lab') THEN 'operator_lab'
+                    WHEN instr(lower(COALESCE(code, '')), 'free') > 0
+                      AND instr(lower(COALESCE(code, '')), 'soft') > 0 THEN 'free_soft'
+                    WHEN instr(lower(COALESCE(code, '')), 'free') > 0 THEN 'free_standard'
+                    ELSE 'paid'
+                END
+                WHERE {node_role_where};
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_access_role ON nodes(access_role);"))
+
+    if _sqlite_table_exists(conn, "node_provisioning_jobs"):
+        for column, ddl in _FREE_PROFILE_JOB_COLUMNS:
+            if not _sqlite_column_exists(conn, "node_provisioning_jobs", column):
+                conn.execute(text(f"ALTER TABLE node_provisioning_jobs ADD COLUMN {column} {ddl};"))
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_node_provisioning_jobs_idempotency_key "
+                "ON node_provisioning_jobs(idempotency_key);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_lock_token "
+                "ON node_provisioning_jobs(lock_token);"
+            )
+        )
+
+
+def _ensure_free_profile_schema_postgres(conn) -> None:
+    for column, ddl in _FREE_PROFILE_USER_COLUMNS:
+        _postgres_add_column_if_missing(conn, "users", column, ddl.replace("DATETIME", "TIMESTAMP"))
+    node_role_added = _postgres_add_column_if_missing(
+        conn,
+        "nodes",
+        "access_role",
+        "VARCHAR(32) NOT NULL DEFAULT 'paid'",
+    )
+    _postgres_add_column_if_missing(conn, "nodes", "access_role_legacy", "VARCHAR(32)")
+    for column, ddl in _FREE_PROFILE_JOB_COLUMNS:
+        _postgres_add_column_if_missing(
+            conn,
+            "node_provisioning_jobs",
+            column,
+            ddl.replace("DATETIME", "TIMESTAMP"),
+        )
+
+    if not node_role_added:
+        conn.execute(
+            text(
+                """
+                UPDATE nodes
+                SET access_role_legacy = access_role
+                WHERE access_role_legacy IS NULL
+                  AND access_role IS NOT NULL
+                  AND btrim(access_role) <> ''
+                  AND access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab');
+                """
+            )
+        )
+    conn.execute(
+        text(
+            """
+            UPDATE users
+            SET free_profile_state = COALESCE(NULLIF(btrim(free_profile_state), ''), 'standard'),
+                free_profile_active_role = COALESCE(NULLIF(btrim(free_profile_active_role), ''), 'free_standard'),
+                free_profile_source = COALESCE(NULLIF(btrim(free_profile_source), ''), 'legacy_backfill'),
+                free_profile_observed_bytes = COALESCE(free_profile_observed_bytes, 0);
+            """
+        )
+    )
+    conn.execute(
+        text(
+            f"""
+            UPDATE nodes
+            SET access_role = CASE
+                WHEN position('operator' in lower(COALESCE(code, ''))) > 0
+                  OR right(lower(COALESCE(code, '')), 4) IN ('_lab', '-lab') THEN 'operator_lab'
+                WHEN position('free' in lower(COALESCE(code, ''))) > 0
+                  AND position('soft' in lower(COALESCE(code, ''))) > 0 THEN 'free_soft'
+                WHEN position('free' in lower(COALESCE(code, ''))) > 0 THEN 'free_standard'
+                ELSE 'paid'
+            END
+            WHERE {
+                'TRUE'
+                if node_role_added
+                else "access_role IS NULL OR btrim(access_role) = '' "
+                "OR access_role NOT IN ('free_standard', 'free_soft', 'paid', 'operator_lab')"
+            };
+            """
+        )
+    )
+    for column, default in (
+        ("free_profile_state", "'standard'"),
+        ("free_profile_active_role", "'free_standard'"),
+        ("free_profile_source", "'legacy_backfill'"),
+        ("free_profile_observed_bytes", "0"),
+    ):
+        conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET DEFAULT {default};"))
+        conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET NOT NULL;"))
+    conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET DEFAULT 'paid';"))
+    conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET NOT NULL;"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_free_profile_job_id ON users(free_profile_job_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_access_role ON nodes(access_role);"))
+    conn.execute(
+        text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_node_provisioning_jobs_idempotency_key "
+            "ON node_provisioning_jobs(idempotency_key);"
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_lock_token "
+            "ON node_provisioning_jobs(lock_token);"
+        )
+    )
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -1005,6 +1621,651 @@ def _ensure_admin_ops_domain_postgres(conn) -> None:
         conn.execute(text(sql))
 
 
+def _ensure_ru_probe_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_runs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              run_id VARCHAR(36) NOT NULL,
+              schema_version INTEGER NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              probe_host_id VARCHAR(64) NOT NULL,
+              probe_host_label VARCHAR(128) NOT NULL,
+              probe_public_ip VARCHAR(64),
+              runner_version VARCHAR(64) NOT NULL,
+              started_at DATETIME NOT NULL,
+              finished_at DATETIME NOT NULL,
+              received_at DATETIME NOT NULL,
+              manifest_revision VARCHAR(64) NOT NULL,
+              execution_status VARCHAR(32) NOT NULL,
+              evidence_code VARCHAR(64),
+              environment_verdict VARCHAR(32) NOT NULL,
+              release_verdict VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              google_reachable BOOLEAN,
+              xhttp_alive BOOLEAN,
+              hysteria_alive BOOLEAN,
+              server_reason VARCHAR(500),
+              server_summary VARCHAR(1000),
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              retention_hold BOOLEAN NOT NULL DEFAULT FALSE,
+              retention_hold_reason VARCHAR(500),
+              retention_held_at DATETIME,
+              CONSTRAINT uq_ru_probe_runs_run_id UNIQUE (run_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_target_results (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              run_db_id INTEGER NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              target_kind VARCHAR(32) NOT NULL,
+              scope VARCHAR(32) NOT NULL,
+              node_code VARCHAR(32),
+              endpoint_fingerprint VARCHAR(64) NOT NULL,
+              endpoint_host VARCHAR(255) NOT NULL,
+              endpoint_port INTEGER NOT NULL,
+              endpoint_sni VARCHAR(255),
+              requested_address_families_json JSON NOT NULL,
+              transport_metadata_json JSON NOT NULL,
+              transport_profile VARCHAR(64) NOT NULL,
+              probe_mode VARCHAR(64) NOT NULL,
+              http_path VARCHAR(512),
+              min_body_bytes INTEGER,
+              local_probe_profile_id VARCHAR(128),
+              observed_at DATETIME NOT NULL,
+              overall_status VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              dns_status VARCHAR(32) NOT NULL,
+              dns_latency_ms INTEGER,
+              tcp_status VARCHAR(32) NOT NULL,
+              tcp_latency_ms INTEGER,
+              tls_status VARCHAR(32) NOT NULL,
+              tls_latency_ms INTEGER,
+              http_large_body_status VARCHAR(32) NOT NULL,
+              http_large_body_latency_ms INTEGER,
+              transport_handshake_status VARCHAR(32) NOT NULL,
+              transport_handshake_latency_ms INTEGER,
+              ipv4_status VARCHAR(32) NOT NULL,
+              ipv6_status VARCHAR(32) NOT NULL,
+              reported_transport_handshake_status VARCHAR(32) NOT NULL,
+              reported_transport_classification VARCHAR(64) NOT NULL,
+              server_reason_code VARCHAR(64),
+              server_detail VARCHAR(500),
+              CONSTRAINT fk_ru_probe_target_results_run FOREIGN KEY (run_db_id) REFERENCES ru_probe_runs(id) ON DELETE CASCADE,
+              CONSTRAINT uq_ru_probe_target_run_target UNIQUE (run_db_id, target_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_uploader_heartbeats (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              probe_host_id VARCHAR(64) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              received_at DATETIME NOT NULL,
+              service_version VARCHAR(64) NOT NULL,
+              pending_count INTEGER NOT NULL DEFAULT 0,
+              blocked_count INTEGER NOT NULL DEFAULT 0,
+              quarantine_count INTEGER NOT NULL DEFAULT 0,
+              oldest_pending_at DATETIME,
+              archive_write_ok BOOLEAN NOT NULL DEFAULT FALSE,
+              disk_free_bytes BIGINT,
+              disk_state VARCHAR(32) NOT NULL,
+              last_error_code VARCHAR(64),
+              ingest_key_id VARCHAR(128) NOT NULL,
+              CONSTRAINT uq_ru_probe_uploader_heartbeat_host_observed UNIQUE (probe_host_id, observed_at)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS internal_ingest_nonces (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              key_scope VARCHAR(64) NOT NULL,
+              key_id VARCHAR(128) NOT NULL,
+              nonce_hash VARCHAR(64) NOT NULL,
+              request_path VARCHAR(512) NOT NULL,
+              request_timestamp DATETIME NOT NULL,
+              body_sha256 VARCHAR(64) NOT NULL,
+              expires_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_internal_ingest_nonce_scope_key_hash UNIQUE (key_scope, key_id, nonce_hash)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_finished_at ON ru_probe_runs(finished_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_release_verdict ON ru_probe_runs(release_verdict);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_current_eligible ON ru_probe_runs(current_eligible);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_probe_host_label ON ru_probe_runs(probe_host_label);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_code ON ru_probe_target_results(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_target_kind ON ru_probe_target_results(target_kind);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_overall_status ON ru_probe_target_results(overall_status);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_observed_at ON ru_probe_target_results(node_code, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_run_node ON ru_probe_target_results(run_db_id, node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_received_at ON ru_probe_uploader_heartbeats(received_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_probe_host_id ON ru_probe_uploader_heartbeats(probe_host_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_host_observed_at ON ru_probe_uploader_heartbeats(probe_host_id, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_internal_ingest_nonces_expires_at ON internal_ingest_nonces(expires_at);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_ru_probe_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_runs (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              run_id VARCHAR(36) NOT NULL,
+              schema_version INTEGER NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              probe_host_id VARCHAR(64) NOT NULL,
+              probe_host_label VARCHAR(128) NOT NULL,
+              probe_public_ip VARCHAR(64),
+              runner_version VARCHAR(64) NOT NULL,
+              started_at TIMESTAMPTZ NOT NULL,
+              finished_at TIMESTAMPTZ NOT NULL,
+              received_at TIMESTAMPTZ NOT NULL,
+              manifest_revision VARCHAR(64) NOT NULL,
+              execution_status VARCHAR(32) NOT NULL,
+              evidence_code VARCHAR(64),
+              environment_verdict VARCHAR(32) NOT NULL,
+              release_verdict VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              google_reachable BOOLEAN,
+              xhttp_alive BOOLEAN,
+              hysteria_alive BOOLEAN,
+              server_reason VARCHAR(500),
+              server_summary VARCHAR(1000),
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              retention_hold BOOLEAN NOT NULL DEFAULT FALSE,
+              retention_hold_reason VARCHAR(500),
+              retention_held_at TIMESTAMPTZ,
+              CONSTRAINT uq_ru_probe_runs_run_id UNIQUE (run_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_target_results (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              run_db_id INTEGER NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              target_kind VARCHAR(32) NOT NULL,
+              scope VARCHAR(32) NOT NULL,
+              node_code VARCHAR(32),
+              endpoint_fingerprint VARCHAR(64) NOT NULL,
+              endpoint_host VARCHAR(255) NOT NULL,
+              endpoint_port INTEGER NOT NULL,
+              endpoint_sni VARCHAR(255),
+              requested_address_families_json JSONB NOT NULL,
+              transport_metadata_json JSONB NOT NULL,
+              transport_profile VARCHAR(64) NOT NULL,
+              probe_mode VARCHAR(64) NOT NULL,
+              http_path VARCHAR(512),
+              min_body_bytes INTEGER,
+              local_probe_profile_id VARCHAR(128),
+              observed_at TIMESTAMPTZ NOT NULL,
+              overall_status VARCHAR(32) NOT NULL,
+              current_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+              ineligible_reason VARCHAR(64),
+              dns_status VARCHAR(32) NOT NULL,
+              dns_latency_ms INTEGER,
+              tcp_status VARCHAR(32) NOT NULL,
+              tcp_latency_ms INTEGER,
+              tls_status VARCHAR(32) NOT NULL,
+              tls_latency_ms INTEGER,
+              http_large_body_status VARCHAR(32) NOT NULL,
+              http_large_body_latency_ms INTEGER,
+              transport_handshake_status VARCHAR(32) NOT NULL,
+              transport_handshake_latency_ms INTEGER,
+              ipv4_status VARCHAR(32) NOT NULL,
+              ipv6_status VARCHAR(32) NOT NULL,
+              reported_transport_handshake_status VARCHAR(32) NOT NULL,
+              reported_transport_classification VARCHAR(64) NOT NULL,
+              server_reason_code VARCHAR(64),
+              server_detail VARCHAR(500),
+              CONSTRAINT fk_ru_probe_target_results_run
+                FOREIGN KEY (run_db_id) REFERENCES ru_probe_runs(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_ru_probe_target_run_target
+                UNIQUE (run_db_id, target_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS ru_probe_uploader_heartbeats (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              probe_host_id VARCHAR(64) NOT NULL,
+              observed_at TIMESTAMPTZ NOT NULL,
+              received_at TIMESTAMPTZ NOT NULL,
+              service_version VARCHAR(64) NOT NULL,
+              pending_count INTEGER NOT NULL DEFAULT 0,
+              blocked_count INTEGER NOT NULL DEFAULT 0,
+              quarantine_count INTEGER NOT NULL DEFAULT 0,
+              oldest_pending_at TIMESTAMPTZ,
+              archive_write_ok BOOLEAN NOT NULL DEFAULT FALSE,
+              disk_free_bytes BIGINT,
+              disk_state VARCHAR(32) NOT NULL,
+              last_error_code VARCHAR(64),
+              ingest_key_id VARCHAR(128) NOT NULL,
+              CONSTRAINT uq_ru_probe_uploader_heartbeat_host_observed
+                UNIQUE (probe_host_id, observed_at)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS internal_ingest_nonces (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              key_scope VARCHAR(64) NOT NULL,
+              key_id VARCHAR(128) NOT NULL,
+              nonce_hash VARCHAR(64) NOT NULL,
+              request_path VARCHAR(512) NOT NULL,
+              request_timestamp TIMESTAMPTZ NOT NULL,
+              body_sha256 VARCHAR(64) NOT NULL,
+              expires_at TIMESTAMPTZ NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_internal_ingest_nonce_scope_key_hash
+                UNIQUE (key_scope, key_id, nonce_hash)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_finished_at ON ru_probe_runs(finished_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_release_verdict ON ru_probe_runs(release_verdict);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_current_eligible ON ru_probe_runs(current_eligible);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_runs_probe_host_label ON ru_probe_runs(probe_host_label);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_code ON ru_probe_target_results(node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_target_kind ON ru_probe_target_results(target_kind);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_overall_status ON ru_probe_target_results(overall_status);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_node_observed_at ON ru_probe_target_results(node_code, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_target_results_run_node ON ru_probe_target_results(run_db_id, node_code);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_received_at ON ru_probe_uploader_heartbeats(received_at);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_probe_host_id ON ru_probe_uploader_heartbeats(probe_host_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ru_probe_uploader_heartbeats_host_observed_at ON ru_probe_uploader_heartbeats(probe_host_id, observed_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_internal_ingest_nonces_expires_at ON internal_ingest_nonces(expires_at);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_release_evidence_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_candidates (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id VARCHAR(64) NOT NULL,
+              component VARCHAR(64) NOT NULL,
+              version VARCHAR(128) NOT NULL,
+              revision VARCHAR(128) NOT NULL,
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              canonical_descriptor_json TEXT NOT NULL,
+              descriptor_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_release_candidates_candidate_id UNIQUE (candidate_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_origin_evidence (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              candidate_id VARCHAR(64) NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              check_name VARCHAR(128) NOT NULL,
+              status VARCHAR(32) NOT NULL,
+              evidence_sha256 VARCHAR(64) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              detail_json TEXT NOT NULL,
+              ru_probe_run_id INTEGER,
+              imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_release_origin_evidence_candidate FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id) ON DELETE RESTRICT,
+              CONSTRAINT fk_release_origin_evidence_ru_probe_run FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id) ON DELETE RESTRICT,
+              CONSTRAINT uq_release_origin_evidence_hash UNIQUE (evidence_sha256)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_imported_at ON release_candidates(imported_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_component ON release_candidates(component);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_candidate_origin ON release_origin_evidence(candidate_id, origin);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_observed_at ON release_origin_evidence(observed_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_ru_probe_run_id ON release_origin_evidence(ru_probe_run_id);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_release_evidence_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_candidates (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              candidate_id VARCHAR(64) NOT NULL,
+              component VARCHAR(64) NOT NULL,
+              version VARCHAR(128) NOT NULL,
+              revision VARCHAR(128) NOT NULL,
+              artifact_sha256 VARCHAR(64) NOT NULL,
+              canonical_descriptor_json TEXT NOT NULL,
+              descriptor_sha256 VARCHAR(64) NOT NULL,
+              ingest_key_id VARCHAR(128) NOT NULL,
+              imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_release_candidates_candidate_id
+                UNIQUE (candidate_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS release_origin_evidence (
+              id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              candidate_id VARCHAR(64) NOT NULL,
+              origin VARCHAR(16) NOT NULL,
+              check_name VARCHAR(128) NOT NULL,
+              status VARCHAR(32) NOT NULL,
+              evidence_sha256 VARCHAR(64) NOT NULL,
+              observed_at TIMESTAMPTZ NOT NULL,
+              detail_json TEXT NOT NULL,
+              ru_probe_run_id INTEGER,
+              imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_release_origin_evidence_candidate
+                FOREIGN KEY (candidate_id) REFERENCES release_candidates(candidate_id)
+                ON DELETE RESTRICT,
+              CONSTRAINT fk_release_origin_evidence_ru_probe_run
+                FOREIGN KEY (ru_probe_run_id) REFERENCES ru_probe_runs(id)
+                ON DELETE RESTRICT,
+              CONSTRAINT uq_release_origin_evidence_hash
+                UNIQUE (evidence_sha256)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_imported_at ON release_candidates(imported_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_candidates_component ON release_candidates(component);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_candidate_origin ON release_origin_evidence(candidate_id, origin);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_observed_at ON release_origin_evidence(observed_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_origin_evidence_ru_probe_run_id ON release_origin_evidence(ru_probe_run_id);",
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_action_intents (
+              id VARCHAR(36) NOT NULL PRIMARY KEY,
+              actor_tg_id BIGINT NOT NULL,
+              action VARCHAR(64) NOT NULL,
+              target_type VARCHAR(32) NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              risk_level VARCHAR(8) NOT NULL,
+              executor_kind VARCHAR(16) NOT NULL,
+              canonical_payload_json TEXT NOT NULL,
+              payload_hash VARCHAR(64) NOT NULL,
+              preview_snapshot_json TEXT NOT NULL,
+              snapshot_hash VARCHAR(64) NOT NULL,
+              confirmation_challenge_kind VARCHAR(32) NOT NULL,
+              confirmation_challenge_hash VARCHAR(64) NOT NULL,
+              entity_version_hash VARCHAR(64) NOT NULL,
+              status VARCHAR(16) NOT NULL DEFAULT 'prepared',
+              expires_at DATETIME NOT NULL,
+              consumed_at DATETIME,
+              client_idempotency_key VARCHAR(36),
+              result_code VARCHAR(64),
+              result_summary_json TEXT,
+              result_hash VARCHAR(64),
+              external_error_hash VARCHAR(64),
+              admin_audit_id INTEGER,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_admin_action_intents_idempotency UNIQUE (client_idempotency_key),
+              CONSTRAINT fk_admin_action_intents_audit FOREIGN KEY (admin_audit_id) REFERENCES admin_audit(id) ON DELETE RESTRICT
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_actor ON admin_action_intents(actor_tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_status ON admin_action_intents(status);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_expires_at ON admin_action_intents(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_action ON admin_action_intents(action);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
+    ]:
+        conn.execute(text(sql))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_recipient_plan (
+              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              intent_id VARCHAR(36) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              tg_id BIGINT NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_plan_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_plan_intent_ordinal
+                UNIQUE (intent_id, ordinal),
+              CONSTRAINT uq_admin_broadcast_plan_intent_tg_id
+                UNIQUE (intent_id, tg_id),
+              CONSTRAINT ck_admin_broadcast_plan_ordinal
+                CHECK (ordinal >= 0 AND ordinal < 1000),
+              CONSTRAINT ck_admin_broadcast_plan_tg_id CHECK (tg_id > 0)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_plan_intent "
+            "ON admin_broadcast_recipient_plan(intent_id);"
+        )
+    )
+    for sql in [
+        "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_insert;",
+        """
+        CREATE TRIGGER trg_user_nodes_guard_mapping_insert
+        BEFORE INSERT ON user_nodes
+        WHEN NOT EXISTS (
+          SELECT 1
+          FROM nodes
+          WHERE id = NEW.node_id
+            AND COALESCE(enabled, 0) = 1
+            AND COALESCE(accepting_new_clients, 0) = 1
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'user_node_target_unavailable');
+        END;
+        """,
+        "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_update;",
+        """
+        CREATE TRIGGER trg_user_nodes_guard_mapping_update
+        BEFORE UPDATE ON user_nodes
+        WHEN OLD.node_id != NEW.node_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM nodes
+          WHERE id = NEW.node_id
+            AND COALESCE(enabled, 0) = 1
+            AND COALESCE(accepting_new_clients, 0) = 1
+        )
+        BEGIN
+          SELECT RAISE(ABORT, 'user_node_target_unavailable');
+        END;
+        """,
+    ]:
+        conn.execute(text(sql))
+
+
+def _ensure_admin_action_intent_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_action_intents (
+              id VARCHAR(36) NOT NULL PRIMARY KEY,
+              actor_tg_id BIGINT NOT NULL,
+              action VARCHAR(64) NOT NULL,
+              target_type VARCHAR(32) NOT NULL,
+              target_id VARCHAR(128) NOT NULL,
+              risk_level VARCHAR(8) NOT NULL,
+              executor_kind VARCHAR(16) NOT NULL,
+              canonical_payload_json TEXT NOT NULL,
+              payload_hash VARCHAR(64) NOT NULL,
+              preview_snapshot_json TEXT NOT NULL,
+              snapshot_hash VARCHAR(64) NOT NULL,
+              confirmation_challenge_kind VARCHAR(32) NOT NULL,
+              confirmation_challenge_hash VARCHAR(64) NOT NULL,
+              entity_version_hash VARCHAR(64) NOT NULL,
+              status VARCHAR(16) NOT NULL DEFAULT 'prepared',
+              expires_at TIMESTAMPTZ NOT NULL,
+              consumed_at TIMESTAMPTZ,
+              client_idempotency_key VARCHAR(36),
+              result_code VARCHAR(64),
+              result_summary_json TEXT,
+              result_hash VARCHAR(64),
+              external_error_hash VARCHAR(64),
+              admin_audit_id INTEGER,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_admin_action_intents_idempotency UNIQUE (client_idempotency_key),
+              CONSTRAINT fk_admin_action_intents_audit
+                FOREIGN KEY (admin_audit_id) REFERENCES admin_audit(id)
+                ON DELETE RESTRICT
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_actor ON admin_action_intents(actor_tg_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_status ON admin_action_intents(status);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_expires_at ON admin_action_intents(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_action ON admin_action_intents(action);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_action_intents_target ON admin_action_intents(target_type, target_id);",
+    ]:
+        conn.execute(text(sql))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_recipient_plan (
+              id BIGSERIAL NOT NULL PRIMARY KEY,
+              intent_id VARCHAR(36) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              tg_id BIGINT NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_plan_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_plan_intent_ordinal
+                UNIQUE (intent_id, ordinal),
+              CONSTRAINT uq_admin_broadcast_plan_intent_tg_id
+                UNIQUE (intent_id, tg_id),
+              CONSTRAINT ck_admin_broadcast_plan_ordinal
+                CHECK (ordinal >= 0 AND ordinal < 1000),
+              CONSTRAINT ck_admin_broadcast_plan_tg_id CHECK (tg_id > 0)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_plan_intent "
+            "ON admin_broadcast_recipient_plan(intent_id);"
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE OR REPLACE FUNCTION pokrov_guard_user_node_mapping()
+            RETURNS trigger
+            LANGUAGE plpgsql
+            AS $$
+            DECLARE
+              target_available BOOLEAN;
+            BEGIN
+              -- 1347373906 is the stable POKR namespace shared with the action core.
+              IF TG_OP = 'UPDATE' THEN
+                IF OLD.node_id IS NOT DISTINCT FROM NEW.node_id THEN
+                  RETURN NEW;
+                END IF;
+                PERFORM pg_advisory_xact_lock(
+                  1347373906,
+                  LEAST(OLD.node_id, NEW.node_id)
+                );
+                PERFORM pg_advisory_xact_lock(
+                  1347373906,
+                  GREATEST(OLD.node_id, NEW.node_id)
+                );
+              ELSE
+                PERFORM pg_advisory_xact_lock(1347373906, NEW.node_id);
+              END IF;
+
+              SELECT (enabled IS TRUE AND accepting_new_clients IS TRUE)
+              INTO target_available
+              FROM nodes
+              WHERE id = NEW.node_id
+              FOR UPDATE;
+
+              IF NOT FOUND OR NOT COALESCE(target_available, FALSE) THEN
+                RAISE EXCEPTION 'user_node_target_unavailable'
+                  USING ERRCODE = '23514';
+              END IF;
+              RETURN NEW;
+            END;
+            $$;
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping ON user_nodes;"
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TRIGGER trg_user_nodes_guard_mapping
+            BEFORE INSERT OR UPDATE ON user_nodes
+            FOR EACH ROW
+            EXECUTE FUNCTION pokrov_guard_user_node_mapping();
+            """
+        )
+    )
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -1017,6 +2278,7 @@ def run_migrations(engine: Engine) -> None:
     if dialect and dialect != "sqlite":
         return
 
+    _configure_sqlite_foreign_keys(engine)
     with engine.begin() as conn:
         # users table: add columns if missing
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")).fetchone():
@@ -1242,6 +2504,7 @@ def run_migrations(engine: Engine) -> None:
         # support_tickets table: backfill columns for legacy DBs if table already exists
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets';")).fetchone():
             wanted_cols = [
+                ("account_id", "VARCHAR(36)"),
                 ("status", "VARCHAR(20) DEFAULT 'open'"),
                 ("subject", "VARCHAR(200)"),
                 ("assigned_admin_tg_id", "BIGINT"),
@@ -1274,6 +2537,7 @@ def run_migrations(engine: Engine) -> None:
 
         # Ticket indexes (safe for both new and old DBs).
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_user_tg_id ON support_tickets(user_tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_account_id ON support_tickets(account_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_status ON support_tickets(status);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_updated_at ON support_tickets(updated_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_ticket_messages_ticket_id ON support_ticket_messages(ticket_id);"))
@@ -1289,6 +2553,42 @@ def run_migrations(engine: Engine) -> None:
             for col, ddl in wanted_cols:
                 if not _sqlite_column_exists(conn, "support_ticket_messages", col):
                     conn.execute(text(f"ALTER TABLE support_ticket_messages ADD COLUMN {col} {ddl};"))
+
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_attachments';")).fetchone():
+            wanted_cols = [
+                ("owner_account_id", "VARCHAR(36)"),
+                ("ticket_id", "INTEGER"),
+                ("message_id", "INTEGER"),
+                ("attached_at", "DATETIME"),
+                ("expires_at", "DATETIME"),
+            ]
+            for col, ddl in wanted_cols:
+                if not _sqlite_column_exists(conn, "support_attachments", col):
+                    conn.execute(text(f"ALTER TABLE support_attachments ADD COLUMN {col} {ddl};"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_owner_account_id "
+                "ON support_attachments(owner_account_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_ticket_id "
+                "ON support_attachments(ticket_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_support_attachments_message_id "
+                "ON support_attachments(message_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_expires_at "
+                "ON support_attachments(expires_at);"
+            )
+        )
 
         # nodes: runtime health fields for soft LB + fallback.
         if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='nodes';")).fetchone():
@@ -1454,6 +2754,11 @@ def run_migrations(engine: Engine) -> None:
 
         _ensure_capacity_domain_sqlite(conn)
         _ensure_admin_ops_domain_sqlite(conn)
+        _ensure_economy_domain_sqlite(conn)
+        _ensure_payment_entitlement_claims_sqlite(conn)
+        _ensure_ru_probe_domain_sqlite(conn)
+        _ensure_release_evidence_domain_sqlite(conn)
+        _ensure_admin_action_intent_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -1743,6 +3048,7 @@ def run_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
+        _ensure_external_order_attention_index(conn)
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_orders_provider_order "
@@ -2100,6 +3406,7 @@ def run_migrations(engine: Engine) -> None:
         # already accepts the newer POKROV-XXXX-XXXX format without table rebuild.
 
         # Seed default retention templates for admin editing (idempotent).
+        _ensure_free_profile_schema_sqlite(conn)
         _seed_retention_templates(conn, dialect="sqlite")
         _seed_plan_catalog(conn, dialect="sqlite")
 
@@ -2147,6 +3454,16 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_status ON feedback_entries(status);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_created_at ON feedback_entries(created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_feedback_entries_review_id ON feedback_entries(review_id);"))
+        _postgres_add_column_if_missing(conn, "support_tickets", "account_id", "VARCHAR(36)")
+        _postgres_add_column_if_missing(conn, "support_attachments", "owner_account_id", "VARCHAR(36)")
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_support_tickets_account_id ON support_tickets(account_id);"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_support_attachments_owner_account_id "
+                "ON support_attachments(owner_account_id);"
+            )
+        )
+        _ensure_support_attachment_binding_postgres(conn)
         _postgres_add_column_if_missing(conn, "users", "referral_code", "VARCHAR(10)")
         _postgres_add_column_if_missing(conn, "users", "account_id", "VARCHAR(36)")
         _postgres_add_column_if_missing(conn, "users", "first_purchase_done", "BOOLEAN DEFAULT FALSE")
@@ -2288,6 +3605,11 @@ def _run_postgres_migrations(engine: Engine) -> None:
 
         _ensure_capacity_domain_postgres(conn)
         _ensure_admin_ops_domain_postgres(conn)
+        _ensure_economy_domain_postgres(conn)
+        _ensure_payment_entitlement_claims_postgres(conn)
+        _ensure_ru_probe_domain_postgres(conn)
+        _ensure_release_evidence_domain_postgres(conn)
+        _ensure_admin_action_intent_domain_postgres(conn)
 
         conn.execute(
             text(
@@ -2318,6 +3640,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
+        _ensure_external_order_attention_index(conn)
         conn.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_external_orders_provider_order "
@@ -2747,5 +4070,6 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reward_claims_tg_id ON reward_claims(tg_id);"))
 
         # Seed default retention templates for admin editing (idempotent).
+        _ensure_free_profile_schema_postgres(conn)
         _seed_retention_templates(conn, dialect="postgresql")
         _seed_plan_catalog(conn, dialect="postgresql")

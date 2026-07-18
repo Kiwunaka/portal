@@ -109,6 +109,89 @@ class ObserverServiceTests(unittest.TestCase):
         self.assertEqual(private["score_ip_key"], "10.1.2.3")
         self.assertFalse(private["counts_for_suspicion"])
 
+    def test_different_batch_replay_counts_only_atomic_trial_activation(self) -> None:
+        session = self.db.SessionLocal()
+        try:
+            now = self.observer_service._utcnow().replace(microsecond=0)
+            user = session.query(self.models.User).filter_by(tg_id=1001).one()
+            account = self.models.Account(
+                id=str(uuid.uuid4()),
+                status="active",
+                created_source="test",
+                created_at=now,
+                updated_at=now,
+            )
+            device = self.models.AccountDevice(
+                id=str(uuid.uuid4()),
+                account_id=account.id,
+                install_id="observer-replay-device",
+                state="active",
+                first_seen_at=now,
+                last_seen_at=now,
+                created_at=now,
+                updated_at=now,
+            )
+            user.account_id = account.id
+            user.app_install_id = device.install_id
+            user.sub_type = "FREE"
+            user.current_plan_code = "trial"
+            session.add_all([account, device])
+            session.flush()
+            from economy_service import reserve_trial
+
+            reserve_trial(session, account_id=account.id, device_id=device.id, now=now)
+            node = session.query(self.models.Node).filter_by(code="pl").one()
+            observation = {
+                "occurred_at": (now + timedelta(hours=1)).isoformat(),
+                "client_tg_id": user.tg_id,
+                "source_ip": "8.8.8.8",
+            }
+
+            first = self.observer_service.ingest_observer_batch(
+                session,
+                node=node,
+                batch_id="activation-first",
+                cursor=None,
+                observations=[observation],
+                received_at=now + timedelta(hours=1),
+            )
+            target_account = self.models.Account(
+                id=str(uuid.uuid4()),
+                status="active",
+                created_source="test_merge",
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(target_account)
+            session.flush()
+            from account_foundation_service import _move_account_owned_rows
+
+            _move_account_owned_rows(
+                session,
+                source_account_id=account.id,
+                target_account_id=target_account.id,
+                now=now + timedelta(hours=1, seconds=30),
+            )
+            user.account_id = target_account.id
+            session.flush()
+            second = self.observer_service.ingest_observer_batch(
+                session,
+                node=node,
+                batch_id="activation-second",
+                cursor=None,
+                observations=[observation],
+                received_at=now + timedelta(hours=1, minutes=1),
+            )
+
+            self.assertEqual(first["activated_trial_count"], 1)
+            self.assertEqual(second["activated_trial_count"], 0)
+            self.assertEqual(session.query(self.models.ConnectionEvidence).count(), 1)
+            grant = session.query(self.models.EntitlementGrant).filter_by(source="premium_trial").one()
+            self.assertEqual(grant.activated_at, now + timedelta(hours=1))
+            self.assertEqual(grant.expires_at, now + timedelta(days=5, hours=1))
+        finally:
+            session.close()
+
     def test_recompute_user_observer_state_marks_overlap_as_suspicious(self) -> None:
         session = self.db.SessionLocal()
         try:

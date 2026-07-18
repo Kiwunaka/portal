@@ -93,6 +93,54 @@
   }
 }
 
+/* Indeterminate cold-start bar: honest activity, no fake percentages. */
+@keyframes loadingSlide {
+  0% {
+    transform: translateX(-130%);
+  }
+  60% {
+    transform: translateX(330%);
+  }
+  100% {
+    transform: translateX(330%);
+  }
+}
+
+/* Skeleton shimmer sweep (wave-3 smoothness): soft highlight glides across
+   placeholders. transform/opacity only; the reduced-motion kill-switch below
+   freezes it into a static calm block. */
+.skeleton-sweep {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.skeleton-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--pokrov-skeleton-highlight, rgba(255, 255, 255, 0.55)),
+    transparent
+  );
+  animation: skeletonSweep 1.5s ease-in-out infinite;
+}
+
+@keyframes skeletonSweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Smooth anchor jumps (e.g. manual-setup fallback) for motion-friendly users. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
 
 :root {
   --font-golos: "Golos Text";

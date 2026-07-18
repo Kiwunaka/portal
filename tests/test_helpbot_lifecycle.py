@@ -318,6 +318,43 @@ class HelpbotLifecycleTests(unittest.TestCase):
         self.assertTrue(denied.answers)
         self.assertTrue(denied.answers[-1][1])
 
+    def test_helpbot_linked_identity_can_open_account_owned_ticket(self) -> None:
+        from models import Account, User
+
+        session = self.helpbot.SessionLocal()
+        try:
+            session.add_all(
+                [
+                    Account(id="helpbot-shared-account", status="active", created_source="test"),
+                    User(tg_id=1101, account_id="helpbot-shared-account"),
+                    User(tg_id=1102, account_id="helpbot-shared-account"),
+                ]
+            )
+            session.flush()
+            ticket = self.helpbot.create_ticket(
+                session,
+                user_tg_id=1101,
+                account_id="helpbot-shared-account",
+            )
+            session.commit()
+            ticket_id = int(ticket.id)
+        finally:
+            session.close()
+
+        callback = _FakeCallback(1102, f"hb_ticket_view_{ticket_id}", bot=_FakeBot())
+        asyncio.run(self.helpbot.ticket_view(callback))
+
+        self.assertTrue(callback.message.edits)
+        self.assertIn(f"#{ticket_id}", callback.message.edits[-1])
+        self.assertNotIn("Нет доступа", callback.message.edits[-1])
+
+        listed = _FakeCallback(1102, "hb_ticket_my", bot=_FakeBot())
+        asyncio.run(self.helpbot.ticket_my(listed))
+        self.assertTrue(listed.message.edits)
+        self.assertEqual(listed.message.edits[-1], "Мои обращения:")
+        buttons = listed.message.edit_kwargs[-1]["reply_markup"].inline_keyboard
+        self.assertTrue(any(getattr(button, "callback_data", "") == f"hb_ticket_view_{ticket_id}" for row in buttons for button in row))
+
     def test_helpbot_keyboards_use_modern_button_fields_when_supported(self) -> None:
         if not self.telegram_buttons.SUPPORTS_BTN_STYLE:
             self.skipTest("aiogram InlineKeyboardButton has no style field")

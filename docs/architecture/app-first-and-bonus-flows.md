@@ -22,7 +22,7 @@ The rework canon now freezes the following target identity and access model for 
 - browser continuation can start from app handoff, Telegram, or email; all three land in the same cabinet session family instead of creating competing account tracks
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
 - commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
-- free-tier policy is fixed to `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, `1 device`, with monthly reset
+- free-tier policy is fixed to one logical `NL-free` location and one device: `free_standard` has an exact `5 * 1024^3` byte panel cap, then a confirmed transition moves the credential to a distinct `free_soft` inbound shaped toward `2 Mbps` per observed public IP until the 30-day reset
 - `GET /api/dashboard`, `GET /api/user/*`, `POST /api/client/session/start-trial`, and `GET /api/client/profile/managed` should converge on one linked-identity and access-state contract that also carries redeem eligibility, promo-slot payloads, and the hidden transport matrix
 - normal consumer UI shows one logical location; ordered transports such as `vless_reality -> vmess -> trojan -> xhttp` remain hidden rollout detail rather than mass-UI choice
 
@@ -72,18 +72,41 @@ below are complete.
   endpoint already participates in another link direction, the bot leaves the
   one-time link unused and sends the case to support instead of building a
   transitive `A -> B -> C` identity chain.
-- the additive `auth_sessions`, `recovery_codes`, `entitlement_grants` and
-  antiabuse tables are schema foundation only at this stage. Current access
-  truth still comes from legacy user/payment state until the dedicated ledger
-  and session cutovers land.
+- the additive `auth_sessions` and `recovery_codes` tables now have
+  repository-candidate rotating device-session, email OTP, one-time recovery
+  exchange, limited-scope and reissue behavior, but none of it is deployed
+- `antiabuse_events` receives a canonical account/device/session trial-start
+  signal and versioned IP/install HMACs. The reservation and initial ledger row
+  commit together; session issuance then fills the canonical session reference.
+  Raw IP is capped at 72 hours, full-IP HMAC at seven days and `/24` or `/64`
+  prefix HMAC at 90 days. A dedicated early-sweep worker drains covered ledger
+  and legacy raw-IP fields before sleeping. This candidate behavior is not
+  deployed
+- `account_entitlement_grants` carries the repository-candidate premium-trial
+  reservation and activation authority. The pre-existing
+  `entitlement_grants` activation-key history keeps its legacy integer schema
+  and rows unchanged; it is not reused as the UUID account ledger.
+  `connection_evidence` is append-only, account-owned server evidence keyed
+  uniquely without subscription URLs, bearer tokens, provider secrets, source
+  IPs, or traffic payloads. Existing legacy snapshot grants remain unchanged
+  as compatibility fallback. This candidate is not deployed
 - PostgreSQL schema creation and additive migrations use the same
   `pokrov_schema_bootstrap` transaction advisory lock, preventing their
   separate transactions from overlapping during concurrent first startup.
+- The repository migration rehearsal uses a consistent SQLite backup,
+  reviewed source-count manifest, disposable `_rehearsal` PostgreSQL target
+  confirmation, streaming table copy, direct account projection, critical
+  orphan/null invariants, pre-backfill and post-commit sequence synchronization,
+  and sanitized report/content digests. The reset/copy/backfill/invariant data
+  phase is transactional; schema preparation and sequence state are reported
+  separately rather than described as rollback-safe.
 
 Predeploy account-foundation gates:
 
 - `MANUAL_OWNER_TEST`: PostgreSQL rehearsal on a redacted production snapshot
-  with a retained backfill report, row counts and merge-review counts.
+  with a retained sanitized report, row counts, merge-review counts, sequence
+  states and approved backup/restore evidence. Local synthetic fixtures are not
+  production proof.
 - `MANUAL_OWNER_TEST`: real two-connection PostgreSQL concurrency proof for
   projection, Telegram bind and concurrent first startup; local SQL-order tests
   do not claim live deadlock proof.
@@ -104,10 +127,12 @@ Predeploy account-foundation gates:
    - canonical UUID account projection
    - real device registry row
    - current compatibility bearer session
+   - one account/device trial reservation expiring after `7 days`
 6. backend returns:
    - `session` payload with canonical session fields
    - `client_policy` payload with routing, DNS, transport, and recovery defaults
-   - `access` payload with enforced `5-day` trial state
+   - `access` payload with `reserved` or `active` trial state plus reservation
+     and activation timestamps
    - `provisioning` payload with explicit readiness state
    - experience payload
 7. client silently imports the profile
@@ -117,6 +142,27 @@ Predeploy account-foundation gates:
 Contract rule:
 
 - caller-controlled `trial_days` is no longer part of the canonical client contract; the backend always enforces the fixed `5-day` trial from shared truth
+- the provisional credential remains usable during the `7-day` reservation,
+  but `activated_at` and the effective expiry are written exactly once only
+  from authenticated internal observer evidence; expiry is
+  `first_valid_evidence_at + 5 days`
+- `/api/connect/confirm`, `clicked_connect`, `connected_ok`, and other
+  client-authored events remain diagnostics only and cannot activate access
+- replayed observer batches/evidence return idempotently without moving expiry;
+  an unactivated stale reservation projects to `free_monthly` while paid and
+  unrelated active grants or current paid/bonus `User` projections remain
+  untouched
+- canonical-account merge keeps exactly one trial authority: active beats
+  reserved, then expired, reversed, superseded, and unknown states; the earliest
+  status-specific effective timestamp and grant ID break ties. Every other
+  `source=premium_trial` row leaves the unique-index source set and is retained
+  as `premium_trial_superseded` audit history with prior status/reversal and
+  winner provenance; rerunning the merge is idempotent
+- observer evidence timestamps and evidence keys use canonical UTC. The stable
+  key uses owned node plus immutable resolved legacy user identity, not mutable
+  canonical account ID, so post-merge/different-batch replay remains one row
+- panel provisioning stays retryable and outside the irreversible ledger
+  decision; panel failure does not create connection evidence
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
 
 Current `client_policy` contract:
@@ -228,13 +274,60 @@ Important concepts:
 
 - `install_id` is a stable client-side identifier, not a reusable credential
 - device context supports diagnostics and abuse control
-- the current stateless app bearer is used for subsequent app API calls until
-  rotating device-bound sessions replace it
+- the repository candidate issues a short-lived device-bound access token plus
+  one-time rotating refresh credential from first app bootstrap
+- signed tokens carrying `session_id` are checked against `auth_sessions`, the
+  canonical account `auth_epoch`, and the real device `credential_version` on
+  every authenticated request
+- browser, Telegram, email and retained compatibility bearers without
+  `session_id` continue through the existing stateless verifier until their
+  separate cutover
 - Telegram is optional and not required for account creation
 
-Do not infer from the presence of the `auth_sessions` table that refresh-token
-rotation, reuse detection, revoke or recovery exchange are already public. The
-current beta client still depends on the legacy bearer response shape.
+The rotating-session and recovery code is implemented on the integration
+branch but is not deployed. The current production beta still depends on the
+legacy bearer behavior. The candidate must not be deployed until updated
+clients persist refresh tokens atomically and exact Android/Windows recovery,
+reinstall and revoke paths pass.
+
+Repository session rules:
+
+- first `POST /api/client/session/start-trial` returns the existing
+  `session_token` field plus `access_token`, one-time `refresh_token`, expiry
+  fields, `session_id`, `refresh_family_id`, canonical account UUID and real
+  device UUID
+- later calls for the same `install_id` return
+  `409 device_recovery_required`; `install_id` is never accepted as proof of
+  possession, and the history guard runs before device metadata writes or panel
+  synchronization
+- `POST /api/client/session/refresh` consumes one refresh token and returns the
+  next pair without extending the absolute family expiry
+- refresh reuse revokes the whole family and returns
+  `401 refresh_reuse_detected`
+- `POST /api/client/session/revoke` revokes the current family but leaves the
+  device registered
+- app-derived cabinet handoff and cabinet-session tokens retain source
+  session/device/epoch binding and are invalidated with that source family
+- `GET /api/client/devices` reads the real registry; `DELETE` requires fresh
+  auth, increments device credential version and revokes every bound session
+- raw refresh credentials are never written to the database or logs; only a
+  SHA-256 digest of a high-entropy token is retained
+- `POST /api/auth/email/otp/start` returns an enumeration-resistant generic
+  response and sends a six-digit code with an exact five-minute lifetime only
+  for a verified identity
+- `POST /api/auth/email/otp/finish` consumes that code once, can freshen the
+  current bound session, and can issue a replacement device session when
+  device policy permits it
+- `POST /api/client/recovery-code/rotate` requires recent fresh auth, revokes
+  prior active codes and returns `PKR-XXXX-XXXX-XXXX` once; only versioned HMAC
+  and a masked hint are stored
+- `POST /api/client/recovery/exchange` consumes the code once and creates a
+  15-minute `recovery` session. Server-side scope enforcement blocks normal
+  subscription, managed-profile and networking APIs before reissue
+- `POST /api/client/access/reissue` accepts `vpn_credentials` or
+  `account_lockdown`; both rotate subscription material and request managed-key
+  rotation, while lockdown also increments account epoch and revokes other
+  devices/sessions. Paid entitlement dates are not changed
 
 ## Preferred Device Identity Inputs
 
@@ -272,11 +365,16 @@ Visibility rule:
 - device and IP context should be used for diagnosis and abuse control, not as a public-facing marketing message
 - install-scoped latency samples, carrier labels, and platform labels are operator-visible diagnostics for route quality and must not surface as raw telemetry in normal consumer UI
 
-## Live App-First Endpoints
+## Repository App-First Endpoints
 
-Current live backend contract:
+Current repository backend contract. Deployment status must be checked
+separately:
 
 - `POST /api/client/session/start-trial`
+- `POST /api/client/session/refresh`
+- `POST /api/client/session/revoke`
+- `GET /api/client/devices`
+- `DELETE /api/client/devices/{device_id}`
 - `GET /api/client/profile/managed`
 - `POST /api/client/nodes/latency-samples`
 - `GET /api/client/warp/status`
@@ -340,7 +438,8 @@ App/bot/cabinet parity smoke:
 Beta rate-limit contract:
 
 - externally reachable beta surfaces for fresh trial creation, Telegram/email auth, access-key status/redeem, unified redeem, app-cabinet handoff token/exchange, support ticket create/upload/download, payment callbacks, subscription fetches, events, and unsafe admin actions apply backend-owned per-minute throttles
-- `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; retries for an existing `install_id` remain idempotent and should continue to return the existing app-first account
+- `POST /api/client/session/start-trial` throttles only fresh installs from the same origin; a repeated existing `install_id` bypasses fresh-origin throttling but returns `409 device_recovery_required` instead of another credential
+- `POST /api/client/session/refresh` uses a small bucket keyed by a truncated SHA-256 refresh fingerprint plus a separate high IP ceiling for CGNAT/random-token abuse; raw refresh material never enters rate-limit identity or logs
 - throttled requests return HTTP `429` with a `Retry-After` header and structured detail containing `code=rate_limited`, `scope`, and `retry_after_seconds`
 - rate-limit counters store hashed fingerprints in durable `security_rate_limit_buckets` with an in-memory dev/test fallback and can be tuned with `API_RATE_LIMIT_<SCOPE>_PER_MINUTE` environment variables
 
@@ -374,7 +473,13 @@ Contract rule:
 - public email register, verify, and recovery can be shown as live only while transactional sender identity and delivery-confirmation/webhook visibility are live
 - browser entry screens in `webapp` are continuation-first and must not become a second landing-page pitch
 - new user-facing `subscription_url` values must point to `connect.pokrov.space`
+- new links require a non-numeric `sub_token`; missing or numeric credentials fail
+  closed and produce no user-facing URL
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/...` remains compatibility-only for older imports and recovery cases
+- numeric subscription lookup is disabled by default and may be temporarily enabled
+  only as an observed compatibility rollback. A production cutover requires token
+  backfill, exact panel `subId` reconciliation, and an owner-approved observation
+  window with zero legitimate numeric fallback hits
 - the same `client_policy` contract still flows through `start-trial`, `user`, and `dashboard`, but the rollout policy behind it can vary by cohort without introducing a new endpoint
 
 ## Checkout Continuation
@@ -431,7 +536,7 @@ Focused compatibility matrix to run before changing support copy:
 2. session-backed support may create a real ticket through `POST /api/tickets`
 3. cabinet/support surfaces may load the thread through `GET /api/tickets/{ticket_id}`
 4. follow-up replies continue through `POST /api/tickets/{ticket_id}/messages`
-5. attachment-capable browser support uses `POST /api/tickets/uploads`, then authenticated `GET /api/tickets/attachments/{stored_name}` for private downloads; raw `/uploads/support/*` static access is not part of the current contract
+5. attachment-capable browser support stages through `POST /api/tickets/uploads`, sends only the returned opaque `attachment_id` on create/reply, then fetches authenticated `GET /api/tickets/attachments/{stored_name}` only after explicit user action; raw `/uploads/support/*` static access is not part of the current contract
 6. operators continue the same case through `/api/admin/tickets/*`
 
 Contract rule:
@@ -439,6 +544,16 @@ Contract rule:
 - app-first support may start from prepared context even before a live thread exists
 - web and cabinet support must be documented as a real ticket lifecycle, not as decorative form state
 - attachment-capable ticket flows belong to authenticated browser and admin paths today
+- staged uploads are unbound until message commit, expire after 24 hours by default, and use account-first pending count/byte quotas; admission cleanup is same-owner only, while supervised reconciliation uses bounded per-run processing and memory for global expired/orphan cleanup and never sweeps bound or legacy null-expiry history; its filesystem candidate selection still enumerates the full upload directory once per run
+- upload finalization fsyncs the file and, on POSIX, its parent directory before row commit; after atomic rename, ambiguous persistence outcomes retain the final file so a committed row never loses its file, while verified rowless finals age into grace-period reconciliation
+- rolling old private `support/{stored_name}` triplets are ownership/metadata checked and canonicalized, while non-private Telegram/client media remains compatible
+- bound attachment access follows ticket access; recovery sessions cannot upload, bind, receive metadata, or download even when a recovery actor numerically matches the admin ID
+- canonical account ownership is internal and additive; public ticket payloads retain the legacy shape
+- linked app, email, and Telegram identities on one canonical account share account-owned ticket and upload history
+- exact legacy Telegram fallback applies only to `NULL`-owned rows and cannot override another non-null account owner
+- read-only access never changes ownership; an exact historical actor may claim an eligible `NULL` ticket only while writing with an unambiguous canonical account
+- account merge retargets ticket/upload ownership without deleting, deduplicating, or moving support history
+- operator delivery uses bounded deterministic linked-Telegram, enabled Telegram-identity, then real historical-ticket evidence; no target means skip with a metadata-only warning
 - client UX may poll the active ticket and show lifecycle hints such as
   checking, operator reply, closed, or temporarily offline while the support
   screen is open
@@ -456,6 +571,8 @@ Contract rule:
 Contract rule:
 
 - Telegram linking should also refresh the canonical linked username automatically when Telegram provides one
+- Linked Telegram identity is support, recovery, bonus, and diagnostics context only; it must not grant `/api/admin/*` authority to an app/email account.
+- The bot must reject attempts to bind the configured admin Telegram identity to any non-admin app/email account.
 - Raw `sub_token` values and `connect.pokrov.space` subscription URLs are bearer connection secrets for compatible clients only. They must not be accepted as Telegram-linking proof or as access-key redemption codes.
 
 ## Telegram Bonus Claim Flow
@@ -465,8 +582,29 @@ Contract rule:
 3. `POST /api/channel/subscriber/check` is read-only and must never grant points or mark campaign state
 4. the real reward path calls `POST /api/bonuses/channel/claim`
 5. backend checks membership for the linked Telegram account
-6. if membership is valid, backend grants `+10 days`
+6. if membership is valid, backend grants a new account-owned `+5 days` once
 7. if not linked or not eligible, backend returns the correct reason
+
+Existing issued `+10 days` channel grants are grandfathered. Membership loss
+starts `24 hours` of grace; rejoin cancels grace. A due reversal marks only the
+channel grant reversed, then deterministically rebuilds the account projection
+from the remaining typed trial, bonus, provider-payment, and compatibility
+grants. Consumed channel time remains historical, every purchased interval and
+unrelated grant keeps its full remaining duration, and access stays continuous.
+Paid, free, trial/referral, session, and device state are not revoked.
+When a legacy snapshot contains that issued channel interval, backfill records
+the component provenance and splits the snapshot at the channel interval start;
+the same channel time therefore cannot survive reversal through the aggregate
+compatibility baseline.
+
+Premium addition and rebuild classify contributions explicitly. Typed
+`paid_access`, `premium_trial`, and `premium_bonus` intervals extend the premium
+cursor. A compatibility `legacy_snapshot` contributes only when its persisted
+`sub_type`/plan metadata classifies it as `PAID`, `TRIAL`, or `BONUS`; it is a
+single aggregate baseline rather than another acquisition grant. `FREE`
+snapshots and free-cycle resets are tracked only as free fallback, never delay a
+payment/bonus start, never count toward the `15 day` cap, and never select
+`premium_pool`.
 
 ## Bonus Summary, Referral, And Promo Flow
 
@@ -478,6 +616,63 @@ Contract rule:
   safe Telegram referral link, bonus days, and current points tier for the
   app-first account. The app may expose copy/share/open actions for that link;
   referral anti-abuse, bonus granting, and campaign tuning remain backend-owned.
+- one referred account has at most one account-owned referrer; self-referral and
+  cycles are rejected while legacy `User.referrer_id` remains a projection
+- friend `+5 days` releases once from canonical server `ConnectionEvidence`,
+  never from `clicked_connect`, `connected_ok`, or another client event
+- referrer `+15 days` is queued only by the referred account's first successful
+  payment and releases once after a full `72 hour` hold; gifts and renewals do
+  not qualify
+- pending legacy referral queue rows are migrated idempotently into the same
+  canonical relationship and first-payment hold using their original queued
+  payment time. A row is marked `superseded_account` only after migration;
+  missing or conflicting identities stay pending with bounded retry backoff so
+  an old conflict cannot starve newer valid payments
+- provider/order creates one durable account-owned payment grant while the
+  canonical account row and normalized relationship are locked; app and bot
+  projections read the same fact, and `User.first_purchase_done` is compatibility
+  output rather than authority
+- account-foundation backfill creates payment authority only from corroborated
+  successful provider orders or Telegram platform payment attempts with
+  per-order fulfillment evidence. A paid XTR attempt without that evidence becomes a
+  stable `legacy_stars_payment_marker` in `manual_review`, remains repairable,
+  and cannot silently claim that projection was applied. A historical
+  `first_purchase_done` flag without that evidence becomes a stable
+  `legacy_first_purchase_marker` in `manual_review` and cannot block the next
+  genuine first payment
+- Telegram platform payment confirmation and fulfillment are separate states. `PayAttempt`
+  may be `paid` before the account grant exists; every replay resumes the stable
+  XTR provider/order grant until its projection is durably applied, then
+  retries panel provisioning. The processed marker is authoritative only when
+  that applied grant exists, and provisioning never rewrites premium expiry
+- after panel create or replay, the owned panel row is read back and its
+  validated UUID, panel email, and `subId` become the exact local credential.
+  `User`, primary `AccessKey`, applicable `UserNode`, and grant provisioning
+  evidence commit atomically before the processed marker. A legacy panel lane
+  with no positive database node ID is identified by its validated owned
+  `node_code`: it persists the exact `AccessKey` and grant evidence without
+  fabricating `UserNode(node_id=0)`. Missing both node identities or conflicting
+  key provenance keeps fulfillment retryable, and no pre-generated token is
+  exposed as success
+- backfilled provider facts retain whether legacy fulfillment already applied
+  their projection. An explicit fulfilled order, or an old paid record
+  corroborated by a legacy paid projection, replays without adding duration;
+  pending fulfillment remains unapplied and a later valid callback extends once
+- account payment facts are normalized after backfill and merge so exactly the
+  globally earliest successful `(paid_at, provider/order)` fact is first. Only
+  that fact owns the referral hold; later facts are rewritten non-first, while
+  already terminal reward/review state is preserved
+- referral account merges preserve the strongest relationship fields and
+  review state. Duplicate/self/cycle losers remain terminal `superseded`
+  relationship rows under their original account IDs, with provenance
+  transitions; active graph traversal ignores them and transition FK/orphan
+  invariants remain valid on rerun
+- account merge keeps one effective semantic `referral_friend` and
+  `referral_referrer` grant per canonical reward, repairs relationship pointers,
+  and retains duplicate grants as audit-visible `superseded` rows
+- before first payment, trial + Telegram + friend grants are capped at `15 days`
+- the Telegram channel gate applies only when a genuinely new lead requests the
+  trial; payment, renewal, recovery, and support remain ungated
 - `GET /api/bonuses/history` returns an app-safe, compact recent bonus ledger
   built from current platform truth: Telegram channel claim, opening campaign
   mark, promo usage, and feature-flagged wheel/calendar reward claims. It must
@@ -490,6 +685,9 @@ Contract rule:
   disabled-by-default state payloads that the app may render as safe Rewards
   Hub previews. When `BONUS_WHEEL_ENABLED` or `BONUS_CALENDAR_ENABLED` is true,
   they expose ready/cooldown/check-in state from the reward ledger.
+- The wheel state exposes only the ordered, validated reward-day `sectors`
+  needed for rendering. Backend-owned weights and probabilities remain private
+  and must not be inferred by the client.
 - `GET /api/client/promo-slots?surface=app` may feed Rewards Hub with enabled
   first-party promo slots only. Third-party ad SDKs, unsafe links, tracking
   pixels, and non-POKROV campaign rendering stay out of the app.
@@ -513,15 +711,28 @@ Current backend-derived access states exposed to WebApp and admin surfaces:
 
 Rules:
 
-- app-first trial starts with `5 days` of premium-grade access
-- channel claim extends that premium window by `+10 days`
+- app-first trial reserves premium-grade access for `7 days`; its `5-day`
+  consumption clock starts at the first valid internal observer observation
+- a new channel claim adds `+5 days`; already-issued `+10 days` grants remain grandfathered
 - once premium expires, auto-downgrade must set `current_plan_code=free_monthly`, not `trial`
-- `free_monthly` keeps `5 GB / 30 days` with device limit `1`
-- after the `5 GB` quota is exhausted, UI and policy should treat the account as `free_soft_mode` until the next free-cycle reset
+- the worker also reconciles stale `FREE`/`trial` projections. Only an exact active,
+  bounded `premium_trial` grant inside the reservation clock may keep paid-pool
+  placement; missing, unbounded, or stale grant state is quarantined for manual
+  review, projected to `free_monthly`, and queued for free-profile provisioning
+  idempotently
+- `free_monthly` keeps an exact `5 * 1024^3` byte quota per 30-day cycle with device limit `1` on a node explicitly labeled `access_role=free_standard`
+- reaching the quota records server-side evidence and queues one durable transition; bytes alone never project `free_soft_mode`
+- the persisted lifecycle is `standard -> soft_transition_pending -> soft_active`, with `error` for bounded retry/manual review; reset uses `soft_active -> reset_pending -> standard`
+- the worker must ensure and confirm the target role before disabling the source role; reset additionally clears standard-profile traffic before disabling soft
+- a successful reset starts the next full 30-day window at confirmation time; delayed worker execution cannot shorten the user's next cycle
+- API selection, subscription output, Telegram/admin resync, and legacy panel wrappers must all use the persisted free role; transition/error states refuse legacy resync
+- if a payment supersedes an in-flight transition, the worker compensates the panel mutation and restores a usable source; compensation failure is manual-review evidence, never a silent success
+- only confirmed `free_soft` state projects `free_soft_mode`; its distinct inbound has no panel hard cap because the local Linux shaper targets `2 Mbps` per observed public IP in each direction
+- the IP shaper is not per-account proof: clients behind one NAT share the cap, and production enablement remains blocked until Linux nftables/throughput/counter/rollback canary evidence exists
 - `paid_unlimited` remains unlimited traffic with device limit `5`
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` must use the paid pool: all enabled non-free delivery nodes
-- free-tier access states `free_monthly` and `free_soft_mode` must use the free pool: the dedicated `NL-free` node only
-- backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and `nl_only` for free-tier access
+- free-tier access states remain one logical `NL-free` location, but routing must select distinct explicit `free_standard` and `free_soft` roles/inbounds; missing soft role must retry/manual-review and never fall back to paid or `operator_lab`
+- backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and the persisted free role for free-tier access
 - desired-state provisioning should place active premium/trial/paid keys on all enabled paid nodes at current scale, while free keys remain on the free pool; renderer output should follow the same pool boundary and capacity state
 
 ## Runtime Notes

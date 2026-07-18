@@ -67,6 +67,7 @@ export function Pricing() {
               <PriceCard
                 key={plan.code}
                 title={plan.label}
+                badge={plan.badge || undefined}
                 price={`${plan.amount_rub} ₽`}
                 durationNote={formatDuration(Number(plan.duration_days))}
                 perMonthNote={perMonth ? `это ${perMonth} ₽ в месяц` : undefined}
@@ -87,7 +88,7 @@ export function Pricing() {
       </div>
 
       <Reveal>
-        <p className="mt-8 text-center text-[0.8125rem] text-ink-muted">
+        <p className="mt-8 text-center text-[0.8125rem] text-ink-soft">
           {getCopyText(
             "marketing.home.pricing.note",
             "Все цены в рублях. Код активации можно применить в приложении или кабинете.",

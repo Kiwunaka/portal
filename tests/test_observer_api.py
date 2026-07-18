@@ -8,11 +8,13 @@ import tempfile
 import time
 import unittest
 import uuid
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
 
 
 def _sign_telegram_init_data(*, bot_token: str, params: dict) -> str:
@@ -243,11 +245,31 @@ class ObserverApiTests(unittest.TestCase):
         card_resp = self.client.get("/api/admin/users/1001", headers=admin_hdrs)
         self.assertEqual(card_resp.status_code, 200, card_resp.text)
         card_body = card_resp.json()
+        card_serialized = json.dumps(card_body, ensure_ascii=False)
         self.assertEqual(card_body["observer"]["state"], "watch")
         self.assertEqual(card_body["observer"]["observed_ip_count_24h"], 3)
         self.assertEqual(card_body["observer"]["observed_node_count_24h"], 2)
-        self.assertEqual(len(card_body["observer"]["recent_ips"]), 3)
+        self.assertNotIn("recent_ips", card_body["observer"])
+        self.assertNotIn("source_ip_raw", card_resp.text)
         self.assertEqual(len(card_body["observer"]["recent_nodes"]), 2)
+        for forbidden in (
+            "subscription_token",
+            "subscription_url",
+            "vless_link",
+            "expected_sub_id",
+            "panel_email",
+            "client_uuid",
+            "node_host",
+            "panel_error",
+            '"meta"',
+        ):
+            self.assertNotIn(forbidden, card_serialized)
+
+        investigation_resp = self.client.get("/api/admin/users/1001/investigation", headers=admin_hdrs)
+        self.assertEqual(investigation_resp.status_code, 200, investigation_resp.text)
+        investigation_body = investigation_resp.json()
+        self.assertEqual(investigation_body["tg_id"], 1001)
+        self.assertEqual(len(investigation_body["observer"]["recent_ips"]), 3)
 
         summary_resp = self.client.get("/api/admin/summary", headers=admin_hdrs)
         self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
@@ -286,6 +308,63 @@ class ObserverApiTests(unittest.TestCase):
         self.assertEqual(first.json()["accepted_count"], 1)
         self.assertEqual(second.json()["accepted_count"], 0)
         self.assertEqual(second.json()["deduped_count"], 1)
+
+    def test_internal_observer_batch_unique_race_converges_but_unrelated_integrity_error_fails(self) -> None:
+        now = _utcnow().replace(microsecond=0)
+        body = json.dumps(
+            {
+                "batch_id": "pl-race",
+                "observations": [
+                    {"occurred_at": now.isoformat(), "client_email": "panel-alice", "source_ip": "8.8.8.8"}
+                ],
+            },
+            separators=(",", ":"),
+        ).encode("utf-8")
+        headers = self._observer_headers(node_code="pl", secret="pl-secret", body=body)
+
+        def insert_winner_then_conflict(**_kwargs):
+            winner = self.db.SessionLocal()
+            try:
+                node = winner.query(self.models.Node).filter_by(code="pl").one()
+                winner.add(
+                    self.models.ObserverBatch(
+                        node_id=node.id,
+                        batch_id="pl-race",
+                        observation_count=1,
+                        accepted_count=1,
+                        deduped_count=0,
+                        unmatched_count=0,
+                        parse_error_count=0,
+                        updated_tg_ids_json="[1001]",
+                        created_at=now,
+                    )
+                )
+                winner.commit()
+            finally:
+                winner.close()
+            raise IntegrityError("INSERT observer_batches", {}, RuntimeError("unique"))
+
+        with patch.object(self.api, "ingest_observer_batch", side_effect=insert_winner_then_conflict):
+            response = self.client.post("/api/internal/observer/batches", content=body, headers=headers)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["accepted_count"], 0)
+        self.assertEqual(response.json()["deduped_count"], 1)
+        self.assertEqual(response.json()["activated_trial_count"], 0)
+
+        unrelated_body = body.replace(b"pl-race", b"pl-fail")
+        unrelated_headers = self._observer_headers(node_code="pl", secret="pl-secret", body=unrelated_body)
+        with patch.object(
+            self.api,
+            "ingest_observer_batch",
+            side_effect=IntegrityError("INSERT other_table", {}, RuntimeError("unrelated")),
+        ):
+            unrelated = self.client.post(
+                "/api/internal/observer/batches",
+                content=unrelated_body,
+                headers=unrelated_headers,
+            )
+        self.assertEqual(unrelated.status_code, 500)
 
     def test_internal_observer_batch_rejects_stale_push_and_tracks_unmatched_and_parse_errors(self) -> None:
         stale_body = json.dumps(

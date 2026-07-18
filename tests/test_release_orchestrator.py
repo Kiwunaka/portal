@@ -389,6 +389,45 @@ class ReleaseOrchestratorTests(unittest.TestCase):
 
         self.assertEqual(str(ctx.exception), "--brain-ip is required for deploy/verify steps")
 
+    def test_secret_bearing_remote_run_rejects_noncanonical_brain_host(self) -> None:
+        args = Namespace(
+            brain_ip="203.0.113.55",
+            web_domain="pokrov.space",
+            api_domain="api.pokrov.space",
+            ssh_user="root",
+            ssh_port=29374,
+            passwords="C:/tmp/PASSWORDS.txt",
+            quick_gate=False,
+            skip_gates=True,
+            skip_backend=False,
+            skip_static=True,
+            skip_verify=True,
+            ensure_metrics_timer=False,
+            ensure_observer_node=[],
+            gates_only=False,
+            verify_only=False,
+            dry_run=True,
+            release_metadata_file="",
+            release_env_file="",
+            qdisc_node=[],
+            qdisc_host=[],
+            qdisc_profiles="C:/repo/infra/node-qdisc-profiles.json",
+            qdisc_probe_url="https://1.1.1.1/cdn-cgi/trace",
+            qdisc_heavy_url="https://speed.cloudflare.com/__down?bytes=50000000",
+            qdisc_probe_attempts=8,
+            qdisc_probe_pause_seconds=1.0,
+            qdisc_heavy_duration_seconds=10.0,
+            qdisc_min_heavy_bytes=1048576,
+            qdisc_min_probe_successes=3,
+            qdisc_max_probe_connect_p95_seconds=1.0,
+            qdisc_max_probe_ttfb_p95_seconds=1.0,
+            qdisc_max_probe_total_p95_seconds=2.0,
+        )
+
+        with patch.dict(self.module.os.environ, {"NODE_PASS_BRAIN": "secret"}):
+            with patch.object(self.module.argparse.ArgumentParser, "parse_args", return_value=args):
+                with self.assertRaisesRegex(SystemExit, "canonical brain host"):
+                    self.module.main()
 
 if __name__ == "__main__":
     unittest.main()

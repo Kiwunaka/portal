@@ -1,6 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
+import os
 import queue
 import re
 import subprocess
@@ -12,6 +13,8 @@ from threading import Thread
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+CANONICAL_BRAIN_IP = "82.21.114.104"
+
 DEFAULT_BACKEND_RESTART_UNITS = (
     "portal-api",
     "portal-bot",
@@ -573,6 +576,12 @@ def main() -> int:
     )
     if need_remote and not args.brain_ip.strip():
         raise SystemExit("--brain-ip is required for deploy/verify steps")
+    if (
+        need_remote
+        and os.getenv("NODE_PASS_BRAIN", "").strip()
+        and args.brain_ip.strip() != CANONICAL_BRAIN_IP
+    ):
+        raise SystemExit("NODE_PASS_BRAIN can only be used with the canonical brain host")
     steps = _build_steps(args, python=python)
 
     if args.dry_run:

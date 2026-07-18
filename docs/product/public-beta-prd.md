@@ -10,7 +10,7 @@ Open Beta v4 is approved for public beta distribution outside app stores. It is 
 
 - App-first start remains the primary path.
 - Trial duration is 5 days.
-- Telegram linking can add +10 days when channel and account checks pass.
+- Telegram linking can add a new account-owned +5 days when channel and account checks pass; issued +10 day grants are grandfathered.
 - Android and Windows are the active client tracks.
 - Support and recovery remain available through the cabinet and official Telegram support bot.
 

@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -77,6 +78,39 @@ class RenderRuProbeReportTests(unittest.TestCase):
         self.assertIn("xhttp_alive", report)
         self.assertIn("canonical_host_problem", report)
         self.assertIn("pokrov-space", report)
+
+    def test_status_keeps_boolean_and_stage_states_distinct(self) -> None:
+        self.assertEqual(self.module._status(True), "ok")
+        self.assertEqual(self.module._status(False), "fail")
+        self.assertEqual(self.module._status("pass"), "pass")
+        self.assertEqual(self.module._status("fail"), "fail")
+        self.assertEqual(self.module._status("not_run"), "not_run")
+        self.assertEqual(
+            self.module._status("not_applicable"),
+            "not_applicable",
+        )
+
+    def test_render_schema_v2_sample_end_to_end(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        sample = json.loads(
+            (repo_root / "scripts" / "ru_probe_sample.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        report = self.module._render(sample)
+
+        self.assertIn("- probe_host: `mini` — Мини — российская проба", report)
+        self.assertIn("- execution_status: `completed`", report)
+        self.assertIn("`node:sample` `delivery_node`", report)
+        self.assertIn("`203.0.113.20:443`", report)
+        self.assertIn("dns=pass", report)
+        self.assertIn("tcp=pass", report)
+        self.assertIn("tls=fail", report)
+        self.assertIn("http_large_body=not_applicable", report)
+        self.assertIn("transport_handshake=not_applicable", report)
+        self.assertNotIn("{'id': 'mini'", report)
+        self.assertNotIn("`unknown` `target` `unknown:unknown`", report)
 
 
 if __name__ == "__main__":

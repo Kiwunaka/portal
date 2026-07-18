@@ -110,7 +110,7 @@ def test_upsert_app_trial_user_uses_canonical_trial_days(monkeypatch, tmp_path):
         assert user.app_install_id == "install-123"
         assert user.app_device_name == "Surface Laptop"
         assert user.app_last_ip == "203.0.113.10"
-        assert user.expiry_at == now + timedelta(days=5)
+        assert user.expiry_at == now + timedelta(days=7)
         assert user.account_id
 
         from models import AccountDevice, EntitlementGrant
@@ -118,7 +118,8 @@ def test_upsert_app_trial_user_uses_canonical_trial_days(monkeypatch, tmp_path):
         device = session.query(AccountDevice).filter_by(install_id="install-123").one()
         assert device.account_id == user.account_id
         assert device.label == "Surface Laptop"
-        assert session.query(EntitlementGrant).filter_by(account_id=user.account_id).count() == 1
+        grants = session.query(EntitlementGrant).filter_by(account_id=user.account_id).all()
+        assert {grant.source for grant in grants} == {"legacy_snapshot", "premium_trial"}
 
         updated_payload = SimpleNamespace(
             install_id="install-123",
@@ -143,10 +144,10 @@ def test_upsert_app_trial_user_uses_canonical_trial_days(monkeypatch, tmp_path):
         assert updated_user.app_device_name == "Surface Laptop 2"
         assert updated_user.app_version == "1.0.1"
         assert updated_user.app_last_ip == "203.0.113.11"
-        assert updated_user.expiry_at == now + timedelta(days=5)
+        assert updated_user.expiry_at == now + timedelta(days=7)
         session.refresh(device)
         assert device.label == "Surface Laptop 2"
-        assert session.query(EntitlementGrant).filter_by(account_id=user.account_id).count() == 1
+        assert session.query(EntitlementGrant).filter_by(account_id=user.account_id).count() == 2
     finally:
         session.close()
 

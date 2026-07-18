@@ -2,7 +2,7 @@
 
 import { AdminEmptyState, adminButtonClass, adminFieldClass, adminInsetPanelClass, adminPanelClass } from "@/components/admin/admin-shell";
 import { SupportMessageBody } from "@/components/support-message-body";
-import { adminTicketReply, adminTicketStatus, adminTickets, type TicketInfo } from "@/lib/api";
+import { adminTicketDetail, adminTicketReply, adminTicketStatus, adminTickets, type AdminTicketSummary, type TicketInfo } from "@/lib/api";
 import { fmtRuDate } from "@/lib/date-format";
 import { SUPPORT_REPLY_MACROS, type SupportMacroIcon } from "@/lib/support-macros";
 import {
@@ -54,14 +54,19 @@ function normalizeTicketStatus(ticket: Pick<TicketInfo, "status" | "status_title
 
 export default function AdminTicketsPage() {
   const [statusFilter, setStatusFilter] = useState("");
-  const [tickets, setTickets] = useState<TicketInfo[]>([]);
+  const [tickets, setTickets] = useState<AdminTicketSummary[]>([]);
   const [selectedId, setSelectedId] = useState<number>(0);
+  const [selectedDetail, setSelectedDetail] = useState<TicketInfo | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const [detailVersion, setDetailVersion] = useState(0);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const messagesEnd = useRef<HTMLDivElement>(null);
 
-  const selected = useMemo(() => tickets.find((ticket) => ticket.id === selectedId) || null, [selectedId, tickets]);
+  const selectedSummary = useMemo(() => tickets.find((ticket) => ticket.id === selectedId) || null, [selectedId, tickets]);
+  const selected = selectedDetail?.id === selectedId ? selectedDetail : null;
 
   const load = useCallback(async (): Promise<void> => {
     setError("");
@@ -73,6 +78,7 @@ export default function AdminTicketsPage() {
       } else {
         setSelectedId(0);
       }
+      setDetailVersion((version) => version + 1);
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось загрузить обращения."));
     }
@@ -81,6 +87,32 @@ export default function AdminTicketsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedDetail(null);
+      setDetailError("");
+      setDetailLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSelectedDetail(null);
+    setDetailError("");
+    setDetailLoading(true);
+    void adminTicketDetail(selectedId)
+      .then((ticket) => {
+        if (!cancelled) setSelectedDetail(ticket);
+      })
+      .catch((err) => {
+        if (!cancelled) setDetailError(String((err as { message?: string })?.message || err || "Не удалось загрузить переписку."));
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailVersion, selectedId]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
@@ -92,7 +124,8 @@ export default function AdminTicketsPage() {
     try {
       const updated = await adminTicketReply(selected.id, reply.trim());
       setReply("");
-      setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      setSelectedDetail(updated);
+      setTickets((prev) => prev.map((row) => (row.id === updated.id ? { ...row, status: updated.status, status_title: updated.status_title, subject: updated.subject, updated_at: updated.updated_at, closed_at: updated.closed_at, last_message_preview: updated.last_message_preview } : row)));
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось отправить ответ."));
     } finally {
@@ -113,7 +146,8 @@ export default function AdminTicketsPage() {
     setBusy(true);
     try {
       const updated = await adminTicketStatus(selected.id, nextStatus);
-      setTickets((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      setSelectedDetail(updated);
+      setTickets((prev) => prev.map((row) => (row.id === updated.id ? { ...row, status: updated.status, status_title: updated.status_title, subject: updated.subject, updated_at: updated.updated_at, closed_at: updated.closed_at, last_message_preview: updated.last_message_preview } : row)));
     } catch (err) {
       setError(String((err as { message?: string })?.message || err || "Не удалось обновить статус обращения."));
     } finally {
@@ -179,7 +213,11 @@ export default function AdminTicketsPage() {
       </article>
 
       <article className={adminPanelClass("neutral")}>
-        {!selected ? (
+        {selectedSummary && detailLoading ? (
+          <div className="flex min-h-[420px] items-center justify-center gap-2 text-sm text-[color:var(--atlas-text-soft)]"><Loader2 size={16} className="animate-spin" /> Загружаем переписку…</div>
+        ) : selectedSummary && detailError ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 text-center"><AdminEmptyState title="Переписка недоступна" description={detailError} /><button type="button" className={adminButtonClass("secondary", "sm")} onClick={() => setDetailVersion((version) => version + 1)}><RefreshCw size={13} /> Повторить</button></div>
+        ) : !selected ? (
           <AdminEmptyState className="min-h-[420px]" title="Выберите обращение" description="Откройте тред из очереди, чтобы ответить, сменить статус или просмотреть всю переписку." />
         ) : (
           <>
