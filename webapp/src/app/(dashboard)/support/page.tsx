@@ -38,6 +38,7 @@ import {
 import { getDeviceLimit, resolvePlanLabel } from "@/lib/access-policy";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
+import { SUPPORT_ATTACHMENT_ACCEPT, validateSupportAttachment } from "@/lib/support-attachments";
 
 type TicketCategory = "Не могу подключиться" | "Вопрос по оплате" | "Медленно работает" | "Другое";
 
@@ -210,8 +211,9 @@ export default function SupportPage() {
     try {
       let attachment: TicketAttachmentInput | undefined;
       if (attachmentFile) {
+        await validateSupportAttachment(attachmentFile);
         const uploaded = await uploadTicketAttachment(attachmentFile);
-        attachment = uploaded.attachment;
+        attachment = { attachment_id: uploaded.attachment_id };
       }
 
       const title = normalizedSubject ? `[${category}] ${normalizedSubject}` : `[${category}] Обращение из кабинета`;
@@ -385,13 +387,16 @@ export default function SupportPage() {
                 <label className="block rounded-control border border-dashed border-line bg-canvas-alt px-4 py-4 text-sm">
                   <span className="block font-medium text-ink">Вложение</span>
                   <span className="mt-1 block text-xs leading-5 text-ink-muted">
-                    Скриншот, видео, PDF или текстовый файл до 20 МБ.
+                    PNG, JPEG, WebP, PDF или TXT до 20 МБ.
                   </span>
                   <input
                     type="file"
-                    accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                    accept={SUPPORT_ATTACHMENT_ACCEPT}
                     className="mt-3 block w-full cursor-pointer text-sm text-ink-soft file:mr-3 file:rounded-control file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-medium file:text-brand"
-                    onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) => {
+                      setError("");
+                      setAttachmentFile(event.target.files?.[0] ?? null);
+                    }}
                   />
                   {attachmentFile ? (
                     <div className="mt-3 flex items-center justify-between gap-3 rounded-tile bg-surface px-3 py-2 text-xs">

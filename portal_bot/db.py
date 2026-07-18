@@ -5,11 +5,12 @@ from sqlalchemy.orm import sessionmaker
 
 from config import Settings
 from account_foundation_service import run_account_foundation_backfill_once
+from support_account_service import run_support_account_ownership_backfill_once
 from migrations import POSTGRES_SCHEMA_BOOTSTRAP_LOCK, run_migrations
 from models import Base
 
 
-engine = create_engine(Settings.DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(Settings.DATABASE_URL, pool_pre_ping=True, hide_parameters=True)
 SessionLocal = sessionmaker(bind=engine)
 
 
@@ -37,4 +38,5 @@ def init_db() -> None:
     run_migrations(engine)
     with SessionLocal() as session:
         run_account_foundation_backfill_once(session)
+        run_support_account_ownership_backfill_once(session)
         session.commit()

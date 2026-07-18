@@ -283,6 +283,7 @@ def test_capacity_alert_candidates_ignore_disabled_nodes(monkeypatch, tmp_path) 
 
 
 def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("FREE_TOTAL_GB", "99")
     api = _load_api(monkeypatch, tmp_path)
     sent_messages: list[tuple[int, str]] = []
 
@@ -303,11 +304,19 @@ def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -
     assert free_body["summary"]["near_cap_users"] == 1
     assert free_body["summary"]["over_cap_users"] == 1
     assert free_body["facts"]["node_pool"] == "NL-free"
+    assert free_body["facts"]["traffic_limit_bytes"] == 5 * 1024**3
+    assert free_body["facts"]["standard_access_role"] == "free_standard"
+    assert free_body["facts"]["soft_access_role"] == "free_soft"
+    assert free_body["facts"]["soft_mode_speed_limit_mbps"] == 2
 
     free_users = client.get("/api/admin/free-tier/users", headers=headers)
     assert free_users.status_code == 200, free_users.text
-    states = {row["username"]: row["state"] for row in free_users.json()["users"]}
+    user_rows = free_users.json()["users"]
+    states = {row["username"]: row["state"] for row in user_rows}
     assert states == {"overcap": "over_cap", "nearcap": "near_cap"}
+    assert all(row["transition_state"] == "standard" for row in user_rows)
+    assert all(row["active_role"] == "free_standard" for row in user_rows)
+    assert all("provisioning_job_id" in row and "provisioning_error_code" in row for row in user_rows)
 
     quota_status = client.get("/api/admin/provider-quotas/status", headers=headers)
     assert quota_status.status_code == 200, quota_status.text
@@ -468,6 +477,362 @@ def test_admin_payments_summary_counts_revenue_attention_and_abandoned(monkeypat
     assert body["abandoned"]["buy_click_not_paid"] >= 1
     assert body["abandoned"]["checkout_not_paid"] >= 1
     assert {row["order_id"] for row in body["problem_orders"]} >= {"pending-ops-1", "manual-ops-1", "failed-ops-1"}
+
+
+def test_admin_payments_summary_flags_only_unreconciled_reversals(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        s.add_all(
+            [
+                ExternalOrder(
+                    order_id="refund-needs-operator",
+                    provider="lavatop",
+                    plan_code="1_month",
+                    amount=990,
+                    currency="RUB",
+                    status="refunded",
+                    meta_json=json.dumps({
+                        "fulfillment": {"status": "reversal_pending_operator_action"},
+                        "reversal": {
+                            "operator_action_required": True,
+                            "reconciliation_status": "grant_not_found",
+                        },
+                    }),
+                    created_at=now - timedelta(hours=2),
+                ),
+                ExternalOrder(
+                    order_id="refund-reconciled",
+                    provider="lavatop",
+                    plan_code="1_month",
+                    amount=990,
+                    currency="RUB",
+                    status="refunded",
+                    meta_json=json.dumps({
+                        "fulfillment": {"status": "reversed"},
+                        "reversal": {
+                            "operator_action_required": False,
+                            "reconciliation_status": "reversed",
+                        },
+                    }),
+                    created_at=now - timedelta(hours=1),
+                ),
+                ExternalOrder(
+                    order_id="refund-without-reconciliation-evidence",
+                    provider="lavatop",
+                    plan_code="1_month",
+                    amount=990,
+                    currency="RUB",
+                    status="refunded",
+                    meta_json=json.dumps({}),
+                    created_at=now - timedelta(minutes=30),
+                ),
+            ]
+        )
+        s.commit()
+        body = api._admin_payments_summary_payload(s=s, period="7d")
+    finally:
+        s.close()
+
+    assert body["attention"]["failed_count"] == 2
+    assert body["attention"]["problem_count"] == 2
+    assert {row["order_id"] for row in body["problem_orders"]} == {
+        "refund-needs-operator",
+        "refund-without-reconciliation-evidence",
+    }
+
+
+def test_admin_problem_list_filters_reversal_state_before_limit(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        reconciled = [
+            ExternalOrder(
+                order_id=f"reconciled-{index}",
+                provider="lavatop",
+                plan_code="1_month",
+                amount=990,
+                currency="RUB",
+                status="refunded",
+                meta_json=json.dumps({
+                    "fulfillment": {"status": "reversed"},
+                    "reversal": {
+                        "operator_action_required": False,
+                        "reconciliation_status": "reversed",
+                    },
+                }),
+                created_at=now - timedelta(minutes=index),
+            )
+            for index in range(101)
+        ]
+        s.add_all(reconciled)
+        s.add(ExternalOrder(
+            order_id="old-unreconciled-refund",
+            provider="lavatop",
+            plan_code="1_month",
+            amount=990,
+            currency="RUB",
+            status="refunded",
+            meta_json=json.dumps({
+                "fulfillment": {"status": "reversal_pending_operator_action"},
+                "reversal": {
+                    "operator_action_required": True,
+                    "reconciliation_status": "grant_not_found",
+                },
+            }),
+            created_at=now - timedelta(hours=6),
+        ))
+        s.commit()
+        body = api._admin_payments_summary_payload(s=s, period="7d")
+    finally:
+        s.close()
+
+    assert body["attention"]["failed_count"] == 1
+    assert body["attention"]["problem_count"] == 1
+    assert [row["order_id"] for row in body["problem_orders"]] == ["old-unreconciled-refund"]
+
+
+def test_admin_attention_includes_old_outstanding_reversal_globally(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        s.add_all([
+            ExternalOrder(
+                order_id="old-outstanding-refund",
+                provider="lavatop",
+                status="refunded",
+                meta_json=json.dumps({
+                    "fulfillment": {"status": "reversal_pending_operator_action"},
+                    "reversal": {
+                        "operator_action_required": True,
+                        "reconciliation_status": "grant_not_found",
+                    },
+                }),
+                created_at=now - timedelta(days=120),
+            ),
+            ExternalOrder(
+                order_id="old-reconciled-refund",
+                provider="lavatop",
+                status="refunded",
+                meta_json=json.dumps({
+                    "fulfillment": {"status": "reversed"},
+                    "reversal": {
+                        "operator_action_required": False,
+                        "reconciliation_status": "reversed",
+                    },
+                }),
+                created_at=now - timedelta(days=110),
+            ),
+        ])
+        s.commit()
+        body = api._admin_payments_summary_payload(s=s, period="7d")
+    finally:
+        s.close()
+
+    assert body["attention"]["failed_count"] == 1
+    assert body["attention"]["problem_count"] == 1
+    assert [row["order_id"] for row in body["problem_orders"]] == ["old-outstanding-refund"]
+
+
+def test_admin_problem_rows_share_one_descending_limit(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        s.add(ExternalOrder(
+            order_id="old-unresolved-before-limit",
+            provider="lavatop",
+            status="refunded",
+            meta_json=json.dumps({
+                "fulfillment": {"status": "reversal_pending_operator_action"},
+                "reversal": {
+                    "operator_action_required": True,
+                    "reconciliation_status": "grant_not_found",
+                },
+            }),
+            created_at=now - timedelta(days=2),
+        ))
+        for index in range(25):
+            s.add(ExternalOrder(
+                order_id=f"newer-manual-{index:02d}",
+                provider="lavatop",
+                status="manual_review" if index % 2 == 0 else "failed",
+                created_at=now - timedelta(minutes=index),
+            ))
+        s.commit()
+        body = api._admin_payments_summary_payload(s=s, period="7d")
+    finally:
+        s.close()
+
+    order_ids = [row["order_id"] for row in body["problem_orders"]]
+    assert len(order_ids) == 25
+    assert "newer-manual-24" in order_ids
+    assert "old-unresolved-before-limit" not in order_ids
+
+
+def test_admin_reversal_python_verifier_excludes_large_reconciled_set(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        for index in range(300):
+            s.add(ExternalOrder(
+                order_id=f"canonical-reconciled-{index:03d}",
+                provider="lavatop",
+                status="refunded",
+                meta_json=json.dumps({
+                    "fulfillment": {"status": "reversed"},
+                    "reversal": {
+                        "operator_action_required": False,
+                        "reconciliation_status": "reversed",
+                        "recorded_at": now.isoformat(),
+                    },
+                }, separators=(",", ":")),
+                created_at=now - timedelta(days=90),
+            ))
+        s.add(ExternalOrder(
+            order_id="canonical-unresolved",
+            provider="lavatop",
+            status="chargeback",
+            meta_json=json.dumps({
+                "fulfillment": {"status": "reversal_pending_operator_action"},
+                "reversal": {
+                    "operator_action_required": True,
+                    "reconciliation_status": "grant_not_found",
+                    "recorded_at": now.isoformat(),
+                },
+            }, separators=(",", ":")),
+            created_at=now - timedelta(days=90),
+        ))
+        s.commit()
+
+        checked: list[str] = []
+        original = api._payment_reversal_needs_operator
+
+        def _tracked(order):
+            checked.append(str(order.order_id))
+            return original(order)
+
+        api._payment_reversal_needs_operator = _tracked
+        try:
+            body = api._admin_payments_summary_payload(s=s, period="7d")
+        finally:
+            api._payment_reversal_needs_operator = original
+    finally:
+        s.close()
+
+    assert body["attention"]["failed_count"] == 1
+    assert [row["order_id"] for row in body["problem_orders"]] == ["canonical-unresolved"]
+    assert len(checked) == 301
+    assert "canonical-unresolved" in checked
+
+
+def test_admin_reversal_attention_ignores_nested_success_markers(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        s.add(ExternalOrder(
+            order_id="unresolved-with-nested-success",
+            provider="lavatop",
+            status="refunded",
+            meta_json=json.dumps({
+                "callback": {
+                    "fulfillment": {"status": "reversed"},
+                    "reversal": {
+                        "operator_action_required": False,
+                        "reconciliation_status": "reversed",
+                    },
+                },
+                "fulfillment": {"status": "reversal_pending_operator_action"},
+                "reversal": {
+                    "operator_action_required": True,
+                    "reconciliation_status": "pending",
+                    "recorded_at": now.isoformat(),
+                },
+            }, separators=(",", ":")),
+            created_at=now - timedelta(days=60),
+        ))
+        s.commit()
+        body = api._admin_payments_summary_payload(s=s, period="7d")
+    finally:
+        s.close()
+
+    assert body["attention"]["failed_count"] == 1
+    assert [row["order_id"] for row in body["problem_orders"]] == ["unresolved-with-nested-success"]
+
+
+def test_reversal_problem_time_overflow_falls_back_to_order_creation(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    created_at = _utcnow() - timedelta(days=1)
+    order = ExternalOrder(
+        order_id="overflow-reversal-time",
+        provider="lavatop",
+        status="refunded",
+        meta_json=json.dumps({
+            "reversal": {"recorded_at": "0001-01-01T00:00:00+14:00"},
+        }),
+        created_at=created_at,
+    )
+
+    assert api._payment_reversal_problem_time(order) == created_at
+
+
+def test_admin_problem_recency_uses_reversal_recorded_at(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import ExternalOrder
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        s.add_all([
+            ExternalOrder(
+                order_id="fresh-refund-old-purchase",
+                provider="lavatop",
+                status="refunded",
+                meta_json=json.dumps({
+                    "fulfillment": {"status": "reversal_pending_operator_action"},
+                    "reversal": {
+                        "operator_action_required": True,
+                        "reconciliation_status": "pending",
+                        "recorded_at": (now - timedelta(minutes=5)).isoformat(),
+                    },
+                }),
+                created_at=now - timedelta(days=120),
+            ),
+            ExternalOrder(
+                order_id="older-ordinary-problem",
+                provider="lavatop",
+                status="manual_review",
+                created_at=now - timedelta(hours=1),
+            ),
+        ])
+        s.commit()
+        body = api._admin_payments_summary_payload(s=s, period="7d")
+    finally:
+        s.close()
+
+    assert [row["order_id"] for row in body["problem_orders"]][:2] == [
+        "fresh-refund-old-purchase",
+        "older-ordinary-problem",
+    ]
 
 
 def test_admin_online_users_aggregate_omits_raw_ips(monkeypatch, tmp_path) -> None:

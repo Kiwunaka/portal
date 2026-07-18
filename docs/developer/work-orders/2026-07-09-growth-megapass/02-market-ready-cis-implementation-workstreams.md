@@ -23,7 +23,8 @@ recovery/antiabuse services, and API routing in `portal_bot/api.py`.
 Deliverables:
 
 - `accounts`, `account_identities`, `account_devices`, `auth_sessions`.
-- `entitlement_grants`, `recovery_codes`, antiabuse event/case/action ledger.
+- `account_entitlement_grants`, `recovery_codes`, antiabuse event/case/action
+  ledger; retain the legacy `entitlement_grants` activation-key table unchanged.
 - Idempotent backfill, merge report, conflict queue and rollback evidence.
 - Rotating refresh sessions, session reuse detection and fresh-auth scopes.
 - OTP and one-time recovery exchange with rate limits.

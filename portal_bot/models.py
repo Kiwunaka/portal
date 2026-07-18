@@ -9,6 +9,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Float,
+    Index,
     Integer,
     String,
     Text,
@@ -22,6 +23,18 @@ Base = declarative_base()
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _default_node_access_role(context) -> str:
+    params = context.get_current_parameters() if context is not None else {}
+    code = str((params or {}).get("code") or "").strip().lower()
+    if "operator" in code or code.endswith("_lab") or code.endswith("-lab"):
+        return "operator_lab"
+    if "free" in code and "soft" in code:
+        return "free_soft"
+    if "free" in code:
+        return "free_standard"
+    return "paid"
 
 
 class User(Base):
@@ -72,6 +85,17 @@ class User(Base):
     free_cycle_anchor_at = Column(DateTime, nullable=True)
     free_cycle_last_reset_at = Column(DateTime, nullable=True)
     free_cycle_next_reset_at = Column(DateTime, nullable=True)
+    free_profile_state = Column(String(32), default="standard", nullable=False)
+    free_profile_active_role = Column(String(32), default="free_standard", nullable=False)
+    free_profile_source = Column(String(64), default="legacy_backfill", nullable=False)
+    free_profile_state_changed_at = Column(DateTime, nullable=True)
+    free_profile_job_id = Column(Integer, index=True, nullable=True)
+    free_profile_error_code = Column(String(64), nullable=True)
+    free_profile_standard_node_code = Column(String(32), nullable=True)
+    free_profile_soft_node_code = Column(String(32), nullable=True)
+    free_profile_observed_bytes = Column(BigInteger, default=0, nullable=False)
+    free_profile_observed_at = Column(DateTime, nullable=True)
+    free_profile_observation_source = Column(String(64), nullable=True)
     app_install_id = Column(String(128), index=True, nullable=True)
     app_device_name = Column(String(120), nullable=True)
     app_platform = Column(String(32), nullable=True)
@@ -186,8 +210,23 @@ class RecoveryCode(Base):
     replaced_by_code_id = Column(String(36), nullable=True)
 
 
-class EntitlementGrant(Base):
+class LegacyEntitlementGrant(Base):
     __tablename__ = "entitlement_grants"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, nullable=False)
+    activation_key_code = Column(String(64), nullable=False)
+    plan_code = Column(String(32), nullable=False)
+    source = Column(String(32), nullable=True)
+    duration_days = Column(Integer, nullable=False)
+    granted_from = Column(DateTime, nullable=False)
+    granted_until = Column(DateTime, nullable=False)
+    meta_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class EntitlementGrant(Base):
+    __tablename__ = "account_entitlement_grants"
 
     id = Column(String(36), primary_key=True)
     account_id = Column(String(36), index=True, nullable=False)
@@ -199,6 +238,11 @@ class EntitlementGrant(Base):
     plan_code = Column(String(32), nullable=True)
     starts_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, index=True, nullable=True)
+    reserved_at = Column(DateTime, nullable=True)
+    reservation_expires_at = Column(DateTime, index=True, nullable=True)
+    activated_at = Column(DateTime, nullable=True)
+    duration_days = Column(Integer, nullable=True)
+    activation_evidence_id = Column(String(36), index=True, nullable=True)
     provider = Column(String(32), nullable=True)
     external_order_id = Column(String(160), nullable=True)
     metadata_json = Column(Text, nullable=True)
@@ -206,6 +250,82 @@ class EntitlementGrant(Base):
     reversal_reason = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class PaymentEntitlementClaim(Base):
+    __tablename__ = "payment_entitlement_claims"
+    __table_args__ = (
+        UniqueConstraint("provider", "order_id", name="uq_payment_entitlement_claim_provider_order"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider = Column(String(32), nullable=False, index=True)
+    order_id = Column(String(128), nullable=False, index=True)
+    buyer_email_norm = Column(String(255), nullable=False, index=True)
+    account_id = Column(String(36), nullable=True, index=True)
+    status = Column(String(32), default="pending_payment", nullable=False, index=True)
+    plan_code = Column(String(32), nullable=False)
+    duration_days = Column(Integer, nullable=False)
+    grant_id = Column(String(36), nullable=True, index=True)
+    fallback_gift_card_id = Column(Integer, unique=True, nullable=True, index=True)
+    paid_at = Column(DateTime, nullable=True)
+    attached_at = Column(DateTime, nullable=True)
+    fulfilled_at = Column(DateTime, nullable=True)
+    reversed_at = Column(DateTime, nullable=True)
+    reversal_reason = Column(String(64), nullable=True)
+    last_error = Column(String(120), nullable=True)
+    last_error_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ConnectionEvidence(Base):
+    __tablename__ = "connection_evidence"
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    device_id = Column(String(36), index=True, nullable=True)
+    node_id = Column(Integer, index=True, nullable=False)
+    evidence_kind = Column(String(40), index=True, nullable=False)
+    observed_at = Column(DateTime, index=True, nullable=False)
+    evidence_key = Column(String(160), unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ReferralRelationship(Base):
+    __tablename__ = "referral_relationships"
+
+    id = Column(String(36), primary_key=True)
+    referred_account_id = Column(String(36), unique=True, index=True, nullable=False)
+    referrer_account_id = Column(String(36), index=True, nullable=False)
+    source = Column(String(32), nullable=False)
+    status = Column(String(24), default="linked", index=True, nullable=False)
+    review_status = Column(String(24), default="clear", index=True, nullable=False)
+    friend_evidence_id = Column(String(36), index=True, nullable=True)
+    friend_grant_id = Column(String(36), nullable=True)
+    friend_granted_at = Column(DateTime, nullable=True)
+    first_payment_key = Column(String(160), unique=True, index=True, nullable=True)
+    first_payment_at = Column(DateTime, nullable=True)
+    hold_until = Column(DateTime, index=True, nullable=True)
+    referrer_grant_id = Column(String(36), nullable=True)
+    referrer_granted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ReferralTransition(Base):
+    __tablename__ = "referral_transitions"
+
+    id = Column(String(36), primary_key=True)
+    relationship_id = Column(String(36), index=True, nullable=False)
+    referred_account_id = Column(String(36), index=True, nullable=False)
+    referrer_account_id = Column(String(36), index=True, nullable=False)
+    transition_key = Column(String(160), unique=True, index=True, nullable=False)
+    transition_kind = Column(String(40), index=True, nullable=False)
+    status = Column(String(24), nullable=False)
+    occurred_at = Column(DateTime, index=True, nullable=False)
+    metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class AntiAbuseEvent(Base):
@@ -415,6 +535,8 @@ class Node(Base):
     panel_user = Column(String(128))
     panel_pass = Column(String(255))
     inbound_id = Column(Integer)
+    access_role = Column(String(32), default=_default_node_access_role, nullable=False, index=True)
+    access_role_legacy = Column(String(32), nullable=True)
 
     enabled = Column(Boolean, default=True)
     accepting_new_clients = Column(Boolean, default=True)
@@ -675,9 +797,15 @@ class NodeProvisioningJob(Base):
     status = Column(String(32), index=True, default="queued", nullable=False)
     desired_state_json = Column(Text, nullable=True)
     result_json = Column(Text, nullable=True)
+    idempotency_key = Column(String(160), unique=True, index=True, nullable=True)
     attempts = Column(Integer, default=0, nullable=False)
     next_run_at = Column(DateTime, nullable=True)
     locked_at = Column(DateTime, nullable=True)
+    lock_token = Column(String(64), index=True, nullable=True)
+    last_error_code = Column(String(64), nullable=True)
+    replacement_key_uuid = Column(String(36), nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    manual_review_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
@@ -866,6 +994,7 @@ class SupportTicket(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_tg_id = Column(BigInteger, index=True, nullable=False)
+    account_id = Column(String(36), index=True, nullable=True)
     status = Column(String(20), default="open", nullable=False)  # open / in_progress / closed
     subject = Column(String(200), nullable=True)
     assigned_admin_tg_id = Column(BigInteger, nullable=True)
@@ -880,10 +1009,15 @@ class SupportAttachment(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     stored_name = Column(String(160), unique=True, index=True, nullable=False)
     owner_tg_id = Column(BigInteger, index=True, nullable=False)
+    owner_account_id = Column(String(36), index=True, nullable=True)
     original_name = Column(String(160), nullable=False)
     content_type = Column(String(80), nullable=False)
     size_bytes = Column(Integer, default=0, nullable=False)
     media_type = Column(String(32), nullable=False)
+    ticket_id = Column(Integer, index=True, nullable=True)
+    message_id = Column(Integer, unique=True, index=True, nullable=True)
+    attached_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
@@ -1134,7 +1268,10 @@ class ExternalOrder(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     paid_at = Column(DateTime, nullable=True)
 
-    __table_args__ = (UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),)
+    __table_args__ = (
+        UniqueConstraint("provider", "order_id", name="uq_external_orders_provider_order"),
+        Index("ix_external_orders_status_created_at_id", "status", "created_at", "id"),
+    )
 
 
 class ExternalPaymentEvent(Base):

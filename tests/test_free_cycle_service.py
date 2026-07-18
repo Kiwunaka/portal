@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -16,7 +16,7 @@ class FreeCycleServiceTests(unittest.IsolatedAsyncioTestCase):
             sys.path.insert(0, portal_dir)
 
         self._tmp = tempfile.TemporaryDirectory()
-        self.db_path = str((repo_root / f"portal_free_cycle_test_{uuid.uuid4().hex}.db").resolve())
+        self.db_path = str((Path(self._tmp.name) / f"portal_free_cycle_test_{uuid.uuid4().hex}.db").resolve())
         self._saved_env: dict[str, str | None] = {}
         for k in ("DATABASE_URL", "BOT_TOKEN", "FREE_CYCLE_DAYS"):
             self._saved_env[k] = os.environ.get(k)
@@ -61,7 +61,7 @@ class FreeCycleServiceTests(unittest.IsolatedAsyncioTestCase):
         from db import SessionLocal
         from models import User
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         s = SessionLocal()
         try:
             row = User(
@@ -91,49 +91,57 @@ class FreeCycleServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_process_due_free_cycle_resets(self) -> None:
         from db import SessionLocal
-        from models import User
+        from models import NodeProvisioningJob, User
 
         self._seed_user(tg_id=1001, due=True, with_cycle=True)
         self._seed_user(tg_id=1002, due=False, with_cycle=True)
 
-        class FakePanel:
-            async def login(self):
-                return True
-
-            async def close(self):
-                return True
-
-            async def reset_client_traffic(self, tg_id: int, *, only_free: bool = False):
-                return int(tg_id) == 1001 and bool(only_free)
+        class UnexpectedPanel:
+            def __init__(self):
+                raise AssertionError("cycle scheduler must not call the live panel")
 
         old_panel = self.fcs.ControlPanel
-        self.fcs.ControlPanel = FakePanel
+        self.fcs.ControlPanel = UnexpectedPanel
         try:
             result = await self.fcs.process_due_free_cycle_resets(max_users=20)
+            replay = await self.fcs.process_due_free_cycle_resets(max_users=20)
         finally:
             self.fcs.ControlPanel = old_panel
 
         self.assertTrue(result.get("ok"))
         self.assertEqual(int(result.get("due") or 0), 1)
-        self.assertEqual(int(result.get("reset_ok") or 0), 1)
+        self.assertEqual(int(result.get("queued") or 0), 1)
+        self.assertEqual(int(result.get("reset_ok") or 0), 0)
         self.assertEqual(int(result.get("reset_failed") or 0), 0)
+        self.assertEqual(int(replay.get("queued") or 0), 0)
 
         s = SessionLocal()
         try:
             u = s.query(User).filter(User.tg_id == 1001).first()
             self.assertIsNotNone(u)
-            self.assertIsNotNone(u.free_cycle_last_reset_at)
-            self.assertIsNotNone(u.free_cycle_next_reset_at)
-            self.assertGreater(u.free_cycle_next_reset_at, datetime.utcnow())
+            self.assertEqual(u.free_profile_state, "reset_pending")
+            self.assertLessEqual(u.free_cycle_next_reset_at, datetime.now(timezone.utc).replace(tzinfo=None))
+            self.assertEqual(
+                s.query(NodeProvisioningJob).filter_by(tg_id=1001, job_type="free_to_standard").count(),
+                1,
+            )
         finally:
             s.close()
+
+    async def test_cycle_bootstrap_respects_worker_batch_limit(self) -> None:
+        for tg_id in (2001, 2002, 2003):
+            self._seed_user(tg_id=tg_id, due=False, with_cycle=False)
+
+        result = await self.fcs.process_due_free_cycle_resets(max_users=1)
+
+        self.assertEqual(int(result.get("bootstrapped") or 0), 1)
 
     def test_bootstrap_existing_free_users(self) -> None:
         from db import SessionLocal
         from models import User
 
         self._seed_user(tg_id=2001, due=False, with_cycle=False)
-        ts = datetime.utcnow()
+        ts = datetime.now(timezone.utc).replace(tzinfo=None)
         result = self.fcs.bootstrap_free_cycle_for_existing_users(now=ts)
         self.assertEqual(int(result.get("initialized") or 0), 1)
 

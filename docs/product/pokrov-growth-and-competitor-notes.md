@@ -31,7 +31,7 @@ Observed on `2026-05-19` across Amnezia, Nord, Proton, Windscribe, Surfshark, Br
 
 - high-performing first screens put a concrete hook before mood copy: trial period, discount, platform, device count, guarantee, price, current country/status, or install action
 - strong cards start with a number, status, or job-to-be-done, then explain what the user can do next
-- weaker cards feel like abstract reassurance; `POKROV` should not lead with atmosphere when it can show `5 days`, `Android + Windows`, `+10 days`, `up to 5 devices`, `cabinet`, or `support`
+- weaker cards feel like abstract reassurance; `POKROV` should not lead with atmosphere when it can show `5 days`, `Android + Windows`, `+5 days`, `up to 5 devices`, `cabinet`, or `support`
 - local Telegram-first competitors often make trial, price, and platform blocks visible immediately; `POKROV` should keep that directness while preserving beta/payment honesty and avoiding unsupported claims
 
 ## Where POKROV Can Win

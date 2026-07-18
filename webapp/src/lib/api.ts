@@ -1369,6 +1369,7 @@ export type ManualCreateIn = {
 };
 
 export type TicketAttachmentInput = {
+  attachment_id?: string | null;
   media_type?: string | null;
   media_file_id?: string | null;
   media_payload?: string | null;
@@ -1379,10 +1380,12 @@ export type TicketAttachmentPayload = {
   name: string;
   content_type: string;
   size: number;
+  private?: boolean;
 };
 
 export type TicketAttachmentUploadResult = {
   ok: boolean;
+  attachment_id: string;
   attachment: TicketAttachmentInput;
   attachment_payload: TicketAttachmentPayload;
 };
@@ -2049,6 +2052,63 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
   throw lastErr || new Error("API error");
 }
 
+export async function fetchAuthenticatedBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  const { normalizePrivateSupportAttachmentPath } = await import("@/lib/support-attachments");
+  if (normalizePrivateSupportAttachmentPath(path) !== path) {
+    throw new Error("Invalid private attachment path");
+  }
+  const bases = candidateApiBases();
+  let lastErr: unknown = null;
+  for (const base of bases) {
+    const managedSignal = createManagedRequestSignal(signal, DEFAULT_API_TIMEOUT_MS);
+    try {
+      const headers = new Headers();
+      applyAuthHeaders(headers);
+      const response = await fetch(`${base}${path}`, {
+        headers,
+        credentials: "include",
+        signal: managedSignal.signal,
+      });
+      if (!response.ok) {
+        const info = await readApiErrorInfo(response);
+        if (response.status === 401) {
+          clearWebSessionToken();
+          dispatchAuthRequired({
+            code: response.headers.get("x-pokrov-auth-error") || info.code,
+            message: info.message,
+          });
+        }
+        throw new ApiResponseError(
+          info.message || `API error: ${response.status}`,
+          response.status,
+          info.code,
+        );
+      }
+      return await response.blob();
+    } catch (error) {
+      lastErr = managedSignal.abortedByTimeout()
+        ? createTimeoutError(DEFAULT_API_TIMEOUT_MS)
+        : error;
+      if (managedSignal.abortedByCaller()) {
+        throw createAbortError(signal?.reason);
+      }
+      const message = String((lastErr as { message?: string })?.message || lastErr);
+      if (
+        managedSignal.abortedByTimeout() ||
+        message.includes("Failed to fetch") ||
+        message.includes("NetworkError") ||
+        message.includes("fetch")
+      ) {
+        continue;
+      }
+      break;
+    } finally {
+      managedSignal.cleanup();
+    }
+  }
+  throw lastErr || new Error("API error");
+}
+
 export function fetchUser(tgId: number): Promise<UserPayload> {
   return apiFetch<UserPayload>(`/api/user/${tgId}`);
 }
@@ -2300,15 +2360,22 @@ export async function fetchTickets(limit = 20): Promise<TicketInfo[]> {
 }
 
 export async function createTicket(subject: string, body: string, attachment?: TicketAttachmentInput): Promise<TicketInfo> {
+  const attachmentBody = attachment?.attachment_id
+    ? { attachment_id: attachment.attachment_id }
+    : attachment
+      ? {
+          media_type: attachment.media_type ?? null,
+          media_file_id: attachment.media_file_id ?? null,
+          media_payload: attachment.media_payload ?? null,
+        }
+      : {};
   const data = await apiFetch<{ ticket: TicketInfo }>("/api/tickets", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       subject,
       body,
-      media_type: attachment?.media_type ?? null,
-      media_file_id: attachment?.media_file_id ?? null,
-      media_payload: attachment?.media_payload ?? null,
+      ...attachmentBody,
     }),
   });
   return data.ticket;
@@ -2331,14 +2398,21 @@ export async function getTicket(ticketId: number): Promise<TicketInfo> {
 }
 
 export async function addTicketMessage(ticketId: number, body: string, attachment?: TicketAttachmentInput): Promise<TicketInfo> {
+  const attachmentBody = attachment?.attachment_id
+    ? { attachment_id: attachment.attachment_id }
+    : attachment
+      ? {
+          media_type: attachment.media_type ?? null,
+          media_file_id: attachment.media_file_id ?? null,
+          media_payload: attachment.media_payload ?? null,
+        }
+      : {};
   const data = await apiFetch<{ ticket: TicketInfo }>(`/api/tickets/${ticketId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       body,
-      media_type: attachment?.media_type ?? null,
-      media_file_id: attachment?.media_file_id ?? null,
-      media_payload: attachment?.media_payload ?? null,
+      ...attachmentBody,
     }),
   });
   return data.ticket;

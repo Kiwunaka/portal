@@ -13,8 +13,10 @@ Implemented:
 - `accounts` plus nullable `users.account_id` compatibility projection;
 - typed `account_identities` and real `account_devices`;
 - foundation schema for `auth_sessions`, `recovery_codes`,
-  `entitlement_grants`, `antiabuse_events`, `antiabuse_cases`,
+  `account_entitlement_grants`, `antiabuse_events`, `antiabuse_cases`,
   `antiabuse_actions`, and `account_merge_reviews`;
+- retained legacy `entitlement_grants` activation-key history beside the new
+  UUID ledger, without column conversion, table rebuild, or row rewrite;
 - deterministic UUIDv5 backfill for legacy users and installs, guarded by a
   durable completion marker so each service startup does not repeat a full
   user-table scan; an indexed NULL check repairs any legacy writer missed by
@@ -80,7 +82,9 @@ Implemented:
 ## Rollback
 
 The change is additive. Code rollback can stop reading/writing the new tables
-while all legacy rows continue to exist. Do not drop the new tables during an
+while all legacy rows continue to exist. In particular, the legacy
+`entitlement_grants` table is not renamed, rebuilt, or converted; the new UUID
+ledger is `account_entitlement_grants`. Do not drop the new tables during an
 incident. A data rollback may clear `users.account_id` only after preserving a
 backfill report; merged account and review rows remain audit evidence.
 
@@ -90,7 +94,8 @@ backfill report; merged account and review rows remain audit evidence.
   startup marker and late-write repair, component-scoped runtime sync, explicit
   linking, late merge, preserved grants, blocked/auth-epoch state, advisory
   and schema-bootstrap locking, reverse-edge arrival order, review conflicts
-  and legacy SQLite column migration.
+  legacy SQLite column migration, and the production-shaped legacy entitlement
+  table collision with preserved rows and a separate account ledger.
 - the default release pytest matrix now executes
   `portal_bot/tests/test_app_first_service.py`,
   `portal_bot/tests/test_email_auth.py`, `tests/test_bot_paywall.py` and

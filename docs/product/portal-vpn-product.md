@@ -76,8 +76,15 @@ Rotating sessions, recovery exchange, payment ownership cutover, and entitlement
 - default runtime core: `sing-box`
 - `xray` role: advanced compatibility fallback only
 - free trial: `5 days`
-- Telegram reward: `+10 days`
+- first account/device receives one idempotent `7-day` activation reservation;
+  the premium entitlement itself remains exactly `5 days` and starts only from
+  authenticated internal node/control-plane connection evidence
+- client connect confirmation, `clicked_connect`, `connected_ok`, and funnel
+  telemetry never activate the trial
+- Telegram reward: `+5 days` for new account-owned grants; already-issued `+10 days` grants are grandfathered
 - current distributed beta: `1.0.0-beta`
+- public client version line remains `0.x.x-beta` until exact promoted client
+  evidence says otherwise
 - target candidate: `1.0.0-rc.1`
 - stable `1.0.0`: unproven
 - Russian is a first-class user language
@@ -224,7 +231,7 @@ Public funnel rule:
 - marketing introduces the product and captures public intent through trial, install, and first connection before payment pressure
 - `pokrov.space/checkout/` shows public pricing and sells activation keys through the hosted checkout flow when plan intent is explicit
 - `app.pokrov.space` continues real account, renewal, redeem, support, and admin flows
-- cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account; anonymous public checkout remains key-first by email
+- cabinet checkout is continuation-only and creates an authenticated provider order that renews the current account; anonymous public checkout creates a durable email-owned pending entitlement and keeps one linked activation key as the unclaimed fallback
 - the default site, cabinet, and bot UX must not expose raw subscription links
 - Telegram bot purchase flow remains available, but it is not the default public story
 - `connect.pokrov.space` remains the delivery surface for the one public connection link and matching QR when explicit manual import is needed, not a fresh-entry marketing surface or first-layer consumer story
@@ -236,7 +243,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 
 - calm, direct, and premium without fake urgency, countdown theater, or exaggerated rescue language
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
-- lead cards and above-the-fold proof with concrete user-checkable hooks: `5 days`, `no card for trial`, `Android + Windows`, `+10 days for Telegram`, `up to 5 devices in paid plans`, `cabinet`, and `support`
+- lead cards and above-the-fold proof with concrete user-checkable hooks: `5 days`, `no card for trial`, `Android + Windows`, `+5 days for Telegram`, `up to 5 devices in paid plans`, `cabinet`, and `support`
 - avoid mood-first public phrases such as `спокойный маршрут`, `легкий путь`, `понятный сценарий`, or similar filler when a real product fact, action, limit, or status can be shown instead
 - marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
 - email continuation copy may be live when the delivery path is ready, and must degrade honestly if delivery readiness fails
@@ -294,7 +301,9 @@ Product wording rule:
 
 ### Telegram Reward
 
-- reward value: `+10 days`
+- new reward value: `+5 days`, once per canonical account
+- already-issued `+10 days` channel rewards remain grandfathered and are never shortened or reissued
+- leaving the channel starts a `24 hour` grace period; rejoining cancels grace, and expiry removes only the unused channel interval
 - the app-first account must first link Telegram
 - reward validation then checks membership in the configured public channel
 - active public channel: `@pokrov_vpn`
@@ -302,6 +311,10 @@ Product wording rule:
 
 ### Promo And Referral Bonuses
 
+- a referred friend receives `+5 days` once, only from canonical server `ConnectionEvidence`
+- the referrer receives `+15 days` once after the referred account's first successful payment and a full `72 hour` hold
+- client events, admin gifts, and later renewals cannot release these day grants
+- before first successful payment, trial + Telegram + friend grants are capped at exactly `15 premium days` per canonical account
 - app-first bonus summary, referral summary, and promo-code redemption are backend-owned API contracts
 - the app may redeem promo codes through the unified code entry or the bonus promo endpoint
 - the app may show referral code, safe Telegram referral link, and copy/share/open actions from the referral summary contract; referral anti-abuse and bonus granting stay backend-owned
@@ -319,12 +332,27 @@ Official Telegram surfaces:
 
 ### Post-Trial Access Model
 
-- `free_monthly`: `5 GB / 30 days`
+- `free_monthly`: exactly `5 * 1024^3` bytes per 30 days on the ordinary `free_standard` profile
 - `free_monthly` device limit: `1`
-- `free_monthly` keeps monthly traffic reset via the free-cycle job
-- after `5 GB` is exhausted, the account stays usable in `soft mode` until the next reset
+- quota evidence queues a durable move to a separate `free_soft` inbound; the UI stays in transition state until that target is confirmed
+- confirmed `free_soft` stays usable at a target `2 Mbps` per observed public IP until the next reset; users behind one NAT share that cap
+- reset is also durable: enable and confirm standard, reset its traffic, then disable soft; failures retry with a bounded manual-review state
+- `free_monthly` keeps monthly traffic reset via the free-cycle and node-provisioning workers
 - `paid` remains unlimited traffic with up to `5 devices`
 - all active, non-hidden RUB plans with positive `amount_rub` are eligible for hosted checkout after the payment gate; frontend checkout must not keep a stale one-plan allowlist
+- anonymous paid checkout is claimable by the same verified email account in either payment/attach order; this backend slice does not yet expose the OTP claim UI or public claim endpoints
+- one provider order can create at most one paid grant and one linked fallback key across callback retries or different provider event IDs; automatic claim and later fallback-key redemption cannot stack the same purchase twice
+- a pre-existing paid-order key is linked to its existing unredeemed, plan-matching, system-created GiftCard instead of duplicated; a user/admin-created, redeemed, mismatched, or already-owned card requires manual review and cannot transfer or add access
+- a payment-linked key redeems from the purchase claim's saved plan and duration even when that plan has since been removed or renamed in the live catalog; unrelated legacy gift cards keep their existing catalog rules
+- existing payment claims use their saved buyer email, plan, and duration for every paid callback event; later catalog removal, rename, or duration changes cannot downgrade a fulfilled account claim or an emailed fallback to manual review, while orders without a claim still require a current supported plan
+- fallback email delivery is retryable until delivery evidence is stored; the durable purchase claim/key survives relay failure, and an already recorded successful delivery is not resent
+- successful fallback delivery evidence is monotonic and cannot be downgraded by a later failure; bot success/denial analytics stores only a non-secret code preview, fingerprint prefix, and length
+- a refund or chargeback that commits while fallback email is in flight remains authoritative: later transport evidence cannot replace reversal state, the paid receipt terminates without reporting access, and replay does not resend
+- the linked claim and GiftCard are the only durable fallback-key authority; payment order/callback audit JSON does not retain a second raw-key copy, and redemption/status responses continue to use the saved purchase plan and duration after catalog changes
+- a wrong-account key redemption cannot put an already owned claim into manual review or prevent the rightful owner from redeeming it
+- paid callbacks use the owner saved when the order was created; callback-supplied Telegram identity cannot adopt an anonymous order or transfer an account-bound purchase, and conflicts require operator review without access issuance
+- callbacks for one provider order serialize on the shared order row even when event IDs differ; refund and chargeback first enter durable pending reconciliation, then reverse the linked paid grant and recompute account access; paid fulfillment reacquires and refreshes that lock after a missing-user bootstrap rollback, so a reversal committed in the gap cannot issue access or be overwritten; outstanding reversal attention remains global across reporting periods, uses indexed status candidates plus conservative root-state verification, and orders fresh reversals by their safely parsed recorded time rather than the original purchase time; missing grant/key links remain terminal operator-visible manual review rather than reporting success or retrying forever, and late pending, failed, or cancelled callbacks cannot downgrade an already-paid order
+- payment order and event audit metadata is structurally bounded as valid JSON; oversized callback fields become redacted summaries/fingerprints while authoritative fulfillment, reversal, pricing, buyer/order state, and fixed processing evidence remain parseable, and raw activation keys or callback secrets are not retained
 - `start_99` is a one-time user plan; checkout must reject repeat attempts before provider invoice creation when the account has already made a first purchase or already has any successful paid Lava.top order
 - `start_99` is already the first-month action price and must not receive referral, promo, or pending-discount reductions; discount mechanics apply only to standard paid plans when backend eligibility allows them
 

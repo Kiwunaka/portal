@@ -4,7 +4,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker
 
 
@@ -19,6 +19,7 @@ from account_foundation_service import (  # noqa: E402
     ACCOUNT_FOUNDATION_BACKFILL_KEY,
     _acquire_postgres_advisory_lock,
     _merge_duplicate_identity_state,
+    _move_account_owned_rows,
     backfill_account_foundation,
     ensure_user_account_foundation,
     run_account_foundation_backfill_once,
@@ -36,6 +37,9 @@ from models import (  # noqa: E402
     AuthSession,
     Base,
     EntitlementGrant,
+    ExternalOrder,
+    ReferralRelationship,
+    ReferralTransition,
     RecoveryCode,
     User,
     WebEmailIdentity,
@@ -114,6 +118,7 @@ def test_account_foundation_models_cover_release_contract() -> None:
         "auth_sessions",
         "recovery_codes",
         "entitlement_grants",
+        "account_entitlement_grants",
         "antiabuse_events",
         "antiabuse_cases",
         "antiabuse_actions",
@@ -127,7 +132,7 @@ def test_account_foundation_models_cover_release_contract() -> None:
     )
     assert {"code_hmac", "code_hint", "status", "used_at"} <= set(tables["recovery_codes"].c.keys())
     assert {"idempotency_key", "source", "status", "expires_at", "reversed_at"} <= set(
-        tables["entitlement_grants"].c.keys()
+        tables["account_entitlement_grants"].c.keys()
     )
     assert {
         "raw_ip",
@@ -136,6 +141,1173 @@ def test_account_foundation_models_cover_release_contract() -> None:
         "ip_prefix_hmac",
         "hmac_version",
     } <= set(tables["antiabuse_events"].c.keys())
+
+
+def test_legacy_entitlement_table_is_preserved_beside_account_ledger(tmp_path: Path) -> None:
+    engine = create_engine(f"sqlite:///{(tmp_path / 'legacy-entitlements.db').as_posix()}")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE entitlement_grants ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "tg_id BIGINT NOT NULL, "
+                "activation_key_code VARCHAR(64) NOT NULL, "
+                "plan_code VARCHAR(32) NOT NULL, "
+                "source VARCHAR(32), "
+                "duration_days INTEGER NOT NULL, "
+                "granted_from DATETIME NOT NULL, "
+                "granted_until DATETIME NOT NULL, "
+                "meta_json TEXT, "
+                "created_at DATETIME NOT NULL)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO entitlement_grants "
+                "(tg_id, activation_key_code, plan_code, source, duration_days, "
+                "granted_from, granted_until, created_at) "
+                "VALUES (42, 'legacy-key', 'legacy-paid', 'legacy', 30, "
+                "'2026-06-01 00:00:00', '2026-07-01 00:00:00', '2026-06-01 00:00:00')"
+            )
+        )
+
+    Base.metadata.create_all(engine)
+    run_migrations(engine)
+
+    inspector = inspect(engine)
+    assert inspector.has_table("entitlement_grants")
+    assert inspector.has_table("account_entitlement_grants")
+    assert {column["name"] for column in inspector.get_columns("entitlement_grants")} == {
+        "id",
+        "tg_id",
+        "activation_key_code",
+        "plan_code",
+        "source",
+        "duration_days",
+        "granted_from",
+        "granted_until",
+        "meta_json",
+        "created_at",
+    }
+    assert {"account_id", "idempotency_key", "grant_kind", "status"} <= {
+        column["name"] for column in inspector.get_columns("account_entitlement_grants")
+    }
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT COUNT(*) FROM entitlement_grants")).scalar_one() == 1
+    engine.dispose()
+
+
+def _trial_grant(
+    *,
+    grant_id: str,
+    account_id: str,
+    status: str,
+    now: datetime,
+    activated_at: datetime | None = None,
+) -> EntitlementGrant:
+    effective_activation = activated_at
+    if status == "expired" and effective_activation is None:
+        effective_activation = now - timedelta(days=10)
+    return EntitlementGrant(
+        id=grant_id,
+        account_id=account_id,
+        idempotency_key=f"trial:{grant_id}",
+        source="premium_trial",
+        status=status,
+        grant_kind="premium_trial",
+        plan_code="trial",
+        reserved_at=now,
+        reservation_expires_at=now + timedelta(days=7),
+        activated_at=effective_activation,
+        starts_at=effective_activation,
+        expires_at=effective_activation + timedelta(days=5) if effective_activation else None,
+        duration_days=5,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def test_account_merge_reconciles_duplicate_trial_authority_and_is_rerunnable(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="target-account", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="source-account", status="active", created_source="test", created_at=now, updated_at=now)
+    target_reserved = _trial_grant(grant_id="target-reserved", account_id=target.id, status="reserved", now=now)
+    source_active = _trial_grant(
+        grant_id="source-active",
+        account_id=source.id,
+        status="active",
+        now=now + timedelta(hours=1),
+        activated_at=now + timedelta(hours=2),
+    )
+    session.add_all([target, source, target_reserved, source_active])
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=3),
+    )
+    session.flush()
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=4),
+    )
+    session.flush()
+
+    canonical = session.query(EntitlementGrant).filter_by(account_id=target.id, source="premium_trial").all()
+    assert [grant.id for grant in canonical] == ["source-active"]
+    session.refresh(target_reserved)
+    assert target_reserved.status == "superseded"
+    assert target_reserved.source == "premium_trial_superseded"
+    assert target_reserved.reversed_at == now + timedelta(hours=3)
+    assert target_reserved.reversal_reason == "account_merge_duplicate"
+    assert "source-active" in str(target_reserved.metadata_json)
+
+    second_target = Account(id="target-active-account", status="active", created_source="test", created_at=now, updated_at=now)
+    second_source = Account(id="source-reserved-account", status="active", created_source="test", created_at=now, updated_at=now)
+    target_active = _trial_grant(
+        grant_id="target-active",
+        account_id=second_target.id,
+        status="active",
+        now=now,
+        activated_at=now + timedelta(minutes=30),
+    )
+    source_reserved = _trial_grant(
+        grant_id="source-reserved",
+        account_id=second_source.id,
+        status="reserved",
+        now=now + timedelta(hours=1),
+    )
+    session.add_all([second_target, second_source, target_active, source_reserved])
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=second_source.id,
+        target_account_id=second_target.id,
+        now=now + timedelta(hours=2),
+    )
+    session.flush()
+
+    canonical = session.query(EntitlementGrant).filter_by(
+        account_id=second_target.id,
+        source="premium_trial",
+    ).all()
+    assert [grant.id for grant in canonical] == ["target-active"]
+    session.refresh(source_reserved)
+    assert source_reserved.status == "superseded"
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_moves_referral_authority_and_grandfather_backfill_is_idempotent(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="merge-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="merge-source", status="active", created_source="test", created_at=now, updated_at=now)
+    referrer = Account(id="merge-referrer", status="active", created_source="test", created_at=now, updated_at=now)
+    user = _user(7001, now=now)
+    user.account_id = source.id
+    user.channel_bonus_claimed_at = now - timedelta(days=2)
+    user.channel_bonus_active = True
+    user.channel_bonus_expires_at = now + timedelta(days=8)
+    relationship = ReferralRelationship(
+        id="relationship-merge",
+        referred_account_id=source.id,
+        referrer_account_id=referrer.id,
+        source="bot_code",
+        status="linked",
+        review_status="clear",
+        created_at=now,
+        updated_at=now,
+    )
+    transition = ReferralTransition(
+        id="transition-merge",
+        relationship_id=relationship.id,
+        referred_account_id=source.id,
+        referrer_account_id=referrer.id,
+        transition_key="transition:merge",
+        transition_kind="relationship_linked",
+        status="linked",
+        occurred_at=now,
+        created_at=now,
+    )
+    session.add_all([target, source, referrer, user, relationship, transition])
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=1),
+    )
+    user.account_id = target.id
+    session.flush()
+    first = ensure_user_account_foundation(session, user, now=now + timedelta(hours=2))
+    session.flush()
+    second = ensure_user_account_foundation(session, user, now=now + timedelta(hours=3))
+    session.flush()
+
+    session.refresh(relationship)
+    session.refresh(transition)
+    assert relationship.referred_account_id == target.id
+    assert transition.referred_account_id == target.id
+    grandfathered = session.query(EntitlementGrant).filter_by(source="telegram_channel_grandfathered").all()
+    assert len(grandfathered) == 1
+    assert grandfathered[0].duration_days == 10
+    assert grandfathered[0].account_id == target.id
+    assert first.grants_created >= 1
+    assert second.grants_created == 0
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_dedupes_channel_and_same_referrer_authority(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="dedupe-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="dedupe-source", status="active", created_source="test", created_at=now, updated_at=now)
+    referrer = Account(id="dedupe-referrer", status="active", created_source="test", created_at=now, updated_at=now)
+    target_relationship = ReferralRelationship(
+        id="dedupe-rel-target",
+        referred_account_id=target.id,
+        referrer_account_id=referrer.id,
+        source="app_projection",
+        status="linked",
+        review_status="clear",
+        created_at=now,
+        updated_at=now,
+    )
+    source_relationship = ReferralRelationship(
+        id="dedupe-rel-source",
+        referred_account_id=source.id,
+        referrer_account_id=referrer.id,
+        source="bot_code",
+        status="linked",
+        review_status="clear",
+        created_at=now + timedelta(minutes=1),
+        updated_at=now + timedelta(minutes=1),
+    )
+    target_grant = EntitlementGrant(
+        id="dedupe-channel-target",
+        account_id=target.id,
+        idempotency_key=f"channel-grant:v2:{target.id}",
+        source="telegram_channel",
+        status="active",
+        grant_kind="premium_bonus",
+        plan_code="channel_bonus",
+        starts_at=now,
+        expires_at=now + timedelta(days=5),
+        duration_days=5,
+        created_at=now,
+        updated_at=now,
+    )
+    source_grant = EntitlementGrant(
+        id="dedupe-channel-source",
+        account_id=source.id,
+        idempotency_key=f"channel-grant:v1-grandfathered:{source.id}",
+        source="telegram_channel_grandfathered",
+        status="active",
+        grant_kind="premium_bonus",
+        plan_code="channel_bonus",
+        starts_at=now,
+        expires_at=now + timedelta(days=10),
+        duration_days=10,
+        created_at=now,
+        updated_at=now,
+    )
+    transition = ReferralTransition(
+        id="dedupe-transition-source",
+        relationship_id=source_relationship.id,
+        referred_account_id=source.id,
+        referrer_account_id=referrer.id,
+        transition_key="dedupe-transition-source",
+        transition_kind="relationship_linked",
+        status="linked",
+        occurred_at=now,
+        created_at=now,
+    )
+    session.add_all(
+        [target, source, referrer, target_relationship, source_relationship, target_grant, source_grant, transition]
+    )
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=1),
+    )
+    session.flush()
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=2),
+    )
+    session.flush()
+
+    relationships = session.query(ReferralRelationship).filter_by(referred_account_id=target.id).all()
+    retained_source = session.query(ReferralRelationship).filter_by(id=source_relationship.id).one()
+    channel_grants = (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.account_id == target.id,
+            EntitlementGrant.source.in_(["telegram_channel", "telegram_channel_grandfathered"]),
+        )
+        .all()
+    )
+    session.refresh(transition)
+    assert len(relationships) == 1
+    assert relationships[0].referrer_account_id == referrer.id
+    assert retained_source.referred_account_id == source.id
+    assert retained_source.referrer_account_id == referrer.id
+    assert retained_source.status == "superseded"
+    assert retained_source.review_status == "review"
+    assert transition.relationship_id == retained_source.id
+    assert transition.referred_account_id == source.id
+    assert len(channel_grants) == 1
+    assert channel_grants[0].duration_days == 10
+    assert channel_grants[0].source == "telegram_channel_grandfathered"
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_prefers_active_channel_over_revoked_grandfathered_grant(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="channel-rank-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="channel-rank-source", status="active", created_source="test", created_at=now, updated_at=now)
+    active = EntitlementGrant(
+        id="channel-rank-active",
+        account_id=target.id,
+        idempotency_key=f"channel-grant:v2:{target.id}",
+        source="telegram_channel",
+        status="active",
+        grant_kind="premium_bonus",
+        plan_code="channel_bonus",
+        starts_at=now,
+        expires_at=now + timedelta(days=5),
+        duration_days=5,
+        created_at=now,
+        updated_at=now,
+    )
+    revoked = EntitlementGrant(
+        id="channel-rank-revoked",
+        account_id=source.id,
+        idempotency_key=f"channel-grant:v1-grandfathered:{source.id}",
+        source="telegram_channel_grandfathered",
+        status="reversed",
+        grant_kind="premium_bonus",
+        plan_code="channel_bonus",
+        starts_at=now,
+        expires_at=now + timedelta(days=10),
+        duration_days=10,
+        reversed_at=now + timedelta(hours=1),
+        reversal_reason="channel_membership_lost",
+        created_at=now,
+        updated_at=now + timedelta(hours=1),
+    )
+    session.add_all([target, source, active, revoked])
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=2),
+    )
+    session.flush()
+
+    session.refresh(active)
+    session.refresh(revoked)
+    assert active.account_id == target.id
+    assert active.source == "telegram_channel"
+    assert active.status == "active"
+    assert revoked.source == "telegram_channel_superseded"
+    assert revoked.status == "superseded"
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_dedupes_friend_and_referrer_grants_and_repairs_pointers(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="reward-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="reward-source", status="active", created_source="test", created_at=now, updated_at=now)
+    referrer = Account(id="reward-referrer", status="active", created_source="test", created_at=now, updated_at=now)
+    referrer_user = _user(7044, now=now, plan="trial", expiry_days=30)
+    referrer_user.account_id = referrer.id
+    referrer_user.sub_type = "BONUS"
+    referrer_user.current_plan_code = "referral_referrer"
+    target_relationship = ReferralRelationship(
+        id="reward-rel-target",
+        referred_account_id=target.id,
+        referrer_account_id=referrer.id,
+        source="app_projection",
+        status="rewarded",
+        review_status="clear",
+        friend_grant_id="friend-target",
+        referrer_grant_id="referrer-target",
+        created_at=now,
+        updated_at=now,
+    )
+    source_relationship = ReferralRelationship(
+        id="reward-rel-source",
+        referred_account_id=source.id,
+        referrer_account_id=referrer.id,
+        source="bot_code",
+        status="rewarded",
+        review_status="clear",
+        friend_grant_id="friend-source",
+        referrer_grant_id="referrer-source",
+        created_at=now + timedelta(minutes=1),
+        updated_at=now + timedelta(minutes=1),
+    )
+
+    def grant(
+        *,
+        grant_id: str,
+        account_id: str,
+        key: str,
+        source_name: str,
+        days: int,
+        starts_after_days: int = 0,
+    ) -> EntitlementGrant:
+        starts_at = now + timedelta(days=starts_after_days)
+        return EntitlementGrant(
+            id=grant_id,
+            account_id=account_id,
+            idempotency_key=key,
+            source=source_name,
+            status="active",
+            grant_kind="premium_bonus",
+            plan_code=source_name,
+            starts_at=starts_at,
+            expires_at=starts_at + timedelta(days=days),
+            duration_days=days,
+            created_at=now,
+            updated_at=now,
+        )
+
+    rows = [
+        grant(grant_id="friend-target", account_id=target.id, key=f"referral-friend:v1:{target.id}", source_name="referral_friend", days=5),
+        grant(grant_id="friend-source", account_id=source.id, key=f"referral-friend:v1:{source.id}", source_name="referral_friend", days=5, starts_after_days=5),
+        grant(grant_id="referrer-target", account_id=referrer.id, key=f"referral-referrer:v1:{target.id}", source_name="referral_referrer", days=15),
+        grant(grant_id="referrer-source", account_id=referrer.id, key=f"referral-referrer:v1:{source.id}", source_name="referral_referrer", days=15, starts_after_days=15),
+    ]
+    session.add_all([target, source, referrer, referrer_user, target_relationship, source_relationship, *rows])
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=1),
+    )
+    session.flush()
+
+    canonical = session.query(ReferralRelationship).filter_by(referred_account_id=target.id).one()
+    friend_active = session.query(EntitlementGrant).filter_by(source="referral_friend", status="active").all()
+    referrer_active = session.query(EntitlementGrant).filter_by(source="referral_referrer", status="active").all()
+    assert len(friend_active) == 1
+    assert len(referrer_active) == 1
+    assert canonical.friend_grant_id == friend_active[0].id
+    assert canonical.referrer_grant_id == referrer_active[0].id
+    assert friend_active[0].idempotency_key == f"referral-friend:v1:{target.id}"
+    assert referrer_active[0].idempotency_key == f"referral-referrer:v1:{target.id}"
+    assert session.query(EntitlementGrant).filter_by(source="referral_friend_superseded", status="superseded").count() == 1
+    assert session.query(EntitlementGrant).filter_by(source="referral_referrer_superseded", status="superseded").count() == 1
+    assert referrer_user.expiry_at == now + timedelta(hours=1, days=15)
+    session.close()
+    engine.dispose()
+
+
+def test_grandfathered_channel_backfill_splits_snapshot_before_reversal(tmp_path: Path) -> None:
+    from economy_service import begin_channel_loss_grace, reverse_due_channel_grants
+
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    user = _user(7099, now=now, plan="trial", expiry_days=7)
+    user.sub_type = "BONUS"
+    user.current_plan_code = "channel_bonus"
+    user.channel_bonus_claimed_at = now - timedelta(days=3)
+    user.channel_bonus_active = True
+    user.channel_bonus_expires_at = now + timedelta(days=7)
+    session.add(user)
+    session.flush()
+
+    ensure_user_account_foundation(session, user, now=now)
+    session.flush()
+    snapshot = session.query(EntitlementGrant).filter_by(source="legacy_snapshot").one()
+    channel = session.query(EntitlementGrant).filter_by(source="telegram_channel_grandfathered").one()
+    assert snapshot.expires_at == channel.starts_at
+    assert '"telegram_channel_grandfathered"' in str(snapshot.metadata_json)
+
+    begin_channel_loss_grace(session, account_id=str(user.account_id), now=now)
+    reversal_at = now + timedelta(hours=24)
+    result = reverse_due_channel_grants(session, now=reversal_at)
+
+    assert result == {"reversed": 1, "waiting": 0}
+    assert channel.status == "reversed"
+    assert user.expiry_at == reversal_at
+    assert user.expiry_at != user.channel_bonus_expires_at
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_reconciles_full_referral_field_and_transition_matrix_idempotently(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="matrix-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="matrix-source", status="active", created_source="test", created_at=now, updated_at=now)
+    referrer = Account(id="matrix-referrer", status="active", created_source="test", created_at=now, updated_at=now)
+    target_relationship = ReferralRelationship(
+        id="matrix-target-rel",
+        referred_account_id=target.id,
+        referrer_account_id=referrer.id,
+        source="app_projection",
+        status="linked",
+        review_status="clear",
+        friend_evidence_id="friend-evidence",
+        friend_grant_id="friend-grant",
+        friend_granted_at=now + timedelta(hours=1),
+        created_at=now,
+        updated_at=now + timedelta(hours=1),
+    )
+    source_relationship = ReferralRelationship(
+        id="matrix-source-rel",
+        referred_account_id=source.id,
+        referrer_account_id=referrer.id,
+        source="bot_code",
+        status="rewarded",
+        review_status="wait",
+        first_payment_key="lavatop:matrix-first",
+        first_payment_at=now + timedelta(hours=2),
+        hold_until=now + timedelta(hours=74),
+        referrer_grant_id="referrer-grant",
+        referrer_granted_at=now + timedelta(hours=75),
+        created_at=now + timedelta(minutes=1),
+        updated_at=now + timedelta(hours=75),
+    )
+    target_transition = ReferralTransition(
+        id="matrix-target-transition",
+        relationship_id=target_relationship.id,
+        referred_account_id=target.id,
+        referrer_account_id=referrer.id,
+        transition_key=f"referral-first-payment:v1:{target.id}",
+        transition_kind="first_payment_held",
+        status="holding",
+        occurred_at=now + timedelta(hours=2),
+        created_at=now + timedelta(hours=2),
+    )
+    source_transition = ReferralTransition(
+        id="matrix-source-transition",
+        relationship_id=source_relationship.id,
+        referred_account_id=source.id,
+        referrer_account_id=referrer.id,
+        transition_key=f"referral-first-payment:v1:{source.id}",
+        transition_kind="referrer_reward_released",
+        status="released",
+        occurred_at=now + timedelta(hours=75),
+        created_at=now + timedelta(hours=75),
+    )
+    session.add_all([target, source, referrer, target_relationship, source_relationship, target_transition, source_transition])
+    session.flush()
+
+    _move_account_owned_rows(session, source_account_id=source.id, target_account_id=target.id, now=now + timedelta(days=4))
+    session.flush()
+    _move_account_owned_rows(session, source_account_id=source.id, target_account_id=target.id, now=now + timedelta(days=5))
+    session.flush()
+
+    relationship = session.query(ReferralRelationship).filter_by(referred_account_id=target.id).one()
+    transitions = session.query(ReferralTransition).filter_by(relationship_id=relationship.id).order_by(ReferralTransition.id).all()
+    source_transitions = session.query(ReferralTransition).filter_by(relationship_id=source_relationship.id).all()
+    assert relationship.friend_evidence_id == "friend-evidence"
+    assert relationship.friend_grant_id == "friend-grant"
+    assert relationship.first_payment_key == "lavatop:matrix-first"
+    assert relationship.hold_until == now + timedelta(hours=74)
+    assert relationship.referrer_grant_id == "referrer-grant"
+    assert relationship.referrer_granted_at == now + timedelta(hours=75)
+    assert relationship.status == "rewarded"
+    assert relationship.review_status == "wait"
+    assert len(transitions) == 1
+    assert transitions[0].id == target_transition.id
+    assert len(source_transitions) == 3
+    assert source_transition in source_transitions
+    assert all(row.referred_account_id == source.id for row in source_transitions)
+    assert session.query(ReferralRelationship).filter_by(id=source_relationship.id, status="superseded").count() == 1
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_removes_self_referral_and_breaks_new_cycle(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="graph-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="graph-source", status="active", created_source="test", created_at=now, updated_at=now)
+    child = Account(id="graph-child", status="active", created_source="test", created_at=now, updated_at=now)
+    self_after_merge = ReferralRelationship(
+        id="graph-self",
+        referred_account_id=target.id,
+        referrer_account_id=source.id,
+        source="bot_code",
+        status="linked",
+        review_status="clear",
+        created_at=now,
+        updated_at=now,
+    )
+    child_to_source = ReferralRelationship(
+        id="graph-child-rel",
+        referred_account_id=child.id,
+        referrer_account_id=source.id,
+        source="bot_code",
+        status="linked",
+        review_status="clear",
+        created_at=now,
+        updated_at=now,
+    )
+    source_to_child = ReferralRelationship(
+        id="graph-source-rel",
+        referred_account_id=source.id,
+        referrer_account_id=child.id,
+        source="bot_code",
+        status="linked",
+        review_status="clear",
+        created_at=now,
+        updated_at=now,
+    )
+    transitions = [
+        ReferralTransition(
+            id=f"{relationship.id}-transition",
+            relationship_id=relationship.id,
+            referred_account_id=relationship.referred_account_id,
+            referrer_account_id=relationship.referrer_account_id,
+            transition_key=f"{relationship.id}:linked",
+            transition_kind="relationship_linked",
+            status="linked",
+            occurred_at=now,
+            created_at=now,
+        )
+        for relationship in (self_after_merge, child_to_source, source_to_child)
+    ]
+    session.add_all([target, source, child, self_after_merge, child_to_source, source_to_child, *transitions])
+    session.flush()
+
+    _move_account_owned_rows(session, source_account_id=source.id, target_account_id=target.id, now=now + timedelta(hours=1))
+    session.flush()
+
+    rows = session.query(ReferralRelationship).all()
+    assert {row.id for row in rows} == {"graph-self", "graph-child-rel", "graph-source-rel"}
+    terminal = {row.id for row in rows if row.status in {"superseded", "rejected"}}
+    assert terminal
+    active_rows = [row for row in rows if row.status not in {"superseded", "rejected"}]
+    assert all(row.referred_account_id != row.referrer_account_id for row in active_rows)
+    parents = {row.referred_account_id: row.referrer_account_id for row in active_rows}
+    for start in parents:
+        seen: set[str] = set()
+        cursor = start
+        while cursor in parents:
+            assert cursor not in seen
+            seen.add(cursor)
+            cursor = parents[cursor]
+    orphan_count = (
+        session.query(ReferralTransition)
+        .outerjoin(ReferralRelationship, ReferralTransition.relationship_id == ReferralRelationship.id)
+        .filter(ReferralRelationship.id.is_(None))
+        .count()
+    )
+    assert orphan_count == 0
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=now + timedelta(hours=2),
+    )
+    session.flush()
+    assert session.query(ReferralRelationship).count() == 3
+    assert session.query(ReferralTransition).count() >= 3
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_conflicting_referrers_keeps_strongest_and_snapshots_loser(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="conflict-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="conflict-source", status="active", created_source="test", created_at=now, updated_at=now)
+    target_referrer = Account(id="conflict-ref-a", status="active", created_source="test", created_at=now, updated_at=now)
+    source_referrer = Account(id="conflict-ref-b", status="active", created_source="test", created_at=now, updated_at=now)
+    target_relationship = ReferralRelationship(
+        id="conflict-target-rel",
+        referred_account_id=target.id,
+        referrer_account_id=target_referrer.id,
+        source="app_projection",
+        status="holding",
+        review_status="clear",
+        first_payment_key="lavatop:target-payment",
+        first_payment_at=now,
+        hold_until=now + timedelta(hours=72),
+        created_at=now,
+        updated_at=now,
+    )
+    source_relationship = ReferralRelationship(
+        id="conflict-source-rel",
+        referred_account_id=source.id,
+        referrer_account_id=source_referrer.id,
+        source="bot_code",
+        status="rewarded",
+        review_status="reject",
+        friend_grant_id="source-friend-grant",
+        referrer_grant_id="source-referrer-grant",
+        referrer_granted_at=now + timedelta(days=4),
+        created_at=now,
+        updated_at=now + timedelta(days=4),
+    )
+    session.add_all([target, source, target_referrer, source_referrer, target_relationship, source_relationship])
+    session.flush()
+
+    _move_account_owned_rows(session, source_account_id=source.id, target_account_id=target.id, now=now + timedelta(days=5))
+    session.flush()
+    _move_account_owned_rows(session, source_account_id=source.id, target_account_id=target.id, now=now + timedelta(days=6))
+    session.flush()
+
+    relationship = session.query(ReferralRelationship).filter_by(referred_account_id=target.id).one()
+    snapshot = session.query(ReferralTransition).filter_by(transition_kind="relationship_merge_superseded").one()
+    reviews = session.query(AccountMergeReview).filter_by(reason_code="referral_merge_conflict").all()
+    assert relationship.referrer_account_id == source_referrer.id
+    assert relationship.status == "rewarded"
+    assert relationship.review_status == "reject"
+    assert relationship.friend_grant_id == "source-friend-grant"
+    assert relationship.referrer_grant_id == "source-referrer-grant"
+    assert snapshot.relationship_id == source_relationship.id
+    assert "lavatop:target-payment" in str(snapshot.metadata_json)
+    assert len(reviews) == 1
+    session.close()
+    engine.dispose()
+
+
+def test_flag_only_legacy_purchase_creates_review_marker_not_payment_authority(tmp_path: Path) -> None:
+    from economy_service import create_referral_relationship, record_successful_payment_grant
+
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    referrer = _user(8100, now=now, plan="paid", expiry_days=30)
+    historical_gift = _user(8101, now=now, plan="paid", expiry_days=30)
+    historical_gift.referrer_id = referrer.tg_id
+    session.add_all([referrer, historical_gift])
+    session.commit()
+
+    first = backfill_account_foundation(session, now=now)
+    session.commit()
+    second = backfill_account_foundation(session, now=now + timedelta(hours=1))
+    session.commit()
+    session.refresh(referrer)
+    session.refresh(historical_gift)
+
+    assert session.query(EntitlementGrant).filter_by(
+        account_id=historical_gift.account_id, source="provider_payment"
+    ).count() == 0
+    marker = session.query(EntitlementGrant).filter_by(
+        account_id=historical_gift.account_id, source="legacy_first_purchase_marker"
+    ).one()
+    assert marker.status == "manual_review"
+    assert marker.grant_kind == "audit_marker"
+    assert second.grants_created == 0
+
+    create_referral_relationship(
+        session,
+        referred_account_id=str(historical_gift.account_id),
+        referrer_account_id=str(referrer.account_id),
+        source="legacy_projection_test",
+        now=now + timedelta(hours=2),
+    )
+    payment = record_successful_payment_grant(
+        session,
+        account_id=str(historical_gift.account_id),
+        legacy_tg_id=historical_gift.tg_id,
+        provider="lavatop",
+        order_id="gift-flag-real-first",
+        plan_code="1_month",
+        duration_days=30,
+        paid_at=now + timedelta(hours=2),
+    )
+    assert payment.is_first_payment is True
+    assert payment.relationship is not None
+    assert payment.relationship.status == "holding"
+    assert payment.relationship.first_payment_key == "lavatop:gift-flag-real-first"
+    assert first.grants_created >= 2
+    session.close()
+    engine.dispose()
+
+
+def test_corroborated_historical_paid_order_backfills_one_account_payment_fact_for_linked_users(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    telegram = _user(8200, now=now, plan="paid", expiry_days=30)
+    app = _user(
+        9_000_000_008_200,
+        now=now,
+        app_install_id="historical-paid-linked",
+        linked_telegram_id=telegram.tg_id,
+        plan="trial",
+    )
+    order = ExternalOrder(
+        order_id="historical-provider-order",
+        tg_id=telegram.tg_id,
+        provider="freekassa",
+        plan_code="1_month",
+        amount=249,
+        currency="RUB",
+        status="paid",
+        created_at=now - timedelta(days=10),
+        paid_at=now - timedelta(days=10),
+    )
+    session.add_all([telegram, app, order])
+    session.commit()
+
+    first = backfill_account_foundation(session, now=now)
+    session.commit()
+    second = backfill_account_foundation(session, now=now + timedelta(hours=1))
+    session.commit()
+    session.refresh(telegram)
+    session.refresh(app)
+
+    assert telegram.account_id == app.account_id
+    facts = session.query(EntitlementGrant).filter_by(
+        account_id=telegram.account_id, source="provider_payment"
+    ).all()
+    assert len(facts) == 1
+    assert facts[0].provider == "freekassa"
+    assert facts[0].external_order_id == "historical-provider-order"
+    assert facts[0].status == "recorded"
+    assert '"corroborated":true' in str(facts[0].metadata_json)
+    assert session.query(EntitlementGrant).filter_by(
+        account_id=telegram.account_id, source="legacy_first_purchase_marker"
+    ).count() == 0
+    assert second.grants_created == 0
+    assert first.grants_created >= 3
+    session.close()
+    engine.dispose()
+
+
+def test_fulfilled_historical_payment_backfill_then_callback_replay_does_not_append_days(tmp_path: Path) -> None:
+    from economy_service import record_successful_payment_grant
+
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    user = _user(8300, now=now - timedelta(days=20), plan="paid", expiry_days=50)
+    expected_expiry = user.expiry_at
+    order = ExternalOrder(
+        order_id="fulfilled-historical-order",
+        tg_id=user.tg_id,
+        provider="lavatop",
+        plan_code="1_month",
+        amount=249,
+        currency="RUB",
+        status="paid",
+        meta_json='{"fulfillment":{"status":"account_extended"}}',
+        created_at=now - timedelta(days=10),
+        paid_at=now - timedelta(days=10),
+    )
+    session.add_all([user, order])
+    session.commit()
+    backfill_account_foundation(session, now=now)
+    session.commit()
+    session.refresh(user)
+    fact = session.query(EntitlementGrant).filter_by(source="provider_payment").one()
+    assert '"projection_already_applied":true' in str(fact.metadata_json)
+
+    replay = record_successful_payment_grant(
+        session,
+        account_id=str(user.account_id),
+        legacy_tg_id=user.tg_id,
+        provider="lavatop",
+        order_id=order.order_id,
+        plan_code="1_month",
+        duration_days=30,
+        paid_at=order.paid_at,
+    )
+
+    assert replay.grant.id == fact.id
+    assert user.expiry_at == expected_expiry
+    assert replay.grant.duration_days == 0
+    session.close()
+    engine.dispose()
+
+
+def test_pending_provider_order_after_legacy_gift_is_not_marked_projection_applied(tmp_path: Path) -> None:
+    from economy_service import record_successful_payment_grant
+
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    user = _user(8302, now=now, plan="paid", expiry_days=20)
+    gift_expiry = user.expiry_at
+    order = ExternalOrder(
+        order_id="gift-then-pending-provider-order",
+        tg_id=user.tg_id,
+        provider="lavatop",
+        plan_code="1_month",
+        amount=249,
+        currency="RUB",
+        status="paid",
+        meta_json='{"fulfillment":{"mode":"account_extend","status":"pending_payment"}}',
+        created_at=now,
+        paid_at=now,
+    )
+    session.add_all([user, order])
+    session.commit()
+    backfill_account_foundation(session, now=now)
+    session.commit()
+    fact = session.query(EntitlementGrant).filter_by(source="provider_payment").one()
+    assert '"projection_already_applied":false' in str(fact.metadata_json)
+
+    payment = record_successful_payment_grant(
+        session, account_id=str(user.account_id), legacy_tg_id=user.tg_id,
+        provider="lavatop", order_id=order.order_id, plan_code="1_month",
+        duration_days=30, paid_at=now,
+    )
+
+    assert payment.grant.grant_kind == "paid_access"
+    assert payment.grant.starts_at == gift_expiry
+    assert user.expiry_at == gift_expiry + timedelta(days=30)
+    session.close()
+    engine.dispose()
+
+
+def test_ambiguous_historical_paid_stars_attempt_remains_review_safe_and_repairable(tmp_path: Path) -> None:
+    from models import PayAttempt
+
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    user = _user(8303, now=now - timedelta(days=40), plan="paid", expiry_days=20)
+    attempt = PayAttempt(
+        tg_id=user.tg_id,
+        source="bot",
+        plan_code="1_month",
+        amount_stars=299,
+        currency="XTR",
+        status="paid",
+        invoice_payload="portal_1_month_8303_buy_a99",
+        started_at=now - timedelta(days=10),
+        updated_at=now - timedelta(days=10),
+        paid_at=now - timedelta(days=10),
+    )
+    session.add_all([user, attempt])
+    session.commit()
+
+    backfill_account_foundation(session, now=now)
+    session.commit()
+    backfill_account_foundation(session, now=now + timedelta(hours=1))
+    session.commit()
+
+    self_authority = session.query(EntitlementGrant).filter_by(
+        account_id=user.account_id,
+        source="provider_payment",
+    ).all()
+    markers = session.query(EntitlementGrant).filter_by(
+        account_id=user.account_id,
+        source="legacy_stars_payment_marker",
+    ).all()
+    assert self_authority == []
+    assert len(markers) == 1
+    assert markers[0].status == "manual_review"
+    assert markers[0].grant_kind == "audit_marker"
+    assert '"projection_already_applied":false' in str(markers[0].metadata_json)
+    session.close()
+    engine.dispose()
+
+
+def test_callback_fact_survives_backfill_rerun_and_out_of_order_history_normalizes_first(tmp_path: Path) -> None:
+    from economy_service import record_successful_payment_grant
+
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    user = _user(8301, now=now, plan="trial", expiry_days=0)
+    user.first_purchase_done = False
+    session.add(user)
+    session.commit()
+    ensure_user_account_foundation(session, user, now=now)
+    session.flush()
+    callback = record_successful_payment_grant(
+        session,
+        account_id=str(user.account_id),
+        legacy_tg_id=user.tg_id,
+        provider="lavatop",
+        order_id="z-callback-first",
+        plan_code="1_month",
+        duration_days=30,
+        paid_at=now,
+    )
+    session.add_all(
+        [
+            ExternalOrder(
+                order_id="z-callback-first", tg_id=user.tg_id, provider="lavatop",
+                plan_code="1_month", amount=249, currency="RUB", status="paid",
+                created_at=now, paid_at=now,
+            ),
+            ExternalOrder(
+                order_id="a-earlier-history", tg_id=user.tg_id, provider="freekassa",
+                plan_code="1_month", amount=249, currency="RUB", status="paid",
+                created_at=now - timedelta(days=2), paid_at=now - timedelta(days=2),
+            ),
+        ]
+    )
+    session.commit()
+    expiry_after_callback = user.expiry_at
+
+    backfill_account_foundation(session, now=now + timedelta(hours=1))
+    session.commit()
+    backfill_account_foundation(session, now=now + timedelta(hours=2))
+    session.commit()
+
+    facts = session.query(EntitlementGrant).filter_by(account_id=user.account_id, source="provider_payment").all()
+    first = [row for row in facts if '"is_first_payment":true' in str(row.metadata_json)]
+    assert len(facts) == 2
+    assert len(first) == 1
+    assert first[0].external_order_id == "a-earlier-history"
+    assert user.expiry_at == expiry_after_callback
+    assert callback.grant.grant_kind == "paid_access"
+    session.close()
+    engine.dispose()
+
+
+def test_merge_two_paid_histories_normalizes_earliest_fact_and_existing_hold_idempotently(tmp_path: Path) -> None:
+    from economy_service import create_referral_relationship, record_successful_payment_grant
+
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    target = Account(id="payment-merge-target", status="active", created_source="test", created_at=now, updated_at=now)
+    source = Account(id="payment-merge-source", status="active", created_source="test", created_at=now, updated_at=now)
+    referrer = Account(id="payment-merge-referrer", status="active", created_source="test", created_at=now, updated_at=now)
+    target_user = _user(8400, now=now, plan="trial", expiry_days=0)
+    target_user.account_id = target.id
+    source_user = _user(8401, now=now, plan="trial", expiry_days=0)
+    source_user.account_id = source.id
+    session.add_all([target, source, referrer, target_user, source_user])
+    session.flush()
+    relationship = create_referral_relationship(
+        session,
+        referred_account_id=target.id,
+        referrer_account_id=referrer.id,
+        source="test",
+        now=now - timedelta(days=1),
+    )
+    later = record_successful_payment_grant(
+        session, account_id=target.id, legacy_tg_id=target_user.tg_id,
+        provider="lavatop", order_id="later-order", plan_code="1_month",
+        duration_days=30, paid_at=now,
+    )
+    earlier = record_successful_payment_grant(
+        session, account_id=source.id, legacy_tg_id=source_user.tg_id,
+        provider="freekassa", order_id="earlier-order", plan_code="1_month",
+        duration_days=30, paid_at=now - timedelta(days=3),
+    )
+    session.flush()
+    assert later.is_first_payment is True and earlier.is_first_payment is True
+
+    _move_account_owned_rows(session, source_account_id=source.id, target_account_id=target.id, now=now + timedelta(hours=1))
+    session.flush()
+    _move_account_owned_rows(session, source_account_id=source.id, target_account_id=target.id, now=now + timedelta(hours=2))
+    session.flush()
+
+    facts = session.query(EntitlementGrant).filter_by(account_id=target.id, source="provider_payment").all()
+    first = [row for row in facts if '"is_first_payment":true' in str(row.metadata_json)]
+    assert len(first) == 1
+    assert first[0].external_order_id == "earlier-order"
+    assert relationship.first_payment_key == "freekassa:earlier-order"
+    assert relationship.first_payment_at == now - timedelta(days=3)
+    assert relationship.hold_until == now - timedelta(days=3) + timedelta(hours=72)
+    before_status = relationship.status
+    replay = record_successful_payment_grant(
+        session, account_id=target.id, legacy_tg_id=target_user.tg_id,
+        provider="lavatop", order_id="later-order", plan_code="1_month",
+        duration_days=30, paid_at=now + timedelta(hours=3),
+    )
+    assert replay.is_first_payment is False
+    assert relationship.status == before_status
+    assert relationship.first_payment_key == "freekassa:earlier-order"
+    session.close()
+    engine.dispose()
+
+
+def test_account_merge_reconciles_every_trial_status_in_unique_source_set(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 12, 10, 0, 0)
+    scenarios = (
+        ("active-expired", "active", "expired", "active-expired-target"),
+        ("reserved-expired", "reserved", "expired", "reserved-expired-target"),
+        ("expired-expired", "expired", "expired", "expired-expired-target"),
+        ("reversed-superseded", "reversed", "superseded", "reversed-superseded-target"),
+    )
+
+    for index, (label, target_status, source_status, expected_winner) in enumerate(scenarios):
+        target_account_id = f"{label}-target-account"
+        source_account_id = f"{label}-source-account"
+        target = Account(
+            id=target_account_id,
+            status="active",
+            created_source="test",
+            created_at=now,
+            updated_at=now,
+        )
+        source = Account(
+            id=source_account_id,
+            status="active",
+            created_source="test",
+            created_at=now,
+            updated_at=now,
+        )
+        target_grant = _trial_grant(
+            grant_id=f"{label}-target",
+            account_id=target_account_id,
+            status=target_status,
+            now=now + timedelta(hours=index),
+            activated_at=now - timedelta(days=10) if target_status in {"active", "expired"} else None,
+        )
+        source_grant = _trial_grant(
+            grant_id=f"{label}-source",
+            account_id=source_account_id,
+            status=source_status,
+            now=now + timedelta(hours=index + 1),
+            activated_at=now - timedelta(days=9) if source_status == "expired" else None,
+        )
+        session.add_all([target, source, target_grant, source_grant])
+        session.flush()
+
+        _move_account_owned_rows(
+            session,
+            source_account_id=source_account_id,
+            target_account_id=target_account_id,
+            now=now + timedelta(days=1),
+        )
+        session.flush()
+        _move_account_owned_rows(
+            session,
+            source_account_id=source_account_id,
+            target_account_id=target_account_id,
+            now=now + timedelta(days=2),
+        )
+        session.flush()
+
+        canonical = session.query(EntitlementGrant).filter_by(
+            account_id=target_account_id,
+            source="premium_trial",
+        ).all()
+        assert [grant.id for grant in canonical] == [expected_winner]
+        loser = source_grant if expected_winner == target_grant.id else target_grant
+        session.refresh(loser)
+        assert loser.source == "premium_trial_superseded"
+        assert loser.status == "superseded"
+        assert loser.reversal_reason == "account_merge_duplicate"
+        assert expected_winner in str(loser.metadata_json)
+
+    session.close()
+    engine.dispose()
 
 
 def test_backfill_is_idempotent_and_merges_explicit_telegram_link(tmp_path: Path) -> None:
@@ -205,7 +1377,12 @@ def test_backfill_is_idempotent_and_merges_explicit_telegram_link(tmp_path: Path
     device = session.query(AccountDevice).filter_by(install_id="install-linked-telegram").one()
     assert device.account_id == account_id
     assert device.route_mode == "all_traffic"
-    assert session.query(EntitlementGrant).filter_by(account_id=account_id).count() == 2
+    assert session.query(EntitlementGrant).filter_by(account_id=account_id).count() == 3
+    marker = session.query(EntitlementGrant).filter_by(
+        account_id=account_id, source="legacy_first_purchase_marker"
+    ).one()
+    assert marker.status == "manual_review"
+    assert marker.grant_kind == "audit_marker"
     assert session.query(AccountMergeReview).count() == 0
 
     session.close()
@@ -257,7 +1434,10 @@ def test_late_explicit_link_absorbs_previous_account_without_losing_grants(tmp_p
     canonical_account = session.query(Account).filter_by(id=canonical_account_id).one()
     assert canonical_account.status == "blocked"
     assert canonical_account.auth_epoch == 4
-    assert session.query(EntitlementGrant).filter_by(account_id=canonical_account_id).count() == 2
+    assert session.query(EntitlementGrant).filter_by(account_id=canonical_account_id).count() == 3
+    assert session.query(EntitlementGrant).filter_by(
+        account_id=canonical_account_id, source="legacy_first_purchase_marker"
+    ).count() == 1
 
     session.close()
     engine.dispose()

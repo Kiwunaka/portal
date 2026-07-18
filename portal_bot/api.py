@@ -10,6 +10,7 @@ POKROV API for Telegram WebApp and Subscription endpoint.
 from __future__ import annotations
 
 import base64
+import contextlib
 import contextvars
 import hashlib
 import hmac
@@ -21,6 +22,7 @@ import mimetypes
 import os
 import re
 import secrets
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -31,11 +33,11 @@ from urllib.parse import parse_qsl, urlencode, urlparse
 
 import aiohttp
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, or_, case, func
+from sqlalchemy import and_, or_, case, func, text
 from sqlalchemy.exc import IntegrityError
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
@@ -46,11 +48,16 @@ from config import Settings, env_bool, env_int
 from db import SessionLocal, init_db
 from models import (
     AccessKey,
+    AccountDevice,
+    ConnectionEvidence,
     Achievement,
     AdminAudit,
     AppSetting,
+    AuthSession,
+    AntiAbuseEvent,
     CampaignSend,
     Event,
+    EntitlementGrant,
     ExternalOrder,
     ExternalPaymentEvent,
     FamilySlot,
@@ -69,15 +76,18 @@ from models import (
     NodePoolMembership,
     NodeProvisioningJob,
     NodeRuntimeMetric,
+    ObserverBatch,
     ObserverUserState,
     OpsAlert,
     PlanCatalog,
     PromoCode,
     PromoUsage,
     PayAttempt,
+    PaymentEntitlementClaim,
     ProviderTrafficQuota,
     ProviderTrafficQuotaAudit,
     ReferralBonusQueue,
+    ReferralRelationship,
     RenderedSubscriptionSnapshot,
     Review,
     RewardClaim,
@@ -114,12 +124,17 @@ from tickets_repo import (
     STATUS_IN_PROGRESS,
     STATUS_OPEN,
     add_ticket_message,
+    can_access_support_attachment,
+    can_access_ticket,
+    claim_legacy_ticket,
     create_ticket,
     get_ticket_by_id,
     get_user_active_ticket,
     list_active_tickets,
     list_ticket_messages,
     list_user_tickets,
+    resolve_support_account_id,
+    resolve_ticket_notification_tg_id,
     set_ticket_status,
 )
 from support_ai_service import SupportAIConfig, generate_support_reply
@@ -133,7 +148,9 @@ from node_policy import (
     SMART_CONNECT_STICKINESS_THRESHOLD_PERCENT,
     SUBSCRIPTION_DYNAMIC_ORDERING,
     SUBSCRIPTION_EXCLUDE_HARD_REJECT,
+    PAID_ROLE,
     canonical_free_node_code,
+    node_access_role,
     node_capacity_status,
     node_backend_penalty,
     node_cpu_penalty,
@@ -145,6 +162,7 @@ from node_policy import (
     node_tx_mbps,
     rank_nodes_for_app,
     rank_nodes_for_subscription,
+    user_free_access_role,
     user_uses_free_pool,
 )
 from control_panel import ControlPanel
@@ -160,7 +178,13 @@ from points_service import (
     preview_redeemable_points,
     referral_tier_snapshot,
 )
-from free_cycle_service import ensure_user_free_cycle_state, mark_user_became_free
+from free_cycle_service import (
+    FREE_STANDARD_QUOTA_BYTES,
+    ensure_user_free_cycle_state,
+    mark_user_became_free,
+    queue_free_profile_reentry,
+    reconcile_free_profile_usage,
+)
 from email_auth_service import (
     DuplicateEmailIdentityError,
     InvalidEmailCredentialsError,
@@ -168,8 +192,11 @@ from email_auth_service import (
     InvalidEmailTokenError,
     authenticate_email_identity,
     build_debug_payload as build_email_auth_debug_payload,
+    consume_login_otp,
     deliver_auth_message,
+    email_login_otp_configured,
     get_verified_identity_for_user,
+    issue_login_otp,
     register_email_identity,
     start_password_reset,
     validate_email_input,
@@ -177,7 +204,34 @@ from email_auth_service import (
     finish_password_reset,
 )
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
+from account_security_errors import AccountRecoveryError, EmailOtpError
+from antiabuse_privacy_service import record_antiabuse_event
+from economy_service import (
+    create_referral_relationship,
+    migrate_pending_legacy_referral_queue,
+    queue_first_payment_referrer_reward,
+    read_trial_projection,
+    rebuild_account_entitlement_projection,
+    record_successful_payment_grant,
+    release_due_referrer_rewards,
+)
+from payment_entitlement_service import (
+    PaymentEntitlementNotFoundError,
+    ensure_fallback_gift_card,
+    ensure_pending_claim,
+    mark_paid_and_fulfill_attached_claim,
+    mark_paid as mark_payment_entitlement_paid,
+    redeem_payment_fallback,
+    record_claim_error as record_payment_entitlement_claim_error,
+    reverse_claim as reverse_payment_entitlement_claim,
+)
+from account_recovery_service import (
+    complete_access_reissue,
+    exchange_recovery_code,
+    rotate_recovery_code,
+)
 import app_first_service
+import auth_session_service
 import channel_bonus_service
 from account_foundation_service import ensure_user_account_foundation
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
@@ -186,6 +240,8 @@ from observer_service import (
     build_admin_observer_block,
     get_observer_state_map,
     ingest_observer_batch,
+    is_observer_batch_unique_conflict,
+    observer_batch_replay_response,
     observer_stale_after_seconds,
 )
 from network_rollout import (
@@ -315,16 +371,16 @@ def _shared_telegram_username(key: str, fallback: str) -> str:
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
 AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-FREE_TOTAL_GB = env_int("FREE_TOTAL_GB", int(_FREE_TIER_FACTS.get("traffic_limit_gb", 5) or 5))
-FREE_LIMIT_IP = env_int("FREE_LIMIT_IP", int(_FREE_TIER_FACTS.get("device_limit", 1) or 1))
+FREE_TOTAL_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
+FREE_STANDARD_QUOTA_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
+FREE_LIMIT_IP = 1
 PAID_LIMIT_IP = env_int("PAID_LIMIT_IP", 5)
 FREE_SPEED_LIMIT_KBPS = env_int(
     "FREE_SPEED_LIMIT_KBPS",
     int(round(float(_FREE_TIER_FACTS.get("speed_limit_mbps", 50) or 50) * 125)),
 )
-FREE_SOFT_MODE_SPEED_LIMIT_KBPS = env_int(
-    "FREE_SOFT_MODE_SPEED_LIMIT_KBPS",
-    int(round(float(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps", 2) or 2) * 125)),
+FREE_SOFT_MODE_SPEED_LIMIT_KBPS = int(
+    round(float(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps", 2) or 2) * 125)
 )
 SUPPORT_USERNAME = (
     os.getenv("SUPPORT_USERNAME") or _shared_telegram_username("support_bot_username", "@pokrov_supportbot")
@@ -335,9 +391,9 @@ BOT_USERNAME = (os.getenv("BOT_USERNAME") or _shared_telegram_username("bot_user
 REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
-CHANNEL_PREMIUM_DAYS = max(1, env_int("CHANNEL_PREMIUM_DAYS", int(_TELEGRAM_REWARD_FACTS.get("bonus_days", 10) or 10)))
-APP_TRIAL_DEFAULT_DAYS = max(1, env_int("APP_TRIAL_DEFAULT_DAYS", int(_TRIAL_FACTS.get("trial_days", 5) or 5)))
-APP_TRIAL_MAX_DAYS = APP_TRIAL_DEFAULT_DAYS
+CHANNEL_PREMIUM_DAYS = 5
+APP_TRIAL_DEFAULT_DAYS = 5
+APP_TRIAL_MAX_DAYS = 5
 WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
@@ -389,6 +445,12 @@ SUPPORT_UPLOAD_DIR = Path(
 ).resolve()
 SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uploads/support').strip().strip('/')}"
 SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
+SUPPORT_PENDING_UPLOAD_TTL_HOURS = max(1, env_int("SUPPORT_PENDING_UPLOAD_TTL_HOURS", 24))
+SUPPORT_PENDING_UPLOAD_MAX_COUNT = max(1, env_int("SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5))
+SUPPORT_PENDING_UPLOAD_MAX_BYTES = max(
+    1,
+    env_int("SUPPORT_PENDING_UPLOAD_MAX_BYTES", 50 * 1024 * 1024),
+)
 SUPPORT_ATTACHMENT_URL_PREFIX = f"/{(os.getenv('SUPPORT_ATTACHMENT_URL_PREFIX') or 'api/tickets/attachments').strip().strip('/')}"
 WEB_SESSION_COOKIE_NAME = (os.getenv("WEB_SESSION_COOKIE_NAME") or "portal_web_session").strip() or "portal_web_session"
 WEB_SESSION_COOKIE_DOMAIN = (os.getenv("WEB_SESSION_COOKIE_DOMAIN") or ".pokrov.space").strip() or ".pokrov.space"
@@ -839,6 +901,7 @@ def _is_loopback_ip(ip: str) -> bool:
 
 class TicketMessageIn(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
+    attachment_id: str | None = Field(default=None, max_length=160)
     media_type: str | None = Field(default=None, max_length=32)
     media_file_id: str | None = Field(default=None, max_length=256)
     media_payload: str | None = Field(default=None, max_length=2000)
@@ -886,6 +949,22 @@ class EmailLoginIn(BaseModel):
     password: str = Field(min_length=8, max_length=200)
 
 
+class EmailOtpStartIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+
+
+class EmailOtpFinishIn(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+    code: str = Field(min_length=6, max_length=6)
+    install_id: str | None = Field(default=None, min_length=8, max_length=128)
+    device_name: str | None = Field(default=None, max_length=120)
+    platform: str | None = Field(default=None, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+
+
 class EmailRecoveryStartIn(BaseModel):
     email: str = Field(min_length=5, max_length=200)
 
@@ -903,6 +982,25 @@ class AppStartTrialIn(BaseModel):
     app_version: str | None = Field(default=None, max_length=32)
     locale: str | None = Field(default=None, max_length=32)
     time_zone: str | None = Field(default=None, max_length=64)
+
+
+class AppSessionRefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=32, max_length=512)
+
+
+class RecoveryCodeExchangeIn(BaseModel):
+    code: str = Field(min_length=18, max_length=32)
+    install_id: str = Field(min_length=8, max_length=128)
+    device_name: str = Field(min_length=2, max_length=120)
+    platform: str = Field(min_length=2, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+
+
+class AccessReissueIn(BaseModel):
+    mode: str = Field(min_length=3, max_length=32)
 
 
 class AccessKeyRedeemIn(BaseModel):
@@ -1294,6 +1392,10 @@ class DashboardResponse(BaseModel):
     traffic_remaining_gb: float | None = None
     next_reset_at: str | None = None
     soft_mode_active: bool = False
+    free_profile_state: str = "standard"
+    free_profile_active_role: str = "free_standard"
+    free_profile_job_id: int | None = None
+    free_profile_error_code: str | None = None
     active_sessions: int
     active_sessions_source: str | None = None
     device_limit: int
@@ -1512,12 +1614,15 @@ def _plan_total_gb(user: User) -> int:
         plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
         if plan_code == "trial":
             return 0
-        return max(0, int(FREE_TOTAL_GB))
+        return FREE_STANDARD_QUOTA_GB
     return 0
 
 
 def _plan_device_limit(user: User) -> int:
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    st = (user.sub_type or "").upper()
+    if st == "FREE":
+        return 1
     if plan_code:
         s = SessionLocal()
         try:
@@ -1528,9 +1633,6 @@ def _plan_device_limit(user: User) -> int:
             s.close()
     if plan_code == "start_99":
         return 1
-    st = (user.sub_type or "").upper()
-    if st == "FREE":
-        return max(0, int(FREE_LIMIT_IP))
     return max(0, int(PAID_LIMIT_IP))
 
 
@@ -1562,6 +1664,16 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
     active_window = bool(getattr(user, "is_active", False) and expiry and expiry > current_now)
     used_gb = round((int(used_bytes or 0) / (1024**3)), 3) if used_bytes else 0.0
     next_reset_at = _safe_iso(getattr(user, "free_cycle_next_reset_at", None)) if sub_type == "FREE" else None
+    free_profile_state = str(getattr(user, "free_profile_state", "") or "standard").strip().lower()
+    free_profile_active_role = str(
+        getattr(user, "free_profile_active_role", "") or "free_standard"
+    ).strip().lower()
+    free_profile_facts = {
+        "free_profile_state": free_profile_state,
+        "free_profile_active_role": free_profile_active_role,
+        "free_profile_job_id": getattr(user, "free_profile_job_id", None),
+        "free_profile_error_code": str(getattr(user, "free_profile_error_code", "") or "").strip() or None,
+    }
 
     if sub_type == "FREE" and active_window and plan_code == "trial":
         access_state = "bonus_premium" if getattr(user, "channel_bonus_claimed_at", None) else "trial_premium"
@@ -1575,12 +1687,18 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
             "traffic_remaining_gb": None,
             "next_reset_at": None,
             "soft_mode_active": False,
+            **free_profile_facts,
         }
 
     if sub_type == "FREE":
-        limit_gb = float(max(0, int(FREE_TOTAL_GB)))
+        limit_gb = float(FREE_STANDARD_QUOTA_BYTES) / float(1024**3)
         remaining_gb = max(round(limit_gb - used_gb, 3), 0.0) if limit_gb > 0 else 0.0
-        soft_mode_active = bool(limit_gb > 0 and int(used_bytes or 0) >= _gb_to_bytes(int(limit_gb)))
+        soft_mode_active = bool(
+            free_profile_active_role == "free_soft"
+            and free_profile_state in {"soft_active", "reset_pending", "error"}
+        )
+        if soft_mode_active:
+            remaining_gb = 0.0
         if active_window:
             access_state = "free_soft_mode" if soft_mode_active else "free_monthly"
         else:
@@ -1598,6 +1716,7 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
             "traffic_remaining_gb": remaining_gb,
             "next_reset_at": next_reset_at,
             "soft_mode_active": soft_mode_active,
+            **free_profile_facts,
         }
 
     access_state = "paid_unlimited" if active_window else "expired_or_blocked"
@@ -1611,7 +1730,29 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
         "traffic_remaining_gb": None,
         "next_reset_at": None,
         "soft_mode_active": False,
+        **free_profile_facts,
     }
+
+
+def _build_reconciled_access_policy(
+    *,
+    session,
+    user: User,
+    used_bytes: int,
+    source: str,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    current = now or _utcnow()
+    if str(getattr(user, "sub_type", "") or "").strip().upper() == "FREE":
+        reconcile_free_profile_usage(
+            session,
+            user=user,
+            used_bytes=max(0, int(used_bytes or 0)),
+            source=source,
+            now=current,
+        )
+        session.commit()
+    return _build_access_policy(user=user, used_bytes=used_bytes, now=current)
 
 
 def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
@@ -1640,11 +1781,8 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
             s.commit()
             return True
 
-        user.sub_type = "FREE"
-        user.current_plan_code = "free_monthly"
         user.expiry_at = _utcnow() + timedelta(days=int(AUTO_FREE_DAYS))
-        user.is_active = True
-        mark_user_became_free(user)
+        queue_free_profile_reentry(s, user=user, source="api_expired_to_free")
         s.commit()
         return True
     except Exception:
@@ -1831,13 +1969,24 @@ def _resolve_plan_config(*, s, code: str) -> dict[str, Any] | None:
     return None
 
 
-def _has_paid_lavatop_order(*, s, tg_id: int) -> bool:
-    if int(tg_id or 0) <= 0:
+def _has_successful_provider_payment(*, s, user: User) -> bool:
+    account_id = str(getattr(user, "account_id", "") or "").strip()
+    if account_id and (
+        s.query(EntitlementGrant.id)
+        .filter(
+            EntitlementGrant.account_id == account_id,
+            EntitlementGrant.source == "provider_payment",
+            EntitlementGrant.status.in_(["active", "recorded", "expired"]),
+        )
+        .first()
+    ):
+        return True
+    tg_id = int(getattr(user, "tg_id", 0) or 0)
+    if tg_id <= 0:
         return False
     row = (
         s.query(ExternalOrder.id)
         .filter(ExternalOrder.tg_id == int(tg_id))
-        .filter(func.lower(func.coalesce(ExternalOrder.provider, "")) == "lavatop")
         .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
         .first()
     )
@@ -1847,8 +1996,7 @@ def _has_paid_lavatop_order(*, s, tg_id: int) -> bool:
 def _ensure_start99_available_for_user(*, s, user: User | None, plan_code: str) -> None:
     if (plan_code or "").strip().lower() != "start_99" or not user:
         return
-    tg_id = int(getattr(user, "tg_id", 0) or 0)
-    if bool(getattr(user, "first_purchase_done", False)) or _has_paid_lavatop_order(s=s, tg_id=tg_id):
+    if _has_successful_provider_payment(s=s, user=user):
         raise HTTPException(status_code=409, detail="start_99 is available only once per user")
 
 
@@ -1938,6 +2086,22 @@ def _looks_like_subscription_or_proxy_link(value: str) -> bool:
 
 def _access_key_status_payload(*, s, card: GiftCard) -> dict[str, Any]:
     meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+    payment_claim = (
+        s.query(PaymentEntitlementClaim)
+        .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+        .one_or_none()
+    )
+    if payment_claim is not None:
+        plan_code = str(payment_claim.plan_code or "").strip().lower()
+        current_plan = dict((meta or {}).get("plan") or {})
+        current_plan["code"] = plan_code
+        meta = {
+            **(meta or {}),
+            "kind": "plan",
+            "plan": current_plan,
+            "days": max(1, int(payment_claim.duration_days or 0)),
+            "legacy_type": None,
+        }
     return {
         "key": str(card.code or "").strip(),
         "exists": True,
@@ -1979,8 +2143,6 @@ def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime
     user.expiry_at = current_expiry + timedelta(days=days)
     user.sub_type = "PAID"
     user.is_active = True
-    user.first_purchase_done = True
-
     plan_code = str(meta.get("plan_code") or "").strip().lower()
     if plan_code:
         user.current_plan_code = plan_code
@@ -2054,6 +2216,10 @@ def _free_caps_payload(*, user: User, access_policy: dict[str, Any]) -> dict[str
         "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
         "active": free_active,
         "next_reset_at": access_policy.get("next_reset_at"),
+        "transition_state": str(access_policy.get("free_profile_state") or "standard"),
+        "active_role": str(access_policy.get("free_profile_active_role") or "free_standard"),
+        "provisioning_job_id": access_policy.get("free_profile_job_id"),
+        "error_code": access_policy.get("free_profile_error_code"),
     }
 
 
@@ -2535,6 +2701,96 @@ def _auth_http_exception(*, detail: str, code: str, status_code: int = 401) -> H
     return HTTPException(status_code=status_code, detail=detail, headers={"X-POKROV-Auth-Error": code})
 
 
+def _auth_session_http_exception(exc: auth_session_service.AuthSessionError) -> HTTPException:
+    status_by_code = {
+        "device_recovery_required": 409,
+        "fresh_auth_required": 409,
+        "device_not_found": 404,
+        "session_not_configured": 500,
+    }
+    detail_by_code = {
+        "device_recovery_required": "Устройство уже зарегистрировано. Обновите сессию или восстановите доступ.",
+        "fresh_auth_required": "Для отзыва устройства подтвердите вход ещё раз.",
+        "device_not_found": "Устройство не найдено.",
+        "refresh_token_invalid": "Refresh-токен не подтвердился.",
+        "refresh_reuse_detected": "Refresh-токен уже использован. Все сессии этой семьи отозваны.",
+        "refresh_expired": "Refresh-сессия истекла. Восстановите доступ.",
+        "session_revoked": "Сессия отозвана.",
+        "access_expired": "Access-сессия истекла.",
+        "device_revoked": "Устройство отозвано.",
+        "device_credential_changed": "Учётные данные устройства изменились.",
+        "session_epoch_changed": "Сессии аккаунта были обновлены. Войдите снова.",
+        "session_not_configured": "Сервис сессий не настроен.",
+    }
+    code = str(exc.code or "session_invalid")
+    return _auth_http_exception(
+        detail=detail_by_code.get(code, "Не удалось подтвердить сессию устройства."),
+        code=code,
+        status_code=int(status_by_code.get(code, 401)),
+    )
+
+
+def _account_recovery_http_exception(exc: AccountRecoveryError) -> HTTPException:
+    status_by_code = {
+        "email_otp_invalid": 401,
+        "email_otp_expired": 401,
+        "email_otp_not_configured": 503,
+        "fresh_auth_required": 409,
+        "device_identity_conflict": 409,
+        "device_limit_reached": 409,
+        "recovery_code_invalid": 401,
+        "recovery_session_invalid": 401,
+        "recovery_not_configured": 503,
+        "account_unavailable": 409,
+        "reissue_mode_invalid": 400,
+    }
+    detail_by_code = {
+        "email_otp_invalid": "Код не подтвердился или уже использован.",
+        "email_otp_expired": "Код истёк. Запросите новый.",
+        "email_otp_not_configured": "Email OTP пока не настроен.",
+        "fresh_auth_required": "Сначала подтвердите вход одноразовым кодом.",
+        "device_identity_conflict": "Это устройство уже связано с другим аккаунтом.",
+        "device_limit_reached": "Достигнут лимит устройств. Отзовите старое устройство или используйте lockdown.",
+        "recovery_code_invalid": "Код восстановления не подтвердился или уже использован.",
+        "recovery_session_invalid": "Recovery-сессия истекла или уже использована.",
+        "recovery_not_configured": "Контур восстановления пока не настроен.",
+        "account_unavailable": "Аккаунт недоступен для восстановления.",
+        "reissue_mode_invalid": "Неизвестный режим перевыпуска доступа.",
+    }
+    code = str(exc.code or "account_recovery_failed")
+    return _auth_http_exception(
+        detail=detail_by_code.get(code, "Не удалось подтвердить восстановление доступа."),
+        code=code,
+        status_code=int(status_by_code.get(code, 401)),
+    )
+
+
+_RECOVERY_SCOPE_ROUTE_ALLOWLIST = frozenset(
+    {
+        ("GET", "/api/auth/session"),
+        ("POST", "/api/client/session/revoke"),
+        ("POST", "/api/client/access/reissue"),
+        ("GET", "/api/client/devices"),
+        ("DELETE", "/api/client/devices/{device_id}"),
+        ("GET", "/api/tickets"),
+        ("POST", "/api/tickets"),
+        ("GET", "/api/tickets/{ticket_id}"),
+        ("POST", "/api/tickets/{ticket_id}/messages"),
+    }
+)
+
+
+def _recovery_scope_request_allowed(request: Request | None) -> bool:
+    if request is None:
+        return False
+    method = str(getattr(request, "method", "") or "").upper()
+    route = (getattr(request, "scope", None) or {}).get("route")
+    route_path = str(getattr(route, "path", "") or "")
+    if not method or not route_path:
+        return False
+    return (method, route_path) in _RECOVERY_SCOPE_ROUTE_ALLOWLIST
+
+
 def _optional_auth_user(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any] | None:
     init_data = (x_telegram_init_data or "").strip()
     web_token = _extract_web_session_token(request)
@@ -2546,6 +2802,24 @@ def _optional_auth_user(x_telegram_init_data: str, request: Request | None = Non
                     detail="Этот короткий переход нужно обменять в кабинете перед использованием.",
                     code="web_session_exchange_required",
                 )
+            if str(payload.get("session_id") or "").strip():
+                auth_session = SessionLocal()
+                try:
+                    payload = auth_session_service.validate_access_session(
+                        auth_session,
+                        payload=payload,
+                        now=_utcnow(),
+                    )
+                except auth_session_service.AuthSessionError as exc:
+                    raise _auth_session_http_exception(exc) from exc
+                finally:
+                    auth_session.close()
+                if str(payload.get("scope") or "").strip() == "recovery" and not _recovery_scope_request_allowed(request):
+                    raise _auth_http_exception(
+                        detail="Recovery-сессия не открывает этот раздел. Сначала перевыпустите доступ.",
+                        code="recovery_scope_forbidden",
+                        status_code=403,
+                    )
             return payload
         if init_data:
             user_data = _verify_telegram_data(init_data)
@@ -2686,6 +2960,7 @@ def _record_security_event(
             safe_meta[key_text] = str(value)[:240] if value is not None else None
     s = SessionLocal()
     try:
+        occurred_at = _utcnow()
         s.add(
             SecurityEvent(
                 event_type=str(event_type or "").strip()[:64] or "security_event",
@@ -2695,8 +2970,17 @@ def _record_security_event(
                 subject=str(subject or "").strip()[:160] or None,
                 reason=str(reason or "").strip()[:160] or None,
                 meta_json=json.dumps(safe_meta, ensure_ascii=False, separators=(",", ":"))[:2000] if safe_meta else None,
-                created_at=_utcnow(),
+                created_at=occurred_at,
             )
+        )
+        record_antiabuse_event(
+            s,
+            event_kind=event_type,
+            source="api_security",
+            occurred_at=occurred_at,
+            raw_ip=client_ip,
+            reasons=[reason] if reason else None,
+            metadata={"scope": scope, **safe_meta},
         )
         s.commit()
     except Exception:
@@ -2795,6 +3079,8 @@ def _enforce_durable_rate_limit(scope: str, fingerprint: str, *, limit: int, win
 
 _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "start_trial": 12,
+    "session_refresh": 10,
+    "session_refresh_ip": 600,
     "access_key_status": 60,
     "access_key_redeem": 20,
     "unified_redeem": 20,
@@ -2802,6 +3088,16 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "cabinet_handoff_exchange": 30,
     "telegram_auth": 30,
     "email_auth": 20,
+    "email_otp_start": 5,
+    "email_otp_start_ip": 20,
+    "email_otp_finish": 8,
+    "email_otp_finish_ip": 30,
+    "email_otp_finish_install": 8,
+    "recovery_exchange": 5,
+    "recovery_exchange_ip": 30,
+    "recovery_exchange_install": 5,
+    "recovery_rotate": 5,
+    "access_reissue": 5,
     "ticket_create": 20,
     "ticket_upload": 30,
     "ticket_attachment_download": 120,
@@ -2950,7 +3246,12 @@ def _require_email_public_ready() -> dict[str, Any]:
     )
 
 
-def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> None:
+def _ensure_user_row_for_login(
+    *,
+    tg_id: int,
+    username: str | None = None,
+    include_legacy_payment_authority: bool = True,
+) -> None:
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
@@ -2958,7 +3259,12 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
             normalized = str(username or "").strip()[:100] or None
             if username is not None and user.username != normalized:
                 user.username = normalized
-            ensure_user_account_foundation(s, user, now=_utcnow())
+            ensure_user_account_foundation(
+                s,
+                user,
+                now=_utcnow(),
+                include_legacy_payment_authority=include_legacy_payment_authority,
+            )
             s.commit()
             return
 
@@ -2982,7 +3288,12 @@ def _ensure_user_row_for_login(*, tg_id: int, username: str | None = None) -> No
         )
         mark_user_became_free(row, now=now)
         s.add(row)
-        ensure_user_account_foundation(s, row, now=now)
+        ensure_user_account_foundation(
+            s,
+            row,
+            now=now,
+            include_legacy_payment_authority=include_legacy_payment_authority,
+        )
         s.commit()
     except Exception:
         s.rollback()
@@ -3303,7 +3614,30 @@ def _auth_actor_tg_id(auth_user: dict[str, Any] | None) -> int:
         s.close()
 
 
+def _auth_user_is_recovery_scope(auth_user: dict[str, Any] | None) -> bool:
+    return str((auth_user or {}).get("scope") or "").strip() == "recovery"
+
+
+def _reject_recovery_ticket_media(*, auth_user: dict[str, Any] | None, payload: Any) -> None:
+    if not _auth_user_is_recovery_scope(auth_user):
+        return
+    media_values = (
+        getattr(payload, "attachment_id", None),
+        getattr(payload, "media_type", None),
+        getattr(payload, "media_file_id", None),
+        getattr(payload, "media_payload", None),
+    )
+    if any(value is not None and str(value) != "" for value in media_values):
+        raise _auth_http_exception(
+            detail="Recovery-сессия поддерживает только текстовые обращения.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
+
+
 def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User | None) -> bool:
+    if _auth_user_is_recovery_scope(auth_user):
+        return False
     candidates = [
         int((auth_user or {}).get("id") or 0),
         _auth_actor_tg_id(auth_user),
@@ -3315,6 +3649,12 @@ def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User
 
 def _require_admin(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
     user_data = _require_auth_user(x_telegram_init_data, request=request)
+    if _auth_user_is_recovery_scope(user_data):
+        raise _auth_http_exception(
+            detail="Recovery-сессия не даёт административных прав.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
     account_id = int(user_data.get("id", 0))
     actor_id = _auth_actor_tg_id(user_data)
     if not _is_admin_tg(actor_id):
@@ -3752,22 +4092,150 @@ _PAYMENT_REDACT_KEY_RE = re.compile(
     re.IGNORECASE,
 )
 
+_EXTERNAL_ORDER_META_JSON_LIMIT = 4000
+_PAYMENT_EVENT_JSON_LIMIT = 16000
 
-def _redact_payment_payload(value: Any) -> Any:
+
+def _compact_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _bounded_json_value(value: Any, *, depth: int = 0) -> Any:
+    if depth >= 5:
+        return "[nested]"
     if isinstance(value, dict):
         out: dict[str, Any] = {}
-        for key, item in value.items():
-            key_text = str(key)
-            if _PAYMENT_REDACT_KEY_RE.search(key_text):
-                out[key_text] = "[redacted]"
-            else:
-                out[key_text] = _redact_payment_payload(item)
+        items = list(value.items())
+        for key, item in items[:32]:
+            key_text = str(key or "")[:64]
+            if key_text:
+                out[key_text] = _bounded_json_value(item, depth=depth + 1)
+        if len(items) > 32:
+            out["_pokrov_entries_omitted"] = len(items) - 32
         return out
     if isinstance(value, list):
-        return [_redact_payment_payload(item) for item in value[:50]]
+        out = [_bounded_json_value(item, depth=depth + 1) for item in value[:20]]
+        if len(value) > 20:
+            out.append({"_pokrov_entries_omitted": len(value) - 20})
+        return out
     if isinstance(value, str):
-        return value[:512]
-    return value
+        return value[:256]
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    return str(value)[:128]
+
+
+def _bounded_mapping(
+    value: dict[str, Any],
+    *,
+    max_serialized: int,
+    priority_keys: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    for key, item in value.items():
+        key_text = str(key or "")[:64]
+        if key_text:
+            normalized[key_text] = _bounded_json_value(item, depth=1)
+    ordered_keys = [key for key in priority_keys if key in normalized]
+    ordered_keys.extend(key for key in normalized if key not in ordered_keys)
+    result: dict[str, Any] = {}
+    omitted = 0
+    for key in ordered_keys:
+        trial = {**result, key: normalized[key]}
+        if len(_compact_json(trial)) <= max_serialized:
+            result[key] = normalized[key]
+        else:
+            omitted += 1
+    if omitted:
+        summary = {
+            "omitted_fields": omitted,
+            "fingerprint": hashlib.sha256(_compact_json(normalized).encode("utf-8")).hexdigest()[:16],
+        }
+        trial = {**result, "_pokrov_metadata_summary": summary}
+        if len(_compact_json(trial)) <= max_serialized:
+            result["_pokrov_metadata_summary"] = summary
+    return result
+
+
+def _redact_payment_payload(value: Any, *, max_serialized: int = 12000) -> Any:
+    def _redact(item: Any, *, depth: int = 0) -> Any:
+        if depth >= 5:
+            return "[nested]"
+        if isinstance(item, dict):
+            out: dict[str, Any] = {}
+            entries = list(item.items())
+            for key, child in entries[:32]:
+                key_text = str(key or "")[:64]
+                if not key_text:
+                    continue
+                if _PAYMENT_REDACT_KEY_RE.search(key_text):
+                    out[key_text] = "[redacted]"
+                else:
+                    out[key_text] = _redact(child, depth=depth + 1)
+            if len(entries) > 32:
+                out["_pokrov_entries_omitted"] = len(entries) - 32
+            return out
+        if isinstance(item, list):
+            out = [_redact(child, depth=depth + 1) for child in item[:20]]
+            if len(item) > 20:
+                out.append({"_pokrov_entries_omitted": len(item) - 20})
+            return out
+        if isinstance(item, str):
+            return item[:256]
+        if item is None or isinstance(item, (bool, int, float)):
+            return item
+        return str(item)[:128]
+
+    redacted = _redact(value)
+    serialized = _compact_json(redacted)
+    if len(serialized) <= max_serialized:
+        return redacted
+
+    result: dict[str, Any] = {}
+    if isinstance(redacted, dict) and "_pokrov_processing_error" in redacted:
+        result["_pokrov_processing_error"] = redacted["_pokrov_processing_error"]
+    result["_pokrov_payload_summary"] = {
+        "truncated": True,
+        "fingerprint": hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16],
+        "serialized_length": len(serialized),
+        "entry_count": len(redacted) if isinstance(redacted, dict) else None,
+    }
+    if isinstance(redacted, dict):
+        for key in (
+            "eventType",
+            "status",
+            "payment_status",
+            "amount",
+            "currency",
+            "contractId",
+            "order_id",
+            "clientUtm",
+            "plan_code",
+            "provider",
+        ):
+            if key not in redacted or key in result:
+                continue
+            trial = {**result, key: redacted[key]}
+            if len(_compact_json(trial)) <= max_serialized:
+                result[key] = redacted[key]
+    return result
+
+
+def _serialize_payment_event_payload(value: dict[str, Any]) -> str:
+    bounded = _redact_payment_payload(value, max_serialized=_PAYMENT_EVENT_JSON_LIMIT - 512)
+    serialized = _compact_json(bounded)
+    if len(serialized) <= _PAYMENT_EVENT_JSON_LIMIT:
+        return serialized
+    error_code = bounded.get("_pokrov_processing_error") if isinstance(bounded, dict) else None
+    summary = {
+        "_pokrov_processing_error": error_code,
+        "_pokrov_payload_summary": {
+            "truncated": True,
+            "fingerprint": hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16],
+            "serialized_length": len(serialized),
+        },
+    }
+    return _compact_json(summary)
 
 
 def _verify_lavatop_callback_auth(request: Request) -> tuple[bool, str]:
@@ -3936,8 +4404,93 @@ def _external_order_meta(row: ExternalOrder | None) -> dict[str, Any]:
         return {}
 
 
+def _serialize_external_order_meta(meta: dict[str, Any]) -> str:
+    source = dict(meta or {})
+    prepared: dict[str, Any] = {}
+    section_contracts = {
+        "fulfillment": (
+            1100,
+            (
+                "mode",
+                "status",
+                "buyer_email",
+                "access_key",
+                "email_delivery",
+                "error_code",
+                "tg_id",
+                "activated_at",
+                "access_key_issued_at",
+            ),
+        ),
+        "reversal": (
+            1000,
+            (
+                "operator_action_required",
+                "reconciliation_status",
+                "recorded_at",
+                "event_type",
+                "provider",
+                "order_id",
+                "reason",
+                "external_id",
+            ),
+        ),
+        "pricing": (
+            900,
+            (
+                "base_amount_rub",
+                "final_amount_rub",
+                "discount_pct",
+                "discount_applied",
+                "pending_discount_code",
+                "direct_discount_pct",
+                "direct_discount_code",
+                "direct_discount_source",
+                "referral_discount_eligible",
+            ),
+        ),
+    }
+    for key, value in source.items():
+        if key == "callback":
+            prepared[key] = _redact_payment_payload(value, max_serialized=1000)
+        elif key in section_contracts and isinstance(value, dict):
+            max_serialized, priority = section_contracts[key]
+            prepared[key] = _bounded_mapping(
+                value,
+                max_serialized=max_serialized,
+                priority_keys=priority,
+            )
+        else:
+            prepared[key] = _bounded_json_value(value)
+
+    bounded = _bounded_mapping(
+        prepared,
+        max_serialized=_EXTERNAL_ORDER_META_JSON_LIMIT,
+        priority_keys=(
+            "fulfillment",
+            "reversal",
+            "pricing",
+            "buyer_email",
+            "order_id",
+            "tg_id",
+            "plan_code",
+            "provider",
+            "source",
+            "campaign",
+            "requested_promo_code",
+            "promo_code",
+            "payment_method",
+            "lavatop_payment_provider",
+            "lavatop_payment_method",
+            "plan_label",
+            "callback",
+        ),
+    )
+    return _compact_json(bounded)
+
+
 def _set_external_order_meta(row: ExternalOrder, meta: dict[str, Any]) -> None:
-    row.meta_json = json.dumps(dict(meta or {}), ensure_ascii=False, separators=(",", ":"))[:4000]
+    row.meta_json = _serialize_external_order_meta(meta)
 
 
 def _payload_amount(payload: dict[str, Any]) -> float:
@@ -3995,6 +4548,65 @@ def _status_from_event(event_type: str, payload: dict[str, Any], signature_ok: b
     return "manual_review"
 
 
+def _payment_order_correlation(*, provider: str, order_id: str) -> str:
+    material = f"{_normalize_provider(provider)}|{str(order_id or '').strip()}"
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+
+
+def _safe_payment_processing_error(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    allowed = {
+        "access_key_issue_failed",
+        "access_key_email_delivery_error",
+        "delivery_evidence_failed",
+        "account_conflict",
+        "claim_definition_conflict",
+        "claim_reversed",
+        "db_error",
+        "fallback_creator_conflict",
+        "fallback_missing",
+        "fallback_ownership_conflict",
+        "fallback_redeemed_conflict",
+        "fallback_type_conflict",
+        "grant_fulfillment_failed",
+        "grant_not_found",
+        "manual_review",
+        "missing_buyer_email",
+        "missing_tg_id",
+        "order_not_found",
+        "order_reversed",
+        "payment_pending",
+        "unsupported_plan",
+        "user_create_failed",
+        "verified_email_mismatch",
+    }
+    return normalized if normalized in allowed else "durable_fulfillment_failed"
+
+
+_TERMINAL_PAYMENT_FULFILLMENT_CODES = {
+    "account_conflict",
+    "claim_definition_conflict",
+    "claim_reversed",
+    "fallback_creator_conflict",
+    "fallback_missing",
+    "fallback_ownership_conflict",
+    "fallback_redeemed_conflict",
+    "fallback_type_conflict",
+    "manual_review",
+    "missing_buyer_email",
+    "order_reversed",
+    "unsupported_plan",
+    "verified_email_mismatch",
+}
+
+_TERMINAL_PAYMENT_REVERSAL_CODES = {
+    "claim_reversed",
+    "fallback_missing",
+    "grant_not_found",
+    "manual_review",
+}
+
+
 def _upsert_external_order(
     s,
     *,
@@ -4003,19 +4615,22 @@ def _upsert_external_order(
     payload: dict[str, Any],
     status: str,
     mark_paid: bool,
-) -> None:
+) -> ExternalOrder | None:
     if not order_id:
-        return
+        return None
     row = (
         s.query(ExternalOrder)
         .filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id)
+        .with_for_update()
+        .populate_existing()
         .first()
     )
-    if not row:
+    created = row is None
+    if created:
         row = ExternalOrder(provider=provider, order_id=order_id, created_at=_utcnow())
         s.add(row)
-    row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id")) or row.tg_id
-    row.plan_code = _payload_plan_code(payload) or row.plan_code
+        row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
+        row.plan_code = _payload_plan_code(payload) or row.plan_code
     row.source = (
         _payload_value(payload, "source", "checkout_source", "us_source")
         or _payload_nested_value(payload, "clientUtm", "utm_medium")
@@ -4028,15 +4643,53 @@ def _upsert_external_order(
     )
     row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
     meta = _external_order_meta(row)
-    meta["callback"] = _redact_payment_payload(payload)
+    meta["callback"] = _redact_payment_payload(payload, max_serialized=1000)
     _set_external_order_meta(row, meta)
     callback_amount = _payload_amount(payload)
     if callback_amount > 0 and float(row.amount or 0) <= 0:
         row.amount = callback_amount
     row.currency = _payload_currency(payload) or row.currency or "RUB"
-    row.status = status
+    current_status = str(row.status or "").strip().lower()
+    incoming_status = str(status or "").strip().lower()
+    if current_status == "chargeback":
+        incoming_status = "chargeback"
+    elif current_status == "refunded" and incoming_status != "chargeback":
+        incoming_status = "refunded"
+    elif current_status == "paid" and incoming_status in {
+        "created",
+        "pending",
+        "pending_verification",
+        "failed",
+        "cancelled",
+        "manual_review",
+    }:
+        incoming_status = "paid"
+    row.status = incoming_status or current_status or "created"
     if mark_paid and not row.paid_at:
         row.paid_at = _utcnow()
+    return row
+
+
+def _mark_payment_reversal_pending(
+    *,
+    row: ExternalOrder,
+    provider: str,
+    event_type: str,
+) -> None:
+    meta = _external_order_meta(row)
+    fulfillment = dict(meta.get("fulfillment") or {})
+    fulfillment["status"] = "reversal_pending_operator_action"
+    meta["fulfillment"] = fulfillment
+    meta["reversal"] = {
+        "event_type": re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal",
+        "provider": _normalize_provider(provider),
+        "order_id": str(row.order_id or "")[:128],
+        "reason": "provider_reversal",
+        "operator_action_required": True,
+        "reconciliation_status": "pending",
+        "recorded_at": _safe_iso(_utcnow()),
+    }
+    _set_external_order_meta(row, meta)
 
 
 def _record_external_payment_event(
@@ -4050,7 +4703,7 @@ def _record_external_payment_event(
     processed_ok: bool,
     status: str | None = None,
 ) -> tuple[bool, bool]:
-    persist_payload = _redact_payment_payload(payload)
+    persist_payload = _redact_payment_payload(payload, max_serialized=_PAYMENT_EVENT_JSON_LIMIT - 512)
     s = SessionLocal()
     try:
         exists = (
@@ -4060,26 +4713,30 @@ def _record_external_payment_event(
                 ExternalPaymentEvent.event_type == event_type,
                 ExternalPaymentEvent.external_id == external_id,
             )
+            .with_for_update()
             .first()
         )
         if exists:
-            if bool(getattr(exists, "signature_ok", False)):
+            if bool(getattr(exists, "signature_ok", False)) and bool(getattr(exists, "processed_ok", False)):
                 return True, True
             if not signature_ok:
                 return True, True
             exists.order_id = order_id or None
-            exists.payload_json = json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000]
+            exists.payload_json = _serialize_payment_event_payload(persist_payload)
             exists.signature_ok = True
             exists.processed_ok = bool(processed_ok)
             event_status = status or _status_from_event(event_type, payload, signature_ok=True, provider=provider)
-            _upsert_external_order(
-                s,
-                provider=provider,
-                order_id=order_id,
-                payload=payload,
-                status=event_status,
-                mark_paid=event_status == "paid",
-            )
+            if str(payload.get("_pokrov_validation_error") or "") != "unknown_order":
+                order_row = _upsert_external_order(
+                    s,
+                    provider=provider,
+                    order_id=order_id,
+                    payload=payload,
+                    status=event_status,
+                    mark_paid=event_status == "paid",
+                )
+                if order_row is not None and event_type in {"refund", "chargeback"}:
+                    _mark_payment_reversal_pending(row=order_row, provider=provider, event_type=event_type)
             s.commit()
             return False, True
 
@@ -4088,7 +4745,7 @@ def _record_external_payment_event(
             event_type=event_type,
             external_id=external_id,
             order_id=order_id or None,
-            payload_json=json.dumps(persist_payload, ensure_ascii=False, separators=(",", ":"))[:16000],
+            payload_json=_serialize_payment_event_payload(persist_payload),
             signature_ok=bool(signature_ok),
             processed_ok=bool(processed_ok),
             created_at=_utcnow(),
@@ -4096,27 +4753,99 @@ def _record_external_payment_event(
         s.add(event)
 
         event_status = status or _status_from_event(event_type, payload, signature_ok=signature_ok, provider=provider)
-        _upsert_external_order(
-            s,
-            provider=provider,
-            order_id=order_id,
-            payload=payload,
-            status=event_status,
-            mark_paid=event_status == "paid",
-        )
+        if signature_ok and str(payload.get("_pokrov_validation_error") or "") != "unknown_order":
+            order_row = _upsert_external_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+                payload=payload,
+                status=event_status,
+                mark_paid=event_status == "paid",
+            )
+            if order_row is not None and event_type in {"refund", "chargeback"}:
+                _mark_payment_reversal_pending(row=order_row, provider=provider, event_type=event_type)
         s.commit()
         return False, True
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("payment callback persistence failed: provider=%s event=%s err=%s", provider, event_type, exc)
+        logger.error(
+            "payment callback persistence failed code=callback_persistence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, False
     finally:
         s.close()
 
 
+def _complete_external_payment_event(
+    *,
+    provider: str,
+    event_type: str,
+    external_id: str,
+    processed_ok: bool,
+    error_code: str | None = None,
+) -> bool:
+    s = SessionLocal()
+    try:
+        event = (
+            s.query(ExternalPaymentEvent)
+            .filter(
+                ExternalPaymentEvent.provider == str(provider),
+                ExternalPaymentEvent.event_type == str(event_type),
+                ExternalPaymentEvent.external_id == str(external_id),
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if event is None:
+            return False
+        event.processed_ok = bool(processed_ok)
+        if error_code:
+            try:
+                stored = json.loads(str(event.payload_json or "{}"))
+                if not isinstance(stored, dict):
+                    stored = {}
+            except Exception:
+                stored = {}
+            stored["_pokrov_processing_error"] = _safe_payment_processing_error(error_code)
+            event.payload_json = _serialize_payment_event_payload(stored)
+        s.commit()
+        return True
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment callback completion persistence failed code=callback_completion_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=external_id),
+        )
+        return False
+    finally:
+        s.close()
+
+
+def _record_payment_entitlement_retry_error(*, provider: str, order_id: str, error_code: str) -> None:
+    s = SessionLocal()
+    try:
+        record_payment_entitlement_claim_error(
+            s,
+            provider=provider,
+            order_id=order_id,
+            error_code=error_code,
+            now=_utcnow(),
+        )
+        s.commit()
+    except PaymentEntitlementNotFoundError:
+        s.rollback()
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment entitlement retry evidence persistence failed code=retry_evidence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+    finally:
+        s.close()
+
+
 def _validate_paid_callback_against_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
-    if _normalize_provider(provider) != "lavatop":
-        return True, "ok"
     if not order_id:
         return False, "missing_order_id"
     s = SessionLocal()
@@ -4130,6 +4859,12 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return False, "unknown_order"
         if str(row.provider or "").strip().lower() != str(provider).strip().lower():
             return False, "provider_mismatch"
+        persisted_tg_id = int(row.tg_id) if row.tg_id is not None else None
+        callback_tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
+        if persisted_tg_id is not None and callback_tg_id is not None and persisted_tg_id != callback_tg_id:
+            return False, "order_owner_mismatch"
+        if _normalize_provider(provider) != "lavatop":
+            return True, "ok"
         expected_amount = float(row.amount or 0)
         actual_amount = _payload_amount(payload)
         if expected_amount > 0 and actual_amount <= 0:
@@ -4178,6 +4913,24 @@ def _rub_plan_days(plan_code: str) -> int:
     return max(1, int(fallback.get("days") or 30))
 
 
+def _external_order_has_reversal_state(row: ExternalOrder, meta: dict[str, Any]) -> bool:
+    if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
+        return True
+    fulfillment = meta.get("fulfillment") if isinstance(meta.get("fulfillment"), dict) else {}
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    if fulfillment_status in {"reversed", "reversal_pending_operator_action"}:
+        return True
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    reconciliation = str(reversal.get("reconciliation_status") or "").strip().lower()
+    return bool(reversal.get("operator_action_required") is True or reconciliation in {
+        "pending",
+        "reversed",
+        "already_reversed",
+        "fallback_missing",
+        "grant_not_found",
+    })
+
+
 def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
     s = SessionLocal()
     try:
@@ -4189,68 +4942,102 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
                 .with_for_update()
                 .first()
             )
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
-        if tg_id is None and ext_order and ext_order.tg_id is not None:
-            tg_id = int(ext_order.tg_id)
+        if ext_order is None:
+            return False, "order_not_found"
+        tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
         if tg_id is None:
             return False, "missing_tg_id"
         ext_meta = _external_order_meta(ext_order) if ext_order else {}
         fulfillment = dict(ext_meta.get("fulfillment") or {})
+        if _external_order_has_reversal_state(ext_order, ext_meta):
+            return False, "order_reversed"
         if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
             return True, "already_applied"
 
-        plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
-            payload, "clientUtm", "utm_term"
-        )
-        if not plan_code and ext_order and ext_order.plan_code:
-            plan_code = str(ext_order.plan_code)
+        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+        if not user:
+            s.rollback()
+            _ensure_user_row_for_login(
+                tg_id=int(tg_id),
+                username=None,
+                include_legacy_payment_authority=False,
+            )
+            ext_order = (
+                s.query(ExternalOrder)
+                .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+                .with_for_update()
+                .populate_existing()
+                .one_or_none()
+            )
+            if ext_order is None:
+                return False, "order_not_found"
+            refreshed_tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
+            if refreshed_tg_id != tg_id:
+                return False, "account_conflict"
+            ext_meta = _external_order_meta(ext_order)
+            fulfillment = dict(ext_meta.get("fulfillment") or {})
+            if _external_order_has_reversal_state(ext_order, ext_meta):
+                return False, "order_reversed"
+            if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
+                return True, "already_applied"
+            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+            if not user:
+                return False, "user_create_failed"
+
+        plan_code = str(ext_order.plan_code or "").strip()
+        if not plan_code:
+            plan_code = _payload_value(payload, "plan_code", "tariff", "plan", "us_plan_code") or _payload_nested_value(
+                payload, "clientUtm", "utm_term"
+            )
         plan_code = (plan_code or "1_month").strip().lower()
         plan_cfg = _resolve_plan_config(s=s, code=plan_code)
         if not plan_cfg:
             plan_code = "1_month"
         days = _rub_plan_days(plan_code)
 
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            s.rollback()
-            _ensure_user_row_for_login(tg_id=int(tg_id), username=None)
-            user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-            if not user:
-                return False, "user_create_failed"
-
         now = _utcnow()
         old_sub = (user.sub_type or "").upper().strip()
-        first_paid_purchase = not bool(getattr(user, "first_purchase_done", False))
         referrer_id = int(getattr(user, "referrer_id", 0) or 0)
+        new_referral_relationship = False
         plan_amount_stars = int(plan_cfg.get("amount_stars") or API_PLAN_PRICES.get(plan_code) or 0)
-        if old_sub == "FREE":
-            start_from = now
-        else:
-            start_from = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-        user.expiry_at = start_from + timedelta(days=days)
-        user.sub_type = "PAID"
-        user.current_plan_code = plan_code
-        user.is_active = True
-        user.first_purchase_done = True
+        ensure_user_account_foundation(s, user, now=now)
+        s.flush()
+        if referrer_id > 0:
+            referrer = s.query(User).filter(User.tg_id == referrer_id).one_or_none()
+            if referrer is not None:
+                ensure_user_account_foundation(s, referrer, now=now)
+                s.flush()
+                existing_relationship = s.query(ReferralRelationship.id).filter_by(
+                    referred_account_id=str(user.account_id)
+                ).first()
+                create_referral_relationship(
+                    s,
+                    referred_account_id=str(user.account_id),
+                    referrer_account_id=str(referrer.account_id),
+                    source="legacy_referrer_projection",
+                    now=now,
+                )
+                new_referral_relationship = existing_relationship is None
+        payment_result = record_successful_payment_grant(
+            s,
+            account_id=str(user.account_id),
+            legacy_tg_id=int(user.tg_id),
+            provider=str(provider),
+            order_id=str(order_id),
+            plan_code=plan_code,
+            duration_days=days,
+            paid_at=now,
+        )
+        first_paid_purchase = bool(payment_result.is_first_payment)
+        if first_paid_purchase and new_referral_relationship and referrer_id > 0:
+            referrer.referral_count = int(referrer.referral_count or 0) + 1
         user.pending_discount_pct = None
         user.pending_discount_code = None
         user.pending_discount_set_at = None
 
-        # Anti-fraud referral flow:
-        # queue inviter reward and release it after the confirmation window + activity signal.
-        if first_paid_purchase and referrer_id > 0:
-            _queue_referral_bonus(
-                s=s,
-                order_id=str(order_id or f"{provider}:{int(tg_id)}:{int(now.timestamp())}"),
-                referrer_tg_id=int(referrer_id),
-                referred_tg_id=int(tg_id),
-                now=now,
-            )
-
         if ext_order:
             ext_order.status = "paid"
             ext_order.paid_at = ext_order.paid_at or now
-            ext_order.tg_id = ext_order.tg_id or int(tg_id)
             ext_order.plan_code = plan_code
             fulfillment.update(
                 {
@@ -4267,9 +5054,12 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             ext_order_id = None
         s.commit()
         s.refresh(user)
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("external order activation failed: order_id=%s err=%s", order_id, exc)
+        logger.error(
+            "external order activation failed code=account_grant_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, "db_error"
     finally:
         s.close()
@@ -4282,17 +5072,51 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
                 ref_tg_id=int(tg_id),
                 pay_attempt_id=ext_order_id,
             )
-        except Exception as exc:
+        except Exception:
             logger.warning(
-                "referral points award failed for provider=%s order_id=%s referrer=%s referred=%s err=%s",
-                provider,
-                order_id,
-                referrer_id,
-                tg_id,
-                exc,
+                "referral points award failed code=referral_award_failed correlation=%s",
+                _payment_order_correlation(provider=provider, order_id=order_id),
             )
 
     return True, "ok"
+
+
+def _payment_fallback_delivery_payload(
+    *,
+    row: ExternalOrder,
+    claim: PaymentEntitlementClaim,
+    card: GiftCard,
+    fulfillment: dict[str, Any],
+    buyer_email: str,
+    plan_label: str,
+) -> dict[str, Any]:
+    delivery_status = str((fulfillment.get("email_delivery") or {}).get("status") or "").strip().lower()
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    if fulfillment_status == "email_sent" or delivery_status in {"sent", "debug_echo"}:
+        return {}
+    return {
+        "buyer_email": buyer_email,
+        "access_key": str(card.code or "").strip().upper(),
+        "order_id": str(row.order_id),
+        "plan_code": str(claim.plan_code),
+        "plan_label": str(plan_label or claim.plan_code),
+        "days": int(claim.duration_days or 0),
+    }
+
+
+def _mark_payment_order_manual_review(
+    *,
+    row: ExternalOrder,
+    meta: dict[str, Any],
+    fulfillment: dict[str, Any],
+    error_code: str,
+) -> None:
+    if str(row.status or "").strip().lower() not in {"refunded", "chargeback"}:
+        row.status = "manual_review"
+    fulfillment["status"] = "manual_review"
+    fulfillment["error_code"] = _safe_payment_processing_error(error_code)
+    meta["fulfillment"] = fulfillment
+    _set_external_order_meta(row, meta)
 
 
 def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
@@ -4308,42 +5132,292 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             return False, "order_not_found", {}
         meta = _external_order_meta(row)
         fulfillment = dict(meta.get("fulfillment") or {})
+        existing_claim = (
+            s.query(PaymentEntitlementClaim)
+            .filter(
+                PaymentEntitlementClaim.provider == str(provider),
+                PaymentEntitlementClaim.order_id == str(order_id),
+            )
+            .one_or_none()
+        )
+        if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
+            if existing_claim is not None and str(existing_claim.status or "").strip().lower() == "reversed":
+                return False, "claim_reversed", {}
+            return False, "order_reversed", {}
         buyer_email = str(
-            fulfillment.get("buyer_email")
-            or meta.get("buyer_email")
-            or _payload_value(payload, "buyer_email", "email", "buyerEmail")
-            or ""
+            existing_claim.buyer_email_norm
+            if existing_claim is not None
+            else (
+                fulfillment.get("buyer_email")
+                or meta.get("buyer_email")
+                or _payload_value(payload, "buyer_email", "email", "buyerEmail")
+                or ""
+            )
         ).strip()
         try:
             buyer_email = validate_email_input(buyer_email)
         except InvalidEmailInputError:
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="missing_buyer_email",
+            )
+            s.commit()
             return False, "missing_buyer_email", {}
 
-        plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
-        plan = _resolve_plan_config(s=s, code=plan_code)
-        normalized_plan = _normalized_plan_payload(plan, fallback_code=plan_code)
-        if not normalized_plan:
-            return False, "unsupported_plan", {}
+        if existing_claim is not None:
+            plan_code = str(existing_claim.plan_code or "").strip().lower()
+            duration_days = max(1, int(existing_claim.duration_days or 0))
+            display_plan = _resolve_plan_config(s=s, code=plan_code) or {}
+            plan_label = _normalize_mojibake(str(display_plan.get("label") or plan_code).strip()) or plan_code
+        else:
+            plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
+            normalized_plan = _normalized_plan_payload(
+                _resolve_plan_config(s=s, code=plan_code),
+                fallback_code=plan_code,
+            )
+            if not normalized_plan:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code="unsupported_plan",
+                )
+                s.commit()
+                return False, "unsupported_plan", {}
+            plan_code = str(normalized_plan["code"])
+            duration_days = max(1, int(normalized_plan.get("days") or 30))
+            plan_label = str(normalized_plan.get("label") or plan_code)
+
+        if existing_claim is not None and existing_claim.account_id:
+            fulfilled = mark_paid_and_fulfill_attached_claim(
+                s,
+                provider=provider,
+                order_id=order_id,
+                buyer_email=buyer_email,
+                plan_code=plan_code,
+                duration_days=duration_days,
+                paid_at=row.paid_at or _utcnow(),
+            )
+            if fulfilled.code not in {"fulfilled", "already_fulfilled"}:
+                if fulfilled.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                    _mark_payment_order_manual_review(
+                        row=row,
+                        meta=meta,
+                        fulfillment=fulfillment,
+                        error_code=fulfilled.code,
+                    )
+                s.commit()
+                return False, fulfilled.code, {}
+            now = _utcnow()
+            row.status = "paid"
+            row.paid_at = row.paid_at or fulfilled.claim.paid_at or now
+            fulfillment.update(
+                {
+                    "mode": "account_claim",
+                    "status": "account_extended",
+                    "activated_at": _safe_iso(fulfilled.claim.fulfilled_at or now),
+                }
+            )
+            fulfillment.pop("access_key", None)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            s.commit()
+            return True, fulfilled.code, {}
+
+        claim_result = ensure_pending_claim(
+            s,
+            provider=provider,
+            order_id=order_id,
+            buyer_email=buyer_email,
+            plan_code=plan_code,
+            duration_days=duration_days,
+            now=row.created_at,
+        )
+        if claim_result.code == "claim_definition_conflict":
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code=claim_result.code,
+            )
+            s.commit()
+            return False, "claim_definition_conflict", {}
+        paid_result = mark_payment_entitlement_paid(
+            s,
+            provider=provider,
+            order_id=order_id,
+            paid_at=row.paid_at or _utcnow(),
+        )
+        if paid_result.code in {"claim_reversed", "manual_review"}:
+            if paid_result.code == "manual_review":
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code=paid_result.code,
+                )
+            s.commit()
+            return False, paid_result.code, {}
+        claim = paid_result.claim
+        if claim.account_id:
+            s.commit()
+            return _issue_payment_access_key_for_order(provider=provider, order_id=order_id, payload=payload)
+
+        if claim.fallback_gift_card_id:
+            fallback_result = ensure_fallback_gift_card(
+                s,
+                provider=provider,
+                order_id=order_id,
+                gift_code="unused-existing-fallback",
+                now=claim.paid_at,
+            )
+            if fallback_result.code != "fallback_already_exists":
+                if fallback_result.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                    _mark_payment_order_manual_review(
+                        row=row,
+                        meta=meta,
+                        fulfillment=fulfillment,
+                        error_code=fallback_result.code,
+                    )
+                s.commit()
+                return False, fallback_result.code, {}
+            claim = fallback_result.claim
+            card = (
+                s.query(GiftCard)
+                .filter(GiftCard.id == int(claim.fallback_gift_card_id))
+                .with_for_update()
+                .one_or_none()
+            )
+            if card is None:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code="fallback_missing",
+                )
+                s.commit()
+                return False, "fallback_missing", {}
+            fulfillment.pop("access_key", None)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            row.status = "paid"
+            row.paid_at = row.paid_at or claim.paid_at
+            row.plan_code = str(claim.plan_code)
+            delivery_payload = _payment_fallback_delivery_payload(
+                row=row,
+                claim=claim,
+                card=card,
+                fulfillment=fulfillment,
+                buyer_email=buyer_email,
+                plan_label=plan_label,
+            )
+            if delivery_payload and not delivery_payload.get("access_key"):
+                record_payment_entitlement_claim_error(
+                    s,
+                    provider=provider,
+                    order_id=order_id,
+                    error_code="fallback_missing",
+                    now=_utcnow(),
+                )
+                s.commit()
+                return False, "fallback_missing", {}
+            s.commit()
+            return True, "claim_fallback_already_durable", delivery_payload
 
         existing_key = str(fulfillment.get("access_key") or "").strip().upper()
-        if existing_key:
-            key_code = existing_key
-            reason = "access_key_already_issued"
-        else:
-            key_code = _generate_gift_code_for_admin(s)
-            s.add(GiftCard(code=key_code, card_type=str(normalized_plan["code"]), created_by=0))
-            reason = "access_key_issued"
+        key_code = existing_key or _generate_gift_code_for_admin(s)
+        fallback_result = ensure_fallback_gift_card(
+            s,
+            provider=provider,
+            order_id=order_id,
+            gift_code=key_code,
+            now=claim.paid_at,
+        )
+        if fallback_result.code not in {
+            "fallback_created",
+            "fallback_already_exists",
+            "fallback_linked_existing",
+        }:
+            if fallback_result.code in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                _mark_payment_order_manual_review(
+                    row=row,
+                    meta=meta,
+                    fulfillment=fulfillment,
+                    error_code=fallback_result.code,
+                )
+            s.commit()
+            return False, fallback_result.code, {}
+        claim = fallback_result.claim
+        card = (
+            s.query(GiftCard)
+            .filter(GiftCard.id == int(claim.fallback_gift_card_id or 0))
+            .with_for_update()
+            .one_or_none()
+        )
+        if card is None or int(claim.fallback_gift_card_id or 0) != int(card.id):
+            record_payment_entitlement_claim_error(
+                s,
+                provider=provider,
+                order_id=order_id,
+                error_code="fallback_missing",
+                now=_utcnow(),
+            )
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="fallback_missing",
+            )
+            s.commit()
+            return False, "fallback_missing", {}
+        key_code = str(card.code or "").strip().upper()
+        if not key_code:
+            record_payment_entitlement_claim_error(
+                s,
+                provider=provider,
+                order_id=order_id,
+                error_code="fallback_missing",
+                now=_utcnow(),
+            )
+            _mark_payment_order_manual_review(
+                row=row,
+                meta=meta,
+                fulfillment=fulfillment,
+                error_code="fallback_missing",
+            )
+            s.commit()
+            return False, "fallback_missing", {}
+        reason = "access_key_relinked" if existing_key else "access_key_issued"
+
+        prior_delivery_status = str((fulfillment.get("email_delivery") or {}).get("status") or "").strip().lower()
+        already_delivered = bool(
+            existing_key
+            and (
+                str(fulfillment.get("status") or "").strip().lower() == "email_sent"
+                or prior_delivery_status in {"sent", "debug_echo"}
+            )
+        )
+        fulfillment.pop("access_key", None)
+        if already_delivered:
+            row.status = "paid"
+            row.paid_at = row.paid_at or claim.paid_at or _utcnow()
+            row.plan_code = str(claim.plan_code)
+            meta["fulfillment"] = fulfillment
+            _set_external_order_meta(row, meta)
+            s.commit()
+            return True, reason, {}
 
         now = _utcnow()
         row.status = "paid"
         row.paid_at = row.paid_at or now
-        row.plan_code = str(normalized_plan["code"])
+        row.plan_code = str(claim.plan_code)
         fulfillment.update(
             {
                 "mode": "access_key_email",
                 "status": "email_pending",
                 "buyer_email": buyer_email,
-                "access_key": key_code,
                 "access_key_issued_at": _safe_iso(now),
             }
         )
@@ -4354,47 +5428,149 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             "buyer_email": buyer_email,
             "access_key": key_code,
             "order_id": str(row.order_id),
-            "plan_code": str(normalized_plan["code"]),
-            "plan_label": str(normalized_plan.get("label") or normalized_plan["code"]),
-            "days": int(normalized_plan.get("days") or 0),
+            "plan_code": str(claim.plan_code),
+            "plan_label": plan_label,
+            "days": int(claim.duration_days or 0),
         }
-    except Exception as exc:
+    except Exception:
         s.rollback()
-        logger.exception("payment access key issue failed: provider=%s order_id=%s err=%s", provider, order_id, exc)
+        logger.error(
+            "payment access key issue failed code=access_key_issue_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
         return False, "access_key_issue_failed", {}
     finally:
         s.close()
 
 
-def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery: dict[str, Any]) -> None:
+def _record_access_key_delivery_result(*, provider: str, order_id: str, delivery: dict[str, Any]) -> bool:
     s = SessionLocal()
     try:
         row = (
             s.query(ExternalOrder)
             .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .with_for_update()
             .first()
         )
         if not row:
-            return
+            return False
         meta = _external_order_meta(row)
         fulfillment = dict(meta.get("fulfillment") or {})
-        delivery_status = str((delivery or {}).get("status") or "").strip()
+        reversal_status = str(row.status or "").strip().lower() in {"refunded", "chargeback"}
+        prior_delivery = fulfillment.get("email_delivery") if isinstance(fulfillment.get("email_delivery"), dict) else {}
+        prior_status = str(prior_delivery.get("status") or "").strip().lower()
+        if str(fulfillment.get("status") or "").strip().lower() == "email_sent" or prior_status in {"sent", "debug_echo"}:
+            s.commit()
+            return True
+        raw_status = str((delivery or {}).get("status") or "").strip().lower()
+        delivery_status = raw_status if raw_status in {
+            "sent",
+            "debug_echo",
+            "not_configured",
+            "delivery_error",
+            "failed",
+        } else "delivery_error"
+        raw_mode = str((delivery or {}).get("mode") or "").strip().lower()
+        delivery_mode = raw_mode if raw_mode in {"webhook", "not_configured"} else None
+        raw_http_status = _safe_int((delivery or {}).get("http_status"))
+        http_status = raw_http_status if raw_http_status is not None and 100 <= raw_http_status <= 599 else None
+        if delivery_status in {"sent", "debug_echo"}:
+            error_code = None
+        elif delivery_status == "not_configured":
+            error_code = "delivery_not_configured"
+        elif http_status is not None and http_status >= 500:
+            error_code = "delivery_upstream_5xx"
+        elif http_status is not None and http_status >= 400:
+            error_code = "delivery_upstream_4xx"
+        else:
+            error_code = "delivery_not_sent"
         fulfillment["email_delivery"] = {
             "status": delivery_status,
-            "mode": str((delivery or {}).get("mode") or "").strip() or None,
-            "http_status": (delivery or {}).get("http_status"),
-            "detail": (delivery or {}).get("detail"),
+            "mode": delivery_mode,
+            "http_status": http_status,
+            "error_code": error_code,
         }
-        if delivery_status == "sent":
+        if reversal_status:
+            pass
+        elif delivery_status in {"sent", "debug_echo"}:
             fulfillment["status"] = "email_sent"
         elif delivery_status:
             fulfillment["status"] = "email_delivery_error"
         meta["fulfillment"] = fulfillment
         _set_external_order_meta(row, meta)
         s.commit()
+        return True
     except Exception:
         s.rollback()
-        logger.exception("failed to record access key email delivery provider=%s order_id=%s", provider, order_id)
+        logger.error(
+            "access key delivery evidence failed code=delivery_evidence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False
+    finally:
+        s.close()
+
+
+def _finalize_paid_event_after_delivery(
+    *,
+    provider: str,
+    order_id: str,
+    event_type: str,
+    external_id: str,
+    delivery_succeeded: bool,
+) -> tuple[bool, str]:
+    s = SessionLocal()
+    try:
+        event = (
+            s.query(ExternalPaymentEvent)
+            .filter(
+                ExternalPaymentEvent.provider == str(provider),
+                ExternalPaymentEvent.event_type == str(event_type),
+                ExternalPaymentEvent.external_id == str(external_id),
+            )
+            .with_for_update()
+            .one_or_none()
+        )
+        if event is None:
+            return False, "delivery_evidence_failed"
+        order = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .with_for_update()
+            .populate_existing()
+            .one_or_none()
+        )
+        if order is None:
+            return False, "delivery_evidence_failed"
+
+        terminal_reason = ""
+        if str(order.status or "").strip().lower() in {"refunded", "chargeback"}:
+            terminal_reason = "claim_reversed"
+            event.processed_ok = True
+        elif delivery_succeeded:
+            event.processed_ok = True
+        else:
+            terminal_reason = "access_key_email_delivery_error"
+            event.processed_ok = False
+
+        if terminal_reason:
+            try:
+                stored = json.loads(str(event.payload_json or "{}"))
+                if not isinstance(stored, dict):
+                    stored = {}
+            except Exception:
+                stored = {}
+            stored["_pokrov_processing_error"] = _safe_payment_processing_error(terminal_reason)
+            event.payload_json = _serialize_payment_event_payload(stored)
+        s.commit()
+        return True, terminal_reason
+    except Exception:
+        s.rollback()
+        logger.error(
+            "payment delivery completion failed code=callback_completion_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False, "delivery_evidence_failed"
     finally:
         s.close()
 
@@ -4406,10 +5582,12 @@ def _record_payment_reversal_operator_action(
     event_type: str,
     payload: dict[str, Any],
     reason: str = "provider_reversal",
-) -> None:
+) -> tuple[bool, str]:
     normalized_provider = _normalize_provider(provider)
     normalized_event = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal"
     tg_id: int | None = None
+    reconciled = False
+    result_code = "order_not_found"
     s = SessionLocal()
     try:
         row = (
@@ -4419,17 +5597,62 @@ def _record_payment_reversal_operator_action(
             .first()
         )
         if row:
+            if normalized_event == "chargeback":
+                row.status = "chargeback"
+            elif str(row.status or "").strip().lower() != "chargeback":
+                row.status = "refunded"
             tg_id = int(row.tg_id) if row.tg_id is not None else None
+            reversal_reason = str(reason or normalized_event or "provider_reversal")[:64]
+            try:
+                reversal = reverse_payment_entitlement_claim(
+                    s,
+                    provider=normalized_provider,
+                    order_id=str(order_id),
+                    reason=reversal_reason,
+                    reversed_at=_utcnow(),
+                )
+                reconciled = reversal.code in {"reversed", "already_reversed"}
+                result_code = reversal.code
+            except PaymentEntitlementNotFoundError:
+                grant = (
+                    s.query(EntitlementGrant)
+                    .filter(
+                        EntitlementGrant.provider == normalized_provider,
+                        EntitlementGrant.external_order_id == str(order_id),
+                        EntitlementGrant.source == "provider_payment",
+                    )
+                    .with_for_update()
+                    .one_or_none()
+                )
+                if grant is not None:
+                    if grant.reversed_at is None:
+                        reversed_at = _utcnow()
+                        grant.status = "reversed"
+                        grant.reversed_at = reversed_at
+                        grant.reversal_reason = reversal_reason
+                        grant.updated_at = reversed_at
+                        rebuild_account_entitlement_projection(
+                            s,
+                            account_id=str(grant.account_id),
+                            now=reversed_at,
+                        )
+                        result_code = "reversed"
+                    else:
+                        result_code = "already_reversed"
+                    reconciled = True
+                else:
+                    result_code = "grant_not_found"
             meta = _external_order_meta(row)
             fulfillment = dict(meta.get("fulfillment") or {})
-            fulfillment["status"] = "reversal_pending_operator_action"
+            fulfillment["status"] = "reversed" if reconciled else "reversal_pending_operator_action"
             meta["fulfillment"] = fulfillment
             meta["reversal"] = {
                 "event_type": normalized_event,
                 "provider": normalized_provider,
                 "order_id": str(order_id or ""),
                 "reason": str(reason or "provider_reversal")[:120],
-                "operator_action_required": True,
+                "operator_action_required": not reconciled,
+                "reconciliation_status": result_code,
                 "recorded_at": _safe_iso(_utcnow()),
                 "external_id": str(_callback_ids(normalized_provider, payload, b"")[1] or "")[:160],
             }
@@ -4439,23 +5662,33 @@ def _record_payment_reversal_operator_action(
             s.rollback()
     except Exception:
         s.rollback()
-        logger.exception("failed to mark payment reversal operator action provider=%s order_id=%s", provider, order_id)
+        result_code = "reversal_persistence_failed"
+        logger.error(
+            "payment reversal persistence failed code=reversal_persistence_failed correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
     finally:
         s.close()
     _record_security_event(
-        "payment_reversal_pending",
+        "payment_reversal_reconciled" if reconciled else "payment_reversal_pending",
         scope="payments",
         subject=f"{normalized_provider}:{str(order_id or '')[:96]}",
         reason=normalized_event,
-        meta={"operator_action_required": True},
+        meta={"operator_action_required": not reconciled, "reconciliation_status": result_code},
     )
     if tg_id:
         track_event(
             tg_id=int(tg_id),
             event_name="payment_reversal_pending",
             source="payment_callback",
-            meta={"provider": normalized_provider, "order_id": str(order_id or "")[:96], "event_type": normalized_event},
+            meta={
+                "provider": normalized_provider,
+                "order_id": str(order_id or "")[:96],
+                "event_type": normalized_event,
+                "reconciliation_status": result_code,
+            },
         )
+    return reconciled, result_code
 
 
 def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
@@ -4466,9 +5699,9 @@ def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[
             .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
             .first()
         ) if order_id else None
-        tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
-        if tg_id is None and ext_order and ext_order.tg_id is not None:
-            tg_id = int(ext_order.tg_id)
+        if ext_order is None:
+            return False, "order_not_found", {}
+        tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
     finally:
         s.close()
 
@@ -4515,7 +5748,18 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
             payload = dict(payload)
             payload["_pokrov_validation_error"] = validation_reason
             callback_status = "manual_review"
-    processed_ok = bool(signature_ok and callback_status not in {"manual_review", "pending_verification"})
+    requires_durable_completion = bool(
+        signature_ok
+        and (
+            (et == "result" and callback_status == "paid")
+            or et in {"refund", "chargeback"}
+        )
+    )
+    processed_ok = bool(
+        signature_ok
+        and callback_status != "pending_verification"
+        and not requires_durable_completion
+    )
     duplicate, persist_ok = _record_external_payment_event(
         provider=p,
         event_type=et,
@@ -4526,6 +5770,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         processed_ok=processed_ok,
         status=callback_status,
     )
+    if not persist_ok:
+        raise HTTPException(status_code=503, detail="Payment callback persistence is retryable")
 
     if not signature_ok:
         _record_security_event(
@@ -4548,34 +5794,131 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
         if not PAYMENT_CALLBACK_TOLERANT_MODE:
             raise HTTPException(status_code=400, detail=f"Invalid signature: {signature_reason}")
 
-    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
-        _record_payment_reversal_operator_action(
-            provider=p,
-            order_id=order_id,
-            event_type=et,
-            payload=payload,
-            reason=callback_status,
-        )
-
     activated = False
     activation_reason = ""
     sync_ok = None
+    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
+        try:
+            reversed_ok, reversal_code = _record_payment_reversal_operator_action(
+                provider=p,
+                order_id=order_id,
+                event_type=et,
+                payload=payload,
+                reason=callback_status,
+            )
+        except Exception:
+            logger.error(
+                "payment reversal failed code=reversal_persistence_failed correlation=%s",
+                _payment_order_correlation(provider=p, order_id=order_id),
+            )
+            reversed_ok, reversal_code = False, "reversal_persistence_failed"
+        if not reversed_ok:
+            if reversal_code in _TERMINAL_PAYMENT_REVERSAL_CODES:
+                if not _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=True,
+                    error_code=reversal_code,
+                ):
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                activation_reason = reversal_code
+            else:
+                _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=False,
+                    error_code=reversal_code,
+                )
+                raise HTTPException(status_code=503, detail="Payment reversal is retryable")
+        elif not _complete_external_payment_event(
+            provider=p,
+            event_type=et,
+            external_id=external_id,
+            processed_ok=True,
+        ):
+            raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+
     if (not duplicate) and signature_ok and et == "result" and callback_status == "paid":
         activated, activation_reason, fulfillment = _fulfill_external_paid_order(provider=p, order_id=order_id, payload=payload)
-        if activated:
-            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
-                delivery = await deliver_payment_access_key(
-                    email=str(fulfillment["buyer_email"]),
-                    access_key=str(fulfillment["access_key"]),
-                    order_id=str(fulfillment.get("order_id") or order_id),
-                    plan_code=str(fulfillment.get("plan_code") or ""),
-                    plan_label=str(fulfillment.get("plan_label") or ""),
-                    days=int(fulfillment.get("days") or 0),
+        if not activated:
+            safe_reason = _safe_payment_processing_error(activation_reason or "durable_fulfillment_failed")
+            if safe_reason in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
+                if not _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=True,
+                    error_code=safe_reason,
+                ):
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                activation_reason = safe_reason
+            else:
+                _record_payment_entitlement_retry_error(
+                    provider=p,
+                    order_id=order_id,
+                    error_code=safe_reason,
                 )
-                _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
-                if str(delivery.get("status") or "") != "sent":
-                    activation_reason = "access_key_email_delivery_error"
-            tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id")) or fulfillment.get("tg_id")
+                _complete_external_payment_event(
+                    provider=p,
+                    event_type=et,
+                    external_id=external_id,
+                    processed_ok=False,
+                    error_code=safe_reason,
+                )
+                raise HTTPException(status_code=503, detail="Payment fulfillment is retryable")
+        else:
+            delivery_finalized = False
+            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
+                try:
+                    delivery = await deliver_payment_access_key(
+                        email=str(fulfillment["buyer_email"]),
+                        access_key=str(fulfillment["access_key"]),
+                        order_id=str(fulfillment.get("order_id") or order_id),
+                        plan_code=str(fulfillment.get("plan_code") or ""),
+                        plan_label=str(fulfillment.get("plan_label") or ""),
+                        days=int(fulfillment.get("days") or 0),
+                    )
+                except Exception:
+                    delivery = {"status": "delivery_error", "mode": "webhook"}
+                evidence_ok = _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
+                if not evidence_ok:
+                    _complete_external_payment_event(
+                        provider=p,
+                        event_type=et,
+                        external_id=external_id,
+                        processed_ok=False,
+                        error_code="delivery_evidence_failed",
+                    )
+                    raise HTTPException(status_code=503, detail="Payment delivery evidence is retryable")
+                delivery_ok = str(delivery.get("status") or "").strip().lower() in {"sent", "debug_echo"}
+                completion_ok, completion_reason = _finalize_paid_event_after_delivery(
+                    provider=p,
+                    order_id=order_id,
+                    event_type=et,
+                    external_id=external_id,
+                    delivery_succeeded=delivery_ok,
+                )
+                if not completion_ok:
+                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+                delivery_finalized = True
+                if completion_reason == "claim_reversed":
+                    activated = False
+                    activation_reason = completion_reason
+                    fulfillment = {}
+                elif completion_reason:
+                    raise HTTPException(status_code=503, detail="Payment access delivery is retryable")
+            if (not delivery_finalized) and not _complete_external_payment_event(
+                provider=p,
+                event_type=et,
+                external_id=external_id,
+                processed_ok=True,
+            ):
+                raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
+            if activated and fulfillment.get("access_key") and fulfillment.get("buyer_email"):
+                activation_reason = activation_reason or "access_key_email_sent"
+            tg_id = fulfillment.get("tg_id")
             if tg_id is not None:
                 try:
                     sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
@@ -4588,11 +5931,8 @@ async def _handle_payment_callback(*, provider: str, event_type: str, request: R
                     )
                 except Exception:
                     logger.warning(
-                        "telegram paid access notification failed: provider=%s order_id=%s tg_id=%s",
-                        p,
-                        order_id,
-                        tg_id,
-                        exc_info=True,
+                        "telegram paid access notification failed code=telegram_notification_failed correlation=%s",
+                        _payment_order_correlation(provider=p, order_id=order_id),
                     )
     elif (not duplicate) and signature_ok and et == "result":
         activation_reason = validation_reason or callback_status
@@ -4825,7 +6165,7 @@ async def _sync_user_after_paid_bonus(user: User) -> bool:
             free_codes = [
                 (getattr(n, "code", "") or "").strip()
                 for n in nodes
-                if "free" in (getattr(n, "code", "") or "").lower()
+                if node_is_free(n)
             ]
             if free_codes:
                 await panel.set_existing_user_enabled_on_nodes(
@@ -4862,18 +6202,24 @@ def _ticket_status_title(status: str) -> str:
     return st or "Неизвестно"
 
 
-def _ticket_message_row(msg) -> dict[str, Any]:
-    return {
+def _ticket_message_row(msg, *, include_media: bool = True) -> dict[str, Any]:
+    row = {
         "id": msg.id,
         "ticket_id": msg.ticket_id,
         "sender_tg_id": msg.sender_tg_id,
         "sender_role": msg.sender_role,
         "body": msg.body,
-        "media_type": getattr(msg, "media_type", None),
-        "media_file_id": getattr(msg, "media_file_id", None),
-        "media_payload": getattr(msg, "media_payload", None),
         "created_at": _safe_iso(msg.created_at),
     }
+    if include_media:
+        row.update(
+            {
+                "media_type": getattr(msg, "media_type", None),
+                "media_file_id": getattr(msg, "media_file_id", None),
+                "media_payload": getattr(msg, "media_payload", None),
+            }
+        )
+    return row
 
 
 def _ticket_operator_presence(ticket) -> str:
@@ -4898,7 +6244,7 @@ def _ticket_unread_for_user(messages: list | None) -> int:
     return unread
 
 
-def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
+def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = True) -> dict[str, Any]:
     rows = messages if messages is not None else []
     last_message = rows[-1] if rows else None
     return {
@@ -4911,7 +6257,7 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
-        "messages": [_ticket_message_row(m) for m in rows],
+        "messages": [_ticket_message_row(m, include_media=include_media) for m in rows],
         "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
         "operatorPresence": _ticket_operator_presence(ticket),
         "operatorTyping": False,
@@ -4920,14 +6266,14 @@ def _ticket_row(ticket, messages: list | None = None) -> dict[str, Any]:
     }
 
 
-def _load_ticket_row(ticket_id: int, *, message_limit: int = 100) -> dict[str, Any]:
+def _load_ticket_row(ticket_id: int, *, message_limit: int = 100, include_media: bool = True) -> dict[str, Any]:
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, int(ticket_id))
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
         msgs = list_ticket_messages(s, ticket.id, limit=max(1, min(int(message_limit), 100)))
-        return _ticket_row(ticket, msgs)
+        return _ticket_row(ticket, msgs, include_media=include_media)
     finally:
         s.close()
 
@@ -4975,12 +6321,18 @@ async def _maybe_append_support_ai_reply(
         )
         s.commit()
         return True
-    except Exception as exc:
-        s.rollback()
-        logger.warning("support AI ticket append failed ticket=%s err=%s", ticket_id, exc)
+    except Exception:
+        try:
+            s.rollback()
+        except Exception:
+            pass
+        logger.warning("support AI ticket append failed code=support_reply_persist_error")
         return False
     finally:
-        s.close()
+        try:
+            s.close()
+        except Exception:
+            logger.warning("support AI ticket session cleanup failed code=support_reply_cleanup_error")
 
 
 def _audit_admin(*, actor_tg_id: int, action: str, target_tg_id: int | None = None, meta: dict[str, Any] | None = None) -> None:
@@ -5028,6 +6380,23 @@ async def _read_limited_request_body(request: Request, *, max_bytes: int, scope:
     return b"".join(chunks)
 
 
+def _support_upload_reject_reason(exc: HTTPException) -> str:
+    detail = str(exc.detail or "").strip().lower()
+    if "body is too large" in detail:
+        return "body_too_large"
+    if "pending attachment byte quota" in detail:
+        return "pending_bytes_quota"
+    if "pending attachment quota" in detail:
+        return "pending_count_quota"
+    if "unsupported attachment type" in detail:
+        return "unsupported_type"
+    if "attachment is empty" in detail:
+        return "empty_attachment"
+    if "attachment is too large" in detail:
+        return "attachment_too_large"
+    return f"http_{int(exc.status_code)}"
+
+
 def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: bytes) -> tuple[str, str, str]:
     declared = str(content_type or "").split(";", 1)[0].strip().lower()
     suffix = Path(filename).suffix.lower().strip()
@@ -5051,15 +6420,84 @@ def _detect_support_upload_type(*, filename: str, content_type: str, raw_bytes: 
     raise HTTPException(status_code=400, detail="Unsupported attachment type")
 
 
-def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_type: str | None, raw_bytes: bytes) -> dict[str, Any]:
+_SUPPORT_UPLOAD_OWNER_LOCKS = tuple(threading.Lock() for _ in range(256))
+
+
+def _support_upload_owner_key(*, owner_tg_id: int, owner_account_id: str | None) -> str:
+    canonical_owner = str(owner_account_id or "").strip()
+    return f"account:{canonical_owner}" if canonical_owner else f"tg:{int(owner_tg_id)}"
+
+
+def _support_upload_owner_lock(owner_key: str) -> threading.Lock:
+    digest = hashlib.sha256(str(owner_key).encode("utf-8")).digest()
+    return _SUPPORT_UPLOAD_OWNER_LOCKS[int.from_bytes(digest[:2], "big") % len(_SUPPORT_UPLOAD_OWNER_LOCKS)]
+
+
+def _support_upload_advisory_lock_key(owner_key: str) -> int:
+    return int.from_bytes(hashlib.sha256(str(owner_key).encode("utf-8")).digest()[:8], "big", signed=True)
+
+
+def _lock_support_upload_owner_in_db(session, owner_key: str) -> None:
+    if session.bind is None or session.bind.dialect.name != "postgresql":
+        return
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_key)"),
+        {"lock_key": _support_upload_advisory_lock_key(owner_key)},
+    )
+
+
+def _fsync_parent_directory(path: Path) -> None:
+    if os.name != "posix":
+        return
+    descriptor = os.open(str(path.parent), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _store_support_upload(
+    *,
+    owner_tg_id: int,
+    owner_account_id: str | None = None,
+    filename: str | None,
+    content_type: str | None,
+    raw_bytes: bytes,
+) -> dict[str, Any]:
+    owner_key = _support_upload_owner_key(
+        owner_tg_id=owner_tg_id,
+        owner_account_id=owner_account_id,
+    )
+    with _support_upload_owner_lock(owner_key):
+        return _store_support_upload_locked(
+            owner_tg_id=owner_tg_id,
+            owner_account_id=owner_account_id,
+            filename=filename,
+            content_type=content_type,
+            raw_bytes=raw_bytes,
+            owner_key=owner_key,
+        )
+
+
+def _store_support_upload_locked(
+    *,
+    owner_tg_id: int,
+    owner_account_id: str | None,
+    filename: str | None,
+    content_type: str | None,
+    raw_bytes: bytes,
+    owner_key: str,
+) -> dict[str, Any]:
     original_name = _sanitize_ticket_upload_name(filename)
     content_type, media_type, suffix = _detect_support_upload_type(
         filename=original_name,
         content_type=str(content_type or ""),
         raw_bytes=raw_bytes,
     )
-    stored_name = f"{_utcnow().strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
+    now = _utcnow()
+    stored_name = f"{now.strftime('%Y%m%d')}-{secrets.token_urlsafe(12).replace('-', '').replace('_', '')}{suffix}"
     stored_path = SUPPORT_UPLOAD_DIR / stored_name
+    temp_path = SUPPORT_UPLOAD_DIR / f".{stored_name}.{secrets.token_hex(8)}.tmp"
 
     total_size = len(raw_bytes or b"")
     if total_size <= 0:
@@ -5067,30 +6505,109 @@ def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_typ
     if total_size > SUPPORT_UPLOAD_MAX_BYTES:
         raise HTTPException(status_code=413, detail="Attachment is too large")
 
+    s = SessionLocal()
     try:
-        stored_path.write_bytes(raw_bytes)
-        s = SessionLocal()
-        try:
-            s.add(
-                SupportAttachment(
-                    stored_name=stored_name,
-                    owner_tg_id=int(owner_tg_id),
-                    original_name=original_name,
-                    content_type=content_type,
-                    size_bytes=int(total_size),
-                    media_type=media_type,
-                    created_at=_utcnow(),
-                )
+        _lock_support_upload_owner_in_db(s, owner_key)
+        canonical_owner = str(owner_account_id or "").strip()
+        owner_filter = (
+            SupportAttachment.owner_account_id == canonical_owner
+            if canonical_owner
+            else and_(
+                SupportAttachment.owner_account_id.is_(None),
+                SupportAttachment.owner_tg_id == int(owner_tg_id),
             )
-            s.commit()
-        except Exception:
-            s.rollback()
-            stored_path.unlink(missing_ok=True)
-            raise
-        finally:
-            s.close()
+        )
+        expired_rows = (
+            s.query(SupportAttachment)
+            .filter(
+                SupportAttachment.ticket_id.is_(None),
+                SupportAttachment.message_id.is_(None),
+                SupportAttachment.expires_at.isnot(None),
+                SupportAttachment.expires_at <= now,
+                owner_filter,
+            )
+            .order_by(SupportAttachment.id.asc())
+            .all()
+        )
+        removed_names: list[str] = []
+        for expired in expired_rows:
+            removed = (
+                s.query(SupportAttachment)
+                .filter(
+                    SupportAttachment.id == expired.id,
+                    SupportAttachment.ticket_id.is_(None),
+                    SupportAttachment.message_id.is_(None),
+                    SupportAttachment.expires_at.isnot(None),
+                    SupportAttachment.expires_at <= now,
+                    owner_filter,
+                )
+                .delete(synchronize_session=False)
+            )
+            if removed:
+                removed_names.append(str(expired.stored_name))
+                s.expunge(expired)
+        s.commit()
+        _lock_support_upload_owner_in_db(s, owner_key)
+        for expired_name in removed_names:
+            clean_expired_name = Path(expired_name).name
+            if clean_expired_name != expired_name or not re.fullmatch(
+                r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)",
+                clean_expired_name,
+            ):
+                continue
+            row_reappeared = (
+                s.query(SupportAttachment.id)
+                .filter(SupportAttachment.stored_name == clean_expired_name)
+                .first()
+                is not None
+            )
+            if not row_reappeared:
+                (SUPPORT_UPLOAD_DIR / clean_expired_name).unlink(missing_ok=True)
+
+        pending = s.query(
+            func.count(SupportAttachment.id),
+            func.coalesce(func.sum(SupportAttachment.size_bytes), 0),
+        ).filter(
+            SupportAttachment.ticket_id.is_(None),
+            SupportAttachment.message_id.is_(None),
+            SupportAttachment.expires_at.isnot(None),
+            SupportAttachment.expires_at > now,
+            owner_filter,
+        )
+        pending_count, pending_bytes = pending.one()
+        if int(pending_count or 0) >= SUPPORT_PENDING_UPLOAD_MAX_COUNT:
+            raise HTTPException(status_code=429, detail="Pending attachment quota exceeded")
+        if int(pending_bytes or 0) + total_size > SUPPORT_PENDING_UPLOAD_MAX_BYTES:
+            raise HTTPException(status_code=429, detail="Pending attachment byte quota exceeded")
+
+        descriptor = os.open(str(temp_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "wb") as temp_file:
+            temp_file.write(raw_bytes)
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+        os.replace(temp_path, stored_path)
+        _fsync_parent_directory(stored_path)
+        s.add(
+            SupportAttachment(
+                stored_name=stored_name,
+                owner_tg_id=int(owner_tg_id),
+                owner_account_id=str(owner_account_id or "").strip() or None,
+                original_name=original_name,
+                content_type=content_type,
+                size_bytes=int(total_size),
+                media_type=media_type,
+                expires_at=now + timedelta(hours=SUPPORT_PENDING_UPLOAD_TTL_HOURS),
+                created_at=now,
+            )
+        )
+        s.commit()
+    except HTTPException:
+        s.rollback()
+        temp_path.unlink(missing_ok=True)
+        raise
     except Exception:
-        stored_path.unlink(missing_ok=True)
+        s.rollback()
+        temp_path.unlink(missing_ok=True)
         _record_security_event(
             "support_upload_reject",
             scope="ticket_upload",
@@ -5099,6 +6616,8 @@ def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_typ
             reason="store_failed",
         )
         raise
+    finally:
+        s.close()
 
     file_url = f"{SUPPORT_ATTACHMENT_URL_PREFIX.rstrip('/')}/{stored_name}"
     payload = {
@@ -5113,7 +6632,171 @@ def _store_support_upload(*, owner_tg_id: int, filename: str | None, content_typ
         "media_file_id": f"support/{stored_name}",
         "media_payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
     }
-    return {"attachment": attachment, "attachment_payload": payload}
+    return {"attachment_id": stored_name, "attachment": attachment, "attachment_payload": payload}
+
+
+_SUPPORT_ATTACHMENT_BIND_LOCKS = tuple(threading.Lock() for _ in range(64))
+
+
+def _support_attachment_error(*, code: str, status_code: int) -> HTTPException:
+    details = {
+        "support_attachment_invalid": "Attachment reference is invalid",
+        "support_attachment_not_found": "Attachment not found",
+        "support_attachment_already_bound": "Attachment is already bound",
+    }
+    return _auth_http_exception(detail=details[code], code=code, status_code=status_code)
+
+
+def _support_attachment_reference(payload: TicketMessageIn) -> str:
+    attachment_id = str(payload.attachment_id or "").strip()
+    if attachment_id:
+        return attachment_id
+    media_file_id = str(payload.media_file_id or "").strip()
+    return media_file_id.removeprefix("support/") if media_file_id.startswith("support/") else ""
+
+
+def _support_attachment_bind_lock(reference: str):
+    if not reference:
+        return contextlib.nullcontext()
+    digest = hashlib.sha256(reference.encode("utf-8")).digest()
+    return _SUPPORT_ATTACHMENT_BIND_LOCKS[digest[0] % len(_SUPPORT_ATTACHMENT_BIND_LOCKS)]
+
+
+def _canonical_support_attachment(row: SupportAttachment) -> dict[str, Any]:
+    stored_name = str(row.stored_name)
+    payload = {
+        "url": f"{SUPPORT_ATTACHMENT_URL_PREFIX.rstrip('/')}/{stored_name}",
+        "name": str(row.original_name),
+        "content_type": str(row.content_type),
+        "size": int(row.size_bytes or 0),
+        "private": True,
+    }
+    return {
+        "media_type": str(row.media_type),
+        "media_file_id": f"support/{stored_name}",
+        "media_payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+    }
+
+
+def _support_attachment_owned_by(
+    row: SupportAttachment,
+    *,
+    actor_tg_id: int,
+    account_id: str | None,
+) -> bool:
+    return can_access_support_attachment(
+        row,
+        int(actor_tg_id),
+        0,
+        account_id=str(account_id or "").strip() or None,
+    )
+
+
+def _resolve_ticket_attachment(
+    session,
+    *,
+    payload: TicketMessageIn,
+    actor_tg_id: int,
+    account_id: str | None,
+) -> tuple[SupportAttachment | None, dict[str, Any]]:
+    attachment_id = str(payload.attachment_id or "").strip()
+    media_values = (payload.media_type, payload.media_file_id, payload.media_payload)
+    has_media = any(value is not None and str(value).strip() for value in media_values)
+    if attachment_id and has_media:
+        raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+
+    media_file_id = str(payload.media_file_id or "").strip()
+    legacy_private = not attachment_id and media_file_id.startswith("support/")
+    if not attachment_id and not legacy_private:
+        return None, {
+            "media_type": payload.media_type,
+            "media_file_id": payload.media_file_id,
+            "media_payload": payload.media_payload,
+        }
+    stored_name = attachment_id or media_file_id.removeprefix("support/")
+    if (
+        not stored_name
+        or Path(stored_name).name != stored_name
+        or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", stored_name)
+    ):
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+
+    query = session.query(SupportAttachment).filter(SupportAttachment.stored_name == stored_name)
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        query = query.with_for_update()
+    row = query.first()
+    now = _utcnow()
+    if not row or not _support_attachment_owned_by(
+        row,
+        actor_tg_id=actor_tg_id,
+        account_id=account_id,
+    ):
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+    if row.expires_at is not None and row.expires_at <= now:
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+    if row.ticket_id is not None or row.message_id is not None:
+        raise _support_attachment_error(code="support_attachment_already_bound", status_code=409)
+
+    canonical = _canonical_support_attachment(row)
+    if legacy_private:
+        try:
+            supplied_payload = json.loads(str(payload.media_payload or ""))
+            canonical_payload = json.loads(canonical["media_payload"])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+        accepted_urls = {
+            canonical_payload["url"],
+            f"{SUPPORT_UPLOAD_URL_PREFIX.rstrip('/')}/{stored_name}",
+        }
+        supplied_url = str((supplied_payload or {}).get("url") or "")
+        comparable_keys = ("name", "content_type", "size", "private")
+        if (
+            str(payload.media_type or "") != canonical["media_type"]
+            or media_file_id != canonical["media_file_id"]
+            or not isinstance(supplied_payload, dict)
+            or supplied_url not in accepted_urls
+            or any(supplied_payload.get(key) != canonical_payload[key] for key in comparable_keys)
+        ):
+            raise _support_attachment_error(code="support_attachment_invalid", status_code=400)
+    return row, canonical
+
+
+def _bind_ticket_attachment(
+    session,
+    *,
+    row: SupportAttachment,
+    ticket_id: int,
+    message_id: int,
+) -> None:
+    now = _utcnow()
+    filters = [
+        SupportAttachment.id == row.id,
+        SupportAttachment.ticket_id.is_(None),
+        SupportAttachment.message_id.is_(None),
+    ]
+    if row.expires_at is not None:
+        filters.append(SupportAttachment.expires_at > now)
+    updated = session.query(SupportAttachment).filter(*filters).update(
+        {
+            SupportAttachment.ticket_id: int(ticket_id),
+            SupportAttachment.message_id: int(message_id),
+            SupportAttachment.attached_at: now,
+            SupportAttachment.expires_at: None,
+        },
+        synchronize_session=False,
+    )
+    if updated != 1:
+        current = (
+            session.query(SupportAttachment)
+            .filter(SupportAttachment.id == row.id)
+            .populate_existing()
+            .first()
+        )
+        if current is None or (current.expires_at is not None and current.expires_at <= now):
+            raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
+        if current.ticket_id is not None or current.message_id is not None:
+            raise _support_attachment_error(code="support_attachment_already_bound", status_code=409)
+        raise _support_attachment_error(code="support_attachment_not_found", status_code=404)
 
 
 def _json_obj(raw: str | None) -> dict[str, Any]:
@@ -5387,8 +7070,8 @@ def _compute_user_risk(*, s, user: User, keys_summary: dict[str, Any] | None = N
     elif observer_state == "suspicious":
         score += 40
         factors.append({"key": "observer_suspicious", "weight": 40, "value": observer_state})
-    if str(user.sub_type or "").upper() == "FREE" and traffic_gb > float(FREE_TOTAL_GB) * 1.2:
-        val = min(25, int((traffic_gb / max(1.0, float(FREE_TOTAL_GB))) * 8))
+    if str(user.sub_type or "").upper() == "FREE" and traffic_gb > float(FREE_STANDARD_QUOTA_GB) * 1.2:
+        val = min(25, int((traffic_gb / max(1.0, float(FREE_STANDARD_QUOTA_GB))) * 8))
         score += val
         factors.append({"key": "anomalous_traffic", "weight": val, "value": round(traffic_gb, 2)})
     score = max(0, min(100, int(score)))
@@ -5420,105 +7103,52 @@ def _queue_referral_bonus(
 ) -> bool:
     if int(referrer_tg_id) <= 0 or int(referred_tg_id) <= 0 or not str(order_id or "").strip():
         return False
-    exists = (
-        s.query(ReferralBonusQueue.id)
-        .filter(
-            ReferralBonusQueue.order_id == str(order_id),
-            ReferralBonusQueue.referrer_tg_id == int(referrer_tg_id),
-            ReferralBonusQueue.referred_tg_id == int(referred_tg_id),
-        )
-        .first()
-    )
-    if exists:
-        return True
     referrer = s.query(User).filter(User.tg_id == int(referrer_tg_id)).first()
-    if referrer:
-        # Backward-compatible behavior: referral count is visible right after
-        # successful first paid purchase, while bonus days are deferred by anti-fraud queue.
-        referrer.referral_count = int(referrer.referral_count or 0) + 1
-    ready_at = now + timedelta(hours=int(REFERRAL_ANTIFRAUD_HOURS))
-    s.add(
-        ReferralBonusQueue(
-            order_id=str(order_id),
-            referrer_tg_id=int(referrer_tg_id),
-            referred_tg_id=int(referred_tg_id),
-            queued_at=now,
-            ready_at=ready_at,
-            status="pending",
-            meta=json.dumps({"source": "payment_callback", "counted": True}, ensure_ascii=False, separators=(",", ":")),
-        )
+    referred = s.query(User).filter(User.tg_id == int(referred_tg_id)).first()
+    if referrer is None or referred is None:
+        return False
+    ensure_user_account_foundation(s, referrer, now=now)
+    ensure_user_account_foundation(s, referred, now=now)
+    s.flush()
+    relationship = create_referral_relationship(
+        s,
+        referred_account_id=str(referred.account_id),
+        referrer_account_id=str(referrer.account_id),
+        source="legacy_referrer_projection",
+        now=now,
     )
+    was_queued = bool(relationship.first_payment_key)
+    queue_first_payment_referrer_reward(
+        s,
+        referred_account_id=str(referred.account_id),
+        payment_key=f"payment:{str(order_id)}",
+        paid_at=now,
+    )
+    if not was_queued:
+        referrer.referral_count = int(referrer.referral_count or 0) + 1
     return True
 
 
 def _process_referral_bonus_queue(*, limit: int = 100, force_without_activity: bool = False) -> dict[str, int]:
     now = _utcnow()
     s = SessionLocal()
-    processed = 0
-    rewarded = 0
-    waiting = 0
-    rejected = 0
     try:
-        rows = (
-            s.query(ReferralBonusQueue)
-            .filter(ReferralBonusQueue.status == "pending", ReferralBonusQueue.ready_at <= now)
-            .order_by(ReferralBonusQueue.id.asc())
-            .limit(max(1, min(int(limit), 1000)))
-            .all()
-        )
-        for row in rows:
-            processed += 1
-            referred = s.query(User).filter(User.tg_id == int(row.referred_tg_id)).first()
-            referrer = s.query(User).filter(User.tg_id == int(row.referrer_tg_id)).first()
-            if not referred or not referrer:
-                row.status = "rejected_missing_user"
-                row.processed_at = now
-                rejected += 1
-                continue
-
-            has_activity = (
-                s.query(Event.id)
-                .filter(
-                    Event.tg_id == int(referred.tg_id),
-                    Event.created_at >= (row.queued_at or (now - timedelta(days=1))),
-                    Event.event_name.in_(["connected_ok", "clicked_connect"]),
-                )
-                .first()
-                is not None
-            )
-            age_hours = max(0, int((now - (row.queued_at or now)).total_seconds() // 3600))
-            if (not has_activity) and (not force_without_activity):
-                if age_hours >= int(REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS):
-                    row.status = "rejected_no_activity"
-                    row.processed_at = now
-                    rejected += 1
-                else:
-                    row.ready_at = now + timedelta(hours=6)
-                    waiting += 1
-                continue
-
-            ref_sub = str(referrer.sub_type or "").upper().strip()
-            ref_expiry = referrer.expiry_at if referrer.expiry_at and referrer.expiry_at > now else None
-            if not (bool(referrer.is_active) and ref_sub == "PAID" and ref_expiry):
-                row.status = "rejected_referrer_inactive"
-                row.processed_at = now
-                rejected += 1
-                continue
-
-            row_meta = _json_obj(getattr(row, "meta", None))
-            if not bool(row_meta.get("counted")):
-                referrer.referral_count = int(referrer.referral_count or 0) + 1
-            referrer.expiry_at = ref_expiry + timedelta(days=max(1, int(REFERRAL_BONUS_DAYS)))
-            referrer.is_active = True
-            row.status = "rewarded"
-            row.processed_at = now
-            rewarded += 1
+        migration = migrate_pending_legacy_referral_queue(s, now=now, limit=limit)
+        release = release_due_referrer_rewards(s, now=now)
         s.commit()
+        return {
+            "processed": int(migration["migrated"]),
+            "migrated": int(migration["migrated"]),
+            "retryable": int(migration["retryable"]),
+            "rewarded": int(release["released"]),
+            "waiting": int(release["waiting"]),
+            "rejected": int(release["rejected"]),
+        }
     except Exception:
         s.rollback()
+        return {"processed": 0, "migrated": 0, "retryable": 0, "rewarded": 0, "waiting": 0, "rejected": 0}
     finally:
         s.close()
-    return {"processed": processed, "rewarded": rewarded, "waiting": waiting, "rejected": rejected}
 
 
 _diag_rate_limit: dict[int, float] = {}
@@ -5820,6 +7450,7 @@ async def api_internal_observer_batches(
         raise HTTPException(status_code=401, detail="Observer push timestamp is invalid")
 
     s = SessionLocal()
+    node_id: int | None = None
     try:
         node = _verify_observer_push(
             s=s,
@@ -5828,6 +7459,7 @@ async def api_internal_observer_batches(
             signature=x_portal_signature,
             raw_body=raw_body,
         )
+        node_id = int(node.id)
         result = ingest_observer_batch(
             s=s,
             node=node,
@@ -5842,6 +7474,18 @@ async def api_internal_observer_batches(
     except HTTPException:
         s.rollback()
         raise
+    except IntegrityError as exc:
+        s.rollback()
+        if node_id is not None and is_observer_batch_unique_conflict(exc):
+            existing = (
+                s.query(ObserverBatch)
+                .filter(ObserverBatch.node_id == node_id, ObserverBatch.batch_id == payload.batch_id)
+                .first()
+            )
+            if existing is not None:
+                return observer_batch_replay_response(existing)
+        logger.exception("observer batch integrity failure node=%s", str(x_portal_node or "").strip().lower())
+        raise HTTPException(status_code=500, detail="Observer batch ingest failed")
     except Exception:
         s.rollback()
         logger.exception("observer batch ingest failed node=%s", str(x_portal_node or "").strip().lower())
@@ -6032,7 +7676,16 @@ async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn, response: Res
 
 @app.get("/api/auth/email/status")
 async def auth_email_status() -> dict[str, Any]:
-    return email_delivery_runtime_status()
+    status = dict(email_delivery_runtime_status())
+    otp_configured = email_login_otp_configured()
+    status["otp_configured"] = bool(otp_configured)
+    if not otp_configured:
+        blocked = list(status.get("blocked_reasons") or [])
+        if "otp_secret_missing" not in blocked:
+            blocked.append("otp_secret_missing")
+        status["blocked_reasons"] = blocked
+        status["enabled"] = False
+    return status
 
 
 @app.post("/api/auth/email/register")
@@ -6159,11 +7812,224 @@ async def auth_email_login(payload: EmailLoginIn, request: Request, response: Re
         return {
             "ok": True,
             "token": token,
+            "auth_method": "password_compatibility",
             "token_transport": "cookie_and_legacy_bearer",
             "expires_in": int(SESSION_TTL_SECONDS),
             "user": {
                 "id": int(user.tg_id),
                 "username": str(user.username or "").strip() or None,
+                "email": str(identity.email),
+            },
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+async def _deliver_login_otp_background(
+    *,
+    email: str,
+    code: str,
+    linked_tg_id: int,
+) -> None:
+    try:
+        await deliver_auth_message(
+            kind="login_otp",
+            email=email,
+            token=code,
+            linked_tg_id=linked_tg_id,
+        )
+    except Exception:
+        logger.exception("email OTP background delivery failed")
+
+
+@app.post("/api/auth/email/otp/start")
+async def auth_email_otp_start(
+    payload: EmailOtpStartIn,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    _require_email_public_ready()
+    if not email_login_otp_configured():
+        raise _account_recovery_http_exception(EmailOtpError("email_otp_not_configured"))
+    try:
+        email_norm = validate_email_input(payload.email)
+    except InvalidEmailInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    email_fingerprint = hashlib.sha256(email_norm.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("email_otp_start_ip", request)
+    _enforce_beta_rate_limit("email_otp_start", request, identity=f"email_sha256:{email_fingerprint}")
+
+    s = SessionLocal()
+    try:
+        identity, code = issue_login_otp(s, email=email_norm, now=_utcnow())
+        s.commit()
+        if identity is not None and code is not None:
+            background_tasks.add_task(
+                _deliver_login_otp_background,
+                email=str(identity.email),
+                code=code,
+                linked_tg_id=int(identity.linked_tg_id or 0),
+            )
+        return {
+            "ok": True,
+            "otp_requested": True,
+            "expires_in": 300,
+            "delivery": {"status": "accepted", "kind": "login_otp"},
+        }
+    except (InvalidEmailInputError, EmailOtpError) as exc:
+        s.rollback()
+        if isinstance(exc, EmailOtpError):
+            raise _account_recovery_http_exception(exc) from exc
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/auth/email/otp/finish")
+async def auth_email_otp_finish(
+    payload: EmailOtpFinishIn,
+    request: Request,
+    response: Response,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    if not email_login_otp_configured():
+        raise _account_recovery_http_exception(EmailOtpError("email_otp_not_configured"))
+    email_fingerprint = hashlib.sha256(str(payload.email or "").strip().lower().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("email_otp_finish_ip", request)
+    _enforce_beta_rate_limit("email_otp_finish", request, identity=f"email_sha256:{email_fingerprint}")
+    if payload.install_id:
+        install_fingerprint = hashlib.sha256(str(payload.install_id).strip().encode("utf-8")).hexdigest()[:32]
+        _enforce_beta_rate_limit(
+            "email_otp_finish_install",
+            request,
+            identity=f"install_sha256:{install_fingerprint}",
+        )
+    try:
+        current_auth = _optional_auth_user(x_telegram_init_data, request=request)
+    except HTTPException:
+        current_auth = None
+
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        try:
+            identity = consume_login_otp(
+                s,
+                email=payload.email,
+                code=payload.code,
+                now=now,
+            )
+        except (InvalidEmailInputError, EmailOtpError) as exc:
+            raise _account_recovery_http_exception(
+                exc if isinstance(exc, EmailOtpError) else EmailOtpError("email_otp_invalid")
+            ) from exc
+        user = s.query(User).filter(User.tg_id == int(identity.linked_tg_id)).first()
+        if user is None:
+            raise HTTPException(status_code=409, detail="Linked account is missing")
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        if not account_id:
+            raise HTTPException(status_code=409, detail="Canonical account is missing")
+
+        issued_session = None
+        fresh_auth_until = None
+        install_id = str(payload.install_id or "").strip()
+        if install_id:
+            existing_device = s.query(AccountDevice).filter(AccountDevice.install_id == install_id).first()
+            active_devices = (
+                s.query(func.count(AccountDevice.id))
+                .filter(
+                    AccountDevice.account_id == account_id,
+                    AccountDevice.state == "active",
+                    AccountDevice.revoked_at.is_(None),
+                )
+                .scalar()
+                or 0
+            )
+            if existing_device is None and int(active_devices) >= int(_plan_device_limit(user)):
+                raise _account_recovery_http_exception(AccountRecoveryError("device_limit_reached"))
+            try:
+                issued_session = auth_session_service.issue_authenticated_device_session(
+                    s,
+                    account_id=account_id,
+                    install_id=install_id,
+                    device_name=str(payload.device_name or "Authenticated device"),
+                    platform=str(payload.platform or "device"),
+                    os_version=payload.os_version,
+                    app_version=payload.app_version,
+                    locale=payload.locale,
+                    time_zone=payload.time_zone,
+                    scope="client",
+                    auth_origin="email_otp",
+                    now=now,
+                )
+            except auth_session_service.AuthSessionError as exc:
+                raise _auth_session_http_exception(exc) from exc
+            fresh_auth_until = now + timedelta(seconds=auth_session_service.APP_FRESH_AUTH_MAX_AGE_SECONDS)
+        else:
+            current_session_id = str((current_auth or {}).get("session_id") or "").strip()
+            current_account_id = str((current_auth or {}).get("account_id") or "").strip()
+            if current_session_id and current_account_id == account_id:
+                try:
+                    auth_session_service.mark_session_fresh(
+                        s,
+                        account_id=account_id,
+                        session_id=current_session_id,
+                        now=now,
+                    )
+                except auth_session_service.AuthSessionError as exc:
+                    raise _auth_session_http_exception(exc) from exc
+                fresh_auth_until = now + timedelta(seconds=auth_session_service.APP_FRESH_AUTH_MAX_AGE_SECONDS)
+
+        if issued_session is not None:
+            session_payload = issued_session.response_payload(now=now)
+            session_payload["scope"] = "client"
+            s.commit()
+            return {
+                "ok": True,
+                "auth_method": "email_otp",
+                "token": issued_session.access_token,
+                "access_token": issued_session.access_token,
+                "refresh_token": issued_session.refresh_token,
+                "token_transport": "bearer",
+                "fresh_auth_until": _safe_iso(fresh_auth_until),
+                "session": session_payload,
+                "user": {
+                    "id": int(user.tg_id),
+                    "account_id": account_id,
+                    "email": str(identity.email),
+                },
+            }
+
+        token = create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or "").strip() or None,
+            auth_type="email",
+            auth_origin="email_otp",
+            email=str(identity.email),
+        )
+        if not token:
+            raise HTTPException(status_code=500, detail="Web session is not configured")
+        s.commit()
+        _set_web_session_cookie(response, token)
+        return {
+            "ok": True,
+            "auth_method": "email_otp",
+            "token": token,
+            "token_transport": "cookie_and_legacy_bearer",
+            "expires_in": int(SESSION_TTL_SECONDS),
+            "fresh_auth_until": _safe_iso(fresh_auth_until),
+            "user": {
+                "id": int(user.tg_id),
+                "account_id": account_id,
                 "email": str(identity.email),
             },
         }
@@ -6348,19 +8214,53 @@ async def admin_auth_session(request: Request, x_telegram_init_data: str = Heade
 @app.post("/api/client/session/start-trial")
 async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict:
     client_policy: dict[str, Any] | None = None
+    session_now = _utcnow()
+    client_ip = _request_client_ip(request)
+    trial_event_id = ""
+    trial_projection: dict[str, Any] | None = None
     s = SessionLocal()
     try:
         install_id = str(payload.install_id or "").strip()[:128]
+        existing_device = s.query(AccountDevice.id).filter(AccountDevice.install_id == install_id).first()
+        if existing_device is not None:
+            session_history = (
+                s.query(AuthSession.id)
+                .filter(AuthSession.device_id == str(existing_device.id))
+                .first()
+            )
+            if session_history is not None:
+                raise _auth_session_http_exception(
+                    auth_session_service.AuthSessionError("device_recovery_required")
+                )
         existing_app_account = s.query(User.tg_id).filter(User.app_install_id == install_id).first()
         if not existing_app_account:
             _enforce_beta_rate_limit("start_trial", request)
         user, created = app_first_service.upsert_app_trial_user(
             s=s,
             payload=payload,
-            now=_utcnow(),
+            now=session_now,
             trial_days=APP_TRIAL_DEFAULT_DAYS,
-            request_client_ip=_request_client_ip(request),
+            request_client_ip=client_ip,
         )
+        account_device = s.query(AccountDevice).filter(AccountDevice.install_id == install_id).one()
+        trial_event = record_antiabuse_event(
+            s,
+            event_kind="trial_reserved" if created else "trial_session_issued",
+            source="client_api",
+            occurred_at=session_now,
+            account_id=str(getattr(user, "account_id", "") or "") or None,
+            device_id=str(account_device.id),
+            install_id=install_id,
+            raw_ip=client_ip,
+            reasons=["first_install"] if created else ["legacy_install_session"],
+            metadata={
+                "platform": payload.platform,
+                "app_version": payload.app_version,
+                "os_major": str(payload.os_version or "").split(".", 1)[0],
+                "device_label": payload.device_name,
+            },
+        )
+        trial_event_id = str(trial_event.id)
         s.commit()
         s.refresh(user)
         client_policy = app_first_service.build_client_policy(
@@ -6369,6 +8269,7 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
             install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
             carrier=_request_carrier_header(request.headers.get("X-Portal-Carrier")),
         )
+        trial_projection = read_trial_projection(s, account_id=str(user.account_id), now=session_now)
     except HTTPException:
         s.rollback()
         raise
@@ -6377,15 +8278,6 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
         raise
     finally:
         s.close()
-
-    session_token = create_web_session_token(
-        tg_id=int(user.tg_id),
-        username=str(user.username or "").strip() or None,
-        auth_type="app",
-        auth_origin="app",
-    )
-    if not session_token:
-        raise HTTPException(status_code=500, detail="App session is not configured")
 
     sync_ok = False
     panel = ControlPanel()
@@ -6421,13 +8313,14 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
 
     start_trial_parts = app_first_service.build_start_trial_response_parts(
         user=user,
-        session_token=session_token,
+        session_token="",
         now=_utcnow(),
         sync_ok=bool(sync_ok),
         build_access_policy=_build_access_policy,
         trial_days=APP_TRIAL_DEFAULT_DAYS,
         channel_bonus_days=CHANNEL_PREMIUM_DAYS,
         client_policy=client_policy,
+        trial_projection=trial_projection,
     )
     payload_s = SessionLocal()
     try:
@@ -6442,24 +8335,315 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     finally:
         payload_s.close()
 
+    credential_now = _utcnow()
+    session_s = SessionLocal()
+    try:
+        session_user = session_s.query(User).filter(User.tg_id == int(user.tg_id)).first()
+        if session_user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        issued_session = auth_session_service.issue_device_session(
+            session_s,
+            user=session_user,
+            install_id=install_id,
+            now=credential_now,
+        )
+        trial_event = (
+            session_s.query(AntiAbuseEvent)
+            .filter(AntiAbuseEvent.id == trial_event_id)
+            .with_for_update()
+            .one()
+        )
+        trial_event.account_id = issued_session.account_id
+        trial_event.device_id = issued_session.device_id
+        trial_event.session_id = issued_session.session_id
+        session_contract = issued_session.response_payload(now=credential_now)
+        start_trial_parts["session"].update(session_contract)
+        response_payload = {
+            "ok": True,
+            "created": bool(created),
+            "session_token": issued_session.access_token,
+            "access_token": issued_session.access_token,
+            "refresh_token": issued_session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_contract["expires_in"],
+            "refresh_expires_in": session_contract["refresh_expires_in"],
+            "canonical_account_id": issued_session.account_id,
+            "account_id": str(int(user.tg_id)),
+            "subscription_url": start_trial_parts["subscription_url"],
+            "sync_ok": bool(sync_ok),
+            "session": start_trial_parts["session"],
+            "client_policy": start_trial_parts["client_policy"],
+            "access": start_trial_parts["access"],
+            "linked_identities": linked_identities,
+            "free_caps": _free_caps_payload(user=user, access_policy=start_trial_parts["access"]),
+            "redeem_eligibility": _redeem_eligibility_payload(
+                user=user,
+                access_policy=start_trial_parts["access"],
+            ),
+            "promo_slots": promo_slots,
+            "hidden_transport_matrix": _hidden_transport_matrix_payload(
+                nodes=payload_nodes,
+                client_policy=client_policy,
+            ),
+            "location_matrix": _location_matrix_payload(
+                user=user,
+                nodes=payload_nodes,
+                client_policy=client_policy,
+            ),
+            "provisioning": start_trial_parts["provisioning"],
+        }
+        session_s.commit()
+    except HTTPException:
+        session_s.rollback()
+        raise
+    except auth_session_service.AuthSessionError as exc:
+        session_s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        session_s.rollback()
+        raise
+    finally:
+        session_s.close()
+    return response_payload
+
+
+@app.post("/api/client/session/refresh")
+async def client_session_refresh(payload: AppSessionRefreshIn, request: Request) -> dict[str, Any]:
+    refresh_fingerprint = hashlib.sha256(payload.refresh_token.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("session_refresh_ip", request)
+    _enforce_beta_rate_limit(
+        "session_refresh",
+        request,
+        identity=f"refresh_sha256:{refresh_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        issued = auth_session_service.rotate_device_session(
+            s,
+            refresh_token=payload.refresh_token,
+            now=now,
+        )
+        s.commit()
+    except auth_session_service.AuthSessionError as exc:
+        if exc.security_state_changed:
+            s.commit()
+        else:
+            s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+    session_payload = issued.response_payload(now=now)
     return {
         "ok": True,
-        "created": bool(created),
-        "session_token": session_token,
-        "account_id": str(int(user.tg_id)),
-        "subscription_url": start_trial_parts["subscription_url"],
-        "sync_ok": bool(sync_ok),
-        "session": start_trial_parts["session"],
-        "client_policy": start_trial_parts["client_policy"],
-        "access": start_trial_parts["access"],
-        "linked_identities": linked_identities,
-        "free_caps": _free_caps_payload(user=user, access_policy=start_trial_parts["access"]),
-        "redeem_eligibility": _redeem_eligibility_payload(user=user, access_policy=start_trial_parts["access"]),
-        "promo_slots": promo_slots,
-        "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=payload_nodes, client_policy=client_policy),
-        "location_matrix": _location_matrix_payload(user=user, nodes=payload_nodes, client_policy=client_policy),
-        "provisioning": start_trial_parts["provisioning"],
+        **session_payload,
+        "session": dict(session_payload),
     }
+
+
+@app.post("/api/client/session/revoke")
+async def client_session_revoke(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Эта совместимая сессия не поддерживает серверный отзыв.",
+            code="session_not_persisted",
+            status_code=409,
+        )
+
+    s = SessionLocal()
+    try:
+        auth_session_service.revoke_session(
+            s,
+            account_id=account_id,
+            session_id=session_id,
+            now=_utcnow(),
+        )
+        s.commit()
+    except auth_session_service.AuthSessionError as exc:
+        s.rollback()
+        raise _auth_session_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+    return {"ok": True, "session_id": session_id, "revoked": True}
+
+
+@app.post("/api/client/recovery-code/rotate")
+async def client_recovery_code_rotate(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Эта совместимая сессия не поддерживает recovery-коды.",
+            code="session_not_persisted",
+            status_code=409,
+        )
+    session_fingerprint = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "recovery_rotate",
+        request,
+        identity=f"session_sha256:{session_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        issued = rotate_recovery_code(
+            s,
+            account_id=account_id,
+            actor_session_id=session_id,
+            now=now,
+        )
+        s.commit()
+        return {
+            "ok": True,
+            "recovery_code": issued.code,
+            "code_hint": issued.code_hint,
+            "version": int(issued.version),
+            "shown_once": True,
+        }
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/client/recovery/exchange")
+async def client_recovery_exchange(
+    payload: RecoveryCodeExchangeIn,
+    request: Request,
+) -> dict[str, Any]:
+    code_fingerprint = hashlib.sha256(str(payload.code or "").strip().upper().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("recovery_exchange_ip", request)
+    _enforce_beta_rate_limit(
+        "recovery_exchange",
+        request,
+        identity=f"code_sha256:{code_fingerprint}",
+    )
+    install_fingerprint = hashlib.sha256(str(payload.install_id).strip().encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "recovery_exchange_install",
+        request,
+        identity=f"install_sha256:{install_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        exchange = exchange_recovery_code(
+            s,
+            code=payload.code,
+            install_id=payload.install_id,
+            device_name=payload.device_name,
+            platform=payload.platform,
+            os_version=payload.os_version,
+            app_version=payload.app_version,
+            locale=payload.locale,
+            time_zone=payload.time_zone,
+            now=now,
+        )
+        session_payload = exchange.session.response_payload(now=now)
+        session_payload["scope"] = "recovery"
+        response_payload = {
+            "ok": True,
+            "access_token": exchange.session.access_token,
+            "refresh_token": exchange.session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_payload["expires_in"],
+            "refresh_expires_in": session_payload["refresh_expires_in"],
+            "session": session_payload,
+            "allowed_actions": ["status", "support", "reissue", "device_revoke"],
+        }
+        s.commit()
+        return response_payload
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/client/access/reissue")
+async def client_access_reissue(
+    payload: AccessReissueIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    account_id = str(auth_user.get("account_id") or "").strip()
+    session_id = str(auth_user.get("session_id") or "").strip()
+    if not account_id or not session_id:
+        raise _auth_http_exception(
+            detail="Нужна ограниченная recovery-сессия.",
+            code="recovery_session_invalid",
+            status_code=401,
+        )
+    session_fingerprint = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit(
+        "access_reissue",
+        request,
+        identity=f"session_sha256:{session_fingerprint}",
+    )
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == int(auth_user.get("id") or 0)).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        result = complete_access_reissue(
+            s,
+            account_id=account_id,
+            recovery_session_id=session_id,
+            mode=payload.mode,
+            device_limit=_plan_device_limit(user),
+            now=now,
+        )
+        session_payload = result.session.response_payload(now=now)
+        session_payload["scope"] = "client"
+        response_payload = {
+            "ok": True,
+            "mode": result.mode,
+            "access_token": result.session.access_token,
+            "refresh_token": result.session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_payload["expires_in"],
+            "refresh_expires_in": session_payload["refresh_expires_in"],
+            "session": session_payload,
+            "provisioning_status": result.provisioning_status,
+            "queued_key_rotations": len(result.provisioning_job_ids),
+            "revoked_devices": int(result.revoked_devices),
+        }
+        s.commit()
+        return response_payload
+    except AccountRecoveryError as exc:
+        s.rollback()
+        raise _account_recovery_http_exception(exc) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
 
 
 def _route_policy_payload(user: User | None) -> dict[str, Any]:
@@ -7015,7 +9199,7 @@ async def client_locations_catalog(
         )
         transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
         all_nodes = enabled_nodes(s)
-        free_pool_code = canonical_free_node_code(all_nodes)
+        free_pool_code = canonical_free_node_code(all_nodes, access_role=user_free_access_role(user))
         nodes_for_user = _nodes_for_user(user, all_nodes, session=s)
         smart_connect = _smart_connect_shortlist(
             session=s,
@@ -7096,9 +9280,11 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(
+        access_policy = _build_reconciled_access_policy(
+            session=s,
             user=user,
             used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="client_subscription_runtime",
         )
         access_state = str(access_policy.get("access_state") or "")
         expiry = getattr(user, "expiry_at", None)
@@ -7119,22 +9305,57 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
 
 @app.get("/api/client/devices")
 async def client_devices(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
         rows = []
-        for item in _build_app_device_rows(user):
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        current_registry_id = str(auth_user.get("device_id") or "").strip()
+        devices = (
+            s.query(AccountDevice)
+            .filter(AccountDevice.account_id == account_id)
+            .order_by(AccountDevice.created_at.asc(), AccountDevice.id.asc())
+            .all()
+            if account_id
+            else []
+        )
+        for device in devices:
+            active = str(device.state or "").strip().lower() == "active" and device.revoked_at is None
             rows.append(
                 {
-                    "id": str(item.get("id") or ""),
-                    "label": str(item.get("name") or "Current device"),
-                    "platform": str(item.get("platform") or "device"),
-                    "osVersion": item.get("os_version"),
-                    "appVersion": item.get("app_version"),
-                    "lastSeen": item.get("last_seen_at"),
-                    "current": bool(item.get("is_current")),
-                    "active": bool(item.get("is_active")),
+                    "id": str(device.install_id),
+                    "registryId": str(device.id),
+                    "label": _normalize_app_device_name(device.label),
+                    "platform": str(device.platform or "device"),
+                    "osVersion": str(device.os_version or "").strip() or None,
+                    "appVersion": str(device.app_version or "").strip() or None,
+                    "lastSeen": _safe_iso(device.last_seen_at),
+                    "current": bool(
+                        str(device.id) == current_registry_id
+                        if current_registry_id
+                        else str(device.install_id) == str(getattr(user, "app_install_id", "") or "")
+                    ),
+                    "active": active,
+                    "state": str(device.state or "active"),
+                    "revokedAt": _safe_iso(device.revoked_at),
                 }
             )
+        if not rows:
+            for item in _build_app_device_rows(user):
+                rows.append(
+                    {
+                        "id": str(item.get("id") or ""),
+                        "registryId": None,
+                        "label": str(item.get("name") or "Current device"),
+                        "platform": str(item.get("platform") or "device"),
+                        "osVersion": item.get("os_version"),
+                        "appVersion": item.get("app_version"),
+                        "lastSeen": item.get("last_seen_at"),
+                        "current": bool(item.get("is_current")),
+                        "active": bool(item.get("is_active")),
+                        "state": "legacy",
+                        "revokedAt": None,
+                    }
+                )
         return {"items": rows, "limit": _plan_device_limit(user)}
     finally:
         s.close()
@@ -7142,18 +9363,52 @@ async def client_devices(request: Request, x_telegram_init_data: str = Header(de
 
 @app.delete("/api/client/devices/{device_id}")
 async def client_device_revoke(device_id: str, request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        current = str(getattr(user, "app_install_id", "") or "").strip()
         target = str(device_id or "").strip()
         if not target:
             raise HTTPException(status_code=404, detail="Device not found")
-        if target == current:
+        account_id = str(auth_user.get("account_id") or getattr(user, "account_id", "") or "").strip()
+        actor_session_id = str(auth_user.get("session_id") or "").strip()
+        device = (
+            s.query(AccountDevice)
+            .filter(
+                AccountDevice.account_id == account_id,
+                or_(AccountDevice.id == target, AccountDevice.install_id == target),
+            )
+            .first()
+            if account_id
+            else None
+        )
+        if device is None:
+            raise HTTPException(status_code=404, detail="Device not found")
+        if not actor_session_id:
             raise HTTPException(
                 status_code=409,
                 detail={"code": "cannot_revoke_current_device", "message": "Current device cannot revoke itself."},
             )
-        raise HTTPException(status_code=404, detail="Device not found")
+        try:
+            revoked = auth_session_service.revoke_device(
+                s,
+                account_id=account_id,
+                device_id=str(device.id),
+                actor_session_id=actor_session_id,
+                now=_utcnow(),
+            )
+            s.commit()
+        except auth_session_service.AuthSessionError as exc:
+            s.rollback()
+            raise _auth_session_http_exception(exc) from exc
+        return {
+            "ok": True,
+            "device": {
+                "id": str(revoked.install_id),
+                "registryId": str(revoked.id),
+                "active": False,
+                "state": str(revoked.state or "revoked"),
+                "revokedAt": _safe_iso(revoked.revoked_at),
+            },
+        }
     finally:
         s.close()
 
@@ -7170,7 +9425,12 @@ async def client_notifications(
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="client_notifications_runtime",
+        )
         read_ids = _client_notification_read_ids(s, user=user)
         items = _client_notification_items(user=user, access_policy=access_policy, read_ids=read_ids)
         return {
@@ -7345,9 +9605,11 @@ async def client_managed_profile(
                 str(getattr(user, "sub_type", "") or ""),
             )
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(
+        access_policy = _build_reconciled_access_policy(
+            session=s,
             user=user,
             used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="managed_profile_runtime",
         )
         effective_nodes = _effective_transport_nodes(
             nodes=nodes_for_user,
@@ -7438,7 +9700,12 @@ async def client_promo_slots(
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_access_policy(user=user, used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0))
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+            source="promo_runtime",
+        )
         return _promo_slots_payload_for_surface(
             s=s,
             surface=str(surface or "app").strip().lower(),
@@ -8084,6 +10351,16 @@ async def internal_node_xray_stats(node_code: str, request: Request) -> dict[str
                 total_bytes=max(0, total_bytes),
                 source_ip_hashes=source_ip_hashes if isinstance(source_ip_hashes, list) else [],
             )
+            if tg_id:
+                observed_user = s.query(User).filter(User.tg_id == int(tg_id)).first()
+                if observed_user is not None:
+                    reconcile_free_profile_usage(
+                        s,
+                        user=observed_user,
+                        used_bytes=max(0, total_bytes),
+                        source="node_xray_stats",
+                        now=_utcnow(),
+                    )
             accepted += 1
         s.commit()
         return {"ok": True, "node_code": wanted, "accepted": accepted}
@@ -8617,7 +10894,7 @@ async def _rub_create_order_internal(
             discount_allowed
             and user
             and getattr(user, "referrer_id", None)
-            and not bool(getattr(user, "first_purchase_done", False))
+            and not _has_successful_provider_payment(s=s, user=user)
         )
         working_amount = int(base_amount)
         if referral_discount_eligible and working_amount > 0:
@@ -8654,7 +10931,7 @@ async def _rub_create_order_internal(
             amount=float(amount_rub),
             currency=(currency or "RUB").strip().upper()[:16] or "RUB",
             status="created",
-            meta_json=json.dumps(
+            meta_json=_serialize_external_order_meta(
                 {
                     "source": source,
                     "campaign": campaign,
@@ -8684,12 +10961,20 @@ async def _rub_create_order_internal(
                         "referral_discount_eligible": bool(referral_discount_eligible),
                     },
                 },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )[:4000],
+            ),
             created_at=_utcnow(),
         )
         s.add(ext)
+        if normalized_tg_id <= 0:
+            ensure_pending_claim(
+                s,
+                provider=provider,
+                order_id=order_id,
+                buyer_email=buyer_email_norm,
+                plan_code=normalized_plan_code,
+                duration_days=max(1, int(plan.get("duration_days") or plan.get("days") or 30)),
+                now=ext.created_at,
+            )
         if user and consume_pending_discount and discount_applied:
             user.pending_discount_pct = None
             user.pending_discount_code = None
@@ -8768,7 +11053,7 @@ async def _rub_create_order_internal(
         row = s.query(ExternalOrder).filter(ExternalOrder.provider == provider, ExternalOrder.order_id == order_id).first()
         if row:
             row.status = "pending"
-            row.meta_json = json.dumps(
+            row.meta_json = _serialize_external_order_meta(
                 {
                     "request": req_data,
                     "response": {"payment_url": payment_url, "remote": remote_response},
@@ -8794,10 +11079,8 @@ async def _rub_create_order_internal(
                         "lavatop_payment_provider": lavatop_payment_provider or None,
                         "lavatop_payment_method": lavatop_payment_method or None,
                     },
-                },
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )[:4000]
+                }
+            )
             s.commit()
     finally:
         s.close()
@@ -9864,11 +12147,17 @@ async def user_data(
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
-        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=used_bytes,
+            source=traffic_source,
+        )
         setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
         total_gb = _plan_total_gb(user)
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0
-        remaining_gb = max(round(total_gb - used_gb, 3), 0) if total_gb > 0 else 0
+        policy_remaining_gb = access_policy.get("traffic_remaining_gb")
+        remaining_gb = float(policy_remaining_gb) if policy_remaining_gb is not None else 0.0
         referral_code = (user.referral_code or "").strip()
         channel_link = f"https://t.me/{PUBLIC_CHANNEL}" if PUBLIC_CHANNEL else ""
         support_link = f"https://t.me/{SUPPORT_USERNAME}" if SUPPORT_USERNAME else ""
@@ -9925,6 +12214,10 @@ async def user_data(
             "traffic_remaining_gb": access_policy["traffic_remaining_gb"],
             "next_reset_at": access_policy["next_reset_at"],
             "soft_mode_active": bool(access_policy["soft_mode_active"]),
+            "free_profile_state": str(access_policy["free_profile_state"]),
+            "free_profile_active_role": str(access_policy["free_profile_active_role"]),
+            "free_profile_job_id": access_policy.get("free_profile_job_id"),
+            "free_profile_error_code": access_policy.get("free_profile_error_code"),
             "limits": {
                 "device_limit": _plan_device_limit(user) + family_slots,
                 "total_gb": total_gb,
@@ -10069,11 +12362,17 @@ async def dashboard_snapshot(
         legacy_used_bytes = int(usage["used_bytes"] or 0) if usage else 0
         traffic_source = "panel_runtime" if runtime.get("panel_state") == "ok" and (runtime_used_bytes > 0 or int(runtime.get("known_nodes", 0) or 0) > 0) else "legacy_panel" if usage else "unavailable"
         used_bytes = runtime_used_bytes if traffic_source == "panel_runtime" else legacy_used_bytes
-        access_policy = _build_access_policy(user=user, used_bytes=used_bytes)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=used_bytes,
+            source=traffic_source,
+        )
         setattr(user, "_free_soft_mode_active", bool(access_policy["soft_mode_active"]))
         total_gb = float(_plan_total_gb(user))
         used_gb = round((used_bytes / (1024**3)), 3) if used_bytes else 0.0
-        remaining = max(round(total_gb - used_gb, 3), 0.0) if total_gb > 0 else 0.0
+        policy_remaining_gb = access_policy.get("traffic_remaining_gb")
+        remaining = float(policy_remaining_gb) if policy_remaining_gb is not None else 0.0
         expiry = user.expiry_at
         active = bool(user.is_active and expiry and expiry > _utcnow())
         segment = _plan_segment(user)
@@ -10104,6 +12403,10 @@ async def dashboard_snapshot(
             traffic_remaining_gb=access_policy["traffic_remaining_gb"],
             next_reset_at=access_policy["next_reset_at"],
             soft_mode_active=bool(access_policy["soft_mode_active"]),
+            free_profile_state=str(access_policy["free_profile_state"]),
+            free_profile_active_role=str(access_policy["free_profile_active_role"]),
+            free_profile_job_id=access_policy.get("free_profile_job_id"),
+            free_profile_error_code=access_policy.get("free_profile_error_code"),
             active_sessions=int(runtime.get("active_connections", 0) or 0),
             active_sessions_source=str(runtime.get("active_connections_source") or "none"),
             device_limit=int(_plan_device_limit(user) + family_slots),
@@ -11242,33 +13545,58 @@ async def _redeem_access_key_for_auth_user(
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == code).first()
         if not card:
             raise HTTPException(status_code=404, detail="Access key not found")
-        if card.redeemed_by is not None:
+        payment_claim = (
+            s.query(PaymentEntitlementClaim)
+            .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+            .one_or_none()
+        )
+        if card.redeemed_by is not None and (
+            payment_claim is None or int(card.redeemed_by) != int(tg_id)
+        ):
             raise HTTPException(status_code=400, detail="Access key already redeemed")
         if int(card.created_by or 0) == int(tg_id):
             raise HTTPException(status_code=400, detail="You cannot redeem your own key")
         if not bool(getattr(user, "tos_accepted", False)):
             raise HTTPException(status_code=400, detail="Accept terms before redeeming a key")
 
-        meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
-        if not meta:
-            raise HTTPException(status_code=400, detail="Access key type is not supported")
-
         now = _utcnow()
-        applied = _apply_access_key_to_user(user=user, meta=meta, now=now)
-        updated = (
-            s.query(GiftCard)
-            .filter(GiftCard.id == int(card.id), GiftCard.redeemed_by.is_(None))
-            .update(
-                {
-                    GiftCard.redeemed_by: int(tg_id),
-                    GiftCard.redeemed_at: now,
-                },
-                synchronize_session=False,
+        if payment_claim is not None:
+            ensure_user_account_foundation(s, user, now=now)
+            s.flush()
+            payment_result = redeem_payment_fallback(
+                s,
+                gift_card_id=int(card.id),
+                account_id=str(user.account_id),
+                legacy_tg_id=int(tg_id),
+                now=now,
             )
-        )
-        if int(updated or 0) != 1:
-            s.rollback()
-            raise HTTPException(status_code=400, detail="Access key already redeemed")
+            if payment_result.code not in {"fulfilled", "already_fulfilled"}:
+                s.commit()
+                status_code = 409 if payment_result.code in {"account_conflict", "manual_review"} else 400
+                raise HTTPException(status_code=status_code, detail="Payment access key is not redeemable")
+            applied = {
+                "current_plan_code": str(user.current_plan_code or payment_claim.plan_code),
+                "expiry_at": _safe_iso(user.expiry_at),
+            }
+        else:
+            meta = _access_key_meta_from_card_type(s=s, card_type=str(card.card_type or ""))
+            if not meta:
+                raise HTTPException(status_code=400, detail="Access key type is not supported")
+            applied = _apply_access_key_to_user(user=user, meta=meta, now=now)
+            updated = (
+                s.query(GiftCard)
+                .filter(GiftCard.id == int(card.id), GiftCard.redeemed_by.is_(None))
+                .update(
+                    {
+                        GiftCard.redeemed_by: int(tg_id),
+                        GiftCard.redeemed_at: now,
+                    },
+                    synchronize_session=False,
+                )
+            )
+            if int(updated or 0) != 1:
+                s.rollback()
+                raise HTTPException(status_code=400, detail="Access key already redeemed")
 
         s.commit()
         s.refresh(user)
@@ -11294,11 +13622,9 @@ async def _redeem_access_key_for_auth_user(
     except Exception:
         s.rollback()
         safe_code = _access_key_safe_meta(code)
-        logger.exception(
-            "access key redeem failed key_fp=%s key_preview=%s tg_id=%s",
+        logger.error(
+            "access key redeem failed code=access_key_redeem_failed correlation=%s",
             safe_code.get("code_fp"),
-            safe_code.get("code_preview"),
-            int(tg_id),
         )
         raise HTTPException(status_code=500, detail="Failed to redeem access key")
     finally:
@@ -11389,6 +13715,12 @@ async def unified_redeem(
     try:
         card = s.query(GiftCard).filter(func.upper(GiftCard.code) == normalized).first()
         card_meta = _access_key_meta_from_card_type(s=s, card_type=str(getattr(card, "card_type", "") or "")) if card else None
+        payment_claim_exists = bool(
+            card
+            and s.query(PaymentEntitlementClaim.id)
+            .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+            .first()
+        )
         promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == normalized).first()
     finally:
         s.close()
@@ -11415,7 +13747,7 @@ async def unified_redeem(
             payload_out["summary"] = summary
         return payload_out
 
-    if card and card_meta:
+    if card and (card_meta or payment_claim_exists):
         result = await _redeem_access_key_for_auth_user(
             key=normalized,
             request=request,
@@ -11473,6 +13805,13 @@ async def client_cabinet_token(
         email=str(auth_user.get("email") or "").strip() or None,
         ttl_seconds=CABINET_HANDOFF_TTL_SECONDS,
         purpose="cabinet_handoff",
+        account_id=str(auth_user.get("account_id") or "").strip() or None,
+        session_id=str(auth_user.get("session_id") or "").strip() or None,
+        device_id=str(auth_user.get("device_id") or "").strip() or None,
+        auth_epoch=auth_user.get("auth_epoch"),
+        device_credential_version=auth_user.get("device_credential_version"),
+        scope=str(auth_user.get("scope") or "").strip() or None,
+        token_id=secrets.token_urlsafe(16),
     )
     if not handoff_token:
         raise HTTPException(status_code=500, detail="Cabinet handoff session is not configured")
@@ -11578,6 +13917,15 @@ async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, reque
                     "message": "Cabinet handoff token has expired.",
                 },
             )
+        if str(handoff_auth_user.get("session_id") or "").strip():
+            try:
+                auth_session_service.validate_access_session(
+                    s,
+                    payload=handoff_auth_user,
+                    now=now,
+                )
+            except auth_session_service.AuthSessionError as exc:
+                raise _auth_session_http_exception(exc) from exc
         session_token = create_web_session_token(
             tg_id=int(handoff_auth_user.get("id") or 0),
             username=str(handoff_auth_user.get("username") or "").strip() or None,
@@ -11585,6 +13933,16 @@ async def auth_cabinet_handoff_exchange(payload: CabinetHandoffExchangeIn, reque
             auth_origin="app_cabinet_handoff",
             email=str(handoff_auth_user.get("email") or "").strip() or None,
             purpose="cabinet_session",
+            account_id=str(handoff_auth_user.get("account_id") or "").strip() or None,
+            session_id=str(handoff_auth_user.get("session_id") or "").strip() or None,
+            device_id=str(handoff_auth_user.get("device_id") or "").strip() or None,
+            auth_epoch=handoff_auth_user.get("auth_epoch"),
+            device_credential_version=handoff_auth_user.get("device_credential_version"),
+            scope=(
+                "cabinet_session"
+                if str(handoff_auth_user.get("session_id") or "").strip()
+                else None
+            ),
         )
         if not session_token:
             raise HTTPException(status_code=500, detail="Cabinet session is not configured")
@@ -11673,13 +14031,24 @@ async def create_feedback(payload: FeedbackCreateIn, request: Request, x_telegra
 async def get_tickets(request: Request, x_telegram_init_data: str = Header(default=""), limit: int = 20) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
+    include_media = not _auth_user_is_recovery_scope(auth_user)
     s = SessionLocal()
     try:
-        items = list_user_tickets(s, tg_id, limit=max(1, min(int(limit), 50)))
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=tg_id,
+        )
+        items = list_user_tickets(
+            s,
+            tg_id,
+            limit=max(1, min(int(limit), 50)),
+            account_id=account_id,
+        )
         data = []
         for t in items:
             msgs = list_ticket_messages(s, t.id, limit=1)
-            data.append(_ticket_row(t, msgs))
+            data.append(_ticket_row(t, msgs, include_media=include_media))
         return {"tickets": data}
     finally:
         s.close()
@@ -11694,10 +14063,24 @@ async def upload_ticket_attachment(
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_upload", request, identity=f"tg:{tg_id}")
-    raw_bytes = await _read_limited_request_body(request, max_bytes=SUPPORT_UPLOAD_MAX_BYTES, scope="Attachment")
     try:
+        raw_bytes = await _read_limited_request_body(
+            request,
+            max_bytes=SUPPORT_UPLOAD_MAX_BYTES,
+            scope="Attachment",
+        )
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=tg_id,
+            )
+        finally:
+            s.close()
         uploaded = _store_support_upload(
             owner_tg_id=tg_id,
+            owner_account_id=account_id,
             filename=x_upload_filename,
             content_type=request.headers.get("content-type"),
             raw_bytes=raw_bytes,
@@ -11708,8 +14091,8 @@ async def upload_ticket_attachment(
             scope="ticket_upload",
             client_ip=_request_client_ip(request),
             subject=f"tg:{tg_id}",
-            reason=str(exc.detail or "unsupported_attachment")[:160],
-            meta={"content_type": request.headers.get("content-type"), "filename": x_upload_filename},
+            reason=_support_upload_reject_reason(exc),
+            meta={"status_code": int(exc.status_code)},
         )
         raise
     logger.info(
@@ -11731,6 +14114,12 @@ async def download_ticket_attachment(
     x_telegram_init_data: str = Header(default=""),
 ) -> FileResponse:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    if _auth_user_is_recovery_scope(auth_user):
+        raise _auth_http_exception(
+            detail="Recovery-сессия не открывает вложения.",
+            code="recovery_scope_forbidden",
+            status_code=403,
+        )
     actor = int(auth_user.get("id", 0))
     clean_name = Path(str(stored_name or "")).name
     if clean_name != stored_name or not re.fullmatch(r"\d{8}-[A-Za-z0-9]{8,64}\.(png|jpg|jpeg|webp|pdf|txt)", clean_name):
@@ -11738,10 +14127,39 @@ async def download_ticket_attachment(
     _enforce_beta_rate_limit("ticket_attachment_download", request, identity=f"tg:{actor}")
     s = SessionLocal()
     try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=actor,
+        )
         row = s.query(SupportAttachment).filter(SupportAttachment.stored_name == clean_name).first()
         if not row:
             raise HTTPException(status_code=404, detail="Attachment not found")
-        if not (_is_admin_tg(actor) or int(row.owner_tg_id) == actor):
+        if (
+            row.ticket_id is None
+            and row.message_id is None
+            and row.expires_at is not None
+            and row.expires_at <= _utcnow()
+        ):
+            raise HTTPException(status_code=404, detail="Attachment not found")
+        bound_ticket = get_ticket_by_id(s, int(row.ticket_id)) if row.ticket_id is not None else None
+        allowed = (
+            can_access_ticket(
+                bound_ticket,
+                actor,
+                int(Settings.ADMIN_ID or 0),
+                account_id=account_id,
+            )
+            if bound_ticket is not None
+            else row.ticket_id is None
+            and can_access_support_attachment(
+                row,
+                actor,
+                int(Settings.ADMIN_ID or 0),
+                account_id=account_id,
+            )
+        )
+        if not allowed:
             _record_security_event(
                 "support_attachment_denied",
                 scope="ticket_attachment_download",
@@ -11777,28 +14195,53 @@ async def download_ticket_attachment(
 @app.post("/api/tickets")
 async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     tg_id = int(auth_user.get("id", 0))
     _enforce_beta_rate_limit("ticket_create", request, identity=f"tg:{tg_id}")
-    s = SessionLocal()
-    try:
-        ticket = get_user_active_ticket(s, tg_id)
-        if not ticket:
-            ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject)
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=tg_id,
-            sender_role="user",
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(s, ticket=ticket, status=STATUS_OPEN)
-        s.commit()
-        ticket_id = int(ticket.id)
-    finally:
-        s.close()
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=tg_id,
+            )
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=tg_id,
+                account_id=account_id,
+            )
+            ticket = get_user_active_ticket(s, tg_id, account_id=account_id)
+            if not ticket:
+                ticket = create_ticket(s, user_tg_id=tg_id, subject=payload.subject, account_id=account_id)
+            else:
+                claim_legacy_ticket(ticket, actor_tg_id=tg_id, account_id=account_id)
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=tg_id,
+                sender_role="user",
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(s, ticket=ticket, status=STATUS_OPEN)
+            s.commit()
+            ticket_id = int(ticket.id)
+            has_attachment = bool(attachment is not None or media.get("media_type") or media.get("media_file_id"))
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     if Settings.ADMIN_ID:
         await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый обращение #{ticket_id} от пользователя {tg_id}.")
@@ -11807,24 +14250,48 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
         ticket_id=ticket_id,
         user_tg_id=tg_id,
         text=payload.body,
-        has_attachment=bool(payload.media_type or payload.media_file_id),
+        has_attachment=has_attachment,
     )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=20)}
+    return {
+        "ticket": _load_ticket_row(
+            ticket_id,
+            message_limit=20,
+            include_media=not _auth_user_is_recovery_scope(auth_user),
+        )
+    }
 
 
 @app.get("/api/tickets/{ticket_id}")
 async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     actor = int(auth_user.get("id", 0))
+    recovery_scope = _auth_user_is_recovery_scope(auth_user)
+    admin_bypass_tg_id = 0 if recovery_scope else int(Settings.ADMIN_ID or 0)
     s = SessionLocal()
     try:
+        account_id = resolve_support_account_id(
+            s,
+            account_id=str(auth_user.get("account_id") or "").strip() or None,
+            user_tg_id=actor,
+        )
         ticket = get_ticket_by_id(s, ticket_id)
         if not ticket:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (_is_admin_tg(actor) or int(ticket.user_tg_id) == actor):
+        if not can_access_ticket(
+            ticket,
+            actor,
+            admin_bypass_tg_id,
+            account_id=account_id,
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
         msgs = list_ticket_messages(s, ticket.id, limit=100)
-        return {"ticket": _ticket_row(ticket, msgs)}
+        return {
+            "ticket": _ticket_row(
+                ticket,
+                msgs,
+                include_media=not recovery_scope,
+            )
+        }
     finally:
         s.close()
 
@@ -11832,38 +14299,77 @@ async def get_ticket(ticket_id: int, request: Request, x_telegram_init_data: str
 @app.post("/api/tickets/{ticket_id}/messages")
 async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    _reject_recovery_ticket_media(auth_user=auth_user, payload=payload)
     actor = int(auth_user.get("id", 0))
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        if not (_is_admin_tg(actor) or int(ticket.user_tg_id) == actor):
-            raise HTTPException(status_code=403, detail="Access denied")
-        role = "admin" if _is_admin_tg(actor) else "user"
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=actor,
-            sender_role=role,
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(
-            s,
-            ticket=ticket,
-            status=STATUS_IN_PROGRESS if role == "admin" else STATUS_OPEN,
-            assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
-        )
-        s.commit()
-        ticket_user_tg_id = int(ticket.user_tg_id)
-    finally:
-        s.close()
+    recovery_scope = _auth_user_is_recovery_scope(auth_user)
+    admin_actor = bool(_is_admin_tg(actor) and not recovery_scope)
+    admin_bypass_tg_id = 0 if recovery_scope else int(Settings.ADMIN_ID or 0)
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(
+                s,
+                account_id=str(auth_user.get("account_id") or "").strip() or None,
+                user_tg_id=actor,
+            )
+            ticket = get_ticket_by_id(s, ticket_id)
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket not found")
+            if not can_access_ticket(
+                ticket,
+                actor,
+                admin_bypass_tg_id,
+                account_id=account_id,
+            ):
+                raise HTTPException(status_code=403, detail="Access denied")
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=actor,
+                account_id=account_id,
+            )
+            role = "admin" if admin_actor else "user"
+            if role == "user":
+                claim_legacy_ticket(ticket, actor_tg_id=actor, account_id=account_id)
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=actor,
+                sender_role=role,
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(
+                s,
+                ticket=ticket,
+                status=STATUS_IN_PROGRESS if role == "admin" else STATUS_OPEN,
+                assigned_admin_tg_id=int(Settings.ADMIN_ID) if role == "admin" and Settings.ADMIN_ID else None,
+            )
+            s.commit()
+            ticket_user_tg_id = resolve_ticket_notification_tg_id(s, ticket)
+            has_attachment = bool(attachment is not None or media.get("media_type") or media.get("media_file_id"))
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     if role == "admin":
-        await _telegram_send_message(int(ticket_user_tg_id), f"💬 Новый ответ оператора в обращении #{ticket_id}.")
+        if ticket_user_tg_id is None:
+            logger.warning(
+                "support ticket notification skipped ticket=%s reason=no_telegram_target",
+                ticket_id,
+            )
+        else:
+            await _telegram_send_message(ticket_user_tg_id, f"💬 Новый ответ оператора в обращении #{ticket_id}.")
     elif Settings.ADMIN_ID:
         await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое сообщение в обращении #{ticket_id} от {actor}.")
     if role == "user":
@@ -11871,9 +14377,15 @@ async def add_ticket_user_message(ticket_id: int, payload: TicketMessageIn, requ
             ticket_id=ticket_id,
             user_tg_id=actor,
             text=payload.body,
-            has_attachment=bool(payload.media_type or payload.media_file_id),
+            has_attachment=has_attachment,
         )
-    return {"ticket": _load_ticket_row(ticket_id, message_limit=100)}
+    return {
+        "ticket": _load_ticket_row(
+            ticket_id,
+            message_limit=100,
+            include_media=not recovery_scope,
+        )
+    }
 
 
 @app.get("/api/admin/summary")
@@ -12244,6 +14756,36 @@ def _admin_payment_order_payload(*, s, order: ExternalOrder) -> dict[str, Any]:
     }
 
 
+def _payment_reversal_needs_operator(order: ExternalOrder) -> bool:
+    if str(order.status or "").strip().lower() not in {"refunded", "chargeback"}:
+        return False
+    meta = _external_order_meta(order)
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    fulfillment = meta.get("fulfillment") if isinstance(meta.get("fulfillment"), dict) else {}
+    reconciliation_status = str(reversal.get("reconciliation_status") or "").strip().lower()
+    fulfillment_status = str(fulfillment.get("status") or "").strip().lower()
+    return not bool(
+        reversal.get("operator_action_required") is False
+        and reconciliation_status in {"reversed", "already_reversed"}
+        and fulfillment_status == "reversed"
+    )
+
+
+def _payment_reversal_problem_time(order: ExternalOrder) -> datetime:
+    meta = _external_order_meta(order)
+    reversal = meta.get("reversal") if isinstance(meta.get("reversal"), dict) else {}
+    raw = str(reversal.get("recorded_at") or "").strip()[:128]
+    if raw:
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if parsed.tzinfo is not None:
+                parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+            return parsed
+        except (TypeError, ValueError, OverflowError):
+            pass
+    return order.created_at or datetime.min
+
+
 def _admin_payment_period_bounds(period: str) -> tuple[str, datetime, datetime]:
     period_norm = str(period or "7d").strip().lower()
     now = _utcnow()
@@ -12298,7 +14840,17 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     }
     pending_count = sum(int(status_counts.get(status, 0)) for status in ("created", "pending", "pending_verification"))
     manual_review_count = int(status_counts.get("manual_review", 0))
-    failed_count = sum(int(status_counts.get(status, 0)) for status in ("failed", "cancelled", "refunded", "chargeback"))
+    reversal_rows = (
+        s.query(ExternalOrder)
+        .filter(ExternalOrder.status.in_(["refunded", "chargeback"]))
+        .all()
+    )
+    reversal_problem_rows = [row for row in reversal_rows if _payment_reversal_needs_operator(row)]
+    reversal_problem_count = len(reversal_problem_rows)
+    failed_count = (
+        sum(int(status_counts.get(status, 0)) for status in ("failed", "cancelled"))
+        + reversal_problem_count
+    )
 
     site_checkout_intent = _count_funnel_sessions(
         s,
@@ -12313,14 +14865,32 @@ def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     checkout_started = site_checkout_intent + max(known_checkout_events, pay_attempts_started)
     paid_count = int(primary_revenue.get("paid_count") or 0)
 
-    recent_problem_orders = (
+    ordinary_problem_rows = (
         s.query(ExternalOrder)
         .filter(ExternalOrder.created_at >= from_dt, ExternalOrder.created_at <= to_dt)
-        .filter(func.lower(func.coalesce(ExternalOrder.status, "")).in_(["created", "pending", "pending_verification", "manual_review", "failed"]))
+        .filter(ExternalOrder.status.in_([
+            "created",
+            "pending",
+            "pending_verification",
+            "manual_review",
+            "failed",
+            "cancelled",
+        ]))
         .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
         .limit(25)
         .all()
     )
+    recent_problem_orders = [
+        row
+        for _problem_at, row in sorted(
+            [
+                *((row.created_at or datetime.min, row) for row in ordinary_problem_rows),
+                *((_payment_reversal_problem_time(row), row) for row in reversal_problem_rows),
+            ],
+            key=lambda item: (item[0], int(item[1].id or 0)),
+            reverse=True,
+        )[:25]
+    ]
 
     return {
         "ok": True,
@@ -12913,7 +15483,7 @@ async def admin_create_manual_user(payload: ManualUserCreateRequest, x_telegram_
             total_gb=0,
             trial_used=False,
             tos_accepted=True,
-            first_purchase_done=True,
+            first_purchase_done=False,
             sub_token=_generate_sub_token(),
             is_manual=True,
             created_by_admin=actor,
@@ -14999,26 +17569,43 @@ async def admin_tickets(x_telegram_init_data: str = Header(default=""), status: 
 @app.post("/api/admin/tickets/{ticket_id}/reply")
 async def admin_ticket_reply(ticket_id: int, payload: AdminTicketReplyIn, x_telegram_init_data: str = Header(default="")) -> dict:
     actor = int(_require_admin(x_telegram_init_data).get("id", 0))
-    s = SessionLocal()
-    try:
-        ticket = get_ticket_by_id(s, ticket_id)
-        if not ticket:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        add_ticket_message(
-            s,
-            ticket_id=ticket.id,
-            sender_tg_id=actor,
-            sender_role="admin",
-            body=payload.body,
-            media_type=payload.media_type,
-            media_file_id=payload.media_file_id,
-            media_payload=payload.media_payload,
-        )
-        set_ticket_status(s, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=actor)
-        s.commit()
-        msgs = list_ticket_messages(s, ticket.id, limit=100)
-    finally:
-        s.close()
+    reference = _support_attachment_reference(payload)
+    with _support_attachment_bind_lock(reference):
+        s = SessionLocal()
+        try:
+            account_id = resolve_support_account_id(s, user_tg_id=actor)
+            ticket = get_ticket_by_id(s, ticket_id)
+            if not ticket:
+                raise HTTPException(status_code=404, detail="Ticket not found")
+            attachment, media = _resolve_ticket_attachment(
+                s,
+                payload=payload,
+                actor_tg_id=actor,
+                account_id=account_id,
+            )
+            message = add_ticket_message(
+                s,
+                ticket_id=ticket.id,
+                sender_tg_id=actor,
+                sender_role="admin",
+                body=payload.body,
+                **media,
+            )
+            if attachment is not None:
+                _bind_ticket_attachment(
+                    s,
+                    row=attachment,
+                    ticket_id=int(ticket.id),
+                    message_id=int(message.id),
+                )
+            set_ticket_status(s, ticket=ticket, status=STATUS_IN_PROGRESS, assigned_admin_tg_id=actor)
+            s.commit()
+            msgs = list_ticket_messages(s, ticket.id, limit=100)
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
 
     await _telegram_send_message(int(ticket.user_tg_id), f"💬 Ответ оператора в обращении #{ticket.id}.")
     _audit_admin(actor_tg_id=actor, action="admin_ticket_reply", target_tg_id=int(ticket.user_tg_id), meta={"ticket_id": ticket.id})
@@ -15192,7 +17779,7 @@ async def _refresh_ops_alerts_for_payload(*, s, now: datetime) -> tuple[list[dic
     rows, notifications, _metrics_status, _capacity_payload = _ops_refresh_alerts_for_current_state(
         s=s,
         now=now,
-        free_limit_gb=int(FREE_TOTAL_GB),
+        free_limit_gb=FREE_STANDARD_QUOTA_GB,
         cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         stale_after_seconds=stale_after_seconds,
     )
@@ -15328,10 +17915,14 @@ async def admin_provider_quota_status(x_telegram_init_data: str = Header(default
 def _admin_free_tier_facts_payload() -> dict[str, Any]:
     return {
         "node_pool": str(_FREE_TIER_FACTS.get("location_code") or "NL-free"),
-        "traffic_limit_gb": int(FREE_TOTAL_GB),
+        "traffic_limit_gb": FREE_STANDARD_QUOTA_GB,
+        "traffic_limit_bytes": int(FREE_STANDARD_QUOTA_BYTES),
         "cycle_days": int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         "speed_limit_mbps": int(_FREE_TIER_FACTS.get("speed_limit_mbps") or 50),
+        "soft_mode_speed_limit_mbps": int(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps") or 2),
         "device_limit": int(_FREE_TIER_FACTS.get("device_limit") or 1),
+        "standard_access_role": str(_FREE_TIER_FACTS.get("standard_access_role") or "free_standard"),
+        "soft_access_role": str(_FREE_TIER_FACTS.get("soft_access_role") or "free_soft"),
         "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
         "source": "shared_product_facts",
     }
@@ -15348,7 +17939,7 @@ async def admin_free_tier_summary(x_telegram_init_data: str = Header(default="")
             "summary": _ops_free_tier_summary(
                 s=s,
                 now=now,
-                free_limit_gb=int(FREE_TOTAL_GB),
+                free_limit_gb=FREE_STANDARD_QUOTA_GB,
                 cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
             ),
             "facts": _admin_free_tier_facts_payload(),
@@ -15371,7 +17962,7 @@ async def admin_free_tier_users(
         rows, total = _ops_free_tier_user_rows(
             s=s,
             now=now,
-            free_limit_gb=int(FREE_TOTAL_GB),
+            free_limit_gb=FREE_STANDARD_QUOTA_GB,
             cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
             limit=int(limit),
             offset=int(offset),
@@ -15517,7 +18108,7 @@ async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> 
         free_summary = _ops_free_tier_summary(
             s=s,
             now=now,
-            free_limit_gb=int(FREE_TOTAL_GB),
+            free_limit_gb=FREE_STANDARD_QUOTA_GB,
             cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         )
         alert_rows, notifications = await _refresh_ops_alerts_for_payload(s=s, now=now)
@@ -17095,7 +19686,7 @@ def _node_allowed_for_plan(
     if user_uses_free_pool(user):
         return bool(free_code) and code == str(free_code).strip().lower()
 
-    return not node_is_free(node)
+    return node_access_role(node) == PAID_ROLE
 
 
 def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
@@ -17109,7 +19700,9 @@ def _mapped_nodes_for_user(session, user: User, nodes: list) -> list:
     out: list[Any] = []
     seen: set[str] = set()
     excluded_codes = _subscription_excluded_codes()
-    free_code = str(canonical_free_node_code(nodes) or "").strip().lower()
+    free_code = str(
+        canonical_free_node_code(nodes, access_role=user_free_access_role(user)) or ""
+    ).strip().lower()
     for row in rows:
         node = node_by_id.get(int(getattr(row, "node_id", 0) or 0))
         if not node:
@@ -17133,7 +19726,7 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
     """
     Per-plan node visibility.
     - FREE: dedicated free pool only.
-    - PAID: all enabled non-free nodes.
+    - PAID: all enabled paid-role nodes.
     """
     if not nodes:
         return nodes
@@ -17164,10 +19757,15 @@ def _fallback_nodes_for_user(user: User, nodes: list) -> list:
         candidate_nodes = list(nodes)
 
     if not user_uses_free_pool(user):
-        paid = [n for n in candidate_nodes if not node_is_free(n)]
+        paid = [n for n in candidate_nodes if node_access_role(n) == PAID_ROLE]
         return _apply_node_filters(paid)
 
-    free_code = str(canonical_free_node_code(candidate_nodes) or canonical_free_node_code(nodes) or "").strip().lower()
+    free_role = user_free_access_role(user)
+    free_code = str(
+        canonical_free_node_code(candidate_nodes, access_role=free_role)
+        or canonical_free_node_code(nodes, access_role=free_role)
+        or ""
+    ).strip().lower()
     free_nodes = [n for n in candidate_nodes if str(getattr(n, "code", "") or "").strip().lower() == free_code]
     return _apply_node_filters(free_nodes)
 

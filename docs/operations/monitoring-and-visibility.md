@@ -180,7 +180,7 @@ Track these as operator-facing abuse signals:
 
 - `rate_limit_hit`: brute force, token scanning, callback spam, or broken automation
 - `payment_callback_invalid_signature`: bad provider auth/signature attempts
-- `support_upload_reject`: rejected attachment type, oversized body, or failed private storage
+- `support_upload_reject`: one event per rejected upload with a stable bounded reason; `store_failed` is reserved for non-HTTP storage/persistence failure
 - `support_attachment_denied`: private attachment access mismatch
 - `admin_access_denied`: non-admin account attempted admin access
 - `subscription_lookup_failed`: unknown subscription token lookup, usually token scanning when repeated
@@ -191,6 +191,18 @@ Operational rules:
 - repeated `subscription_lookup_failed` from one origin is an abuse signal even when delivery nodes are healthy
 - callback failure spikes should be checked against provider dashboard status before treating them as user payment failures
 - volumetric DDoS is still outside the guarantee of app-level counters; correlate with HAProxy, hoster, and firewall evidence
+
+Support attachment visibility for this candidate is metadata-only:
+
+- `ticket_attachment_uploaded` logs owner ID, canonical media type, stored private reference, and byte count, never file bytes or payload content;
+- `support_upload_reject` is emitted once for each HTTP format, body-size, attachment-size, or pending quota rejection, including oversized streaming reads; it includes only a stable reason and status. Non-HTTP storage/persistence failure uses `store_failed`. Filename, body, bytes, and private payload are excluded;
+- `store_failed` can include an ambiguous database commit acknowledgement after final rename. The upload path preserves that final file, so operators must correlate redacted row/file and cleanup counts instead of treating the event as proof that no row committed. A rowless final is expected to remain until the configured safety grace and reconciler pass;
+- `support_attachment_denied` covers bound-ticket or legacy-owner download mismatch;
+- supervised `support_attachment_cleanup` logs integer-only local counters for expired rows/files, missing or row-reappeared expired files, old temp files, rowless canonical files, selected file candidates (`file_candidates_selected`), total directory entries enumerated (`filesystem_entries_enumerated`), bounded DB rows scanned, DB rows whose canonical file is missing, malformed names skipped, file errors, and file/row cycle-wrap flags. The DB missing-file counter is non-destructive and includes bound, unexpired, and legacy rows within the deterministic query limit;
+- a worker-held process-local cursor freezes one filesystem mtime cutoff and one DB max-ID high-water per cycle, then advances by filename and row ID. Newer entries do not extend the active cycle; integer wrap flags expose exhaustion, while names, IDs, cutoffs, and cursor values are never logged. Worker restart discards active snapshots and begins new cycles;
+- file candidate processing and selection memory are bounded by `SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT`, but candidate selection enumerates the whole upload directory once per run and `filesystem_entries_enumerated` can therefore exceed that limit. Treat large-directory latency as a production manual gate rather than a locally proven bound;
+- operators should track redacted counts of pending unexpired, expired unbound, bound, and dangling ticket/message rows during migration rehearsal and backup/restore. No raw stored name, owner payload, or attachment body belongs in a shared metric label;
+- local SQLite counters, worker wiring tests, and E2E requests are not proof that the production worker schedule, PostgreSQL, reverse proxy, or filesystem behavior is live.
 
 ## Telemetry Retention
 
@@ -206,6 +218,27 @@ Default retention windows:
 - `TELEMETRY_RETENTION_INTERVAL_SECONDS=21600` for cleanup cadence
 
 Do not use this job to delete `external_orders`: those rows remain the payment ledger and are needed for reconciliation, refund/chargeback review, and launch evidence.
+
+The separate supervised `antiabuse_retention_job` owns sensitive IP/HMAC field
+deadlines. Defaults and hard bounds:
+
+- raw-IP code cap: 72 hours;
+- full-IP HMAC code cap: 7 days;
+- IPv4 `/24` or IPv6 `/64` prefix HMAC code cap: 90 days;
+- `ANTIABUSE_RETENTION_INTERVAL_SECONDS=300`, clamped to 60-900 seconds;
+- `ANTIABUSE_RETENTION_MAX_BATCHES_PER_RUN=20`, clamped to 1-100 batches per
+  thread chunk;
+- `ANTIABUSE_RETENTION_BATCH_LIMIT=1000`, capped at 10000 rows per field and
+  transaction.
+
+Each chunk fixes its observation time, commits bounded `SKIP LOCKED` batches
+outside the asyncio event loop and yields after its configured batch cap.
+Remaining backlog retries after one second. Alert on a stopped `portal-worker`,
+job exceptions, or persistent backlog. The windows are an operational SLO, not
+a PostgreSQL TTL. During an incident or guarded rollback, use
+`python scripts/cleanup_antiabuse_retention.py` for read-only counts and add
+`--apply` only for an explicit one-shot drain. The JSON contains counts, not
+database URLs or row contents.
 
 ## External RU Probe Policy
 
@@ -355,6 +388,8 @@ Operational rule:
 - disabled nodes and control-plane rows must stay visible in capacity payloads when useful, but must not create `node_capacity:*` active alerts merely because their disabled state is intentional
 - node metrics collection must parse both 3x-ui `settings` response shapes, JSON string and object/dict, before deriving `provisioned_clients_count`
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
+- `PORTAL_OBSERVER_SOURCE_TIMEZONE` is required on observer nodes whose Xray log timestamps are naive; use `UTC`, `Z`, or a strict fixed offset such as `+03:00` or `-04:00`. IANA names and missing, ambiguous, invalid, or out-of-bounds values are fail-closed: affected lines increment `parse_error_count` and create no connection evidence.
+- observer batches must carry only canonical UTC `Z` `occurred_at` values. After collector configuration or timezone changes, manually compare one retained source line with the resulting UTC evidence and exact `activated_at + 5 days` expiry on the same deployed candidate; timer health alone is not this proof.
 - hoster CPU warnings should trigger a review of per-node metrics plus control-plane load on the canonical host
 - code deploys for the metrics collector must ship both `collect_node_metrics.py` and `node_dataplane_probe.py`, otherwise the systemd job will fail with an import error on the control-plane host
 - newly enabled delivery nodes must be verified with subscription output plus provisioned-key evidence from panel/runtime; database `user_nodes` mappings alone do not prove the clients exist on the 3x-ui inbound, and panel `active_clients` must be labeled as configured/provisioned clients rather than online users
@@ -386,7 +421,10 @@ Admin ops app wave `2026-07-06`, redesigned `2026-07-08`:
 - `/api/admin/nodes/health`, `/api/admin/nodes/runtime`, `/api/admin/nodes/drift`, and `/api/admin/keys/pressure` power the health-first node, online, and key-risk screens
 - node lifecycle actions in `adminapp` require explicit typed confirmation; node resync supports dry-run before execution
 - `/api/admin/broadcast` supports `dry_run=true`; the UI must preview/dry-run before allowing a real broadcast send
-- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` expose the current free-tier truth: dedicated `NL-free`, `5 GB / 30 days`, `50 Mbps per IP`, and `1 device`
+- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` expose the logical `NL-free` free tier: one device, exact `5 * 1024^3` byte standard quota per 30 days, persisted provisioning state/job/error, and the confirmed soft-mode target of `2 Mbps` per observed public IP
+- operators must monitor queued/running/retry/manual-review node-provisioning jobs and must not infer `soft_active` from traffic bytes; the target role/inbound must be confirmed first
+- `free_standard` and `free_soft` must have distinct positive inbound bindings; missing roles, duplicate bindings, paid fallback, and `operator_lab` fallback are configuration failures
+- nftables shaper readiness requires Linux canary evidence for syntax, IPv4/IPv6 TCP/UDP throughput, NAT sharing, counters, premium isolation, idempotent setup, and rollback; local dry-run evidence is not production proof
 - `/api/admin/provider-quotas`, `/api/admin/provider-quotas/{node_code}`, and `/api/admin/provider-quotas/status` own manual provider/hoster traffic-cap configuration, reset windows, thresholds, status, and audit trail
 - `/api/admin/nodes/timeseries` exposes CPU, RAM, disk, network, traffic-counter, and capacity history from `node_health_samples` and `node_runtime_metrics`
 - `/api/admin/traffic/summary` groups `key_usage_rollups` by day, node, and pool for free/premium traffic review

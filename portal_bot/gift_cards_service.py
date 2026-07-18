@@ -7,7 +7,8 @@ from typing import Any
 
 import db
 from account_foundation_service import ensure_user_account_foundation
-from models import GiftCard, User
+from models import GiftCard, PaymentEntitlementClaim, User
+from payment_entitlement_service import redeem_payment_fallback
 from shared_surface_facts import get_tariff_catalog
 
 
@@ -135,14 +136,17 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
         card = s.query(GiftCard).filter(GiftCard.code == norm).first()
         if not card:
             return {"ok": False, "error": "not_found", "message": "Код не найден"}
-        if card.redeemed_by is not None:
+        payment_claim = (
+            s.query(PaymentEntitlementClaim)
+            .filter(PaymentEntitlementClaim.fallback_gift_card_id == int(card.id))
+            .one_or_none()
+        )
+        if card.redeemed_by is not None and (
+            payment_claim is None or int(card.redeemed_by) != int(recipient_tg_id)
+        ):
             return {"ok": False, "error": "already_redeemed", "message": "Код уже активирован"}
         if int(card.created_by or 0) == int(recipient_tg_id):
             return {"ok": False, "error": "self_redeem", "message": "Нельзя активировать собственный код"}
-
-        card_info = _card_type_info(str(card.card_type or ""))
-        if not card_info:
-            return {"ok": False, "error": "unknown_type", "message": "Тип кода не поддерживается"}
 
         now = _utcnow()
         user = s.query(User).filter(User.tg_id == int(recipient_tg_id)).first()
@@ -167,39 +171,60 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
         if require_tos and not bool(getattr(user, "tos_accepted", False)):
             return {"ok": False, "error": "tos_required", "message": "Сначала примите оферту"}
 
-        days = int(card_info.get("days") or 0)
-        if days <= 0:
-            return {"ok": False, "error": "invalid_days", "message": "Некорректный срок действия"}
-
-        current_expiry = user.expiry_at if (user.expiry_at and user.expiry_at > now) else now
-        # FREE -> PAID gift should start from now.
-        if (user.sub_type or "").upper().strip() == "FREE":
-            current_expiry = now
-
-        user.expiry_at = current_expiry + timedelta(days=days)
-        user.sub_type = "PAID"
-        user.is_active = True
-        if str(card_info.get("plan_code") or "").strip():
-            user.current_plan_code = str(card_info.get("plan_code") or "").strip().lower()
         if not user.sub_token:
             user.sub_token = _generate_sub_token()
         ensure_user_account_foundation(s, user, now=now)
+        s.flush()
 
-        updated = (
-            s.query(GiftCard)
-            .filter(GiftCard.id == card.id, GiftCard.redeemed_by.is_(None))
-            .update(
-                {
-                    GiftCard.redeemed_by: int(recipient_tg_id),
-                    GiftCard.redeemed_at: now,
-                },
-                synchronize_session=False,
+        if payment_claim is not None:
+            days = max(1, int(payment_claim.duration_days or 0))
+            redeemed_plan_code = str(payment_claim.plan_code or "").strip().lower()
+            payment_result = redeem_payment_fallback(
+                s,
+                gift_card_id=int(card.id),
+                account_id=str(user.account_id),
+                legacy_tg_id=int(recipient_tg_id),
+                now=now,
             )
-        )
-        if int(updated or 0) != 1:
-            s.rollback()
-            return {"ok": False, "error": "already_redeemed", "message": "Код уже активирован"}
-        redeemed_card_type = str(card.card_type or "")
+            if payment_result.code not in {"fulfilled", "already_fulfilled"}:
+                s.commit()
+                error_code = {
+                    "claim_reversed": "payment_reversed",
+                    "account_conflict": "payment_account_conflict",
+                    "manual_review": "payment_manual_review",
+                }.get(payment_result.code, "payment_not_redeemable")
+                return {"ok": False, "error": error_code, "message": "Код оплаты недоступен"}
+        else:
+            card_info = _card_type_info(str(card.card_type or ""))
+            if not card_info:
+                return {"ok": False, "error": "unknown_type", "message": "Тип кода не поддерживается"}
+            days = int(card_info.get("days") or 0)
+            redeemed_plan_code = str(card_info.get("plan_code") or "").strip().lower() or None
+            if days <= 0:
+                return {"ok": False, "error": "invalid_days", "message": "Некорректный срок действия"}
+            current_expiry = user.expiry_at if (user.expiry_at and user.expiry_at > now) else now
+            if (user.sub_type or "").upper().strip() == "FREE":
+                current_expiry = now
+            user.expiry_at = current_expiry + timedelta(days=days)
+            user.sub_type = "PAID"
+            user.is_active = True
+            if str(card_info.get("plan_code") or "").strip():
+                user.current_plan_code = str(card_info.get("plan_code") or "").strip().lower()
+            updated = (
+                s.query(GiftCard)
+                .filter(GiftCard.id == card.id, GiftCard.redeemed_by.is_(None))
+                .update(
+                    {
+                        GiftCard.redeemed_by: int(recipient_tg_id),
+                        GiftCard.redeemed_at: now,
+                    },
+                    synchronize_session=False,
+                )
+            )
+            if int(updated or 0) != 1:
+                s.rollback()
+                return {"ok": False, "error": "already_redeemed", "message": "Код уже активирован"}
+        redeemed_card_type = redeemed_plan_code or str(card.card_type or "")
         s.commit()
 
         user_uuid = str(user.uuid or "")
@@ -239,8 +264,9 @@ async def redeem_gift_card(*, code: str, recipient_tg_id: int, require_tos: bool
     return {
         "ok": True,
         "code": norm,
-        "days": int((_card_type_info(redeemed_card_type) or {}).get("days") or 0),
+        "days": int(days),
         "card_type": redeemed_card_type,
+        "plan_code": redeemed_plan_code,
         "expiry_at": expiry_at_iso,
         "sync_ok": bool(sync_ok),
     }

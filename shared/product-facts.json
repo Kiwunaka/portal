@@ -12,8 +12,17 @@
     "days": 5
   },
   "telegram_reward": {
-    "days": 10,
-    "claim_flow": "explicit"
+    "days": 5,
+    "grandfathered_days": 10,
+    "membership_grace_hours": 24,
+    "claim_flow": "explicit_account_owned"
+  },
+  "referral_reward": {
+    "friend_days": 5,
+    "friend_authority": "server_connection_evidence",
+    "referrer_days": 15,
+    "referrer_hold_hours": 72,
+    "pre_first_payment_premium_cap_days": 15
   },
   "engines": {
     "default": "sing-box",

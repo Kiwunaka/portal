@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import importlib
+import hashlib
+import hmac
+import json
 import sys
+import time
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -31,11 +36,17 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("PUBLIC_CHANNEL", "pokrov_vpn")
     monkeypatch.setenv("BOT_USERNAME", "pokrov_vpnbot")
     monkeypatch.setenv("SUPPORT_BOT_USERNAME", "pokrov_supportbot")
+    monkeypatch.setenv("ANTIABUSE_HMAC_SECRET", "antiabuse-api-test-secret")
+    monkeypatch.setenv("ANTIABUSE_HMAC_VERSION", "2")
 
     for name in [
         "api",
+        "account_foundation_service",
+        "antiabuse_privacy_service",
+        "auth_session_service",
         "config",
         "db",
+        "economy_service",
         "migrations",
         "models",
         "web_auth_service",
@@ -43,6 +54,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "nodes_repo",
         "tickets_repo",
         "events_service",
+        "channel_bonus_service",
         "offers_service",
         "pay_attempts_service",
         "points_service",
@@ -67,6 +79,7 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
 
     start_trial_response = client.post(
         "/api/client/session/start-trial",
+        headers={"X-Forwarded-For": "198.51.100.87"},
         json={
             "install_id": "install-123",
             "device_name": "Samsung S25",
@@ -83,6 +96,30 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
     payload = start_trial_response.json()
     assert payload["ok"] is True
     assert payload["session_token"]
+    assert payload["access_token"] == payload["session_token"]
+    assert payload["refresh_token"].startswith("pkr_rt_")
+    assert payload["session"]["session_id"]
+    assert payload["session"]["device_id"]
+    assert payload["session"]["canonical_account_id"]
+    assert payload["session"]["refresh_token"] == payload["refresh_token"]
+
+    db = api.SessionLocal()
+    try:
+        stored = db.query(api.AuthSession).filter_by(id=payload["session"]["session_id"]).one()
+        assert stored.device_id == payload["session"]["device_id"]
+        assert stored.refresh_token_hash != payload["refresh_token"]
+        assert payload["refresh_token"] not in stored.refresh_token_hash
+        antiabuse = db.query(api.AntiAbuseEvent).filter_by(event_kind="trial_reserved").one()
+        assert antiabuse.account_id == payload["session"]["canonical_account_id"]
+        assert antiabuse.device_id == payload["session"]["device_id"]
+        assert antiabuse.session_id == payload["session"]["session_id"]
+        assert antiabuse.raw_ip == "198.51.100.87"
+        assert antiabuse.install_hmac
+        assert antiabuse.ip_full_hmac
+        assert antiabuse.ip_prefix_hmac
+        assert antiabuse.hmac_version == 2
+    finally:
+        db.close()
 
     session_response = client.get(
         "/api/auth/session",
@@ -103,6 +140,62 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
     user_payload = user_response.json()
     assert user_payload["devices"][0]["name"] == "Samsung S25"
     assert user_payload["devices"][0]["platform"] == "android"
+
+
+def test_security_event_is_mirrored_to_privacy_ledger(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+
+    api._record_security_event(
+        "rate_limit_hit",
+        scope="email_otp",
+        client_ip="203.0.113.42",
+        reason="limit_exceeded",
+        meta={"refresh_token": "must-not-survive", "attempt": 6},
+    )
+
+    db = api.SessionLocal()
+    try:
+        security = db.query(api.SecurityEvent).filter_by(event_type="rate_limit_hit").one()
+        antiabuse = db.query(api.AntiAbuseEvent).filter_by(event_kind="rate_limit_hit").one()
+        assert security.client_ip == "203.0.113.42"
+        assert antiabuse.source == "api_security"
+        assert antiabuse.raw_ip == "203.0.113.42"
+        assert antiabuse.ip_full_hmac
+        assert antiabuse.ip_prefix_hmac
+        assert "must-not-survive" not in str(antiabuse.metadata_json)
+    finally:
+        db.close()
+
+
+def test_start_trial_rolls_back_account_when_ledger_insert_fails(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    def _fail_ledger(*_args, **_kwargs):
+        raise RuntimeError("ledger unavailable")
+
+    monkeypatch.setattr(api, "record_antiabuse_event", _fail_ledger)
+
+    with pytest.raises(RuntimeError, match="ledger unavailable"):
+        client.post(
+            "/api/client/session/start-trial",
+            json={
+                "install_id": "install-ledger-failure",
+                "device_name": "Test device",
+                "platform": "android",
+                "os_version": "15",
+                "app_version": "1.0.0",
+                "locale": "ru",
+                "time_zone": "Europe/Moscow",
+            },
+        )
+
+    db = api.SessionLocal()
+    try:
+        assert db.query(api.User).filter_by(app_install_id="install-ledger-failure").count() == 0
+        assert db.query(api.AntiAbuseEvent).count() == 0
+    finally:
+        db.close()
 
 
 def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monkeypatch, tmp_path):
@@ -129,6 +222,10 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
     assert payload["session"]["token"] == payload["session_token"]
     assert payload["session"]["account_id"] == payload["account_id"]
     assert payload["access"]["trial_days"] == 5
+    assert payload["access"]["trial_state"] == "reserved"
+    assert payload["access"]["reserved_at"]
+    assert payload["access"]["reservation_expires_at"]
+    assert payload["access"]["activated_at"] is None
     assert payload["access"]["subscription_url"] == payload["subscription_url"]
     assert payload["client_policy"]["routing_mode_default"] == "all_except_ru"
     assert payload["client_policy"]["transport_profile"] == "legacy_reality_fallback"
@@ -148,8 +245,126 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
         assert user is not None
         assert user.expiry_at is not None
         remaining = user.expiry_at - api._utcnow()
-        assert remaining >= timedelta(days=4)
-        assert remaining <= timedelta(days=6)
+        assert remaining >= timedelta(days=6)
+        assert remaining <= timedelta(days=8)
+    finally:
+        db.close()
+
+
+def test_start_trial_ignores_environment_trial_day_override(monkeypatch, tmp_path):
+    monkeypatch.setenv("APP_TRIAL_DEFAULT_DAYS", "19")
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    response = client.post(
+        "/api/client/session/start-trial",
+        json={"install_id": "install-fixed-five-days", "device_name": "Pixel", "platform": "android"},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert api.APP_TRIAL_DEFAULT_DAYS == 5
+    assert api.APP_TRIAL_MAX_DAYS == 5
+    assert body["access"]["trial_days"] == 5
+    db = api.SessionLocal()
+    try:
+        grant = db.query(api.EntitlementGrant).filter_by(
+            account_id=body["canonical_account_id"],
+            source="premium_trial",
+        ).one()
+        assert grant.duration_days == 5
+    finally:
+        db.close()
+
+
+def test_signed_observer_evidence_activates_once_while_client_telemetry_cannot(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    start = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-observer-activation",
+            "device_name": "Pixel",
+            "platform": "android",
+        },
+    )
+    assert start.status_code == 200, start.text
+    body = start.json()
+    token_headers = {"Authorization": f"Bearer {body['access_token']}"}
+
+    confirm = client.post("/api/connect/confirm", headers=token_headers)
+    telemetry = client.post(
+        "/api/events",
+        headers=token_headers,
+        json={"event_name": "clicked_connect", "source": "client"},
+    )
+    assert confirm.status_code == 200
+    assert telemetry.status_code == 200
+
+    db = api.SessionLocal()
+    try:
+        grant = db.query(api.EntitlementGrant).filter_by(account_id=body["canonical_account_id"], source="premium_trial").one()
+        assert grant.status == "reserved"
+        assert grant.activated_at is None
+        observed_at = grant.reserved_at + timedelta(hours=2)
+        assert db.query(api.ConnectionEvidence).count() == 0
+        node = api.Node(
+            code="trial-node",
+            name="Trial node",
+            host="trial-node.pokrov.test",
+            vless_port=443,
+            panel_base_url="https://trial-node.pokrov.test:8444",
+            panel_path="/panel/",
+            panel_user="observer",
+            panel_pass="not-returned",
+            inbound_id=31,
+            enabled=True,
+            observer_push_secret="observer-signing-secret",
+        )
+        db.add(node)
+        db.commit()
+    finally:
+        db.close()
+
+    observer_body = json.dumps(
+        {
+            "batch_id": "trial-batch-001",
+            "observations": [
+                {
+                    "occurred_at": observed_at.isoformat(),
+                    "client_tg_id": int(body["account_id"]),
+                    "source_ip": "198.51.100.10",
+                }
+            ],
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+    timestamp = int(time.time())
+    canonical = f"trial-node\n{timestamp}\n{observer_body.decode('utf-8')}".encode("utf-8")
+    signature = hmac.new(b"observer-signing-secret", canonical, hashlib.sha256).hexdigest()
+    observer_headers = {
+        "Content-Type": "application/json",
+        "X-Portal-Node": "trial-node",
+        "X-Portal-Timestamp": str(timestamp),
+        "X-Portal-Signature": signature,
+    }
+    first = client.post("/api/internal/observer/batches", content=observer_body, headers=observer_headers)
+    replay = client.post("/api/internal/observer/batches", content=observer_body, headers=observer_headers)
+
+    assert first.status_code == 200, first.text
+    assert replay.status_code == 200, replay.text
+    assert first.json()["activated_trial_count"] == 1
+    assert replay.json()["activated_trial_count"] == 0
+    assert "subscription_url" not in json.dumps(first.json())
+    assert "observer-signing-secret" not in json.dumps(first.json())
+
+    db = api.SessionLocal()
+    try:
+        grant = db.query(api.EntitlementGrant).filter_by(account_id=body["canonical_account_id"], source="premium_trial").one()
+        assert grant.status == "active"
+        assert grant.activated_at == observed_at
+        assert grant.expires_at == observed_at + timedelta(days=5)
+        assert db.query(api.ConnectionEvidence).count() == 1
     finally:
         db.close()
 
@@ -212,9 +427,21 @@ def test_app_route_policy_can_be_updated_and_reloaded(monkeypatch, tmp_path):
     assert dashboard_payload["client_policy"]["selected_apps"] == ["chrome.exe", "telegram.exe"]
 
 
-def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):
+def test_start_trial_requires_recovery_for_existing_device_session(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
+
+    class CountingPanel:
+        calls = 0
+
+        async def add_client(self, **_kwargs):
+            type(self).calls += 1
+            return True
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(api, "ControlPanel", CountingPanel)
 
     request_payload = {
         "install_id": "install-repeat",
@@ -228,21 +455,240 @@ def test_start_trial_reuses_existing_install_id(monkeypatch, tmp_path):
     }
 
     first = client.post("/api/client/session/start-trial", json=request_payload)
-    second = client.post("/api/client/session/start-trial", json=request_payload)
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter_by(tg_id=int(first.json()["account_id"])).one()
+        before = (user.app_device_name, user.app_platform, user.app_last_seen_at, user.app_last_ip)
+    finally:
+        db.close()
+    second = client.post(
+        "/api/client/session/start-trial",
+        headers={"X-Real-IP": "203.0.113.77"},
+        json={**request_payload, "device_name": "Injected name", "platform": "android"},
+    )
 
     assert first.status_code == 200
-    assert second.status_code == 200
+    assert second.status_code == 409
+    assert second.headers["X-POKROV-Auth-Error"] == "device_recovery_required"
+    assert CountingPanel.calls == 1
 
     first_session = client.get(
         "/api/auth/session",
         headers={"Authorization": f"Bearer {first.json()['session_token']}"},
     )
-    second_session = client.get(
+
+    assert first_session.status_code == 200
+    db = api.SessionLocal()
+    try:
+        assert db.query(api.AuthSession).count() == 1
+        user = db.query(api.User).filter_by(tg_id=int(first.json()["account_id"])).one()
+        after = (user.app_device_name, user.app_platform, user.app_last_seen_at, user.app_last_ip)
+        assert after == before
+    finally:
+        db.close()
+
+
+def test_failed_bootstrap_does_not_consume_unreturned_refresh_credential(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app, raise_server_exceptions=False)
+    original_build_client_policy = api.app_first_service.build_client_policy
+
+    def _fail_client_policy(**_kwargs):
+        raise RuntimeError("synthetic payload failure")
+
+    api.app_first_service.build_client_policy = _fail_client_policy
+    request_payload = {
+        "install_id": "install-bootstrap-rollback",
+        "device_name": "Windows PC",
+        "platform": "windows",
+    }
+    failed = client.post("/api/client/session/start-trial", json=request_payload)
+    assert failed.status_code == 500
+
+    db = api.SessionLocal()
+    try:
+        assert db.query(api.AuthSession).count() == 0
+    finally:
+        db.close()
+
+    api.app_first_service.build_client_policy = original_build_client_policy
+    retried = client.post("/api/client/session/start-trial", json=request_payload)
+    assert retried.status_code == 200
+    assert retried.json()["refresh_token"].startswith("pkr_rt_")
+
+
+def test_refresh_rotates_once_and_replay_revokes_family(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    started = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-refresh-api",
+            "device_name": "Pixel 10",
+            "platform": "android",
+            "os_version": "16",
+            "app_version": "1.0.0",
+            "locale": "ru",
+            "time_zone": "Europe/Moscow",
+        },
+    )
+    assert started.status_code == 200
+    first = started.json()
+
+    rotated = client.post(
+        "/api/client/session/refresh",
+        json={"refresh_token": first["refresh_token"]},
+    )
+    assert rotated.status_code == 200
+    second = rotated.json()
+    assert second["access_token"] == second["session_token"]
+    assert second["refresh_token"] != first["refresh_token"]
+    assert second["session_id"] != first["session"]["session_id"]
+    assert second["refresh_family_id"] == first["session"]["refresh_family_id"]
+    assert second["account_id"] == first["account_id"]
+    assert second["canonical_account_id"] == first["canonical_account_id"]
+    assert second["session"]["account_id"] == first["account_id"]
+
+    old_access_during_overlap = client.get(
         "/api/auth/session",
-        headers={"Authorization": f"Bearer {second.json()['session_token']}"},
+        headers={"Authorization": f"Bearer {first['access_token']}"},
+    )
+    assert old_access_during_overlap.status_code == 200
+
+    replay = client.post(
+        "/api/client/session/refresh",
+        json={"refresh_token": first["refresh_token"]},
+    )
+    assert replay.status_code == 401
+    assert replay.headers["X-POKROV-Auth-Error"] == "refresh_reuse_detected"
+
+    revoked_access = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {second['access_token']}"},
+    )
+    assert revoked_access.status_code == 401
+    assert revoked_access.headers["X-POKROV-Auth-Error"] == "session_revoked"
+
+    db = api.SessionLocal()
+    try:
+        family = db.query(api.AuthSession).filter_by(refresh_family_id=second["refresh_family_id"]).all()
+        assert len(family) == 2
+        assert all(row.revoked_at is not None for row in family)
+    finally:
+        db.close()
+
+
+def test_real_device_registry_revoke_requires_fresh_auth(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    started = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-device-revoke",
+            "device_name": "Surface Laptop",
+            "platform": "windows",
+            "os_version": "11",
+            "app_version": "1.0.0",
+            "locale": "ru",
+            "time_zone": "Europe/Moscow",
+        },
+    )
+    assert started.status_code == 200
+    body = started.json()
+    headers = {"Authorization": f"Bearer {body['access_token']}"}
+
+    devices = client.get("/api/client/devices", headers=headers)
+    assert devices.status_code == 200
+    item = devices.json()["items"][0]
+    assert item["id"] == "install-device-revoke"
+    assert item["registryId"] == body["session"]["device_id"]
+    assert item["current"] is True
+
+    stale = client.delete(f"/api/client/devices/{item['registryId']}", headers=headers)
+    assert stale.status_code == 409
+    assert stale.headers["X-POKROV-Auth-Error"] == "fresh_auth_required"
+
+    db = api.SessionLocal()
+    try:
+        actor = db.query(api.AuthSession).filter_by(id=body["session"]["session_id"]).one()
+        actor.fresh_auth_at = api._utcnow()
+        db.commit()
+    finally:
+        db.close()
+
+    revoked = client.delete(f"/api/client/devices/{item['registryId']}", headers=headers)
+    assert revoked.status_code == 200
+    assert revoked.json()["ok"] is True
+    assert revoked.json()["device"]["active"] is False
+
+    rejected = client.get("/api/auth/session", headers=headers)
+    assert rejected.status_code == 401
+    assert rejected.headers["X-POKROV-Auth-Error"] == "session_revoked"
+
+
+def test_refresh_rate_limits_by_hashed_credential_before_cgnat_ceiling(monkeypatch, tmp_path):
+    monkeypatch.setenv("API_RATE_LIMIT_SESSION_REFRESH_PER_MINUTE", "1")
+    monkeypatch.setenv("API_RATE_LIMIT_SESSION_REFRESH_IP_PER_MINUTE", "10")
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    headers = {"X-Real-IP": "198.51.100.200"}
+
+    first = client.post(
+        "/api/client/session/start-trial",
+        headers=headers,
+        json={"install_id": "install-cgnat-one", "device_name": "Phone one", "platform": "android"},
+    ).json()
+    second = client.post(
+        "/api/client/session/start-trial",
+        headers=headers,
+        json={"install_id": "install-cgnat-two", "device_name": "Phone two", "platform": "android"},
+    ).json()
+
+    first_refresh = client.post(
+        "/api/client/session/refresh",
+        headers=headers,
+        json={"refresh_token": first["refresh_token"]},
+    )
+    second_refresh = client.post(
+        "/api/client/session/refresh",
+        headers=headers,
+        json={"refresh_token": second["refresh_token"]},
     )
 
-    assert first_session.json()["user"]["account_id"] == second_session.json()["user"]["account_id"]
+    assert first_refresh.status_code == 200, first_refresh.text
+    assert second_refresh.status_code == 200, second_refresh.text
+
+
+def test_client_can_revoke_current_session_without_revoking_device(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    started = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-session-logout",
+            "device_name": "Pixel 10",
+            "platform": "android",
+        },
+    )
+    assert started.status_code == 200
+    body = started.json()
+    headers = {"Authorization": f"Bearer {body['access_token']}"}
+
+    revoked = client.post("/api/client/session/revoke", headers=headers)
+    assert revoked.status_code == 200
+    assert revoked.json() == {"ok": True, "session_id": body["session"]["session_id"], "revoked": True}
+
+    rejected = client.get("/api/auth/session", headers=headers)
+    assert rejected.status_code == 401
+    assert rejected.headers["X-POKROV-Auth-Error"] == "session_revoked"
+
+    db = api.SessionLocal()
+    try:
+        device = db.query(api.AccountDevice).filter_by(id=body["session"]["device_id"]).one()
+        assert device.state == "active"
+        assert device.revoked_at is None
+    finally:
+        db.close()
 
 
 def test_start_trial_rate_limits_fresh_installs_by_origin(monkeypatch, tmp_path):
@@ -292,8 +738,8 @@ def test_start_trial_rate_limits_fresh_installs_by_origin(monkeypatch, tmp_path)
         api.ControlPanel = old_panel
 
     assert first.status_code == 200, first.text
-    assert repeated_same_install.status_code == 200, repeated_same_install.text
-    assert repeated_same_install.json()["account_id"] == first.json()["account_id"]
+    assert repeated_same_install.status_code == 409, repeated_same_install.text
+    assert repeated_same_install.headers["X-POKROV-Auth-Error"] == "device_recovery_required"
     assert blocked_new_install.status_code == 429
     assert blocked_new_install.headers["retry-after"]
     assert blocked_new_install.json()["detail"]["code"] == "rate_limited"
@@ -561,6 +1007,31 @@ def test_app_session_can_request_short_lived_cabinet_token(monkeypatch, tmp_path
     assert session_response.status_code == 200, session_response.text
     session_payload = session_response.json()
     assert session_payload["user"]["auth_origin"] == "app_cabinet_handoff"
+
+    pending_handoff = client.post(
+        "/api/client/cabinet-token",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"target_path": "/support"},
+    )
+    assert pending_handoff.status_code == 200
+
+    logout_response = client.post(
+        "/api/client/session/revoke",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert logout_response.status_code == 200
+    revoked_cabinet = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {exchanged['token']}"},
+    )
+    assert revoked_cabinet.status_code == 401
+    assert revoked_cabinet.headers["X-POKROV-Auth-Error"] == "session_revoked"
+    rejected_exchange = client.post(
+        "/api/auth/cabinet-handoff/exchange",
+        json={"handoff_token": pending_handoff.json()["handoff_token"]},
+    )
+    assert rejected_exchange.status_code == 401
+    assert rejected_exchange.headers["X-POKROV-Auth-Error"] == "session_revoked"
 
     replay_response = client.post(
         "/api/auth/cabinet-handoff/exchange",
@@ -833,7 +1304,7 @@ def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monke
     payload = claim_response.json()
     assert payload["ok"] is True
     assert payload["already_claimed"] is False
-    assert payload["premium_days"] == 10
+    assert payload["premium_days"] == 5
 
     user_response = client.get(
         f"/api/user/{account_id}",
@@ -892,7 +1363,7 @@ def test_channel_subscriber_check_is_read_only_for_linked_app_account(monkeypatc
     assert payload["subscriber"] is True
     assert payload["reason"] == "member"
     assert payload["claim_required"] is True
-    assert payload["bonus_days"] == 10
+    assert payload["bonus_days"] == 5
     assert payload["points_granted"] == 0
     assert payload["campaign_marked"] is False
 

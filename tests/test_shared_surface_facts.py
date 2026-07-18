@@ -23,7 +23,8 @@ def test_shared_surface_fact_loaders_expose_canonical_product_and_url_truth():
     assert product["brands"]["platform"] == "POKROV"
     assert product["brands"]["client"] == "POKROV"
     assert product["trial"]["days"] == 5
-    assert product["telegram_reward"]["days"] == 10
+    assert product["telegram_reward"]["days"] == 5
+    assert product["telegram_reward"]["grandfathered_days"] == 10
     assert product["platform_scope"]["public"] == ["android", "windows"]
     assert product["network_defaults"]["routing_mode_default"] == "all_except_ru"
     assert product["network_defaults"]["transport_profile_default"] == "legacy_reality_fallback"
@@ -77,7 +78,7 @@ def test_sync_shared_surface_facts_builds_pokrov_app_seed_updates_from_shared_tr
     assert updates["product_contract"]["default_runtime_core"] == "sing-box"
     assert updates["product_contract"]["advanced_fallback_core"] == "xray"
     assert updates["product_contract"]["trial_days"] == 5
-    assert updates["product_contract"]["telegram_bonus_days"] == 10
+    assert updates["product_contract"]["telegram_bonus_days"] == 5
     assert updates["product_contract"]["public_scope"] == ["android", "windows"]
     assert updates["product_contract"]["readiness_only_scope"] == ["ios", "macos"]
     assert updates["runtime_profile"]["official_surfaces"]["api"] == "https://api.pokrov.space/"

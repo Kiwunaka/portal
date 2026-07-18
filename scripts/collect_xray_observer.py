@@ -8,19 +8,20 @@ import os
 import re
 import time
 from collections import OrderedDict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
 from typing import Any
 from urllib import error, request
 
 
 ACCESS_LINE_RE = re.compile(
-    r"^(?P<date>\d{4}/\d{2}/\d{2})\s+"
-    r"(?P<time>\d{2}:\d{2}:\d{2})\s+"
+    r"^(?P<timestamp>(?:\d{4}/\d{2}/\d{2}\s+|\d{4}-\d{2}-\d{2}T)"
+    r"\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})?)\s+"
     r"(?P<source_ip>[0-9A-Fa-f:.]+):\d+\s+"
     r"accepted\s+\S+\s+\[(?P<inbound>[^\]]+?)\s*->\s*[^\]]+\]\s+"
     r"email:\s*(?P<client_email>\S+)\s*$"
 )
+FIXED_OFFSET_RE = re.compile(r"^(?P<sign>[+-])(?P<hours>\d{2}):(?P<minutes>\d{2})$")
 
 
 def _utcnow() -> datetime:
@@ -42,25 +43,52 @@ def _save_cursor(cursor_path: Path, payload: dict[str, Any]) -> None:
     cursor_path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
-def parse_xray_access_log_line(line: str) -> dict[str, Any] | None:
+def _source_timezone(value: str) -> tzinfo:
+    name = str(value or "").strip()
+    if not name:
+        raise ValueError("source timezone is required for a naive xray timestamp")
+    if name in {"UTC", "Z"}:
+        return timezone.utc
+    fixed_offset = FIXED_OFFSET_RE.fullmatch(name)
+    if fixed_offset:
+        hours = int(fixed_offset.group("hours"))
+        minutes = int(fixed_offset.group("minutes"))
+        if hours > 23 or minutes > 59:
+            raise ValueError(f"invalid source timezone: {name}")
+        delta = timedelta(hours=hours, minutes=minutes)
+        if fixed_offset.group("sign") == "-":
+            delta = -delta
+        return timezone(delta)
+    raise ValueError(f"invalid source timezone: {name}")
+
+
+def _canonical_utc(value: datetime) -> str:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("observer timestamp must be timezone-aware")
+    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def parse_xray_access_log_line(line: str, *, source_timezone: str = "") -> dict[str, Any] | None:
     match = ACCESS_LINE_RE.match(str(line or "").strip())
     if not match:
         return None
-    occurred_at = datetime.strptime(
-        f"{match.group('date')} {match.group('time')}",
-        "%Y/%m/%d %H:%M:%S",
-    ).replace(microsecond=0)
+    timestamp_text = str(match.group("timestamp") or "").replace("/", "-").replace(" ", "T", 1)
+    if timestamp_text.endswith("Z"):
+        timestamp_text = f"{timestamp_text[:-1]}+00:00"
+    occurred_at = datetime.fromisoformat(timestamp_text).replace(microsecond=0)
+    if occurred_at.tzinfo is None or occurred_at.utcoffset() is None:
+        occurred_at = occurred_at.replace(tzinfo=_source_timezone(source_timezone))
     inbound_full = str(match.group("inbound") or "").strip()
     inbound_tag = inbound_full.split(" ", 1)[0].strip()
     return {
-        "occurred_at": occurred_at.isoformat(),
+        "occurred_at": _canonical_utc(occurred_at),
         "source_ip": str(match.group("source_ip") or "").strip(),
         "client_email": str(match.group("client_email") or "").strip(),
         "inbound_tag": inbound_tag or None,
     }
 
 
-def collect_observations(*, log_path: Path, cursor_path: Path) -> dict[str, Any]:
+def collect_observations(*, log_path: Path, cursor_path: Path, source_timezone: str = "") -> dict[str, Any]:
     if not log_path.exists():
         raise FileNotFoundError(f"xray access log is missing: {log_path}")
 
@@ -76,21 +104,28 @@ def collect_observations(*, log_path: Path, cursor_path: Path) -> dict[str, Any]
     with log_path.open("r", encoding="utf-8", errors="replace") as handle:
         handle.seek(offset)
         for raw_line in handle:
-            parsed = parse_xray_access_log_line(raw_line)
+            try:
+                parsed = parse_xray_access_log_line(raw_line, source_timezone=source_timezone)
+            except (ValueError, OverflowError):
+                parsed = None
             if not parsed:
                 if str(raw_line or "").strip():
                     parse_error_count += 1
                 continue
-            occurred_at = datetime.fromisoformat(parsed["occurred_at"]).replace(second=0, microsecond=0)
+            occurred_at = datetime.fromisoformat(parsed["occurred_at"].replace("Z", "+00:00")).replace(
+                second=0,
+                microsecond=0,
+            )
+            occurred_at_utc = _canonical_utc(occurred_at)
             key = (
-                occurred_at.isoformat(),
+                occurred_at_utc,
                 str(parsed.get("client_email") or ""),
                 str(parsed.get("source_ip") or ""),
                 str(parsed.get("inbound_tag") or ""),
             )
             if key not in aggregate:
                 aggregate[key] = {
-                    "occurred_at": occurred_at.isoformat(),
+                    "occurred_at": occurred_at_utc,
                     "client_email": str(parsed.get("client_email") or ""),
                     "source_ip": str(parsed.get("source_ip") or ""),
                     "inbound_tag": parsed.get("inbound_tag"),
@@ -140,8 +175,13 @@ def run(
     api_url: str,
     node_code: str,
     secret: str,
+    source_timezone: str = "",
 ) -> dict[str, Any]:
-    collected = collect_observations(log_path=log_path, cursor_path=cursor_path)
+    collected = collect_observations(
+        log_path=log_path,
+        cursor_path=cursor_path,
+        source_timezone=source_timezone,
+    )
     observations = list(collected.get("observations") or [])
     cursor = dict(collected.get("cursor") or {})
     parse_error_count = int(collected.get("parse_error_count") or 0)
@@ -177,6 +217,11 @@ def main() -> int:
     )
     parser.add_argument("--node-code", default=os.getenv("PORTAL_OBSERVER_NODE_CODE", ""))
     parser.add_argument("--secret", default=os.getenv("PORTAL_OBSERVER_SECRET", ""))
+    parser.add_argument(
+        "--source-timezone",
+        default=os.getenv("PORTAL_OBSERVER_SOURCE_TIMEZONE", ""),
+        help="UTC, Z, or a signed fixed offset used only for naive xray log timestamps",
+    )
     args = parser.parse_args()
 
     node_code = str(args.node_code or "").strip().lower()
@@ -190,6 +235,7 @@ def main() -> int:
         api_url=str(args.api_url or "").strip(),
         node_code=node_code,
         secret=secret,
+        source_timezone=str(args.source_timezone or "").strip(),
     )
     sent = bool(result.get("sent"))
     payload = result.get("payload") or {}

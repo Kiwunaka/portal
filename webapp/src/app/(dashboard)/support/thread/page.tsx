@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Hourglass, LifeBuoy, Lock, MessageCircle, MessagesSquare, Tag, Timer } from "lucide-react";
+import { CalendarClock, Download, Hourglass, LifeBuoy, Lock, MessageCircle, MessagesSquare, Tag, Timer } from "lucide-react";
 
 import { StatusHero } from "@/components/cabinet/status-hero";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { GroupedSection, Row } from "@/components/ui/grouped";
 import { Note } from "@/components/ui/note";
 import { Textarea } from "@/components/ui/input";
 import { SupportMessageBody } from "@/components/support-message-body";
-import { addTicketMessage, getTicket, resolveApiUrl, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
+import { addTicketMessage, fetchAuthenticatedBlob, getTicket, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
+import { normalizePrivateSupportAttachmentPath, SUPPORT_ATTACHMENT_ACCEPT, validateSupportAttachment } from "@/lib/support-attachments";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -27,8 +28,8 @@ function fmtDate(value?: string | null): string {
 }
 
 type ParsedAttachment = {
-  kind: "image" | "video" | "file" | "link";
-  url: string;
+  kind: "image" | "file";
+  path: string;
   name: string;
   contentType: string;
   size: number;
@@ -69,24 +70,13 @@ function ticketAttachment(message: TicketMessage): ParsedAttachment | null {
   try {
     const payload = JSON.parse(String(message.media_payload || "{}"));
     const rawUrl = String(payload?.url || "").trim();
-    if (!rawUrl) return null;
-    if (rawUrl.startsWith("/uploads/support/")) {
-      const kind = String(message.media_type || "").toLowerCase();
-      return {
-        kind: kind === "video" ? "video" : kind === "image" ? "image" : "file",
-        url: resolveApiUrl(rawUrl),
-        name: String(payload?.name || "Вложение"),
-        contentType: String(payload?.content_type || ""),
-        size: Number(payload?.size || 0),
-      };
-    }
-    const parsed = new URL(rawUrl);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
+    const privatePath = normalizePrivateSupportAttachmentPath(rawUrl);
+    if (!privatePath) {
       return null;
     }
     return {
-      kind: String(message.media_type || "").toLowerCase() === "link" ? "link" : "file",
-      url: parsed.toString(),
+      kind: String(message.media_type || "").toLowerCase() === "image" ? "image" : "file",
+      path: privatePath,
       name: String(payload?.name || "Вложение"),
       contentType: String(payload?.content_type || ""),
       size: Number(payload?.size || 0),
@@ -94,6 +84,86 @@ function ticketAttachment(message: TicketMessage): ParsedAttachment | null {
   } catch {
     return null;
   }
+}
+
+function PrivateAttachment({ attachment }: { attachment: ParsedAttachment }) {
+  const [objectUrl, setObjectUrl] = useState("");
+  const [loadState, setLoadState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const controllerRef = useRef<AbortController | null>(null);
+  const objectUrlRef = useRef("");
+
+  useEffect(() => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = "";
+    setObjectUrl("");
+    setLoadState("idle");
+    return () => {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = "";
+    };
+  }, [attachment.path]);
+
+  const loadAttachment = useCallback(async () => {
+    controllerRef.current?.abort();
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = "";
+    setObjectUrl("");
+    setLoadState("loading");
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    try {
+      const blob = await fetchAuthenticatedBlob(attachment.path, controller.signal);
+      if (controller.signal.aborted) return;
+      const createdUrl = URL.createObjectURL(blob);
+      objectUrlRef.current = createdUrl;
+      setObjectUrl(createdUrl);
+      setLoadState("ready");
+    } catch {
+      if (!controller.signal.aborted) setLoadState("error");
+    } finally {
+      if (controllerRef.current === controller) controllerRef.current = null;
+    }
+  }, [attachment.path]);
+
+  if (!objectUrl) {
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={loadState === "loading"}
+          onClick={() => void loadAttachment()}
+          aria-label={`Загрузить ${attachment.name || "вложение"}`}
+        >
+          <Download size={15} aria-hidden="true" />
+          Загрузить {attachment.name || "вложение"}
+        </Button>
+        {loadState === "error" ? <span className="text-danger-text">Не удалось загрузить</span> : null}
+      </div>
+    );
+  }
+  if (attachment.kind === "image") {
+    return (
+      <a href={objectUrl} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-tile border border-line">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={objectUrl} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
+      </a>
+    );
+  }
+  return (
+    <a
+      href={objectUrl}
+      download={attachment.name || "attachment"}
+      className="mt-3 flex items-center justify-between gap-3 rounded-tile border border-line bg-surface px-3 py-2 text-xs"
+    >
+      <span className="truncate">{attachment.name || "Вложение"}</span>
+      <span className="shrink-0 opacity-70">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
+    </a>
+  );
 }
 
 export default function SupportTicketThreadPage() {
@@ -144,8 +214,9 @@ export default function SupportTicketThreadPage() {
     try {
       let attachment: TicketAttachmentInput | undefined;
       if (attachmentFile) {
+        await validateSupportAttachment(attachmentFile);
         const uploaded = await uploadTicketAttachment(attachmentFile);
-        attachment = uploaded.attachment;
+        attachment = { attachment_id: uploaded.attachment_id };
       }
       const updated = await addTicketMessage(ticket.id, message.trim(), attachment || undefined);
       setTicket(updated);
@@ -245,26 +316,7 @@ export default function SupportTicketThreadPage() {
                   >
                     <p className="text-xs font-semibold opacity-70">{senderLabel}</p>
                     <SupportMessageBody body={msg.body} className="mt-1" />
-                    {attachment?.kind === "image" ? (
-                      <a href={attachment.url} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-tile border border-line">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={attachment.url} alt={attachment.name || "Вложение"} className="max-h-72 w-full object-cover" />
-                      </a>
-                    ) : null}
-                    {attachment?.kind === "video" ? (
-                      <video src={attachment.url} controls className="mt-3 max-h-72 w-full rounded-tile border border-line bg-black/60" />
-                    ) : null}
-                    {attachment && attachment.kind !== "image" && attachment.kind !== "video" ? (
-                      <a
-                        href={attachment.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 flex items-center justify-between gap-3 rounded-tile border border-line bg-surface px-3 py-2 text-xs"
-                      >
-                        <span className="truncate">{attachment.name || "Вложение"}</span>
-                        <span className="shrink-0 opacity-70">{attachment.size ? formatFileSize(attachment.size) : "Открыть"}</span>
-                      </a>
-                    ) : null}
+                    {attachment ? <PrivateAttachment attachment={attachment} /> : null}
                     <p className="mt-2 text-xs opacity-60">{fmtDate(msg.created_at)}</p>
                   </div>
                 </div>
@@ -295,12 +347,15 @@ export default function SupportTicketThreadPage() {
             </div>
             <label className="block rounded-control border border-dashed border-line bg-canvas-alt px-4 py-4 text-sm">
               <span className="block font-medium text-ink">Добавить вложение</span>
-              <span className="mt-1 block text-xs text-ink-muted">Скриншот, видео, PDF или текстовый файл до 20 МБ.</span>
+              <span className="mt-1 block text-xs text-ink-muted">PNG, JPEG, WebP, PDF или TXT до 20 МБ.</span>
               <input
                 type="file"
-                accept="image/*,video/*,.pdf,.txt,.log,application/pdf,text/plain"
+                accept={SUPPORT_ATTACHMENT_ACCEPT}
                 className="mt-3 block w-full cursor-pointer text-sm text-ink-soft file:mr-3 file:rounded-control file:border-0 file:bg-brand-soft file:px-4 file:py-2 file:font-medium file:text-brand"
-                onChange={(event) => setAttachmentFile(event.target.files?.[0] ?? null)}
+                onChange={(event) => {
+                  setReplyError("");
+                  setAttachmentFile(event.target.files?.[0] ?? null);
+                }}
               />
               {attachmentFile ? (
                 <div className="mt-3 flex items-center justify-between gap-3 rounded-tile bg-surface px-3 py-2 text-xs">

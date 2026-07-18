@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-10
+Last updated: 2026-07-12
 
 ## Document Status
 
@@ -51,6 +51,15 @@ Reference-lane note:
 - `portal_bot/account_foundation_service.py`
   Additive canonical-account projection and idempotent legacy backfill for
   accounts, typed identities, devices and legacy entitlement snapshots.
+- `portal_bot/auth_session_service.py`
+  Device-bound access/refresh issuance, one-time rotation, refresh-family reuse
+  detection, persisted logout, fresh-auth device revoke and access validation.
+- `portal_bot/account_recovery_service.py`
+  HMAC-only one-time recovery codes, limited recovery sessions, controlled
+  access reissue and account lockdown orchestration.
+- `portal_bot/email_auth_service.py`
+  Verified email identity, five-minute six-digit OTP and retained password
+  compatibility during the migration window.
 - `portal_bot/web_auth_service.py`
   Bounded browser-auth helper used for Telegram web login, additive email verification/recovery, session issuance, and checkout handoff tokens.
 - `portal_bot/channel_bonus_service.py`
@@ -207,10 +216,11 @@ Production source of truth:
 
 Account ownership transition:
 
-- deployment status: the additive account foundation is repo-implemented on
-  `codex/market-ready-cis-integration` but is not deployed. Production remains
-  on the legacy auth, entitlement, payment, support, bonus, `users.tg_id` and
-  stateless-bearer paths until the predeploy gates below are approved.
+- deployment status: the additive account foundation, rotating app-session,
+  and canonical support-ownership slices are repo-implemented candidates but
+  are not deployed. Production remains on the legacy auth, entitlement,
+  payment, support, bonus, `users.tg_id` and stateless app-bearer paths until
+  the predeploy gates below are approved.
 
 - `accounts.id` is the new immutable UUID ownership root; `users.account_id`
   is an additive legacy projection and may point multiple legacy user rows at
@@ -218,6 +228,22 @@ Account ownership transition:
 - `users.tg_id` remains the compatibility adapter for current bot, panel,
   payment and public API behavior. Existing response fields that call the
   numeric value `account_id` have not switched to the UUID yet.
+- `support_tickets.account_id` and `support_attachments.owner_account_id` are
+  nullable canonical ownership projections. Exact account ownership controls
+  non-admin access when present; exact legacy Telegram fallback is valid only
+  while the relevant field is `NULL`. Public support responses retain their
+  existing shape and do not expose canonical UUIDs.
+- the distinct `migration.support_account_ownership.v1` startup backfill runs
+  after account-foundation in one commit scope. It resolves only exact direct,
+  explicit linked-Telegram, and enabled Telegram-identity evidence through
+  bounded merge chains. Zero or multiple canonical candidates remain `NULL`
+  and create idempotent metadata-only merge reviews. A direct repair entrypoint
+  is retained after the startup marker is complete.
+- account merge retargets canonical ticket and upload ownership without
+  deleting support rows or changing messages, files, or legacy attribution.
+  Notification delivery separately uses bounded deterministic linked-Telegram,
+  enabled Telegram-identity, then real historical-ticket evidence. It skips
+  safely when no real Telegram target exists.
 - the first startup backfill uses deterministic UUIDv5 values, preserves legacy
   rows, creates typed identity/device projections and one non-authoritative
   `legacy_snapshot` entitlement grant per legacy user, then records the
@@ -248,15 +274,52 @@ Account ownership transition:
   public bot does not extend them. Runtime migration discovers an existing full
   component first, locks all member rows in one numeric query, then verifies the
   closure before projection.
-- `auth_sessions`, `recovery_codes`, `entitlement_grants` and antiabuse ledger
-  tables exist as foundation schema. Rotating refresh, recovery exchange,
-  entitlement-authority cutover and automated antiabuse actions are not live
-  merely because those tables exist.
+- `auth_sessions` now has repository behavior for short-lived device-bound
+  access tokens, absolute-expiry rotating refresh families, reuse detection,
+  persisted logout and fresh-auth device revoke. Raw refresh credentials are
+  not stored. This behavior is not deployed and is not production proof.
+- `recovery_codes` now has repository behavior for one-time HMAC-only codes,
+  15-minute limited recovery sessions, email-OTP fresh auth, recovery-code
+  rotation and controlled `vpn_credentials | account_lockdown` reissue.
+  Recovery scope is server-enforced and cannot read normal subscription or
+  managed-profile material before reissue. This behavior is not deployed and
+  is not production proof.
+- `antiabuse_events` now has repository behavior for trial-start and API
+  security signals. Valid client IPs are normalized; code caps the raw-IP
+  deadline at 72 hours, full-IP HMAC at seven days and IPv4 `/24` or IPv6 `/64`
+  HMAC at 90 days. A dedicated worker makes fields eligible one hour early,
+  runs bounded PostgreSQL `SKIP LOCKED` chunks outside the asyncio event loop
+  and retries after one second while backlog remains. It also clears covered
+  legacy `security_events.client_ip` and
+  `users.app_last_ip` fields without deleting their audit rows. This behavior
+  is not deployed and worker availability is not production proof. These are
+  operational deadlines, not an in-database TTL: worker outage or persistent
+  backlog is a release-blocking incident.
+- `account_entitlement_grants` is the UUID account-foundation ledger. The
+  pre-existing `entitlement_grants` table remains an untouched legacy
+  activation-key history with integer IDs; migrations and rollback retain it
+  separately instead of rebuilding it. Entitlement-authority cutover and
+  automated antiabuse decisions are not live. A hard lock can be written
+  through the antiabuse service only with an explicit operator ID and reason;
+  no automatic rule may hard-lock an account.
+- `scripts/migrate_sqlite_to_postgres.py rehearse` now provides a fail-closed
+  synthetic rehearsal path: SQLite backup API plus `quick_check`, confirmed
+  reviewed source-count manifest, disposable `_rehearsal` target,
+  schema/bootstrap migrations, streaming copy, account backfill, critical
+  orphan checks, explicit-ID sequence synchronization and a sanitized atomic
+  JSON report. Reset, copy, backfill and invariants share one target data
+  transaction. Sequences sync once after explicit copy so generated backfill
+  inserts cannot collide, then again after commit; PostgreSQL sequence state is
+  never described as rollback evidence. Rerun compares both report and streamed
+  target-content digests. This local contract is not a redacted-production
+  rehearsal or restore proof.
 
 Predeploy account-foundation gates:
 
 - `MANUAL_OWNER_TEST`: run a PostgreSQL rehearsal against a redacted production
-  snapshot and retain the backfill report, row counts and review counts.
+  snapshot and retain the sanitized report, row counts, review counts, sequence
+  states and an approved backup/restore result. Synthetic SQLite-to-SQLite
+  evidence does not satisfy this gate.
 - `MANUAL_OWNER_TEST`: prove the row/per-user/global lock order and no-upgrade
   behavior with two real PostgreSQL connections under concurrent projection,
   bind and first-start scenarios; local contract tests are not live concurrency
@@ -267,6 +330,20 @@ Predeploy account-foundation gates:
 - `MANUAL_OWNER_TEST`: verify preservation of public auth, entitlement,
   payments, support, bonus behavior, `users.tg_id` compatibility and the
   current stateless bearer before and after the rehearsal.
+- `MANUAL_OWNER_TEST`: update Android and Windows secure storage to retain the
+  one-time refresh token, rotate it atomically and fall back to recovery rather
+  than repeating bootstrap.
+- `MANUAL_OWNER_TEST`: the repository email-OTP and one-time recovery exchange
+  do not authorize deploy by themselves. Exact Android/Windows reinstall,
+  lost-credential, atomic refresh persistence, logout, recovery, reissue and
+  device-revoke paths must pass before the repeated-bootstrap guard is enabled.
+- `MANUAL_OWNER_TEST`: configure a dedicated `ANTIABUSE_HMAC_SECRET`, retain
+  explicitly versioned previous peppers only for their active comparison
+  windows, and prove `portal-worker` runs continuously with zero overdue
+  backlog in the production topology.
+- `MANUAL_OWNER_TEST`: inspect proxy/application logs and individual-user admin
+  access so the database cleanup is not misrepresented as complete raw-IP
+  deletion outside the covered first-party columns.
 
 Not source of truth:
 
@@ -306,14 +383,17 @@ Operational shaping rule:
 2. user taps `Try free`
 3. backend creates the legacy app user and synchronizes its canonical account,
    device and legacy entitlement projections
-4. backend issues the current compatibility bearer and returns `session`,
-   `client_policy`, `access`, and `provisioning` payloads plus a real
-   subscription source
+4. repository candidate creates the first `auth_sessions` row and returns the
+   compatibility `session_token` field plus a short-lived `access_token`,
+   one-time `refresh_token`, `session`, `client_policy`, `access`, and
+   `provisioning` payloads plus a real subscription source
 5. client imports and activates the profile
 
-Current compatibility limit: the bearer returned by `start-trial` is still the
-legacy stateless web-session family. It is not yet a row in `auth_sessions` and
-must not be described as rotating or device-bound before the session cutover.
+Deployment limit: production still returns the legacy stateless app bearer.
+The rotating/recovery candidate must not be promoted before client secure
+storage and exact-client recovery gates are green because repeated bootstrap
+deliberately returns `device_recovery_required` once a device has session
+history.
 
 App-first contract note:
 
@@ -339,6 +419,11 @@ Route-mode continuation note:
 
 Architecture rule:
 
+- additive email auth uses a six-digit OTP valid for five minutes; password
+  login remains an explicitly labelled compatibility path until the guarded
+  90-day cutover window is configured and completed
+- email OTP can mark an existing bound device session as freshly authenticated
+  or issue a new bound session when device policy permits it
 - additive email auth is a live continuation lane only while sender identity, delivery configuration, and delivery confirmation are green
 - app handoff, Telegram, and email are the active browser-continuation entry families today when their readiness checks are green
 - email must land in the same cabinet session and linked-identity model rather than becoming a separate account track
@@ -355,7 +440,8 @@ Architecture rule:
 4. app or web surfaces may call read-only subscriber status check
 5. reward grant still happens only on the explicit claim API
 6. backend validates membership in `@pokrov_vpn`
-7. backend grants `+10 days` when eligible
+7. backend grants a new account-owned `+5 days` once when eligible; issued legacy `+10 days` grants remain grandfathered
+8. membership loss opens `24 hours` of grace, and a due reversal removes only the unused channel interval
 
 ### Checkout Continuation Flow
 
