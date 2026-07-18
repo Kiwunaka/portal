@@ -179,6 +179,25 @@ def test_missing_key_and_invalid_agent_limits_fail_before_harness_construction()
     assert invalid_flag_factory.calls == []
 
 
+def test_agent_output_budget_defaults_to_1200_and_rejects_higher_values() -> None:
+    from support_agent_service import SupportAgentRuntimeSettings
+
+    default_settings = SupportAgentRuntimeSettings.from_env({})
+    allowed_settings = SupportAgentRuntimeSettings.from_env(
+        {"SUPPORT_AI_MAX_OUTPUT_TOKENS": "1200"}
+    )
+    oversized_settings = SupportAgentRuntimeSettings.from_env(
+        {"SUPPORT_AI_MAX_OUTPUT_TOKENS": "1201"}
+    )
+
+    assert default_settings.valid is True
+    assert default_settings.max_output_tokens == 1200
+    assert allowed_settings.valid is True
+    assert allowed_settings.max_output_tokens == 1200
+    assert oversized_settings.valid is False
+    assert oversized_settings.invalid_reason == "support_ai_max_output_tokens_invalid"
+
+
 @pytest.mark.parametrize(
     "outcome",
     (

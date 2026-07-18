@@ -100,7 +100,7 @@ def _config():
         model="minimax-m3",
         reasoning_effort="medium",
         timeout_seconds=12.0,
-        max_output_tokens=700,
+        max_output_tokens=1200,
     )
 
 
@@ -184,7 +184,7 @@ def test_exact_xcody_request_and_final_answer_normalization() -> None:
                     }
                 ],
                 "tool_choice": "auto",
-                "max_tokens": 700,
+                "max_tokens": 1200,
                 "n": 1,
                 "reasoning_effort": "medium",
             },

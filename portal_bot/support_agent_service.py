@@ -140,7 +140,7 @@ class SupportAgentRuntimeSettings:
             tool_result_limit=integer("SUPPORT_AI_TOOL_RESULT_LIMIT", 5, 1, 5),
             max_retrieved_chars=integer("SUPPORT_AI_MAX_RETRIEVED_CHARS", 6000, 1, 6000),
             max_input_chars=integer("SUPPORT_AI_MAX_INPUT_CHARS", 36000, 1000, 36000),
-            max_output_tokens=integer("SUPPORT_AI_MAX_OUTPUT_TOKENS", 700, 1, 700),
+            max_output_tokens=integer("SUPPORT_AI_MAX_OUTPUT_TOKENS", 1200, 1, 1200),
         )
         if errors:
             return replace(settings, valid=False, invalid_reason=sorted(errors)[0])

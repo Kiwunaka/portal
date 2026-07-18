@@ -293,7 +293,7 @@ class SupportAIConfig:
     max_user_chars: int = 1200
     max_answer_chars: int = 1200
     min_interval_seconds: float = 30.0
-    max_output_tokens: int = 700
+    max_output_tokens: int = 1200
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "SupportAIConfig":
@@ -323,7 +323,7 @@ class SupportAIConfig:
             ),
             min_interval_seconds=_parse_float(source.get("SUPPORT_AI_MIN_INTERVAL_SECONDS"), default=30.0),
             max_output_tokens=_bounded_env_int(
-                source.get("SUPPORT_AI_MAX_OUTPUT_TOKENS"), default=700, maximum=700
+                source.get("SUPPORT_AI_MAX_OUTPUT_TOKENS"), default=1200, maximum=1200
             ),
         )
 

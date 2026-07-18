@@ -305,7 +305,7 @@ Wire contract:
 - bearer authentication from runtime secret storage;
 - model `minimax-m3` by default;
 - top-level snake-case `reasoning_effort: medium` when configured;
-- `max_tokens: 700` by default;
+- `max_tokens: 1200` by default;
 - `n: 1`; a missing choice or more than one choice is invalid;
 - no OpenRouter-only `provider`, headers, or routing fields on xCody;
 - no undocumented cache key or reasoning field;
@@ -339,7 +339,7 @@ Budgets:
 - maximum 1,024 owner rate buckets per process, with 60-second expiry and LRU
   eviction;
 - model input is at most 36,000 serialized characters, model output is at
-  most 700 tokens, final reply is at most 1,200 characters, tool query is
+  most 1,200 tokens, final reply is at most 1,200 characters, tool query is
   2--200 characters, and one result contains at most 5 topics/6,000
   characters.
 
@@ -809,14 +809,14 @@ SUPPORT_AI_PRE_RETRIEVAL_LIMIT=3
 SUPPORT_AI_TOOL_RESULT_LIMIT=5
 SUPPORT_AI_MAX_RETRIEVED_CHARS=6000
 SUPPORT_AI_MAX_INPUT_CHARS=36000
-SUPPORT_AI_MAX_OUTPUT_TOKENS=700
+SUPPORT_AI_MAX_OUTPUT_TOKENS=1200
 ```
 
 Environment values may lower safety/resource ceilings but cannot raise the
 hard caps in this document. Invalid, non-numeric, negative, or out-of-range
 agent settings disable the harness and select fallback; they are not silently
 expanded. In particular, provider requests/tools/output tokens remain capped
-at `2/1/700`, concurrency at 2, sessions at 256, rate buckets at 1,024, and
+at `2/1/1200`, concurrency at 2, sessions at 256, rate buckets at 1,024, and
 serialized input at 36,000 characters.
 
 The production enterprise base URL and API key remain owner-side runtime

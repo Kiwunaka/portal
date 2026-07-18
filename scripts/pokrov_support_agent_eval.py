@@ -1201,7 +1201,7 @@ async def _run_live_async(
         max_user_chars=1_200,
         max_answer_chars=1_200,
         min_interval_seconds=0.0,
-        max_output_tokens=700,
+        max_output_tokens=1200,
     )
     recording_adapter = _RecordingAdapter(XCodyChatAdapter(config=config))
     runtime = _build_runtime(repo_root=repo_root, adapter=recording_adapter)

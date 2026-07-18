@@ -188,6 +188,21 @@ def test_valid_answer_and_escalation_parse_into_safe_state() -> None:
     assert escalation.source_topic_ids == ()
 
 
+def test_safe_unicode_typography_is_not_mistaken_for_legacy_redaction() -> None:
+    from support_agent_safety import validate_agent_output
+
+    payload = _valid_answer()
+    payload["reply"] = "Коротко — переподключитесь. Затем проверьте Wi‑Fi и Private DNS."
+
+    answer = validate_agent_output(
+        json.dumps(payload, ensure_ascii=False),
+        {"connected_no_internet"},
+        _policy_snapshot(),
+    )
+
+    assert answer.reply == payload["reply"]
+
+
 def test_invalid_or_unsafe_final_outputs_fail_closed() -> None:
     from support_agent_safety import SafetyValidationError, validate_agent_output
 
@@ -232,6 +247,10 @@ def test_invalid_or_unsafe_final_outputs_fail_closed() -> None:
     url = _valid_answer()
     url["reply"] = "Откройте https://pokrov.space/ и попробуйте снова."
     variants.append(("url-output", json.dumps(url, ensure_ascii=False)))
+
+    labelled_credential = _valid_answer()
+    labelled_credential["reply"] = "Пароль: SyntheticPrivatePasswordValue"
+    variants.append(("labelled-credential-output", json.dumps(labelled_credential, ensure_ascii=False)))
 
     forbidden_claim = _valid_answer()
     forbidden_claim["reply"] = "POKROV даёт полную анонимность."

@@ -1648,8 +1648,17 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(config.model, "minimax-m3")
         self.assertEqual(config.reasoning_effort, "medium")
         self.assertEqual(config.max_context_chars, 36000)
-        self.assertEqual(config.max_output_tokens, 700)
+        self.assertEqual(config.max_output_tokens, 1200)
         self.assertEqual(config.timeout_seconds, 12.0)
+
+    def test_xcody_output_budget_is_hard_capped_at_live_validated_limit(self) -> None:
+        import support_ai_service
+
+        config = support_ai_service.SupportAIConfig.from_env(
+            {"SUPPORT_AI_MAX_OUTPUT_TOKENS": "1201"}
+        )
+
+        self.assertEqual(config.max_output_tokens, 1200)
 
     def test_xcody_payload_has_no_openrouter_fields_or_headers(self) -> None:
         import support_ai_service

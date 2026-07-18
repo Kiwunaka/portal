@@ -41,6 +41,10 @@ _IPV6_RE = re.compile(r"(?<![A-Fa-f0-9:])(?:[A-Fa-f0-9]{0,4}:){2,}[A-Fa-f0-9:]{0
 _PRIVATE_HOST_RE = re.compile(r"(?<![\w.-])(?:localhost|[a-z0-9-]{1,63}\.(?:internal|local|lan))(?![\w.-])", re.IGNORECASE)
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[ ()-]?){9,14}\d(?!\d)")
 _MARKER_RE = re.compile(r"\[[a-z-]+\]")
+_LEGACY_REDACTION_MARKER_RE = re.compile(
+    r"\[(?:activation-key|credential|digits|email|private-key|private-link|recovery-code|"
+    r"refresh-token|secret|session-token|telegram-init-data|uuid)-redacted\]|\[content-truncated\]"
+)
 _WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
 _CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
 _HUMAN_REQUEST_RE = re.compile(
@@ -317,8 +321,10 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _output_contains_unsafe_text(reply: str) -> bool:
     if _hard_categories(reply):
         return True
-    _, categories = _redact_pii(reply, redact_all_urls=True)
-    return bool(categories)
+    redacted, categories = _redact_pii(reply, redact_all_urls=True)
+    if any(category != "legacy_redaction" for category in categories):
+        return True
+    return _LEGACY_REDACTION_MARKER_RE.search(redacted) is not None
 
 
 def validate_agent_output(
