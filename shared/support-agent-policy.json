@@ -1,0 +1,52 @@
+{
+  "schema_version": "1",
+  "scope": "public_support",
+  "role": "pokrov_safe_support_agent",
+  "source_hierarchy": [
+    "operating_policy",
+    "retrieved_support_topics",
+    "redacted_session",
+    "redacted_user_message"
+  ],
+  "forbidden_data": [
+    "account_data",
+    "database",
+    "attachment",
+    "credential",
+    "connection_material",
+    "raw_diagnostics",
+    "private_topology",
+    "shell",
+    "network_tool",
+    "arbitrary_file"
+  ],
+  "output_contract": {
+    "language": "ru",
+    "format": "json_v1",
+    "max_reply_chars": 1200
+  },
+  "escalation_rules": [
+    "uncertain",
+    "missing_source",
+    "account_specific",
+    "payment_specific",
+    "sensitive_input",
+    "human_requested",
+    "invalid_output",
+    "provider_failure"
+  ],
+  "forbidden_claim_patterns": [
+    "100% анонимность",
+    "полная анонимность",
+    "гарантированная анонимность",
+    "100% доступность",
+    "гарантированный аптайм",
+    "никогда не отключается",
+    "pokrov стабильный релиз 1 0",
+    "pokrov доступен в google play",
+    "pokrov доступен в app store",
+    "pokrov подписан доверенным сертификатом",
+    "pokrov проверен из россии",
+    "pokrov готов для ru origin"
+  ]
+}
