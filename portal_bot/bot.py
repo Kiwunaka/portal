@@ -6737,7 +6737,7 @@ async def ticket_new(callback: CallbackQuery):
         try:
             await callback.bot.send_message(
                 ADMIN_ID,
-                f"🆕 Новый обращение #{ticket.id} от пользователя `{tg_id}`",
+                f"🆕 Новое обращение #{ticket.id} от пользователя `{tg_id}`",
                 parse_mode=ParseMode.MARKDOWN,
                 reply_markup=kb,
             )

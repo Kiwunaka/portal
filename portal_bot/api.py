@@ -15026,7 +15026,7 @@ async def create_user_ticket(payload: TicketCreateIn, request: Request, x_telegr
             s.close()
 
     if Settings.ADMIN_ID:
-        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новый обращение #{ticket_id} от пользователя {tg_id}.")
+        await _telegram_send_message(int(Settings.ADMIN_ID), f"🆕 Новое обращение #{ticket_id} от пользователя {tg_id}.")
     track_event(tg_id=tg_id, event_name="ticket_created", source="webapp", meta={"ticket_id": ticket_id})
     await _maybe_append_support_ai_reply(
         ticket_id=ticket_id,
