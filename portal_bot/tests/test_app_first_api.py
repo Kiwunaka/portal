@@ -1545,6 +1545,9 @@ def test_app_bonus_wheel_and_calendar_endpoints_are_feature_gated(monkeypatch, t
     assert wheel_payload["state"] == "disabled_until_feature_flag"
     assert wheel_payload["feature_flag_enabled"] is False
     assert wheel_payload["spin_endpoint"] == "/api/bonuses/wheel/spin"
+    assert wheel_payload["sectors"] == [1, 3, 7, 30]
+    assert "weights" not in wheel_payload
+    assert "weight" not in str(wheel_payload).lower()
 
     assert calendar_state.status_code == 200, calendar_state.text
     calendar_payload = calendar_state.json()
@@ -1608,6 +1611,8 @@ def test_app_bonus_wheel_calendar_and_achievements_write_live_ledger(monkeypatch
     assert wheel_state.status_code == 200, wheel_state.text
     assert wheel_state.json()["enabled"] is True
     assert wheel_state.json()["can_spin"] is True
+    assert wheel_state.json()["sectors"] == [3]
+    assert "weights" not in wheel_state.json()
 
     wheel_spin = client.post("/api/bonuses/wheel/spin", headers=headers)
     assert wheel_spin.status_code == 200, wheel_spin.text

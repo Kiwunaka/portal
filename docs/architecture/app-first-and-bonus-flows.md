@@ -685,6 +685,9 @@ payment/bonus start, never count toward the `15 day` cap, and never select
   disabled-by-default state payloads that the app may render as safe Rewards
   Hub previews. When `BONUS_WHEEL_ENABLED` or `BONUS_CALENDAR_ENABLED` is true,
   they expose ready/cooldown/check-in state from the reward ledger.
+- The wheel state exposes only the ordered, validated reward-day `sectors`
+  needed for rendering. Backend-owned weights and probabilities remain private
+  and must not be inferred by the client.
 - `GET /api/client/promo-slots?surface=app` may feed Rewards Hub with enabled
   first-party promo slots only. Third-party ad SDKs, unsafe links, tracking
   pixels, and non-POKROV campaign rendering stay out of the app.

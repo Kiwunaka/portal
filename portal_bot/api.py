@@ -13707,6 +13707,7 @@ def _bonus_wheel_state_payload(*, s, user: User) -> dict[str, Any]:
         "can_spin": bool(enabled and cooldown["can_spin"]),
         "next_spin_at": cooldown["next_spin_at"],
         "cooldown_hours": cooldown["cooldown_hours"],
+        "sectors": [int(row["days"]) for row in config["weights"]],
         "ledger_ready": True,
         "config_preset": str(config.get("preset") or "balanced"),
     }
