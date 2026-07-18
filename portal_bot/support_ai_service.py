@@ -16,8 +16,9 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "deepseek/deepseek-v4-flash"
+DEFAULT_API_BASE_URL = "https://api.xcody.dev/v1"
+DEFAULT_MODEL = "minimax-m3"
+DEFAULT_REASONING_EFFORT = "medium"
 DEFAULT_KNOWLEDGE_PATH = Path(__file__).resolve().parents[1] / "shared" / "support-ai-knowledge.json"
 
 _MAX_SANITIZER_INPUT_CHARS = 65536
@@ -252,52 +253,77 @@ def _parse_int(value: str | None, *, default: int) -> int:
         return default
 
 
-def _parse_openrouter_data_collection(value: str | None) -> str:
+def _parse_reasoning_effort(value: str | None) -> str:
     raw = (value or "").strip().lower()
-    if raw in {"allow", "deny"}:
+    if raw in {"none", "low", "medium", "high", "xhigh", "max"}:
         return raw
-    return ""
+    return DEFAULT_REASONING_EFFORT
 
 
-@dataclass
+def _bounded_env_int(value: str | None, *, default: int, maximum: int, minimum: int = 1) -> int:
+    parsed = _parse_int(value, default=default)
+    if parsed < minimum:
+        return default
+    return min(parsed, maximum)
+
+
+def _bounded_env_float(
+    value: str | None,
+    *,
+    default: float,
+    maximum: float,
+    minimum: float = 0.1,
+) -> float:
+    parsed = _parse_float(value, default=default)
+    if parsed < minimum:
+        return default
+    return min(parsed, maximum)
+
+
+@dataclass(slots=True)
 class SupportAIConfig:
     enabled: bool = False
     api_key: str = ""
     api_base_url: str = DEFAULT_API_BASE_URL
     model: str = DEFAULT_MODEL
-    timeout_seconds: float = 20.0
+    reasoning_effort: str = DEFAULT_REASONING_EFFORT
+    timeout_seconds: float = 12.0
     knowledge_path: str = str(DEFAULT_KNOWLEDGE_PATH)
-    max_context_chars: int = 32000
+    max_context_chars: int = 36000
     max_user_chars: int = 1200
     max_answer_chars: int = 1200
     min_interval_seconds: float = 30.0
-    referer: str = "https://pokrov.space/"
-    app_title: str = "POKROV support bot"
-    openrouter_data_collection: str = ""
+    max_output_tokens: int = 700
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "SupportAIConfig":
         source: Mapping[str, str] = os.environ if env is None else env
         api_key = (
             (source.get("SUPPORT_AI_API_KEY") or "").strip()
-            or (source.get("OPENROUTER_API_KEY") or "").strip()
-            or (source.get("DEEPSEEK_API_KEY") or "").strip()
+            or (source.get("XCODY_API_KEY") or "").strip()
         )
         return cls(
             enabled=_parse_bool(source.get("SUPPORT_AI_ENABLED"), default=False),
             api_key=api_key,
             api_base_url=(source.get("SUPPORT_AI_API_BASE_URL") or DEFAULT_API_BASE_URL).strip().rstrip("/"),
             model=(source.get("SUPPORT_AI_MODEL") or DEFAULT_MODEL).strip(),
-            timeout_seconds=_parse_float(source.get("SUPPORT_AI_TIMEOUT_SECONDS"), default=20.0),
+            reasoning_effort=_parse_reasoning_effort(source.get("SUPPORT_AI_REASONING_EFFORT")),
+            timeout_seconds=_bounded_env_float(
+                source.get("SUPPORT_AI_TIMEOUT_SECONDS"), default=12.0, maximum=12.0
+            ),
             knowledge_path=(source.get("SUPPORT_AI_KB_PATH") or str(DEFAULT_KNOWLEDGE_PATH)).strip(),
-            max_context_chars=_parse_int(source.get("SUPPORT_AI_MAX_CONTEXT_CHARS"), default=32000),
-            max_user_chars=_parse_int(source.get("SUPPORT_AI_MAX_USER_CHARS"), default=1200),
-            max_answer_chars=_parse_int(source.get("SUPPORT_AI_MAX_ANSWER_CHARS"), default=1200),
+            max_context_chars=_bounded_env_int(
+                source.get("SUPPORT_AI_MAX_CONTEXT_CHARS"), default=36000, maximum=36000
+            ),
+            max_user_chars=_bounded_env_int(
+                source.get("SUPPORT_AI_MAX_USER_CHARS"), default=1200, maximum=1200
+            ),
+            max_answer_chars=_bounded_env_int(
+                source.get("SUPPORT_AI_MAX_ANSWER_CHARS"), default=1200, maximum=1200
+            ),
             min_interval_seconds=_parse_float(source.get("SUPPORT_AI_MIN_INTERVAL_SECONDS"), default=30.0),
-            referer=(source.get("SUPPORT_AI_REFERER") or "https://pokrov.space/").strip(),
-            app_title=(source.get("SUPPORT_AI_APP_TITLE") or "POKROV support bot").strip(),
-            openrouter_data_collection=_parse_openrouter_data_collection(
-                source.get("SUPPORT_AI_OPENROUTER_DATA_COLLECTION")
+            max_output_tokens=_bounded_env_int(
+                source.get("SUPPORT_AI_MAX_OUTPUT_TOKENS"), default=700, maximum=700
             ),
         )
 
@@ -1205,56 +1231,41 @@ def _extract_assistant_content(payload: Mapping[str, Any]) -> str:
 
 
 def _headers(config: SupportAIConfig) -> dict[str, str]:
-    headers = {
+    return {
         "Authorization": f"Bearer {config.api_key}",
         "Content-Type": "application/json",
     }
-    if "openrouter.ai" in config.api_base_url.lower():
-        if config.referer:
-            headers["HTTP-Referer"] = config.referer
-        if config.app_title:
-            headers["X-Title"] = config.app_title
-    return headers
 
 
-def _payload(user_text: str, *, ticket_id: int, config: SupportAIConfig) -> dict[str, Any]:
+def _payload(user_text: str, *, config: SupportAIConfig) -> dict[str, Any]:
     knowledge = _render_knowledge_context(_load_knowledge(config.knowledge_path), max_chars=config.max_context_chars)
     redacted_text = _truncate(redact_support_text(user_text), config.max_user_chars)
-    payload: dict[str, Any] = {
+    system_prompt = (
+        "You are a compact POKROV technical support assistant for Telegram, WebApp, and app tickets. "
+        "Answer in Russian. Use only the provided support knowledge. "
+        "Use a compact structured format with short section labels and line breaks: "
+        "**Коротко:** one sentence, **Что сделать:** 2-4 numbered steps, "
+        "and **Если не поможет:** what safe context to send support. "
+        "Do not output HTML or tables. "
+        "Do not ask for secrets, card details, raw connection links, QR codes, passwords, "
+        "private keys, Telegram initData, or payment payloads. "
+        "If unsure, say the human support team will check the ticket manually."
+        f"\n\nSupport knowledge JSON:\n{knowledge}"
+    )
+    return {
         "model": config.model,
-        "temperature": 0.2,
-        "max_tokens": 700,
         "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a compact POKROV technical support assistant for Telegram, WebApp, and app tickets. "
-                    "Answer in Russian. Use only the provided support knowledge. "
-                    "Use a compact structured format with short section labels and line breaks: "
-                    "**Коротко:** one sentence, **Что сделать:** 2-4 numbered steps, "
-                    "and **Если не поможет:** what safe context to send support. "
-                    "Do not output HTML or tables. "
-                    "Do not ask for secrets, card details, raw connection links, QR codes, passwords, "
-                    "private keys, Telegram initData, or payment payloads. "
-                    "If unsure, say the human support team will check the ticket manually."
-                ),
-            },
-            {
-                "role": "system",
-                "content": f"Support knowledge JSON:\n{knowledge}",
-            },
-            {
-                "role": "user",
-                "content": f"Ticket #{int(ticket_id)} user message, already redacted:\n{redacted_text}",
-            },
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": redacted_text},
         ],
+        "temperature": 0.2,
+        "max_tokens": config.max_output_tokens,
+        "n": 1,
+        "reasoning_effort": config.reasoning_effort,
     }
-    if "openrouter.ai" in config.api_base_url.lower() and config.openrouter_data_collection:
-        payload["provider"] = {"data_collection": config.openrouter_data_collection}
-    return payload
 
 
-async def _read_provider_json(response: Any) -> Any:
+async def read_bounded_provider_json(response: Any) -> Any:
     declared_length = getattr(response, "content_length", None)
     if declared_length is not None:
         try:
@@ -1313,7 +1324,7 @@ async def generate_support_reply(
     config: SupportAIConfig | None = None,
     session_factory: Any | None = None,
 ) -> str | None:
-    del user_tg_id
+    del ticket_id, user_tg_id
     cfg = config or SupportAIConfig.from_env()
     if not cfg.enabled or not cfg.api_key:
         return None
@@ -1323,7 +1334,7 @@ async def generate_support_reply(
     url = f"{cfg.api_base_url.rstrip('/')}/chat/completions"
     try:
         async with factory(timeout=timeout) as session:
-            async with session.post(url, headers=_headers(cfg), json=_payload(user_text, ticket_id=ticket_id, config=cfg)) as resp:
+            async with session.post(url, headers=_headers(cfg), json=_payload(user_text, config=cfg)) as resp:
                 if int(getattr(resp, "status", 0)) >= 400:
                     try:
                         status = int(getattr(resp, "status", 0) or 0)
@@ -1333,7 +1344,7 @@ async def generate_support_reply(
                         status = 0
                     logger.warning("support AI request failed status=%s code=provider_http_error", status)
                     return None
-                data = await _read_provider_json(resp)
+                data = await read_bounded_provider_json(resp)
     except _ProviderResponseTooLarge:
         logger.warning("support AI request failed status=0 code=provider_response_too_large")
         return None

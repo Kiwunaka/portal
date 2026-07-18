@@ -138,27 +138,29 @@ class SupportAIServiceTests(unittest.TestCase):
             )
         return Path(tmp.name)
 
-    def test_generate_support_reply_uses_deepseek_chat_and_redacts_private_input(self) -> None:
+    def test_xcody_payload_has_openai_shape_and_no_identifiers(self) -> None:
         import support_ai_service
 
         knowledge_path = self._knowledge_path()
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.deepseek.com",
-            model="deepseek-v4-flash",
+            api_base_url="https://enterprise.xcody.dev/v1",
+            model="minimax-m3",
+            reasoning_effort="medium",
             timeout_seconds=7.0,
             knowledge_path=str(knowledge_path),
             max_user_chars=500,
             max_answer_chars=2000,
+            max_output_tokens=700,
         )
         fake_factory = _FakeSessionFactory()
         try:
             reply = asyncio.run(
                 support_ai_service.generate_support_reply(
                     "Мой email user@example.com, ссылка vless://secret-profile и карта 4111111111111111",
-                    ticket_id=42,
-                    user_tg_id=1001,
+                    ticket_id=424242,
+                    user_tg_id=1001001,
                     config=config,
                     session_factory=fake_factory,
                 )
@@ -169,16 +171,29 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(reply, "Ответ из базы знаний.")
         self.assertEqual(len(fake_factory.posts), 1)
         post = fake_factory.posts[0]
-        self.assertEqual(post["url"], "https://api.deepseek.com/chat/completions")
+        self.assertEqual(post["url"], "https://enterprise.xcody.dev/v1/chat/completions")
         self.assertEqual(post["headers"]["Authorization"], "Bearer sk-test")
-        self.assertEqual(post["json"]["model"], "deepseek-v4-flash")
+        self.assertEqual(
+            set(post["json"]),
+            {"model", "messages", "temperature", "max_tokens", "n", "reasoning_effort"},
+        )
+        self.assertEqual(post["json"]["model"], "minimax-m3")
+        self.assertEqual(post["json"]["temperature"], 0.2)
+        self.assertEqual(post["json"]["max_tokens"], 700)
+        self.assertEqual(post["json"]["n"], 1)
+        self.assertEqual(post["json"]["reasoning_effort"], "medium")
+        self.assertEqual([item["role"] for item in post["json"]["messages"]], ["system", "user"])
         self.assertIn("compact structured format", post["json"]["messages"][0]["content"])
+        self.assertIn("Support knowledge JSON", post["json"]["messages"][0]["content"])
         user_payload = post["json"]["messages"][-1]["content"]
         self.assertIn("[email-redacted]", user_payload)
         self.assertIn("[private-link-redacted]", user_payload)
         self.assertIn("[digits-redacted]", user_payload)
         self.assertNotIn("user@example.com", user_payload)
         self.assertNotIn("vless://secret-profile", user_payload)
+        serialized = json.dumps(post, ensure_ascii=False)
+        self.assertNotIn("424242", serialized)
+        self.assertNotIn("1001001", serialized)
 
     def test_support_sanitizer_redacts_private_categories(self) -> None:
         import support_ai_service
@@ -1273,7 +1288,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.deepseek.com",
+            api_base_url="https://api.xcody.dev/v1",
             knowledge_path=str(knowledge_path),
             max_answer_chars=1000,
         )
@@ -1322,7 +1337,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.deepseek.com",
+            api_base_url="https://api.xcody.dev/v1",
             knowledge_path=str(knowledge_path),
             max_user_chars=5000,
             max_answer_chars=5000,
@@ -1395,7 +1410,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.deepseek.com",
+            api_base_url="https://api.xcody.dev/v1",
             knowledge_path=str(knowledge_path),
             max_user_chars=5000,
             max_answer_chars=5000,
@@ -1432,7 +1447,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.deepseek.com",
+            api_base_url="https://api.xcody.dev/v1",
             knowledge_path=str(knowledge_path),
             max_answer_chars=30,
         )
@@ -1478,7 +1493,7 @@ class SupportAIServiceTests(unittest.TestCase):
         )
         with patch.object(support_ai_service.json, "loads") as parser:
             with self.assertRaises(support_ai_service._ProviderResponseTooLarge):
-                asyncio.run(support_ai_service._read_provider_json(streamed))
+                asyncio.run(support_ai_service.read_bounded_provider_json(streamed))
 
         self.assertEqual(parser.call_count, 0)
         self.assertEqual(
@@ -1497,19 +1512,19 @@ class SupportAIServiceTests(unittest.TestCase):
             content_length=support_ai_service._MAX_PROVIDER_RESPONSE_BYTES + 1,
         )
         with self.assertRaises(support_ai_service._ProviderResponseTooLarge):
-            asyncio.run(support_ai_service._read_provider_json(declared))
+            asyncio.run(support_ai_service.read_bounded_provider_json(declared))
         self.assertEqual(declared.content.yielded_bytes, 0)
 
         text_only = TextOnlyFakeResponse('{"choices": []}')
         self.assertEqual(
-            asyncio.run(support_ai_service._read_provider_json(text_only)),
+            asyncio.run(support_ai_service.read_bounded_provider_json(text_only)),
             {"choices": []},
         )
         oversized_text_only = TextOnlyFakeResponse(
             "X" * (support_ai_service._MAX_PROVIDER_RESPONSE_BYTES + 1)
         )
         with self.assertRaises(support_ai_service._ProviderResponseTooLarge):
-            asyncio.run(support_ai_service._read_provider_json(oversized_text_only))
+            asyncio.run(support_ai_service.read_bounded_provider_json(oversized_text_only))
 
     def test_oversized_provider_body_logs_only_fixed_code(self) -> None:
         import support_ai_service
@@ -1518,7 +1533,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.deepseek.com",
+            api_base_url="https://api.xcody.dev/v1",
             knowledge_path=str(knowledge_path),
         )
         oversized_body = b"{" + (b"B" * support_ai_service._MAX_PROVIDER_RESPONSE_BYTES)
@@ -1624,26 +1639,34 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertIsNone(reply)
         self.assertEqual(len(failing_factory.posts), 1)
 
-    def test_config_defaults_to_openrouter_deepseek_flash(self) -> None:
+    def test_config_defaults_to_xcody_minimax_medium(self) -> None:
         import support_ai_service
 
         config = support_ai_service.SupportAIConfig.from_env({})
 
-        self.assertEqual(config.api_base_url, "https://openrouter.ai/api/v1")
-        self.assertEqual(config.model, "deepseek/deepseek-v4-flash")
-        self.assertEqual(config.max_context_chars, 32000)
-        self.assertEqual(config.openrouter_data_collection, "")
+        self.assertEqual(config.api_base_url, "https://api.xcody.dev/v1")
+        self.assertEqual(config.model, "minimax-m3")
+        self.assertEqual(config.reasoning_effort, "medium")
+        self.assertEqual(config.max_context_chars, 36000)
+        self.assertEqual(config.max_output_tokens, 700)
+        self.assertEqual(config.timeout_seconds, 12.0)
 
-    def test_openrouter_data_collection_policy_is_optional(self) -> None:
+    def test_xcody_payload_has_no_openrouter_fields_or_headers(self) -> None:
         import support_ai_service
 
         knowledge_path = self._knowledge_path()
         try:
-            default_config = support_ai_service.SupportAIConfig(
-                enabled=True,
-                api_key="sk-test",
-                api_base_url="https://openrouter.ai/api/v1",
-                knowledge_path=str(knowledge_path),
+            config = support_ai_service.SupportAIConfig.from_env(
+                {
+                    "SUPPORT_AI_ENABLED": "true",
+                    "XCODY_API_KEY": "sk-test",
+                    "OPENROUTER_API_KEY": "must-not-win",
+                    "DEEPSEEK_API_KEY": "must-not-win",
+                    "SUPPORT_AI_KB_PATH": str(knowledge_path),
+                    "SUPPORT_AI_OPENROUTER_DATA_COLLECTION": "deny",
+                    "SUPPORT_AI_REFERER": "https://must-not-leak.invalid/",
+                    "SUPPORT_AI_APP_TITLE": "must-not-leak",
+                }
             )
             fake_factory = _FakeSessionFactory()
             asyncio.run(
@@ -1651,31 +1674,25 @@ class SupportAIServiceTests(unittest.TestCase):
                     "Подключение не работает",
                     ticket_id=7,
                     user_tg_id=8,
-                    config=default_config,
+                    config=config,
                     session_factory=fake_factory,
                 )
             )
-            self.assertNotIn("provider", fake_factory.posts[0]["json"])
-
-            strict_config = support_ai_service.SupportAIConfig.from_env(
-                {
-                    "SUPPORT_AI_ENABLED": "true",
-                    "SUPPORT_AI_API_KEY": "sk-test",
-                    "SUPPORT_AI_KB_PATH": str(knowledge_path),
-                    "SUPPORT_AI_OPENROUTER_DATA_COLLECTION": "deny",
-                }
+            post = fake_factory.posts[0]
+            self.assertEqual(
+                post["headers"],
+                {"Authorization": "Bearer sk-test", "Content-Type": "application/json"},
             )
-            strict_factory = _FakeSessionFactory()
-            asyncio.run(
-                support_ai_service.generate_support_reply(
-                    "Профиль пустой",
-                    ticket_id=9,
-                    user_tg_id=10,
-                    config=strict_config,
-                    session_factory=strict_factory,
-                )
-            )
-            self.assertEqual(strict_factory.posts[0]["json"]["provider"], {"data_collection": "deny"})
+            self.assertNotIn("provider", post["json"])
+            serialized = json.dumps(post, ensure_ascii=False)
+            for forbidden in (
+                "data_collection",
+                "HTTP-Referer",
+                "X-Title",
+                "must-not-leak",
+                "must-not-win",
+            ):
+                self.assertNotIn(forbidden, serialized)
         finally:
             knowledge_path.unlink(missing_ok=True)
 
