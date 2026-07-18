@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 ## Document Status
 
@@ -74,8 +74,14 @@ Reference-lane note:
   Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
+- `portal_bot/support_agent_service.py`
+  Exact disabled/legacy/harness route selector shared by the app assistant, ticket hints, and `@pokrov_supportbot`; all failure paths return the deterministic local fallback.
 - `portal_bot/support_ai_service.py`
-  Optional server-side AI helper for text-only support hints in `@pokrov_supportbot` and ticket API flows; disabled by default and backed by sanitized shared support knowledge.
+  Legacy one-call xCody helper and shared bounded sanitizer; retained only when `SUPPORT_AI_ENABLED=true` and `SUPPORT_AI_AGENT_ENABLED=false`.
+- `portal_bot/support_agent_harness.py`, `portal_bot/support_agent_context.py`, and `portal_bot/support_agent_provider.py`
+  Bounded mini-agent loop, stable cacheable context, and OpenAI-compatible xCody adapter for `minimax-m3` with medium reasoning.
+- `portal_bot/support_agent_policy.py`, `portal_bot/support_agent_knowledge.py`, and `portal_bot/support_agent_sessions.py`
+  Fail-closed policy/KB validation, read-only local topic retrieval, and owner-scoped process-memory/rate limits.
 - `portal_bot/worker.py`
   Background jobs for retention, bonus enforcement, and free-cycle operations.
 - `portal_bot/models.py`
@@ -502,8 +508,10 @@ This contour is observe-and-verify only. It does not change cashier UI design, b
 
 1. user opens support from app, WebApp, or helpbot
 2. the platform stores or routes the support thread
-3. when enabled, `portal-api` or `portal-helpbot` may add a redacted AI hint from `shared/support-ai-knowledge.json` as sender role `assistant`
-4. operator responds through the current support tooling; the AI hint does not close or resolve the ticket
+3. the shared facade selects exactly one path: disabled local fallback, legacy one-call xCody helper, or bounded agent harness; legacy and harness never both call the provider
+4. the harness sees only the typed policy, retrieved public-support topics, redacted six-message process memory, and redacted question; `safeDiagnostics` values, accounts, databases, attachments, keys/configs, arbitrary files, and command execution remain outside model context
+5. its only tool is read-only local `search_support_docs`; at most two provider requests and one tool call are allowed, and any missing/invalid/failed result becomes deterministic fallback with human escalation
+6. a successful ticket hint is stored as sender role `assistant`; operator responds through the current tooling, and the hint never closes or resolves the ticket
 
 ### Feedback And Review Flow
 

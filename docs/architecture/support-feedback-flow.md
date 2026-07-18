@@ -1,6 +1,6 @@
 # Support And Feedback Flow
 
-Last updated: 2026-07-14
+Last updated: 2026-07-19
 
 ## Primary Paths
 
@@ -22,12 +22,16 @@ Last updated: 2026-07-14
 ## AI Support Helper
 
 - Runtime home: `portal-api` and `portal-helpbot` on `brain`.
-- Code: `portal_bot/support_ai_service.py`, `portal_bot/api.py`, and `portal_bot/helpbot.py`.
-- Deployable knowledge base: `shared/support-ai-knowledge.json`, uploaded to `/root/shared/support-ai-knowledge.json`.
-- Default provider/model route: OpenRouter chat completions at `https://openrouter.ai/api/v1` with `deepseek/deepseek-v4-flash`.
-- The helper is disabled by default. Enable it only through server env with `SUPPORT_AI_ENABLED=true` and `SUPPORT_AI_API_KEY` or `OPENROUTER_API_KEY`.
-- OpenRouter provider privacy routing is optional. Leave `SUPPORT_AI_OPENROUTER_DATA_COLLECTION` blank for default routing; set it to `deny` or `allow` only when the chosen model route is known to support that policy.
-- The helper sends only sanitized text and the bounded support knowledge base to the model; it must not read repo docs, secrets, databases, ticket attachments, raw connection links, QR codes, card details, Telegram init data, or payment payloads.
+- Runtime facade and legacy helper: `portal_bot/support_agent_service.py` and `portal_bot/support_ai_service.py`; bounded harness: `portal_bot/support_agent_harness.py`; xCody adapter: `portal_bot/support_agent_provider.py`.
+- Deployable allowlisted assets are `shared/support-agent-policy.json` and `shared/support-ai-knowledge.json`, uploaded under `/root/shared/`.
+- The provider contract is xCody OpenAI-compatible Chat Completions at `https://api.xcody.dev/v1/chat/completions`, with `minimax-m3`, `reasoning_effort=medium`, and credentials read only from server environment.
+- The feature is disabled by default. `SUPPORT_AI_ENABLED=false` always selects deterministic local fallback. With it enabled, `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper and `SUPPORT_AI_AGENT_ENABLED=true` selects the bounded harness. There is no shadow or double call.
+- The harness has exactly one read-only local tool, `search_support_docs`. Its only deployed data assets are the validated policy and KB; the tool searches bounded topic IDs and bodies in the KB, while the policy is rendered into a typed stable prefix.
+- Model context may contain only the validated operating policy, bounded retrieved public-support topics, redacted process-local session state, and the redacted user question. It has no database, account, attachment, key/config, QR, Telegram init data, payment payload, shell, network-tool, arbitrary-file, or command-execution access.
+- `safeDiagnostics` is admitted through a fixed four-key allowlist for bounded operational metadata only. Diagnostic values and attacker-controlled keys never enter model context or memory.
+- Harness continuity is owner- and surface-scoped, process-local RAM only: 60-minute TTL, at most six safe messages per session, 256 sessions, and six requests per authenticated owner per rolling minute. The runtime allows at most two concurrent runs, two provider requests and one tool call per run.
+- Missing data, invalid input/output, tool/provider failure, rate or concurrency rejection, and account/payment-specific questions select the existing deterministic fallback with human escalation. Model text cannot suppress escalation or choose the public source label.
+- These repository checks prove the bounded implementation, not production xCody availability or readiness. Live readiness requires retained evidence for the exact enterprise route/model candidate.
 - One support sanitizer runs before truncation on both outbound user text and inbound model text. Input and output are bounded to 65,536 characters; NFKC is incremental and fails closed before expansion crosses that bound. Normal work uses at most three percent-decode passes, one non-recursive decoded URL rescan, plus bounded JSON-escape, HTML-entity, zero-width, IDNA separator, fullwidth, quote, and dash normalization. A linear structural probe rejects residual nested percent-encoded URL signatures after that budget instead of decoding them further. Model chunks are sliced before concatenation, and provider bodies are capped at 262,144 streamed bytes before JSON parsing.
 - Stable placeholders cover Unicode email, proxy links, structurally classified token-bearing HTTP(S) URLs, `PKR-` recovery codes, `POKROV-` activation keys, hyphenated or compact UUIDs, `pkr_rt_` refresh tokens, signed/JWT-like session tokens, API/private keys, English or Russian labelled credentials, Basic/Bearer authorization, and long digit forms. Telegram init data requires a realistic numeric `auth_date` plus 64-hex `hash`; `query_id`, `user`, and `signature` are optional. A recognized labelled or raw blob is replaced through the end of its line even when a top-level pipe or HTML-escaped separator precedes optional fields. Empty/placeholder prose is preserved.
 - After normalization and whole-line Telegram handling, one bounded scanner emits alternating non-URL and URL spans. Generic redaction runs only on non-URL spans; safe URLs are emitted directly and private URLs are replaced directly, without shield markers. Authority is validated before host trust on every supported decode layer; malformed ports, encoded delimiters, quote/space userinfo confusion, and residual deeper encoding fail closed. Userinfo, canonical sensitive query/fragment keys, semicolon or quoted nested assignments, keyless session tokens, nested proxy/subscription URLs, POKROV endpoint tokens, and `/sub/` or `/subscription/` token segments are private. Only exact known public-reference hosts (`github.com`, `pokrov.space`, `www.pokrov.space`, `docs.pokrov.space`, and `status.pokrov.space`) are trusted; leading/trailing dots and arbitrary `docs.*`/`status.*` hosts are not. Genuine GitHub commit and public docs references remain readable, while ticket UUID URLs remain private.
@@ -47,20 +51,21 @@ Last updated: 2026-07-14
 - AI ticket messages use safe plaintext mini-formatting only: short labels, line breaks, numbered steps, bullets, inline bold/code markers. The WebApp renders those markers as structured blocks without accepting raw HTML.
 - `@pokrov_supportbot` renders AI mini-formatting through escaped Telegram HTML and attaches quick follow-up buttons: `Не получилось`, `Дайте шаги`, `Оператор`, and `Открыть обращение`. Buttons either put the user into the same ticket reply flow or append a safe operator-request message to the ticket.
 - Current support knowledge covers the app-first path plus beta manual setup through compatible clients such as `Hiddify`, `Happ`, `v2rayNG`, `v2rayN`, `Streisand`, `NekoBox`, `NekoRay`, `Shadowrocket`, `FoXray`, and `V2Box`; account-specific and unclear cases still escalate to operators.
-- `SUPPORT_AI_MAX_CONTEXT_CHARS` defaults to `32000`, so the runtime can send the expanded support KB without loading the entire repository or secret-bearing docs into user requests.
-- Pi is an operator-side knowledge curation harness for refreshing `shared/support-ai-knowledge.json`; it is not invoked inside each production user request.
+- `SUPPORT_AI_MAX_CONTEXT_CHARS` and the harness serialized-input ceiling default to `36000`; environment values may lower hard resource ceilings but cannot raise them.
+- Knowledge refresh is an operator-side xCody operation and is never invoked inside a user request.
 
-## Pi Knowledge Refresh
+## xCody Knowledge Refresh
 
-Use [pokrov_support_ai_kb_refresh.py](C:/Users/kiwun/Documents/ai/VPN/scripts/pokrov_support_ai_kb_refresh.py) to build a Pi prompt from allowlisted canon docs, run Pi with OpenRouter/DeepSeek, validate the JSON response, and update `shared/support-ai-knowledge.json`.
+Use [pokrov_support_ai_kb_refresh.py](../../scripts/pokrov_support_ai_kb_refresh.py) to project the exact six public-support sources, reject unsafe content before HTTP, call xCody once through OpenAI Chat Completions, validate the closed KB schema, and optionally update `shared/support-ai-knowledge.json` atomically.
 
 ```powershell
 python scripts/pokrov_support_ai_kb_refresh.py inventory
-python scripts/pokrov_support_ai_kb_refresh.py prompt --output .tmp/support-ai-kb-prompt.md
-python scripts/pokrov_support_ai_kb_refresh.py run-pi --apply
+python scripts/pokrov_support_ai_kb_refresh.py run-xcody --dry-run
+$env:XCODY_API_KEY = "<owner-provided-at-runtime>"
+python scripts/pokrov_support_ai_kb_refresh.py run-xcody --apply
 ```
 
-Review the diff before deployment. The script intentionally excludes secret and evidence paths.
+The dry-run requires no key and prints only aggregate audit fields, never source bodies. The refresh allowlist excludes architecture, operations, evidence, agent-instruction, credential, and private customer/provider paths. Review the resulting KB diff before any separately authorized deployment.
 
 ## Beta Rules
 

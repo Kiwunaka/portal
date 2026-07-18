@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-17
+Last updated: 2026-07-19
 
 ## Document Status
 
@@ -132,11 +132,14 @@ Repo-side deploy rule:
 - if preflight or requirements installation fails, the script exits before live file promotion and before any `systemctl restart`
 - if a requested unit fails restart or does not report `active`, the script restores the previous backed-up backend/shared files and restarts the requested units on that previous file set
 - `--restart` accepts only systemd-safe unit names; do not use shell fragments or chained commands in the unit list
-- the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, and `support-ai-knowledge.json`
+- the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, `support-ai-knowledge.json`, and `support-agent-policy.json`
 - the deploy step should be treated as failed if any requested unit does not become `active` after restart
-- support AI is a `portal-api` and `portal-helpbot` runtime feature. It stays disabled unless the `brain` environment sets `SUPPORT_AI_ENABLED=true` plus an API key. The default route is OpenRouter `https://openrouter.ai/api/v1` with `deepseek/deepseek-v4-flash`; switch providers only through env overrides. Leave `SUPPORT_AI_OPENROUTER_DATA_COLLECTION` blank unless a specific OpenRouter route requires `deny` or `allow`; an unsupported strict policy can make OpenRouter return no matching endpoints.
-- keep `SUPPORT_AI_MAX_CONTEXT_CHARS` at `32000` or higher when deploying the expanded support KB; lower values can truncate later troubleshooting topics before they reach the model.
-- knowledge refresh is operator-side: use `python scripts/pokrov_support_ai_kb_refresh.py run-pi --apply`, review `shared/support-ai-knowledge.json`, then deploy backend code/shared runtime assets to `brain`
+- support AI is a `portal-api` and `portal-helpbot` runtime feature and remains disabled by default. The exact route table is: `SUPPORT_AI_ENABLED=false` selects local fallback; `SUPPORT_AI_ENABLED=true` with `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper; both flags `true` select the bounded harness. There is no shadow/double call.
+- both provider paths use xCody OpenAI Chat Completions, default `https://api.xcody.dev/v1`, `minimax-m3`, and `SUPPORT_AI_REASONING_EFFORT=medium`. Keep the owner-provided enterprise URL in `SUPPORT_AI_API_BASE_URL` and the credential only in `XCODY_API_KEY` or the compatibility alias `SUPPORT_AI_API_KEY`; never place it in files or command output.
+- harness ceilings default to a 25-second run, 12-second provider request, two requests, one tool call, two concurrent runs with a 250 ms acquisition wait, 60-minute/256-session process-local memory, six requests per authenticated owner per rolling minute, three pre-retrieved topics, five tool-result topics, 6,000 retrieved characters, 36,000 serialized input characters, and 700 output tokens. Environment values may lower these ceilings but cannot raise them; invalid values disable the harness and select fallback.
+- the only tool is read-only local `search_support_docs` over the deployed validated public-support assets. The runtime has no DB, account, attachment, key/config, shell, arbitrary-file, or command-execution access; `safeDiagnostics` values never enter provider context.
+- knowledge refresh is operator-side: first run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --dry-run`, then only with an owner-side `XCODY_API_KEY` run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --apply`; review the KB diff before any separately authorized deploy.
+- local tests and a successful dry-run do not prove the production enterprise route. Enablement requires retained live evidence for the exact base URL/model/reasoning candidate, including zero payload-format HTTP 400 responses and honest latency/error/cache metrics.
 
 Observer-lite canary install:
 

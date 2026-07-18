@@ -1,6 +1,6 @@
 # API Contracts
 
-Last updated: 2026-07-14
+Last updated: 2026-07-19
 
 This page captures release-critical API contract expectations for the current
 repository candidate. It is also a concise router to the canonical domain
@@ -478,6 +478,32 @@ API/helpbot log only `support_reply_persist_error`; rollback failures are
 contained without exception detail. Session-close failures are also contained
 and use only `support_reply_cleanup_error`. SQLAlchemy exception rendering hides
 statement parameters.
+
+`POST /api/client/support/assistant` is authenticated and normal-session only.
+Its request uses `scope="support"`, a nonempty `message`, optional owned
+`ticketId`, optional opaque `assistantSessionId`, and optional
+`safeDiagnostics`. Snake-case aliases remain accepted during client migration.
+The response always includes `reply`, `assistantSessionId`,
+`suggestedActions`, `shouldEscalate`, and `source`. Public `source` is one of
+`support_ai`, `support_agent`, or `local_fallback`; model output cannot choose
+it.
+
+The server generates an opaque 16--64 character session ID when one is absent
+or malformed and returns the accepted ID on every response. It binds that
+visible ID to the authenticated owner and the `app` surface before deriving an
+internal key, so the same visible value submitted by another owner cannot join
+the first owner's memory. Continuity is process-local RAM with a 60-minute TTL
+and at most six safe messages; it is neither stored in the ticket nor persisted
+across process restart. An optional `ticketId` is authorized before any model
+or tool call.
+
+Only diagnostic keys `app_version`, `platform`, `route_mode`, and
+`connection_status` may enter bounded event metadata. Diagnostic values do not
+enter model context, agent memory, or logs. The harness is limited to six
+requests per authenticated owner per rolling minute even if the client rotates
+session IDs. Failure, missing support knowledge, and agent escalation still
+return a safe `local_fallback` response with `shouldEscalate=true`; they do not
+turn an API error into an unsafe provider-body echo.
 
 Authenticated normal client/admin attachment behavior remains available under
 the owner/admin contract. The limited recovery projection is text-only and
