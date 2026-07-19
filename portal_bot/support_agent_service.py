@@ -11,7 +11,13 @@ from typing import Any, Awaitable, Callable, Mapping
 
 from support_ai_service import SupportAIConfig, generate_support_reply
 from support_agent_context import SupportContextBuilder
-from support_agent_harness import SupportAgentHarness, SupportAgentRequest, SupportAgentResult
+from support_agent_grounding import SupportGroundingEngine
+from support_agent_harness import (
+    SAFE_FALLBACK_REPLY,
+    SupportAgentHarness,
+    SupportAgentRequest,
+    SupportAgentResult,
+)
 from support_agent_knowledge import SupportKnowledgeStore
 from support_agent_policy import SupportAgentPolicyStore
 from support_agent_provider import XCodyChatAdapter
@@ -63,8 +69,6 @@ class SupportAgentRuntimeSettings:
     invalid_reason: str | None
     run_deadline_seconds: float
     provider_timeout_seconds: float
-    max_provider_requests: int
-    max_tool_calls: int
     max_concurrency: int
     concurrency_wait_ms: int
     session_ttl_seconds: float
@@ -72,8 +76,6 @@ class SupportAgentRuntimeSettings:
     owner_rate_limit_per_minute: int
     max_rate_buckets: int
     pre_retrieval_limit: int
-    tool_result_limit: int
-    max_retrieved_chars: int
     max_input_chars: int
     max_output_tokens: int
 
@@ -127,9 +129,7 @@ class SupportAgentRuntimeSettings:
             valid=True,
             invalid_reason=None,
             run_deadline_seconds=number("SUPPORT_AI_RUN_DEADLINE_SECONDS", 25.0, 0.1, 25.0),
-            provider_timeout_seconds=number("SUPPORT_AI_TIMEOUT_SECONDS", 12.0, 0.1, 12.0),
-            max_provider_requests=integer("SUPPORT_AI_MAX_PROVIDER_REQUESTS", 2, 1, 2),
-            max_tool_calls=integer("SUPPORT_AI_MAX_TOOL_CALLS", 1, 0, 1),
+            provider_timeout_seconds=number("SUPPORT_AI_TIMEOUT_SECONDS", 20.0, 0.1, 20.0),
             max_concurrency=integer("SUPPORT_AI_MAX_CONCURRENCY", 2, 1, 2),
             concurrency_wait_ms=integer("SUPPORT_AI_CONCURRENCY_WAIT_MS", 250, 1, 250),
             session_ttl_seconds=number("SUPPORT_AI_SESSION_TTL_SECONDS", 3600.0, 1.0, 3600.0),
@@ -137,9 +137,7 @@ class SupportAgentRuntimeSettings:
             owner_rate_limit_per_minute=integer("SUPPORT_AI_OWNER_RATE_LIMIT_PER_MINUTE", 6, 1, 6),
             max_rate_buckets=integer("SUPPORT_AI_MAX_RATE_BUCKETS", 1024, 1, 1024),
             pre_retrieval_limit=integer("SUPPORT_AI_PRE_RETRIEVAL_LIMIT", 3, 1, 3),
-            tool_result_limit=integer("SUPPORT_AI_TOOL_RESULT_LIMIT", 5, 1, 5),
-            max_retrieved_chars=integer("SUPPORT_AI_MAX_RETRIEVED_CHARS", 6000, 1, 6000),
-            max_input_chars=integer("SUPPORT_AI_MAX_INPUT_CHARS", 36000, 1000, 36000),
+            max_input_chars=integer("SUPPORT_AI_MAX_INPUT_CHARS", 30000, 1000, 30000),
             max_output_tokens=integer("SUPPORT_AI_MAX_OUTPUT_TOKENS", 1200, 1, 1200),
         )
         if errors:
@@ -188,11 +186,13 @@ def _legacy_actions(message: str) -> tuple[Mapping[str, str], ...]:
     )
 
 
-def _agent_actions(topic_ids: tuple[str, ...]) -> tuple[Mapping[str, str], ...]:
-    normalized = tuple(item.casefold() for item in topic_ids)
+def _agent_actions(grounding_topic_id: str | None) -> tuple[Mapping[str, str], ...]:
+    if not isinstance(grounding_topic_id, str) or not grounding_topic_id:
+        return _fallback_actions()
+    normalized = grounding_topic_id.casefold()
     return _fixed_actions(
-        connection=any(marker in topic for topic in normalized for marker in _CONNECTION_TOPIC_MARKERS),
-        access=any(marker in topic for topic in normalized for marker in _ACCESS_TOPIC_MARKERS),
+        connection=any(marker in normalized for marker in _CONNECTION_TOPIC_MARKERS),
+        access=any(marker in normalized for marker in _ACCESS_TOPIC_MARKERS),
     )
 
 
@@ -209,15 +209,19 @@ def _default_harness_factory(
             config.timeout_seconds,
             settings.provider_timeout_seconds,
             settings.run_deadline_seconds,
-            12.0,
+            20.0,
         ),
         max_context_chars=min(config.max_context_chars, settings.max_input_chars),
         max_output_tokens=min(config.max_output_tokens, settings.max_output_tokens),
     )
     return SupportAgentHarness(
         policy=policy,
-        knowledge_store=knowledge_store,
         knowledge=knowledge,
+        grounding_engine=SupportGroundingEngine(
+            knowledge_store,
+            knowledge,
+            retrieval_limit=settings.pre_retrieval_limit,
+        ),
         session_store=SupportSessionStore(
             ttl_seconds=settings.session_ttl_seconds,
             max_sessions=settings.max_sessions,
@@ -230,16 +234,11 @@ def _default_harness_factory(
         adapter=XCodyChatAdapter(config=bounded_config),
         context_builder=SupportContextBuilder(
             max_provider_request_chars=settings.max_input_chars,
-            max_retrieval_zone_chars=settings.max_retrieved_chars,
         ),
-        max_provider_requests=settings.max_provider_requests,
-        max_tool_calls=settings.max_tool_calls,
         max_concurrency=settings.max_concurrency,
         concurrency_wait_seconds=settings.concurrency_wait_ms / 1000.0,
         run_deadline_seconds=settings.run_deadline_seconds,
         provider_timeout_seconds=min(bounded_config.timeout_seconds, settings.run_deadline_seconds),
-        pre_retrieval_limit=settings.pre_retrieval_limit,
-        tool_result_limit=settings.tool_result_limit,
     )
 
 
@@ -285,6 +284,16 @@ class SupportAgentService:
     def _local_result(self, message: str, session_id: str) -> SupportReplyResult:
         return SupportReplyResult(
             reply=support_fallback_reply(message),
+            assistant_session_id=session_id,
+            suggested_actions=_fallback_actions(),
+            should_escalate=True,
+            source="local_fallback",
+        )
+
+    @staticmethod
+    def _agent_transfer_result(session_id: str) -> SupportReplyResult:
+        return SupportReplyResult(
+            reply=SAFE_FALLBACK_REPLY,
             assistant_session_id=session_id,
             suggested_actions=_fallback_actions(),
             should_escalate=True,
@@ -347,6 +356,10 @@ class SupportAgentService:
                 source="support_ai",
             )
 
+        if self.config.model != "minimax-m3" or self.config.reasoning_effort != "medium":
+            logger.warning("support agent disabled code=agent_profile_invalid")
+            return self._local_result(message, scope.client_session_id)
+
         if self._harness is None:
             try:
                 self._harness = self.harness_factory(self.config, self.settings)
@@ -367,17 +380,13 @@ class SupportAgentService:
             logger.warning("support agent generation failed code=agent_run_error")
             return self._local_result(message, scope.client_session_id)
         if not isinstance(result, SupportAgentResult) or result.status != "answer":
-            return self._local_result(message, scope.client_session_id)
-
-        should_escalate = any(
-            marker in topic.casefold()
-            for topic in result.source_topic_ids
-            for marker in _ACCESS_TOPIC_MARKERS
-        )
+            return self._agent_transfer_result(scope.client_session_id)
+        if result.answer_origin not in {"model", "grounded_local"}:
+            return self._agent_transfer_result(scope.client_session_id)
         return SupportReplyResult(
             reply=result.reply,
             assistant_session_id=scope.client_session_id,
-            suggested_actions=_agent_actions(result.source_topic_ids),
-            should_escalate=should_escalate,
+            suggested_actions=_agent_actions(result.grounding_topic_id),
+            should_escalate=False,
             source="support_agent",
         )

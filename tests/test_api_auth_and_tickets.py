@@ -210,7 +210,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 "scope": "support",
                 "safeDiagnostics": {
                     "platform": "windows",
-                    "runtimeState": "disconnected",
+                    "connection_status": "disconnected",
                 },
             },
         )
@@ -221,7 +221,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(
             events[0]["meta"]["diagnostics_keys"],
-            ["platform", "runtimeState"],
+            ["connection_status", "platform"],
         )
 
     def _upload_support_attachment(

@@ -301,10 +301,11 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     _add_node(api, code="nl-ams-01")
 
     from support_ai_service import SupportAIConfig
+    from support_agent_grounding import SupportGroundingEngine
     from support_agent_harness import SupportAgentHarness
     from support_agent_knowledge import SupportKnowledgeStore
     from support_agent_policy import SupportAgentPolicyStore
-    from support_agent_provider import ModelTurn, ProviderUsage
+    from support_agent_provider import ProviderUsage, SynthesisTurn
     from support_agent_service import SupportAgentService
     from support_agent_sessions import OwnerRateLimiter, SessionInFlightGuard, SupportSessionStore
 
@@ -312,29 +313,20 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
         def __init__(self) -> None:
             self.requests = []
 
-        async def complete(self, **request):
+        async def complete_synthesis(self, **request):
             self.requests.append(request)
             content = json.dumps(
                 {
                     "schema_version": "1",
                     "status": "answer",
                     "reply": "Переподключитесь и повторите проверку доступа.",
-                    "source_topic_ids": ["connected_no_internet"],
-                    "session_state": {
-                        "issue_topic_id": "connected_no_internet",
-                        "attempted_steps": ["reconnect"],
-                        "last_outcome": "not_reported",
-                        "escalation_requested": False,
-                    },
                 },
                 ensure_ascii=False,
                 separators=(",", ":"),
             )
-            return ModelTurn(
+            return SynthesisTurn(
                 content=content,
                 finish_reason="stop",
-                tool_calls=(),
-                normalized_assistant_message={"role": "assistant", "content": content},
                 usage=ProviderUsage(prompt_tokens=100, completion_tokens=20, cached_tokens=80),
                 latency_ms=5,
             )
@@ -355,8 +347,8 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     recording_harness = _RecordingHarness(
         SupportAgentHarness(
             policy=policy,
-            knowledge_store=knowledge_store,
             knowledge=knowledge,
+            grounding_engine=SupportGroundingEngine(knowledge_store, knowledge),
             session_store=SupportSessionStore(),
             rate_limiter=OwnerRateLimiter(),
             in_flight_guard=SessionInFlightGuard(),

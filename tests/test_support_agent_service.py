@@ -23,28 +23,36 @@ def _config(*, enabled: bool = True, key: str = "sk-test"):
     )
 
 
-def _agent_result(*, status: str = "answer", topic: str = "connected_no_internet", reason=None):
+def _agent_result(
+    *,
+    status="answer",
+    answer_origin="model",
+    context_topic_ids=("connected_no_internet",),
+    grounding_topic_id="connected_no_internet",
+    reason=None,
+):
     from support_agent_harness import SupportAgentResult
     from support_agent_provider import ProviderUsage
     from support_agent_safety import SafeSessionState
 
     return SupportAgentResult(
         status=status,
-        reply="Безопасный ответ модели, который не управляет метаданными.",
-        source_topic_ids=(topic,) if status == "answer" else (),
+        reply="Безопасный ответ агента.",
+        context_topic_ids=tuple(context_topic_ids),
+        grounding_topic_id=grounding_topic_id,
         session_state=(
             SafeSessionState(
-                issue_topic_id=topic,
-                attempted_steps=("reconnect",),
+                issue_topic_id=grounding_topic_id,
+                attempted_steps=(),
                 last_outcome="not_reported",
-                escalation_requested=False,
+                unsuccessful_turns=0,
+                escalation_requested=status == "escalate",
             )
-            if status == "answer"
+            if grounding_topic_id is not None
             else None
         ),
+        answer_origin=answer_origin,
         provider_request_count=1,
-        tool_call_count=0,
-        retry_count=0,
         escalation_reason=reason,
         usage=ProviderUsage(prompt_tokens=100, completion_tokens=20, cached_tokens=80),
         latency_ms=50,
@@ -83,6 +91,18 @@ def _generate(service, **overrides):
     }
     values.update(overrides)
     return asyncio.run(service.generate(**values))
+
+
+def generate_with(outcome):
+    from support_agent_service import SupportAgentService
+
+    harness = _HarnessSpy(outcome=outcome)
+    service = SupportAgentService(
+        config=_config(),
+        env={"SUPPORT_AI_AGENT_ENABLED": "true"},
+        harness_factory=_HarnessFactory(harness),
+    )
+    return _generate(service)
 
 
 @pytest.mark.parametrize(
@@ -133,7 +153,6 @@ def test_missing_key_and_invalid_agent_limits_fail_before_harness_construction()
         {"SUPPORT_AI_AGENT_ENABLED": "true", "SUPPORT_AI_MAX_CONCURRENCY": "3"},
         {"SUPPORT_AI_AGENT_ENABLED": "true", "SUPPORT_AI_RUN_DEADLINE_SECONDS": "not-a-number"},
         {"SUPPORT_AI_AGENT_ENABLED": "true", "SUPPORT_AI_CONCURRENCY_WAIT_MS": "0"},
-        {"SUPPORT_AI_AGENT_ENABLED": "true", "SUPPORT_AI_MAX_PROVIDER_REQUESTS": "-1"},
         {"SUPPORT_AI_AGENT_ENABLED": "true", "SUPPORT_AI_TIMEOUT_SECONDS": "nan"},
     )
     for env in invalid_envs:
@@ -198,29 +217,73 @@ def test_agent_output_budget_defaults_to_1200_and_rejects_higher_values() -> Non
     assert oversized_settings.invalid_reason == "support_ai_max_output_tokens_invalid"
 
 
-@pytest.mark.parametrize(
-    "outcome",
-    (
-        _agent_result(status="fallback", reason="provider_timeout"),
-        _agent_result(status="escalate", reason="human_requested"),
-    ),
-)
-def test_agent_failure_or_escalation_uses_fixed_local_copy(outcome) -> None:
-    from support_agent_service import SupportAgentService, support_fallback_reply
-
-    harness = _HarnessSpy(outcome=outcome)
-    service = SupportAgentService(
-        config=_config(),
-        env={"SUPPORT_AI_AGENT_ENABLED": "true"},
-        harness_factory=_HarnessFactory(harness),
+def test_confident_model_answer_uses_topic_actions() -> None:
+    result = generate_with(
+        _agent_result(
+            status="answer",
+            answer_origin="model",
+            context_topic_ids=("connected_no_internet", "private_dns_and_filters"),
+            grounding_topic_id="connected_no_internet",
+        )
     )
+    assert result.source == "support_agent"
+    assert result.should_escalate is False
+    assert [item["key"] for item in result.suggested_actions] == [
+        "retry_connect",
+        "send_diagnostics",
+        "create_ticket",
+    ]
 
-    result = _generate(service)
 
+def test_candidate_model_answer_has_generic_actions_and_no_topic_claim() -> None:
+    result = generate_with(
+        _agent_result(
+            status="answer",
+            answer_origin="model",
+            context_topic_ids=("connected_no_internet", "private_dns_and_filters"),
+            grounding_topic_id=None,
+        )
+    )
+    assert result.source == "support_agent"
+    assert result.should_escalate is False
+    assert [item["key"] for item in result.suggested_actions] == [
+        "send_diagnostics",
+        "create_ticket",
+    ]
+
+
+def test_grounded_local_answer_is_still_agent_source() -> None:
+    result = generate_with(
+        _agent_result(
+            status="answer",
+            answer_origin="grounded_local",
+            context_topic_ids=("slow_speed",),
+            grounding_topic_id="slow_speed",
+        )
+    )
+    assert result.source == "support_agent"
+    assert result.should_escalate is False
+
+
+def test_human_transfer_uses_fixed_harness_reply_and_existing_action_objects() -> None:
+    outcome = _agent_result(
+        status="fallback",
+        answer_origin="human_transfer",
+        context_topic_ids=(),
+        grounding_topic_id=None,
+        reason="provider_timeout",
+    )
+    result = generate_with(outcome)
+    assert result.reply == (
+        "Не удалось безопасно подготовить ответ. Передаю вопрос специалисту поддержки."
+    )
     assert result.source == "local_fallback"
-    assert result.reply == support_fallback_reply("Подключено, но сайты не открываются")
     assert result.should_escalate is True
-    assert {item["key"] for item in result.suggested_actions} == {"send_diagnostics", "create_ticket"}
+    assert all(set(item) == {"key", "label"} for item in result.suggested_actions)
+    assert [item["key"] for item in result.suggested_actions] == [
+        "send_diagnostics",
+        "create_ticket",
+    ]
 
 
 def test_harness_exception_is_contained_and_does_not_expose_exception_text() -> None:
@@ -240,26 +303,41 @@ def test_harness_exception_is_contained_and_does_not_expose_exception_text() -> 
     assert result.should_escalate is True
 
 
-def test_validated_topic_owns_actions_source_and_escalation_not_model_text() -> None:
+def test_obsolete_tool_loop_env_values_have_no_effect() -> None:
+    from support_agent_service import SupportAgentRuntimeSettings
+
+    settings = SupportAgentRuntimeSettings.from_env(
+        {
+            "SUPPORT_AI_AGENT_ENABLED": "true",
+            "SUPPORT_AI_MAX_PROVIDER_REQUESTS": "999",
+            "SUPPORT_AI_MAX_TOOL_CALLS": "999",
+            "SUPPORT_AI_TOOL_RESULT_LIMIT": "999",
+        }
+    )
+    assert settings.valid is True
+    assert not hasattr(settings, "max_provider_requests")
+    assert not hasattr(settings, "max_tool_calls")
+
+
+@pytest.mark.parametrize(
+    ("model", "reasoning"),
+    (("other-model", "medium"), ("minimax-m3", "high")),
+)
+def test_agent_mode_refuses_a_non_locked_synthesis_profile(model, reasoning) -> None:
+    from dataclasses import replace
+
     from support_agent_service import SupportAgentService
 
-    harness = _HarnessSpy(outcome=_agent_result(topic="connected_no_internet"))
+    config = replace(_config(), model=model, reasoning_effort=reasoning)
+    factory = _HarnessFactory(_HarnessSpy())
     service = SupportAgentService(
-        config=_config(),
+        config=config,
         env={"SUPPORT_AI_AGENT_ENABLED": "true"},
-        harness_factory=_HarnessFactory(harness),
+        harness_factory=factory,
     )
-
     result = _generate(service)
-
-    assert result.source == "support_agent"
-    assert result.reply == "Безопасный ответ модели, который не управляет метаданными."
-    assert result.should_escalate is False
-    assert [item["key"] for item in result.suggested_actions] == [
-        "retry_connect",
-        "send_diagnostics",
-        "create_ticket",
-    ]
+    assert result.source == "local_fallback"
+    assert factory.calls == []
 
 
 def test_visible_session_is_owner_and_surface_scoped_before_harness() -> None:
