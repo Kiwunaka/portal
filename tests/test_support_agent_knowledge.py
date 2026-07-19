@@ -65,6 +65,30 @@ def test_repository_bundle_loads_and_ranks_known_connection_issue() -> None:
     assert "Если вопрос зависит от аккаунта" not in snapshot.compact_index
 
 
+def test_repository_retrieval_covers_realistic_support_intents() -> None:
+    from support_agent_knowledge import SupportKnowledgeStore
+
+    fixture = json.loads(
+        (REPO_ROOT / "tests" / "fixtures" / "support-agent-live-eval.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    store = SupportKnowledgeStore()
+    store.load(REPO_ROOT / "shared" / "support-ai-knowledge.json")
+    top_one = 0
+    top_three = 0
+
+    for case in fixture["normal"]:
+        accepted = set(case["accepted_topic_ids"])
+        hits = store.search(case["prompt"], limit=3)
+        top_one += int(bool(hits) and hits[0].topic_id in accepted)
+        top_three += int(any(hit.topic_id in accepted for hit in hits))
+
+    assert len(fixture["normal"]) == 48
+    assert top_one >= 33
+    assert top_three >= 46
+
+
 def test_search_is_deterministic_bounded_and_can_exclude_prior_hits() -> None:
     from support_agent_knowledge import KnowledgeValidationError, SupportKnowledgeStore
 

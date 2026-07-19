@@ -60,6 +60,107 @@ _MAX_BODY_CHARS = 1_200
 _MAX_INDEX_CHARS = 8_000
 _MAX_RESULT_TOPICS = 5
 _MAX_RESULT_CHARS = 6_000
+_SEARCH_STOPWORDS = frozenset(
+    {
+        "pokrov",
+        "покров",
+        "что",
+        "как",
+        "ли",
+        "это",
+        "в",
+        "во",
+        "на",
+        "с",
+        "со",
+        "по",
+        "и",
+        "или",
+        "но",
+        "не",
+        "у",
+        "к",
+        "для",
+        "через",
+        "мой",
+        "моя",
+        "мою",
+        "мне",
+        "всё",
+        "все",
+        "ещё",
+        "еще",
+        "один",
+        "одна",
+        "какие",
+        "какой",
+        "правильно",
+        "безопасно",
+        "сделать",
+        "делать",
+        "проверить",
+        "попробовать",
+        "может",
+        "можно",
+        "показывает",
+    }
+)
+_SEARCH_SCOPE_TOKENS = frozenset(
+    {"hiddify", "happ", "karing", "v2rayng", "v2rayn", "streisand", "android", "windows", "ios", "macos"}
+)
+_SEARCH_SUFFIXES = tuple(
+    sorted(
+        {
+            "иями",
+            "ями",
+            "ами",
+            "ого",
+            "ему",
+            "ому",
+            "ими",
+            "ыми",
+            "иях",
+            "ах",
+            "ях",
+            "ую",
+            "юю",
+            "ая",
+            "яя",
+            "ое",
+            "ее",
+            "ие",
+            "ые",
+            "ый",
+            "ий",
+            "ой",
+            "ей",
+            "ов",
+            "ев",
+            "ам",
+            "ям",
+            "ом",
+            "ем",
+            "ет",
+            "ют",
+            "ут",
+            "ит",
+            "ат",
+            "ят",
+            "ть",
+            "ся",
+            "а",
+            "я",
+            "ы",
+            "и",
+            "у",
+            "ю",
+            "е",
+            "о",
+        },
+        key=len,
+        reverse=True,
+    )
+)
 
 
 class KnowledgeValidationError(ValueError):
@@ -82,6 +183,14 @@ class KnowledgeSnapshot:
     compact_index: str
 
 
+@dataclass(frozen=True, slots=True)
+class _TopicSearchFeatures:
+    keyword_tokens: tuple[frozenset[str], ...]
+    id_tokens: frozenset[str]
+    body_tokens: frozenset[str]
+    trigrams: frozenset[str]
+
+
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -98,6 +207,33 @@ def _normalize_text(value: str) -> str:
 
 def _tokens(value: str) -> frozenset[str]:
     return frozenset(part for part in _normalize_text(value).split() if part)
+
+
+def _search_stem(token: str) -> str:
+    if token in _SEARCH_STOPWORDS:
+        return ""
+    if len(token) < 5:
+        return token
+    for suffix in _SEARCH_SUFFIXES:
+        if token.endswith(suffix) and len(token) - len(suffix) >= 4:
+            return token[: -len(suffix)]
+    return token
+
+
+def _search_tokens(value: str) -> frozenset[str]:
+    return frozenset(
+        stemmed
+        for token in _normalize_text(value).split()
+        if (stemmed := _search_stem(token))
+    )
+
+
+def _search_trigrams(value: str) -> frozenset[str]:
+    cleaned = " ".join(
+        token for token in _normalize_text(value).split() if token not in _SEARCH_STOPWORDS
+    )
+    padded = f" {cleaned} "
+    return frozenset(padded[index : index + 3] for index in range(max(0, len(padded) - 2)))
 
 
 def _validate_public_url(raw_url: str) -> None:
@@ -142,6 +278,7 @@ def _validate_model_visible_text(value: str) -> None:
 class SupportKnowledgeStore:
     def __init__(self) -> None:
         self.snapshot: KnowledgeSnapshot | None = None
+        self._search_features: Mapping[str, _TopicSearchFeatures] = MappingProxyType({})
 
     def load(self, path: Path) -> KnowledgeSnapshot:
         try:
@@ -231,7 +368,17 @@ class SupportKnowledgeStore:
             topics_by_id=MappingProxyType(dict(topics)),
             compact_index=compact_index,
         )
+        search_features = {
+            topic.topic_id: _TopicSearchFeatures(
+                keyword_tokens=tuple(_search_tokens(keyword) for keyword in topic.keywords),
+                id_tokens=_search_tokens(topic.topic_id.replace("_", " ")),
+                body_tokens=_search_tokens(topic.body),
+                trigrams=_search_trigrams(" ".join((*topic.keywords, topic.body))),
+            )
+            for topic in topics.values()
+        }
         self.snapshot = candidate
+        self._search_features = MappingProxyType(search_features)
         return candidate
 
     def _require_snapshot(self) -> KnowledgeSnapshot:
@@ -261,17 +408,42 @@ class SupportKnowledgeStore:
         if any(not isinstance(item, str) or not _TOPIC_ID_RE.fullmatch(item) for item in excluded):
             raise KnowledgeValidationError("knowledge_exclusion_invalid")
         normalized_query = _normalize_text(query)
-        query_tokens = _tokens(normalized_query)
+        query_tokens = _search_tokens(normalized_query)
+        query_trigrams = _search_trigrams(normalized_query)
         padded_query = f" {normalized_query} "
         scored: list[KnowledgeHit] = []
         for topic in snapshot.topics_by_id.values():
             if topic.topic_id in excluded:
                 continue
-            exact_score = sum(6 for keyword in topic.keywords if f" {keyword} " in padded_query)
-            keyword_tokens = frozenset().union(*(_tokens(item) for item in topic.keywords))
-            overlap_score = 2 * len(query_tokens & keyword_tokens)
-            id_score = len(query_tokens & _tokens(topic.topic_id.replace("_", " ")))
-            score = exact_score + overlap_score + id_score
+            features = self._search_features[topic.topic_id]
+            exact_matches = sum(
+                1
+                for keyword, tokens in zip(topic.keywords, features.keyword_tokens)
+                if tokens and f" {keyword} " in padded_query
+            )
+            keyword_overlap = sum(
+                len(query_tokens & tokens) for tokens in features.keyword_tokens
+            )
+            covered_keywords = sum(
+                1 for tokens in features.keyword_tokens if tokens and tokens <= query_tokens
+            )
+            trigram_denominator = len(query_trigrams) + len(features.trigrams)
+            trigram_dice = (
+                2 * len(query_trigrams & features.trigrams) / trigram_denominator
+                if trigram_denominator
+                else 0.0
+            )
+            scope_tokens = features.id_tokens & _SEARCH_SCOPE_TOKENS
+            scope_penalty = 8 if scope_tokens and not scope_tokens & query_tokens else 0
+            score = (
+                8 * exact_matches
+                + 4 * keyword_overlap
+                + 2 * covered_keywords
+                + 5 * len(query_tokens & features.id_tokens)
+                + 3 * len(query_tokens & features.body_tokens)
+                + round(60 * trigram_dice)
+                - scope_penalty
+            )
             if score > 0:
                 scored.append(replace(topic, score=score))
         scored.sort(key=lambda item: (-item.score, item.topic_id))
