@@ -508,10 +508,11 @@ This contour is observe-and-verify only. It does not change cashier UI design, b
 
 1. user opens support from app, WebApp, or helpbot
 2. the platform stores or routes the support thread
-3. the shared facade selects exactly one path: disabled local fallback, legacy one-call xCody helper, or bounded agent harness; legacy and harness never both call the provider
+3. the shared facade selects exactly one path: disabled local fallback, legacy one-call xCody helper, or bounded code-owned agent harness; legacy and harness never both call the provider
 4. the harness sees only the typed policy, retrieved public-support topics, redacted six-message process memory, and redacted question; `safeDiagnostics` values, accounts, databases, attachments, keys/configs, arbitrary files, and command execution remain outside model context
-5. its only tool is read-only local `search_support_docs`; at most two provider requests and one tool call are allowed, and any missing/invalid/failed result becomes deterministic fallback with human escalation
-6. a successful ticket hint is stored as sender role `assistant`; operator responds through the current tooling, and the hint never closes or resolves the ticket
+5. code performs allowlisted retrieval before the model and sends only selected topic bodies, never the global KB index; the model has no tools and each eligible turn makes at most one provider request
+6. output schema, source provenance, actions, state, risky-action checks, success acknowledgement, fallback, and human transfer are enforced by code; missing or unsafe evidence cannot be repaired by a second model call
+7. a successful ticket hint is stored as sender role `assistant`; operator responds through the current tooling, and the hint never closes or resolves the ticket
 
 ### Feedback And Review Flow
 

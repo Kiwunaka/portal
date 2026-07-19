@@ -228,7 +228,11 @@ def test_minimal_model_output_is_closed_and_safe(payload: dict, error: str) -> N
     from support_agent_safety import SafetyValidationError, validate_model_output
 
     with pytest.raises(SafetyValidationError, match=error):
-        validate_model_output(json.dumps(payload, ensure_ascii=False), _policy_snapshot())
+        validate_model_output(
+            json.dumps(payload, ensure_ascii=False),
+            _policy_snapshot(),
+            source_text="Переподключиться и проверить другую сеть.",
+        )
 
 
 def test_minimal_model_output_accepts_answer_and_escalate() -> None:
@@ -237,10 +241,12 @@ def test_minimal_model_output_accepts_answer_and_escalate() -> None:
     answer = validate_model_output(
         '{"schema_version":"1","status":"answer","reply":"Переподключите приложение один раз."}',
         _policy_snapshot(),
+        source_text="Переподключиться в приложении один раз.",
     )
     escalation = validate_model_output(
         '{"schema_version":"1","status":"escalate","reply":"Нужна помощь специалиста."}',
         _policy_snapshot(),
+        source_text="Если шаги не помогли, передать специалисту поддержки.",
     )
 
     assert (answer.status, answer.reply) == (
@@ -257,9 +263,116 @@ def test_duplicate_json_keys_and_oversized_output_fail_closed() -> None:
         validate_model_output(
             '{"schema_version":"1","status":"answer","status":"escalate","reply":"Ответ."}',
             _policy_snapshot(),
+            source_text="Безопасный ответ.",
         )
     with pytest.raises(SafetyValidationError, match="agent_output_size_invalid"):
-        validate_model_output("я" * 20_001, _policy_snapshot())
+        validate_model_output(
+            "я" * 20_001,
+            _policy_snapshot(),
+            source_text="Безопасный ответ.",
+        )
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "Удалите старые VPN-профили и импортируйте ссылку заново.",
+        "Деинсталлируйте остальные VPN-приложения.",
+        "Очистите кэш и cookies, затем войдите через инкогнито.",
+        "Выйдите из аккаунта и войдите снова.",
+        "Мы перевыпустим ключ, а старая ссылка перестанет работать.",
+        "Поддержка проверит маршрут и выдаст новую ссылку.",
+        "Оператор посмотрит маршрут вручную.",
+        "Инженеры проверят маршрут и исправят его вручную.",
+        "Отключите энергосбережение для всех приложений.",
+        "Включите автоматическое переподключение и Smart Network.",
+        "Сбои приложения — это нормально.",
+        "В полном туннеле абсолютно весь трафик идёт через POKROV.",
+    ],
+)
+def test_model_output_rejects_observed_unsupported_actions(reply: str) -> None:
+    from support_agent_safety import SafetyValidationError, validate_model_output
+
+    payload = json.dumps(
+        {"schema_version": "1", "status": "answer", "reply": reply},
+        ensure_ascii=False,
+    )
+    with pytest.raises(SafetyValidationError, match="agent_output_unsupported_action"):
+        validate_model_output(
+            payload,
+            _policy_snapshot(),
+            source_text="Обновить профиль, выбрать локацию и переподключиться.",
+        )
+
+
+@pytest.mark.parametrize(
+    ("reply", "source_text"),
+    [
+        (
+            "Проверьте энергосбережение и работу клиента в фоне.",
+            "Проверить настройки батареи и разрешить работу в фоне.",
+        ),
+        (
+            "Проверьте бонус за подписку на Telegram-канал.",
+            "Бонус начисляется после проверки подписки на Telegram-канал.",
+        ),
+    ],
+)
+def test_contextual_model_actions_are_allowed_only_when_selected_source_contains_them(
+    reply: str,
+    source_text: str,
+) -> None:
+    from support_agent_safety import SafetyValidationError, validate_model_output
+
+    payload = json.dumps(
+        {"schema_version": "1", "status": "answer", "reply": reply},
+        ensure_ascii=False,
+    )
+    accepted = validate_model_output(
+        payload,
+        _policy_snapshot(),
+        source_text=source_text,
+    )
+    assert accepted.reply == reply
+
+    with pytest.raises(SafetyValidationError, match="agent_output_unsupported_action"):
+        validate_model_output(
+            payload,
+            _policy_snapshot(),
+            source_text="Обновить профиль и переподключиться.",
+        )
+
+
+def test_model_output_source_contract_fails_closed() -> None:
+    from support_agent_safety import SafetyValidationError, validate_model_output
+
+    payload = '{"schema_version":"1","status":"answer","reply":"Ответ по инструкции."}'
+    for source_text in ("", "я" * 3_601):
+        with pytest.raises(SafetyValidationError, match="agent_output_source_invalid"):
+            validate_model_output(
+                payload,
+                _policy_snapshot(),
+                source_text=source_text,
+            )
+
+
+def test_model_escalation_is_not_converted_to_answer_by_semantic_action_filter() -> None:
+    from support_agent_safety import validate_model_output
+
+    result = validate_model_output(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "status": "escalate",
+                "reply": "Оператор проверит обращение вручную.",
+            },
+            ensure_ascii=False,
+        ),
+        _policy_snapshot(),
+        source_text="Обновить профиль и переподключиться.",
+    )
+
+    assert result.status == "escalate"
 
 
 def test_safe_reply_validator_is_shared_by_model_and_local_renderer() -> None:

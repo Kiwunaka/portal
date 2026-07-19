@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -36,6 +36,7 @@ CASES = (
     ("http_400_confident", "safe", "confident", "http_400", "ok", 1, "answer", "grounded_local", None),
     ("invalid_json_confident", "safe", "confident", "invalid_json", "ok", 1, "answer", "grounded_local", None),
     ("unsafe_output_confident", "safe", "confident", "unsafe", "ok", 1, "answer", "grounded_local", None),
+    ("unsupported_action_confident", "safe", "confident", "unsupported_action", "ok", 1, "answer", "grounded_local", None),
     ("timeout_candidate", "safe", "candidate", "timeout", "ok", 1, "fallback", "human_transfer", "provider_timeout"),
     ("fingerprint_missing", "safe", "candidate", "invalid_json", "ok", 1, "fallback", "human_transfer", "agent_output_json_invalid"),
     ("post_answer_write_failure", "safe", "confident", "answer", "write_error", 1, "fallback", "human_transfer", "session_write_failed"),
@@ -57,6 +58,7 @@ PROVIDER_PLANS = frozenset(
         "http_400",
         "invalid_json",
         "unsafe",
+        "unsupported_action",
         "metadata",
         "runtime_error",
     }
@@ -107,6 +109,15 @@ class _Adapter:
         elif self.plan == "unsafe":
             content = json.dumps(
                 {"schema_version": "1", "status": "answer", "reply": "Ответ vless://secret"},
+                ensure_ascii=False,
+            )
+        elif self.plan == "unsupported_action":
+            content = json.dumps(
+                {
+                    "schema_version": "1",
+                    "status": "answer",
+                    "reply": "Удалите старые VPN-профили и очистите кэш.",
+                },
                 ensure_ascii=False,
             )
         elif self.plan == "metadata":
@@ -468,6 +479,69 @@ def test_code_owned_provenance_and_candidate_state_are_not_model_owned(
     confident_result = asyncio.run(confident.harness.run(confident.request))
     assert confident_result.grounding_topic_id == "connected_no_internet"
     assert confident_result.grounding_topic_id in confident_result.context_topic_ids
+
+
+def test_resolved_followup_is_acknowledged_by_code_without_provider_or_promotion(
+    harness_case_factory,
+) -> None:
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import StoredMessage
+
+    case = harness_case_factory(
+        name="resolved-code-owned",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="unused",
+        store_plan="ok",
+    )
+    case.session_store.real.append(
+        case.request.session_scope.internal_session_key,
+        (
+            StoredMessage(role="user", content="После продления срок не обновился."),
+            StoredMessage(role="assistant", content="Обновите доступ в приложении."),
+        ),
+        SafeSessionState(
+            issue_topic_id="refresh_after_renewal",
+            attempted_steps=("refresh_access",),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        99.0,
+    )
+    case.request = replace(case.request, message="Новый срок появился, всё решено.")
+
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.status == "answer"
+    assert result.answer_origin == "code_owned"
+    assert result.provider_request_count == 0
+    assert case.adapter.call_count == 0
+    assert result.session_state.issue_topic_id == "refresh_after_renewal"
+    assert result.session_state.last_outcome == "resolved"
+    assert "бонус" not in result.reply.casefold()
+
+
+def test_mixed_resolution_and_new_failure_is_not_closed_by_code(
+    harness_case_factory,
+) -> None:
+    case = harness_case_factory(
+        name="mixed-resolution",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="answer",
+        store_plan="ok",
+    )
+    case.request = replace(
+        case.request,
+        message="Подключение заработало, но один сайт не открывается.",
+    )
+
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.answer_origin == "model"
+    assert result.provider_request_count == 1
+    assert case.adapter.call_count == 1
 
 
 def test_model_metadata_is_rejected_and_model_escalation_never_renders_local(

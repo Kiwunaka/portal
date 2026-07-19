@@ -16,6 +16,7 @@ from support_ai_service import redact_support_text
 _MAX_API_MESSAGE_CHARS = 2_000
 _MAX_MODEL_MESSAGE_CHARS = 1_200
 _MAX_RAW_OUTPUT_CHARS = 20_000
+_MAX_SELECTED_SOURCE_CHARS = 3_600
 _PRIVATE_SCHEME_RE = re.compile(
     r"(?<![A-Za-z0-9])(?:vless|vmess|trojan|ss|ssr|hysteria2?|hy2|tuic|wireguard|wg)://",
     re.IGNORECASE,
@@ -76,6 +77,92 @@ _PUBLIC_INPUT_HOSTS = frozenset(
     }
 )
 _MODEL_OUTPUT_KEYS = frozenset({"schema_version", "status", "reply"})
+_UNSUPPORTED_MODEL_ACTION_RES = (
+    re.compile(
+        r"\b(?:удалите|удали|удалить|деинсталлируйте|деинсталлировать|"
+        r"сбросьте|сбросить|очистите|очистить)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:выйдите|выйти)\s+из\s+(?:аккаунта|уч[её]тной\s+записи)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:перевыпуст\w*|отозв\w*|аннулир\w*|инвалидир\w*)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:стар(?:ая|ый|ое|ую)|прежн(?:яя|ий|ее|юю))\s+"
+        r"(?:ссылк\w*|ключ\w*|профил\w*).{0,60}"
+        r"\b(?:перестан\w*|не\s+будет)\s+работ\w*",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:скомпрометирован\w*|утекш\w*).{0,40}\b(?:ссылк\w*|ключ\w*)"
+        r".{0,80}\b(?:обнов\w*|замен\w*)",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:мы\s+)?(?:выдадим|пришл[её]м|проверим|посмотрим|изучим|"
+        r"исправим|настроим|освободим)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:поддержк\w*|оператор\w*).{0,80}"
+        r"\b(?:выдаст|пришл[её]т|перевыпустит|отзов[её]т|аннулирует|"
+        r"освободит|исправит|настроит)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"\b(?:поддержк\w*|оператор\w*).{0,80}"
+        r"\b(?:проверит|посмотрит|изучит|исправит)\b.{0,80}"
+        r"\b(?:маршрут\w*|сервер\w*|инфраструктур\w*|аккаунт\w*|"
+        r"оплат\w*|ключ\w*|ссылк\w*|профил\w*|конфиг\w*)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(r"\bинженер\w*\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:сбо\w*|глюк\w*)\b.{0,50}\b(?:это\s+)?нормальн\w*\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(
+        r"(?:\bабсолютно\s+весь\b.{0,40}\bтрафик\b|"
+        r"\bвесь\b.{0,40}\bтрафик\b.{0,40}\bбез\s+исключений\b|"
+        r"\bгарантированно\b.{0,40}\bвесь\b.{0,40}\bтрафик\b)",
+        re.IGNORECASE | re.DOTALL,
+    ),
+)
+_CONTEXTUAL_MODEL_ACTION_RES = (
+    (
+        re.compile(r"\b(?:батаре\w*|энергосбереж\w*|работ\w*\s+в\s+фон\w*)\b", re.IGNORECASE),
+        re.compile(r"\b(?:батаре\w*|энергосбереж\w*|работ\w*\s+в\s+фон\w*)\b", re.IGNORECASE),
+    ),
+    (
+        re.compile(
+            r"\b(?:адаптивн\w*.{0,30}(?:батаре\w*|энерг\w*)|"
+            r"спящ\w*.{0,30}прилож\w*|smart\s+network|умн\w*.{0,20}сет\w*|"
+            r"авто(?:матическ\w*)?[ -]?(?:пере)?подключ\w*|"
+            r"закреп\w*.{0,40}(?:недавн\w*|последн\w*)\s+прилож\w*)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+        re.compile(
+            r"\b(?:адаптивн\w*.{0,30}(?:батаре\w*|энерг\w*)|"
+            r"спящ\w*.{0,30}прилож\w*|smart\s+network|умн\w*.{0,20}сет\w*|"
+            r"авто(?:матическ\w*)?[ -]?(?:пере)?подключ\w*|"
+            r"закреп\w*.{0,40}(?:недавн\w*|последн\w*)\s+прилож\w*)\b",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
+    (
+        re.compile(r"\bбонус\w*\b", re.IGNORECASE),
+        re.compile(r"\bбонус\w*\b", re.IGNORECASE),
+    ),
+)
+_GLOBAL_ENERGY_DISABLE_RE = re.compile(
+    r"(?:\b(?:отключ\w*|выключ\w*)\b.{0,60}\b(?:энергосбереж\w*|оптимизац\w*\s+батаре\w*)\b|"
+    r"\b(?:энергосбереж\w*|оптимизац\w*\s+батаре\w*)\b.{0,60}\b(?:отключ\w*|выключ\w*)\b)",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 class InputDisposition(str, Enum):
@@ -346,10 +433,29 @@ def validate_safe_reply(reply: str, policy: PolicySnapshot) -> str:
     return reply.strip()
 
 
+def _has_unsupported_model_action(reply: str, source_text: str) -> bool:
+    if any(pattern.search(reply) for pattern in _UNSUPPORTED_MODEL_ACTION_RES):
+        return True
+    if _GLOBAL_ENERGY_DISABLE_RE.search(reply) and not _GLOBAL_ENERGY_DISABLE_RE.search(source_text):
+        return True
+    return any(
+        reply_pattern.search(reply) and not source_pattern.search(source_text)
+        for reply_pattern, source_pattern in _CONTEXTUAL_MODEL_ACTION_RES
+    )
+
+
 def validate_model_output(
     raw_content: str,
     policy: PolicySnapshot,
+    *,
+    source_text: str,
 ) -> ValidatedModelReply:
+    if (
+        not isinstance(source_text, str)
+        or not source_text.strip()
+        or len(source_text) > _MAX_SELECTED_SOURCE_CHARS
+    ):
+        raise SafetyValidationError("agent_output_source_invalid")
     if not isinstance(raw_content, str) or not 1 <= len(raw_content) <= _MAX_RAW_OUTPUT_CHARS:
         raise SafetyValidationError("agent_output_size_invalid")
     try:
@@ -367,7 +473,7 @@ def validate_model_output(
         or status not in {"answer", "escalate"}
     ):
         raise SafetyValidationError("agent_output_status_invalid")
-    return ValidatedModelReply(
-        status=status,
-        reply=validate_safe_reply(payload["reply"], policy),
-    )
+    reply = validate_safe_reply(payload["reply"], policy)
+    if status == "answer" and _has_unsupported_model_action(reply, source_text):
+        raise SafetyValidationError("agent_output_unsupported_action")
+    return ValidatedModelReply(status=status, reply=reply)

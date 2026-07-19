@@ -60,6 +60,7 @@ logger = logging.getLogger(__name__)
 SAFE_FALLBACK_REPLY = (
     "Не удалось безопасно подготовить ответ. Передаю вопрос специалисту поддержки."
 )
+RESOLVED_ACK_REPLY = "Хорошо, проблема решена. Если появится новый вопрос, напишите в поддержку."
 _HASH_RE = re.compile(r"[0-9a-f]{64}")
 _CODE_RE = re.compile(r"[A-Za-z0-9._/-]{1,64}")
 _SURFACES = frozenset({"app", "ticket", "helpbot"})
@@ -92,7 +93,9 @@ _FIXED_ERROR_CODES = frozenset(
         "agent_output_reply_unsafe",
         "agent_output_root_invalid",
         "agent_output_size_invalid",
+        "agent_output_source_invalid",
         "agent_output_status_invalid",
+        "agent_output_unsupported_action",
         "bundle_snapshot_invalid",
         "context_limits_invalid",
         "current_message_invalid",
@@ -426,6 +429,31 @@ class SupportAgentHarness:
             escalation_reason=None,
         )
 
+    def _persist_code_owned_resolution(
+        self,
+        request: SupportAgentRequest,
+        user_text: str,
+        state: SafeSessionState,
+        stats: _RunStats,
+    ) -> _Outcome:
+        try:
+            reply = validate_safe_reply(RESOLVED_ACK_REPLY, self.policy)
+        except SafetyValidationError as exc:
+            stats.error_code = _fixed_error_code(exc)
+            return _human_transfer(stats.error_code, status="fallback")
+        if not self._append_pair(request, user_text, reply, state):
+            stats.error_code = "session_write_failed"
+            return _human_transfer("session_write_failed", status="fallback")
+        return _Outcome(
+            status="answer",
+            reply=reply,
+            context_topic_ids=(),
+            grounding_topic_id=None,
+            session_state=state,
+            answer_origin="code_owned",
+            escalation_reason=None,
+        )
+
     async def _execute_locked(
         self,
         request: SupportAgentRequest,
@@ -449,12 +477,34 @@ class SupportAgentHarness:
                 session_state=session.state,
             )
 
+        signals = classify_conversation_signals(boundary.model_text)
+        normalized_resolution = boundary.model_text.casefold().replace("ё", "е")
+        if (
+            signals.outcome == "resolved"
+            and "?" not in boundary.model_text
+            and not re.search(
+                r"\b(?:но|однако|при\s+этом|кроме)\b|"
+                r"\b(?:не\s+работ\w*|не\s+открыва\w*|не\s+могу|ошибк\w*)\b",
+                normalized_resolution,
+            )
+        ):
+            state = state_after_answer(
+                None if session is None else session.state,
+                None,
+                signals,
+            )
+            return self._persist_code_owned_resolution(
+                request,
+                boundary.model_text,
+                state,
+                stats,
+            )
+
         decision = self.grounding_engine.select(boundary.model_text, session)
         if not isinstance(decision, RetrievalDecision):
             stats.error_code = "retrieval_decision_invalid"
             return _human_transfer("retrieval_decision_invalid", status="fallback")
         stats.record_decision(decision)
-        signals = classify_conversation_signals(boundary.model_text)
 
         if session is not None and would_repeat_failure(session.state, signals):
             state = state_for_transfer(session.state, signals)
@@ -497,7 +547,15 @@ class SupportAgentHarness:
             stats.add_turn(turn)
             if turn.finish_reason != "stop":
                 raise _HarnessFailure("final_finish_reason_invalid")
-            model = validate_model_output(turn.content, self.policy)
+            source_text = "\n".join(
+                self.knowledge.topics_by_id[topic_id].body
+                for topic_id in context.context_topic_ids
+            )
+            model = validate_model_output(
+                turn.content,
+                self.policy,
+                source_text=source_text,
+            )
             if model.status == "escalate":
                 state = _state_for_any_transfer(
                     None if session is None else session.state,
