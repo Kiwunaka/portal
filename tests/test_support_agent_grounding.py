@@ -288,6 +288,58 @@ def test_all_ten_session_openers_are_confident(repo_grounding_engine):
         assert decision.grounding_topic_id == case["expected_issue_topic_id"]
 
 
+def test_session_issue_is_pinned_into_ambiguous_followup_context(repo_grounding_engine):
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import SessionState
+
+    session = SessionState(
+        messages=(),
+        state=SafeSessionState(
+            issue_topic_id="android_battery_background",
+            attempted_steps=("restart_app",),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        last_access=1.0,
+    )
+
+    decision = repo_grounding_engine.select(
+        "Я перезапустил приложение и разрешил работу в фоне.",
+        session,
+    )
+
+    assert decision.disposition.value == "candidate"
+    assert decision.grounding_topic_id is None
+    assert decision.context_topic_ids[0] == "android_battery_background"
+
+
+def test_explicit_new_issue_replaces_pinned_session_context(repo_grounding_engine):
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import SessionState
+
+    session = SessionState(
+        messages=(),
+        state=SafeSessionState(
+            issue_topic_id="android_battery_background",
+            attempted_steps=(),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        last_access=1.0,
+    )
+
+    decision = repo_grounding_engine.select(
+        "Один сайт не открывается, остальные работают.",
+        session,
+    )
+
+    assert decision.grounding_topic_id == "one_site_not_open"
+    assert decision.context_topic_ids[0] == "one_site_not_open"
+    assert "android_battery_background" not in decision.context_topic_ids
+
+
 def test_body_hash_mismatch_downgrades_and_disables_local_render(
     repo_grounding_engine,
     policy_snapshot,

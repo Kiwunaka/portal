@@ -17,8 +17,9 @@ if TYPE_CHECKING:
     from support_agent_sessions import SessionState
 
 
-RETRIEVER_VERSION = "code-owned-v1"
+RETRIEVER_VERSION = "code-owned-v2"
 LOCAL_RENDERER_VERSION = "local-body-v1"
+_MAX_PINNED_FOLLOWUP_CHARS = 240
 _HTTP_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 _LOCAL_PREFIX = "Коротко\n"
 _LOCAL_SUFFIX = "\n\nЕсли не поможет\nНапишите в поддержку."
@@ -358,10 +359,13 @@ class SupportGroundingEngine:
             if self._rule_is_active(rule) and _matches(rule, text)
         ]
         grounding_id = matched[0].topic_id if len(matched) == 1 else None
-        if grounding_id is None and session is not None and _is_short_followup(text):
+        pinned_context_id: str | None = None
+        if not matched and session is not None and len(text) <= _MAX_PINNED_FOLLOWUP_CHARS:
             pinned = session.state.issue_topic_id
             if pinned in self._active_local_topics:
-                grounding_id = pinned
+                pinned_context_id = pinned
+                if _is_short_followup(text):
+                    grounding_id = pinned
 
         searched = list(
             self.knowledge_store.search(
@@ -369,11 +373,12 @@ class SupportGroundingEngine:
                 limit=self.retrieval_limit,
             )
         )
-        if grounding_id is not None:
-            primary = self.knowledge.topics_by_id[grounding_id]
+        primary_id = grounding_id or pinned_context_id
+        if primary_id is not None:
+            primary = self.knowledge.topics_by_id[primary_id]
             searched = [
                 primary,
-                *(hit for hit in searched if hit.topic_id != grounding_id),
+                *(hit for hit in searched if hit.topic_id != primary_id),
             ][: self.retrieval_limit]
         topics = tuple(searched)
         disposition = (

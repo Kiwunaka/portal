@@ -281,12 +281,21 @@ def test_duplicate_json_keys_and_oversized_output_fail_closed() -> None:
         "Очистите кэш и cookies, затем войдите через инкогнито.",
         "Выйдите из аккаунта и войдите снова.",
         "Мы перевыпустим ключ, а старая ссылка перестанет работать.",
+        "Обратитесь в поддержку для выпуска новой ссылки и отзыва старой.",
         "Поддержка проверит маршрут и выдаст новую ссылку.",
         "Оператор посмотрит маршрут вручную.",
+        "Специалисты посмотрят маршрут вручную.",
         "Инженеры проверят маршрут и исправят его вручную.",
+        "Переустановите клиент из официального магазина.",
+        "После импорта профиль активируется автоматически.",
         "Отключите энергосбережение для всех приложений.",
         "Включите автоматическое переподключение и Smart Network.",
         "Сбои приложения — это нормально.",
+        "Передам обращение оператору, и он вернётся с ответом.",
+        "Поможем настроить подключение вручную.",
+        "Если пользователь не уверен, попроси модель устройства и передай оператору.",
+        "Не углубляйся в технические детали.",
+        "Включите полный туннель, чтобы весь трафик шёл через POKROV.",
         "В полном туннеле абсолютно весь трафик идёт через POKROV.",
     ],
 )
@@ -373,6 +382,41 @@ def test_model_escalation_is_not_converted_to_answer_by_semantic_action_filter()
     )
 
     assert result.status == "escalate"
+
+
+def test_generic_operator_handoff_does_not_capture_next_sentence_target() -> None:
+    from support_agent_safety import validate_model_output
+
+    reply = (
+        "Оператор проверит обращение вручную. "
+        "Не закрывайте вопрос как решённый, пока серверы не появятся."
+    )
+    result = validate_model_output(
+        json.dumps(
+            {"schema_version": "1", "status": "answer", "reply": reply},
+            ensure_ascii=False,
+        ),
+        _policy_snapshot(),
+        source_text="Обновите профиль и обратитесь в поддержку.",
+    )
+
+    assert result.reply == reply
+
+
+def test_qualified_full_tunnel_wording_remains_allowed() -> None:
+    from support_agent_safety import validate_model_output
+
+    reply = "В полном туннеле почти весь трафик идёт через POKROV, кроме технических исключений."
+    result = validate_model_output(
+        json.dumps(
+            {"schema_version": "1", "status": "answer", "reply": reply},
+            ensure_ascii=False,
+        ),
+        _policy_snapshot(),
+        source_text=reply,
+    )
+
+    assert result.reply == reply
 
 
 def test_safe_reply_validator_is_shared_by_model_and_local_renderer() -> None:

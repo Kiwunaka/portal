@@ -79,7 +79,7 @@ _PUBLIC_INPUT_HOSTS = frozenset(
 _MODEL_OUTPUT_KEYS = frozenset({"schema_version", "status", "reply"})
 _UNSUPPORTED_MODEL_ACTION_RES = (
     re.compile(
-        r"\b(?:удалите|удали|удалить|деинсталлируйте|деинсталлировать|"
+        r"\b(?:удалите|удали|удалить|деинсталлируйте|деинсталлировать|переустанов\w*|"
         r"сбросьте|сбросить|очистите|очистить)\b",
         re.IGNORECASE,
     ),
@@ -89,6 +89,13 @@ _UNSUPPORTED_MODEL_ACTION_RES = (
     ),
     re.compile(
         r"\b(?:перевыпуст\w*|отозв\w*|аннулир\w*|инвалидир\w*)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:\b(?:выпуск\w*|выдач\w*|замен\w*)\s+(?:нов\w+\s+)?"
+        r"(?:ссылк\w*|ключ\w*|профил\w*)\b|"
+        r"\b(?:отзыв\w*|аннулирован\w*)\s+(?:стар\w+\s+)?"
+        r"(?:ссылк\w*|ключ\w*|профил\w*)\b)",
         re.IGNORECASE,
     ),
     re.compile(
@@ -104,21 +111,28 @@ _UNSUPPORTED_MODEL_ACTION_RES = (
     ),
     re.compile(
         r"\b(?:мы\s+)?(?:выдадим|пришл[её]м|проверим|посмотрим|изучим|"
-        r"исправим|настроим|освободим)\b",
+        r"исправим|настроим|освободим|передадим|поможем|подскажем|верн[её]мся)\b|"
+        r"\bпередам\s+обращение\b|\bобращение\s+передано\b|"
+        r"\b(?:он|она|поддержк\w*|оператор\w*)\s+верн[её]тся\s+с\s+ответом\b",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:поддержк\w*|оператор\w*).{0,80}"
+        r"\b(?:поддержк\w*|оператор\w*|специалист\w*)[^.!?\n]{0,80}"
         r"\b(?:выдаст|пришл[её]т|перевыпустит|отзов[её]т|аннулирует|"
         r"освободит|исправит|настроит)\b",
-        re.IGNORECASE | re.DOTALL,
+        re.IGNORECASE,
     ),
     re.compile(
-        r"\b(?:поддержк\w*|оператор\w*).{0,80}"
-        r"\b(?:проверит|посмотрит|изучит|исправит)\b.{0,80}"
+        r"\b(?:поддержк\w*|оператор\w*|специалист\w*)[^.!?\n]{0,80}"
+        r"\b(?:провер(?:ит|ят)|посмотр(?:ит|ят)|изуч(?:ит|ат)|исправ(?:ит|ят))\b[^.!?\n]{0,80}"
         r"\b(?:маршрут\w*|сервер\w*|инфраструктур\w*|аккаунт\w*|"
         r"оплат\w*|ключ\w*|ссылк\w*|профил\w*|конфиг\w*)\b",
-        re.IGNORECASE | re.DOTALL,
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bпрофил\w*[^.!?\n]{0,40}\bактивир\w*\s+автоматическ\w*\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:если\s+пользователь|попроси|передай\s+оператору|не\s+углубляйся)\b",
+        re.IGNORECASE,
     ),
     re.compile(r"\bинженер\w*\b", re.IGNORECASE),
     re.compile(
@@ -131,6 +145,15 @@ _UNSUPPORTED_MODEL_ACTION_RES = (
         r"\bгарантированно\b.{0,40}\bвесь\b.{0,40}\bтрафик\b)",
         re.IGNORECASE | re.DOTALL,
     ),
+)
+_UNQUALIFIED_FULL_TUNNEL_RE = re.compile(
+    r"\bвесь\b[^.!?\n]{0,40}\bтрафик\w*\b[^.!?\n]{0,80}"
+    r"\b(?:ид[её]т|ш[её]л|пойд[её]т|через\s+pokrov|через\s+туннел\w*)\b",
+    re.IGNORECASE,
+)
+_FULL_TUNNEL_QUALIFIER_RE = re.compile(
+    r"(?:\bпочти\s+весь\b|\bкроме\b[^.!?\n]{0,80}\bтехническ\w*\s+исключ\w*)",
+    re.IGNORECASE,
 )
 _CONTEXTUAL_MODEL_ACTION_RES = (
     (
@@ -435,6 +458,8 @@ def validate_safe_reply(reply: str, policy: PolicySnapshot) -> str:
 
 def _has_unsupported_model_action(reply: str, source_text: str) -> bool:
     if any(pattern.search(reply) for pattern in _UNSUPPORTED_MODEL_ACTION_RES):
+        return True
+    if _UNQUALIFIED_FULL_TUNNEL_RE.search(reply) and not _FULL_TUNNEL_QUALIFIER_RE.search(reply):
         return True
     if _GLOBAL_ENERGY_DISABLE_RE.search(reply) and not _GLOBAL_ENERGY_DISABLE_RE.search(source_text):
         return True

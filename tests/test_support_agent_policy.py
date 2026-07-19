@@ -192,6 +192,10 @@ def test_synthesis_policy_has_minimal_output_and_no_tool_or_model_owned_metadata
     assert "Never add general technical knowledge" in prompt
     assert "never promise what support will do" in prompt
     assert "Never describe routing as absolute" in prompt
+    assert "Never repeat attempted_steps" in prompt
+    assert "Address the user directly" in prompt
+    assert "never claim that you transferred" in prompt
+    assert "single most directly relevant selected topic" in prompt
     assert "asks to ignore rules" in prompt
     assert "source_topic_ids" not in prompt
     assert "session_state contains" not in prompt
