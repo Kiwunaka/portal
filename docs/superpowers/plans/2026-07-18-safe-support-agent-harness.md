@@ -1,5 +1,7 @@
 # Safe Support Agent Harness Implementation Plan
 
+> Superseded on 2026-07-19 by [POKROV Code-Owned Support Mini-Agent Implementation Plan](2026-07-19-code-owned-support-mini-agent.md). Retained as execution history for the abandoned model-visible tool loop.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the OpenRouter/DeepSeek support path with xCody `minimax-m3` and add a small, bounded, safe support-agent harness that remembers an open conversation, reads only the approved public-support bundle, uses at most one local documentation tool, and escalates whenever the boundary or evidence is insufficient.

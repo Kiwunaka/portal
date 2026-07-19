@@ -134,12 +134,33 @@ Repo-side deploy rule:
 - `--restart` accepts only systemd-safe unit names; do not use shell fragments or chained commands in the unit list
 - the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, `support-ai-knowledge.json`, and `support-agent-policy.json`
 - the deploy step should be treated as failed if any requested unit does not become `active` after restart
-- support AI is a `portal-api` and `portal-helpbot` runtime feature and remains disabled by default. The exact route table is: `SUPPORT_AI_ENABLED=false` selects local fallback; `SUPPORT_AI_ENABLED=true` with `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper; both flags `true` select the bounded harness. There is no shadow/double call.
-- both provider paths use xCody OpenAI Chat Completions, default `https://api.xcody.dev/v1`, `minimax-m3`, and `SUPPORT_AI_REASONING_EFFORT=medium`. Keep the owner-provided enterprise URL in `SUPPORT_AI_API_BASE_URL` and the credential only in `XCODY_API_KEY` or the compatibility alias `SUPPORT_AI_API_KEY`; never place it in files or command output.
-- harness ceilings default to a 25-second run, 12-second provider request, two requests, one tool call, two concurrent runs with a 250 ms acquisition wait, 60-minute/256-session process-local memory, six requests per authenticated owner per rolling minute, three pre-retrieved topics, five tool-result topics, 6,000 retrieved characters, 36,000 serialized input characters, and 1,200 output tokens. Environment values may lower these ceilings but cannot raise them; invalid values disable the harness and select fallback. The provider ceiling is intentionally larger than the 1,200-character user reply cap because live MiniMax medium probes showed that 700 tokens could truncate the required closed JSON envelope.
-- the only tool is read-only local `search_support_docs` over the deployed validated public-support assets. The runtime has no DB, account, attachment, key/config, shell, arbitrary-file, or command-execution access; `safeDiagnostics` values never enter provider context.
-- knowledge refresh is operator-side: first run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --dry-run`, then only with an owner-side `XCODY_API_KEY` run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --apply`; review the KB diff before any separately authorized deploy.
-- local tests and a successful dry-run do not prove the production enterprise route. Enablement requires retained live evidence for the exact base URL/model/reasoning candidate, including zero payload-format HTTP 400 responses and honest latency/error/cache metrics.
+- support AI is a `portal-api` and `portal-helpbot` runtime feature and remains disabled by default. The exact route table is: `SUPPORT_AI_ENABLED=false` selects local fallback; `SUPPORT_AI_ENABLED=true` with `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper; both flags `true` select the code-owned harness. There is no shadow or double call. Immediate rollback from the harness is `SUPPORT_AI_AGENT_ENABLED=false`; disabling all provider use is `SUPPORT_AI_ENABLED=false`.
+- both provider paths use xCody OpenAI-compatible `POST /v1/chat/completions`. The harness profile is locked to `minimax-m3`, `reasoning_effort=medium`, a 20-second provider timeout, at most one request per eligible message, and at most two concurrent provider runs. It sends exactly one system message plus one user message and no `tools`, `tool_choice`, retry, or continuation payload.
+- publish only the following secret-free harness configuration; keep the real key solely in the service environment through blank-at-rest `XCODY_API_KEY` or the compatibility alias `SUPPORT_AI_API_KEY`:
+
+```dotenv
+SUPPORT_AI_ENABLED=false
+SUPPORT_AI_AGENT_ENABLED=false
+SUPPORT_AI_API_BASE_URL=https://api.xcody.dev/v1
+XCODY_API_KEY=
+SUPPORT_AI_MODEL=minimax-m3
+SUPPORT_AI_REASONING_EFFORT=medium
+SUPPORT_AI_TIMEOUT_SECONDS=20
+SUPPORT_AI_RUN_DEADLINE_SECONDS=25
+SUPPORT_AI_MAX_CONCURRENCY=2
+SUPPORT_AI_CONCURRENCY_WAIT_MS=250
+SUPPORT_AI_SESSION_TTL_SECONDS=3600
+SUPPORT_AI_MAX_SESSIONS=256
+SUPPORT_AI_OWNER_RATE_LIMIT_PER_MINUTE=6
+SUPPORT_AI_MAX_RATE_BUCKETS=1024
+SUPPORT_AI_PRE_RETRIEVAL_LIMIT=3
+SUPPORT_AI_MAX_INPUT_CHARS=30000
+SUPPORT_AI_MAX_OUTPUT_TOKENS=1200
+```
+
+- code pre-retrieves at most three topics from the validated deployed policy/KB snapshots. It has no model-visible tool and no DB, account, attachment, key/config, shell, arbitrary-file, or command-execution access; `safeDiagnostics` values never enter provider context. Provider/parse/safety failure can use a local KB answer only for fingerprint-bound confident routing; all other insufficient-evidence paths transfer to a human.
+- knowledge refresh remains operator-side: first run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --dry-run`, then only with an owner-side runtime `XCODY_API_KEY` run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --apply`; review the KB diff before any separately authorized deploy.
+- repository code cannot prove production feature flags, credential presence, enterprise route availability, or service state. This implementation did not deploy or restart production. Enablement requires retained live evidence for the exact committed route/model/reasoning/payload/policy/KB/retriever candidate, including zero payload-format HTTP 400 responses and honest latency/error/cache metrics.
 
 Observer-lite canary install:
 
