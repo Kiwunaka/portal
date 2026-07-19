@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING, Mapping, Sequence
 
 from support_agent_knowledge import KnowledgeHit, KnowledgeSnapshot, SupportKnowledgeStore
 from support_agent_policy import PolicySnapshot
-from support_agent_safety import SafetyValidationError, validate_safe_reply
+from support_agent_safety import SafetyValidationError, validate_grounded_reply
 
 if TYPE_CHECKING:
     from support_agent_sessions import SessionState
 
 
 RETRIEVER_VERSION = "code-owned-v2"
-LOCAL_RENDERER_VERSION = "local-body-v1"
+LOCAL_RENDERER_VERSION = "local-body-v2"
 _MAX_PINNED_FOLLOWUP_CHARS = 240
 _HTTP_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 _LOCAL_PREFIX = "Коротко\n"
@@ -60,24 +60,24 @@ class IntentRule:
 
 LOCAL_RENDERABLE_TOPICS = MappingProxyType(
     {
-        "android_battery_background": "36de67422426c31b4ab63d22b621bf251f1c11868653b8f7478e625cfbb36960",
-        "connected_no_internet": "7ace3772bc507601cec30fc6e88691f7877b8586876677629bd0f2488998864f",
-        "device_limit_help": "ec699ed37097497bf7633c02b04d60d3d5212783f5c0dad595038e2a8ff835a4",
-        "happ_import": "a0c87653863054182bb8b8dd3c0254ba7522ea05c803241fd5bf1a1e7cee6d2c",
-        "hiddify_empty_profile": "387cf6f4f429809024d9c6d33ca4ee82c9410d2501a4d6c56842f12c09c4e079",
-        "hiddify_import": "209abd70a0d7c0350e59a390d3a772cf1eefcaac1f98e5453a3ce8a668dce7e5",
-        "karing_import": "a0af16d4957204387d54f5e07da75bf87dac348a50902c71c206c4ef49c5636a",
-        "one_site_not_open": "75af5e3b670d1359154637afaa98362fbd4d561e3ab64ffa6654e8ccff8d4c52",
-        "other_network_client_conflict": "bcaf396a09925d8f2c9ef3d16a7cb34b5ac16fdc4644fecccef778f75c3eb30c",
-        "private_dns_and_filters": "4303911da9ebe7956e57321f90b81c5f99ee193a2574a579c7d73084a0a12c57",
-        "refresh_after_renewal": "a944ae88d4c1685c2ac0c3d7cb9e0bf810ba6530f2fe95db08e4903ab52c0d51",
-        "routing_all_except_ru": "33f6d885b1c38ef94294a31b1598ac61b96fe60ef2982327066e50f363f6754e",
-        "slow_speed": "ec38496aac090d55ecdbe855f361339622215005f20a380ed119a9768ee92e88",
-        "streisand_import": "c8895b5a75c1a2a5a479f65dd78d04f404a555b52209278f3a12a99eb716a389",
-        "v2rayn_import": "fe0f7adda0587c81c7294ad25d330475ffe208014f2b6f356d995490636f56c8",
-        "v2rayn_proxy_tun": "e3ce9f663c23bbcfc3b053f599f0da6ad0ac24a4013d39326cb25b142bc4959f",
-        "v2rayng_import": "747024440b6d32b06eca2194457a6a7f8b7601f00a2a4728d4eb9979b008bcce",
-        "v2rayng_no_internet": "0e42b0225d0fb2ded78839e0c970c65fad567efe746cc355d6a432fb6dad9af8",
+        "android_battery_background": "5a09a84f21e52d1ca6ed56bec9f350c31808d69a70e411058df5bf195ea3cfc7",
+        "connected_no_internet": "9c963318034cb8cadd617753de64c313d6c95ccec1308ec55a4fedba2061e26b",
+        "device_limit_help": "bb7f4e1eccde50041c0e74404976800bd7fe52947b240a7148f2c72883152972",
+        "happ_import": "594c03b7448494bd32326a5a232d278969b4f1b8e71118c2887248dc20e6bcbe",
+        "hiddify_empty_profile": "b19d929ed1a65fc009106a414897710c58d1345cf669ba3f12a13f066abef720",
+        "hiddify_import": "b0d71b43c101258dc4c1d45df80d6a5aba1280bdc588077be384f13cd8512c24",
+        "karing_import": "604d5beaa60db6ee3dd2a63f24cf4d436f5190a97f4b56f8cb89969e0241ad66",
+        "one_site_not_open": "7609ab592299cf6f10578f2d4c81e7b5cace798afb9edbc6f66b894e1e8b4031",
+        "other_network_client_conflict": "70aeb16bac579fc1f57c68ed4358fc78df68ba810c74cf394377cc3dbf449539",
+        "private_dns_and_filters": "8a74b0f5e513df6946052c799f634a6e95164336f386161dc6b7052f1a9d9e9a",
+        "refresh_after_renewal": "6059d8cb09bd54dd97ee120881f46e06d137a66564b5934b32cd02a42f172b0b",
+        "routing_all_except_ru": "9de97577aeeab78b456e4a7c2f2fbf93a3a781b247ac15f28394938dfc9da52b",
+        "slow_speed": "e438111bc98bb4fa4f45ac9990e72795941abef8807786fac780ec91f93244f9",
+        "streisand_import": "093cc9bc8b06ee4b38ba0b99b46e99261031eeb916580e33204a78afad0e9787",
+        "v2rayn_import": "28e4f8ecd51897cc65123f148618e0c356c137302fc93b2050e9df8c8288cbc7",
+        "v2rayn_proxy_tun": "bd49563da88b7c77ad733252536a3bb2f4a79daa49e0535116286912020cd906",
+        "v2rayng_import": "9c3555c155b2a5c14b01967c6f38e0d72427db6218d52f73e4ce51ae9f5a81db",
+        "v2rayng_no_internet": "bd00ad9ad5325d73e1d9f9771a6aeb5f6c4d02ef97b544d3ae92ec66ff4cc3eb",
     }
 )
 
@@ -415,9 +415,10 @@ class SupportGroundingEngine:
         if not body:
             return None
         try:
-            return validate_safe_reply(
+            return validate_grounded_reply(
                 f"{_LOCAL_PREFIX}{body}{_LOCAL_SUFFIX}",
                 policy,
+                source_text=body,
             )
         except SafetyValidationError:
             return None

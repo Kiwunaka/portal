@@ -61,9 +61,18 @@ SAFE_FALLBACK_REPLY = (
     "Не удалось безопасно подготовить ответ. Передаю вопрос специалисту поддержки."
 )
 RESOLVED_ACK_REPLY = "Хорошо, проблема решена. Если появится новый вопрос, напишите в поддержку."
+PROGRESS_ACK_REPLY = (
+    "Коротко\nШаг отмечен.\n\n"
+    "Что сделать\nПроверьте, сохранилась ли проблема, и напишите результат.\n\n"
+    "Если не поможет\nНапишите в поддержку."
+)
 _HASH_RE = re.compile(r"[0-9a-f]{64}")
 _CODE_RE = re.compile(r"[A-Za-z0-9._/-]{1,64}")
 _SURFACES = frozenset({"app", "ticket", "helpbot"})
+_CONTINUING_PROBLEM_RE = re.compile(
+    r"\b(?:но|однако|при\s+этом|кроме)\b|"
+    r"\b(?:не\s+работ\w*|не\s+открыва\w*|не\s+могу|ошибк\w*)\b"
+)
 _MIN_PROVIDER_WINDOW_SECONDS = 0.1
 _EMPTY_HASH = "0" * 64
 _REDACTION_CATEGORIES = frozenset(
@@ -454,6 +463,32 @@ class SupportAgentHarness:
             escalation_reason=None,
         )
 
+    def _persist_code_owned_progress(
+        self,
+        request: SupportAgentRequest,
+        user_text: str,
+        state: SafeSessionState,
+        decision: RetrievalDecision,
+        stats: _RunStats,
+    ) -> _Outcome:
+        try:
+            reply = validate_safe_reply(PROGRESS_ACK_REPLY, self.policy)
+        except SafetyValidationError as exc:
+            stats.error_code = _fixed_error_code(exc)
+            return _human_transfer(stats.error_code, status="fallback")
+        if not self._append_pair(request, user_text, reply, state):
+            stats.error_code = "session_write_failed"
+            return _human_transfer("session_write_failed", status="fallback")
+        return _Outcome(
+            status="answer",
+            reply=reply,
+            context_topic_ids=decision.context_topic_ids,
+            grounding_topic_id=None,
+            session_state=state,
+            answer_origin="code_owned",
+            escalation_reason=None,
+        )
+
     async def _execute_locked(
         self,
         request: SupportAgentRequest,
@@ -482,11 +517,7 @@ class SupportAgentHarness:
         if (
             signals.outcome == "resolved"
             and "?" not in boundary.model_text
-            and not re.search(
-                r"\b(?:но|однако|при\s+этом|кроме)\b|"
-                r"\b(?:не\s+работ\w*|не\s+открыва\w*|не\s+могу|ошибк\w*)\b",
-                normalized_resolution,
-            )
+            and not _CONTINUING_PROBLEM_RE.search(normalized_resolution)
         ):
             state = state_after_answer(
                 None if session is None else session.state,
@@ -513,6 +544,27 @@ class SupportAgentHarness:
                 boundary.model_text,
                 state,
                 "repeated_unsuccessful",
+                stats,
+            )
+        if (
+            session is not None
+            and session.state.issue_topic_id is not None
+            and signals.outcome is None
+            and "?" not in boundary.model_text
+            and not _CONTINUING_PROBLEM_RE.search(normalized_resolution)
+            and any(
+                step not in session.state.attempted_steps
+                for step in signals.attempted_steps
+            )
+            and decision.grounding_topic_id
+            in {None, session.state.issue_topic_id}
+        ):
+            state = state_after_answer(session.state, None, signals)
+            return self._persist_code_owned_progress(
+                request,
+                boundary.model_text,
+                state,
+                decision,
                 stats,
             )
         if decision.disposition is RetrievalDisposition.NONE:

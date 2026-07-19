@@ -136,7 +136,9 @@ _UNSUPPORTED_MODEL_ACTION_RES = (
     ),
     re.compile(r"\bпрофил\w*[^.!?\n]{0,40}\bактивир\w*\s+автоматическ\w*\b", re.IGNORECASE),
     re.compile(
-        r"\b(?:если\s+пользователь|попроси|передай\s+оператору|не\s+углубляйся)\b",
+        r"\b(?:если\s+пользователь|попроси(?:ть)?|передай\s+оператору|"
+        r"не\s+углубляйся|объясни|предложи|советуй|направь|уточни|"
+        r"подчеркни|напомни|не\s+обещай|не\s+проси)\b",
         re.IGNORECASE,
     ),
     re.compile(r"\bинженер\w*\b", re.IGNORECASE),
@@ -474,6 +476,15 @@ def _has_unsupported_model_action(reply: str, source_text: str) -> bool:
     )
 
 
+def _validate_grounding_source(source_text: str) -> None:
+    if (
+        not isinstance(source_text, str)
+        or not source_text.strip()
+        or len(source_text) > _MAX_SELECTED_SOURCE_CHARS
+    ):
+        raise SafetyValidationError("agent_output_source_invalid")
+
+
 def _canonicalize_model_handoff_footer(reply: str) -> str:
     match = _HANDOFF_FOOTER_RE.search(reply)
     if match is None:
@@ -484,18 +495,27 @@ def _canonicalize_model_handoff_footer(reply: str) -> str:
     return f"{body}\n\n{_CODE_OWNED_HANDOFF_FOOTER}"
 
 
+def validate_grounded_reply(
+    reply: str,
+    policy: PolicySnapshot,
+    *,
+    source_text: str,
+) -> str:
+    _validate_grounding_source(source_text)
+    safe_reply = validate_safe_reply(reply, policy)
+    safe_reply = validate_safe_reply(_canonicalize_model_handoff_footer(safe_reply), policy)
+    if _has_unsupported_model_action(safe_reply, source_text):
+        raise SafetyValidationError("agent_output_unsupported_action")
+    return safe_reply
+
+
 def validate_model_output(
     raw_content: str,
     policy: PolicySnapshot,
     *,
     source_text: str,
 ) -> ValidatedModelReply:
-    if (
-        not isinstance(source_text, str)
-        or not source_text.strip()
-        or len(source_text) > _MAX_SELECTED_SOURCE_CHARS
-    ):
-        raise SafetyValidationError("agent_output_source_invalid")
+    _validate_grounding_source(source_text)
     if not isinstance(raw_content, str) or not 1 <= len(raw_content) <= _MAX_RAW_OUTPUT_CHARS:
         raise SafetyValidationError("agent_output_size_invalid")
     try:
@@ -513,9 +533,8 @@ def validate_model_output(
         or status not in {"answer", "escalate"}
     ):
         raise SafetyValidationError("agent_output_status_invalid")
-    reply = validate_safe_reply(payload["reply"], policy)
     if status == "answer":
-        reply = validate_safe_reply(_canonicalize_model_handoff_footer(reply), policy)
-        if _has_unsupported_model_action(reply, source_text):
-            raise SafetyValidationError("agent_output_unsupported_action")
+        reply = validate_grounded_reply(payload["reply"], policy, source_text=source_text)
+    else:
+        reply = validate_safe_reply(payload["reply"], policy)
     return ValidatedModelReply(status=status, reply=reply)

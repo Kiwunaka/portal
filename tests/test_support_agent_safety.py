@@ -295,6 +295,9 @@ def test_duplicate_json_keys_and_oversized_output_fail_closed() -> None:
         "Поможем настроить подключение вручную.",
         "Если пользователь не уверен, попроси модель устройства и передай оператору.",
         "Не углубляйся в технические детали.",
+        "Объясни пользователю разницу и предложи другой клиент.",
+        "Советуй включить режим только после проверки.",
+        "Не обещай, что сайт откроется всегда.",
         "Включите полный туннель, чтобы весь трафик шёл через POKROV.",
         "В полном туннеле абсолютно весь трафик идёт через POKROV.",
     ],
@@ -476,4 +479,16 @@ def test_safe_reply_validator_is_shared_by_model_and_local_renderer() -> None:
         validate_safe_reply(
             "Откройте pay.pokrov.space/checkout/ и повторите попытку.",
             policy,
+        )
+
+
+def test_grounded_semantic_validator_rejects_internal_kb_directions() -> None:
+    from support_agent_safety import SafetyValidationError, validate_grounded_reply
+
+    with pytest.raises(SafetyValidationError, match="agent_output_unsupported_action"):
+        validate_grounded_reply(
+            "Коротко\nПопроси проверить кабинет и передай оператору.\n\n"
+            "Если не поможет\nНапишите в поддержку.",
+            _policy_snapshot(),
+            source_text="Попроси проверить кабинет и передай оператору.",
         )

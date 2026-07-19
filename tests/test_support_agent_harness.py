@@ -522,6 +522,87 @@ def test_resolved_followup_is_acknowledged_by_code_without_provider_or_promotion
     assert "бонус" not in result.reply.casefold()
 
 
+def test_newly_completed_step_is_acknowledged_by_code_without_provider(
+    harness_case_factory,
+) -> None:
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import StoredMessage
+
+    case = harness_case_factory(
+        name="progress-code-owned",
+        input_mode="safe",
+        retrieval="candidate",
+        provider_plan="unused",
+        store_plan="ok",
+    )
+    case.session_store.real.append(
+        case.request.session_scope.internal_session_key,
+        (
+            StoredMessage(role="user", content="Один сайт не открывается."),
+            StoredMessage(role="assistant", content="Переключите режим маршрутизации."),
+        ),
+        SafeSessionState(
+            issue_topic_id="one_site_not_open",
+            attempted_steps=(),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        99.0,
+    )
+    case.request = replace(case.request, message="Я переключил режим маршрутизации.")
+
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.status == "answer"
+    assert result.answer_origin == "code_owned"
+    assert result.provider_request_count == 0
+    assert case.adapter.call_count == 0
+    assert result.session_state.issue_topic_id == "one_site_not_open"
+    assert "switch_route_mode" in result.session_state.attempted_steps
+    assert "сохранилась ли проблема" in result.reply.casefold()
+
+
+def test_completed_step_with_continuing_failure_still_uses_grounded_flow(
+    harness_case_factory,
+) -> None:
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import StoredMessage
+
+    case = harness_case_factory(
+        name="progress-with-failure",
+        input_mode="safe",
+        retrieval="candidate",
+        provider_plan="answer",
+        store_plan="ok",
+    )
+    case.session_store.real.append(
+        case.request.session_scope.internal_session_key,
+        (
+            StoredMessage(role="user", content="Один сайт не открывается."),
+            StoredMessage(role="assistant", content="Переключите режим маршрутизации."),
+        ),
+        SafeSessionState(
+            issue_topic_id="one_site_not_open",
+            attempted_steps=(),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        99.0,
+    )
+    case.request = replace(
+        case.request,
+        message="Я переключил режим, но сайт всё равно не открывается.",
+    )
+
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.answer_origin == "model"
+    assert result.provider_request_count == 1
+    assert case.adapter.call_count == 1
+
+
 def test_mixed_resolution_and_new_failure_is_not_closed_by_code(
     harness_case_factory,
 ) -> None:
