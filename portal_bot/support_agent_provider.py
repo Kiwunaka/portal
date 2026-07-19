@@ -20,9 +20,7 @@ from support_ai_service import (
 logger = logging.getLogger(__name__)
 
 _RETRYABLE_HTTP_STATUSES = frozenset({429, 502, 503, 504})
-_MAX_TOOL_CALLS = 4
 _MAX_CONTENT_CHARS = 16_000
-_MAX_TOOL_ARGUMENT_CHARS = 1_200
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,23 +28,6 @@ class ProviderUsage:
     prompt_tokens: int | None
     completion_tokens: int | None
     cached_tokens: int | None
-
-
-@dataclass(frozen=True, slots=True)
-class ToolCall:
-    call_id: str
-    name: str
-    arguments_json: str
-
-
-@dataclass(frozen=True, slots=True)
-class ModelTurn:
-    content: str | None
-    finish_reason: str
-    tool_calls: tuple[ToolCall, ...]
-    normalized_assistant_message: Mapping[str, object]
-    usage: ProviderUsage
-    latency_ms: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,9 +60,7 @@ def _safe_status(value: object) -> int:
 
 
 def _optional_usage_int(value: object) -> int | None:
-    if type(value) is not int or value < 0:
-        return None
-    return value
+    return value if type(value) is int and value >= 0 else None
 
 
 def _usage(payload: Mapping[str, object]) -> ProviderUsage:
@@ -108,80 +87,6 @@ def _validated_timeout(value: object, *, maximum: float) -> float:
     if not math.isfinite(timeout_seconds) or not 0.1 <= timeout_seconds <= maximum:
         _raise_provider_error(retryable=False, code="provider_request_invalid", status=0)
     return timeout_seconds
-
-
-def _normalize_tool_calls(raw_value: object, *, status: int) -> tuple[tuple[ToolCall, ...], list[dict[str, object]]]:
-    if raw_value is None:
-        return (), []
-    if not isinstance(raw_value, list) or len(raw_value) > _MAX_TOOL_CALLS:
-        _raise_provider_error(retryable=False, code="provider_tool_calls_invalid", status=status)
-    parsed: list[ToolCall] = []
-    normalized: list[dict[str, object]] = []
-    for raw_call in raw_value:
-        if not isinstance(raw_call, Mapping):
-            _raise_provider_error(retryable=False, code="provider_tool_call_invalid", status=status)
-        function = raw_call.get("function")
-        call_id = raw_call.get("id")
-        call_type = raw_call.get("type")
-        if not isinstance(function, Mapping):
-            _raise_provider_error(retryable=False, code="provider_tool_call_invalid", status=status)
-        name = function.get("name")
-        arguments = function.get("arguments")
-        if (
-            call_type != "function"
-            or not isinstance(call_id, str)
-            or not 1 <= len(call_id) <= 128
-            or not isinstance(name, str)
-            or not 1 <= len(name) <= 64
-            or not isinstance(arguments, str)
-            or len(arguments) > _MAX_TOOL_ARGUMENT_CHARS
-        ):
-            _raise_provider_error(retryable=False, code="provider_tool_call_invalid", status=status)
-        parsed.append(ToolCall(call_id=call_id, name=name, arguments_json=arguments))
-        normalized.append(
-            {
-                "id": call_id,
-                "type": "function",
-                "function": {"name": name, "arguments": arguments},
-            }
-        )
-    return tuple(parsed), normalized
-
-
-def _normalize_turn(payload: object, *, status: int, latency_ms: int) -> ModelTurn:
-    if not isinstance(payload, Mapping):
-        _raise_provider_error(retryable=False, code="provider_response_invalid", status=status)
-    choices = payload.get("choices")
-    if not isinstance(choices, list) or len(choices) != 1:
-        _raise_provider_error(retryable=False, code="provider_choice_count_invalid", status=status)
-    choice = choices[0]
-    if not isinstance(choice, Mapping):
-        _raise_provider_error(retryable=False, code="provider_choice_invalid", status=status)
-    finish_reason = choice.get("finish_reason")
-    message = choice.get("message")
-    if (
-        not isinstance(finish_reason, str)
-        or not 1 <= len(finish_reason) <= 64
-        or not isinstance(message, Mapping)
-    ):
-        _raise_provider_error(retryable=False, code="provider_choice_invalid", status=status)
-    content = message.get("content")
-    if content is not None and (not isinstance(content, str) or len(content) > _MAX_CONTENT_CHARS):
-        _raise_provider_error(retryable=False, code="provider_content_invalid", status=status)
-    tool_calls, normalized_calls = _normalize_tool_calls(message.get("tool_calls"), status=status)
-    if content is None and not tool_calls:
-        _raise_provider_error(retryable=False, code="provider_message_empty", status=status)
-    normalized_message: dict[str, object] = {"role": "assistant", "content": content}
-    if normalized_calls:
-        normalized_message["tool_calls"] = normalized_calls
-    return ModelTurn(
-        content=content,
-        finish_reason=finish_reason,
-        tool_calls=tool_calls,
-        normalized_assistant_message=normalized_message,
-        usage=_usage(payload),
-        latency_ms=latency_ms,
-    )
 
 
 def _normalize_synthesis_turn(
@@ -275,8 +180,7 @@ class XCodyChatAdapter:
             ensure_ascii=False,
             separators=(",", ":"),
         )
-        request_limit = min(self.config.max_context_chars, 30_000)
-        if len(serialized) > request_limit:
+        if len(serialized) > min(self.config.max_context_chars, 30_000):
             _raise_provider_error(
                 retryable=False,
                 code="provider_request_too_large",
@@ -325,79 +229,9 @@ class XCodyChatAdapter:
         except Exception:
             _raise_provider_error(retryable=False, code="provider_request_error", status=status)
 
-        elapsed = self.monotonic() - started
-        latency_ms = max(0, int(round(elapsed * 1000)))
+        latency_ms = max(0, int(round((self.monotonic() - started) * 1000)))
         return _normalize_synthesis_turn(
             response_payload,
             status=status,
             latency_ms=latency_ms,
         )
-
-    async def complete(
-        self,
-        *,
-        messages: Sequence[Mapping[str, object]],
-        tools: Sequence[Mapping[str, object]],
-        tool_choice: str,
-        request_timeout: float,
-    ) -> ModelTurn:
-        try:
-            timeout_seconds = float(request_timeout)
-        except (TypeError, ValueError):
-            _raise_provider_error(retryable=False, code="provider_timeout_invalid", status=0)
-        if (
-            not math.isfinite(timeout_seconds)
-            or not 0.1 <= timeout_seconds <= 12.0
-            or tool_choice not in {"auto", "none"}
-            or not self.config.api_key
-            or not self.config.api_base_url
-            or not self.config.model
-        ):
-            _raise_provider_error(retryable=False, code="provider_request_invalid", status=0)
-
-        payload = {
-            "model": self.config.model,
-            "messages": [dict(item) for item in messages],
-            "tools": [dict(item) for item in tools],
-            "tool_choice": tool_choice,
-            "max_tokens": self.config.max_output_tokens,
-            "n": 1,
-            "reasoning_effort": self.config.reasoning_effort,
-        }
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-        }
-        url = f"{self.config.api_base_url.rstrip('/')}/chat/completions"
-        timeout = aiohttp.ClientTimeout(total=timeout_seconds)
-        started = self.monotonic()
-        status = 0
-        try:
-            async with self.session_factory(timeout=timeout) as session:
-                async with session.post(url, headers=headers, json=payload) as response:
-                    status = _safe_status(getattr(response, "status", 0))
-                    if status >= 400:
-                        _raise_provider_error(
-                            retryable=status in _RETRYABLE_HTTP_STATUSES,
-                            code="provider_http_error",
-                            status=status,
-                        )
-                    response_payload = await read_bounded_provider_json(response)
-        except ProviderCallError:
-            raise
-        except (asyncio.TimeoutError, TimeoutError):
-            _raise_provider_error(retryable=True, code="provider_timeout", status=status)
-        except aiohttp.ClientError:
-            _raise_provider_error(retryable=True, code="provider_transport_error", status=status)
-        except OSError:
-            _raise_provider_error(retryable=True, code="provider_transport_error", status=status)
-        except _ProviderResponseTooLarge:
-            _raise_provider_error(retryable=False, code="provider_response_too_large", status=status)
-        except (UnicodeDecodeError, ValueError, TypeError):
-            _raise_provider_error(retryable=False, code="provider_response_invalid", status=status)
-        except Exception:
-            _raise_provider_error(retryable=False, code="provider_request_error", status=status)
-
-        elapsed = self.monotonic() - started
-        latency_ms = max(0, int(round(elapsed * 1000)))
-        return _normalize_turn(response_payload, status=status, latency_ms=latency_ms)

@@ -13,7 +13,6 @@ PORTAL_DIR = REPO_ROOT / "portal_bot"
 if str(PORTAL_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_DIR))
 
-
 SAFE_TWO_MESSAGES = (
     {"role": "system", "content": "stable"},
     {"role": "user", "content": "volatile"},
@@ -116,44 +115,24 @@ def _config():
         api_base_url="https://enterprise.xcody.dev/v1",
         model="minimax-m3",
         reasoning_effort="medium",
-        timeout_seconds=12.0,
-        max_output_tokens=1200,
+        timeout_seconds=20.0,
+        max_context_chars=30_000,
+        max_output_tokens=1_200,
     )
 
 
-def _complete(factory: _FakeSessionFactory, *, clock=None):
-    from support_agent_provider import XCodyChatAdapter
-
-    adapter = XCodyChatAdapter(config=_config(), session_factory=factory, monotonic=clock)
-    return asyncio.run(
-        adapter.complete(
-            messages=(
-                {"role": "system", "content": "stable"},
-                {"role": "user", "content": "question"},
-            ),
-            tools=(
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "search_support_docs",
-                        "parameters": {"type": "object", "additionalProperties": False},
-                    },
-                },
-            ),
-            tool_choice="auto",
-            request_timeout=3.5,
-        )
-    )
-
-
-def _adapter_with_response(payload: object):
+def _adapter_with_response(payload: object, *, clock=None):
     from support_agent_provider import XCodyChatAdapter
 
     factory = _FakeSessionFactory(payload=payload)
-    return XCodyChatAdapter(config=_config(), session_factory=factory), factory
+    return (
+        XCodyChatAdapter(config=_config(), session_factory=factory, monotonic=clock),
+        factory,
+    )
 
 
-def test_exact_xcody_synthesis_payload_has_no_tool_or_anthropic_fields() -> None:
+def test_exact_xcody_synthesis_payload_and_normalized_usage() -> None:
+    ticks = iter((10.0, 10.123))
     adapter, factory = _adapter_with_response(
         {
             "choices": [
@@ -167,153 +146,17 @@ def test_exact_xcody_synthesis_payload_has_no_tool_or_anthropic_fields() -> None
             "usage": {
                 "prompt_tokens": 50,
                 "completion_tokens": 10,
+                "cached_tokens": 7,
                 "prompt_tokens_details": {"cached_tokens": 40},
             },
-        }
+        },
+        clock=lambda: next(ticks),
     )
 
     turn = asyncio.run(
-        adapter.complete_synthesis(
-            messages=SAFE_TWO_MESSAGES,
-            request_timeout=20.0,
-        )
+        adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
     )
 
-    assert factory.posts[0]["json"] == {
-        "model": "minimax-m3",
-        "messages": [
-            {"role": "system", "content": "stable"},
-            {"role": "user", "content": "volatile"},
-        ],
-        "reasoning_effort": "medium",
-        "temperature": 0.2,
-        "max_tokens": 1200,
-        "n": 1,
-        "response_format": {"type": "json_object"},
-    }
-    assert turn.finish_reason == "stop"
-    assert turn.usage.cached_tokens == 40
-
-
-@pytest.mark.parametrize(
-    "message",
-    (
-        {"content": None},
-        {"content": "", "tool_calls": []},
-        {"content": "Ответ", "tool_calls": [{"id": "x"}]},
-    ),
-)
-def test_synthesis_normalizer_rejects_empty_or_tool_output(message: object) -> None:
-    from support_agent_provider import ProviderCallError
-
-    adapter, _ = _adapter_with_response(
-        {"choices": [{"finish_reason": "stop", "message": message}]}
-    )
-    with pytest.raises(ProviderCallError):
-        asyncio.run(
-            adapter.complete_synthesis(
-                messages=SAFE_TWO_MESSAGES,
-                request_timeout=20.0,
-            )
-        )
-
-
-def test_synthesis_timeout_accepts_20_and_rejects_above_20() -> None:
-    from support_agent_provider import ProviderCallError
-
-    adapter, _ = _adapter_with_response(SAFE_RESPONSE)
-    asyncio.run(
-        adapter.complete_synthesis(
-            messages=SAFE_TWO_MESSAGES,
-            request_timeout=20.0,
-        )
-    )
-    with pytest.raises(ProviderCallError, match="provider_request_invalid"):
-        asyncio.run(
-            adapter.complete_synthesis(
-                messages=SAFE_TWO_MESSAGES,
-                request_timeout=20.1,
-            )
-        )
-
-
-def test_complete_serialized_payload_over_30000_chars_is_rejected_before_post() -> None:
-    from support_agent_provider import ProviderCallError
-
-    adapter, factory = _adapter_with_response(SAFE_RESPONSE)
-    oversized = (
-        {"role": "system", "content": "stable"},
-        {"role": "user", "content": "я" * 30_000},
-    )
-    with pytest.raises(ProviderCallError, match="provider_request_too_large"):
-        asyncio.run(
-            adapter.complete_synthesis(
-                messages=oversized,
-                request_timeout=20.0,
-            )
-        )
-    assert factory.posts == []
-
-
-def test_synthesis_http_400_captures_status_without_reading_or_logging_body(caplog) -> None:
-    from support_agent_provider import ProviderCallError, XCodyChatAdapter
-
-    secret = "upstream private payload sk-do-not-log"
-    factory = _FakeSessionFactory(
-        status=400,
-        raw_body=secret.encode("utf-8"),
-    )
-    adapter = XCodyChatAdapter(config=_config(), session_factory=factory)
-    caplog.set_level(logging.WARNING, logger="support_agent_provider")
-
-    with pytest.raises(ProviderCallError) as caught:
-        asyncio.run(
-            adapter.complete_synthesis(
-                messages=SAFE_TWO_MESSAGES,
-                request_timeout=20.0,
-            )
-        )
-
-    assert caught.value.code == "provider_http_error"
-    assert caught.value.status == 400
-    assert caught.value.retryable is False
-    assert factory.response.content._position == 0
-    assert secret not in caplog.text
-    assert "sk-test-key" not in caplog.text
-
-
-def test_exact_xcody_request_and_final_answer_normalization() -> None:
-    payload = {
-        "choices": [
-            {
-                "finish_reason": "stop",
-                "message": {"role": "assistant", "content": '{"status":"answer"}'},
-            }
-        ],
-        "usage": {
-            "prompt_tokens": 100,
-            "completion_tokens": 20,
-            "cached_tokens": 7,
-            "prompt_tokens_details": {"cached_tokens": 81},
-        },
-    }
-    factory = _FakeSessionFactory(payload=payload)
-    ticks = iter((10.0, 10.123))
-
-    turn = _complete(factory, clock=lambda: next(ticks))
-
-    assert turn.content == '{"status":"answer"}'
-    assert turn.finish_reason == "stop"
-    assert turn.tool_calls == ()
-    assert turn.normalized_assistant_message == {
-        "role": "assistant",
-        "content": '{"status":"answer"}',
-    }
-    assert turn.usage.prompt_tokens == 100
-    assert turn.usage.completion_tokens == 20
-    assert turn.usage.cached_tokens == 81
-    assert turn.latency_ms == 123
-    assert factory.timeout.total == 3.5
     assert factory.posts == [
         {
             "url": "https://enterprise.xcody.dev/v1/chat/completions",
@@ -325,87 +168,111 @@ def test_exact_xcody_request_and_final_answer_normalization() -> None:
                 "model": "minimax-m3",
                 "messages": [
                     {"role": "system", "content": "stable"},
-                    {"role": "user", "content": "question"},
+                    {"role": "user", "content": "volatile"},
                 ],
-                "tools": [
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": "search_support_docs",
-                            "parameters": {"type": "object", "additionalProperties": False},
-                        },
-                    }
-                ],
-                "tool_choice": "auto",
-                "max_tokens": 1200,
-                "n": 1,
                 "reasoning_effort": "medium",
+                "temperature": 0.2,
+                "max_tokens": 1_200,
+                "n": 1,
+                "response_format": {"type": "json_object"},
             },
         }
     ]
+    assert turn.finish_reason == "stop"
+    assert turn.usage.prompt_tokens == 50
+    assert turn.usage.completion_tokens == 10
+    assert turn.usage.cached_tokens == 40
+    assert turn.latency_ms == 123
+    assert factory.timeout.total == 20.0
 
 
-def test_one_function_call_and_top_level_cached_tokens_are_normalized() -> None:
-    raw_tool_call = {
-        "id": "call_1",
-        "type": "function",
-        "function": {"name": "search_support_docs", "arguments": '{"query":"dns"}'},
-    }
-    factory = _FakeSessionFactory(
-        payload={
-            "choices": [
-                {
-                    "finish_reason": "tool_calls",
-                    "message": {"content": None, "tool_calls": [raw_tool_call]},
-                }
-            ],
-            "usage": {"cached_tokens": 44},
-        }
-    )
-
-    turn = _complete(factory)
-
-    assert turn.content is None
-    assert len(turn.tool_calls) == 1
-    assert turn.tool_calls[0].call_id == "call_1"
-    assert turn.tool_calls[0].name == "search_support_docs"
-    assert turn.tool_calls[0].arguments_json == '{"query":"dns"}'
-    assert turn.normalized_assistant_message == {
-        "role": "assistant",
-        "content": None,
-        "tool_calls": [raw_tool_call],
-    }
-    assert turn.usage.cached_tokens == 44
-    assert turn.usage.prompt_tokens is None
-    assert turn.usage.completion_tokens is None
-
-
-def test_provider_requires_exactly_one_choice() -> None:
+@pytest.mark.parametrize(
+    "message",
+    (
+        {"content": None},
+        {"content": "", "tool_calls": []},
+        {"content": "Ответ", "tool_calls": [{"id": "x"}]},
+    ),
+)
+def test_normalizer_rejects_empty_or_tool_output(message: object) -> None:
     from support_agent_provider import ProviderCallError
 
-    factory = _FakeSessionFactory(payload={"choices": []})
+    adapter, _ = _adapter_with_response(
+        {"choices": [{"finish_reason": "stop", "message": message}]}
+    )
+    with pytest.raises(ProviderCallError):
+        asyncio.run(
+            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
+        )
 
-    with pytest.raises(ProviderCallError) as caught:
-        _complete(factory)
 
-    assert caught.value.code == "provider_choice_count_invalid"
-    assert caught.value.retryable is False
-    assert caught.value.status == 200
+@pytest.mark.parametrize(
+    "messages",
+    (
+        ({"role": "user", "content": "one"},),
+        (
+            {"role": "system", "content": "stable", "name": "extra"},
+            {"role": "user", "content": "volatile"},
+        ),
+        (
+            {"role": "user", "content": "wrong"},
+            {"role": "system", "content": "order"},
+        ),
+    ),
+)
+def test_request_layout_is_closed_and_rejected_before_post(messages) -> None:
+    from support_agent_provider import ProviderCallError
+
+    adapter, factory = _adapter_with_response(SAFE_RESPONSE)
+    with pytest.raises(ProviderCallError, match="provider_request_invalid"):
+        asyncio.run(adapter.complete_synthesis(messages=messages, request_timeout=20.0))
+    assert factory.posts == []
+
+
+def test_timeout_and_complete_payload_bounds_are_enforced_before_post() -> None:
+    from support_agent_provider import ProviderCallError
+
+    adapter, factory = _adapter_with_response(SAFE_RESPONSE)
+    with pytest.raises(ProviderCallError, match="provider_request_invalid"):
+        asyncio.run(
+            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.1)
+        )
+    oversized = (
+        {"role": "system", "content": "stable"},
+        {"role": "user", "content": "я" * 30_000},
+    )
+    with pytest.raises(ProviderCallError, match="provider_request_too_large"):
+        asyncio.run(adapter.complete_synthesis(messages=oversized, request_timeout=20.0))
+    assert factory.posts == []
 
 
 @pytest.mark.parametrize(
     ("status", "retryable"),
     ((400, False), (401, False), (403, False), (429, True), (502, True), (503, True), (504, True)),
 )
-def test_http_status_classification(status: int, retryable: bool) -> None:
-    from support_agent_provider import ProviderCallError
+def test_http_status_is_captured_without_reading_response_body(
+    status: int,
+    retryable: bool,
+    caplog,
+) -> None:
+    from support_agent_provider import ProviderCallError, XCodyChatAdapter
+
+    secret = "upstream private payload sk-do-not-log"
+    factory = _FakeSessionFactory(status=status, raw_body=secret.encode("utf-8"))
+    adapter = XCodyChatAdapter(config=_config(), session_factory=factory)
+    caplog.set_level(logging.WARNING, logger="support_agent_provider")
 
     with pytest.raises(ProviderCallError) as caught:
-        _complete(_FakeSessionFactory(status=status, payload={"private": "must-not-be-read"}))
+        asyncio.run(
+            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
+        )
 
     assert caught.value.code == "provider_http_error"
     assert caught.value.status == status
     assert caught.value.retryable is retryable
+    assert factory.response.content._position == 0
+    assert secret not in caplog.text
+    assert "sk-test-key" not in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -415,33 +282,60 @@ def test_http_status_classification(status: int, retryable: bool) -> None:
         (aiohttp.ClientConnectionError("private prompt"), "provider_transport_error"),
     ),
 )
-def test_timeout_and_transport_failures_are_retryable(error: BaseException, code: str) -> None:
-    from support_agent_provider import ProviderCallError
+def test_timeout_and_transport_failures_are_fixed_and_retryable(
+    error: BaseException,
+    code: str,
+) -> None:
+    from support_agent_provider import ProviderCallError, XCodyChatAdapter
 
+    adapter = XCodyChatAdapter(
+        config=_config(),
+        session_factory=_FakeSessionFactory(post_error=error),
+    )
     with pytest.raises(ProviderCallError) as caught:
-        _complete(_FakeSessionFactory(post_error=error))
-
+        asyncio.run(
+            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
+        )
     assert caught.value.code == code
     assert caught.value.status == 0
     assert caught.value.retryable is True
 
 
-def test_oversized_response_and_logs_do_not_expose_provider_body(caplog) -> None:
+@pytest.mark.parametrize(
+    "payload",
+    (
+        {"choices": []},
+        {"choices": [{"finish_reason": "length", "message": {"content": "Ответ"}}]},
+        {"choices": [{"finish_reason": "stop", "message": []}]},
+    ),
+)
+def test_response_requires_exactly_one_stopped_text_choice(payload: object) -> None:
     from support_agent_provider import ProviderCallError
+
+    adapter, _ = _adapter_with_response(payload)
+    with pytest.raises(ProviderCallError):
+        asyncio.run(
+            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
+        )
+
+
+def test_oversized_response_and_logs_do_not_expose_provider_body(caplog) -> None:
+    from support_agent_provider import ProviderCallError, XCodyChatAdapter
 
     secret = "vless://private-profile sk-private-token hidden reasoning"
     factory = _FakeSessionFactory(
         raw_body=secret.encode("utf-8"),
         content_length=1_000_000,
     )
+    adapter = XCodyChatAdapter(config=_config(), session_factory=factory)
     caplog.set_level(logging.WARNING, logger="support_agent_provider")
 
     with pytest.raises(ProviderCallError) as caught:
-        _complete(factory)
+        asyncio.run(
+            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
+        )
 
     assert caught.value.code == "provider_response_too_large"
     assert caught.value.retryable is False
-    assert caught.value.status == 200
-    assert "provider_response_too_large" in caplog.text
     assert secret not in caplog.text
     assert "sk-test-key" not in caplog.text

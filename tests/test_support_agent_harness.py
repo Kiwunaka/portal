@@ -1,9 +1,10 @@
 import asyncio
 import json
+import logging
 import sys
-import time
-from dataclasses import asdict
+from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,498 +15,630 @@ if str(PORTAL_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_DIR))
 
 
-def _snapshots():
+CASES = (
+    # name, input_mode, retrieval, provider_plan, store_plan, calls, status, origin, reason
+    ("hard_reject", "hard_reject", "none", "unused", "ok", 0, "escalate", "human_transfer", "sensitive_input"),
+    ("local_escalate", "local_escalate", "none", "unused", "ok", 0, "escalate", "human_transfer", "out_of_scope"),
+    ("explicit_human", "explicit_human", "none", "unused", "ok", 0, "escalate", "human_transfer", "human_requested"),
+    ("fixed_transfer_write_failure", "explicit_human", "none", "unused", "write_error", 0, "escalate", "human_transfer", "session_write_failed"),
+    ("sticky_escalation", "safe", "confident", "unused", "sticky", 0, "escalate", "human_transfer", "escalation_already_requested"),
+    ("second_failure", "safe_negative", "confident", "unused", "ok", 0, "escalate", "human_transfer", "repeated_unsuccessful"),
+    ("rate_limited", "safe", "confident", "unused", "rate_limited", 0, "fallback", "human_transfer", "owner_rate_limited"),
+    ("session_busy", "safe", "confident", "unused", "session_busy", 0, "fallback", "human_transfer", "session_busy"),
+    ("process_busy", "safe", "confident", "unused", "process_busy", 0, "fallback", "human_transfer", "process_busy"),
+    ("session_read_failure", "safe", "confident", "unused", "read_error", 0, "fallback", "human_transfer", "session_read_failed"),
+    ("no_topic", "safe", "none", "unused", "ok", 0, "escalate", "human_transfer", "missing_source"),
+    ("context_overflow", "safe", "confident", "unused", "context_error", 0, "fallback", "human_transfer", "provider_request_too_large"),
+    ("model_confident", "safe", "confident", "answer", "ok", 1, "answer", "model", None),
+    ("model_candidate", "safe", "candidate", "answer", "ok", 1, "answer", "model", None),
+    ("model_escalate", "safe", "confident", "escalate", "ok", 1, "escalate", "human_transfer", "model_escalation"),
+    ("timeout_confident", "safe", "confident", "timeout", "ok", 1, "answer", "grounded_local", None),
+    ("http_400_confident", "safe", "confident", "http_400", "ok", 1, "answer", "grounded_local", None),
+    ("invalid_json_confident", "safe", "confident", "invalid_json", "ok", 1, "answer", "grounded_local", None),
+    ("unsafe_output_confident", "safe", "confident", "unsafe", "ok", 1, "answer", "grounded_local", None),
+    ("timeout_candidate", "safe", "candidate", "timeout", "ok", 1, "fallback", "human_transfer", "provider_timeout"),
+    ("fingerprint_missing", "safe", "candidate", "invalid_json", "ok", 1, "fallback", "human_transfer", "agent_output_json_invalid"),
+    ("post_answer_write_failure", "safe", "confident", "answer", "write_error", 1, "fallback", "human_transfer", "session_write_failed"),
+)
+
+INPUT_MESSAGES = {
+    "hard_reject": "vless://private-profile-value",
+    "local_escalate": "Проверьте мой аккаунт и базу данных",
+    "explicit_human": "Соедините меня с живым оператором поддержки",
+    "safe": "POKROV подключён, но интернета нет.",
+    "safe_negative": "Не помогло, всё так же.",
+}
+PROVIDER_PLANS = frozenset(
+    {
+        "unused",
+        "answer",
+        "escalate",
+        "timeout",
+        "http_400",
+        "invalid_json",
+        "unsafe",
+        "metadata",
+        "runtime_error",
+    }
+)
+STORE_PLANS = frozenset(
+    {
+        "ok",
+        "write_error",
+        "sticky",
+        "rate_limited",
+        "session_busy",
+        "process_busy",
+        "read_error",
+        "context_error",
+    }
+)
+RETRIEVAL_PLANS = frozenset({"confident", "candidate", "none"})
+
+MODEL_REPLY = (
+    "Коротко\nПроверьте подключение.\n\n"
+    "Что сделать\nПереподключитесь.\n\n"
+    "Если не поможет\nНапишите в поддержку."
+)
+
+
+class _Adapter:
+    def __init__(self, plan: str, *, secret: str = "") -> None:
+        assert plan in PROVIDER_PLANS
+        self.plan = plan
+        self.secret = secret
+        self.call_count = 0
+        self.config = SimpleNamespace(model="minimax-m3", reasoning_effort="medium")
+
+    async def complete_synthesis(self, *, messages, request_timeout):
+        from support_agent_provider import ProviderCallError, ProviderUsage, SynthesisTurn
+
+        self.call_count += 1
+        if self.plan == "unused":
+            raise AssertionError("unused_adapter_called")
+        if self.plan == "timeout":
+            raise ProviderCallError(retryable=True, code="provider_timeout", status=0)
+        if self.plan == "http_400":
+            raise ProviderCallError(retryable=False, code="provider_http_error", status=400)
+        if self.plan == "runtime_error":
+            raise RuntimeError(self.secret)
+        if self.plan == "invalid_json":
+            content = "not-json"
+        elif self.plan == "unsafe":
+            content = json.dumps(
+                {"schema_version": "1", "status": "answer", "reply": "Ответ vless://secret"},
+                ensure_ascii=False,
+            )
+        elif self.plan == "metadata":
+            content = json.dumps(
+                {
+                    "schema_version": "1",
+                    "status": "answer",
+                    "reply": MODEL_REPLY,
+                    "source_topic_ids": ["connected_no_internet"],
+                },
+                ensure_ascii=False,
+            )
+        else:
+            content = json.dumps(
+                {
+                    "schema_version": "1",
+                    "status": "escalate" if self.plan == "escalate" else "answer",
+                    "reply": MODEL_REPLY,
+                },
+                ensure_ascii=False,
+            )
+        return SynthesisTurn(
+            content=content,
+            finish_reason="stop",
+            usage=ProviderUsage(prompt_tokens=100, completion_tokens=20, cached_tokens=80),
+            latency_ms=37,
+        )
+
+
+class _Store:
+    def __init__(self, plan: str) -> None:
+        from support_agent_sessions import SupportSessionStore
+
+        assert plan in STORE_PLANS
+        self.plan = plan
+        self.real = SupportSessionStore()
+        self.append_calls = 0
+
+    def get(self, key, now):
+        if self.plan == "read_error":
+            raise RuntimeError("private read failure")
+        return self.real.get(key, now)
+
+    def append(self, key, messages, state, now):
+        self.append_calls += 1
+        if self.plan == "write_error":
+            raise RuntimeError("private write failure")
+        return self.real.append(key, messages, state, now)
+
+
+class _RateLimiter:
+    def __init__(self, allowed: bool) -> None:
+        self.allowed = allowed
+
+    def allow(self, owner_scope_hash, now):
+        return self.allowed
+
+
+class _Guard:
+    def __init__(self, *, busy: bool = False) -> None:
+        self.busy = busy
+        self.active: set[str] = set()
+        self.release_count = 0
+
+    @property
+    def in_flight_count(self) -> int:
+        return len(self.active)
+
+    async def acquire(self, key):
+        if self.busy:
+            return False
+        self.active.add(key)
+        return True
+
+    async def release(self, key):
+        self.active.discard(key)
+        self.release_count += 1
+
+
+class _BusySemaphore:
+    _value = 0
+
+    async def acquire(self):
+        raise asyncio.TimeoutError
+
+    def release(self):
+        raise AssertionError("busy semaphore was never acquired")
+
+
+class _Grounding:
+    def __init__(self, decision, delegate) -> None:
+        self.decision = decision
+        self.delegate = delegate
+        self.render_calls = 0
+
+    def select(self, redacted_message, session):
+        return self.decision
+
+    def render_local(self, decision, policy):
+        self.render_calls += 1
+        return self.delegate.render_local(decision, policy)
+
+
+class _ContextBuilder:
+    def __init__(self, *, fail: bool = False) -> None:
+        from support_agent_context import SupportContextBuilder
+
+        self.delegate = SupportContextBuilder()
+        self.fail = fail
+
+    def build_synthesis(self, **kwargs):
+        from support_agent_context import ContextBuildError
+
+        if self.fail:
+            raise ContextBuildError("provider_request_too_large")
+        return self.delegate.build_synthesis(**kwargs)
+
+
+class _StepClock:
+    def __init__(self) -> None:
+        self.value = 10.0
+
+    def __call__(self) -> float:
+        self.value += 0.01
+        return self.value
+
+
+@dataclass
+class HarnessCase:
+    harness: object
+    request: object
+    adapter: _Adapter
+    session_store: _Store
+    guard: _Guard
+    grounding: _Grounding
+    traces: list[object]
+
+
+def _snapshots_and_decisions():
+    from support_agent_grounding import (
+        RETRIEVER_RULES_SHA256,
+        RetrievalDecision,
+        RetrievalDisposition,
+        SupportGroundingEngine,
+    )
     from support_agent_knowledge import SupportKnowledgeStore
     from support_agent_policy import SupportAgentPolicyStore
 
     policy = SupportAgentPolicyStore().load(REPO_ROOT / "shared" / "support-agent-policy.json")
-    knowledge_store = SupportKnowledgeStore()
-    knowledge = knowledge_store.load(REPO_ROOT / "shared" / "support-ai-knowledge.json")
-    return policy, knowledge_store, knowledge
-
-
-def _scope(owner: str = "owner-1", session_id: str = "abcdefghijklmnop"):
-    from support_agent_sessions import SupportSessionResolver
-
-    return SupportSessionResolver().resolve_app(owner, session_id)
-
-
-def _usage(prompt: int = 10, completion: int = 2, cached: int | None = 8):
-    from support_agent_provider import ProviderUsage
-
-    return ProviderUsage(prompt_tokens=prompt, completion_tokens=completion, cached_tokens=cached)
-
-
-def _final_turn(source_id: str, *, raw_content: str | None = None):
-    from support_agent_provider import ModelTurn
-
-    content = raw_content or json.dumps(
-        {
-            "schema_version": "1",
-            "status": "answer",
-            "reply": "Переподключитесь и проверьте доступ ещё раз.",
-            "source_topic_ids": [source_id],
-            "session_state": {
-                "issue_topic_id": source_id,
-                "attempted_steps": ["reconnect"],
-                "last_outcome": "not_reported",
-                "escalation_requested": False,
-            },
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
+    store = SupportKnowledgeStore()
+    knowledge = store.load(REPO_ROOT / "shared" / "support-ai-knowledge.json")
+    engine = SupportGroundingEngine(store, knowledge)
+    confident = engine.select("POKROV подключён, но интернета нет.", None)
+    candidate_topics = store.search("импортировать профиль в приложение", limit=3)
+    candidate = RetrievalDecision(
+        disposition=RetrievalDisposition.CANDIDATE,
+        context_topics=candidate_topics,
+        context_topic_ids=tuple(hit.topic_id for hit in candidate_topics),
+        grounding_topic_id=None,
+        retriever_sha256=RETRIEVER_RULES_SHA256,
     )
-    return ModelTurn(
-        content=content,
-        finish_reason="stop",
-        tool_calls=(),
-        normalized_assistant_message={"role": "assistant", "content": content},
-        usage=_usage(),
-        latency_ms=20,
+    none = RetrievalDecision(
+        disposition=RetrievalDisposition.NONE,
+        context_topics=(),
+        context_topic_ids=(),
+        grounding_topic_id=None,
+        retriever_sha256=RETRIEVER_RULES_SHA256,
     )
+    return policy, knowledge, engine, {
+        "confident": confident,
+        "candidate": candidate,
+        "none": none,
+    }
 
 
-def _tool_turn(
-    *,
-    call_id: str = "call_1",
-    name: str = "search_support_docs",
-    arguments: str = '{"query":"private dns фильтр"}',
-    parallel: bool = False,
-    finish_reason: str = "tool_calls",
-):
-    from support_agent_provider import ModelTurn, ToolCall
+@pytest.fixture
+def harness_case_factory():
+    def factory(
+        *,
+        name: str,
+        input_mode: str,
+        retrieval: str,
+        provider_plan: str,
+        store_plan: str,
+        secret: str = "",
+        clock=None,
+    ) -> HarnessCase:
+        from support_agent_harness import SupportAgentHarness, SupportAgentRequest
+        from support_agent_safety import SafeSessionState
+        from support_agent_sessions import SessionScope, StoredMessage
 
-    calls = [ToolCall(call_id=call_id, name=name, arguments_json=arguments)]
-    raw_calls = [
-        {
-            "id": call_id,
-            "type": "function",
-            "function": {"name": name, "arguments": arguments},
-        }
-    ]
-    if parallel:
-        calls.append(ToolCall(call_id="call_2", name=name, arguments_json=arguments))
-        raw_calls.append(
-            {
-                "id": "call_2",
-                "type": "function",
-                "function": {"name": name, "arguments": arguments},
-            }
+        assert isinstance(name, str) and name
+        assert input_mode in INPUT_MESSAGES
+        assert retrieval in RETRIEVAL_PLANS
+        assert provider_plan in PROVIDER_PLANS
+        assert store_plan in STORE_PLANS
+        policy, knowledge, engine, decisions = _snapshots_and_decisions()
+        adapter = _Adapter(provider_plan, secret=secret)
+        store = _Store(store_plan)
+        guard = _Guard(busy=store_plan == "session_busy")
+        grounding = _Grounding(decisions[retrieval], engine)
+        traces: list[object] = []
+        owner_hash = "1" * 64
+        internal_key = "2" * 64
+        scope = SessionScope(
+            surface="app",
+            owner_scope_hash=owner_hash,
+            internal_session_key=internal_key,
+            client_session_id="A" * 16,
         )
-    return ModelTurn(
-        content=None,
-        finish_reason=finish_reason,
-        tool_calls=tuple(calls),
-        normalized_assistant_message={"role": "assistant", "content": None, "tool_calls": raw_calls},
-        usage=_usage(),
-        latency_ms=20,
-    )
-
-
-class _SequenceAdapter:
-    def __init__(self, outcomes, *, clock=None, advances=()) -> None:
-        self.outcomes = list(outcomes)
-        self.requests: list[dict[str, object]] = []
-        self.clock = clock
-        self.advances = list(advances)
-
-    async def complete(self, *, messages, tools, tool_choice, request_timeout):
-        self.requests.append(
-            {
-                "messages": tuple(messages),
-                "tools": tuple(tools),
-                "tool_choice": tool_choice,
-                "request_timeout": request_timeout,
-            }
-        )
-        if not self.outcomes:
-            raise AssertionError("unexpected provider request")
-        outcome = self.outcomes.pop(0)
-        if self.clock is not None and self.advances:
-            self.clock.value += self.advances.pop(0)
-        if isinstance(outcome, BaseException):
-            raise outcome
-        return outcome
-
-
-async def _no_sleep(_delay: float) -> None:
-    return None
-
-
-def _harness(adapter, *, trace_callback=None, **overrides):
-    from support_agent_harness import SupportAgentHarness
-    from support_agent_sessions import OwnerRateLimiter, SessionInFlightGuard, SupportSessionStore
-
-    policy, knowledge_store, knowledge = _snapshots()
-    session_store = overrides.pop("session_store", SupportSessionStore())
-    guard = overrides.pop("in_flight_guard", SessionInFlightGuard())
-    harness = SupportAgentHarness(
-        policy=policy,
-        knowledge_store=knowledge_store,
-        knowledge=knowledge,
-        session_store=session_store,
-        rate_limiter=overrides.pop("rate_limiter", OwnerRateLimiter()),
-        in_flight_guard=guard,
-        adapter=adapter,
-        sleep=_no_sleep,
-        jitter=lambda: 0.0,
-        trace_callback=trace_callback,
-        **overrides,
-    )
-    return harness, session_store, guard, knowledge_store
-
-
-def _run(harness, *, scope=None, message="Подключено, но интернета нет", now=100.0):
-    from support_agent_harness import SupportAgentRequest
-
-    return asyncio.run(
-        harness.run(
-            SupportAgentRequest(
-                surface="app",
-                session_scope=scope or _scope(),
-                message=message,
-                now=now,
-            )
-        )
-    )
-
-
-def test_fast_answer_is_validated_stored_and_traced_without_text() -> None:
-    traces = []
-    adapter = _SequenceAdapter([_final_turn("connected_no_internet")])
-    harness, session_store, guard, _ = _harness(adapter, trace_callback=traces.append)
-    scope = _scope()
-
-    result = _run(harness, scope=scope)
-
-    assert result.status == "answer"
-    assert result.source_topic_ids == ("connected_no_internet",)
-    assert result.provider_request_count == 1
-    assert result.tool_call_count == 0
-    assert result.retry_count == 0
-    assert result.usage == _usage()
-    stored = session_store.get(scope.internal_session_key, 101.0)
-    assert stored is not None
-    assert [item.role for item in stored.messages] == ["user", "assistant"]
-    assert stored.messages[0].content == "Подключено, но интернета нет"
-    assert stored.messages[1].content == result.reply
-    assert guard.in_flight_count == 0
-    assert harness.available_concurrency == 2
-    assert len(traces) == 1
-    trace_json = json.dumps(asdict(traces[0]), ensure_ascii=False)
-    assert "Подключено, но интернета нет" not in trace_json
-    assert result.reply not in trace_json
-    assert scope.client_session_id not in trace_json
-
-
-def test_one_transient_failure_uses_second_and_final_slot_without_tool() -> None:
-    from support_agent_provider import ProviderCallError
-
-    adapter = _SequenceAdapter(
-        [
-            ProviderCallError(retryable=True, code="provider_http_error", status=503),
-            _final_turn("connected_no_internet"),
-        ]
-    )
-    harness, _, guard, _ = _harness(adapter)
-
-    result = _run(harness)
-
-    assert result.status == "answer"
-    assert result.provider_request_count == 2
-    assert result.retry_count == 1
-    assert result.tool_call_count == 0
-    assert result.usage.prompt_tokens == 10
-    assert [item["tool_choice"] for item in adapter.requests] == ["auto", "auto"]
-    assert adapter.requests[0]["messages"] == adapter.requests[1]["messages"]
-    assert guard.in_flight_count == 0
-
-
-def test_retry_response_cannot_start_a_tool_path() -> None:
-    from support_agent_provider import ProviderCallError
-
-    adapter = _SequenceAdapter(
-        [
-            ProviderCallError(retryable=True, code="provider_timeout", status=0),
-            _tool_turn(),
-        ]
-    )
-    harness, session_store, _, knowledge_store = _harness(adapter)
-
-    result = _run(harness)
-
-    assert result.status == "fallback"
-    assert result.escalation_reason == "retry_tool_forbidden"
-    assert result.provider_request_count == 2
-    assert result.retry_count == 1
-    assert result.tool_call_count == 0
-    assert session_store.get(_scope().internal_session_key, 101.0) is None
-    assert len(knowledge_store.search("private dns фильтр", 5)) == 1
-
-
-def test_one_tool_call_replays_exact_message_and_forces_final_turn() -> None:
-    first = _tool_turn()
-    adapter = _SequenceAdapter([first, _final_turn("private_dns_and_filters")])
-    harness, _, guard, knowledge_store = _harness(adapter)
-    pre_bodies = [hit.body for hit in knowledge_store.search("Подключено, но интернета нет", 3)]
-
-    result = _run(harness)
-
-    assert result.status == "answer"
-    assert result.source_topic_ids == ("private_dns_and_filters",)
-    assert result.provider_request_count == 2
-    assert result.tool_call_count == 1
-    assert result.retry_count == 0
-    assert [item["tool_choice"] for item in adapter.requests] == ["auto", "none"]
-    second_messages = adapter.requests[1]["messages"]
-    assert second_messages[-2] == first.normalized_assistant_message
-    assert second_messages[-1]["role"] == "tool"
-    assert second_messages[-1]["tool_call_id"] == "call_1"
-    assert second_messages[-1]["name"] == "search_support_docs"
-    assert "private_dns_and_filters" in second_messages[-1]["content"]
-    serialized_second = json.dumps(second_messages, ensure_ascii=False)
-    assert all(body not in serialized_second for body in pre_bodies)
-    assert guard.in_flight_count == 0
-
-
-def test_tool_path_second_failure_never_retries() -> None:
-    from support_agent_provider import ProviderCallError
-
-    adapter = _SequenceAdapter(
-        [
-            _tool_turn(),
-            ProviderCallError(retryable=True, code="provider_http_error", status=503),
-        ]
-    )
-    harness, _, guard, _ = _harness(adapter)
-
-    result = _run(harness)
-
-    assert result.status == "fallback"
-    assert result.escalation_reason == "provider_http_error"
-    assert result.provider_request_count == 2
-    assert result.tool_call_count == 1
-    assert result.retry_count == 0
-    assert len(adapter.requests) == 2
-    assert guard.in_flight_count == 0
-
-
-@pytest.mark.parametrize(
-    ("turn", "reason"),
-    (
-        (_tool_turn(name="read_account"), "tool_name_invalid"),
-        (_tool_turn(arguments='{"query":"dns","extra":true}'), "tool_arguments_invalid"),
-        (_tool_turn(parallel=True), "tool_call_count_invalid"),
-        (_tool_turn(call_id="bad id"), "tool_call_id_invalid"),
-        (_tool_turn(finish_reason="stop"), "tool_finish_reason_invalid"),
-    ),
-)
-def test_invalid_tool_requests_execute_nothing(turn, reason: str) -> None:
-    adapter = _SequenceAdapter([turn])
-    harness, session_store, _, _ = _harness(adapter)
-
-    result = _run(harness)
-
-    assert result.status == "fallback"
-    assert result.escalation_reason == reason
-    assert result.provider_request_count == 1
-    assert result.tool_call_count == 0
-    assert len(adapter.requests) == 1
-    assert session_store.get(_scope().internal_session_key, 101.0) is None
-
-
-@pytest.mark.parametrize("variant", ("malformed", "unsafe", "unsourced"))
-def test_invalid_final_output_fails_closed_without_memory(variant: str) -> None:
-    if variant == "malformed":
-        raw = "not-json"
-    else:
-        raw = json.dumps(
-            {
-                "schema_version": "1",
-                "status": "answer",
-                "reply": (
-                    "Секрет sk-abcdefghijklmnopqrstuvwxyz1234567890"
-                    if variant == "unsafe"
-                    else "Переподключитесь и повторите проверку."
+        if store_plan == "sticky":
+            store.real.append(
+                internal_key,
+                (
+                    StoredMessage(role="user", content="Прошлый вопрос"),
+                    StoredMessage(role="assistant", content="Прошлый ответ"),
                 ),
-                "source_topic_ids": [] if variant == "unsourced" else ["connected_no_internet"],
-                "session_state": {
-                    "issue_topic_id": None,
-                    "attempted_steps": [],
-                    "last_outcome": "not_reported",
-                    "escalation_requested": False,
-                },
-            },
-            ensure_ascii=False,
-            separators=(",", ":"),
+                SafeSessionState(
+                    issue_topic_id="connected_no_internet",
+                    attempted_steps=(),
+                    last_outcome="not_reported",
+                    escalation_requested=True,
+                    unsuccessful_turns=0,
+                ),
+                99.0,
+            )
+        if input_mode == "safe_negative":
+            store.real.append(
+                internal_key,
+                (
+                    StoredMessage(role="user", content="Первый шаг не помог"),
+                    StoredMessage(role="assistant", content="Безопасный ответ"),
+                ),
+                SafeSessionState(
+                    issue_topic_id="connected_no_internet",
+                    attempted_steps=("reconnect",),
+                    last_outcome="unchanged",
+                    escalation_requested=False,
+                    unsuccessful_turns=1,
+                ),
+                99.0,
+            )
+        harness = SupportAgentHarness(
+            policy=policy,
+            knowledge=knowledge,
+            grounding_engine=grounding,
+            session_store=store,
+            rate_limiter=_RateLimiter(store_plan != "rate_limited"),
+            in_flight_guard=guard,
+            adapter=adapter,
+            context_builder=_ContextBuilder(fail=store_plan == "context_error"),
+            monotonic=clock,
+            trace_callback=traces.append,
         )
-    adapter = _SequenceAdapter([_final_turn("connected_no_internet", raw_content=raw)])
-    harness, session_store, guard, _ = _harness(adapter)
+        if store_plan == "process_busy":
+            harness.process_semaphore = _BusySemaphore()
+        request = SupportAgentRequest(
+            surface="app",
+            session_scope=scope,
+            message=INPUT_MESSAGES[input_mode],
+            now=100.0,
+        )
+        return HarnessCase(
+            harness=harness,
+            request=request,
+            adapter=adapter,
+            session_store=store,
+            guard=guard,
+            grounding=grounding,
+            traces=traces,
+        )
 
-    result = _run(harness)
-
-    assert result.status == "fallback"
-    assert result.escalation_reason.startswith("agent_output_")
-    assert result.provider_request_count == 1
-    assert session_store.get(_scope().internal_session_key, 101.0) is None
-    assert guard.in_flight_count == 0
-
-
-class _Exploding:
-    def __getattr__(self, name):
-        raise AssertionError(f"unsafe input touched {name}")
+    return factory
 
 
 @pytest.mark.parametrize(
-    ("message", "status", "reason"),
-    (
-        ("Вот ключ vless://private-profile", "fallback", "sensitive_input"),
-        ("Позовите оператора поддержки", "escalate", "human_requested"),
-    ),
+    "name,input_mode,retrieval,provider_plan,store_plan,calls,status,origin,reason",
+    CASES,
 )
-def test_input_rejection_precedes_memory_retrieval_concurrency_and_provider(
-    message: str,
-    status: str,
-    reason: str,
-) -> None:
-    from support_agent_harness import SupportAgentHarness
-
-    policy, _, knowledge = _snapshots()
-    traces = []
-    adapter = _SequenceAdapter([])
-    harness = SupportAgentHarness(
-        policy=policy,
-        knowledge_store=_Exploding(),
-        knowledge=knowledge,
-        session_store=_Exploding(),
-        rate_limiter=_Exploding(),
-        in_flight_guard=_Exploding(),
-        adapter=adapter,
-        trace_callback=traces.append,
+def test_exhaustive_zero_one_call_truth_table(
+    name,
+    input_mode,
+    retrieval,
+    provider_plan,
+    store_plan,
+    calls,
+    status,
+    origin,
+    reason,
+    harness_case_factory,
+):
+    case = harness_case_factory(
+        name=name,
+        input_mode=input_mode,
+        retrieval=retrieval,
+        provider_plan=provider_plan,
+        store_plan=store_plan,
     )
-
-    result = _run(harness, message=message)
-
+    result = asyncio.run(case.harness.run(case.request))
+    assert result.provider_request_count == calls
     assert result.status == status
+    assert result.answer_origin == origin
     assert result.escalation_reason == reason
-    assert result.provider_request_count == 0
-    assert adapter.requests == []
-    assert len(traces) == 1
-    assert message not in json.dumps(asdict(traces[0]), ensure_ascii=False)
+    assert case.adapter.call_count == calls
+    assert case.adapter.call_count <= 1
 
 
-class _Clock:
-    def __init__(self) -> None:
-        self.value = 0.0
+def test_factory_rejects_unknown_closed_plans(harness_case_factory) -> None:
+    with pytest.raises(AssertionError):
+        harness_case_factory(
+            name="unknown",
+            input_mode="safe",
+            retrieval="confident",
+            provider_plan="second_call",
+            store_plan="ok",
+        )
 
-    def __call__(self) -> float:
-        return self.value
+
+def test_code_owned_provenance_and_candidate_state_are_not_model_owned(
+    harness_case_factory,
+) -> None:
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import StoredMessage
+
+    candidate = harness_case_factory(
+        name="candidate-state",
+        input_mode="safe",
+        retrieval="candidate",
+        provider_plan="answer",
+        store_plan="ok",
+    )
+    candidate.session_store.real.append(
+        candidate.request.session_scope.internal_session_key,
+        (
+            StoredMessage(role="user", content="Старый вопрос"),
+            StoredMessage(role="assistant", content="Старый ответ"),
+        ),
+        SafeSessionState(
+            issue_topic_id="connected_no_internet",
+            attempted_steps=("reconnect",),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        99.0,
+    )
+    candidate_result = asyncio.run(candidate.harness.run(candidate.request))
+    assert candidate_result.context_topic_ids == candidate.grounding.decision.context_topic_ids
+    assert candidate_result.grounding_topic_id is None
+    assert candidate_result.session_state.issue_topic_id == "connected_no_internet"
+
+    confident = harness_case_factory(
+        name="confident-provenance",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="answer",
+        store_plan="ok",
+    )
+    confident_result = asyncio.run(confident.harness.run(confident.request))
+    assert confident_result.grounding_topic_id == "connected_no_internet"
+    assert confident_result.grounding_topic_id in confident_result.context_topic_ids
 
 
-def test_each_provider_timeout_is_capped_by_remaining_wall_deadline() -> None:
-    clock = _Clock()
-    adapter = _SequenceAdapter(
-        [_tool_turn(), _final_turn("private_dns_and_filters")],
+def test_model_metadata_is_rejected_and_model_escalation_never_renders_local(
+    harness_case_factory,
+) -> None:
+    metadata = harness_case_factory(
+        name="metadata",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="metadata",
+        store_plan="ok",
+    )
+    metadata_result = asyncio.run(metadata.harness.run(metadata.request))
+    assert metadata_result.answer_origin == "grounded_local"
+    assert metadata.grounding.render_calls == 1
+
+    escalation = harness_case_factory(
+        name="escalate-no-local",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="escalate",
+        store_plan="ok",
+    )
+    escalation_result = asyncio.run(escalation.harness.run(escalation.request))
+    assert escalation_result.answer_origin == "human_transfer"
+    assert escalation_result.reply != MODEL_REPLY
+    assert escalation.grounding.render_calls == 0
+
+
+def test_transfer_persistence_is_exact_and_sensitive_or_out_of_scope_is_not_stored(
+    harness_case_factory,
+) -> None:
+    from support_agent_harness import SAFE_FALLBACK_REPLY
+
+    human = harness_case_factory(
+        name="human-store",
+        input_mode="explicit_human",
+        retrieval="none",
+        provider_plan="unused",
+        store_plan="ok",
+    )
+    asyncio.run(human.harness.run(human.request))
+    stored = human.session_store.real.get(
+        human.request.session_scope.internal_session_key,
+        101.0,
+    )
+    assert [(item.role, item.content) for item in stored.messages] == [
+        ("user", INPUT_MESSAGES["explicit_human"]),
+        ("assistant", SAFE_FALLBACK_REPLY),
+    ]
+    assert stored.state.escalation_requested is True
+
+    for input_mode, reason in (("hard_reject", "sensitive"), ("local_escalate", "scope")):
+        case = harness_case_factory(
+            name=reason,
+            input_mode=input_mode,
+            retrieval="none",
+            provider_plan="unused",
+            store_plan="ok",
+        )
+        asyncio.run(case.harness.run(case.request))
+        assert case.session_store.real.get(
+            case.request.session_scope.internal_session_key,
+            101.0,
+        ) is None
+
+
+def test_second_failure_and_write_failure_have_one_atomic_persistence_attempt(
+    harness_case_factory,
+) -> None:
+    from support_agent_harness import SAFE_FALLBACK_REPLY
+
+    repeated = harness_case_factory(
+        name="repeat-store",
+        input_mode="safe_negative",
+        retrieval="confident",
+        provider_plan="unused",
+        store_plan="ok",
+    )
+    result = asyncio.run(repeated.harness.run(repeated.request))
+    stored = repeated.session_store.real.get(
+        repeated.request.session_scope.internal_session_key,
+        101.0,
+    )
+    assert result.escalation_reason == "repeated_unsuccessful"
+    assert [(item.role, item.content) for item in stored.messages[-2:]] == [
+        ("user", INPUT_MESSAGES["safe_negative"]),
+        ("assistant", SAFE_FALLBACK_REPLY),
+    ]
+    assert stored.state.escalation_requested is True
+    assert repeated.session_store.append_calls == 1
+
+    failed = harness_case_factory(
+        name="write-once",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="answer",
+        store_plan="write_error",
+    )
+    failed_result = asyncio.run(failed.harness.run(failed.request))
+    assert failed_result.reply == SAFE_FALLBACK_REPLY
+    assert failed_result.escalation_reason == "session_write_failed"
+    assert failed.session_store.append_calls == 1
+    assert failed.adapter.call_count == 1
+
+
+def test_trace_is_numeric_bounded_and_contains_no_conversation_or_runtime_secret(
+    harness_case_factory,
+    caplog,
+) -> None:
+    secret = "sk-runtime-secret-must-not-escape"
+    clock = _StepClock()
+    case = harness_case_factory(
+        name="runtime-secret",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="runtime_error",
+        store_plan="ok",
+        secret=secret,
         clock=clock,
-        advances=(0.75, 0.25),
     )
-    harness, _, _, _ = _harness(
-        adapter,
-        monotonic=clock,
-        run_deadline_seconds=2.0,
-        provider_timeout_seconds=12.0,
+    caplog.set_level(logging.WARNING, logger="support_agent_harness")
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.escalation_reason == "harness_internal_error"
+    assert result.provider_request_count == 1
+    assert len(case.traces) == 1
+    trace = case.traces[0]
+    trace_text = repr(trace)
+    assert trace.error_code == "harness_internal_error"
+    assert trace.provider_request_count == 1
+    assert isinstance(trace.queue_latency_ms, int)
+    assert isinstance(trace.latency_ms, int)
+    assert trace.provider_latency_ms is None
+    assert trace.input_redaction_counts == tuple(sorted(trace.input_redaction_counts))
+    assert trace.output_redaction_counts == tuple(sorted(trace.output_redaction_counts))
+    assert all(type(count) is int and count >= 0 for _, count in trace.input_redaction_counts)
+    for forbidden in (
+        secret,
+        case.request.message,
+        case.request.session_scope.client_session_id,
+        MODEL_REPLY,
+    ):
+        assert forbidden not in trace_text
+        assert forbidden not in repr(result)
+        assert forbidden not in caplog.text
+
+
+def test_guards_and_process_slots_release_on_failure_and_busy_paths(
+    harness_case_factory,
+) -> None:
+    failure = harness_case_factory(
+        name="release-runtime",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="runtime_error",
+        store_plan="ok",
+        secret="private",
     )
+    asyncio.run(failure.harness.run(failure.request))
+    assert failure.guard.in_flight_count == 0
+    assert failure.guard.release_count == 1
+    assert failure.harness.available_concurrency == 2
 
-    result = _run(harness)
-
-    assert result.status == "answer"
-    assert [item["request_timeout"] for item in adapter.requests] == pytest.approx([2.0, 1.25])
-    assert result.latency_ms == 1000
-
-
-def test_lower_runtime_request_and_tool_budgets_are_enforced() -> None:
-    from support_agent_provider import ProviderCallError
-
-    retry_adapter = _SequenceAdapter(
-        [
-            ProviderCallError(retryable=True, code="provider_timeout", status=0),
-            _final_turn("connected_no_internet"),
-        ]
+    busy = harness_case_factory(
+        name="release-busy",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="unused",
+        store_plan="process_busy",
     )
-    retry_harness, _, _, _ = _harness(retry_adapter, max_provider_requests=1)
-    retry_result = _run(retry_harness)
-
-    assert retry_result.status == "fallback"
-    assert retry_result.provider_request_count == 1
-    assert retry_result.retry_count == 0
-    assert len(retry_adapter.requests) == 1
-
-    tool_adapter = _SequenceAdapter([_tool_turn()])
-    tool_harness, _, _, _ = _harness(tool_adapter, max_tool_calls=0)
-    tool_result = _run(tool_harness)
-
-    assert tool_result.status == "fallback"
-    assert tool_result.escalation_reason == "tool_call_budget_exhausted"
-    assert tool_result.provider_request_count == 1
-    assert tool_result.tool_call_count == 0
-    assert tool_adapter.requests[0]["tool_choice"] == "none"
-
-
-class _BlockingAdapter:
-    def __init__(self, turn) -> None:
-        self.turn = turn
-        self.active = 0
-        self.max_active = 0
-        self.two_started = asyncio.Event()
-        self.release = asyncio.Event()
-        self.requests = 0
-
-    async def complete(self, **_kwargs):
-        self.requests += 1
-        self.active += 1
-        self.max_active = max(self.max_active, self.active)
-        if self.active == 2:
-            self.two_started.set()
-        try:
-            await self.release.wait()
-            return self.turn
-        finally:
-            self.active -= 1
-
-
-def test_process_concurrency_is_two_busy_wait_is_bounded_and_guards_release() -> None:
-    from support_agent_harness import SupportAgentRequest
-
-    async def scenario():
-        adapter = _BlockingAdapter(_final_turn("connected_no_internet"))
-        harness, _, guard, _ = _harness(adapter, concurrency_wait_seconds=0.02)
-        requests = [
-            SupportAgentRequest(
-                surface="app",
-                session_scope=_scope(f"owner-{index}", f"abcdefghijklmn{index:02d}"),
-                message="Подключено, но интернета нет",
-                now=100.0,
-            )
-            for index in range(3)
-        ]
-        first = asyncio.create_task(harness.run(requests[0]))
-        second = asyncio.create_task(harness.run(requests[1]))
-        await asyncio.wait_for(adapter.two_started.wait(), timeout=1.0)
-        started = time.monotonic()
-        busy = await harness.run(requests[2])
-        busy_elapsed = time.monotonic() - started
-        adapter.release.set()
-        completed = await asyncio.gather(first, second)
-        return harness, guard, adapter, busy, busy_elapsed, completed
-
-    harness, guard, adapter, busy, busy_elapsed, completed = asyncio.run(scenario())
-
-    assert busy.status == "fallback"
-    assert busy.escalation_reason == "process_busy"
-    assert busy.provider_request_count == 0
-    assert busy_elapsed < 0.15
-    assert [item.status for item in completed] == ["answer", "answer"]
-    assert adapter.requests == 2
-    assert adapter.max_active == 2
-    assert guard.in_flight_count == 0
-    assert harness.available_concurrency == 2
+    asyncio.run(busy.harness.run(busy.request))
+    assert busy.guard.in_flight_count == 0
+    assert busy.guard.release_count == 1

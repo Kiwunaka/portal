@@ -70,23 +70,7 @@ _PUBLIC_INPUT_HOSTS = frozenset(
         "t.me",
     }
 )
-_ATTEMPTED_STEPS = frozenset(
-    {
-        "reconnect",
-        "restart_app",
-        "switch_route_mode",
-        "refresh_access",
-        "reimport_profile",
-        "update_client",
-        "check_device_time",
-        "attach_diagnostics",
-        "contact_support",
-    }
-)
-_OUTCOMES = frozenset({"not_reported", "resolved", "unchanged", "improved", "worse", "blocked"})
 _MODEL_OUTPUT_KEYS = frozenset({"schema_version", "status", "reply"})
-_OUTPUT_ROOT_KEYS = frozenset({"schema_version", "status", "reply", "source_topic_ids", "session_state"})
-_SESSION_STATE_KEYS = frozenset({"issue_topic_id", "attempted_steps", "last_outcome", "escalation_requested"})
 
 
 class InputDisposition(str, Enum):
@@ -121,14 +105,6 @@ class SafeSessionState:
 class ValidatedModelReply:
     status: str
     reply: str
-
-
-@dataclass(frozen=True, slots=True)
-class ValidatedAgentAnswer:
-    status: str
-    reply: str
-    source_topic_ids: tuple[str, ...]
-    session_state: SafeSessionState
 
 
 def _fixed_counts(categories: Collection[str]) -> Mapping[str, int]:
@@ -277,6 +253,23 @@ def classify_support_input(message: str) -> InputBoundaryResult:
         )
     local_reason = _local_escalation_reason(message)
     if local_reason:
+        if local_reason == "human_requested":
+            redacted, pii_categories = _redact_pii(message)
+            model_text = redacted[:_MAX_MODEL_MESSAGE_CHARS]
+            truncated_hard = _hard_categories(model_text)
+            if truncated_hard:
+                return InputBoundaryResult(
+                    disposition=InputDisposition.HARD_REJECT,
+                    model_text="",
+                    category_counts=_fixed_counts([*pii_categories, *truncated_hard]),
+                    escalation_reason="sensitive_input",
+                )
+            return InputBoundaryResult(
+                disposition=InputDisposition.LOCAL_ESCALATE,
+                model_text=model_text,
+                category_counts=_fixed_counts(pii_categories),
+                escalation_reason=local_reason,
+            )
         return InputBoundaryResult(
             disposition=InputDisposition.LOCAL_ESCALATE,
             model_text="",
@@ -372,76 +365,4 @@ def validate_model_output(
     return ValidatedModelReply(
         status=status,
         reply=validate_safe_reply(payload["reply"], policy),
-    )
-
-
-def validate_agent_output(
-    raw_content: str,
-    supplied_topic_ids: Collection[str],
-    policy: PolicySnapshot,
-) -> ValidatedAgentAnswer:
-    if not isinstance(raw_content, str) or not 1 <= len(raw_content) <= _MAX_RAW_OUTPUT_CHARS:
-        raise SafetyValidationError("agent_output_size_invalid")
-    try:
-        payload = json.loads(raw_content, object_pairs_hook=_reject_duplicate_keys)
-    except SafetyValidationError:
-        raise
-    except json.JSONDecodeError as exc:
-        raise SafetyValidationError("agent_output_json_invalid") from exc
-    if not isinstance(payload, dict) or set(payload) != _OUTPUT_ROOT_KEYS:
-        raise SafetyValidationError("agent_output_root_invalid")
-    status = payload["status"]
-    if payload["schema_version"] != "1" or not isinstance(status, str) or status not in {"answer", "escalate"}:
-        raise SafetyValidationError("agent_output_status_invalid")
-    reply = validate_safe_reply(payload["reply"], policy)
-
-    supplied = frozenset(supplied_topic_ids)
-    if any(not isinstance(item, str) for item in supplied):
-        raise SafetyValidationError("agent_output_supplied_topics_invalid")
-    raw_sources = payload["source_topic_ids"]
-    if (
-        not isinstance(raw_sources, list)
-        or len(raw_sources) > 5
-        or any(not isinstance(item, str) for item in raw_sources)
-    ):
-        raise SafetyValidationError("agent_output_sources_invalid")
-    sources = tuple(raw_sources)
-    if len(set(sources)) != len(sources) or any(item not in supplied for item in sources):
-        raise SafetyValidationError("agent_output_sources_invalid")
-    if status == "answer" and not sources:
-        raise SafetyValidationError("agent_output_answer_ungrounded")
-
-    raw_state = payload["session_state"]
-    if not isinstance(raw_state, dict) or set(raw_state) != _SESSION_STATE_KEYS:
-        raise SafetyValidationError("agent_output_state_invalid")
-    issue_topic_id = raw_state["issue_topic_id"]
-    if issue_topic_id is not None and (not isinstance(issue_topic_id, str) or issue_topic_id not in supplied):
-        raise SafetyValidationError("agent_output_state_topic_invalid")
-    raw_steps = raw_state["attempted_steps"]
-    if (
-        not isinstance(raw_steps, list)
-        or len(raw_steps) > 8
-        or any(not isinstance(item, str) for item in raw_steps)
-    ):
-        raise SafetyValidationError("agent_output_steps_invalid")
-    steps = tuple(raw_steps)
-    if len(set(steps)) != len(steps) or any(item not in _ATTEMPTED_STEPS for item in steps):
-        raise SafetyValidationError("agent_output_steps_invalid")
-    outcome = raw_state["last_outcome"]
-    escalation_requested = raw_state["escalation_requested"]
-    if not isinstance(outcome, str) or outcome not in _OUTCOMES or type(escalation_requested) is not bool:
-        raise SafetyValidationError("agent_output_state_invalid")
-    if (status == "answer" and escalation_requested) or (status == "escalate" and not escalation_requested):
-        raise SafetyValidationError("agent_output_status_state_mismatch")
-
-    return ValidatedAgentAnswer(
-        status=status,
-        reply=reply,
-        source_topic_ids=sources,
-        session_state=SafeSessionState(
-            issue_topic_id=issue_topic_id,
-            attempted_steps=steps,
-            last_outcome=outcome,
-            escalation_requested=escalation_requested,
-        ),
     )
