@@ -273,7 +273,7 @@ def test_confident_and_candidate_coverage_is_non_vacuous(repo_grounding_engine):
         top_three += int(bool(accepted & set(decision.context_topic_ids)))
     assert confident >= 12
     assert correct == confident
-    assert top_three >= 46
+    assert top_three == 48
 
 
 def test_all_ten_session_openers_are_confident(repo_grounding_engine):
@@ -355,6 +355,19 @@ def test_local_renderer_uses_only_bound_body_and_fixed_safe_frame(
     assert "\n\nЕсли не поможет\nНапишите в поддержку." in reply
     assert "http://" not in reply and "https://" not in reply
     assert len(reply) <= 1_200
+
+
+def test_every_active_intent_keeps_a_safe_local_provider_failure_fallback(
+    repo_grounding_engine,
+    policy_snapshot,
+):
+    for topic_id, cases in RULE_CASES.items():
+        decision = repo_grounding_engine.select(cases["positive"][0], None)
+        reply = repo_grounding_engine.render_local(decision, policy_snapshot)
+
+        assert decision.grounding_topic_id == topic_id
+        assert reply is not None
+        assert len(reply) <= 1_200
 
 
 def test_retriever_hash_changes_with_rule_content():

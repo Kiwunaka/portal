@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-07.1",
+  "version": "2026-07-19.1",
   "scope": "public_support",
   "language": "ru",
   "rules": [
@@ -75,22 +75,22 @@
     },
     {
       "id": "choose_android_client",
-      "keywords": ["android", "андроид", "какой клиент", "karing", "happ", "hiddify", "v2rayng", "nekobox", "sing-box"],
+      "keywords": ["android", "андроид", "какой клиент", "совместимый клиент", "клиент выбрать", "ручное подключение", "karing", "happ", "hiddify", "v2rayng", "nekobox", "sing-box"],
       "body": "Для Android большинству пользователей лучше начать с Hiddify, если он доступен. Happ можно пробовать со ссылкой ?format=happ. Karing, v2rayNG, NekoBox и sing-box for Android оставляй как best-effort или продвинутые варианты."
     },
     {
       "id": "choose_windows_client",
-      "keywords": ["windows", "виндовс", "какой клиент", "karing", "happ", "hiddify", "v2rayn", "nekoray", "exe"],
+      "keywords": ["windows", "виндовс", "какой клиент", "совместимый клиент", "клиент выбрать", "ручное подключение", "karing", "happ", "hiddify", "v2rayn", "nekoray", "exe"],
       "body": "Для Windows большинству пользователей лучше начать с Hiddify, если он доступен. Happ можно пробовать со ссылкой ?format=happ. Karing, v2rayN и NekoRay оставляй как best-effort или продвинутые варианты."
     },
     {
       "id": "choose_ios_client",
-      "keywords": ["ios", "iphone", "ipad", "айфон", "айпад", "streisand", "shadowrocket", "foxray", "v2box", "app store"],
+      "keywords": ["ios", "iphone", "ipad", "айфон", "айпад", "какой клиент", "совместимый клиент", "клиент выбрать", "streisand", "shadowrocket", "foxray", "v2box", "app store"],
       "body": "Для iPhone/iPad можно предложить Streisand, если он доступен в App Store пользователя. Shadowrocket, FoXray и V2Box могут подойти, если пользователь уже имеет их или может установить в своем регионе. Доступность зависит от региона App Store."
     },
     {
       "id": "choose_macos_client",
-      "keywords": ["macos", "mac", "мак", "karing", "happ", "hiddify", "streisand", "apple silicon"],
+      "keywords": ["macos", "mac", "мак", "какой клиент", "совместимый клиент", "клиент выбрать", "ручное подключение", "karing", "happ", "hiddify", "streisand", "apple silicon"],
       "body": "Для macOS можно предложить Hiddify, если он доступен, или Happ со ссылкой ?format=happ. Karing и другие клиенты остаются best-effort. Если пользователь не уверен, лучше попросить модель Mac/версию macOS и передать оператору."
     },
     {
@@ -260,7 +260,7 @@
     },
     {
       "id": "what_to_send_support",
-      "keywords": ["что прислать", "support", "оператор", "помощь", "данные", "диагностика", "скрин"],
+      "keywords": ["что прислать", "что написать поддержке", "что полезно написать", "написать поддержке", "support", "оператор", "помощь", "данные", "диагностика", "скрин"],
       "body": "Для диагностики попроси: устройство и ОС, название клиента и версию, шаг где возникла ошибка, текст ошибки, примерное время, выбранную локацию, что уже пробовали. Скриншот можно, но без личной ссылки, QR и платежных данных."
     },
     {

@@ -36,6 +36,11 @@ _HIGH_ENTROPY_RE = re.compile(r"(?<![A-Za-z0-9+/=_-])[A-Za-z0-9+/]{48,}={0,2}(?!
 _CARD_CANDIDATE_RE = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
 _EMAIL_RE = re.compile(r"(?<![\w.!#$%&'*+/=?^_`{|}~-])[\w.!#$%&'*+/=?^_`{|}~-]{1,64}@(?:[\w-]{1,63}\.)+[\w-]{2,63}(?![\w-])", re.UNICODE)
 _URL_RE = re.compile(r"https?://[^\s<>\"'`]+", re.IGNORECASE)
+_DOMAIN_RE = re.compile(
+    r"(?<![\w@.-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+    r"[a-z]{2,63}(?::\d{1,5})?(?:/[^\s<>\"'`]*)?",
+    re.IGNORECASE,
+)
 _IPV4_RE = re.compile(r"(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)")
 _IPV6_RE = re.compile(r"(?<![A-Fa-f0-9:])(?:[A-Fa-f0-9]{0,4}:){2,}[A-Fa-f0-9:]{0,4}(?![A-Fa-f0-9:])")
 _PRIVATE_HOST_RE = re.compile(r"(?<![\w.-])(?:localhost|[a-z0-9-]{1,63}\.(?:internal|local|lan))(?![\w.-])", re.IGNORECASE)
@@ -320,7 +325,7 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _output_contains_unsafe_text(reply: str) -> bool:
-    if _hard_categories(reply):
+    if _hard_categories(reply) or _DOMAIN_RE.search(reply):
         return True
     redacted, categories = _redact_pii(reply, redact_all_urls=True)
     if any(category != "legacy_redaction" for category in categories):

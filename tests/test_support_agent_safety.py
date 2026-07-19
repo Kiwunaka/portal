@@ -276,3 +276,8 @@ def test_safe_reply_validator_is_shared_by_model_and_local_renderer() -> None:
     )
     with pytest.raises(SafetyValidationError, match="agent_output_reply_unsafe"):
         validate_safe_reply("Гарантированная анонимность 100%.", policy)
+    with pytest.raises(SafetyValidationError, match="agent_output_reply_unsafe"):
+        validate_safe_reply(
+            "Откройте pay.pokrov.space/checkout/ и повторите попытку.",
+            policy,
+        )

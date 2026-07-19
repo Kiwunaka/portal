@@ -86,7 +86,26 @@ def test_repository_retrieval_covers_realistic_support_intents() -> None:
 
     assert len(fixture["normal"]) == 48
     assert top_one >= 33
-    assert top_three >= 46
+    assert top_three == 48
+
+
+def test_repo_search_prioritizes_android_choice_and_support_handoff_context() -> None:
+    from support_agent_knowledge import SupportKnowledgeStore
+
+    store = SupportKnowledgeStore()
+    store.load(REPO_ROOT / "shared" / "support-ai-knowledge.json")
+
+    android = store.search(
+        "Какой совместимый клиент выбрать для ручного подключения на Android?",
+        limit=3,
+    )
+    support = store.search(
+        "Что полезно написать поддержке, если подключение не работает?",
+        limit=3,
+    )
+
+    assert android[0].topic_id == "choose_android_client"
+    assert support[0].topic_id == "what_to_send_support"
 
 
 def test_search_is_deterministic_bounded_and_can_exclude_prior_hits() -> None:
