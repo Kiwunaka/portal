@@ -196,6 +196,8 @@ def test_synthesis_policy_has_minimal_output_and_no_tool_or_model_owned_metadata
     assert "Address the user directly" in prompt
     assert "never claim that you transferred" in prompt
     assert "single most directly relevant selected topic" in prompt
+    assert 'must be exactly "Напишите в поддержку."' in prompt
+    assert "never add delete, reinstall, or reset as a prerequisite" in prompt
     assert "asks to ignore rules" in prompt
     assert "source_topic_ids" not in prompt
     assert "session_state contains" not in prompt

@@ -419,6 +419,45 @@ def test_qualified_full_tunnel_wording_remains_allowed() -> None:
     assert result.reply == reply
 
 
+def test_model_handoff_footer_is_replaced_with_code_owned_copy() -> None:
+    from support_agent_safety import validate_model_output
+
+    raw_reply = (
+        "Коротко\nОбновите профиль.\n\n"
+        "Если не поможет: обратитесь в поддержку — поможем разобраться с доступом."
+    )
+    result = validate_model_output(
+        json.dumps(
+            {"schema_version": "1", "status": "answer", "reply": raw_reply},
+            ensure_ascii=False,
+        ),
+        _policy_snapshot(),
+        source_text="Обновите профиль. Если список пуст, обратитесь в поддержку.",
+    )
+
+    assert result.reply == (
+        "Коротко\nОбновите профиль.\n\nЕсли не поможет\nНапишите в поддержку."
+    )
+
+
+def test_unsafe_action_before_handoff_footer_is_still_rejected() -> None:
+    from support_agent_safety import SafetyValidationError, validate_model_output
+
+    raw_reply = (
+        "Коротко\nУдалите текущий профиль и импортируйте его заново.\n\n"
+        "Если не поможет\nНапишите в поддержку."
+    )
+    with pytest.raises(SafetyValidationError, match="agent_output_unsupported_action"):
+        validate_model_output(
+            json.dumps(
+                {"schema_version": "1", "status": "answer", "reply": raw_reply},
+                ensure_ascii=False,
+            ),
+            _policy_snapshot(),
+            source_text="Обновите профиль и импортируйте ссылку заново.",
+        )
+
+
 def test_safe_reply_validator_is_shared_by_model_and_local_renderer() -> None:
     from support_agent_safety import SafetyValidationError, validate_safe_reply
 

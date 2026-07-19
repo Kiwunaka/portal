@@ -77,6 +77,11 @@ _PUBLIC_INPUT_HOSTS = frozenset(
     }
 )
 _MODEL_OUTPUT_KEYS = frozenset({"schema_version", "status", "reply"})
+_HANDOFF_FOOTER_RE = re.compile(
+    r"(?:\r?\n){1,2}[ \t]*если\s+не\s+поможет[ \t]*:?[\s\S]*\Z",
+    re.IGNORECASE,
+)
+_CODE_OWNED_HANDOFF_FOOTER = "Если не поможет\nНапишите в поддержку."
 _UNSUPPORTED_MODEL_ACTION_RES = (
     re.compile(
         r"\b(?:удалите|удали|удалить|деинсталлируйте|деинсталлировать|переустанов\w*|"
@@ -469,6 +474,16 @@ def _has_unsupported_model_action(reply: str, source_text: str) -> bool:
     )
 
 
+def _canonicalize_model_handoff_footer(reply: str) -> str:
+    match = _HANDOFF_FOOTER_RE.search(reply)
+    if match is None:
+        return reply
+    body = reply[: match.start()].rstrip()
+    if not body:
+        return reply
+    return f"{body}\n\n{_CODE_OWNED_HANDOFF_FOOTER}"
+
+
 def validate_model_output(
     raw_content: str,
     policy: PolicySnapshot,
@@ -499,6 +514,8 @@ def validate_model_output(
     ):
         raise SafetyValidationError("agent_output_status_invalid")
     reply = validate_safe_reply(payload["reply"], policy)
-    if status == "answer" and _has_unsupported_model_action(reply, source_text):
-        raise SafetyValidationError("agent_output_unsupported_action")
+    if status == "answer":
+        reply = validate_safe_reply(_canonicalize_model_handoff_footer(reply), policy)
+        if _has_unsupported_model_action(reply, source_text):
+            raise SafetyValidationError("agent_output_unsupported_action")
     return ValidatedModelReply(status=status, reply=reply)

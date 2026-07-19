@@ -157,6 +157,8 @@ def render_synthesis_policy_prompt(policy: SupportAgentPolicy) -> str:
         'Address the user directly. Rewrite selected-topic instructions as user-facing guidance; never copy internal phrases such as "попроси", "передай оператору", "если пользователь", or "не углубляйся".',
         "Answer in Russian using: Коротко, Что сделать, Если не поможет.",
         "Keep the reply concise: one likely cause and 1-3 concrete steps; omit optional detours.",
+        'The "Если не поможет" section must be exactly "Напишите в поддержку."',
+        "A source step to update or re-import never implies deletion: never add delete, reinstall, or reset as a prerequisite.",
         "Never repeat attempted_steps from session_state. If only already-attempted steps remain, use status escalate.",
         "Return one JSON object with exactly schema_version, status, and reply.",
         '- schema_version must be "1".',
