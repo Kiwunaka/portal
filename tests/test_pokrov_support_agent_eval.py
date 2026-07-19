@@ -119,6 +119,21 @@ def test_live_smoke_is_exactly_twelve_ordered_requests(bundle) -> None:
     ]
 
 
+def test_required_concepts_accept_inflection_but_still_require_every_token() -> None:
+    assert agent_eval._contains_required_concepts(
+        "Открой кабинет, удали устройство и обратись в поддержку.",
+        (("удалить устройство",), ("кабинет",), ("поддержк",)),
+    )
+    assert agent_eval._contains_required_concepts(
+        "Выбери ближайшую локацию и попробуй ещё одну.",
+        (("ближай",), ("попробуйте",)),
+    )
+    assert not agent_eval._contains_required_concepts(
+        "Открой кабинет и обратись в поддержку.",
+        (("удалить устройство",), ("кабинет",), ("поддержк",)),
+    )
+
+
 @pytest.mark.parametrize(
     "mutate, error",
     [

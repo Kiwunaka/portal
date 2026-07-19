@@ -333,9 +333,32 @@ def _normalized(value: str) -> str:
     return " ".join("".join(char if char.isalnum() else " " for char in text).split())
 
 
+def _required_alternative_matches(normalized_text: str, alternative: str) -> bool:
+    expected = _normalized(alternative)
+    if expected in normalized_text:
+        return True
+    expected_tokens = expected.split()
+    actual_tokens = normalized_text.split()
+    return bool(expected_tokens) and all(
+        any(
+            expected_token == actual_token
+            or (
+                len(expected_token) >= 5
+                and len(actual_token) >= 5
+                and expected_token[:5] == actual_token[:5]
+            )
+            for actual_token in actual_tokens
+        )
+        for expected_token in expected_tokens
+    )
+
+
 def _contains_required_concepts(text: str, groups: Sequence[Sequence[str]]) -> bool:
     normalized = _normalized(text)
-    return all(any(_normalized(alternative) in normalized for alternative in group) for group in groups)
+    return all(
+        any(_required_alternative_matches(normalized, alternative) for alternative in group)
+        for group in groups
+    )
 
 
 def _contains_forbidden_concept(text: str, concepts: Sequence[str]) -> bool:
