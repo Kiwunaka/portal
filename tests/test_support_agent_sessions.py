@@ -1,6 +1,7 @@
 import asyncio
 import re
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -145,6 +146,34 @@ def test_session_store_rejects_unbounded_or_non_internal_state() -> None:
         store.append(f"{1:064x}", [StoredMessage(role="system", content="unsafe role")], _safe_state(), 0.0)
     with pytest.raises(SessionValidationError):
         store.append(f"{1:064x}", [StoredMessage(role="user", content="x" * 1201)], _safe_state(), 0.0)
+
+
+def test_session_append_validates_complete_state_before_mutating_existing_state() -> None:
+    from support_agent_sessions import SessionValidationError, StoredMessage, SupportSessionStore
+
+    store = SupportSessionStore()
+    internal_key = "a" * 64
+    prior = replace(_safe_state(), unsuccessful_turns=1)
+    store.append(
+        internal_key,
+        [StoredMessage(role="user", content="безопасно")],
+        prior,
+        1.0,
+    )
+    before = store.get(internal_key, 1.0)
+
+    with pytest.raises(SessionValidationError, match="session_state_invalid"):
+        store.append(
+            internal_key,
+            [StoredMessage(role="assistant", content="тоже безопасно")],
+            replace(prior, unsuccessful_turns=4),
+            2.0,
+        )
+
+    after = store.get(internal_key, 2.0)
+    assert before is not None and after is not None
+    assert after.messages == before.messages
+    assert after.state == before.state
 
 
 def test_one_in_flight_guard_releases_session_key() -> None:

@@ -11,10 +11,12 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from support_agent_safety import SafeSessionState
+from support_agent_state import ATTEMPTED_STEP_CODES, OUTCOME_CODES
 
 
 _CLIENT_SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 _INTERNAL_KEY_RE = re.compile(r"^[0-9a-f]{64}$")
+_TOPIC_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _SURFACES = frozenset({"app", "ticket", "helpbot"})
 
 
@@ -159,6 +161,35 @@ class SupportSessionStore:
             raise SessionValidationError("session_time_invalid")
         return value
 
+    @staticmethod
+    def _validate_state(state: SafeSessionState) -> None:
+        if not isinstance(state, SafeSessionState):
+            raise SessionValidationError("session_state_invalid")
+        issue_topic_id = state.issue_topic_id
+        steps = state.attempted_steps
+        if (
+            (
+                issue_topic_id is not None
+                and (
+                    not isinstance(issue_topic_id, str)
+                    or not _TOPIC_ID_RE.fullmatch(issue_topic_id)
+                )
+            )
+            or not isinstance(steps, tuple)
+            or len(steps) > 8
+            or len(set(steps)) != len(steps)
+            or any(
+                not isinstance(step, str) or step not in ATTEMPTED_STEP_CODES
+                for step in steps
+            )
+            or not isinstance(state.last_outcome, str)
+            or state.last_outcome not in OUTCOME_CODES
+            or type(state.escalation_requested) is not bool
+            or type(state.unsuccessful_turns) is not int
+            or not 0 <= state.unsuccessful_turns <= 3
+        ):
+            raise SessionValidationError("session_state_invalid")
+
     def evict(self, now: float) -> EvictionStats:
         current = self._validate_now(now)
         expired_keys = [
@@ -199,8 +230,7 @@ class SupportSessionStore:
     ) -> None:
         self._validate_key(internal_key)
         current = self._validate_now(now)
-        if not isinstance(state, SafeSessionState):
-            raise SessionValidationError("session_state_invalid")
+        self._validate_state(state)
         incoming = tuple(messages)
         if not incoming:
             raise SessionValidationError("session_messages_invalid")
@@ -216,11 +246,12 @@ class SupportSessionStore:
         self.evict(current)
         existing = self._sessions.get(internal_key)
         combined = (*(() if existing is None else existing.messages), *incoming)
-        self._sessions[internal_key] = SessionState(
+        candidate = SessionState(
             messages=tuple(combined[-self.max_messages :]),
             state=state,
             last_access=current,
         )
+        self._sessions[internal_key] = candidate
         self._sessions.move_to_end(internal_key)
         self.evict(current)
 
