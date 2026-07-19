@@ -1,7 +1,7 @@
 # POKROV Code-Owned Support Mini-Agent
 
 - Date: 2026-07-19
-- Status: owner-approved architecture; independent written-spec review pending
+- Status: owner-approved architecture; independent written-spec review approved
 - Platform branch: `codex/support-agent-harness`
 - Platform promotion line: `master`
 - Active client repository: `C:/Users/kiwun/Documents/ai/POKROV-app`, promotion line `main`
@@ -137,8 +137,10 @@ authenticated app / ticket / helpbot request
             -> one xCody MiniMax request, no tools
             -> minimal JSON parser and reply safety validator
                  -> valid answer: code-owned result assembly
-                 -> model escalation/failure: grounded local renderer
-                      -> safe grounded reply, or fixed human transfer
+                 -> explicit model escalation: fixed human transfer
+                 -> provider/parse/safety failure:
+                      -> confident + locally renderable topic: grounded local renderer
+                      -> otherwise: fixed human transfer
   -> code-owned source IDs, state, actions, escalation, and redacted trace
 ```
 
@@ -192,23 +194,34 @@ The generic retrieval score and score margin never grant `confident` status by
 themselves in v1. A pre-spec diagnostic over the 48 normal fixtures showed that
 even high-scoring or exact-keyword primary hits can be semantically ambiguous.
 `confident` therefore comes only from a separate closed mapping of normalized,
-high-precision phrase groups to exactly one topic, or from a previously
-confident issue plus a locally recognized follow-up. Every rule must have zero
-known false-positive primary topics in the fixture before it can be enabled.
-All other non-zero retrieval is `candidate`.
+high-precision phrase groups to exactly one topic whose current body fingerprint
+is enabled for local rendering, or from a previously confident issue plus a
+locally recognized follow-up while that fingerprint remains valid. Every rule
+must have zero known false-positive primary topics in the fixture before it can
+be enabled. A missing/mismatched local-render binding disables the rule and
+downgrades its generic non-zero retrieval to `candidate`. All other non-zero
+retrieval is `candidate`.
 
 The rules are constants in code, not model output or environment text. The
 implementation may prefer `candidate` over a wrong confident match. Changes to
 tokenization, weights, phrase rules, or pinning increment `retriever_version`
 and rerun the semantic fixture; they are not runtime-tunable in v1.
 
-The ordered selected topic IDs are the only possible provenance for the run.
-The model never sees or returns a field that can alter them. Public source IDs
-come from the subset actually used to assemble the final answer:
+The model never sees or returns a field that can alter retrieval provenance.
+The harness distinguishes two code-owned concepts instead of claiming that an
+ambiguous model answer used a particular document:
 
-- a valid model answer uses the selected IDs recorded for its context;
-- a local grounded answer uses only its primary topic ID;
-- a human-transfer fallback uses no topic ID.
+- `context_topic_ids` is the ordered set of up to three topic IDs supplied to
+  the model. It proves context delivery only, not semantic use;
+- `grounding_topic_id` is the one primary topic selected by a `confident`
+  rule. It is `null` for every `candidate` run.
+
+A valid model answer from a `candidate` run therefore carries only context
+provenance, leaves the session issue unchanged, and receives generic safe
+actions. A valid model answer from a `confident` run may use the one
+`grounding_topic_id` for state and topic-specific actions. A grounded local
+answer uses only that same ID. A human transfer has no grounding topic. Neither
+field is accepted from provider output.
 
 ### 6.3 Session memory
 
@@ -226,23 +239,58 @@ code-owned state:
   "issue_topic_id": "connected_no_internet",
   "attempted_steps": ["reconnect"],
   "last_outcome": "unchanged",
+  "unsuccessful_turns": 1,
   "escalation_requested": false
 }
 ```
 
 State changes are deterministic:
 
-- `issue_topic_id` becomes the confident primary topic; a candidate result
-  cannot replace an established issue, and an unknown/removed ID is cleared;
+- `issue_topic_id` becomes the confident primary topic only after a valid model
+  or grounded local answer. A candidate result cannot replace an established
+  issue, and an unknown/removed ID is cleared;
+- when a new confident issue replaces the old one, `attempted_steps` is cleared,
+  `last_outcome` becomes `not_reported`, and `unsuccessful_turns` becomes zero
+  before current-message classifiers run;
 - `attempted_steps` can only append a closed safe step code recognized from an
-  explicit user statement or an action previously suggested by application
-  code; model prose cannot append a step;
+  explicit user statement such as “я уже переподключил”. Merely suggesting an
+  action does not mark it attempted. V1 has no action-confirmation API field,
+  and model prose cannot append a step;
 - `last_outcome` changes only when a bounded local classifier recognizes an
   explicit user report (`resolved`, `unchanged`, `improved`, `worse`, or
   `blocked`); otherwise it remains `not_reported` or its prior value;
+- `unsuccessful_turns` is an integer from zero to three. It increments for an
+  explicit `unchanged`, `worse`, or `blocked` report on the same issue, resets
+  for `resolved`, `improved`, or a new confident issue, and otherwise remains
+  unchanged. Two unsuccessful turns on the same issue trigger human transfer
+  before another provider call. That threshold path atomically stores the
+  current redacted user message, fixed transfer reply, latest outcome/count,
+  and `escalation_requested=true`;
 - `escalation_requested` becomes true only from an explicit human request or a
-  code-owned escalation branch;
-- hard-rejected or local-escalation input is never appended to message history.
+  code-owned escalation branch and stays true for the rest of that session;
+- a valid model answer or grounded local answer appends the redacted user
+  message and final safe reply, then persists the deterministic state above;
+- an explicit non-sensitive human request or model `escalate` appends only the
+  redacted user message and fixed transfer reply and sets escalation true;
+- a provider/model failure that ends in human transfer appends nothing; a
+  grounded local answer appends its safe user/reply pair normally;
+- hard-rejected/sensitive input, no-evidence input, rate-limited/busy runs,
+  startup/context failures, and session-store failures append nothing.
+
+Message-pair and state persistence is one atomic store operation under the
+session guard; partial message/state updates are forbidden. A lookup/read
+failure occurs before provider dispatch and returns human transfer with zero
+calls. If the atomic write fails after a valid model or grounded local answer,
+the harness discards that answer, makes no retry, returns the fixed human
+transfer with `source=local_fallback`, and retains no new state. If storing an
+already selected fixed transfer fails, the same transfer is still returned but
+no session state is claimed.
+
+The closed attempted-step enum remains `reconnect`, `restart_app`,
+`switch_route_mode`, `refresh_access`, `reimport_profile`, `update_client`,
+`check_device_time`, `attach_diagnostics`, and `contact_support`. Adding an API
+action-confirmation event or another state field is a later contract change,
+not an inference from an assistant suggestion.
 
 Closing the app assistant sheet ends client continuity. Process restart,
 eviction, or routing to another process intentionally loses memory. There is no
@@ -268,6 +316,23 @@ Volatile suffix:
 3. recent redacted messages in chronological order;
 4. current redacted user question.
 
+The OpenAI request always contains exactly two messages in this order:
+
+```json
+[
+  {"role": "system", "content": "<complete stable prefix>"},
+  {"role": "user", "content": "<canonical JSON volatile envelope>"}
+]
+```
+
+The volatile envelope has the fixed key order `selected_topics`,
+`session_state`, `recent_messages`, `current_question`. Prior conversation is
+embedded as bounded data inside `recent_messages`; it is not replayed as
+provider-level `assistant`, `tool`, or extra `user` messages. JSON keys,
+whitespace, topic ordering, and history ordering are deterministic. This exact
+two-message layout is part of `prompt_bundle_version` and is used by cache
+probes.
+
 All user/history content is placed in explicit untrusted-data delimiters. Text
 inside those delimiters cannot change policy, request tools, add sources, or
 alter the output schema.
@@ -290,6 +355,11 @@ No request ID, timestamp, owner/session identifier, diagnostic value, or
 dynamic tool schema appears in the stable prefix. Provider-reported cached
 tokens are recorded when present. Missing cache telemetry is `not_reported`,
 not a claimed hit.
+
+The stable-prefix hash is identical when only the selected topic set, session,
+history, or question varies under the same immutable snapshots. A policy, KB
+content/version, retriever-rule, output-contract, or message-layout change must
+change the stable-prefix hash.
 
 ### 6.5 xCody adapter
 
@@ -367,7 +437,11 @@ Application code produces the public result from validated local facts:
 {
   "reply": "...",
   "assistantSessionId": "opaque_session_id",
-  "suggestedActions": ["reconnect", "write_to_support"],
+  "suggestedActions": [
+    {"key": "retry_connect", "label": "Reconnect"},
+    {"key": "send_diagnostics", "label": "Attach diagnostics"},
+    {"key": "create_ticket", "label": "Write to support"}
+  ],
   "shouldEscalate": false,
   "source": "support_agent"
 }
@@ -375,18 +449,36 @@ Application code produces the public result from validated local facts:
 
 Rules:
 
-- `source_topic_ids` used internally are copied from selected retrieval hits,
-  never parsed from model prose;
-- suggested actions come from a closed application mapping keyed by primary
-  topic and safe state;
+- `context_topic_ids` and optional `grounding_topic_id` follow section 6.2 and
+  are never parsed from model prose;
+- suggested actions preserve the existing public wire shape `{key, label}`;
+- a confident answer may use the closed topic/action mapping to add
+  `retry_connect` or `open_subscription`;
+- a candidate answer has no grounding topic and receives only the generic
+  `send_diagnostics` and `create_ticket` actions;
 - every action remains a suggestion and requires explicit user confirmation in
   the existing UI; the harness executes nothing;
-- `shouldEscalate` is true for explicit human requests, account/payment-
-  specific questions, sensitive input, no evidence, candidate-only provider
-  failure, model escalation, invalid/unsafe output, deadline/provider failure
-  without a confident topic, or repeated unsuccessful troubleshooting;
+- public action keys are not session step codes. The local mapping is
+  `retry_connect -> reconnect`, `send_diagnostics -> attach_diagnostics`,
+  `open_subscription -> refresh_access`, and
+  `create_ticket -> contact_support`, and a step is recorded only after an
+  explicit user statement;
+- `shouldEscalate` is true exactly when code selects the human-transfer path or
+  an existing confident topic policy explicitly requires operator follow-up;
+- a successful grounded local answer is not marked escalated merely because
+  the provider failed; its internal `answer_origin` records
+  `grounded_local`;
 - the public `source` label is selected by the executed code path, not model
   content.
+
+Public source mapping is fixed:
+
+| Final path | Public `source` | Internal `answer_origin` |
+|---|---|---|
+| Valid model answer | `support_agent` | `model` |
+| Grounded local answer | `support_agent` | `grounded_local` |
+| Human transfer / disabled / startup or runtime failure | `local_fallback` | fixed reason enum |
+| Legacy helper success | `support_ai` | `legacy` |
 
 ## 7. Deterministic Fallback
 
@@ -395,35 +487,55 @@ It has two outcomes.
 
 ### Grounded local answer
 
-Allowed only when retrieval disposition is `confident`. The renderer takes the
-primary allowlisted topic body, strips or replaces raw public URLs and other
-nonessential link text, adds only fixed code-owned framing, caps the result at
-1,200 characters, and runs the same final output safety scanner. It does not
-combine arbitrary topics or invent steps. The result uses the primary topic ID
-and may suggest only actions mapped to that topic.
+Allowed only when retrieval disposition is `confident` and the primary topic
+appears in a committed code-owned `LOCAL_RENDERABLE_TOPICS` mapping. Each entry
+binds one topic ID to the SHA-256 hash of its normalized KB body and a renderer
+version. Startup compares that entry with the loaded immutable snapshot. A KB
+body change, unknown ID, or renderer-version mismatch disables local rendering
+for that topic until its tests and review update the mapping.
 
-If the sanitized body is empty, malformed, unsafe, or cannot satisfy the
-fixture for that topic, local rendering is forbidden.
+The renderer takes that exact primary body, strips or replaces raw public URLs
+and other nonessential link text, adds only fixed code-owned framing, caps the
+result at 1,200 characters, and runs the same final output safety scanner. It
+does not combine arbitrary topics or invent steps. The result uses the primary
+grounding topic and may suggest only actions mapped to that topic.
+
+Production runtime never imports or consults evaluation fixtures. Fixtures and
+human review prove an entry before its ID/body hash is added to the committed
+mapping. If the sanitized result is empty, malformed, unsafe, or its binding is
+absent, local rendering is forbidden.
 
 ### Human transfer
 
 Every other failure returns a fixed Russian message explaining that there is
 not enough safe information and a human will help. It contains no model text,
 user text, provider error detail, or guessed troubleshooting. It sets
-`shouldEscalate=true`, includes `write_to_support`, and records a code-owned
-reason enum.
+`shouldEscalate=true`, includes the existing `create_ticket` action object, and
+records a code-owned reason enum.
 
 This truth table is exhaustive:
 
-| Condition | Provider calls | Public outcome |
-|---|---:|---|
-| Input hard reject or local-only escalation | 0 | Human transfer |
-| No retrieved topic | 0 | Human transfer |
-| Valid model answer | 1 | Validated model reply with code-owned provenance |
-| Model/provider failure + confident topic | 1 | Grounded local answer if final scanner passes; otherwise human transfer |
-| Model/provider failure + candidate topic | 1 | Human transfer |
-| Model requests escalation | 1 | Human transfer |
-| Harness disabled or unconfigured | 0 | Existing deterministic local fallback with escalation |
+| Condition | Provider calls | Public outcome | `source` / escalation |
+|---|---:|---|---|
+| Invalid scope/session resolution | 0 | Human transfer; no session write | `local_fallback` / true |
+| Input hard reject, account-specific input, or explicit human request | 0 | Human transfer | `local_fallback` / true |
+| Existing `escalation_requested=true` or second unsuccessful turn | 0 | Human transfer | `local_fallback` / true |
+| Policy/KB startup or reload failure, missing snapshot, or session lookup/read failure | 0 | Human transfer; no session write | `local_fallback` / true |
+| Owner rate limit, session already in flight, process concurrency busy, or total deadline exhausted before dispatch | 0 | Human transfer; no session write | `local_fallback` / true |
+| No retrieved topic, unsafe retrieval query, or context cannot fit primary topic/current question | 0 | Human transfer; no session write | `local_fallback` / true |
+| Second unsuccessful turn | 0 | Atomically persist fixed transfer and sticky escalation; on write failure still return transfer without claiming state | `local_fallback` / true |
+| Valid model `answer` from a confident run | 1 | Validated reply; grounding topic and topic actions permitted | `support_agent` / topic policy |
+| Valid model `answer` from a candidate run | 1 | Validated reply; context provenance and generic actions only | `support_agent` / false |
+| Model returns `escalate` | 1 | Human transfer | `local_fallback` / true |
+| Timeout, transport/HTTP error, empty/malformed response, invalid JSON/shape, wrong finish reason, or output-safety rejection with confident fingerprint-bound topic | 1 | Grounded local answer if the local renderer and final scanner pass | `support_agent` / topic policy |
+| Same provider/model failure with candidate, missing fingerprint binding, or failed local rendering | 1 | Human transfer | `local_fallback` / true |
+| Atomic session write fails after a valid model or grounded local answer | 1 | Discard answer; human transfer; no retry and no new state claimed | `local_fallback` / true |
+| Harness globally disabled or provider unconfigured | 0 | Existing deterministic fallback | `local_fallback` / true |
+
+The fixed human-transfer action is the existing public object
+`{"key":"create_ticket","label":"Write to support"}`. It may also include
+the existing safe-diagnostics action object; no new string-only action wire
+format is introduced.
 
 ## 8. Safety Boundary
 
@@ -516,7 +628,7 @@ surface
 session_id_hash
 provider/model/reasoning effort
 policy/prompt/KB/retriever versions and hashes
-retrieval disposition and selected topic IDs
+retrieval disposition, context topic IDs, and optional grounding topic ID
 provider request count and normalized status/error class
 prompt/completion/cached token counts when reported
 queue/provider/total latency
@@ -545,35 +657,47 @@ Focused tests must prove:
 3. retrieval is deterministic, bounded, owner-independent, and covers accepted
    topics in the 48-case fixture, with at least 46/48 accepted topics in the
    top three;
-4. high-precision intent rules and established-issue follow-ups are measured
-   separately and contain zero known wrong confident primary topics in the
-   fixture; raw score/margin never upgrades an ambiguous case from `candidate`;
-5. the exact provider payload contains one user synthesis request, JSON mode,
+4. high-precision intent rules classify at least 12/48 normal prompts as
+   `confident` with the accepted primary topic and zero wrong confident topics;
+   raw score/margin never upgrades an ambiguous case from `candidate`;
+5. each confident rule has at least three positive paraphrases plus explicit
+   negation, adjacent-topic collision, mixed-intent, and unrelated/out-of-scope
+   negatives; every negative remains candidate/none or maps confidently only
+   to its own accepted topic;
+6. the exact provider payload contains two messages in the locked system/user
+   layout, one synthesis request, JSON mode,
    snake-case medium reasoning, and no tool/Anthropic/OpenRouter-only fields;
-6. the model parser accepts only the three-field closed object and rejects
+7. the model parser accepts only the three-field closed object and rejects
    empty content, extra keys, sources, state, actions, unsafe text, wrong finish
    reason, multiple choices, and malformed JSON;
-7. timeout, 400, 429, 5xx, transport error, invalid JSON, empty content, and
+8. timeout, 400, 429, 5xx, transport error, invalid JSON, empty content, and
    safety rejection produce no retry and follow the exhaustive fallback table;
-8. local rendering uses only the confident primary topic and passes the same
-   output scanner;
-9. source IDs, state, actions, escalation, and public source labels cannot be
-   influenced by model fields or prose;
-10. sessions enforce owner/surface isolation, TTL, LRU, six-message bound,
-    deterministic state transitions, and one in-flight request;
-11. prompt hashes stay stable when only user/session/topic bodies change, and
-    complete requests stay under the declared caps;
-12. disabled, legacy, and agent routes are mutually exclusive;
-13. app, ticket, and helpbot retain a safe response when xCody is unavailable.
+9. local rendering requires a confident primary topic whose exact ID/body hash
+   and renderer version exist in `LOCAL_RENDERABLE_TOPICS`, never imports a
+   fixture at runtime, and passes the same output scanner;
+10. context provenance, grounding topic, state, actions, escalation, and public
+    source labels cannot be influenced by model fields or prose;
+11. sessions enforce owner/surface isolation, TTL, LRU, six-message bound,
+    state reset/persistence rules, unsuccessful-turn threshold, sticky
+    escalation, and one in-flight request;
+12. the stable-prefix hash stays identical when only selected topics, session,
+    history, or question changes under the same snapshots; changing policy/KB
+    content, retriever rules, output contract, or message layout changes it;
+13. complete requests stay under declared caps, disabled/legacy/agent routes
+    are mutually exclusive, and every zero/one-call fallback-table row is
+    covered;
+14. app, ticket, and helpbot retain a safe response when xCody is unavailable.
 
 The focused deterministic suite must be `PASS` before any live claim.
 
 ### 11.2 Short live semantic gate
 
-Run exactly 12 synthetic public-support cases covering connection, speed,
-import, routing, activation, generic payment guidance, official surfaces, one
-follow-up, and provider-output edge cases. Use the exact candidate payload and
-aggregate-only logging.
+Run exactly 12 provider-eligible synthetic public-support cases: two
+connection cases, two import/client cases, speed, routing, activation, generic
+payment guidance, official surfaces, and three short follow-ups across
+established issues. Use the exact candidate payload and aggregate-only logging.
+Malformed/empty/error response branches remain deterministic fake-adapter
+tests; a live prompt cannot induce them reliably and no request is spent trying.
 
 The gate passes only when:
 
