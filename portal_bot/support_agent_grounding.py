@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from support_agent_sessions import SessionState
 
 
-RETRIEVER_VERSION = "code-owned-v2"
-LOCAL_RENDERER_VERSION = "local-body-v2"
+RETRIEVER_VERSION = "code-owned-v3"
+LOCAL_RENDERER_VERSION = "local-body-v3"
 _MAX_PINNED_FOLLOWUP_CHARS = 240
 _HTTP_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 _LOCAL_PREFIX = "Коротко\n"
@@ -60,14 +60,21 @@ class IntentRule:
 
 LOCAL_RENDERABLE_TOPICS = MappingProxyType(
     {
+        "activation_key_vs_connection_link": "0ac3057751e942d48f5c96bdd1130fe7cf92b32e68db0a607081dc9e7c07e1eb",
         "android_battery_background": "5a09a84f21e52d1ca6ed56bec9f350c31808d69a70e411058df5bf195ea3cfc7",
+        "beta_scope": "9e57af27af9c800cf3433824779056a1807850b58c96f17c63a98f1372471248",
         "connected_no_internet": "9c963318034cb8cadd617753de64c313d6c95ccec1308ec55a4fedba2061e26b",
+        "connection_link_meaning": "6e2085b78ae3b87082a3be33c78fe468ef8b7ec62636a742c66c79ac5d068154",
+        "connection_link_security": "1fc3e91f77cbead1c1b6709aafcbaa970dab5d32c109f7186e72b103d4ac39d2",
         "device_limit_help": "bb7f4e1eccde50041c0e74404976800bd7fe52947b240a7148f2c72883152972",
         "happ_import": "594c03b7448494bd32326a5a232d278969b4f1b8e71118c2887248dc20e6bcbe",
         "hiddify_empty_profile": "b19d929ed1a65fc009106a414897710c58d1345cf669ba3f12a13f066abef720",
         "hiddify_import": "b0d71b43c101258dc4c1d45df80d6a5aba1280bdc588077be384f13cd8512c24",
         "karing_import": "604d5beaa60db6ee3dd2a63f24cf4d436f5190a97f4b56f8cb89969e0241ad66",
+        "manual_path_when_app_unavailable": "da6cc3a9f3eecfd226f5a714c58c2c290a4e34375185a66f0cdfd4792acf9a06",
+        "one_active_client_rule": "22154f258d626009541c5b3d2943e5c5385ec072b8f953eadb8b2730c84393d5",
         "one_site_not_open": "7609ab592299cf6f10578f2d4c81e7b5cace798afb9edbc6f66b894e1e8b4031",
+        "operator_handoff": "fd8b39d192de33550d86e7fbafd43fc085cfff0879f7835bb2b70b9b4be7b5c3",
         "other_network_client_conflict": "70aeb16bac579fc1f57c68ed4358fc78df68ba810c74cf394377cc3dbf449539",
         "private_dns_and_filters": "8a74b0f5e513df6946052c799f634a6e95164336f386161dc6b7052f1a9d9e9a",
         "refresh_after_renewal": "6059d8cb09bd54dd97ee120881f46e06d137a66564b5934b32cd02a42f172b0b",
@@ -78,6 +85,20 @@ LOCAL_RENDERABLE_TOPICS = MappingProxyType(
         "v2rayn_proxy_tun": "bd49563da88b7c77ad733252536a3bb2f4a79daa49e0535116286912020cd906",
         "v2rayng_import": "9c3555c155b2a5c14b01967c6f38e0d72427db6218d52f73e4ce51ae9f5a81db",
         "v2rayng_no_internet": "bd00ad9ad5325d73e1d9f9771a6aeb5f6c4d02ef97b544d3ae92ec66ff4cc3eb",
+        "windows_network_reset_light": "35dd72cc352637599e0b2f0309ebdf36ec5db8c88762a6371162153d8d5a87dd",
+    }
+)
+DIRECT_RENDER_TOPICS = frozenset(
+    {
+        "activation_key_vs_connection_link",
+        "beta_scope",
+        "connection_link_meaning",
+        "connection_link_security",
+        "manual_path_when_app_unavailable",
+        "one_active_client_rule",
+        "one_site_not_open",
+        "operator_handoff",
+        "windows_network_reset_light",
     }
 )
 
@@ -98,6 +119,71 @@ def _is_short_followup(normalized_text: str) -> bool:
 
 
 INTENT_RULES = (
+    IntentRule(
+        "windows_network_reset_light",
+        (
+            ("windows",),
+            ("после отключения pokrov", "после выключения клиента", "после клиента"),
+            ("сеть", "интернет"),
+        ),
+        ("сеть работает нормально", "проблемы нет"),
+    ),
+    IntentRule(
+        "manual_path_when_app_unavailable",
+        (
+            ("приложение pokrov", "pokrov"),
+            ("недоступно", "нет приложения"),
+            ("вручную", "ручное подключение"),
+        ),
+        ("приложение доступно",),
+    ),
+    IntentRule(
+        "one_active_client_rule",
+        (
+            ("нескольких клиентах", "два клиента", "несколько клиентов"),
+            ("одновременно",),
+        ),
+        ("не одновременно", "только один клиент уже"),
+    ),
+    IntentRule(
+        "beta_scope",
+        (
+            ("beta", "бета"),
+            ("на каких платформах", "где доступна", "платформах сейчас доступна"),
+        ),
+        ("не спрашиваю о платформах",),
+    ),
+    IntentRule(
+        "activation_key_vs_connection_link",
+        (
+            ("activation key", "код активации"),
+            ("ссылка подключения", "ссылки подключения"),
+            ("отличить", "разница", "куда вводить"),
+        ),
+    ),
+    IntentRule(
+        "connection_link_meaning",
+        (
+            ("ссылка подключения",),
+            ("что такое", "чем отличается", "для чего"),
+        ),
+        ("нельзя отправлять", "можно отправлять"),
+    ),
+    IntentRule(
+        "connection_link_security",
+        (
+            ("личную ссылку", "qr"),
+            ("нельзя отправлять", "можно отправлять", "другим людям", "безопасно делиться"),
+        ),
+    ),
+    IntentRule(
+        "operator_handoff",
+        (
+            ("ручная проверка", "оператор", "человек"),
+            ("ai помощник", "ai помощнику", "вместо самостоятельного ответа", "не уверен"),
+        ),
+        ("ручная проверка не нужна",),
+    ),
     IntentRule(
         "v2rayng_no_internet",
         (

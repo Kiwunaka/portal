@@ -265,6 +265,19 @@ def test_grounded_local_answer_is_still_agent_source() -> None:
     assert result.should_escalate is False
 
 
+def test_code_owned_answer_is_still_agent_source() -> None:
+    result = generate_with(
+        _agent_result(
+            status="answer",
+            answer_origin="code_owned",
+            context_topic_ids=(),
+            grounding_topic_id=None,
+        )
+    )
+    assert result.source == "support_agent"
+    assert result.should_escalate is False
+
+
 def test_human_transfer_uses_fixed_harness_reply_and_existing_action_objects() -> None:
     outcome = _agent_result(
         status="fallback",

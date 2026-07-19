@@ -16,6 +16,7 @@ from support_agent_context import (
     SupportContextBuilder,
 )
 from support_agent_grounding import (
+    DIRECT_RENDER_TOPICS,
     RETRIEVER_RULES_SHA256,
     RETRIEVER_VERSION,
     RetrievalDecision,
@@ -47,6 +48,7 @@ from support_agent_sessions import (
 )
 from support_agent_state import (
     ConversationSignals,
+    NEGATIVE_OUTCOMES,
     classify_conversation_signals,
     sanitize_prior_state,
     state_after_answer,
@@ -66,12 +68,20 @@ PROGRESS_ACK_REPLY = (
     "Что сделать\nПроверьте, сохранилась ли проблема, и напишите результат.\n\n"
     "Если не поможет\nНапишите в поддержку."
 )
+NEGATIVE_ACK_REPLY = (
+    "Коротко\nПонял, выполненный шаг не помог.\n\n"
+    "Что сделать\nПроверьте оставшиеся шаги из предыдущего ответа и напишите результат.\n\n"
+    "Если не поможет\nНапишите в поддержку."
+)
 _HASH_RE = re.compile(r"[0-9a-f]{64}")
 _CODE_RE = re.compile(r"[A-Za-z0-9._/-]{1,64}")
 _SURFACES = frozenset({"app", "ticket", "helpbot"})
 _CONTINUING_PROBLEM_RE = re.compile(
     r"\b(?:но|однако|при\s+этом|кроме)\b|"
     r"\b(?:не\s+работ\w*|не\s+открыва\w*|не\s+могу|ошибк\w*)\b"
+)
+_MIXED_FOLLOWUP_RE = re.compile(
+    r"\b(?:но|однако|при\s+этом|кроме|а\s+ещ[её])\b"
 )
 _MIN_PROVIDER_WINDOW_SECONDS = 0.1
 _EMPTY_HASH = "0" * 64
@@ -470,9 +480,10 @@ class SupportAgentHarness:
         state: SafeSessionState,
         decision: RetrievalDecision,
         stats: _RunStats,
+        reply_text: str = PROGRESS_ACK_REPLY,
     ) -> _Outcome:
         try:
-            reply = validate_safe_reply(PROGRESS_ACK_REPLY, self.policy)
+            reply = validate_safe_reply(reply_text, self.policy)
         except SafetyValidationError as exc:
             stats.error_code = _fixed_error_code(exc)
             return _human_transfer(stats.error_code, status="fallback")
@@ -537,7 +548,13 @@ class SupportAgentHarness:
             return _human_transfer("retrieval_decision_invalid", status="fallback")
         stats.record_decision(decision)
 
-        if session is not None and would_repeat_failure(session.state, signals):
+        if session is not None and (
+            would_repeat_failure(session.state, signals)
+            or (
+                signals.outcome in NEGATIVE_OUTCOMES
+                and "contact_support" in session.state.attempted_steps
+            )
+        ):
             state = state_for_transfer(session.state, signals)
             return self._persist_transfer_or_unstored(
                 request,
@@ -545,6 +562,25 @@ class SupportAgentHarness:
                 state,
                 "repeated_unsuccessful",
                 stats,
+            )
+        if (
+            session is not None
+            and session.state.issue_topic_id is not None
+            and signals.outcome in NEGATIVE_OUTCOMES
+            and len(normalized_resolution) <= 160
+            and "?" not in boundary.model_text
+            and not _MIXED_FOLLOWUP_RE.search(normalized_resolution)
+            and decision.grounding_topic_id
+            in {None, session.state.issue_topic_id}
+        ):
+            state = state_after_answer(session.state, None, signals)
+            return self._persist_code_owned_progress(
+                request,
+                boundary.model_text,
+                state,
+                decision,
+                stats,
+                NEGATIVE_ACK_REPLY,
             )
         if (
             session is not None
@@ -569,6 +605,22 @@ class SupportAgentHarness:
             )
         if decision.disposition is RetrievalDisposition.NONE:
             return _human_transfer("missing_source", status="escalate")
+        if (
+            session is None
+            and decision.grounding_topic_id in DIRECT_RENDER_TOPICS
+        ):
+            direct_reply = self.grounding_engine.render_local(decision, self.policy)
+            if direct_reply is not None:
+                state = state_after_answer(None, decision.grounding_topic_id, signals)
+                return self._persist_answer_or_transfer(
+                    request,
+                    boundary.model_text,
+                    direct_reply,
+                    state,
+                    decision,
+                    "grounded_local",
+                    stats,
+                )
 
         try:
             context = self.context_builder.build_synthesis(

@@ -409,6 +409,54 @@ def test_local_renderer_uses_only_bound_body_and_fixed_safe_frame(
     assert len(reply) <= 1_200
 
 
+def test_direct_topics_are_bound_confident_and_locally_renderable(
+    repo_grounding_engine,
+    policy_snapshot,
+):
+    from support_agent_grounding import DIRECT_RENDER_TOPICS, LOCAL_RENDERABLE_TOPICS
+
+    bundle = json.loads(
+        (REPO_ROOT / "tests/fixtures/support-agent-live-eval.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    cases = {case["id"]: case for case in bundle["normal"]}
+
+    assert len(DIRECT_RENDER_TOPICS) == 9
+    assert DIRECT_RENDER_TOPICS <= set(LOCAL_RENDERABLE_TOPICS)
+    assert DIRECT_RENDER_TOPICS <= set(cases)
+    for topic_id in DIRECT_RENDER_TOPICS:
+        decision = repo_grounding_engine.select(cases[topic_id]["prompt"], None)
+        reply = repo_grounding_engine.render_local(decision, policy_snapshot)
+
+        assert decision.grounding_topic_id == topic_id
+        assert reply is not None
+
+
+@pytest.mark.parametrize(
+    ("topic_id", "adjacent_prompt"),
+    (
+        ("windows_network_reset_light", "Какие клиенты доступны на Windows?"),
+        ("manual_path_when_app_unavailable", "Приложение POKROV недоступно."),
+        ("one_active_client_rule", "Какие совместимые клиенты поддерживаются?"),
+        ("beta_scope", "Бета POKROV работает медленно."),
+        ("activation_key_vs_connection_link", "Где получить activation key?"),
+        ("connection_link_meaning", "Ссылка подключения не открывается."),
+        ("connection_link_security", "Как импортировать QR в клиент?"),
+        ("operator_handoff", "Я уже написал оператору."),
+    ),
+)
+def test_direct_rules_do_not_capture_adjacent_questions(
+    repo_grounding_engine,
+    topic_id,
+    adjacent_prompt,
+):
+    assert (
+        repo_grounding_engine.select(adjacent_prompt, None).grounding_topic_id
+        != topic_id
+    )
+
+
 def test_every_active_intent_keeps_a_safe_local_provider_failure_fallback(
     repo_grounding_engine,
     policy_snapshot,

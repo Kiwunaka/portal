@@ -563,6 +563,113 @@ def test_newly_completed_step_is_acknowledged_by_code_without_provider(
     assert "сохранилась ли проблема" in result.reply.casefold()
 
 
+def test_direct_fingerprint_bound_topic_skips_provider(harness_case_factory) -> None:
+    case = harness_case_factory(
+        name="direct-one-site",
+        input_mode="safe",
+        retrieval="candidate",
+        provider_plan="unused",
+        store_plan="ok",
+    )
+    decision = case.grounding.delegate.select(
+        "Один сайт не открывается, остальные работают.",
+        None,
+    )
+    case.grounding.decision = decision
+    case.request = replace(
+        case.request,
+        message="Один сайт не открывается, остальные работают.",
+    )
+
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.status == "answer"
+    assert result.answer_origin == "grounded_local"
+    assert result.provider_request_count == 0
+    assert case.adapter.call_count == 0
+    assert result.grounding_topic_id == "one_site_not_open"
+
+
+def test_first_clean_negative_outcome_is_acknowledged_without_provider(
+    harness_case_factory,
+) -> None:
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import StoredMessage
+
+    case = harness_case_factory(
+        name="negative-code-owned",
+        input_mode="safe",
+        retrieval="candidate",
+        provider_plan="unused",
+        store_plan="ok",
+    )
+    case.session_store.real.append(
+        case.request.session_scope.internal_session_key,
+        (
+            StoredMessage(role="user", content="Один сайт не открывается."),
+            StoredMessage(role="assistant", content="Попробуйте другую локацию."),
+        ),
+        SafeSessionState(
+            issue_topic_id="one_site_not_open",
+            attempted_steps=("switch_route_mode",),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        99.0,
+    )
+    case.request = replace(case.request, message="Ничего не изменилось.")
+
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.status == "answer"
+    assert result.answer_origin == "code_owned"
+    assert result.provider_request_count == 0
+    assert case.adapter.call_count == 0
+    assert result.session_state.last_outcome == "unchanged"
+    assert "выполненный шаг не помог" in result.reply.casefold()
+
+
+def test_negative_outcome_with_question_still_uses_grounded_flow(
+    harness_case_factory,
+) -> None:
+    from support_agent_safety import SafeSessionState
+    from support_agent_sessions import StoredMessage
+
+    case = harness_case_factory(
+        name="negative-with-question",
+        input_mode="safe",
+        retrieval="candidate",
+        provider_plan="answer",
+        store_plan="ok",
+    )
+    case.session_store.real.append(
+        case.request.session_scope.internal_session_key,
+        (
+            StoredMessage(role="user", content="Один сайт не открывается."),
+            StoredMessage(role="assistant", content="Попробуйте другую локацию."),
+        ),
+        SafeSessionState(
+            issue_topic_id="one_site_not_open",
+            attempted_steps=("switch_route_mode",),
+            last_outcome="not_reported",
+            escalation_requested=False,
+            unsuccessful_turns=0,
+        ),
+        99.0,
+    )
+    case.request = replace(
+        case.request,
+        message="Ничего не изменилось, но что ещё можно проверить?",
+    )
+
+    result = asyncio.run(case.harness.run(case.request))
+
+    assert result.answer_origin == "model"
+    assert result.provider_request_count == 1
+    assert case.adapter.call_count == 1
+
+
 def test_completed_step_with_continuing_failure_still_uses_grounded_flow(
     harness_case_factory,
 ) -> None:

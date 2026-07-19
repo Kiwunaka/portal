@@ -381,7 +381,7 @@ class SupportAgentService:
             return self._local_result(message, scope.client_session_id)
         if not isinstance(result, SupportAgentResult) or result.status != "answer":
             return self._agent_transfer_result(scope.client_session_id)
-        if result.answer_origin not in {"model", "grounded_local"}:
+        if result.answer_origin not in {"model", "grounded_local", "code_owned"}:
             return self._agent_transfer_result(scope.client_session_id)
         return SupportReplyResult(
             reply=result.reply,
