@@ -1647,9 +1647,30 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(config.api_base_url, "https://api.xcody.dev/v1")
         self.assertEqual(config.model, "minimax-m3")
         self.assertEqual(config.reasoning_effort, "medium")
-        self.assertEqual(config.max_context_chars, 36000)
+        self.assertEqual(config.max_context_chars, 30000)
         self.assertEqual(config.max_output_tokens, 1200)
-        self.assertEqual(config.timeout_seconds, 12.0)
+        self.assertEqual(config.timeout_seconds, 20.0)
+
+    def test_agent_timeout_and_context_env_ceilings_are_exact_and_clamped(self) -> None:
+        import support_ai_service
+
+        exact = support_ai_service.SupportAIConfig.from_env(
+            {
+                "SUPPORT_AI_TIMEOUT_SECONDS": "20",
+                "SUPPORT_AI_MAX_CONTEXT_CHARS": "30000",
+            }
+        )
+        clamped = support_ai_service.SupportAIConfig.from_env(
+            {
+                "SUPPORT_AI_TIMEOUT_SECONDS": "20.1",
+                "SUPPORT_AI_MAX_CONTEXT_CHARS": "30001",
+            }
+        )
+
+        self.assertEqual(exact.timeout_seconds, 20.0)
+        self.assertEqual(exact.max_context_chars, 30000)
+        self.assertEqual(clamped.timeout_seconds, 20.0)
+        self.assertEqual(clamped.max_context_chars, 30000)
 
     def test_xcody_output_budget_is_hard_capped_at_live_validated_limit(self) -> None:
         import support_ai_service

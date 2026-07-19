@@ -287,9 +287,9 @@ class SupportAIConfig:
     api_base_url: str = DEFAULT_API_BASE_URL
     model: str = DEFAULT_MODEL
     reasoning_effort: str = DEFAULT_REASONING_EFFORT
-    timeout_seconds: float = 12.0
+    timeout_seconds: float = 20.0
     knowledge_path: str = str(DEFAULT_KNOWLEDGE_PATH)
-    max_context_chars: int = 36000
+    max_context_chars: int = 30000
     max_user_chars: int = 1200
     max_answer_chars: int = 1200
     min_interval_seconds: float = 30.0
@@ -309,11 +309,11 @@ class SupportAIConfig:
             model=(source.get("SUPPORT_AI_MODEL") or DEFAULT_MODEL).strip(),
             reasoning_effort=_parse_reasoning_effort(source.get("SUPPORT_AI_REASONING_EFFORT")),
             timeout_seconds=_bounded_env_float(
-                source.get("SUPPORT_AI_TIMEOUT_SECONDS"), default=12.0, maximum=12.0
+                source.get("SUPPORT_AI_TIMEOUT_SECONDS"), default=20.0, maximum=20.0
             ),
             knowledge_path=(source.get("SUPPORT_AI_KB_PATH") or str(DEFAULT_KNOWLEDGE_PATH)).strip(),
             max_context_chars=_bounded_env_int(
-                source.get("SUPPORT_AI_MAX_CONTEXT_CHARS"), default=36000, maximum=36000
+                source.get("SUPPORT_AI_MAX_CONTEXT_CHARS"), default=30000, maximum=30000
             ),
             max_user_chars=_bounded_env_int(
                 source.get("SUPPORT_AI_MAX_USER_CHARS"), default=1200, maximum=1200
