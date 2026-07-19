@@ -144,6 +144,111 @@ def test_secret_near_model_truncation_boundary_is_rejected_before_truncation() -
     assert result.model_text == ""
 
 
+@pytest.mark.parametrize(
+    ("payload", "error"),
+    (
+        (
+            {
+                "schema_version": "1",
+                "status": "answer",
+                "reply": "Ответ.",
+                "source_topic_ids": [],
+            },
+            "agent_output_root_invalid",
+        ),
+        (
+            {
+                "schema_version": "1",
+                "status": "answer",
+                "reply": "Ответ.",
+                "session_state": {},
+            },
+            "agent_output_root_invalid",
+        ),
+        (
+            {
+                "schema_version": "1",
+                "status": "answer",
+                "reply": "Ответ.",
+                "actions": [],
+            },
+            "agent_output_root_invalid",
+        ),
+        (
+            {"schema_version": "2", "status": "answer", "reply": "Ответ."},
+            "agent_output_status_invalid",
+        ),
+        (
+            {"schema_version": "1", "status": "unknown", "reply": "Ответ."},
+            "agent_output_status_invalid",
+        ),
+        (
+            {"schema_version": "1", "status": [], "reply": "Ответ."},
+            "agent_output_status_invalid",
+        ),
+        (
+            {"schema_version": "1", "status": "answer", "reply": None},
+            "agent_output_reply_unsafe",
+        ),
+        (
+            {
+                "schema_version": "1",
+                "status": "answer",
+                "reply": "https://private.invalid",
+            },
+            "agent_output_reply_unsafe",
+        ),
+        (
+            {
+                "schema_version": "1",
+                "status": "answer",
+                "reply": "sk-" + ("a" * 26),
+            },
+            "agent_output_reply_unsafe",
+        ),
+    ),
+)
+def test_minimal_model_output_is_closed_and_safe(payload: dict, error: str) -> None:
+    from support_agent_safety import SafetyValidationError, validate_model_output
+
+    with pytest.raises(SafetyValidationError, match=error):
+        validate_model_output(
+            json.dumps(payload, ensure_ascii=False),
+            _policy_snapshot(),
+        )
+
+
+def test_minimal_model_output_accepts_answer_and_escalate() -> None:
+    from support_agent_safety import validate_model_output
+
+    answer = validate_model_output(
+        '{"schema_version":"1","status":"answer","reply":"Переподключите приложение один раз."}',
+        _policy_snapshot(),
+    )
+    escalation = validate_model_output(
+        '{"schema_version":"1","status":"escalate","reply":"Нужна помощь специалиста."}',
+        _policy_snapshot(),
+    )
+
+    assert (answer.status, answer.reply) == (
+        "answer",
+        "Переподключите приложение один раз.",
+    )
+    assert escalation.status == "escalate"
+
+
+def test_safe_reply_validator_is_shared_by_model_and_local_renderer() -> None:
+    from support_agent_safety import SafetyValidationError, validate_safe_reply
+
+    policy = _policy_snapshot()
+    assert (
+        validate_safe_reply("Проверьте подключение ещё раз.", policy)
+        == "Проверьте подключение ещё раз."
+    )
+    with pytest.raises(SafetyValidationError, match="agent_output_reply_unsafe"):
+        validate_safe_reply("Гарантированная анонимность 100%.", policy)
+
+
 def _valid_answer() -> dict:
     return {
         "schema_version": "1",

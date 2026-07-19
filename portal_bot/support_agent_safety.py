@@ -84,6 +84,7 @@ _ATTEMPTED_STEPS = frozenset(
     }
 )
 _OUTCOMES = frozenset({"not_reported", "resolved", "unchanged", "improved", "worse", "blocked"})
+_MODEL_OUTPUT_KEYS = frozenset({"schema_version", "status", "reply"})
 _OUTPUT_ROOT_KEYS = frozenset({"schema_version", "status", "reply", "source_topic_ids", "session_state"})
 _SESSION_STATE_KEYS = frozenset({"issue_topic_id", "attempted_steps", "last_outcome", "escalation_requested"})
 
@@ -113,6 +114,13 @@ class SafeSessionState:
     attempted_steps: tuple[str, ...]
     last_outcome: str
     escalation_requested: bool
+    unsuccessful_turns: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class ValidatedModelReply:
+    status: str
+    reply: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,6 +335,46 @@ def _output_contains_unsafe_text(reply: str) -> bool:
     return _LEGACY_REDACTION_MARKER_RE.search(redacted) is not None
 
 
+def validate_safe_reply(reply: str, policy: PolicySnapshot) -> str:
+    if (
+        not isinstance(reply, str)
+        or not reply.strip()
+        or len(reply) > policy.policy.max_reply_chars
+        or not _CYRILLIC_RE.search(reply)
+        or _output_contains_unsafe_text(reply)
+        or rejects_forbidden_claim(policy, reply)
+    ):
+        raise SafetyValidationError("agent_output_reply_unsafe")
+    return reply.strip()
+
+
+def validate_model_output(
+    raw_content: str,
+    policy: PolicySnapshot,
+) -> ValidatedModelReply:
+    if not isinstance(raw_content, str) or not 1 <= len(raw_content) <= _MAX_RAW_OUTPUT_CHARS:
+        raise SafetyValidationError("agent_output_size_invalid")
+    try:
+        payload = json.loads(raw_content, object_pairs_hook=_reject_duplicate_keys)
+    except SafetyValidationError:
+        raise
+    except json.JSONDecodeError as exc:
+        raise SafetyValidationError("agent_output_json_invalid") from exc
+    if not isinstance(payload, dict) or set(payload) != _MODEL_OUTPUT_KEYS:
+        raise SafetyValidationError("agent_output_root_invalid")
+    status = payload["status"]
+    if (
+        payload["schema_version"] != "1"
+        or not isinstance(status, str)
+        or status not in {"answer", "escalate"}
+    ):
+        raise SafetyValidationError("agent_output_status_invalid")
+    return ValidatedModelReply(
+        status=status,
+        reply=validate_safe_reply(payload["reply"], policy),
+    )
+
+
 def validate_agent_output(
     raw_content: str,
     supplied_topic_ids: Collection[str],
@@ -345,17 +393,7 @@ def validate_agent_output(
     status = payload["status"]
     if payload["schema_version"] != "1" or not isinstance(status, str) or status not in {"answer", "escalate"}:
         raise SafetyValidationError("agent_output_status_invalid")
-    reply = payload["reply"]
-    if (
-        not isinstance(reply, str)
-        or not reply.strip()
-        or len(reply) > policy.policy.max_reply_chars
-        or not _CYRILLIC_RE.search(reply)
-        or _output_contains_unsafe_text(reply)
-        or rejects_forbidden_claim(policy, reply)
-    ):
-        raise SafetyValidationError("agent_output_reply_unsafe")
-    reply = reply.strip()
+    reply = validate_safe_reply(payload["reply"], policy)
 
     supplied = frozenset(supplied_topic_ids)
     if any(not isinstance(item, str) for item in supplied):
