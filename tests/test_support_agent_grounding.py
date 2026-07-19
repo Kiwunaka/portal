@@ -312,6 +312,16 @@ def test_body_hash_mismatch_downgrades_and_disables_local_render(
     assert broken_engine.render_local(downgraded, policy_snapshot) is None
 
 
+def test_connected_normal_fixture_wording_is_confident(repo_grounding_engine):
+    decision = repo_grounding_engine.select(
+        "POKROV показывает подключение, но интернет совсем не открывается. Что проверить по шагам?",
+        None,
+    )
+
+    assert decision.disposition.value == "confident"
+    assert decision.grounding_topic_id == "connected_no_internet"
+
+
 def test_renderer_version_mismatch_downgrades_and_disables_local_render(
     repo_grounding_engine,
     policy_snapshot,

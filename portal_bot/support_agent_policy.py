@@ -158,6 +158,7 @@ def render_synthesis_policy_prompt(policy: SupportAgentPolicy) -> str:
         f"- reply must be non-empty and no longer than {policy.max_reply_chars} characters.",
         "Never return source IDs, state, actions, tool calls, or hidden reasoning.",
         "Never request or expose accounts, payments, attachments, diagnostics, keys, configs, QR data, commands, files, hosts, or secrets.",
+        "Never output any URL, domain, IP address, token, key, QR payload, or connection material. Refer to public surfaces by plain names only.",
         "If the selected topics do not safely answer the question, use status escalate.",
         "FORBIDDEN PRODUCT CLAIMS:",
         *(

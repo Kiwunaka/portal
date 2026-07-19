@@ -68,7 +68,7 @@
       "id": "hiddify_empty_profile",
       "prompt": "В Hiddify профиль добавился, но список серверов пустой. Что делать?",
       "accepted_topic_ids": ["hiddify_empty_profile"],
-      "required_concept_groups": [["обновите профиль", "обновить профиль"], ["импорт", "добавьте заново"]],
+      "required_concept_groups": [["обновите профиль", "обновить профиль"], ["импорт", "добавьте заново", "заново встав"]],
       "forbidden_concepts": ["пришлите личную ссылку", "пришлите qr"]
     },
     {
@@ -89,7 +89,7 @@
       "id": "v2rayng_import",
       "prompt": "Как добавить подписку POKROV в v2rayNG на Android?",
       "accepted_topic_ids": ["v2rayng_import"],
-      "required_concept_groups": [["v2rayng", "subscription"], ["обновите", "выберите профиль"]],
+      "required_concept_groups": [["v2rayng", "subscription"], ["обновите", "выберите профиль", "выберите сервер"]],
       "forbidden_concepts": ["отправьте ссылку", "готово на 100%"]
     },
     {
@@ -194,7 +194,7 @@
       "id": "refresh_after_renewal",
       "prompt": "Я продлил доступ, но приложение ещё показывает старый срок. Что обновить?",
       "accepted_topic_ids": ["refresh_after_renewal"],
-      "required_concept_groups": [["обновите доступ", "refresh", "обновите профиль"], ["перезапуст", "зайдите заново"]],
+      "required_concept_groups": [["обновите доступ", "refresh", "обновите профиль"], ["срок", "сервер"]],
       "forbidden_concepts": ["оплата точно прошла", "вижу ваш платёж"]
     },
     {
