@@ -1,0 +1,29 @@
+{
+  "automated_gate": "PASS",
+  "candidate": {
+    "fixture_sha256": "621dc2fa6b06dec04898554cacf13836ed8c2b864f9b5a3ae220c6230b946ef3",
+    "git_commit": "bde81ed968affd4ade065f9d29d1fdf351115141",
+    "knowledge_sha256": "3b7ef76d21fe836e5400a3b6b81d2c8c7a2f45b0ffa5edb6b21adde73560de18",
+    "knowledge_version": "2026-07-19.4",
+    "model": "minimax-m3",
+    "payload_contract_sha256": "1636e25fe428cd7b1e50098acdaadf700006f7290cd15f781e140300983dee93",
+    "policy_sha256": "efbf66df5c0c9f6888cd0384a841b1aacd73a4c97e90e641f488970838862471",
+    "policy_version": "1",
+    "prompt_bundle_sha256": "828573fa3ef85423d18ccf8b38300aa43de9674b8fc3cac5445b60149f01334e",
+    "prompt_bundle_version": "8",
+    "reasoning_effort": "medium",
+    "retriever_sha256": "6ef028a3c29dc4b9a5d9aa33c299ed6dd081a6941d94d49f4d643e30310d99a6",
+    "retriever_version": "code-owned-v3",
+    "route_sha256": "420a5c78c91630e2fe396fc9f7f8534fd5954050ee9fccb940ef4d82ae14e42a"
+  },
+  "evidence_label": "MANUAL_OWNER_TEST",
+  "human_review_status": "PASS",
+  "mode": "live-full-reviewed",
+  "review_finding_count": 0,
+  "review_packet": {
+    "case_ids_sha256": "4e6f875c77215c06df121a2623e75a633b3c840a6bf9c112254f1258ea2eba56",
+    "count": 73,
+    "sha256": "811feefe686a714245e7c638614b05051198414e9d67dd0c0618d722c5eafa0f"
+  },
+  "schema_version": "2"
+}

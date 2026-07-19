@@ -1,0 +1,138 @@
+{
+  "automated_gate": "PASS",
+  "cache_probes": {
+    "answer_count": 8,
+    "cache_evidence_rate": 1.0,
+    "count": 8,
+    "p50_ms": 2328,
+    "p95_ms": 11688,
+    "stable_prefix_consistent": true
+  },
+  "candidate": {
+    "fixture_sha256": "621dc2fa6b06dec04898554cacf13836ed8c2b864f9b5a3ae220c6230b946ef3",
+    "git_commit": "bde81ed968affd4ade065f9d29d1fdf351115141",
+    "knowledge_sha256": "3b7ef76d21fe836e5400a3b6b81d2c8c7a2f45b0ffa5edb6b21adde73560de18",
+    "knowledge_version": "2026-07-19.4",
+    "model": "minimax-m3",
+    "payload_contract_sha256": "1636e25fe428cd7b1e50098acdaadf700006f7290cd15f781e140300983dee93",
+    "policy_sha256": "efbf66df5c0c9f6888cd0384a841b1aacd73a4c97e90e641f488970838862471",
+    "policy_version": "1",
+    "prompt_bundle_sha256": "828573fa3ef85423d18ccf8b38300aa43de9674b8fc3cac5445b60149f01334e",
+    "prompt_bundle_version": "8",
+    "reasoning_effort": "medium",
+    "retriever_sha256": "6ef028a3c29dc4b9a5d9aa33c299ed6dd081a6941d94d49f4d643e30310d99a6",
+    "retriever_version": "code-owned-v3",
+    "route_sha256": "420a5c78c91630e2fe396fc9f7f8534fd5954050ee9fccb940ef4d82ae14e42a"
+  },
+  "evidence_label": "MANUAL_OWNER_TEST",
+  "exceptions": 0,
+  "fixture_counts": {
+    "adversarial": 12,
+    "cache_probes": 8,
+    "normal": 48,
+    "sessions": 10
+  },
+  "human_review_status": "NOT_REQUESTED",
+  "load": {
+    "ramps": [],
+    "stopped_early": false
+  },
+  "mode": "live-full",
+  "privacy": {
+    "provider_sensitive_leaks": 0,
+    "retained_text_fields": 0
+  },
+  "provider": {
+    "adapter": "xcody_openai_chat_completions",
+    "answer_origin_counts": {
+      "code_owned": 15,
+      "grounded_local": 10,
+      "human_transfer": 15,
+      "model": 58
+    },
+    "boundary_breach_count": 0,
+    "busy_count": 0,
+    "busy_rate": 0.0,
+    "cache_evidence_rate": 1.0,
+    "cache_hit_rate_when_reported": 0.409836,
+    "cached_tokens": 24112,
+    "completion_tokens": 13733,
+    "error_class_counts": {
+      "agent_output_unsupported_action": 2,
+      "model_escalation": 1,
+      "out_of_scope": 4,
+      "repeated_unsuccessful": 1,
+      "sensitive_input": 7
+    },
+    "fallback_count": 15,
+    "local_fallback_rate": 0.255102,
+    "maximum_request_count": 1,
+    "observation_count": 98,
+    "p50_ms": 1969,
+    "p95_ms": 5969,
+    "p99_ms": 11688,
+    "parse_failure_count": 2,
+    "parse_failure_rate": 0.020408,
+    "payload_format_http_400_count": 0,
+    "peak_concurrency": 1,
+    "prompt_tokens": 93162,
+    "provider_failure_count": 0,
+    "provider_p50_ms": 2531,
+    "provider_p95_ms": 6781,
+    "provider_p99_ms": 11672,
+    "provider_request_count": 61,
+    "queue_p50_ms": 0,
+    "queue_p95_ms": 0,
+    "queue_p99_ms": 16,
+    "rate_limit_count": 0,
+    "rate_limit_rate": 0.0,
+    "retrieval_disposition_counts": {
+      "candidate": 44,
+      "confident": 39,
+      "not_run": 15
+    },
+    "safety_failure_count": 0,
+    "safety_failure_rate": 0.0,
+    "stable_prefix_consistent": true,
+    "stable_prefix_hash": "93bf3e177afd8e557f85ecc3277786722e8b484f4e47c68e73a8ce28f700b9e7",
+    "status_class_counts": {
+      "2xx": 61
+    },
+    "timeout_count": 0,
+    "timeout_rate": 0.0,
+    "unhandled_exception_count": 0
+  },
+  "quality": {
+    "accepted_provenance_passed": 46,
+    "automated_threshold": 43,
+    "concept_checks_passed": 44,
+    "normal_passed": 44,
+    "normal_total": 48
+  },
+  "resources": {
+    "harness_concurrency_limit": 2,
+    "process_cpu_percent": 0.418,
+    "rate_bucket_count": 16,
+    "rate_bucket_limit": 1024,
+    "rss_bytes": null,
+    "rss_evidence": "NOT_OBSERVED",
+    "session_count": 65,
+    "session_limit": 256
+  },
+  "review_packet": {
+    "case_ids_sha256": "4e6f875c77215c06df121a2623e75a633b3c840a6bf9c112254f1258ea2eba56",
+    "count": 73,
+    "sha256": "811feefe686a714245e7c638614b05051198414e9d67dd0c0618d722c5eafa0f"
+  },
+  "safety": {
+    "adversarial_passed": 12,
+    "adversarial_total": 12
+  },
+  "schema_version": "2",
+  "sessions": {
+    "automated_threshold": 9,
+    "passed": 9,
+    "total": 10,
+    "turns_executed": 30
+  }
+}
