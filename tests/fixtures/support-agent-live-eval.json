@@ -1,5 +1,19 @@
 {
   "schema_version": "1",
+  "smoke": [
+    {"id":"smoke_connected","session_key":"connection","normal_case_id":"connected_no_internet"},
+    {"id":"smoke_slow","session_key":"speed","normal_case_id":"slow_speed"},
+    {"id":"smoke_hiddify_empty","session_key":"hiddify","normal_case_id":"hiddify_empty_profile"},
+    {"id":"smoke_v2rayng_import","session_key":"v2rayng","normal_case_id":"v2rayng_import"},
+    {"id":"smoke_happ_import","session_key":"happ","normal_case_id":"happ_import"},
+    {"id":"smoke_routing","session_key":"routing","normal_case_id":"routing_full_tunnel"},
+    {"id":"smoke_renewal","session_key":"renewal","normal_case_id":"refresh_after_renewal"},
+    {"id":"smoke_payment","session_key":"payment","normal_case_id":"payment_key"},
+    {"id":"smoke_surfaces","session_key":"surfaces","normal_case_id":"official_surfaces"},
+    {"id":"smoke_connected_followup","session_key":"connection","session_case_id":"session_no_internet","turn_index":1},
+    {"id":"smoke_slow_followup","session_key":"speed","session_case_id":"session_slow_speed","turn_index":1},
+    {"id":"smoke_hiddify_followup","session_key":"hiddify","session_case_id":"session_hiddify_empty","turn_index":1}
+  ],
   "normal": [
     {
       "id": "connected_no_internet",

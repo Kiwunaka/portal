@@ -162,3 +162,25 @@ def test_step_codes_are_unique_ordered_and_bounded():
         "check_device_time",
         "attach_diagnostics",
     )
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_step", "expected_outcome"),
+    (
+        ("Переподключился и повторил проверку скорости.", "reconnect", None),
+        ("Я удалил профиль и импортировал его заново.", "reimport_profile", None),
+        ("Я нажал обновить доступ и обновил профиль.", "refresh_access", None),
+        ("Стало немного лучше, но скорость ещё плавает.", None, "improved"),
+        ("Список серверов всё ещё пустой.", None, "unchanged"),
+        ("Интернет появился, но иногда прерывается.", None, "improved"),
+        ("Новый срок появился, всё решено.", None, "resolved"),
+        ("Теперь всё работает как нужно.", None, "resolved"),
+    ),
+)
+def test_real_user_session_phrases_are_classified(text, expected_step, expected_outcome):
+    from support_agent_state import classify_conversation_signals
+
+    signals = classify_conversation_signals(text)
+
+    assert signals.attempted_steps == (() if expected_step is None else (expected_step,))
+    assert signals.outcome == expected_outcome
