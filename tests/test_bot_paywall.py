@@ -341,6 +341,7 @@ class BotPaywallTests(unittest.TestCase):
             def __init__(self, tg_id: int):
                 super().__init__(tg_id=tg_id, data="show_key")
                 self.message = _EditableMessage()
+                self.message.chat = types.SimpleNamespace(id=tg_id, type="private")
 
         self.bot_module.ensure_pending_user(1001, username="alice")
         self.bot_module.set_tos_accepted(1001)
@@ -372,8 +373,11 @@ class BotPaywallTests(unittest.TestCase):
         reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
         labels = [button.text for row in reply_markup.inline_keyboard for button in row]
         self.assertIn("📋 Скопировать ссылку", labels)
-        self.assertIn("📱 QR для подключения", labels)
+        self.assertIn("📋 Скопировать для Happ", labels)
+        self.assertIn("📱 QR для Hiddify", labels)
+        self.assertIn("📱 QR для Happ", labels)
         self.assertIn("📲 Как подключить вручную", labels)
+        self.assertNotIn("Karing", " ".join(labels))
         self.assertNotIn("👨‍👩‍👧‍👦 Поделиться доступом", labels)
         self.assertNotIn("🚨 Panic Mode", labels)
 
@@ -2479,16 +2483,20 @@ class BotPaywallTests(unittest.TestCase):
 
     def test_manual_link_flow_uses_native_copy_button_without_fake_delay_or_karing(self) -> None:
         source = inspect.getsource(self.bot_module.show_key)
-        self.assertIn("copy_text=sub_link", source)
+        self.assertIn("_subscription_copy_button(", source)
+        self.assertIn("value=sub_link", source)
         self.assertNotIn("asyncio.sleep", source)
         self.assertNotIn("Karing", source)
 
+        button = self.bot_module._subscription_copy_button(
+            label="📋 Скопировать ссылку",
+            value="https://connect.pokrov.space/example",
+            fallback_callback="copy_key",
+        )
         if self.bot_module.SUPPORTS_BTN_COPY_TEXT:
-            button = self.bot_module.InlineKeyboardButton(
-                text="📋 Скопировать ссылку",
-                copy_text="https://connect.pokrov.space/example",
-            )
             self.assertEqual(getattr(getattr(button, "copy_text", None), "text", None), "https://connect.pokrov.space/example")
+        else:
+            self.assertEqual(button.callback_data, "copy_key")
 
     def test_reset_link_copy_is_honest_about_imported_profiles_and_has_no_fake_delay(self) -> None:
         menu_source = inspect.getsource(self.bot_module.panic_menu)
