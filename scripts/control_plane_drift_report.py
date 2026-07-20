@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Read-only drift report between PORTAL node source-of-truth and live node runtime.
 
@@ -8,13 +6,15 @@ configured inbound on each enabled node, and compares it with what PORTAL expect
 from the `nodes` table.
 """
 
+from __future__ import annotations
+
 import argparse
 import base64
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
-import paramiko
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import x25519
 
@@ -27,7 +27,7 @@ if str(PORTAL_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_DIR))
 
 
-def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 60) -> tuple[int, str, str]:
+def _run(ssh: Any, cmd: str, *, timeout: int = 60) -> tuple[int, str, str]:
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout)
     code = stdout.channel.recv_exit_status()
     out = stdout.read().decode(errors="replace")

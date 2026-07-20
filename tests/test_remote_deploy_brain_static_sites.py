@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType
 
 
 def _load_module():
@@ -138,12 +139,14 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
             def fail_connect(*_args, **_kwargs):
                 raise AssertionError("plan-only must not open SSH")
 
+            fake_node_access = ModuleType("node_access")
+            fake_node_access.connect_node = fail_connect
             old_repo_root = self.module.REPO_ROOT
-            old_connect = self.module.connect_node
+            old_node_access = sys.modules.get("node_access")
             old_argv = sys.argv
             try:
                 self.module.REPO_ROOT = root
-                self.module.connect_node = fail_connect
+                sys.modules["node_access"] = fake_node_access
                 sys.argv = [
                     "remote_deploy_brain_static_sites.py",
                     "--brain-ip",
@@ -154,7 +157,10 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
                 self.assertEqual(0, self.module.main())
             finally:
                 self.module.REPO_ROOT = old_repo_root
-                self.module.connect_node = old_connect
+                if old_node_access is None:
+                    sys.modules.pop("node_access", None)
+                else:
+                    sys.modules["node_access"] = old_node_access
                 sys.argv = old_argv
 
 

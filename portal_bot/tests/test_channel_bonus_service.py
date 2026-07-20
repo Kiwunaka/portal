@@ -32,7 +32,6 @@ def _load_api_and_service(monkeypatch, tmp_path: Path):
         "config",
         "db",
         "migrations",
-        "models",
         "web_auth_service",
         "control_panel",
         "nodes_repo",
@@ -48,7 +47,7 @@ def _load_api_and_service(monkeypatch, tmp_path: Path):
         "public_urls",
         "shared_surface_facts",
     ]:
-        sys.modules.pop(name, None)
+        monkeypatch.delitem(sys.modules, name, raising=False)
 
     api = importlib.import_module("api")
     service = importlib.import_module("channel_bonus_service")

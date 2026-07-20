@@ -13,8 +13,11 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from node_access import DEFAULT_PASSWORDS, connect_node
-from smoke_client_apps import _provider_readiness_failures, _release_handoff_failures
+from node_access import DEFAULT_PASSWORDS, connect_node  # noqa: E402
+from smoke_client_apps import (  # noqa: E402
+    _provider_readiness_failures,
+    _release_handoff_failures,
+)
 
 
 PASS = "PASS"

@@ -55,7 +55,6 @@ def _load_api(
         "email_delivery_service",
         "app_first_service",
         "migrations",
-        "models",
         "web_auth_service",
         "control_panel",
         "nodes_repo",
@@ -67,8 +66,19 @@ def _load_api(
         "free_cycle_service",
         "gift_cards_service",
         "payment_providers",
+        "support_ai_service",
+        "support_agent_context",
+        "support_agent_grounding",
+        "support_agent_harness",
+        "support_agent_knowledge",
+        "support_agent_policy",
+        "support_agent_provider",
+        "support_agent_safety",
+        "support_agent_service",
+        "support_agent_sessions",
+        "support_agent_state",
     ]:
-        sys.modules.pop(name, None)
+        monkeypatch.delitem(sys.modules, name, raising=False)
 
     return importlib.import_module("api")
 
@@ -333,7 +343,7 @@ def test_email_delivery_posts_secret_header(monkeypatch):
     monkeypatch.setenv("EMAIL_AUTH_DEBUG_ECHO", "false")
     monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_URL", "https://relay.pokrov.test/email/deliver")
     monkeypatch.setenv("EMAIL_DELIVERY_WEBHOOK_SECRET", "relay-secret")
-    sys.modules.pop("email_delivery_service", None)
+    monkeypatch.delitem(sys.modules, "email_delivery_service", raising=False)
     service = importlib.import_module("email_delivery_service")
     capture: dict[str, object] = {}
 
@@ -636,6 +646,7 @@ def test_email_recovery_resets_password(monkeypatch, tmp_path):
             "password": "StrongPass123!",
         },
     )
+    assert register.status_code == 200, register.text
     verify_token = str(captured["verify"])
     verify = client.post("/api/auth/email/verify", json={"token": verify_token})
     assert verify.status_code == 200, verify.text
@@ -748,7 +759,7 @@ def test_api_support_ai_persistence_failure_logs_only_fixed_code(monkeypatch, tm
     api.support_ai_last_reply_at.clear()
 
     async def fake_generate_support_reply(*_args, **_kwargs):
-        return "Synthetic assistant reply"
+        return SimpleNamespace(reply="Synthetic assistant reply")
 
     class FailingSession:
         def __init__(self, *, rollback_fails: bool, close_fails: bool):
@@ -767,7 +778,7 @@ def test_api_support_ai_persistence_failure_logs_only_fixed_code(monkeypatch, tm
             if self.close_fails:
                 raise RuntimeError("close failure marker")
 
-    monkeypatch.setattr(api, "generate_support_reply", fake_generate_support_reply)
+    monkeypatch.setattr(api.SUPPORT_AGENT_SERVICE, "generate", fake_generate_support_reply)
     monkeypatch.setattr(
         api,
         "get_ticket_by_id",
@@ -814,7 +825,7 @@ def test_helpbot_support_ai_persistence_failure_logs_only_fixed_code(monkeypatch
     helpbot.support_ai_last_reply_at.clear()
 
     async def fake_generate_support_reply(*_args, **_kwargs):
-        return "Synthetic assistant reply"
+        return SimpleNamespace(reply="Synthetic assistant reply")
 
     class FailingSession:
         def __init__(self, *, rollback_fails: bool, close_fails: bool):
@@ -836,7 +847,7 @@ def test_helpbot_support_ai_persistence_failure_logs_only_fixed_code(monkeypatch
             if self.close_fails:
                 raise RuntimeError("close failure marker")
 
-    monkeypatch.setattr(helpbot, "generate_support_reply", fake_generate_support_reply)
+    monkeypatch.setattr(helpbot.SUPPORT_AGENT_SERVICE, "generate", fake_generate_support_reply)
 
     def fail_to_append(*_args, **_kwargs):
         raise RuntimeError("synthetic persistence detail echoed the assistant body")

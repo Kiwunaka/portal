@@ -3,7 +3,33 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POKROV_APP_ROOT = ROOT.parent / "POKROV-app"
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    platform_root = Path(completed.stdout.strip()).resolve().parent
+    client_repo = platform_root.parent / "POKROV-app"
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
+
+
+POKROV_APP_ROOT = _resolve_client_root(ROOT)
 SCRIPT_PATH = POKROV_APP_ROOT / "scripts" / "build-windows-release.ps1"
 
 
@@ -77,8 +103,9 @@ def test_package_windows_script_is_documented_as_active_client_release_step() ->
     cutover_text = _read_pokrov_app("docs/operations/cutover-readiness.md")
 
     assert "python scripts/run_client_release_gate.py build --target windows" in deployment_text
-    assert "apps/windows_shell/build/release_bundle/" in developer_text
+    assert "C:/Users/kiwun/Documents/ai/POKROV-app/docs/" in developer_text
+    assert "apps/windows_shell/build/release_bundle/" in cutover_text
     assert "Windows release state: `unsigned outside-store beta setup EXE refreshed for 1.0.0-beta; live install/app-session smoke remains manual`" in cutover_text
-    assert "public cutover approval: `outside-store beta only`" in cutover_text
-    assert "public Windows release approval: `outside-store unsigned beta only`" in cutover_text
+    assert "public cutover approval: `blocked for a new candidate`" in cutover_text
+    assert "public Windows release approval: `blocked pending trusted-signing PASS for the exact candidate`" in cutover_text
     assert "repo-backed alpha or beta archive: `allowed`" in cutover_text

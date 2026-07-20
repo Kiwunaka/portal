@@ -453,6 +453,72 @@ The paid wheel/calendar implementation is repository-candidate truth until the
 exact deployed candidate completes this rollout. Local tests do not prove a
 production flag, worker, config, database backfill, or marketing deploy.
 
+The guarded operator entrypoint is
+[`scripts/reward_rollout.py`](C:/Users/kiwun/Documents/ai/VPN/scripts/reward_rollout.py).
+It exposes only `preflight`, `backfill`, `configure`, and `verify`; it never
+accepts credentials on the command line and never enables backend flags or the
+marketing gate.
+
+Before using it, collect a fresh secret-free runtime manifest on the owned
+deployment host and expose its absolute local path only in the operator shell:
+
+```json
+{
+  "instances": [
+    {
+      "instance_id": "api-1",
+      "component": "api",
+      "candidate": "<exact-git-sha>",
+      "bonus_wheel_enabled": false,
+      "bonus_calendar_enabled": false,
+      "legacy_reward_mutator_accepting": false
+    },
+    {
+      "instance_id": "bot-1",
+      "component": "bot",
+      "candidate": "<exact-git-sha>",
+      "bonus_wheel_enabled": false,
+      "bonus_calendar_enabled": false,
+      "legacy_reward_mutator_accepting": false
+    }
+  ]
+}
+```
+
+The manifest must contain every running API and bot instance and must come from
+service-manager/container readback for that exact process set. Do not put a
+token, credential, private connection URL, QR, provider response, environment
+dump, or customer identifier in it. Missing API/bot reports, duplicate instance
+IDs, malformed booleans, mixed candidates, enabled flags, a legacy mutator, an
+unresolved account, or an open/invalid merge chain all fail closed. The script
+does not discover an omitted instance, so the operator must reconcile the
+manifest against the active service/container inventory before treating a pass
+as fleet evidence.
+
+From the exact deployed checkout, use a candidate-specific evidence directory:
+
+```powershell
+$candidate = '<exact-git-sha>'
+$evidence = "docs/audit-artifacts/rewards/$candidate"
+$env:REWARD_ROLLOUT_RUNTIME_MANIFEST = 'C:\absolute\owned-runtime\reward-runtime-manifest.json'
+
+& python.exe -B scripts/reward_rollout.py preflight --candidate $candidate --evidence-dir $evidence
+& python.exe -B scripts/reward_rollout.py backfill --candidate $candidate --confirm-apply reward-state-v1 --evidence-dir $evidence
+& python.exe -B scripts/reward_rollout.py configure --candidate $candidate --confirm-apply paid_weekly_v1 --evidence-dir $evidence
+& python.exe -B scripts/reward_rollout.py verify --candidate $candidate --evidence-dir $evidence
+```
+
+`preflight` and `verify` are read-only. `backfill` invokes the account-owned
+reward-state backfill in one guarded database transaction and rolls it back if
+the zero-unresolved invariant fails. `configure` locks `wheel_config`, hashes
+the previous value, writes the exact code-owned `paid_weekly_v1` preset, reads
+it back in the same transaction, and rolls back on mismatch. Evidence contains
+only candidate identity, timestamps, stable result codes, counts, and canonical
+JSON hashes; it does not contain raw settings or runtime-manifest rows. A command
+exit code of zero means its retained result is `PASS`; a blocked result exits
+non-zero. Evidence filenames are exclusive-create: a repeated command must use a
+new retained directory instead of overwriting an earlier observation.
+
 Required order:
 
 1. Stop/quiesce every legacy bot instance that can accept the old local wheel

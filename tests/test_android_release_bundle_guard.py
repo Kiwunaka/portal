@@ -1,8 +1,35 @@
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POKROV_APP_ROOT = ROOT.parent / "POKROV-app"
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    platform_root = Path(completed.stdout.strip()).resolve().parent
+    client_repo = platform_root.parent / "POKROV-app"
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
+
+
+POKROV_APP_ROOT = _resolve_client_root(ROOT)
 
 
 def _read_root(rel_path: str) -> str:
@@ -36,5 +63,5 @@ def test_android_release_bundle_is_root_orchestrated_from_pokrov_app() -> None:
     assert "cwd=status.android_shell_root" in client_gate_text
     assert "raw Android wrapper artifacts are produced under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/build/app/outputs/...`" in deployment_text
     assert "store the active client-lane bundle under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`" in deployment_text
-    assert "public cutover approval: `outside-store beta only`" in cutover_text
-    assert "public Android release approval: `outside-store beta with operator attestation`" in cutover_text
+    assert "public cutover approval: `blocked for a new candidate`" in cutover_text
+    assert "public Android release approval: `blocked pending production-signing PASS for the exact candidate`" in cutover_text

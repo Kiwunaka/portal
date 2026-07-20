@@ -13,8 +13,7 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from node_access import DEFAULT_PASSWORDS, connect_node
-from payment_email_readiness_smoke import build_report
+from payment_email_readiness_smoke import build_report  # noqa: E402
 
 
 PASS = "PASS"
@@ -473,6 +472,8 @@ def build_brain_readiness_report(
 
 
 def main(argv: list[str] | None = None) -> int:
+    from node_access import DEFAULT_PASSWORDS, connect_node
+
     parser = argparse.ArgumentParser(
         description="Read redacted Lava.top/email readiness from a live brain unit environment.",
     )

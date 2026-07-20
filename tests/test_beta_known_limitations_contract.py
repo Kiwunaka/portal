@@ -79,7 +79,7 @@ def test_beta_known_limitations_preserve_claim_boundaries() -> None:
     required_boundary_phrases = [
         "outside-store",
         "RU-origin readiness claim",
-        "trusted Windows signing",
+        "trusted-signing PASS",
         "Play/store",
         "Lava.top-only",
         "best-effort",

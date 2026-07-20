@@ -207,9 +207,17 @@ def test_read_only_remote_xui_diagnostics_use_env_password_and_expected_commands
     assert "brain-secret" not in joined
 
 
-def test_remote_check_brain_panel_fails_closed_when_default_facts_have_no_brain_entry(monkeypatch) -> None:
+def test_remote_check_brain_panel_fails_closed_when_facts_have_no_brain_entry(
+    tmp_path: Path, monkeypatch
+) -> None:
     module = _load_script("remote_check_brain_panel.py")
-    monkeypatch.setattr(sys, "argv", ["remote_check_brain_panel.py"])
+    facts = tmp_path / "node_facts.json"
+    facts.write_text(json.dumps({"results": []}), encoding="utf-8")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["remote_check_brain_panel.py", "--facts", str(facts)],
+    )
 
     with pytest.raises(SystemExit) as exc:
         module.main()

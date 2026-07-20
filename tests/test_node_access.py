@@ -16,7 +16,7 @@ class NodeAccessTests(unittest.TestCase):
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
 
-    def test_connect_node_falls_back_to_port_22(self) -> None:
+    def test_connect_node_uses_configured_primary_port(self) -> None:
         import node_access
 
         attempts: list[tuple[int, bool]] = []
@@ -55,7 +55,7 @@ class NodeAccessTests(unittest.TestCase):
             )
 
         self.assertEqual(method, "password")
-        self.assertEqual(attempts, [(29374, True), (22, True)])
+        self.assertEqual(attempts, [(22, True)])
 
     def test_connect_node_uses_mini_operator_user_port_and_password_candidates(self) -> None:
         import node_access

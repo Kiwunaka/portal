@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Backup control-plane SQLite DB from a remote server via SSH.
 
@@ -18,13 +16,13 @@ Environment (optional):
 - REMOTE_PORTAL_DB (default /root/portal_bot/portal.db)
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import time
 from pathlib import Path
-
-import paramiko
-from ssh_host_keys import configure_ssh_host_key_policy
+from typing import Any
 
 
 def _require(name: str) -> str:
@@ -34,7 +32,7 @@ def _require(name: str) -> str:
     return v
 
 
-def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 60) -> tuple[int, str, str]:
+def _run(ssh: Any, cmd: str, *, timeout: int = 60) -> tuple[int, str, str]:
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout)
     code = stdout.channel.recv_exit_status()
     out = stdout.read().decode(errors="replace")
@@ -53,6 +51,14 @@ def main() -> int:
     password = _require("SSH_PASS")
     port = int(os.getenv("SSH_PORT", "22"))
     user = os.getenv("SSH_USER", "root")
+
+    try:
+        import paramiko
+        from ssh_host_keys import configure_ssh_host_key_policy
+    except ModuleNotFoundError as exc:
+        raise SystemExit(
+            "Missing optional dependency: paramiko. Install ops requirements before creating a remote backup."
+        ) from exc
 
     remote_db = os.getenv("REMOTE_PORTAL_DB", "/root/portal_bot/portal.db")
     remote_tmp = args.remote_tmp

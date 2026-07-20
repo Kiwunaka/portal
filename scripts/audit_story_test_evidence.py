@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import re
+import subprocess
 from collections import Counter
 from pathlib import Path
 
@@ -61,6 +62,7 @@ ENTRYPOINT_OUTPUT_FIELDS = [
 ]
 
 SOURCE_REF_RE = re.compile(r"([A-Za-z0-9_./\\() -]+\.(?:py|tsx|ts|dart|kt|ps1|md))(?::(\d+))?")
+_PLATFORM_ROOTS: dict[Path, Path] = {}
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -84,7 +86,21 @@ def _dedupe(items: list[str]) -> list[str]:
 
 def _resolve_ref(repo_root: Path, ref: str) -> Path:
     if ref.startswith("POKROV-app/"):
-        return repo_root.parent / ref
+        platform_root = _PLATFORM_ROOTS.get(repo_root)
+        if platform_root is None:
+            if (repo_root / ".git").exists():
+                completed = subprocess.run(
+                    ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                    cwd=repo_root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                platform_root = Path(completed.stdout.strip()).resolve().parent
+            else:
+                platform_root = repo_root
+            _PLATFORM_ROOTS[repo_root] = platform_root
+        return platform_root.parent / ref
     return repo_root / ref
 
 

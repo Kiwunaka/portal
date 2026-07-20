@@ -252,7 +252,10 @@ class PanelClientConflictTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(fake_session.posts), 2)
         modern_url, modern_kwargs = fake_session.posts[1]
         self.assertTrue(modern_url.endswith("/xui/panel/api/clients/add"))
-        self.assertEqual(modern_kwargs["headers"], {"X-CSRF-Token": "csrf"})
+        self.assertEqual(
+            modern_kwargs["headers"],
+            {"X-Requested-With": "XMLHttpRequest", "X-CSRF-Token": "csrf"},
+        )
         modern_payload = modern_kwargs["json"]
         self.assertEqual(modern_payload["inboundIds"], [1])
         self.assertEqual(modern_payload["client"]["email"], "User_42")

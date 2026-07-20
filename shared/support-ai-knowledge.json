@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-20.1",
+  "version": "2026-07-20.2",
   "scope": "public_support",
   "language": "ru",
   "rules": [
@@ -85,7 +85,7 @@
     },
     {
       "id": "choose_android_client",
-      "keywords": ["android", "андроид", "какой клиент", "karing", "happ", "hiddify", "v2rayng", "nekobox"],
+      "keywords": ["android", "андроид", "какой клиент", "совместимый клиент", "клиент выбрать", "ручное подключение", "karing", "happ", "hiddify", "v2rayng", "nekobox"],
       "body": "Для Android большинству пользователей лучше начать с Hiddify, если он доступен. Karing можно пробовать с отдельной ссылкой format=smart, Happ - с format=happ. Karing, Happ, v2rayNG, NekoBox и sing-box for Android оставляй как best-effort или продвинутые варианты."
     },
     {

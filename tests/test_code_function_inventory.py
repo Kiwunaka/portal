@@ -3,13 +3,40 @@ from __future__ import annotations
 import csv
 import importlib.util
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    platform_root = Path(completed.stdout.strip()).resolve().parent
+    client_repo = platform_root.parent / "POKROV-app"
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
+
+
+CLIENT_ROOT = _resolve_client_root(REPO_ROOT)
 CODE_FUNCTION_INVENTORY = (
     REPO_ROOT / "docs" / "developer" / "pokrov-code-function-inventory.csv"
 )
@@ -389,7 +416,7 @@ def test_private_helper_coverage_matrix_matches_private_inventory_only() -> None
         ):
             if fragment not in owner_policy_note:
                 invalid_rows.append(f"{symbol_id}: owner_policy_note={fragment}")
-        if row.get("updated_at") != "2026-07-14":
+        if row.get("updated_at") != "2026-07-20":
             invalid_rows.append(f"{symbol_id}: updated_at={row.get('updated_at')}")
 
         inventory = inventory_rows[symbol_id]

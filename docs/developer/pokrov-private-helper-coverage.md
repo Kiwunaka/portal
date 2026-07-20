@@ -1,6 +1,6 @@
 # POKROV Private Helper Coverage Matrix
 
-Last updated: 2026-07-14
+Last updated: 2026-07-20
 
 ## Purpose
 
@@ -21,40 +21,42 @@ one-test-per-private-helper coverage.
 
 | Metric | Count |
 | --- | ---: |
-| Private helper rows | 23 |
-| Accepted Q-001 policy rows | 23 |
+| Private helper rows | 193 |
+| Accepted Q-001 policy rows | 193 |
 | Rows needing Q-001 owner decision | 0 |
 | High risk rows | 0 |
-| Medium risk rows | 2 |
-| Low risk rows | 21 |
+| Medium risk rows | 8 |
+| Low risk rows | 185 |
 
 ### By Private Helper Area
 
 | Label | Count |
 | --- | ---: |
-| `client_private_ui_helper` | 9 |
-| `private_implementation_helper` | 14 |
+| `client_feature_copy_or_logic_helper` | 1 |
+| `client_private_ui_helper` | 17 |
+| `private_implementation_helper` | 161 |
+| `webapp_private_ui_helper` | 14 |
 
 ### By Risk Tier
 
 | Label | Count |
 | --- | ---: |
-| `low` | 21 |
-| `medium` | 2 |
+| `low` | 185 |
+| `medium` | 8 |
 
 ### By Language
 
 | Label | Count |
 | --- | ---: |
-| `dart` | 9 |
-| `python` | 12 |
-| `tsx` | 2 |
+| `dart` | 18 |
+| `python` | 159 |
+| `tsx` | 16 |
 
 ### By Current Status
 
 | Label | Count |
 | --- | ---: |
-| `source_inventory_only` | 23 |
+| `source_inventory_only` | 193 |
 
 ## Completion Rule
 

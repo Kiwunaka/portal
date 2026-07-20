@@ -6,18 +6,46 @@ import csv
 import json
 import posixpath
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    common_dir = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    client_repo = Path(common_dir).resolve().parent.parent / "POKROV-app"
+    if not (client_repo / ".git").exists():
+        return client_repo
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
+
+
+DEFAULT_CLIENT_ROOT = _resolve_client_root(REPO_ROOT)
 DEFAULT_OUT = REPO_ROOT / "docs" / "developer" / "pokrov-code-function-inventory.csv"
 DEFAULT_SYMBOL_COVERAGE_OUT = REPO_ROOT / "docs" / "developer" / "pokrov-symbol-coverage-audit.csv"
 DEFAULT_TRACKER = REPO_ROOT / "docs" / "developer" / "pokrov-canonical-feature-tracker.csv"
 DEFAULT_ENTRYPOINT_COVERAGE = REPO_ROOT / "docs" / "developer" / "pokrov-entrypoint-story-coverage.csv"
 DEFAULT_SCRIPT_MANIFEST = REPO_ROOT / "scripts" / "manifest.yaml"
-TODAY = "2026-06-27"
+TODAY = "2026-07-20"
 
 EXCLUDED_PARTS = {
     ".dart_tool",

@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import time
+import uuid
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlencode
@@ -99,6 +100,34 @@ def _admin_headers() -> dict[str, str]:
         },
     )
     return {"X-Telegram-Init-Data": init_data}
+
+
+def _guarded_admin_headers(
+    client: TestClient,
+    *,
+    action: str,
+    target_type: str,
+    target_id: str,
+    payload: dict[str, object],
+) -> dict[str, str]:
+    prepared = client.post(
+        "/api/admin/action-intents",
+        headers=_admin_headers(),
+        json={
+            "action": action,
+            "target": {"type": target_type, "id": target_id},
+            "payload": payload,
+        },
+    )
+    assert prepared.status_code == 200, prepared.text
+    prepared_body = prepared.json()
+    challenge = str(prepared_body["confirmation_challenge"])
+    return {
+        **_admin_headers(),
+        "X-Admin-Intent-Id": str(prepared_body["intent_id"]),
+        "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+        "X-Admin-Confirmation-SHA256": hashlib.sha256(challenge.encode("utf-8")).hexdigest(),
+    }
 
 
 def _rollout_payload() -> dict[str, object]:
@@ -389,26 +418,33 @@ def test_admin_warp_material_store_encrypts_at_rest_and_scopes_managed_profile(m
     assert initial_status.json()["source"] == "client_local"
     assert initial_status.json()["wireguard_config_available"] is False
 
+    material_payload = {
+        "tg_id": int(start_body["account_id"]),
+        "install_id": "install-warp-material",
+        "source": "operator_test",
+        "mode": "proxy_over_warp",
+        "wireguard_config": {
+            "private-key": "material-private-key",
+            "local-address-ipv4": "172.16.9.2",
+            "local-address-ipv6": "2606:4700:110:feed::2",
+            "peer-public-key": "material-peer-public-key",
+            "client-id": "material-client-id",
+        },
+        "account": {
+            "account-id": "material-account-id",
+            "access-token": "material-access-token",
+        },
+    }
     provision = client.put(
         "/api/admin/client/warp/material",
-        headers=_admin_headers(),
-        json={
-            "tg_id": start_body["account_id"],
-            "install_id": "install-warp-material",
-            "source": "operator_test",
-            "mode": "proxy_over_warp",
-            "wireguard_config": {
-                "private-key": "material-private-key",
-                "local-address-ipv4": "172.16.9.2",
-                "local-address-ipv6": "2606:4700:110:feed::2",
-                "peer-public-key": "material-peer-public-key",
-                "client-id": "material-client-id",
-            },
-            "account": {
-                "account-id": "material-account-id",
-                "access-token": "material-access-token",
-            },
-        },
+        headers=_guarded_admin_headers(
+            client,
+            action="warp_material.replace",
+            target_type="warp_material",
+            target_id=str(start_body["account_id"]),
+            payload=material_payload,
+        ),
+        json=material_payload,
     )
     assert provision.status_code == 200, provision.text
     provision_body = provision.json()
@@ -508,7 +544,7 @@ def test_warp_material_hardening_limits_stale_material_and_reports_summary(monke
     admin_headers = _admin_headers()
 
     material_payload = {
-        "tg_id": start_body["account_id"],
+        "tg_id": int(start_body["account_id"]),
         "install_id": "install-warp-hardening",
         "source": "operator_test",
         "mode": "proxy_over_warp",
@@ -526,21 +562,34 @@ def test_warp_material_hardening_limits_stale_material_and_reports_summary(monke
 
     provision = client.put(
         "/api/admin/client/warp/material",
-        headers=admin_headers,
+        headers=_guarded_admin_headers(
+            client,
+            action="warp_material.replace",
+            target_type="warp_material",
+            target_id=str(start_body["account_id"]),
+            payload=material_payload,
+        ),
         json=material_payload,
     )
     assert provision.status_code == 200, provision.text
 
+    second_material_payload = {
+        **material_payload,
+        "wireguard_config": {
+            **material_payload["wireguard_config"],
+            "private-key": "second-private-key",
+        },
+    }
     rate_limited_provision = client.put(
         "/api/admin/client/warp/material",
-        headers=admin_headers,
-        json={
-            **material_payload,
-            "wireguard_config": {
-                **material_payload["wireguard_config"],
-                "private-key": "second-private-key",
-            },
-        },
+        headers=_guarded_admin_headers(
+            client,
+            action="warp_material.replace",
+            target_type="warp_material",
+            target_id=str(start_body["account_id"]),
+            payload=second_material_payload,
+        ),
+        json=second_material_payload,
     )
     assert rate_limited_provision.status_code == 429, rate_limited_provision.text
     assert rate_limited_provision.json()["detail"]["code"] == "warp_material_rate_limited"
@@ -801,7 +850,13 @@ def test_admin_network_rollout_config_roundtrip_if_route_is_exposed(monkeypatch,
 
     put_response = client.put(
         "/api/admin/network-rollout-config",
-        headers=admin_hdrs,
+        headers=_guarded_admin_headers(
+            client,
+            action="network_rollout_config.update",
+            target_type="config",
+            target_id="network-rollout",
+            payload=rollout_payload,
+        ),
         json=rollout_payload,
     )
     assert put_response.status_code == 200, put_response.text

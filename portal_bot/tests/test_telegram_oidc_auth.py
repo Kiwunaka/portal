@@ -35,7 +35,6 @@ def _load_api(monkeypatch, tmp_path: Path):
         "config",
         "db",
         "migrations",
-        "models",
         "web_auth_service",
         "control_panel",
         "nodes_repo",
@@ -48,7 +47,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "gift_cards_service",
         "payment_providers",
     ]:
-        sys.modules.pop(name, None)
+        monkeypatch.delitem(sys.modules, name, raising=False)
 
     api = importlib.import_module("api")
     web_auth_service = importlib.import_module("web_auth_service")

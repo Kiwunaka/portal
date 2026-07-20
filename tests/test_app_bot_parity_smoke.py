@@ -2,10 +2,37 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CLIENT_ROOT = ROOT.parent / "POKROV-app"
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    platform_root = Path(completed.stdout.strip()).resolve().parent
+    client_repo = platform_root.parent / "POKROV-app"
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
+
+
+CLIENT_ROOT = _resolve_client_root(ROOT)
 SCRIPT_PATH = ROOT / "scripts" / "app_bot_parity_smoke.py"
 
 

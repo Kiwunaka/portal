@@ -2,6 +2,7 @@
 import sys
 import time
 import unittest
+from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import urlparse, parse_qs, unquote
@@ -426,7 +427,13 @@ class PortalApiTests(unittest.TestCase):
         api = importlib.import_module("api")
         importlib.reload(api)
 
-        user = SimpleNamespace(tg_id=1002, sub_type="FREE", current_plan_code="trial")
+        user = SimpleNamespace(
+            tg_id=1002,
+            sub_type="FREE",
+            current_plan_code="trial",
+            is_active=True,
+            expiry_at=api._utcnow() + timedelta(days=5),
+        )
         nodes = [
             SimpleNamespace(code="free"),
             SimpleNamespace(code="nl"),

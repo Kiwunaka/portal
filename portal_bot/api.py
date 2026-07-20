@@ -21005,6 +21005,48 @@ async def _execute_admin_guarded_action(
             return_replay_state=True,
         )
     except ActionIntentError as error:
+        if (
+            action == "warp_material.replace"
+            and error.code == "warp_material_rate_limited"
+        ):
+            event_session = SessionLocal()
+            try:
+                user = (
+                    event_session.query(User)
+                    .filter(User.tg_id == int(payload.get("tg_id") or 0))
+                    .first()
+                )
+                if user is not None:
+                    install_id = (
+                        str(
+                            payload.get("install_id")
+                            or getattr(user, "app_install_id", "")
+                            or ""
+                        ).strip()
+                        or None
+                    )
+                    policy = public_warp_policy_for_user(
+                        event_session,
+                        user=user,
+                        install_id=install_id,
+                        rollout_config=load_network_rollout_config(session=event_session),
+                    )
+                    record_warp_event(
+                        event_session,
+                        user=user,
+                        install_id=install_id,
+                        policy=policy,
+                        event_name="material_provision_rate_limited",
+                        state="rate_limited",
+                        reason_code="provision_limit",
+                        consented=False,
+                        meta={"source": "admin", "actor_tg_id": int(actor_tg_id)},
+                    )
+                    event_session.commit()
+            except Exception:
+                event_session.rollback()
+            finally:
+                event_session.close()
         _raise_action_intent_http(error)
         raise AssertionError("unreachable")
     result, replayed = execution_result

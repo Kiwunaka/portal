@@ -11,7 +11,7 @@ DEFAULT_INVENTORY = REPO_ROOT / "docs" / "developer" / "pokrov-code-function-inv
 DEFAULT_SYMBOL_COVERAGE = REPO_ROOT / "docs" / "developer" / "pokrov-symbol-coverage-audit.csv"
 DEFAULT_OUT = REPO_ROOT / "docs" / "developer" / "pokrov-private-helper-coverage.csv"
 DEFAULT_MARKDOWN_OUT = REPO_ROOT / "docs" / "developer" / "pokrov-private-helper-coverage.md"
-TODAY = "2026-07-14"
+TODAY = "2026-07-20"
 
 FIELDS = [
     "symbol_id",

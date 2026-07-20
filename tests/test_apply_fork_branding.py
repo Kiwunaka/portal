@@ -15,6 +15,10 @@ def _load_module():
         / "scripts"
         / "apply_fork_branding.py"
     )
+    if not module_path.is_file():
+        raise unittest.SkipTest(
+            "retired external/client-fork archive is not present in this checkout"
+        )
     spec = importlib.util.spec_from_file_location("apply_fork_branding", module_path)
     module = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None

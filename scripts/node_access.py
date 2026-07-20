@@ -8,11 +8,18 @@ import socket
 import logging
 from pathlib import Path
 
-import paramiko
-from ssh_host_keys import configure_ssh_host_key_policy
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from puttykeys import ppkraw_to_openssh
+
+try:
+    import paramiko
+except ModuleNotFoundError:
+    paramiko = None  # type: ignore[assignment]
+
+try:
+    from puttykeys import ppkraw_to_openssh
+except ModuleNotFoundError:
+    ppkraw_to_openssh = None
 
 from node_passwords import parse_password_candidates, parse_passwords
 
@@ -80,6 +87,8 @@ def _private_key_candidates(code: str, key_dir: Path) -> list[Path]:
 
 
 def _load_key_from_text(text: str) -> paramiko.PKey | None:
+    if paramiko is None:
+        return None
     for key_cls in (paramiko.Ed25519Key, paramiko.RSAKey, paramiko.ECDSAKey):
         try:
             return key_cls.from_private_key(io.StringIO(text))
@@ -103,6 +112,8 @@ def _mpint_to_int(value: bytes) -> int:
 
 
 def _load_putty_rsa_v2(raw: str) -> paramiko.PKey | None:
+    if paramiko is None:
+        return None
     lines = [line.strip() for line in str(raw or "").strip().splitlines()]
     if not lines or not lines[0].startswith("PuTTY-User-Key-File-2: ssh-rsa"):
         return None
@@ -164,12 +175,13 @@ def _load_putty_rsa_v2(raw: str) -> paramiko.PKey | None:
 
 
 def _load_putty_key_from_text(raw: str) -> paramiko.PKey | None:
-    try:
-        key = _load_key_from_text(ppkraw_to_openssh(raw))
-        if key:
-            return key
-    except Exception:
-        pass
+    if ppkraw_to_openssh is not None:
+        try:
+            key = _load_key_from_text(ppkraw_to_openssh(raw))
+            if key:
+                return key
+        except Exception:
+            pass
     try:
         return _load_putty_rsa_v2(raw)
     except Exception:
@@ -212,6 +224,11 @@ def connect_node(
     passwords_path: Path | None = None,
     key_dir: Path | None = None,
 ) -> tuple[paramiko.SSHClient, str]:
+    if paramiko is None:
+        raise RuntimeError("Paramiko is required for SSH operations")
+
+    from ssh_host_keys import configure_ssh_host_key_policy
+
     passwords_path = passwords_path or DEFAULT_PASSWORDS
     code_key = str(code or "").lower().strip()
     password_values: list[str] = []

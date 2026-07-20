@@ -17,8 +17,8 @@ def test_init_db_does_not_emit_sqlite_datetime_adapter_warning(monkeypatch, tmp_
     monkeypatch.setenv("BOT_TOKEN", "portal-test-token")
     monkeypatch.setenv("ADMIN_ID", "1")
 
-    for name in ["config", "db", "migrations", "models"]:
-        sys.modules.pop(name, None)
+    for name in ["config", "db", "migrations"]:
+        monkeypatch.delitem(sys.modules, name, raising=False)
 
     importlib.import_module("config")
     db = importlib.import_module("db")

@@ -1,4 +1,5 @@
 import importlib
+import hashlib
 import os
 import sys
 import tempfile
@@ -130,6 +131,34 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
     def user_headers(self) -> dict[str, str]:
         return {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
 
+    def _prepare_admin_action(
+        self,
+        *,
+        action: str,
+        target_type: str,
+        target_id: str,
+        payload: dict[str, object],
+    ) -> dict[str, str]:
+        prepared = self.client.post(
+            "/api/admin/action-intents",
+            headers=self.admin_headers,
+            json={
+                "action": action,
+                "target": {"type": target_type, "id": target_id},
+                "payload": payload,
+            },
+        )
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        confirmation = str(prepared.json()["confirmation_challenge"])
+        return {
+            **self.admin_headers,
+            "X-Admin-Intent-Id": str(prepared.json()["intent_id"]),
+            "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+            "X-Admin-Confirmation-SHA256": hashlib.sha256(
+                confirmation.encode("utf-8")
+            ).hexdigest(),
+        }
+
     def test_public_catalog_and_funnel_gap_routes(self) -> None:
         catalog = self.client.get("/api/public/catalog")
         self.assertEqual(catalog.status_code, 200, catalog.text)
@@ -175,6 +204,18 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
 
     def test_admin_broadcast_and_referral_gap_routes(self) -> None:
         sent_to: list[int] = []
+        broadcast_payload = {
+            "text": "POKROV test broadcast",
+            "segment": "custom",
+            "tg_ids": [1001],
+            "limit": 5,
+        }
+        broadcast_headers = self._prepare_admin_action(
+            action="broadcast.send",
+            target_type="broadcast",
+            target_id="broadcast",
+            payload=broadcast_payload,
+        )
 
         async def fake_send_message(tg_id: int, _text: str) -> bool:
             sent_to.append(int(tg_id))
@@ -183,8 +224,8 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         with patch.object(self.api, "_telegram_send_message", new=fake_send_message):
             broadcast = self.client.post(
                 "/api/admin/broadcast",
-                headers=self.admin_headers,
-                json={"text": "POKROV test broadcast", "segment": "custom", "tg_ids": [1001], "limit": 5},
+                headers=broadcast_headers,
+                json=broadcast_payload,
             )
         self.assertEqual(broadcast.status_code, 200, broadcast.text)
         self.assertEqual(broadcast.json().get("sent"), 1)
@@ -200,7 +241,7 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
                     referrer_tg_id=9999,
                     referred_tg_id=1001,
                     order_id="gap-order-1",
-                    ready_at=self.api._utcnow() + timedelta(days=1),
+                    ready_at=self.api._utcnow() - timedelta(minutes=1),
                     status="pending",
                     meta="{}",
                 )
@@ -213,34 +254,43 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         self.assertEqual(pending.status_code, 200, pending.text)
         self.assertEqual(pending.json()["rows"][0]["order_id"], "gap-order-1")
 
-        with patch.object(
-            self.api,
-            "_process_referral_bonus_queue",
-            return_value={"processed": 0, "skipped": 1, "failed": 0},
-        ):
-            processed = self.client.post(
-                "/api/admin/referrals/process",
-                headers=self.admin_headers,
-                json={"limit": 10, "force_without_activity": False},
-            )
+        referral_payload = {"limit": 10, "force_without_activity": False}
+        referral_headers = self._prepare_admin_action(
+            action="referral.process",
+            target_type="referral_queue",
+            target_id="ready",
+            payload=referral_payload,
+        )
+        processed = self.client.post(
+            "/api/admin/referrals/process",
+            headers=referral_headers,
+            json=referral_payload,
+        )
         self.assertEqual(processed.status_code, 200, processed.text)
         self.assertTrue(processed.json().get("ok"))
-        self.assertEqual(processed.json().get("skipped"), 1)
+        self.assertEqual(processed.json().get("processed"), 1)
+        self.assertEqual(processed.json().get("waiting"), 1)
 
     def test_admin_campaign_crud_gap_routes(self) -> None:
+        create_payload = self.api.AdminCampaignCreateIn(
+            name="Gap campaign",
+            campaign_type="promo",
+            target_value="GAP10",
+            segment="all_active",
+            max_activations=5,
+            auto_disable=True,
+            is_active=True,
+            metadata={"source": "test"},
+        ).model_dump()
         created = self.client.post(
             "/api/admin/campaigns",
-            headers=self.admin_headers,
-            json={
-                "name": "Gap campaign",
-                "campaign_type": "promo",
-                "target_value": "GAP10",
-                "segment": "all_active",
-                "max_activations": 5,
-                "auto_disable": True,
-                "is_active": True,
-                "metadata": {"source": "test"},
-            },
+            headers=self._prepare_admin_action(
+                action="campaign.create",
+                target_type="campaign",
+                target_id="new",
+                payload=create_payload,
+            ),
+            json=create_payload,
         )
         self.assertEqual(created.status_code, 200, created.text)
         campaign_id = int(created.json()["id"])
@@ -249,14 +299,28 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         self.assertEqual(listed.status_code, 200, listed.text)
         self.assertTrue(any(int(row["id"]) == campaign_id for row in listed.json()["campaigns"]))
 
+        update_payload = {"name": "Gap campaign patched", "is_active": False}
         patched = self.client.patch(
             f"/api/admin/campaigns/{campaign_id}",
-            headers=self.admin_headers,
-            json={"name": "Gap campaign patched", "is_active": False},
+            headers=self._prepare_admin_action(
+                action="campaign.update",
+                target_type="campaign",
+                target_id=str(campaign_id),
+                payload=update_payload,
+            ),
+            json=update_payload,
         )
         self.assertEqual(patched.status_code, 200, patched.text)
 
-        deleted = self.client.delete(f"/api/admin/campaigns/{campaign_id}", headers=self.admin_headers)
+        deleted = self.client.delete(
+            f"/api/admin/campaigns/{campaign_id}",
+            headers=self._prepare_admin_action(
+                action="campaign.delete",
+                target_type="campaign",
+                target_id=str(campaign_id),
+                payload={},
+            ),
+        )
         self.assertEqual(deleted.status_code, 200, deleted.text)
         self.assertTrue(deleted.json().get("ok"))
 
@@ -288,10 +352,16 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
             self.assertEqual(runtime.status_code, 200, runtime.text)
             self.assertEqual(runtime.json()["nodes"][0]["node_code"], "nl-free")
 
+            sync_payload = {"tg_id": 1001, "segment": "active", "limit": 10}
             synced = self.client.post(
                 "/api/admin/nodes/sync",
-                headers=self.admin_headers,
-                json={"tg_id": 1001, "segment": "active", "limit": 10},
+                headers=self._prepare_admin_action(
+                    action="node.sync_global",
+                    target_type="node_sync",
+                    target_id="global",
+                    payload=sync_payload,
+                ),
+                json=sync_payload,
             )
         self.assertEqual(synced.status_code, 200, synced.text)
         self.assertEqual(synced.json().get("synced"), 1)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import subprocess
 import sys
@@ -14,6 +15,9 @@ from sqlalchemy.orm import sessionmaker
 
 GIB = 1024**3
 NOW = datetime(2026, 7, 13, 12, 0, 0)
+PORTAL_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
+if str(PORTAL_DIR) not in sys.path:
+    sys.path.insert(0, str(PORTAL_DIR))
 
 
 def _node(
@@ -48,6 +52,23 @@ def session():
     finally:
         db.close()
         engine.dispose()
+
+
+@pytest.fixture()
+def api_module(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'api.db').as_posix()}")
+    monkeypatch.setenv("BOT_TOKEN", "test-token")
+    monkeypatch.setenv("ADMIN_ID", "9999")
+    monkeypatch.setenv("WEBAPP_SESSION_SECRET", "test-session-secret")
+    for module_name in ("config", "db", "api"):
+        monkeypatch.delitem(sys.modules, module_name, raising=False)
+    module = importlib.import_module("api")
+    try:
+        yield module
+    finally:
+        import db
+
+        db.engine.dispose()
 
 
 def _free_user(*, tg_id: int, plan_code: str = "free_monthly"):
@@ -179,20 +200,18 @@ def test_threshold_never_queues_for_paid_or_premium_trial(session, sub_type: str
     assert session.query(NodeProvisioningJob).count() == 0
 
 
-def test_access_policy_uses_persisted_profile_not_usage_bytes() -> None:
-    from api import _build_access_policy
-
+def test_access_policy_uses_persisted_profile_not_usage_bytes(api_module) -> None:
     user = _free_user(tg_id=1301)
     user.free_profile_state = "soft_transition_pending"
     user.free_profile_active_role = "free_standard"
-    pending = _build_access_policy(user=user, used_bytes=8 * GIB, now=NOW)
+    pending = api_module._build_access_policy(user=user, used_bytes=8 * GIB, now=NOW)
     assert pending["access_state"] == "free_monthly"
     assert pending["soft_mode_active"] is False
     assert pending["free_profile_state"] == "soft_transition_pending"
 
     user.free_profile_state = "soft_active"
     user.free_profile_active_role = "free_soft"
-    active = _build_access_policy(user=user, used_bytes=1, now=NOW)
+    active = api_module._build_access_policy(user=user, used_bytes=1, now=NOW)
     assert active["access_state"] == "free_soft_mode"
     assert active["soft_mode_active"] is True
     assert active["free_profile_state"] == "soft_active"
@@ -285,15 +304,15 @@ def test_free_cycle_is_exactly_thirty_days_not_environment_overridable() -> None
     assert result.stdout.strip() == "30 30"
 
 
-def test_free_plan_total_uses_exact_quota_not_legacy_environment(monkeypatch) -> None:
-    import api
-
+def test_free_plan_total_uses_exact_quota_not_legacy_environment(
+    monkeypatch, api_module
+) -> None:
     user = _free_user(tg_id=1304)
-    monkeypatch.setattr(api, "FREE_TOTAL_GB", 99)
-    monkeypatch.setattr(api, "FREE_LIMIT_IP", 9)
+    monkeypatch.setattr(api_module, "FREE_TOTAL_GB", 99)
+    monkeypatch.setattr(api_module, "FREE_LIMIT_IP", 9)
 
-    assert api._plan_total_gb(user) == 5
-    assert api._plan_device_limit(user) == 1
+    assert api_module._plan_total_gb(user) == 5
+    assert api_module._plan_device_limit(user) == 1
 
 
 def test_soft_speed_authority_is_exactly_two_mbps() -> None:
@@ -358,23 +377,19 @@ def test_premium_pool_key_never_exposes_operator_lab(monkeypatch) -> None:
     assert [node.code for node in selected] == ["nl-paid"]
 
 
-def test_api_paid_pool_never_exposes_operator_lab() -> None:
-    import api
-
+def test_api_paid_pool_never_exposes_operator_lab(api_module) -> None:
     nodes = [
         _node("nl-paid", "paid", 51),
         _node("nl-lab", "operator_lab", 52),
     ]
     user = SimpleNamespace(sub_type="PAID", current_plan_code="paid_30d", is_active=True)
 
-    assert api._node_allowed_for_plan(user, nodes[0]) is True
-    assert api._node_allowed_for_plan(user, nodes[1]) is False
-    assert [node.code for node in api._fallback_nodes_for_user(user, nodes)] == ["nl-paid"]
+    assert api_module._node_allowed_for_plan(user, nodes[0]) is True
+    assert api_module._node_allowed_for_plan(user, nodes[1]) is False
+    assert [node.code for node in api_module._fallback_nodes_for_user(user, nodes)] == ["nl-paid"]
 
 
-def test_api_soft_active_user_only_receives_soft_pool() -> None:
-    import api
-
+def test_api_soft_active_user_only_receives_soft_pool(api_module) -> None:
     nodes = [
         _node("nl-free-standard", "free_standard", 41),
         _node("nl-free-soft", "free_soft", 42),
@@ -383,4 +398,6 @@ def test_api_soft_active_user_only_receives_soft_pool() -> None:
     user.free_profile_state = "soft_active"
     user.free_profile_active_role = "free_soft"
 
-    assert [node.code for node in api._fallback_nodes_for_user(user, nodes)] == ["nl-free-soft"]
+    assert [node.code for node in api_module._fallback_nodes_for_user(user, nodes)] == [
+        "nl-free-soft"
+    ]

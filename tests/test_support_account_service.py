@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+
+
+PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
+if str(PORTAL_BOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PORTAL_BOT_DIR))
+
 
 from models import (
     Account,
@@ -20,6 +27,11 @@ from models import (
     SupportTicket,
     SupportTicketMessage,
     User,
+)
+from support_account_service import (
+    SUPPORT_ACCOUNT_OWNERSHIP_BACKFILL_KEY,
+    backfill_support_account_ownership,
+    run_support_account_ownership_backfill_once,
 )
 
 
@@ -66,8 +78,6 @@ def _attachment(legacy_id: int, *, name: str = "evidence.png") -> SupportAttachm
 
 
 def test_backfill_resolves_direct_linked_enabled_identity_and_merged_accounts(tmp_path) -> None:
-    from support_account_service import backfill_support_account_ownership
-
     _engine, Session = _session_factory(tmp_path)
     with Session() as session:
         session.add_all(
@@ -121,8 +131,6 @@ def test_backfill_resolves_direct_linked_enabled_identity_and_merged_accounts(tm
 
 
 def test_backfill_keeps_unmatched_and_ambiguous_rows_null_with_safe_reviews(tmp_path) -> None:
-    from support_account_service import backfill_support_account_ownership
-
     _engine, Session = _session_factory(tmp_path)
     with Session() as session:
         session.add_all(
@@ -162,8 +170,6 @@ def test_backfill_keeps_unmatched_and_ambiguous_rows_null_with_safe_reviews(tmp_
 
 
 def test_backfill_review_is_idempotent_and_direct_function_repairs_later_match(tmp_path) -> None:
-    from support_account_service import backfill_support_account_ownership
-
     _engine, Session = _session_factory(tmp_path)
     with Session() as session:
         ticket = _ticket(601)
@@ -185,8 +191,6 @@ def test_backfill_review_is_idempotent_and_direct_function_repairs_later_match(t
 
 
 def test_unchanged_idempotent_review_preserves_updated_at(tmp_path) -> None:
-    from support_account_service import backfill_support_account_ownership
-
     _engine, Session = _session_factory(tmp_path)
     with Session() as session:
         session.add(_ticket(602))
@@ -206,11 +210,6 @@ def test_unchanged_idempotent_review_preserves_updated_at(tmp_path) -> None:
 
 def test_startup_marker_is_distinct_gated_and_direct_repair_remains_callable(tmp_path) -> None:
     from account_foundation_service import ACCOUNT_FOUNDATION_BACKFILL_KEY
-    from support_account_service import (
-        SUPPORT_ACCOUNT_OWNERSHIP_BACKFILL_KEY,
-        backfill_support_account_ownership,
-        run_support_account_ownership_backfill_once,
-    )
 
     _engine, Session = _session_factory(tmp_path)
     with Session() as session:
@@ -237,11 +236,6 @@ def test_startup_marker_is_distinct_gated_and_direct_repair_remains_callable(tmp
 
 
 def test_startup_marker_ownership_and_reviews_rollback_together_on_commit_failure(tmp_path) -> None:
-    from support_account_service import (
-        SUPPORT_ACCOUNT_OWNERSHIP_BACKFILL_KEY,
-        run_support_account_ownership_backfill_once,
-    )
-
     _engine, Session = _session_factory(tmp_path)
     with Session() as session:
         session.add_all([_account("account-801"), User(tg_id=801, account_id="account-801"), _ticket(801), _ticket(802)])

@@ -3,13 +3,40 @@ from __future__ import annotations
 import csv
 import importlib.util
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    platform_root = Path(completed.stdout.strip()).resolve().parent
+    client_repo = platform_root.parent / "POKROV-app"
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
+
+
+CLIENT_ROOT = _resolve_client_root(REPO_ROOT)
 TRACKER = REPO_ROOT / "docs" / "developer" / "pokrov-canonical-feature-tracker.csv"
 TRACKER_MD = REPO_ROOT / "docs" / "developer" / "pokrov-canonical-feature-tracker.md"
 STORY_AUDIT = REPO_ROOT / "docs" / "developer" / "pokrov-story-test-evidence-audit.csv"
@@ -337,7 +364,7 @@ def _resolve_source_ref(row: dict[str, str], ref: str) -> Path | None:
     if ref.startswith(("portal_bot/", "scripts/", "shared/", "webapp/", "marketing/", "copy/", "tests/", "docs/")):
         return REPO_ROOT / ref
     if ref.startswith("POKROV-app/"):
-        return REPO_ROOT.parent / ref
+        return CLIENT_ROOT / ref.removeprefix("POKROV-app/")
     if row.get("subsystem") == "POKROV client app" and ref.startswith(("packages/", "apps/", "lib/")):
         return CLIENT_ROOT / ref
     return None
@@ -1540,8 +1567,8 @@ def test_open_questions_ledger_tracks_owner_blockers() -> None:
         assert "does not close" in current_state
     assert "are `0`" not in guide_current_state
     assert "The current matrix is empty" not in coverage_policy_guide
-    assert "Last updated: 2026-07-14" in coverage_policy_guide
-    assert q001_row["updated_at"] == "2026-07-14"
+    assert "Last updated: 2026-07-20" in coverage_policy_guide
+    assert q001_row["updated_at"] == "2026-07-20"
     for question_id in required_question_ids:
         assert question_id in tracker_body
         assert question_id in questions_summary
