@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 
 PORTAL_BOT_DIR = Path(__file__).resolve().parents[1]
 if str(PORTAL_BOT_DIR) not in sys.path:
@@ -44,7 +46,8 @@ def _load_api_and_service(monkeypatch, tmp_path: Path):
         "public_urls",
         "shared_surface_facts",
     ]:
-        sys.modules.pop(name, None)
+        monkeypatch.setitem(sys.modules, name, None)
+        monkeypatch.delitem(sys.modules, name)
 
     api = importlib.import_module("api")
     service = importlib.import_module("app_first_service")
@@ -79,6 +82,27 @@ def _rollout_client_policy(
         },
         "support_recovery_order": ["app", "web", "telegram"],
     }
+
+
+def test_load_api_and_service_restores_collected_core_modules_after_context(tmp_path):
+    module_names = ("models", "app_first_service")
+    originals = {name: importlib.import_module(name) for name in module_names}
+
+    with pytest.MonkeyPatch.context() as isolated:
+        _load_api_and_service(isolated, tmp_path)
+
+    assert {name: sys.modules.get(name) for name in module_names} == originals
+
+
+def test_load_api_and_service_removes_core_module_absent_before_context(tmp_path):
+    with pytest.MonkeyPatch.context() as outer:
+        outer.delitem(sys.modules, "app_first_service", raising=False)
+        assert "app_first_service" not in sys.modules
+
+        with pytest.MonkeyPatch.context() as isolated:
+            _load_api_and_service(isolated, tmp_path)
+
+        assert "app_first_service" not in sys.modules
 
 
 def test_upsert_app_trial_user_uses_canonical_trial_days(monkeypatch, tmp_path):

@@ -41,6 +41,7 @@ def _load_api(monkeypatch, tmp_path: Path):
 
     for name in [
         "api",
+        "app_first_service",
         "account_foundation_service",
         "antiabuse_privacy_service",
         "auth_session_service",
@@ -62,7 +63,8 @@ def _load_api(monkeypatch, tmp_path: Path):
         "gift_cards_service",
         "payment_providers",
     ]:
-        sys.modules.pop(name, None)
+        monkeypatch.setitem(sys.modules, name, None)
+        monkeypatch.delitem(sys.modules, name)
 
     api = importlib.import_module("api")
     monkeypatch.setattr(api, "ControlPanel", _FakePanel)
@@ -71,6 +73,38 @@ def _load_api(monkeypatch, tmp_path: Path):
 
 def _install_fake_panel(monkeypatch, api):
     monkeypatch.setattr(api, "ControlPanel", _FakePanel)
+
+
+def test_load_api_restores_collected_core_modules_after_monkeypatch_context(tmp_path):
+    module_names = ("models", "economy_service", "account_foundation_service")
+    originals = {name: importlib.import_module(name) for name in module_names}
+
+    with pytest.MonkeyPatch.context() as isolated:
+        _load_api(isolated, tmp_path)
+
+    assert {name: sys.modules.get(name) for name in module_names} == originals
+
+
+def test_load_api_removes_core_module_that_was_absent_before_context(tmp_path):
+    with pytest.MonkeyPatch.context() as outer:
+        outer.delitem(sys.modules, "economy_service", raising=False)
+        assert "economy_service" not in sys.modules
+
+        with pytest.MonkeyPatch.context() as isolated:
+            _load_api(isolated, tmp_path)
+
+        assert "economy_service" not in sys.modules
+
+
+def test_load_api_removes_transitive_service_that_was_absent_before_context(tmp_path):
+    with pytest.MonkeyPatch.context() as outer:
+        outer.delitem(sys.modules, "app_first_service", raising=False)
+        assert "app_first_service" not in sys.modules
+
+        with pytest.MonkeyPatch.context() as isolated:
+            _load_api(isolated, tmp_path)
+
+        assert "app_first_service" not in sys.modules
 
 
 def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_path):

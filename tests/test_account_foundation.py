@@ -72,6 +72,18 @@ def _record_projection_lock_events(session, monkeypatch) -> list[tuple[object, .
     return events
 
 
+def test_account_foundation_collected_modules_match_runtime_modules() -> None:
+    import economy_service as economy_module
+    import models as models_module
+
+    assert models_module.Account is Account
+    assert models_module.User is User
+    assert models_module.EntitlementGrant is EntitlementGrant
+    assert sys.modules["account_foundation_service"] is account_foundation_module
+    assert economy_module.User is User
+    assert economy_module.EntitlementGrant is EntitlementGrant
+
+
 def _user(
     tg_id: int,
     *,
