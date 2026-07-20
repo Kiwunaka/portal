@@ -694,6 +694,117 @@ def _ensure_free_profile_schema_postgres(conn) -> None:
     )
 
 
+_REWARD_JOB_COLUMNS = (
+    ("account_id", "VARCHAR(36)"),
+    ("entitlement_grant_id", "VARCHAR(36)"),
+)
+
+
+def _ensure_reward_schema_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS reward_account_states (
+              account_id VARCHAR(36) PRIMARY KEY,
+              wheel_last_spin_at DATETIME,
+              wheel_last_grant_id VARCHAR(36),
+              calendar_last_check_date DATE,
+              calendar_cycle_started_on DATE,
+              calendar_cycle_day INTEGER DEFAULT 0 NOT NULL,
+              calendar_first_checkin_at DATETIME,
+              calendar_streak_7_unlocked_at DATETIME,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL,
+              CONSTRAINT ck_reward_account_state_cycle_day
+                CHECK (
+                  calendar_cycle_day IS NULL
+                  OR (calendar_cycle_day >= 0 AND calendar_cycle_day <= 28)
+                )
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_reward_account_states_wheel_last_grant_id "
+            "ON reward_account_states(wheel_last_grant_id);"
+        )
+    )
+
+    if _sqlite_table_exists(conn, "node_provisioning_jobs"):
+        for column, ddl in _REWARD_JOB_COLUMNS:
+            if not _sqlite_column_exists(conn, "node_provisioning_jobs", column):
+                conn.execute(text(f"ALTER TABLE node_provisioning_jobs ADD COLUMN {column} {ddl};"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_account_id "
+                "ON node_provisioning_jobs(account_id);"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_entitlement_grant_id "
+                "ON node_provisioning_jobs(entitlement_grant_id);"
+            )
+        )
+
+
+def _ensure_reward_schema_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS reward_account_states (
+              account_id VARCHAR(36) PRIMARY KEY,
+              wheel_last_spin_at TIMESTAMP,
+              wheel_last_grant_id VARCHAR(36),
+              calendar_last_check_date DATE,
+              calendar_cycle_started_on DATE,
+              calendar_cycle_day INTEGER DEFAULT 0 NOT NULL,
+              calendar_first_checkin_at TIMESTAMP,
+              calendar_streak_7_unlocked_at TIMESTAMP,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL,
+              CONSTRAINT ck_reward_account_state_cycle_day
+                CHECK (
+                  calendar_cycle_day IS NULL
+                  OR (calendar_cycle_day >= 0 AND calendar_cycle_day <= 28)
+                )
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "ALTER TABLE node_provisioning_jobs "
+            "ADD COLUMN IF NOT EXISTS account_id VARCHAR(36);"
+        )
+    )
+    conn.execute(
+        text(
+            "ALTER TABLE node_provisioning_jobs "
+            "ADD COLUMN IF NOT EXISTS entitlement_grant_id VARCHAR(36);"
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_reward_account_states_wheel_last_grant_id "
+            "ON reward_account_states(wheel_last_grant_id);"
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_account_id "
+            "ON node_provisioning_jobs(account_id);"
+        )
+    )
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_entitlement_grant_id "
+            "ON node_provisioning_jobs(entitlement_grant_id);"
+        )
+    )
+
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SHARED_DIR = _REPO_ROOT / "shared"
 
@@ -1116,6 +1227,8 @@ def _ensure_capacity_domain_sqlite(conn) -> None:
             """
             CREATE TABLE IF NOT EXISTS node_provisioning_jobs (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
+              account_id VARCHAR(36),
+              entitlement_grant_id VARCHAR(36),
               tg_id BIGINT,
               key_id INTEGER,
               node_code VARCHAR(32),
@@ -1310,7 +1423,7 @@ def _ensure_capacity_domain_postgres(conn) -> None:
     conn.execute(text("CREATE TABLE IF NOT EXISTS subscription_fetch_events (id SERIAL PRIMARY KEY, tg_id BIGINT NOT NULL, token_fp VARCHAR(32) NOT NULL, lookup_mode VARCHAR(32) NOT NULL, client_format VARCHAR(32) NOT NULL, user_agent_hash VARCHAR(64), request_host VARCHAR(255), selected_nodes_json TEXT, excluded_nodes_json TEXT, response_status INTEGER NOT NULL DEFAULT 200, created_at TIMESTAMP NOT NULL);"))
     conn.execute(text("CREATE TABLE IF NOT EXISTS rendered_subscription_snapshots (id SERIAL PRIMARY KEY, fetch_event_id INTEGER, tg_id BIGINT NOT NULL, profile_revision VARCHAR(128), client_format VARCHAR(32) NOT NULL, node_order_json TEXT NOT NULL, excluded_nodes_json TEXT, content_sha256 VARCHAR(64) NOT NULL, created_at TIMESTAMP NOT NULL);"))
     conn.execute(text("CREATE TABLE IF NOT EXISTS node_pool_membership (id SERIAL PRIMARY KEY, node_code VARCHAR(32) NOT NULL, pool_code VARCHAR(32) NOT NULL, is_enabled BOOLEAN NOT NULL DEFAULT TRUE, source VARCHAR(32) NOT NULL DEFAULT 'migration', created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);"))
-    conn.execute(text("CREATE TABLE IF NOT EXISTS node_provisioning_jobs (id SERIAL PRIMARY KEY, tg_id BIGINT, key_id INTEGER, node_code VARCHAR(32), job_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL DEFAULT 'queued', desired_state_json TEXT, result_json TEXT, attempts INTEGER NOT NULL DEFAULT 0, next_run_at TIMESTAMP, locked_at TIMESTAMP, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);"))
+    conn.execute(text("CREATE TABLE IF NOT EXISTS node_provisioning_jobs (id SERIAL PRIMARY KEY, account_id VARCHAR(36), entitlement_grant_id VARCHAR(36), tg_id BIGINT, key_id INTEGER, node_code VARCHAR(32), job_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL DEFAULT 'queued', desired_state_json TEXT, result_json TEXT, attempts INTEGER NOT NULL DEFAULT 0, next_run_at TIMESTAMP, locked_at TIMESTAMP, created_at TIMESTAMP NOT NULL, updated_at TIMESTAMP NOT NULL);"))
     for sql in [
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_access_keys_tg_uuid ON access_keys(tg_id, key_uuid);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_access_keys_node_email ON access_keys(node_code, panel_email);",
@@ -3407,6 +3520,7 @@ def run_migrations(engine: Engine) -> None:
 
         # Seed default retention templates for admin editing (idempotent).
         _ensure_free_profile_schema_sqlite(conn)
+        _ensure_reward_schema_sqlite(conn)
         _seed_retention_templates(conn, dialect="sqlite")
         _seed_plan_catalog(conn, dialect="sqlite")
 
@@ -4071,5 +4185,6 @@ def _run_postgres_migrations(engine: Engine) -> None:
 
         # Seed default retention templates for admin editing (idempotent).
         _ensure_free_profile_schema_postgres(conn)
+        _ensure_reward_schema_postgres(conn)
         _seed_retention_templates(conn, dialect="postgresql")
         _seed_plan_catalog(conn, dialect="postgresql")

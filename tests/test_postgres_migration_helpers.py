@@ -529,6 +529,26 @@ class PostgresMigrationHelperTests(unittest.TestCase):
         for value in ("0.70", "0.82", "0.92", "75", "90", "180", "2", "5", "100"):
             self.assertIn(value, backfill_sql)
 
+    def test_postgres_migration_run_includes_additive_reward_schema(self) -> None:
+        engine = _FakeEngine()
+
+        self.migrations._run_postgres_migrations(engine)
+
+        sql = "\n".join(statement for statement, _params in engine.conn.executed)
+        self.assertIn("CREATE TABLE IF NOT EXISTS reward_account_states", sql)
+        self.assertIn("CONSTRAINT ck_reward_account_state_cycle_day", sql)
+        self.assertIn(
+            "ALTER TABLE node_provisioning_jobs ADD COLUMN IF NOT EXISTS account_id VARCHAR(36)",
+            sql,
+        )
+        self.assertIn(
+            "ALTER TABLE node_provisioning_jobs ADD COLUMN IF NOT EXISTS entitlement_grant_id VARCHAR(36)",
+            sql,
+        )
+        self.assertIn("ix_node_provisioning_jobs_account_id", sql)
+        self.assertIn("ix_node_provisioning_jobs_entitlement_grant_id", sql)
+        self.assertIn("ix_reward_account_states_wheel_last_grant_id", sql)
+
     def test_node_pool_membership_backfill_sets_enabled_default(self) -> None:
         conn = _FakeConn()
 

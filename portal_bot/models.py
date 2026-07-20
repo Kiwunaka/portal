@@ -794,10 +794,34 @@ class NodePoolMembership(Base):
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class RewardAccountState(Base):
+    __tablename__ = "reward_account_states"
+    __table_args__ = (
+        CheckConstraint(
+            "calendar_cycle_day IS NULL OR "
+            "(calendar_cycle_day >= 0 AND calendar_cycle_day <= 28)",
+            name="ck_reward_account_state_cycle_day",
+        ),
+    )
+
+    account_id = Column(String(36), primary_key=True)
+    wheel_last_spin_at = Column(DateTime, nullable=True)
+    wheel_last_grant_id = Column(String(36), index=True, nullable=True)
+    calendar_last_check_date = Column(Date, nullable=True)
+    calendar_cycle_started_on = Column(Date, nullable=True)
+    calendar_cycle_day = Column(Integer, default=0, nullable=False)
+    calendar_first_checkin_at = Column(DateTime, nullable=True)
+    calendar_streak_7_unlocked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class NodeProvisioningJob(Base):
     __tablename__ = "node_provisioning_jobs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(String(36), index=True, nullable=True)
+    entitlement_grant_id = Column(String(36), index=True, nullable=True)
     tg_id = Column(BigInteger, index=True, nullable=True)
     key_id = Column(Integer, index=True, nullable=True)
     node_code = Column(String(32), index=True, nullable=True)

@@ -25,7 +25,7 @@ USER_COLUMNS = {
     "free_profile_observed_at",
     "free_profile_observation_source",
 }
-JOB_COLUMNS = {
+FREE_PROFILE_JOB_COLUMNS = {
     "idempotency_key",
     "lock_token",
     "last_error_code",
@@ -33,10 +33,12 @@ JOB_COLUMNS = {
     "completed_at",
     "manual_review_at",
 }
+REWARD_JOB_COLUMNS = {"account_id", "entitlement_grant_id"}
+JOB_COLUMNS = FREE_PROFILE_JOB_COLUMNS | REWARD_JOB_COLUMNS
 
 
 def test_sqlite_free_profile_migration_is_repeatable_and_preserves_rows(tmp_path: Path) -> None:
-    from migrations import _ensure_free_profile_schema_sqlite
+    from migrations import _ensure_free_profile_schema_sqlite, _ensure_reward_schema_sqlite
 
     engine = create_engine(f"sqlite:///{(tmp_path / 'legacy-free-profile.db').as_posix()}")
     with engine.begin() as connection:
@@ -65,7 +67,9 @@ def test_sqlite_free_profile_migration_is_repeatable_and_preserves_rows(tmp_path
         )
 
         _ensure_free_profile_schema_sqlite(connection)
+        _ensure_reward_schema_sqlite(connection)
         _ensure_free_profile_schema_sqlite(connection)
+        _ensure_reward_schema_sqlite(connection)
 
         user_columns = {str(row[1]) for row in connection.execute(text("PRAGMA table_info(users)"))}
         node_columns = {str(row[1]) for row in connection.execute(text("PRAGMA table_info(nodes)"))}
@@ -103,6 +107,8 @@ def test_sqlite_free_profile_migration_is_repeatable_and_preserves_rows(tmp_path
         }
         assert indexes["ix_node_provisioning_jobs_idempotency_key"] is True
         assert "ix_node_provisioning_jobs_lock_token" in indexes
+        assert "ix_node_provisioning_jobs_account_id" in indexes
+        assert "ix_node_provisioning_jobs_entitlement_grant_id" in indexes
         user_indexes = {
             str(row[1]) for row in connection.execute(text("PRAGMA index_list(users)"))
         }
@@ -161,18 +167,21 @@ class _PostgresRecorder:
 
 
 def test_postgres_free_profile_migration_is_additive_backfilled_and_indexed() -> None:
-    from migrations import _ensure_free_profile_schema_postgres
+    from migrations import _ensure_free_profile_schema_postgres, _ensure_reward_schema_postgres
 
     connection = _PostgresRecorder()
     _ensure_free_profile_schema_postgres(connection)
+    _ensure_reward_schema_postgres(connection)
     sql = "\n".join(statement for statement, _params in connection.executed)
 
     for column in sorted(USER_COLUMNS):
         assert f"ALTER TABLE users ADD COLUMN {column}" in sql
     assert "ALTER TABLE nodes ADD COLUMN access_role" in sql
     assert "ALTER TABLE nodes ADD COLUMN access_role_legacy" in sql
-    for column in sorted(JOB_COLUMNS):
+    for column in sorted(FREE_PROFILE_JOB_COLUMNS):
         assert f"ALTER TABLE node_provisioning_jobs ADD COLUMN {column}" in sql
+    for column in sorted(REWARD_JOB_COLUMNS):
+        assert f"ALTER TABLE node_provisioning_jobs ADD COLUMN IF NOT EXISTS {column}" in sql
     assert "UPDATE users" in sql
     assert "legacy_backfill" in sql
     assert "UPDATE nodes" in sql
@@ -180,6 +189,8 @@ def test_postgres_free_profile_migration_is_additive_backfilled_and_indexed() ->
     assert "operator_lab" in sql
     assert "CREATE UNIQUE INDEX IF NOT EXISTS ix_node_provisioning_jobs_idempotency_key" in sql
     assert "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_lock_token" in sql
+    assert "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_account_id" in sql
+    assert "CREATE INDEX IF NOT EXISTS ix_node_provisioning_jobs_entitlement_grant_id" in sql
     assert "CREATE INDEX IF NOT EXISTS ix_users_free_profile_job_id" in sql
 
 
@@ -189,7 +200,7 @@ def test_postgres_free_profile_migration_skips_existing_columns() -> None:
     existing = (
         {("users", column) for column in USER_COLUMNS}
         | {("nodes", "access_role"), ("nodes", "access_role_legacy")}
-        | {("node_provisioning_jobs", column) for column in JOB_COLUMNS}
+        | {("node_provisioning_jobs", column) for column in FREE_PROFILE_JOB_COLUMNS}
     )
     connection = _PostgresRecorder(existing)
     _ensure_free_profile_schema_postgres(connection)
