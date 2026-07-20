@@ -7,7 +7,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -25,6 +25,7 @@ from models import (
     EntitlementGrant,
     NodeProvisioningJob,
     RewardAccountState,
+    RewardClaim,
     User,
 )
 
@@ -796,3 +797,306 @@ def test_two_serialized_sqlite_sessions_create_one_wheel_grant_and_job(
         state = verification.get(RewardAccountState, PAID_ACCOUNT_ID)
         assert state is not None
         assert state.wheel_last_spin_at == now
+
+
+def test_calendar_awards_only_four_milestones_and_resets_after_day_twenty_eight(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import checkin_calendar, get_calendar_state
+
+    awarded = []
+    for offset in range(28):
+        result = checkin_calendar(
+            paid_reward_session,
+            account_id=PAID_ACCOUNT_ID,
+            enabled=True,
+            now=now + timedelta(days=offset),
+        )
+        if result.reward_days:
+            awarded.append((result.calendar_cycle_day, result.reward_days))
+
+    assert awarded == [(7, 1), (14, 1), (21, 1), (28, 1)]
+    completed = get_calendar_state(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=now + timedelta(days=27, hours=1),
+    )
+    assert completed.cycle_day == 28
+    assert completed.cycle_started_on == now.date()
+    assert completed.checked_in_today is True
+    assert completed.next_milestone is None
+
+    next_cycle = checkin_calendar(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=now + timedelta(days=28),
+    )
+    assert next_cycle.calendar_cycle_day == 1
+    assert next_cycle.calendar_cycle_started_on == (now + timedelta(days=28)).date()
+    assert next_cycle.reward_days == 0
+
+
+def test_calendar_same_utc_date_is_idempotent(paid_reward_session) -> None:
+    from rewards_service import checkin_calendar
+
+    first_now = datetime(2026, 7, 20, 23, 30, tzinfo=timezone(timedelta(hours=3)))
+    same_utc_date = datetime(2026, 7, 21, 2, 30, tzinfo=timezone(timedelta(hours=6)))
+    first = checkin_calendar(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=first_now,
+    )
+    second = checkin_calendar(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=same_utc_date,
+    )
+
+    assert first.calendar_cycle_day == second.calendar_cycle_day == 1
+    assert second.already_checked_in is True
+    assert second.grant_id is None
+
+
+def test_calendar_gap_resets_cycle_but_achievements_remain_write_once(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import checkin_calendar
+
+    for offset in range(7):
+        checkin_calendar(
+            paid_reward_session,
+            account_id=PAID_ACCOUNT_ID,
+            enabled=True,
+            now=now + timedelta(days=offset),
+        )
+    state = paid_reward_session.get(RewardAccountState, PAID_ACCOUNT_ID)
+    first_checkin_at = state.calendar_first_checkin_at
+    streak_7_unlocked_at = state.calendar_streak_7_unlocked_at
+
+    reset = checkin_calendar(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=now + timedelta(days=9),
+    )
+
+    assert reset.calendar_cycle_day == 1
+    assert reset.achievements == {"first_checkin": True, "streak_7": True}
+    assert state.calendar_first_checkin_at == first_checkin_at
+    assert state.calendar_streak_7_unlocked_at == streak_7_unlocked_at
+
+
+def test_calendar_day_seven_retry_returns_original_grant_and_job(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import checkin_calendar
+
+    for offset in range(6):
+        checkin_calendar(
+            paid_reward_session,
+            account_id=PAID_ACCOUNT_ID,
+            enabled=True,
+            now=now + timedelta(days=offset),
+        )
+    first = checkin_calendar(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=now + timedelta(days=6, hours=1),
+    )
+    retry = checkin_calendar(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=now + timedelta(days=6, hours=10),
+    )
+
+    assert first.reward_days == retry.reward_days == 1
+    assert first.grant_id == retry.grant_id
+    assert retry.already_checked_in is True
+    assert retry.sync_state == "sync_pending"
+    assert (
+        paid_reward_session.query(EntitlementGrant)
+        .filter_by(source="bonus_calendar")
+        .count()
+        == 1
+    )
+    assert (
+        paid_reward_session.query(NodeProvisioningJob)
+        .filter_by(job_type="reward_entitlement_sync", entitlement_grant_id=first.grant_id)
+        .count()
+        == 1
+    )
+
+
+def test_calendar_state_and_disabled_projection_are_non_speculative(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import checkin_calendar, get_calendar_state
+
+    disabled = get_calendar_state(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=False,
+        now=now,
+    )
+    assert disabled.enabled is False
+    assert disabled.eligible is False
+    assert disabled.reason == "bonus_feature_disabled"
+    assert disabled.cycle_day == 0
+    assert disabled.achievements == {"first_checkin": False, "streak_7": False}
+
+    for offset in range(7):
+        mutation = checkin_calendar(
+            paid_reward_session,
+            account_id=PAID_ACCOUNT_ID,
+            enabled=True,
+            now=now + timedelta(days=offset),
+        )
+    current = get_calendar_state(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        now=now + timedelta(days=6, hours=1),
+    )
+    assert current.enabled is True
+    assert current.eligible is True
+    assert current.reason == "eligible"
+    assert current.checked_in_today is True
+    assert current.cycle_day == 7
+    assert current.next_milestone == 14
+    assert current.achievements == {"first_checkin": True, "streak_7": True}
+    assert current.sync_state == mutation.sync_state == "sync_pending"
+
+
+def test_two_serialized_sqlite_sessions_share_one_calendar_milestone(
+    serialized_reward_database,
+    now,
+) -> None:
+    from rewards_service import checkin_calendar
+
+    Session, write_lock = serialized_reward_database
+    with Session() as seed:
+        seed.add(
+            RewardAccountState(
+                account_id=PAID_ACCOUNT_ID,
+                calendar_last_check_date=now.date() - timedelta(days=1),
+                calendar_cycle_started_on=now.date() - timedelta(days=6),
+                calendar_cycle_day=6,
+                calendar_first_checkin_at=now - timedelta(days=6),
+                created_at=now - timedelta(days=6),
+                updated_at=now - timedelta(days=1),
+            )
+        )
+        seed.commit()
+    barrier = threading.Barrier(2)
+
+    def _attempt_checkin() -> tuple[str, str | None]:
+        barrier.wait(timeout=5)
+        with write_lock:
+            with Session() as session:
+                result = checkin_calendar(
+                    session,
+                    account_id=PAID_ACCOUNT_ID,
+                    enabled=True,
+                    now=now,
+                )
+                session.commit()
+                return "retry" if result.already_checked_in else "winner", result.grant_id
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(lambda _index: _attempt_checkin(), range(2)))
+
+    assert sorted(label for label, _grant_id in results) == ["retry", "winner"]
+    assert len({grant_id for _label, grant_id in results}) == 1
+    with Session() as verification:
+        assert verification.query(EntitlementGrant).filter_by(source="bonus_calendar").count() == 1
+        assert (
+            verification.query(NodeProvisioningJob)
+            .filter_by(job_type="reward_entitlement_sync")
+            .count()
+            == 1
+        )
+
+
+def test_reward_history_combines_all_owned_legacy_claims_and_account_grants(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import PAID_WEEKLY_V1, checkin_calendar, get_reward_history, spin_wheel
+
+    alias_tg_id = PAID_TG_ID + 1
+    paid_reward_session.add(
+        User(
+            tg_id=alias_tg_id,
+            account_id=PAID_ACCOUNT_ID,
+            uuid="00000000-0000-4000-8000-000000000104",
+            sub_type="PAID",
+            current_plan_code="month",
+            expiry_at=now + timedelta(days=30),
+            is_active=True,
+        )
+    )
+    paid_reward_session.add(
+        RewardClaim(
+            tg_id=alias_tg_id,
+            reward_key="wheel_20260720120000",
+            meta=json.dumps(
+                {
+                    "feature": "wheel",
+                    "days": 1,
+                    "operator_secret": "must-not-leak",
+                }
+            ),
+            claimed_at=now,
+        )
+    )
+    paid_reward_session.flush()
+    legacy_claim = paid_reward_session.query(RewardClaim).filter_by(tg_id=alias_tg_id).one()
+
+    wheel = spin_wheel(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=PAID_WEEKLY_V1,
+        now=now,
+        randbelow=lambda _upper: 0,
+    )
+    calendar = None
+    for offset in range(7):
+        calendar = checkin_calendar(
+            paid_reward_session,
+            account_id=PAID_ACCOUNT_ID,
+            enabled=True,
+            now=now + timedelta(days=offset),
+        )
+    assert calendar is not None and calendar.reward_days == 1
+
+    history = get_reward_history(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        limit=20,
+    )
+
+    assert history[0].source == "bonus_calendar"
+    assert {entry.source for entry in history} == {
+        "bonus_calendar",
+        "bonus_wheel",
+        "legacy_reward_claim",
+    }
+    assert {entry.durable_id for entry in history} == {
+        f"legacy_reward_claim:{legacy_claim.id}",
+        f"account_entitlement_grant:{wheel.grant_id}",
+        f"account_entitlement_grant:{calendar.grant_id}",
+    }
+    assert sum(entry.reward_days for entry in history) == 3
+    assert all("operator_secret" not in entry.metadata for entry in history)
+    assert "must-not-leak" not in repr(history)

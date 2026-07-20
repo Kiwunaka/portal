@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 import secrets
@@ -19,6 +20,7 @@ from models import (
     EntitlementGrant,
     NodeProvisioningJob,
     RewardAccountState,
+    RewardClaim,
     User,
 )
 from node_provisioning_service import enqueue_reward_entitlement_sync
@@ -564,6 +566,409 @@ def spin_wheel(
         wheel_last_spin_at=current_now,
         wheel_next_spin_at=current_now + timedelta(hours=config.cooldown_hours),
     )
+
+
+def _calendar_achievements(state: RewardAccountState) -> dict[str, bool]:
+    return {
+        "first_checkin": state.calendar_first_checkin_at is not None,
+        "streak_7": state.calendar_streak_7_unlocked_at is not None,
+    }
+
+
+def _next_calendar_position(
+    state: RewardAccountState,
+    today: date,
+) -> tuple[date, int]:
+    if state.calendar_last_check_date == today:
+        return (
+            state.calendar_cycle_started_on or today,
+            int(state.calendar_cycle_day or 1),
+        )
+    consecutive = state.calendar_last_check_date == today - timedelta(days=1)
+    if consecutive and int(state.calendar_cycle_day or 0) < 28:
+        return (
+            state.calendar_cycle_started_on or today,
+            int(state.calendar_cycle_day or 0) + 1,
+        )
+    return today, 1
+
+
+def _calendar_grant_key(
+    *,
+    origin_account_id: str,
+    cycle_start: date,
+    milestone: int,
+) -> str:
+    return (
+        f"reward-calendar:v1:{origin_account_id}:"
+        f"{cycle_start.isoformat()}:{int(milestone)}"
+    )
+
+
+def _json_object(raw: str | None) -> dict[str, object]:
+    try:
+        parsed = json.loads(raw or "{}")
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _calendar_grant_for_position(
+    session,
+    *,
+    account_id: str,
+    cycle_start: date,
+    milestone: int,
+) -> EntitlementGrant | None:
+    rows = (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.account_id == str(account_id),
+            EntitlementGrant.source == "bonus_calendar",
+        )
+        .order_by(EntitlementGrant.created_at.desc(), EntitlementGrant.id.desc())
+        .limit(64)
+        .all()
+    )
+    expected_cycle_start = cycle_start.isoformat()
+    for row in rows:
+        metadata = _json_object(row.metadata_json)
+        if (
+            metadata.get("cycle_start") == expected_cycle_start
+            and type(metadata.get("milestone")) is int
+            and metadata.get("milestone") == int(milestone)
+        ):
+            return row
+    return None
+
+
+def _latest_calendar_grant_for_state(
+    session,
+    state: RewardAccountState,
+) -> EntitlementGrant | None:
+    cycle_start = state.calendar_cycle_started_on
+    cycle_day = int(state.calendar_cycle_day or 0)
+    if cycle_start is None or cycle_day < min(CALENDAR_MILESTONES):
+        return None
+    earned = [milestone for milestone in CALENDAR_MILESTONES if milestone <= cycle_day]
+    if not earned:
+        return None
+    return _calendar_grant_for_position(
+        session,
+        account_id=state.account_id,
+        cycle_start=cycle_start,
+        milestone=max(earned),
+    )
+
+
+def _next_calendar_milestone(cycle_day: int) -> int | None:
+    return next(
+        (milestone for milestone in sorted(CALENDAR_MILESTONES) if milestone > cycle_day),
+        None,
+    )
+
+
+def get_calendar_state(
+    session,
+    *,
+    account_id: str,
+    enabled: bool,
+    now: datetime,
+) -> CalendarState:
+    current_now = _naive_utc(now)
+    empty_achievements = {"first_checkin": False, "streak_7": False}
+    if not enabled:
+        return CalendarState(
+            enabled=False,
+            eligible=False,
+            reason="bonus_feature_disabled",
+            checked_in_today=False,
+            cycle_started_on=None,
+            cycle_day=0,
+            next_milestone=7,
+            achievements=empty_achievements,
+            sync_state="not_required",
+        )
+
+    eligibility = evaluate_active_paid(
+        session,
+        account_id=account_id,
+        now=current_now,
+    )
+    if not eligibility.eligible:
+        return CalendarState(
+            enabled=True,
+            eligible=False,
+            reason=eligibility.reason,
+            checked_in_today=False,
+            cycle_started_on=None,
+            cycle_day=0,
+            next_milestone=7,
+            achievements=empty_achievements,
+            sync_state="not_required",
+        )
+
+    state = _locked_reward_state(
+        session,
+        account_id=eligibility.account_id,
+        now=current_now,
+    )
+    cycle_day = int(state.calendar_cycle_day or 0)
+    latest_grant = _latest_calendar_grant_for_state(session, state)
+    job = _reward_sync_job(
+        session,
+        entitlement_grant_id=latest_grant.id if latest_grant else None,
+    )
+    return CalendarState(
+        enabled=True,
+        eligible=True,
+        reason="eligible",
+        checked_in_today=state.calendar_last_check_date == current_now.date(),
+        cycle_started_on=state.calendar_cycle_started_on,
+        cycle_day=cycle_day,
+        next_milestone=_next_calendar_milestone(cycle_day),
+        achievements=_calendar_achievements(state),
+        sync_state=reward_sync_state(job),
+    )
+
+
+def checkin_calendar(
+    session,
+    *,
+    account_id: str,
+    enabled: bool,
+    now: datetime,
+) -> RewardMutation:
+    current_now = _naive_utc(now)
+    if not enabled:
+        raise RewardDisabled("calendar")
+    eligibility = evaluate_active_paid(
+        session,
+        account_id=account_id,
+        now=current_now,
+    )
+    if not eligibility.eligible:
+        raise RewardForbidden(eligibility.reason)
+    state = _locked_reward_state(
+        session,
+        account_id=eligibility.account_id,
+        now=current_now,
+    )
+    today = current_now.date()
+    if state.calendar_last_check_date == today:
+        grant = None
+        cycle_day = int(state.calendar_cycle_day or 0)
+        if cycle_day in CALENDAR_MILESTONES and state.calendar_cycle_started_on:
+            grant = _calendar_grant_for_position(
+                session,
+                account_id=eligibility.account_id,
+                cycle_start=state.calendar_cycle_started_on,
+                milestone=cycle_day,
+            )
+        job = _reward_sync_job(
+            session,
+            entitlement_grant_id=grant.id if grant else None,
+        )
+        return RewardMutation(
+            feature="calendar",
+            account_id=eligibility.account_id,
+            grant_id=grant.id if grant else None,
+            reward_days=int(grant.duration_days or 0) if grant else 0,
+            sync_state=reward_sync_state(job),
+            calendar_cycle_started_on=state.calendar_cycle_started_on,
+            calendar_cycle_day=cycle_day,
+            already_checked_in=True,
+            achievements=_calendar_achievements(state),
+        )
+
+    cycle_start, cycle_day = _next_calendar_position(state, today)
+    state.calendar_cycle_started_on = cycle_start
+    state.calendar_cycle_day = cycle_day
+    state.calendar_last_check_date = today
+    if state.calendar_first_checkin_at is None:
+        state.calendar_first_checkin_at = current_now
+    if cycle_day >= 7 and state.calendar_streak_7_unlocked_at is None:
+        state.calendar_streak_7_unlocked_at = current_now
+
+    grant = None
+    job = None
+    if cycle_day in CALENDAR_MILESTONES:
+        grant = grant_internal_bonus_days(
+            session,
+            account_id=eligibility.account_id,
+            source="bonus_calendar",
+            plan_code="reward_calendar",
+            idempotency_key=_calendar_grant_key(
+                origin_account_id=eligibility.account_id,
+                cycle_start=cycle_start,
+                milestone=cycle_day,
+            ),
+            days=1,
+            legacy_tg_id=eligibility.legacy_tg_id,
+            metadata={
+                "version": 1,
+                "origin_account_id": eligibility.account_id,
+                "cycle_start": cycle_start.isoformat(),
+                "milestone": cycle_day,
+                "reward_days": 1,
+                "committed_at": current_now.isoformat(),
+            },
+            now=current_now,
+        )
+        job = enqueue_reward_entitlement_sync(
+            session,
+            account_id=eligibility.account_id,
+            entitlement_grant_id=grant.id,
+            now=current_now,
+        )
+    state.updated_at = current_now
+    validate_calendar_state(state)
+    session.flush()
+    return RewardMutation(
+        feature="calendar",
+        account_id=eligibility.account_id,
+        grant_id=grant.id if grant else None,
+        reward_days=int(grant.duration_days or 0) if grant else 0,
+        sync_state=reward_sync_state(job),
+        calendar_cycle_started_on=cycle_start,
+        calendar_cycle_day=cycle_day,
+        already_checked_in=False,
+        achievements=_calendar_achievements(state),
+    )
+
+
+def _bounded_reward_days(value: object) -> int | None:
+    if type(value) is not int or not 0 <= value <= 366:
+        return None
+    return int(value)
+
+
+def _metadata_committed_at(
+    metadata: Mapping[str, object],
+    *,
+    fallback: datetime,
+) -> datetime:
+    raw = metadata.get("committed_at")
+    if not isinstance(raw, str) or not 1 <= len(raw) <= 64:
+        return _naive_utc(fallback)
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return _naive_utc(fallback)
+    return _naive_utc(parsed)
+
+
+def _legacy_history_metadata(claim: RewardClaim) -> tuple[int, dict[str, object]]:
+    raw = _json_object(claim.meta)
+    days = _bounded_reward_days(raw.get("days"))
+    if days is None:
+        days = _bounded_reward_days(raw.get("reward_days"))
+    metadata: dict[str, object] = {"reward_key": str(claim.reward_key or "")[:64]}
+    feature = raw.get("feature")
+    if feature in {"wheel", "calendar"}:
+        metadata["feature"] = feature
+    preset = raw.get("preset")
+    if isinstance(preset, str) and _SAFE_PRESET_RE.fullmatch(preset):
+        metadata["preset"] = preset
+    streak = raw.get("streak")
+    if type(streak) is int and 0 <= streak <= 10000:
+        metadata["streak"] = streak
+    return days or 0, metadata
+
+
+def _grant_history_metadata(
+    grant: EntitlementGrant,
+) -> tuple[int, datetime, dict[str, object]]:
+    raw = _json_object(grant.metadata_json)
+    reward_days = _bounded_reward_days(raw.get("reward_days"))
+    if reward_days is None:
+        reward_days = _bounded_reward_days(grant.duration_days)
+    metadata: dict[str, object] = {}
+    version = raw.get("version")
+    if type(version) is int and 0 <= version <= 100:
+        metadata["version"] = version
+    if grant.source == "bonus_wheel":
+        preset = raw.get("preset")
+        if isinstance(preset, str) and _SAFE_PRESET_RE.fullmatch(preset):
+            metadata["preset"] = preset
+    if grant.source == "bonus_calendar":
+        cycle_start = raw.get("cycle_start")
+        if isinstance(cycle_start, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", cycle_start):
+            metadata["cycle_start"] = cycle_start
+        milestone = raw.get("milestone")
+        if type(milestone) is int and milestone in CALENDAR_MILESTONES:
+            metadata["milestone"] = milestone
+    committed_at = _metadata_committed_at(
+        raw,
+        fallback=grant.created_at,
+    )
+    return reward_days or 0, committed_at, metadata
+
+
+def get_reward_history(
+    session,
+    *,
+    account_id: str,
+    limit: int = 50,
+) -> list[RewardHistoryEntry]:
+    account_key = resolve_canonical_account_id(session, account_id=account_id)
+    max_items = max(1, min(int(limit or 50), 100))
+    tg_ids = [
+        int(row[0])
+        for row in (
+            session.query(User.tg_id)
+            .filter(User.account_id == account_key)
+            .order_by(User.tg_id.asc())
+            .all()
+        )
+    ]
+    entries: list[RewardHistoryEntry] = []
+    if tg_ids:
+        legacy_rows = (
+            session.query(RewardClaim)
+            .filter(RewardClaim.tg_id.in_(tg_ids))
+            .order_by(RewardClaim.claimed_at.desc(), RewardClaim.id.desc())
+            .limit(max_items)
+            .all()
+        )
+        for claim in legacy_rows:
+            reward_days, metadata = _legacy_history_metadata(claim)
+            entries.append(
+                RewardHistoryEntry(
+                    durable_id=f"legacy_reward_claim:{claim.id}",
+                    source="legacy_reward_claim",
+                    reward_days=reward_days,
+                    committed_at=_naive_utc(claim.claimed_at),
+                    metadata=metadata,
+                )
+            )
+
+    grant_rows = (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.account_id == account_key,
+            EntitlementGrant.source.in_(("bonus_wheel", "bonus_calendar")),
+        )
+        .order_by(EntitlementGrant.created_at.desc(), EntitlementGrant.id.desc())
+        .limit(max_items)
+        .all()
+    )
+    for grant in grant_rows:
+        reward_days, committed_at, metadata = _grant_history_metadata(grant)
+        entries.append(
+            RewardHistoryEntry(
+                durable_id=f"account_entitlement_grant:{grant.id}",
+                source=str(grant.source),
+                reward_days=reward_days,
+                committed_at=committed_at,
+                metadata=metadata,
+            )
+        )
+    entries.sort(
+        key=lambda entry: (entry.committed_at, entry.durable_id),
+        reverse=True,
+    )
+    return entries[:max_items]
 
 
 def backfill_reward_account_states(
