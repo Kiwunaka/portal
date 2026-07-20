@@ -1,10 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import logging
+import re
+import secrets
+import uuid
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
 from economy_service import (
+    grant_internal_bonus_days,
     rebuild_account_entitlement_projection,
     resolve_canonical_account_id,
 )
@@ -16,6 +21,7 @@ from models import (
     RewardAccountState,
     User,
 )
+from node_provisioning_service import enqueue_reward_entitlement_sync
 
 
 PAID_WEEKLY_V1: dict[str, object] = {
@@ -32,6 +38,8 @@ PAID_GRANT_SOURCES = frozenset({"provider_payment", "compatibility_projection"})
 WHEEL_SECTORS = (1, 3, 7, 30)
 CALENDAR_MILESTONES = frozenset({7, 14, 21, 28})
 _TERMINAL_MERGE_REVIEW_STATUSES = frozenset({"closed", "dismissed", "resolved"})
+_SAFE_PRESET_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_LOGGER = logging.getLogger(__name__)
 
 
 class RewardDomainError(RuntimeError):
@@ -246,6 +254,74 @@ def parse_paid_weekly_config(
     )
 
 
+def _reward_days_for_draw(config: WheelConfig, draw: int) -> int:
+    if type(draw) is not int or not 0 <= draw < 10000:
+        raise RewardDomainError("wheel_draw_invalid")
+    cursor = 0
+    for days, weight in config.outcomes:
+        cursor += int(weight)
+        if draw < cursor:
+            return int(days)
+    raise RewardDomainError("wheel_draw_invalid")
+
+
+def _last_wheel_reward_days(
+    session,
+    state: RewardAccountState,
+) -> int | None:
+    if not state.wheel_last_grant_id:
+        return None
+    grant = session.get(EntitlementGrant, state.wheel_last_grant_id)
+    if grant is None or grant.source != "bonus_wheel":
+        return None
+    return int(grant.duration_days or 0) or None
+
+
+def _reward_sync_job(
+    session,
+    *,
+    entitlement_grant_id: str | None,
+) -> NodeProvisioningJob | None:
+    grant_id = str(entitlement_grant_id or "").strip()
+    if not grant_id:
+        return None
+    return (
+        session.query(NodeProvisioningJob)
+        .filter(
+            NodeProvisioningJob.entitlement_grant_id == grant_id,
+            NodeProvisioningJob.job_type == "reward_entitlement_sync",
+        )
+        .order_by(NodeProvisioningJob.id.desc())
+        .first()
+    )
+
+
+def _safe_preset_name(payload: Mapping[str, object] | None) -> str:
+    raw = str((payload or {}).get("preset") or "missing").strip()
+    return raw if _SAFE_PRESET_RE.fullmatch(raw) else "invalid"
+
+
+def _log_invalid_wheel_config(
+    payload: Mapping[str, object] | None,
+    exc: InvalidWheelConfig,
+) -> None:
+    _LOGGER.warning(
+        "reward_wheel_config_invalid preset=%s validation_code=%s",
+        _safe_preset_name(payload),
+        exc.code,
+    )
+
+
+def _parse_wheel_config(
+    config_payload: Mapping[str, object] | None,
+) -> WheelConfig:
+    return (
+        parse_paid_weekly_config(PAID_WEEKLY_V1, explicit=False)
+        if config_payload is None
+        else parse_paid_weekly_config(config_payload, explicit=True)
+    )
+
+
 def evaluate_active_paid(
     session,
     *,
@@ -308,6 +384,186 @@ def evaluate_active_paid(
     if not paid_users or paid_grant is None:
         return PaidEligibility(False, "active_paid_required", account_key, None)
     return PaidEligibility(True, "eligible", account_key, int(paid_users[0].tg_id))
+
+
+def get_wheel_state(
+    session,
+    *,
+    account_id: str,
+    enabled: bool,
+    config_payload: Mapping[str, object] | None,
+    now: datetime,
+) -> WheelState:
+    current_now = _naive_utc(now)
+    if not enabled:
+        return WheelState(
+            enabled=False,
+            eligible=False,
+            reason="bonus_feature_disabled",
+            can_spin=False,
+            sectors=(),
+            cooldown_hours=168,
+            last_spin_at=None,
+            next_spin_at=None,
+            last_reward_days=None,
+            sync_state="not_required",
+        )
+    try:
+        config = _parse_wheel_config(config_payload)
+    except InvalidWheelConfig as exc:
+        _log_invalid_wheel_config(config_payload, exc)
+        return WheelState(
+            enabled=False,
+            eligible=False,
+            reason="wheel_config_invalid",
+            can_spin=False,
+            sectors=(),
+            cooldown_hours=0,
+            last_spin_at=None,
+            next_spin_at=None,
+            last_reward_days=None,
+            sync_state="not_required",
+        )
+
+    eligibility = evaluate_active_paid(
+        session,
+        account_id=account_id,
+        now=current_now,
+    )
+    if not eligibility.eligible:
+        return WheelState(
+            enabled=True,
+            eligible=False,
+            reason=eligibility.reason,
+            can_spin=False,
+            sectors=WHEEL_SECTORS,
+            cooldown_hours=config.cooldown_hours,
+            last_spin_at=None,
+            next_spin_at=None,
+            last_reward_days=None,
+            sync_state="not_required",
+        )
+
+    state = _locked_reward_state(
+        session,
+        account_id=eligibility.account_id,
+        now=current_now,
+    )
+    last_spin_at = (
+        _naive_utc(state.wheel_last_spin_at)
+        if state.wheel_last_spin_at is not None
+        else None
+    )
+    next_spin_at = (
+        last_spin_at + timedelta(hours=config.cooldown_hours)
+        if last_spin_at is not None
+        else None
+    )
+    can_spin = next_spin_at is None or next_spin_at <= current_now
+    job = _reward_sync_job(
+        session,
+        entitlement_grant_id=state.wheel_last_grant_id,
+    )
+    return WheelState(
+        enabled=True,
+        eligible=True,
+        reason="eligible" if can_spin else "wheel_cooldown_active",
+        can_spin=can_spin,
+        sectors=WHEEL_SECTORS,
+        cooldown_hours=config.cooldown_hours,
+        last_spin_at=last_spin_at,
+        next_spin_at=next_spin_at,
+        last_reward_days=_last_wheel_reward_days(session, state),
+        sync_state=reward_sync_state(job),
+    )
+
+
+def spin_wheel(
+    session,
+    *,
+    account_id: str,
+    enabled: bool,
+    config_payload: Mapping[str, object] | None,
+    now: datetime,
+    randbelow: Callable[[int], int] = secrets.randbelow,
+) -> RewardMutation:
+    current_now = _naive_utc(now)
+    if not enabled:
+        raise RewardDisabled("wheel")
+    try:
+        config = _parse_wheel_config(config_payload)
+    except InvalidWheelConfig as exc:
+        _log_invalid_wheel_config(config_payload, exc)
+        raise
+
+    eligibility = evaluate_active_paid(
+        session,
+        account_id=account_id,
+        now=current_now,
+    )
+    if not eligibility.eligible:
+        raise RewardForbidden(eligibility.reason)
+    state = _locked_reward_state(
+        session,
+        account_id=eligibility.account_id,
+        now=current_now,
+    )
+    last_spin_at = (
+        _naive_utc(state.wheel_last_spin_at)
+        if state.wheel_last_spin_at is not None
+        else None
+    )
+    next_spin_at = (
+        last_spin_at + timedelta(hours=config.cooldown_hours)
+        if last_spin_at is not None
+        else None
+    )
+    if next_spin_at is not None and next_spin_at > current_now:
+        raise RewardConflict(
+            "wheel_cooldown_active",
+            next_allowed_at=next_spin_at,
+            last_reward_days=_last_wheel_reward_days(session, state),
+        )
+
+    draw = randbelow(10000)
+    reward_days = _reward_days_for_draw(config, draw)
+    event_id = str(uuid.uuid4())
+    grant = grant_internal_bonus_days(
+        session,
+        account_id=eligibility.account_id,
+        source="bonus_wheel",
+        plan_code="reward_wheel",
+        idempotency_key=f"reward-wheel:v1:{event_id}",
+        days=reward_days,
+        legacy_tg_id=eligibility.legacy_tg_id,
+        metadata={
+            "version": 1,
+            "preset": config.preset,
+            "reward_days": reward_days,
+            "committed_at": current_now.isoformat(),
+        },
+        now=current_now,
+    )
+    job = enqueue_reward_entitlement_sync(
+        session,
+        account_id=eligibility.account_id,
+        entitlement_grant_id=grant.id,
+        now=current_now,
+    )
+    state.wheel_last_spin_at = current_now
+    state.wheel_last_grant_id = grant.id
+    state.updated_at = current_now
+    validate_calendar_state(state)
+    session.flush()
+    return RewardMutation(
+        feature="wheel",
+        account_id=eligibility.account_id,
+        grant_id=grant.id,
+        reward_days=reward_days,
+        sync_state=reward_sync_state(job),
+        wheel_last_spin_at=current_now,
+        wheel_next_spin_at=current_now + timedelta(hours=config.cooldown_hours),
+    )
 
 
 def backfill_reward_account_states(

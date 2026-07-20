@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -99,6 +101,66 @@ def paid_account(reward_session, now) -> SeededPaidAccount:
     )
     reward_session.flush()
     return SeededPaidAccount(id=PAID_ACCOUNT_ID, tg_id=PAID_TG_ID)
+
+
+@pytest.fixture()
+def paid_reward_session(reward_session, paid_account):
+    return reward_session
+
+
+@pytest.fixture()
+def serialized_reward_database(tmp_path, now):
+    engine = create_engine(
+        f"sqlite:///{(tmp_path / 'serialized-rewards.db').as_posix()}",
+        connect_args={"check_same_thread": False},
+    )
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, expire_on_commit=False)
+    with Session() as session:
+        session.add(
+            Account(
+                id=PAID_ACCOUNT_ID,
+                status="active",
+                created_source="test",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            User(
+                tg_id=PAID_TG_ID,
+                account_id=PAID_ACCOUNT_ID,
+                uuid="00000000-0000-4000-8000-000000000102",
+                sub_type="PAID",
+                current_plan_code="month",
+                expiry_at=now + timedelta(days=30),
+                is_active=True,
+            )
+        )
+        session.add(
+            EntitlementGrant(
+                id="00000000-0000-4000-8000-000000000103",
+                account_id=PAID_ACCOUNT_ID,
+                legacy_tg_id=PAID_TG_ID,
+                idempotency_key="test-provider-payment:serialized-account",
+                source="provider_payment",
+                status="active",
+                grant_kind="paid_access",
+                plan_code="month",
+                starts_at=now - timedelta(days=1),
+                expires_at=now + timedelta(days=30),
+                activated_at=now - timedelta(days=1),
+                duration_days=31,
+                provider="test",
+                created_at=now - timedelta(days=1),
+                updated_at=now,
+            )
+        )
+        session.commit()
+    try:
+        yield Session, threading.Lock()
+    finally:
+        engine.dispose()
 
 
 def _grant_reward(session, paid_account: SeededPaidAccount, now: datetime, *, days: int = 1):
@@ -501,3 +563,236 @@ def test_calendar_state_validator_fails_closed(
     else:
         with pytest.raises(RewardDomainError, match="calendar_state_invalid"):
             validate_calendar_state(state)
+
+
+@pytest.mark.parametrize(
+    ("draw", "days"),
+    (
+        (0, 1),
+        (8999, 1),
+        (9000, 3),
+        (9889, 3),
+        (9890, 7),
+        (9989, 7),
+        (9990, 30),
+        (9999, 30),
+    ),
+)
+def test_wheel_secure_draw_boundaries(paid_reward_session, now, draw: int, days: int) -> None:
+    from rewards_service import PAID_WEEKLY_V1, spin_wheel
+
+    result = spin_wheel(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=PAID_WEEKLY_V1,
+        now=now,
+        randbelow=lambda upper: draw if upper == 10000 else -1,
+    )
+
+    assert result.reward_days == days
+    assert result.sync_state == "sync_pending"
+
+
+def test_wheel_retry_returns_authoritative_cooldown_without_second_draw(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import PAID_WEEKLY_V1, RewardConflict, spin_wheel
+
+    draws = iter((9999,))
+    first = spin_wheel(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=PAID_WEEKLY_V1,
+        now=now,
+        randbelow=lambda upper: next(draws),
+    )
+    with pytest.raises(RewardConflict) as exc:
+        spin_wheel(
+            paid_reward_session,
+            account_id=PAID_ACCOUNT_ID,
+            enabled=True,
+            config_payload=PAID_WEEKLY_V1,
+            now=now + timedelta(seconds=1),
+            randbelow=lambda upper: next(draws),
+        )
+
+    assert exc.value.code == "wheel_cooldown_active"
+    assert exc.value.last_reward_days == first.reward_days
+    assert exc.value.next_allowed_at == now + timedelta(hours=168)
+
+
+def test_wheel_disabled_and_ineligible_paths_do_not_draw(reward_session, paid_account, now) -> None:
+    from rewards_service import (
+        PAID_WEEKLY_V1,
+        RewardDisabled,
+        RewardForbidden,
+        spin_wheel,
+    )
+
+    def _unexpected_draw(_upper: int) -> int:
+        raise AssertionError("wheel draw must not run")
+
+    with pytest.raises(RewardDisabled, match="bonus_feature_disabled"):
+        spin_wheel(
+            reward_session,
+            account_id=paid_account.id,
+            enabled=False,
+            config_payload=PAID_WEEKLY_V1,
+            now=now,
+            randbelow=_unexpected_draw,
+        )
+
+    account = reward_session.get(Account, paid_account.id)
+    account.status = "blocked"
+    reward_session.flush()
+    with pytest.raises(RewardForbidden, match="account_inactive"):
+        spin_wheel(
+            reward_session,
+            account_id=paid_account.id,
+            enabled=True,
+            config_payload=PAID_WEEKLY_V1,
+            now=now,
+            randbelow=_unexpected_draw,
+        )
+    assert reward_session.query(EntitlementGrant).filter_by(source="bonus_wheel").count() == 0
+
+
+@pytest.mark.parametrize("draw", (-1, 10000, True, "0"))
+def test_wheel_rejects_invalid_random_draw(draw) -> None:
+    from rewards_service import (
+        PAID_WEEKLY_V1,
+        RewardDomainError,
+        _reward_days_for_draw,
+        parse_paid_weekly_config,
+    )
+
+    config = parse_paid_weekly_config(
+        PAID_WEEKLY_V1,
+        explicit=False,
+    )
+    with pytest.raises(RewardDomainError, match="wheel_draw_invalid"):
+        _reward_days_for_draw(config, draw)
+
+
+def test_wheel_state_exposes_sectors_without_weights(paid_reward_session, now) -> None:
+    from rewards_service import PAID_WEEKLY_V1, get_wheel_state, spin_wheel
+
+    mutation = spin_wheel(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=PAID_WEEKLY_V1,
+        now=now,
+        randbelow=lambda _upper: 9000,
+    )
+    state = get_wheel_state(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=PAID_WEEKLY_V1,
+        now=now + timedelta(seconds=1),
+    )
+
+    assert tuple(state.sectors) == (1, 3, 7, 30)
+    assert not hasattr(state, "weights")
+    assert state.can_spin is False
+    assert state.reason == "wheel_cooldown_active"
+    assert state.last_reward_days == mutation.reward_days
+    assert state.next_spin_at == now + timedelta(hours=168)
+    assert state.sync_state == "sync_pending"
+
+
+def test_wheel_state_disabled_is_visible_but_not_actionable(paid_reward_session, now) -> None:
+    from rewards_service import get_wheel_state
+
+    state = get_wheel_state(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=False,
+        config_payload={"preset": "invalid-and-ignored-while-disabled"},
+        now=now,
+    )
+
+    assert state.enabled is False
+    assert state.eligible is False
+    assert state.reason == "bonus_feature_disabled"
+    assert state.can_spin is False
+    assert tuple(state.sectors) == ()
+
+
+def test_wheel_state_fails_closed_and_logs_only_bounded_config_metadata(
+    paid_reward_session,
+    now,
+    caplog,
+) -> None:
+    from rewards_service import PAID_WEEKLY_V1, get_wheel_state
+
+    payload = deepcopy(PAID_WEEKLY_V1)
+    payload["weights"][0]["weight"] = 8999
+    payload["operator_secret"] = "must-never-enter-log"
+    caplog.set_level("WARNING", logger="rewards_service")
+
+    state = get_wheel_state(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=payload,
+        now=now,
+    )
+
+    assert state.enabled is False
+    assert state.reason == "wheel_config_invalid"
+    assert tuple(state.sectors) == ()
+    assert "reward_wheel_config_invalid" in caplog.text
+    assert "preset=paid_weekly_v1" in caplog.text
+    assert "validation_code=wheel_weights_invalid" in caplog.text
+    assert "8999" not in caplog.text
+    assert "must-never-enter-log" not in caplog.text
+
+
+def test_two_serialized_sqlite_sessions_create_one_wheel_grant_and_job(
+    serialized_reward_database,
+    now,
+) -> None:
+    from rewards_service import PAID_WEEKLY_V1, RewardConflict, spin_wheel
+
+    Session, write_lock = serialized_reward_database
+    barrier = threading.Barrier(2)
+
+    def _attempt_spin() -> tuple[str, int | str]:
+        barrier.wait(timeout=5)
+        with write_lock:
+            with Session() as session:
+                try:
+                    result = spin_wheel(
+                        session,
+                        account_id=PAID_ACCOUNT_ID,
+                        enabled=True,
+                        config_payload=PAID_WEEKLY_V1,
+                        now=now,
+                        randbelow=lambda _upper: 0,
+                    )
+                except RewardConflict as exc:
+                    session.rollback()
+                    return "conflict", exc.code
+                session.commit()
+                return "winner", result.reward_days
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(lambda _index: _attempt_spin(), range(2)))
+
+    assert sorted(results) == [("conflict", "wheel_cooldown_active"), ("winner", 1)]
+    with Session() as verification:
+        assert verification.query(EntitlementGrant).filter_by(source="bonus_wheel").count() == 1
+        assert (
+            verification.query(NodeProvisioningJob)
+            .filter_by(job_type="reward_entitlement_sync")
+            .count()
+            == 1
+        )
+        state = verification.get(RewardAccountState, PAID_ACCOUNT_ID)
+        assert state is not None
+        assert state.wheel_last_spin_at == now
