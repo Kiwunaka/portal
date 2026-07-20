@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
@@ -15,7 +16,14 @@ if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
 from migrations import run_migrations
-from models import Base, NodeProvisioningJob, RewardAccountState
+from models import (
+    Account,
+    AccountMergeReview,
+    Base,
+    NodeProvisioningJob,
+    RewardAccountState,
+    User,
+)
 
 
 REWARD_STATE_COLUMNS = {
@@ -118,3 +126,170 @@ def test_sqlite_legacy_job_migration_is_repeatable_and_preserves_rows(tmp_path: 
 def test_node_provisioning_job_model_exposes_nullable_reward_ownership() -> None:
     assert NodeProvisioningJob.__table__.c.account_id.nullable is True
     assert NodeProvisioningJob.__table__.c.entitlement_grant_id.nullable is True
+
+
+def test_reward_backfill_keeps_latest_alias_wheel_timestamp_without_reading_monthly_streaks(
+    tmp_path: Path,
+) -> None:
+    from rewards_service import backfill_reward_account_states
+
+    now = datetime(2026, 7, 20, 12, 0, 0)
+    target_id = "00000000-0000-4000-8000-000000000401"
+    source_id = "00000000-0000-4000-8000-000000000402"
+    engine = create_engine(f"sqlite:///{(tmp_path / 'reward-backfill.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, expire_on_commit=False)
+    with Session() as session:
+        session.add_all(
+            [
+                Account(
+                    id=target_id,
+                    status="active",
+                    created_source="test",
+                    created_at=now,
+                    updated_at=now,
+                ),
+                Account(
+                    id=source_id,
+                    status="merged",
+                    merged_into_account_id=target_id,
+                    created_source="test",
+                    created_at=now,
+                    updated_at=now,
+                ),
+                User(
+                    tg_id=740401,
+                    account_id=target_id,
+                    uuid="00000000-0000-4000-8000-000000000403",
+                    last_wheel_spin=now - timedelta(days=10),
+                    streak_months=11,
+                    streak_last_check=now - timedelta(days=30),
+                ),
+                User(
+                    tg_id=740402,
+                    account_id=source_id,
+                    uuid="00000000-0000-4000-8000-000000000404",
+                    last_wheel_spin=now - timedelta(days=2),
+                    streak_months=22,
+                    streak_last_check=now - timedelta(days=60),
+                ),
+            ]
+        )
+        session.flush()
+        statements: list[str] = []
+
+        def _capture_sql(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+            statements.append(str(statement).lower())
+
+        event.listen(engine, "before_cursor_execute", _capture_sql)
+        try:
+            first = backfill_reward_account_states(session, now=now)
+        finally:
+            event.remove(engine, "before_cursor_execute", _capture_sql)
+
+        assert first.canonical_accounts == 1
+        assert first.states_created == 1
+        assert first.wheel_sources_seen == 2
+        assert first.wheel_states_updated == 1
+        assert first.unresolved_users == 0
+        assert first.invalid_merge_chains == 0
+        assert first.ready is True
+        assert not any("streak_months" in statement for statement in statements)
+        assert not any("streak_last_check" in statement for statement in statements)
+
+        state = session.get(RewardAccountState, target_id)
+        assert state is not None
+        assert state.wheel_last_spin_at == now - timedelta(days=2)
+        target_user = session.get(User, 740401)
+        source_user = session.get(User, 740402)
+        assert (target_user.streak_months, target_user.streak_last_check) == (
+            11,
+            now - timedelta(days=30),
+        )
+        assert (source_user.streak_months, source_user.streak_last_check) == (
+            22,
+            now - timedelta(days=60),
+        )
+
+        second = backfill_reward_account_states(session, now=now)
+        assert second.states_created == 0
+        assert second.wheel_sources_seen == 2
+        assert second.wheel_states_updated == 0
+        assert second.ready is True
+    engine.dispose()
+
+
+def test_reward_backfill_reports_unresolved_users_reviews_and_invalid_chains(
+    tmp_path: Path,
+) -> None:
+    from rewards_service import backfill_reward_account_states
+
+    now = datetime(2026, 7, 20, 12, 0, 0)
+    valid_id = "00000000-0000-4000-8000-000000000411"
+    broken_id = "00000000-0000-4000-8000-000000000412"
+    missing_target_id = "00000000-0000-4000-8000-000000000413"
+    engine = create_engine(f"sqlite:///{(tmp_path / 'reward-backfill-blocked.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, expire_on_commit=False)
+    with Session() as session:
+        session.add_all(
+            [
+                Account(
+                    id=valid_id,
+                    status="active",
+                    created_source="test",
+                    created_at=now,
+                    updated_at=now,
+                ),
+                Account(
+                    id=broken_id,
+                    status="merged",
+                    merged_into_account_id=missing_target_id,
+                    created_source="test",
+                    created_at=now,
+                    updated_at=now,
+                ),
+                User(
+                    tg_id=740411,
+                    account_id=valid_id,
+                    uuid="00000000-0000-4000-8000-000000000414",
+                ),
+                User(
+                    tg_id=740412,
+                    account_id=None,
+                    uuid="00000000-0000-4000-8000-000000000415",
+                    last_wheel_spin=now - timedelta(days=3),
+                ),
+                User(
+                    tg_id=740413,
+                    account_id=broken_id,
+                    uuid="00000000-0000-4000-8000-000000000416",
+                ),
+                AccountMergeReview(
+                    id="00000000-0000-4000-8000-000000000417",
+                    fingerprint="reward-backfill-open-review",
+                    account_id=valid_id,
+                    conflicting_account_id=broken_id,
+                    reason_code="identity_account_conflict",
+                    status="open",
+                    created_at=now,
+                    updated_at=now,
+                ),
+            ]
+        )
+        session.flush()
+        account_count_before = session.query(Account).count()
+
+        result = backfill_reward_account_states(session, now=now)
+
+        assert result.canonical_accounts == 1
+        assert result.states_created == 1
+        assert result.wheel_sources_seen == 1
+        assert result.wheel_states_updated == 0
+        assert result.unresolved_users == 2
+        assert result.invalid_merge_chains == 2
+        assert result.ready is False
+        assert session.query(Account).count() == account_count_before
+        assert session.get(RewardAccountState, valid_id) is not None
+        assert session.get(RewardAccountState, broken_id) is None
+    engine.dispose()

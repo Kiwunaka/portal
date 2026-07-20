@@ -515,9 +515,16 @@ def resolve_canonical_account_id(session, *, account_id: str) -> str:
         account = session.query(Account).filter_by(id=account_key).with_for_update().one_or_none()
         if account is None:
             raise ValueError("account_not_found")
-        if str(account.status or "").lower() != "merged" or not account.merged_into_account_id:
-            return account_key
-        account_key = str(account.merged_into_account_id)
+        status = str(account.status or "").strip().lower()
+        merged_into = str(account.merged_into_account_id or "").strip()
+        if status == "merged":
+            if not merged_into:
+                raise ValueError("invalid_account_merge_chain")
+            account_key = merged_into
+            continue
+        if merged_into:
+            raise ValueError("invalid_account_merge_chain")
+        return account_key
     raise ValueError("invalid_account_merge_chain")
 
 
