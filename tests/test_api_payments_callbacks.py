@@ -10,7 +10,7 @@ import unittest
 import uuid
 from decimal import Decimal
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import urlencode
 
 from fastapi.testclient import TestClient
 
@@ -1135,12 +1135,12 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
-    def test_freekassa_order_endpoints_use_remote_api_wrapper(self) -> None:
+    def test_freekassa_new_order_is_closed_but_historical_operations_use_remote_api_wrapper(self) -> None:
         client = TestClient(self.api.app)
         hdrs = self._auth_headers(1001, "alice")
 
         from db import SessionLocal
-        from models import User
+        from models import ExternalOrder, User
 
         s = SessionLocal()
         try:
@@ -1153,6 +1153,20 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     sub_type="FREE",
                     is_active=True,
                     tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="historical-freekassa-order-1001",
+                    provider="freekassa",
+                    tg_id=1001,
+                    plan_code="1_month",
+                    source="site",
+                    amount=249.0,
+                    currency="RUB",
+                    status="pending",
+                    meta_json=self._freekassa_order_meta(),
+                    created_at=self.api._utcnow(),
                 )
             )
             s.commit()
@@ -1183,12 +1197,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                 headers=hdrs,
                 json={"plan_code": "1_month", "source": "site", "tg_id": 1001},
             )
-            self.assertEqual(create.status_code, 200, create.text)
-            body = create.json()
-            self.assertTrue(body.get("ok"))
-            order_id = str(body.get("order_id") or "")
-            self.assertTrue(order_id)
+            self.assertEqual(create.status_code, 503, create.text)
+            self.assertIn("freekassa is not enabled for public RUB checkout", create.text)
+            self.assertEqual(calls, [])
 
+            order_id = "historical-freekassa-order-1001"
             get_order = client.get(f"/api/payments/freekassa/orders/{order_id}", headers=hdrs)
             self.assertEqual(get_order.status_code, 200, get_order.text)
             self.assertEqual(str(get_order.json().get("status_local") or ""), "pending")
@@ -1243,10 +1256,29 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             campaign_key="launch_w1",
             source="site",
         )
-        r = client.post(
-            "/api/payments/freekassa/orders/create-public",
-            json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
-        )
+        captured: dict[str, object] = {}
+
+        async def _fake_create_rub_payment(**kwargs):
+            captured.update(kwargs)
+            return {
+                "payment_url": "https://app.lava.top/pay/pending-discount-test",
+                "remote": {"payment_url": "https://app.lava.top/pay/pending-discount-test"},
+            }
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _fake_create_rub_payment
+            r = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "1_month",
+                    "checkout_ticket": ticket,
+                    "currency": "RUB",
+                },
+            )
+        finally:
+            self.api.create_rub_payment = old_create
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
         self.assertTrue(body.get("ok"))
@@ -1254,15 +1286,12 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(body.get("discount_pct") or 0), 20)
         self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
         self.assertEqual(int(body.get("amount_rub") or 0), 199)
-        payment_url = str(body.get("payment_url") or "")
-        self.assertTrue(payment_url.startswith("https://pay.fk.money/?"))
-        parsed = urlparse(payment_url)
-        query = parse_qs(parsed.query)
-        self.assertEqual(query.get("currency"), ["RUB"])
-        self.assertEqual(query.get("us_tg_id"), ["1001"])
-        self.assertEqual(query.get("us_plan_code"), ["1_month"])
-        self.assertEqual(query.get("us_campaign"), ["launch_w1"])
-        self.assertEqual(query.get("us_promo_code"), ["WELCOME20"])
+        self.assertEqual(body.get("provider"), "lavatop")
+        self.assertEqual(body.get("payment_url"), "https://app.lava.top/pay/pending-discount-test")
+        self.assertEqual(captured.get("provider"), "lavatop")
+        self.assertEqual(int(captured.get("amount_rub") or 0), 199)
+        self.assertEqual(captured.get("custom", {}).get("campaign"), "launch_w1")
+        self.assertEqual(captured.get("custom", {}).get("promo_code"), "WELCOME20")
 
         s = SessionLocal()
         try:
@@ -1270,10 +1299,10 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertIsNotNone(user)
             self.assertEqual(int(user.pending_discount_pct or 0), 20)
             self.assertEqual(str(user.pending_discount_code or ""), "WELCOME20")
-            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1001, ExternalOrder.provider == "freekassa").first()
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1001, ExternalOrder.provider == "lavatop").first()
             self.assertIsNotNone(row)
             self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
-            self.assertIn("\"payment_url\":\"https://pay.fk.money/", str(row.meta_json or ""))
+            self.assertIn("\"payment_url\":\"https://app.lava.top/pay/pending-discount-test", str(row.meta_json or ""))
             meta = json.loads(row.meta_json or "{}")
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("plan_code"), "1_month")
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("duration_days"), 30)
@@ -1328,10 +1357,29 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             campaign_key="ref_test",
             source="site",
         )
-        r = client.post(
-            "/api/payments/freekassa/orders/create-public",
-            json={"plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
-        )
+        captured: dict[str, object] = {}
+
+        async def _fake_create_rub_payment(**kwargs):
+            captured.update(kwargs)
+            return {
+                "payment_url": "https://app.lava.top/pay/referral-discount-test",
+                "remote": {"payment_url": "https://app.lava.top/pay/referral-discount-test"},
+            }
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _fake_create_rub_payment
+            r = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "1_month",
+                    "checkout_ticket": ticket,
+                    "currency": "RUB",
+                },
+            )
+        finally:
+            self.api.create_rub_payment = old_create
         self.assertEqual(r.status_code, 200, r.text)
         body = r.json()
         self.assertTrue(body.get("ok"))
@@ -1339,7 +1387,10 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(body.get("discount_pct") or 0), 20)
         self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
         self.assertEqual(int(body.get("amount_rub") or 0), 199)
-        self.assertTrue(str(body.get("payment_url") or "").startswith("https://pay.fk.money/?"))
+        self.assertEqual(body.get("provider"), "lavatop")
+        self.assertEqual(body.get("payment_url"), "https://app.lava.top/pay/referral-discount-test")
+        self.assertEqual(captured.get("provider"), "lavatop")
+        self.assertEqual(int(captured.get("amount_rub") or 0), 199)
 
     def test_lavatop_public_order_applies_direct_promo_to_non_start99_plan_with_card(self) -> None:
         client = TestClient(self.api.app)
@@ -1497,10 +1548,29 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             campaign_key="start99_no_discount",
             source="site",
         )
-        response = client.post(
-            "/api/payments/freekassa/orders/create-public",
-            json={"plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
-        )
+        captured: dict[str, object] = {}
+
+        async def _fake_create_rub_payment(**kwargs):
+            captured.update(kwargs)
+            return {
+                "payment_url": "https://app.lava.top/pay/start99-no-discount-test",
+                "remote": {"payment_url": "https://app.lava.top/pay/start99-no-discount-test"},
+            }
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _fake_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "start_99",
+                    "checkout_ticket": ticket,
+                    "currency": "RUB",
+                },
+            )
+        finally:
+            self.api.create_rub_payment = old_create
 
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
@@ -1509,6 +1579,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(int(body.get("discount_pct") or 0), 0)
         self.assertEqual(int(body.get("base_amount_rub") or 0), 99)
         self.assertEqual(int(body.get("amount_rub") or 0), 99)
+        self.assertEqual(captured.get("provider"), "lavatop")
+        self.assertEqual(int(captured.get("amount_rub") or 0), 99)
 
         s = SessionLocal()
         try:
@@ -1516,7 +1588,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertIsNotNone(user)
             self.assertEqual(int(user.pending_discount_pct or 0), 20)
             self.assertEqual(str(user.pending_discount_code or ""), "WELCOME20")
-            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 2005, ExternalOrder.provider == "freekassa").first()
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 2005, ExternalOrder.provider == "lavatop").first()
             self.assertIsNotNone(row)
             meta = json.loads(row.meta_json or "{}")
             self.assertEqual(meta.get("request", {}).get("requested_promo_code"), "WELCOME20")
@@ -1572,11 +1644,11 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertFalse(body.get("blocked"))
         self.assertEqual(body.get("checkout_mode"), "account_session_first")
         rows = body.get("providers", [])
-        self.assertTrue(any((row.get("code") == "lavatop") for row in rows))
-        self.assertTrue(any((row.get("code") == "cardlink") for row in rows))
-        self.assertTrue(any((row.get("code") == "pally") for row in rows))
-        self.assertTrue(any((row.get("code") == "platima") for row in rows))
-        self.assertTrue(any((row.get("code") == "freekassa") for row in rows))
+        self.assertEqual([row.get("code") for row in rows], ["lavatop"])
+        self.assertEqual(
+            rows[0].get("supported_plan_codes"),
+            ["start_99", "1_month", "3_months", "6_months", "9_months", "12_months"],
+        )
 
     def test_rub_provider_catalog_reports_blocked_state_when_checkout_disabled(self) -> None:
         client = TestClient(self.api.app)
@@ -1695,7 +1767,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                 os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = old_order
 
         self.assertEqual(response.status_code, 503, response.text)
-        self.assertIn("freekassa is not enabled for RUB checkout", response.text)
+        self.assertIn("freekassa is not enabled for public RUB checkout", response.text)
 
     def test_public_checkout_url_rewrites_legacy_portal_privacy_host(self) -> None:
         old_url = getattr(self.api.Settings, "PAY_CHECKOUT_URL", "")
