@@ -219,6 +219,22 @@ from economy_service import (
     record_successful_payment_grant,
     release_due_referrer_rewards,
 )
+from rewards_service import (
+    PAID_WEEKLY_V1,
+    CalendarState,
+    InvalidWheelConfig,
+    RewardConflict,
+    RewardDisabled,
+    RewardDomainError,
+    RewardForbidden,
+    WheelState,
+    checkin_calendar,
+    get_calendar_state,
+    get_reward_history,
+    get_wheel_state,
+    parse_paid_weekly_config,
+    spin_wheel,
+)
 from payment_entitlement_service import (
     PaymentEntitlementNotFoundError,
     ensure_fallback_gift_card,
@@ -368,6 +384,11 @@ def _utcnow() -> datetime:
     This avoids deprecated _utcnow() usage while keeping DB compatibility.
     """
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _reward_now() -> datetime:
+    """Injectable reward clock kept separate from auth/session time."""
+    return _utcnow()
 
 
 def _env_float(name: str, default: float) -> float:
@@ -669,16 +690,7 @@ def _default_live_updates() -> list[dict[str, Any]]:
     ]
 
 
-DEFAULT_WHEEL_CONFIG: dict[str, Any] = {
-    "preset": "balanced",
-    "weights": [
-        {"days": 1, "weight": 45},
-        {"days": 3, "weight": 35},
-        {"days": 7, "weight": 15},
-        {"days": 30, "weight": 5},
-    ],
-    "cooldown_hours": 168,
-}
+DEFAULT_WHEEL_CONFIG: dict[str, Any] = PAID_WEEKLY_V1
 
 
 def _normalize_channel_username(raw: str | None) -> str | None:
@@ -769,15 +781,27 @@ def _validate_wheel_weights(weights: list[dict[str, Any]]) -> list[dict[str, int
 
 
 def _normalized_wheel_config(payload: dict[str, Any] | None) -> dict[str, Any]:
-    src = dict(payload or {})
-    preset = str(src.get("preset") or DEFAULT_WHEEL_CONFIG["preset"]).strip()[:32] or "balanced"
-    cooldown_hours = int(src.get("cooldown_hours") or DEFAULT_WHEEL_CONFIG["cooldown_hours"])
-    cooldown_hours = max(1, min(24 * 90, cooldown_hours))
-    weights_raw = src.get("weights")
-    if not isinstance(weights_raw, list) or not weights_raw:
-        weights_raw = list(DEFAULT_WHEEL_CONFIG["weights"])
-    weights = _validate_wheel_weights([dict(x or {}) for x in weights_raw])
-    return {"preset": preset, "weights": weights, "cooldown_hours": cooldown_hours}
+    try:
+        config = parse_paid_weekly_config(
+            payload or PAID_WEEKLY_V1,
+            explicit=payload is not None,
+        )
+    except InvalidWheelConfig as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "wheel_config_invalid",
+                "validation_code": exc.code,
+            },
+        ) from None
+    return {
+        "preset": config.preset,
+        "weights": [
+            {"days": int(days), "weight": int(weight)}
+            for days, weight in config.outcomes
+        ],
+        "cooldown_hours": config.cooldown_hours,
+    }
 
 def _fk_shop_configs() -> dict[str, dict[str, str]]:
     out: dict[str, dict[str, str]] = {}
@@ -1430,9 +1454,18 @@ class AdminWheelWeightIn(BaseModel):
 
 
 class AdminWheelConfigIn(BaseModel):
-    preset: str = Field(default="balanced", min_length=2, max_length=32)
-    weights: list[AdminWheelWeightIn] = Field(default_factory=list, min_length=1, max_length=20)
-    cooldown_hours: int = Field(default=168, ge=1, le=2160)
+    preset: str = Field(default="paid_weekly_v1", min_length=2, max_length=32)
+    weights: list[AdminWheelWeightIn] = Field(
+        default_factory=lambda: [
+            AdminWheelWeightIn(days=1, weight=9000),
+            AdminWheelWeightIn(days=3, weight=890),
+            AdminWheelWeightIn(days=7, weight=100),
+            AdminWheelWeightIn(days=30, weight=10),
+        ],
+        min_length=4,
+        max_length=4,
+    )
+    cooldown_hours: int = Field(default=168, ge=168, le=168)
 
 
 class AdminCampaignLinksBuildIn(BaseModel):
@@ -13424,6 +13457,7 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         tier = referral_tier_snapshot(tg_id=tg_id)
+        channel_status = channel_bonus_service.channel_bonus_status(s, user=user)
         return {
             "tg_id": tg_id,
             "referral_count": int(user.referral_count or 0),
@@ -13433,6 +13467,13 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
             "last_wheel_spin": _safe_iso(user.last_wheel_spin),
             "channel_bonus_premium_days": int(CHANNEL_PREMIUM_DAYS),
             "channel_bonus_claimed_at": _safe_iso(getattr(user, "channel_bonus_claimed_at", None)),
+            "channel": {
+                "offer_days": int(channel_status["offer_days"]),
+                "claimed_days": int(channel_status["claimed_days"]),
+                "claimed": bool(channel_status["claimed"]),
+                "claimed_at": _safe_iso(channel_status["claimed_at"]),
+                "channel_username": PUBLIC_CHANNEL,
+            },
             "opening_bonus_premium_days": int(OPENING_PREMIUM_DAYS),
             "opening_bonus_claimed": _has_campaign_mark(s, tg_id=tg_id, campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY),
             "channel_username": PUBLIC_CHANNEL,
@@ -13473,44 +13514,40 @@ def _bonus_feature_disabled_detail(*, feature: str) -> dict[str, Any]:
     }
 
 
-def _bonus_wheel_config(*, s) -> dict[str, Any]:
-    raw = _get_app_setting_json(s=s, key="wheel_config", default=DEFAULT_WHEEL_CONFIG)
-    return _normalized_wheel_config(raw if isinstance(raw, dict) else DEFAULT_WHEEL_CONFIG)
+def _bonus_wheel_config(*, s) -> dict[str, Any] | None:
+    row = s.query(AppSetting).filter(AppSetting.key == "wheel_config").first()
+    if row is None or not str(row.value_json or "").strip():
+        return None
+    try:
+        raw = json.loads(str(row.value_json))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {"preset": "invalid"}
+    return dict(raw) if isinstance(raw, dict) else {"preset": "invalid"}
 
 
-def _reward_claim_meta(row: RewardClaim) -> dict[str, Any]:
-    meta = _json_obj(getattr(row, "meta", None))
-    safe: dict[str, Any] = {}
-    feature = str(meta.get("feature") or "").strip().lower()
-    if feature:
-        safe["feature"] = feature
-    days = int(meta.get("days") or 0)
-    if days > 0:
-        safe["days"] = max(0, min(days, 3650))
-    preset = str(meta.get("preset") or "").strip()[:32]
-    if preset:
-        safe["preset"] = preset
-    return safe
-
-
-def _bonus_extend_user_access(*, user: User, days: int, now: datetime) -> None:
-    reward_days = max(0, min(int(days or 0), 3650))
-    if reward_days <= 0:
-        return
-    base = user.expiry_at if user.expiry_at and user.expiry_at > now else now
-    user.expiry_at = base + timedelta(days=reward_days)
-    user.is_active = True
-    if str(getattr(user, "sub_type", "") or "").upper() != "PAID":
-        user.sub_type = "BONUS"
-    if not str(getattr(user, "current_plan_code", "") or "").strip():
-        user.current_plan_code = "bonus_reward"
-
-
-def _bonus_reward_claim_exists(*, s, tg_id: int, reward_key: str) -> bool:
-    return bool(
-        s.query(RewardClaim.id)
-        .filter(RewardClaim.tg_id == int(tg_id), RewardClaim.reward_key == str(reward_key))
-        .first()
+def _reward_http_error(exc: RewardDomainError) -> HTTPException:
+    if isinstance(exc, RewardForbidden):
+        return HTTPException(
+            status_code=403,
+            detail={"code": "active_paid_required"},
+        )
+    if isinstance(exc, RewardConflict):
+        return HTTPException(
+            status_code=409,
+            detail={
+                "code": exc.code,
+                "next_spin_at": _safe_iso(exc.next_allowed_at),
+                "last_reward_days": exc.last_reward_days,
+            },
+        )
+    if isinstance(exc, RewardDisabled):
+        return HTTPException(
+            status_code=403,
+            detail={"code": "bonus_feature_disabled", "feature": exc.feature},
+        )
+    return HTTPException(
+        status_code=503,
+        detail={"code": "reward_state_unavailable"},
     )
 
 
@@ -13527,57 +13564,13 @@ def _ensure_achievement(*, s, tg_id: int, achievement_id: str, now: datetime) ->
         s.add(Achievement(tg_id=int(tg_id), achievement_id=aid, unlocked_at=now))
 
 
-def _bonus_wheel_cooldown_state(*, user: User, config: dict[str, Any], now: datetime) -> dict[str, Any]:
-    last_spin = getattr(user, "last_wheel_spin", None)
-    cooldown_hours = max(1, min(int(config.get("cooldown_hours") or DEFAULT_WHEEL_CONFIG["cooldown_hours"]), 24 * 90))
-    next_spin_at = None
-    can_spin = True
-    if last_spin:
-        next_spin_at = last_spin + timedelta(hours=cooldown_hours)
-        can_spin = now >= next_spin_at
-    return {
-        "can_spin": bool(can_spin),
-        "cooldown_hours": int(cooldown_hours),
-        "next_spin_at": _safe_iso(next_spin_at),
-    }
-
-
-def _select_wheel_reward_days(config: dict[str, Any]) -> int:
-    weights = _validate_wheel_weights([dict(x or {}) for x in config.get("weights") or DEFAULT_WHEEL_CONFIG["weights"]])
-    total = sum(int(row["weight"]) for row in weights)
-    pick = secrets.randbelow(max(1, total)) + 1
-    acc = 0
-    for row in weights:
-        acc += int(row["weight"])
-        if pick <= acc:
-            return int(row["days"])
-    return int(weights[-1]["days"])
-
-
-def _calendar_reward_key(day: datetime | None = None) -> str:
-    when = day or _utcnow()
-    return f"calendar_{when.strftime('%Y%m%d')}"
-
-
-def _calendar_claim_dates(*, s, tg_id: int, limit: int = 35) -> list[str]:
-    rows = (
-        s.query(RewardClaim)
-        .filter(RewardClaim.tg_id == int(tg_id), RewardClaim.reward_key.like("calendar_%"))
-        .order_by(RewardClaim.claimed_at.desc(), RewardClaim.id.desc())
-        .limit(max(1, min(int(limit or 35), 90)))
-        .all()
-    )
-    out: list[str] = []
-    for row in rows:
-        key = str(row.reward_key or "")
-        if re.fullmatch(r"calendar_\d{8}", key):
-            out.append(f"{key[9:13]}-{key[13:15]}-{key[15:17]}")
-    return out
-
-
-def _bonus_achievements_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
-    reward_rows = s.query(RewardClaim.reward_key).filter(RewardClaim.tg_id == int(tg_id)).all()
-    reward_keys = {str(row[0] or "") for row in reward_rows}
+def _bonus_achievements_payload(
+    *,
+    s,
+    user: User,
+    tg_id: int,
+    calendar_state: CalendarState,
+) -> dict[str, Any]:
     custom_rows = (
         s.query(Achievement)
         .filter(Achievement.tg_id == int(tg_id))
@@ -13586,14 +13579,20 @@ def _bonus_achievements_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
         .all()
     )
     custom_ids = {str(row.achievement_id or "") for row in custom_rows}
-    calendar_count = len([key for key in reward_keys if key.startswith("calendar_")])
-    wheel_count = len([key for key in reward_keys if key.startswith("wheel_")])
     items = [
         {"id": "first_launch", "title": "Первый запуск", "unlocked": bool(getattr(user, "is_app_user", False))},
         {"id": "telegram_bonus", "title": "Telegram-бонус", "unlocked": bool(getattr(user, "channel_bonus_claimed_at", None))},
-        {"id": "first_wheel", "title": "Первая рулетка", "unlocked": bool(wheel_count > 0 or "first_wheel" in custom_ids)},
-        {"id": "first_checkin", "title": "Первая отметка", "unlocked": bool(calendar_count > 0 or "first_checkin" in custom_ids)},
-        {"id": "streak_7", "title": "7 отметок", "unlocked": bool(calendar_count >= 7 or int(getattr(user, "streak_months", 0) or 0) >= 7 or "streak_7" in custom_ids)},
+        {"id": "first_wheel", "title": "Первая рулетка", "unlocked": "first_wheel" in custom_ids},
+        {
+            "id": "first_checkin",
+            "title": "Первая отметка",
+            "unlocked": bool(calendar_state.achievements.get("first_checkin")),
+        },
+        {
+            "id": "streak_7",
+            "title": "7 отметок",
+            "unlocked": bool(calendar_state.achievements.get("streak_7")),
+        },
         {"id": "first_referral", "title": "Первый друг", "unlocked": bool(int(getattr(user, "referral_count", 0) or 0) > 0)},
     ]
     return {
@@ -13637,38 +13636,52 @@ def _bonus_history_payload(*, s, user: User, tg_id: int, limit: int = 20) -> dic
         }
         add_item(getattr(usage, "used_at", None), 30, item)
 
-    reward_claims = (
-        s.query(RewardClaim)
-        .filter(RewardClaim.tg_id == int(tg_id))
-        .filter(or_(RewardClaim.reward_key.like("wheel_%"), RewardClaim.reward_key.like("calendar_%")))
-        .order_by(RewardClaim.claimed_at.desc(), RewardClaim.id.desc())
-        .limit(max_items)
-        .all()
-    )
-    for claim in reward_claims:
-        meta = _reward_claim_meta(claim)
-        key = str(claim.reward_key or "")
-        is_wheel = key.startswith("wheel_")
+    try:
+        reward_entries = get_reward_history(
+            s,
+            account_id=str(user.account_id or ""),
+            limit=max_items,
+        )
+    except ValueError:
+        reward_entries = []
+    for entry in reward_entries:
+        reward_key = str(entry.metadata.get("reward_key") or "")
+        feature = str(entry.metadata.get("feature") or "")
+        is_wheel = entry.source == "bonus_wheel" or feature == "wheel" or reward_key.startswith("wheel_")
+        is_calendar = (
+            entry.source == "bonus_calendar"
+            or feature == "calendar"
+            or reward_key.startswith("calendar_")
+        )
         add_item(
-            getattr(claim, "claimed_at", None),
+            entry.committed_at,
             28 if is_wheel else 26,
             {
-                "kind": "wheel_spin" if is_wheel else "calendar_checkin",
-                "source": "reward",
-                "title": "Рулетка: бонус получен" if is_wheel else "Активность отмечена",
-                "days": int(meta.get("days") or 0),
-                "reward_key": key,
+                "kind": (
+                    "wheel_spin"
+                    if is_wheel
+                    else "calendar_checkin" if is_calendar else "legacy_reward_claim"
+                ),
+                "source": entry.source,
+                "title": (
+                    "Рулетка: бонус получен"
+                    if is_wheel
+                    else "Активность отмечена" if is_calendar else "Бонус получен"
+                ),
+                "days": int(entry.reward_days),
+                "durable_id": entry.durable_id,
             },
         )
 
+    channel_status = channel_bonus_service.channel_bonus_status(s, user=user)
     add_item(
-        getattr(user, "channel_bonus_claimed_at", None),
+        channel_status["claimed_at"],
         20,
         {
             "kind": "telegram_channel",
             "source": "telegram",
             "title": "Telegram-бонус получен",
-            "days": int(CHANNEL_PREMIUM_DAYS),
+            "days": int(channel_status["claimed_days"]),
             "channel_username": PUBLIC_CHANNEL,
         },
     )
@@ -13703,61 +13716,136 @@ def _bonus_history_payload(*, s, user: User, tg_id: int, limit: int = 20) -> dic
     }
 
 
-def _bonus_wheel_state_payload(*, s, user: User) -> dict[str, Any]:
+def _bonus_wheel_state_payload(
+    *,
+    s,
+    user: User,
+    now: datetime | None = None,
+    wheel_state: WheelState | None = None,
+) -> dict[str, Any]:
+    current_now = now or _reward_now()
     rollout_flag_enabled = bool(BONUS_WHEEL_ENABLED)
-    config = _bonus_wheel_config(s=s)
-    now = _utcnow()
-    cooldown = _bonus_wheel_cooldown_state(user=user, config=config, now=now)
-    enabled = bool(rollout_flag_enabled)
+    state = wheel_state or get_wheel_state(
+        s,
+        account_id=str(user.account_id or ""),
+        enabled=rollout_flag_enabled,
+        config_payload=_bonus_wheel_config(s=s),
+        now=current_now,
+    )
+    if not rollout_flag_enabled:
+        public_state = "disabled_until_feature_flag"
+    elif state.reason == "wheel_config_invalid":
+        public_state = "unavailable"
+    elif not state.eligible:
+        public_state = "ineligible"
+    elif state.can_spin:
+        public_state = "ready"
+    else:
+        public_state = "cooldown"
     return {
         "ok": True,
-        "enabled": enabled,
-        "state": "ready" if enabled and cooldown["can_spin"] else ("cooldown" if enabled else "disabled_until_feature_flag"),
+        "enabled": bool(state.enabled),
+        "eligible": bool(state.eligible),
+        "reason": str(state.reason),
+        "state": public_state,
         "feature_flag": "BONUS_WHEEL_ENABLED",
         "feature_flag_enabled": rollout_flag_enabled,
         "spin_endpoint": "/api/bonuses/wheel/spin",
-        "last_spin_at": _safe_iso(getattr(user, "last_wheel_spin", None)),
-        "streak_months": int(getattr(user, "streak_months", 0) or 0),
-        "can_spin": bool(enabled and cooldown["can_spin"]),
-        "next_spin_at": cooldown["next_spin_at"],
-        "cooldown_hours": cooldown["cooldown_hours"],
-        "sectors": [int(row["days"]) for row in config["weights"]],
+        "last_spin_at": _safe_iso(state.last_spin_at),
+        "can_spin": bool(state.can_spin),
+        "next_spin_at": _safe_iso(state.next_spin_at),
+        "cooldown_hours": int(state.cooldown_hours),
+        "last_reward_days": state.last_reward_days,
+        "sync_state": str(state.sync_state),
+        "sectors": [int(days) for days in state.sectors],
         "ledger_ready": True,
-        "config_preset": str(config.get("preset") or "balanced"),
+        "config_preset": "paid_weekly_v1" if state.reason != "wheel_config_invalid" else None,
     }
 
 
-def _bonus_calendar_state_payload(*, s, user: User) -> dict[str, Any]:
+def _bonus_calendar_state_payload(
+    *,
+    s,
+    user: User,
+    now: datetime | None = None,
+    calendar_state: CalendarState | None = None,
+) -> dict[str, Any]:
+    current_now = now or _reward_now()
     rollout_flag_enabled = bool(BONUS_CALENDAR_ENABLED)
-    now = _utcnow()
-    reward_key = _calendar_reward_key(now)
-    checked_in_today = _bonus_reward_claim_exists(s=s, tg_id=int(user.tg_id), reward_key=reward_key)
-    enabled = bool(rollout_flag_enabled)
+    state = calendar_state or get_calendar_state(
+        s,
+        account_id=str(user.account_id or ""),
+        enabled=rollout_flag_enabled,
+        now=current_now,
+    )
+    if not rollout_flag_enabled:
+        public_state = "disabled_until_feature_flag"
+    elif not state.eligible:
+        public_state = "ineligible"
+    elif state.checked_in_today:
+        public_state = "checked_in_today"
+    else:
+        public_state = "ready"
+    checked_dates = (
+        [
+            (state.cycle_started_on + timedelta(days=offset)).isoformat()
+            for offset in range(int(state.cycle_day))
+        ]
+        if state.cycle_started_on is not None
+        else []
+    )
     return {
         "ok": True,
-        "enabled": enabled,
-        "state": "ready" if enabled and not checked_in_today else ("checked_in_today" if enabled else "disabled_until_feature_flag"),
+        "enabled": bool(state.enabled),
+        "eligible": bool(state.eligible),
+        "reason": str(state.reason),
+        "state": public_state,
         "feature_flag": "BONUS_CALENDAR_ENABLED",
         "feature_flag_enabled": rollout_flag_enabled,
         "checkin_endpoint": "/api/bonuses/calendar/checkin",
-        "streak_months": int(getattr(user, "streak_months", 0) or 0),
-        "streak_last_check_at": _safe_iso(getattr(user, "streak_last_check", None)),
-        "checked_in_today": bool(checked_in_today),
-        "can_checkin": bool(enabled and not checked_in_today),
+        "checked_in_today": bool(state.checked_in_today),
+        "can_checkin": bool(state.enabled and state.eligible and not state.checked_in_today),
+        "cycle_started_on": state.cycle_started_on.isoformat() if state.cycle_started_on else None,
+        "calendar_cycle_day": int(state.cycle_day),
+        "cycle_day": int(state.cycle_day),
+        "next_milestone": state.next_milestone,
         "reward_days": int(BONUS_CALENDAR_REWARD_DAYS),
-        "checked_dates": _calendar_claim_dates(s=s, tg_id=int(user.tg_id), limit=35),
-        "last_wheel_spin": _safe_iso(getattr(user, "last_wheel_spin", None)),
+        "checked_dates": checked_dates,
+        "streak_months": int(state.cycle_day),
+        "streak_last_check_at": checked_dates[-1] if checked_dates else None,
+        "achievements": dict(state.achievements),
+        "sync_state": str(state.sync_state),
         "ledger_ready": True,
     }
 
 
 def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
+    now = _reward_now()
     referral = _bonus_referral_summary_payload(user=user, tg_id=tg_id)
     history = _bonus_history_payload(s=s, user=user, tg_id=tg_id, limit=20)
-    wheel = _bonus_wheel_state_payload(s=s, user=user)
-    calendar = _bonus_calendar_state_payload(s=s, user=user)
-    achievements = _bonus_achievements_payload(s=s, user=user, tg_id=tg_id)
-    channel_claimed_at = _safe_iso(getattr(user, "channel_bonus_claimed_at", None))
+    wheel_state = get_wheel_state(
+        s,
+        account_id=str(user.account_id or ""),
+        enabled=bool(BONUS_WHEEL_ENABLED),
+        config_payload=_bonus_wheel_config(s=s),
+        now=now,
+    )
+    calendar_state = get_calendar_state(
+        s,
+        account_id=str(user.account_id or ""),
+        enabled=bool(BONUS_CALENDAR_ENABLED),
+        now=now,
+    )
+    wheel = _bonus_wheel_state_payload(s=s, user=user, now=now, wheel_state=wheel_state)
+    calendar = _bonus_calendar_state_payload(s=s, user=user, now=now, calendar_state=calendar_state)
+    achievements = _bonus_achievements_payload(
+        s=s,
+        user=user,
+        tg_id=tg_id,
+        calendar_state=calendar_state,
+    )
+    channel_status = channel_bonus_service.channel_bonus_status(s, user=user)
+    channel_claimed_at = _safe_iso(channel_status["claimed_at"])
     opening_claimed = _has_campaign_mark(
         s,
         tg_id=tg_id,
@@ -13769,8 +13857,8 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
         "referral_count": int(user.referral_count or 0),
         "referral_code": str(user.referral_code or "").strip(),
         "referral_bonus_days": REFERRAL_BONUS_DAYS,
-        "streak_months": int(user.streak_months or 0),
-        "last_wheel_spin": _safe_iso(user.last_wheel_spin),
+        "streak_months": int(calendar_state.cycle_day),
+        "last_wheel_spin": _safe_iso(wheel_state.last_spin_at),
         "channel_bonus_premium_days": int(CHANNEL_PREMIUM_DAYS),
         "channel_bonus_claimed_at": channel_claimed_at,
         "opening_bonus_premium_days": int(OPENING_PREMIUM_DAYS),
@@ -13780,7 +13868,9 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
         "referral": referral,
         "channel_bonus": {
             "premium_days": int(CHANNEL_PREMIUM_DAYS),
-            "claimed": bool(channel_claimed_at),
+            "offer_days": int(channel_status["offer_days"]),
+            "claimed_days": int(channel_status["claimed_days"]),
+            "claimed": bool(channel_status["claimed"]),
             "claimed_at": channel_claimed_at,
             "channel_username": PUBLIC_CHANNEL,
         },
@@ -13871,72 +13961,50 @@ async def bonuses_wheel_state(request: Request, x_telegram_init_data: str = Head
 async def bonuses_wheel_spin(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
-    if not BONUS_WHEEL_ENABLED:
-        raise HTTPException(status_code=403, detail=_bonus_feature_disabled_detail(feature="wheel"))
     s = SessionLocal()
-    sync_ok = False
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        now = _utcnow()
-        config = _bonus_wheel_config(s=s)
-        cooldown = _bonus_wheel_cooldown_state(user=user, config=config, now=now)
-        if not bool(cooldown["can_spin"]):
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "code": "wheel_cooldown_active",
-                    "feature": "wheel",
-                    "next_spin_at": cooldown["next_spin_at"],
-                },
-            )
-        reward_days = _select_wheel_reward_days(config)
-        reward_key = f"wheel_{now.strftime('%Y%m%d%H%M%S')}"
-        _bonus_extend_user_access(user=user, days=reward_days, now=now)
-        user.last_wheel_spin = now
-        s.add(
-            RewardClaim(
-                tg_id=tg_id,
-                reward_key=reward_key,
-                meta=json.dumps(
-                    {
-                        "feature": "wheel",
-                        "days": int(reward_days),
-                        "preset": str(config.get("preset") or "balanced"),
-                    },
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                ),
-                claimed_at=now,
-            )
+        now = _reward_now()
+        mutation = spin_wheel(
+            s,
+            account_id=str(user.account_id or ""),
+            enabled=bool(BONUS_WHEEL_ENABLED),
+            config_payload=_bonus_wheel_config(s=s),
+            now=now,
         )
         _ensure_achievement(s=s, tg_id=tg_id, achievement_id="first_wheel", now=now)
         s.commit()
-        try:
-            sync_ok = bool(await _sync_user_after_paid_bonus(user))
-        except Exception as exc:
-            logger.warning("wheel reward sync failed tg_id=%s err=%s", tg_id, exc)
-            sync_ok = False
+        wheel_state = _bonus_wheel_state_payload(s=s, user=user, now=now)
         summary = _bonus_summary_payload(s=s, user=user, tg_id=tg_id)
         expiry_at = _safe_iso(getattr(user, "expiry_at", None))
+    except RewardDomainError as exc:
+        s.rollback()
+        raise _reward_http_error(exc) from None
     except IntegrityError:
         s.rollback()
-        raise HTTPException(status_code=409, detail={"code": "reward_already_claimed", "feature": "wheel"})
+        raise HTTPException(status_code=503, detail={"code": "reward_state_unavailable"}) from None
     finally:
         s.close()
     _track_bonus_event(
         tg_id=tg_id,
         event_name="wheel_reward_claimed",
-        meta={"reward_days": int(reward_days), "reward_key": reward_key, "sync_ok": bool(sync_ok)},
+        meta={
+            "reward_days": int(mutation.reward_days),
+            "grant_id": mutation.grant_id,
+            "sync_state": mutation.sync_state,
+        },
     )
     return {
         "ok": True,
         "feature": "wheel",
-        "reward_days": int(reward_days),
-        "reward_key": reward_key,
+        "reward_days": int(mutation.reward_days),
+        "grant_id": mutation.grant_id,
+        "sync_state": str(mutation.sync_state),
+        "state": wheel_state,
         "expiry_at": expiry_at,
-        "sync_ok": bool(sync_ok),
+        "sync_ok": mutation.sync_state == "synced",
         "summary": summary,
     }
 
@@ -13959,76 +14027,62 @@ async def bonuses_calendar(request: Request, x_telegram_init_data: str = Header(
 async def bonuses_calendar_checkin(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
     auth_user = _require_auth_user(x_telegram_init_data, request=request)
     tg_id = int(auth_user.get("id", 0))
-    if not BONUS_CALENDAR_ENABLED:
-        raise HTTPException(status_code=403, detail=_bonus_feature_disabled_detail(feature="calendar"))
     s = SessionLocal()
-    sync_ok = False
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        now = _utcnow()
-        reward_key = _calendar_reward_key(now)
-        if _bonus_reward_claim_exists(s=s, tg_id=tg_id, reward_key=reward_key):
-            raise HTTPException(
-                status_code=409,
-                detail={"code": "calendar_already_checked_in", "feature": "calendar"},
-            )
-        last_check = getattr(user, "streak_last_check", None)
-        yesterday = (now - timedelta(days=1)).date()
-        if last_check and last_check.date() == yesterday:
-            user.streak_months = int(getattr(user, "streak_months", 0) or 0) + 1
-        else:
-            user.streak_months = 1
-        user.streak_last_check = now
-        reward_days = int(BONUS_CALENDAR_REWARD_DAYS)
-        _bonus_extend_user_access(user=user, days=reward_days, now=now)
-        s.add(
-            RewardClaim(
-                tg_id=tg_id,
-                reward_key=reward_key,
-                meta=json.dumps(
-                    {
-                        "feature": "calendar",
-                        "days": int(reward_days),
-                        "streak": int(user.streak_months or 0),
-                    },
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                ),
-                claimed_at=now,
-            )
+        now = _reward_now()
+        mutation = checkin_calendar(
+            s,
+            account_id=str(user.account_id or ""),
+            enabled=bool(BONUS_CALENDAR_ENABLED),
+            now=now,
         )
-        _ensure_achievement(s=s, tg_id=tg_id, achievement_id="first_checkin", now=now)
-        if int(user.streak_months or 0) >= 7:
+        if mutation.achievements.get("first_checkin"):
+            _ensure_achievement(s=s, tg_id=tg_id, achievement_id="first_checkin", now=now)
+        if mutation.achievements.get("streak_7"):
             _ensure_achievement(s=s, tg_id=tg_id, achievement_id="streak_7", now=now)
         s.commit()
-        try:
-            sync_ok = bool(await _sync_user_after_paid_bonus(user)) if reward_days > 0 else False
-        except Exception as exc:
-            logger.warning("calendar reward sync failed tg_id=%s err=%s", tg_id, exc)
-            sync_ok = False
+        calendar_state = _bonus_calendar_state_payload(s=s, user=user, now=now)
         summary = _bonus_summary_payload(s=s, user=user, tg_id=tg_id)
         expiry_at = _safe_iso(getattr(user, "expiry_at", None))
-        streak_months = int(user.streak_months or 0)
+    except RewardDomainError as exc:
+        s.rollback()
+        raise _reward_http_error(exc) from None
     except IntegrityError:
         s.rollback()
-        raise HTTPException(status_code=409, detail={"code": "calendar_already_checked_in", "feature": "calendar"})
+        raise HTTPException(status_code=503, detail={"code": "reward_state_unavailable"}) from None
     finally:
         s.close()
     _track_bonus_event(
         tg_id=tg_id,
         event_name="calendar_reward_claimed",
-        meta={"reward_days": int(reward_days), "reward_key": reward_key, "streak": int(streak_months), "sync_ok": bool(sync_ok)},
+        meta={
+            "reward_days": int(mutation.reward_days),
+            "grant_id": mutation.grant_id,
+            "calendar_cycle_day": int(mutation.calendar_cycle_day),
+            "already_checked_in": bool(mutation.already_checked_in),
+            "sync_state": mutation.sync_state,
+        },
     )
     return {
         "ok": True,
         "feature": "calendar",
-        "reward_days": int(reward_days),
-        "reward_key": reward_key,
-        "streak_months": int(streak_months),
+        "reward_days": int(mutation.reward_days),
+        "grant_id": mutation.grant_id,
+        "sync_state": str(mutation.sync_state),
+        "already_checked_in": bool(mutation.already_checked_in),
+        "calendar_cycle_started_on": (
+            mutation.calendar_cycle_started_on.isoformat()
+            if mutation.calendar_cycle_started_on
+            else None
+        ),
+        "calendar_cycle_day": int(mutation.calendar_cycle_day),
+        "streak_months": int(mutation.calendar_cycle_day),
+        "state": calendar_state,
         "expiry_at": expiry_at,
-        "sync_ok": bool(sync_ok),
+        "sync_ok": mutation.sync_state == "synced",
         "summary": summary,
     }
 
@@ -14045,6 +14099,7 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        channel_status = channel_bonus_service.channel_bonus_status(s, user=user)
     finally:
         s.close()
 
@@ -14052,6 +14107,8 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
         user=user,
         channel_username=PUBLIC_CHANNEL,
         bonus_days=CHANNEL_PREMIUM_DAYS,
+        claimed_days=int(channel_status["claimed_days"]),
+        claimed_at=channel_status["claimed_at"],
         is_channel_member=_is_channel_member,
     )
 
@@ -19262,7 +19319,22 @@ def _execute_task20_admin_action_db(
         return {"id": int(row.id), "code": str(row.code or "").strip().lower()}
 
     if action == "wheel_config.update":
-        normalized = _normalized_wheel_config(runtime)
+        try:
+            config = parse_paid_weekly_config(runtime, explicit=True)
+        except InvalidWheelConfig:
+            raise ActionIntentError(
+                "wheel_config_invalid",
+                status_code=400,
+                message="wheel_config_invalid",
+            ) from None
+        normalized = {
+            "preset": config.preset,
+            "weights": [
+                {"days": int(days), "weight": int(weight)}
+                for days, weight in config.outcomes
+            ],
+            "cooldown_hours": int(config.cooldown_hours),
+        }
         _set_app_setting_json(s=session, key="wheel_config", value=normalized)
         session.flush()
         return {"wheel_config": normalized}

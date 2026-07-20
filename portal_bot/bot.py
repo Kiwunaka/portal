@@ -350,6 +350,7 @@ FRIEND_GIFT_CAMPAIGN_KEY = (
     (os.getenv("FRIEND_GIFT_CAMPAIGN_KEY") or f"friend_gift_{FRIEND_GIFT_DAYS}d").strip()[:64]
 )
 CHANNEL_PREMIUM_DAYS = 5
+BONUS_WHEEL_ENABLED = _env_bool("BONUS_WHEEL_ENABLED", default=False)
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
     "a": "💳 Продлить или начать",
@@ -763,6 +764,17 @@ import channel_bonus_service
 from economy_service import create_referral_relationship, record_successful_payment_grant
 from account_foundation_service import (
     ensure_user_account_foundation,
+)
+from rewards_service import (
+    PAID_WEEKLY_V1,
+    InvalidWheelConfig,
+    RewardConflict,
+    RewardDisabled,
+    RewardDomainError,
+    RewardForbidden,
+    get_wheel_state,
+    parse_paid_weekly_config,
+    spin_wheel,
 )
 from models import (
     Achievement,
@@ -1427,11 +1439,10 @@ def generate_sub_token() -> str:
 
 def generate_referral_code() -> str:
     """Generate unique 8-char referral code like SWAZ7K3F"""
-    import random
     import string
     chars = string.ascii_uppercase + string.digits
     while True:
-        code = "SWAZ" + ''.join(random.choices(chars, k=4))
+        code = "SWAZ" + "".join(secrets.choice(chars) for _ in range(4))
         session = Session()
         exists = session.query(User).filter_by(referral_code=code).first()
         session.close()
@@ -2307,32 +2318,13 @@ async def _activate_channel_bonus(
 # ==========================================
 
 WHEEL_DEFAULT_PRIZES: list[tuple[int, int]] = [
-    (1, 45),
-    (3, 35),
-    (7, 15),
-    (30, 5),
+    (int(row["days"]), int(row["weight"]))
+    for row in PAID_WEEKLY_V1["weights"]
 ]
 WHEEL_PRESETS: dict[str, list[tuple[int, int]]] = {
-    "balanced": WHEEL_DEFAULT_PRIZES,
-    "steady": [(1, 55), (3, 30), (7, 12), (30, 3)],
-    "generous": [(1, 35), (3, 35), (7, 20), (30, 10)],
+    "paid_weekly_v1": WHEEL_DEFAULT_PRIZES,
 }
 WHEEL_DEFAULT_COOLDOWN_HOURS = 168
-
-
-def _normalize_wheel_weights(rows: list[tuple[int, int]] | None) -> list[tuple[int, int]]:
-    out: list[tuple[int, int]] = []
-    seen: set[int] = set()
-    for days, weight in (rows or []):
-        d = int(days or 0)
-        w = int(weight or 0)
-        if d <= 0 or w <= 0:
-            continue
-        if d in seen:
-            continue
-        seen.add(d)
-        out.append((d, w))
-    return out or list(WHEEL_DEFAULT_PRIZES)
 
 
 def _cooldown_days_from_hours(hours: int) -> int:
@@ -2340,42 +2332,43 @@ def _cooldown_days_from_hours(hours: int) -> int:
     return max(1, min(90, int((val + 23) // 24)))
 
 
-def _load_wheel_config() -> dict:
-    s = Session()
+def _load_wheel_config_payload(session=None) -> dict[str, Any] | None:
+    owns_session = session is None
+    s = session or Session()
     try:
         row = s.query(AppSetting).filter(AppSetting.key == "wheel_config").first()
     finally:
-        s.close()
+        if owns_session:
+            s.close()
     if not row or not str(getattr(row, "value_json", "") or "").strip():
-        return {
-            "preset": "balanced",
-            "weights": list(WHEEL_DEFAULT_PRIZES),
-            "cooldown_hours": int(WHEEL_DEFAULT_COOLDOWN_HOURS),
-            "cooldown_days": int(_cooldown_days_from_hours(WHEEL_DEFAULT_COOLDOWN_HOURS)),
-        }
+        return None
     try:
         payload = json.loads(str(row.value_json))
-    except Exception:
-        payload = {}
-    preset = str(payload.get("preset") or "balanced").strip().lower()
-    weights_raw = payload.get("weights") or []
-    if isinstance(weights_raw, list):
-        weights = _normalize_wheel_weights(
-            [
-                (int((x or {}).get("days") or 0), int((x or {}).get("weight") or 0))
-                for x in weights_raw
-            ]
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {"preset": "invalid"}
+    return dict(payload) if isinstance(payload, dict) else {"preset": "invalid"}
+
+
+def _load_wheel_config() -> dict[str, Any]:
+    raw = _load_wheel_config_payload()
+    try:
+        config = parse_paid_weekly_config(
+            PAID_WEEKLY_V1 if raw is None else raw,
+            explicit=raw is not None,
         )
-    else:
-        weights = list(WHEEL_DEFAULT_PRIZES)
-    cooldown_hours = int(payload.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
-    cooldown_hours = max(1, min(24 * 90, cooldown_hours))
-    cooldown_days = _cooldown_days_from_hours(cooldown_hours)
+    except InvalidWheelConfig as exc:
+        return {
+            "preset": "invalid",
+            "weights": [],
+            "cooldown_hours": 0,
+            "cooldown_days": 0,
+            "validation_code": exc.code,
+        }
     return {
-        "preset": preset or "manual",
-        "weights": weights,
-        "cooldown_hours": cooldown_hours,
-        "cooldown_days": cooldown_days,
+        "preset": config.preset,
+        "weights": [(int(days), int(weight)) for days, weight in config.outcomes],
+        "cooldown_hours": int(config.cooldown_hours),
+        "cooldown_days": int(_cooldown_days_from_hours(config.cooldown_hours)),
     }
 
 
@@ -2386,20 +2379,26 @@ def _save_wheel_config(
     cooldown_hours: int | None = None,
     preset: str | None = None,
 ) -> dict:
-    current = _load_wheel_config()
-    next_weights = _normalize_wheel_weights(weights if weights is not None else current.get("weights"))
-    next_preset = str(preset or current.get("preset") or "manual").strip().lower()[:32] or "manual"
-    if cooldown_hours is not None:
-        next_cooldown_hours = int(cooldown_hours)
-    elif cooldown_days is not None:
-        next_cooldown_hours = int(cooldown_days) * 24
-    else:
-        next_cooldown_hours = int(current.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
-    next_cooldown_hours = max(1, min(24 * 90, next_cooldown_hours))
+    candidate = {
+        "preset": str(preset or "paid_weekly_v1"),
+        "weights": [
+            {"days": int(days), "weight": int(weight)}
+            for days, weight in (weights or WHEEL_DEFAULT_PRIZES)
+        ],
+        "cooldown_hours": (
+            int(cooldown_hours)
+            if cooldown_hours is not None
+            else int(cooldown_days) * 24 if cooldown_days is not None else 168
+        ),
+    }
+    config = parse_paid_weekly_config(candidate, explicit=True)
     payload = {
-        "preset": next_preset,
-        "weights": [{"days": int(d), "weight": int(w)} for d, w in next_weights],
-        "cooldown_hours": int(next_cooldown_hours),
+        "preset": config.preset,
+        "weights": [
+            {"days": int(days), "weight": int(weight)}
+            for days, weight in config.outcomes
+        ],
+        "cooldown_hours": int(config.cooldown_hours),
     }
     s = Session()
     try:
@@ -2436,92 +2435,33 @@ def _wheel_cooldown_days() -> int:
 
 
 def wheel_prizes_for_user(user: User | None) -> list[tuple[int, int]]:
-    # Weights are managed from admin panel.
+    # Compatibility helper for the fixed, server-authoritative public sectors.
     return _wheel_prizes()
 
-def can_spin_wheel(tg_id: int) -> tuple[bool, int]:
-    """Check if user can spin the wheel. Returns (can_spin, seconds_until_next)"""
-    session = Session()
-    user = session.query(User).filter_by(tg_id=tg_id).first()
-    session.close()
-    
-    if not user:
-        return False, 0
 
-    now = _utcnow()
-    # Wheel is available only for active paid subscriptions.
-    if not _is_paid_active_user(user):
-        return False, 0
-    
-    last_spin = _naive_utc(user.last_wheel_spin)
-    if not last_spin:
-        return True, 0
-    
-    next_spin = last_spin + timedelta(hours=_wheel_cooldown_hours())
-    
-    if now >= next_spin:
-        return True, 0
-    
-    seconds_left = int((next_spin - now).total_seconds())
-    return False, seconds_left
-
-def spin_wheel(tg_id: int) -> int | None:
-    """Spin the wheel and award days. Returns prize days, or None if can't spin"""
-    import random
-
-    session = Session()
-    try:
-        user = session.query(User).filter_by(tg_id=tg_id).first()
-        if not user or not _is_paid_active_user(user):
-            return None
-
-        now = _utcnow()
-        last_spin = _naive_utc(user.last_wheel_spin)
-        if last_spin:
-            next_spin = last_spin + timedelta(hours=_wheel_cooldown_hours())
-            if now < next_spin:
-                return None
-
-        prizes = wheel_prizes_for_user(user)
-        total_weight = sum(w for _, w in prizes)
-        r = random.randint(1, total_weight)
-
-        cumulative = 0
-        prize_days = 1
-        for days, weight in prizes:
-            cumulative += weight
-            if r <= cumulative:
-                prize_days = days
-                break
-
-        expiry = _naive_utc(user.expiry_at)
-        if expiry and expiry > now:
-            next_expiry = expiry + timedelta(days=prize_days)
-        else:
-            next_expiry = now + timedelta(days=prize_days)
-
-        guard = session.query(User).filter(User.tg_id == int(tg_id))
-        if last_spin is None:
-            guard = guard.filter(User.last_wheel_spin.is_(None))
-        else:
-            guard = guard.filter(User.last_wheel_spin == last_spin)
-
-        updated = guard.update(
-            {
-                User.last_wheel_spin: now,
-                User.expiry_at: next_expiry,
-                User.is_active: True,
-            },
-            synchronize_session=False,
+def _ensure_reward_achievement(
+    session,
+    *,
+    tg_id: int,
+    achievement_id: str,
+    now: datetime,
+) -> None:
+    exists = (
+        session.query(Achievement.id)
+        .filter(
+            Achievement.tg_id == int(tg_id),
+            Achievement.achievement_id == str(achievement_id),
         )
-        if int(updated or 0) != 1:
-            session.rollback()
-            return None
-
-        session.commit()
-        return prize_days
-    finally:
-        session.close()
+        .first()
+    )
+    if not exists:
+        session.add(
+            Achievement(
+                tg_id=int(tg_id),
+                achievement_id=str(achievement_id),
+                unlocked_at=now,
+            )
+        )
 
 # ==========================================
 #           STREAK SYSTEM
@@ -5021,126 +4961,176 @@ async def show_referral(callback: CallbackQuery):
 
 @router.callback_query(F.data == "wheel")
 async def show_wheel(callback: CallbackQuery):
-    """Show Wheel of Fortune menu"""
+    """Render the shared account-level wheel state without exposing weights."""
     tg_id = callback.from_user.id
-    user = get_user(tg_id)
-    if not _is_paid_active_user(user):
-        await callback.answer("⚠️ Рулетка доступна только при активном платном доступе.", show_alert=True)
+    now = _utcnow()
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            await callback.answer("⚠️ Сначала активируй аккаунт.", show_alert=True)
+            return
+        if not str(user.account_id or "").strip():
+            ensure_user_account_foundation(session, user, now=now)
+            session.flush()
+        state = get_wheel_state(
+            session,
+            account_id=str(user.account_id or ""),
+            enabled=bool(BONUS_WHEEL_ENABLED),
+            config_payload=_load_wheel_config_payload(session),
+            now=now,
+        )
+    except RewardDomainError:
+        session.rollback()
+        await callback.answer("⚠️ Рулетка временно недоступна.", show_alert=True)
         return
+    finally:
+        session.close()
 
-    can_spin, seconds_left = can_spin_wheel(tg_id)
-    
-    if not can_spin and seconds_left == 0:
-        # User not active
-        await callback.answer("⚠️ Активируй подписку, чтобы крутить рулетку!", show_alert=True)
+    if not BONUS_WHEEL_ENABLED:
+        status_text = "⏸ *Рулетка временно недоступна.*"
+        buttons = [[InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]]
+    elif state.reason == "wheel_config_invalid":
+        await callback.answer("⚠️ Рулетка временно недоступна.", show_alert=True)
         return
-    
-    if can_spin:
+    elif not state.eligible:
+        await callback.answer(
+            "⚠️ Рулетка доступна только при активном платном доступе.",
+            show_alert=True,
+        )
+        return
+    elif state.can_spin:
         status_text = "✅ *Можно крутить!*"
         buttons = [
             [InlineKeyboardButton(text="🎰 КРУТИТЬ!", callback_data="wheel_spin")],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")],
         ]
     else:
-        # Calculate time left
+        next_spin_at = state.next_spin_at or now
+        seconds_left = max(0, int((next_spin_at - now).total_seconds()))
         days = seconds_left // 86400
         hours = (seconds_left % 86400) // 3600
         mins = (seconds_left % 3600) // 60
-        
         if days > 0:
             time_str = f"{days}д {hours}ч"
         elif hours > 0:
             time_str = f"{hours}ч {mins}м"
         else:
             time_str = f"{mins} мин"
-        
         status_text = f"⏳ Следующий спин через: *{time_str}*"
-        buttons = [
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]
-        ]
-    
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+        buttons = [[InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]]
 
-    # Display chances matching the actual wheel logic.
-    session = Session()
-    user = session.query(User).filter_by(tg_id=tg_id).first()
-    session.close()
-    prizes = wheel_prizes_for_user(user)
-    total_weight = sum(w for _, w in prizes) or 1
-    prize_lines = []
-    for days, w in prizes:
-        pct = round((w / total_weight) * 100)
-        tag = " (ДЖЕКПОТ!)" if days == 30 else ""
-        prize_lines.append(f"• {days} дней — {pct}%{tag}")
-    prizes_text = "\n".join(prize_lines)
-    
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+    sectors = [int(days) for days in state.sectors]
+    prizes_text = "\n".join(f"• +{days} дней" for days in sectors) or "Секторы скрыты до включения"
+
     await callback.message.edit_text(
-        f"🎰 *Колесо Фортуны!*\n\n"
-        f"Крути раз в неделю и получай бонусные дни!\n\n"
-        f"📊 *Призы:*\n{prizes_text}\n\n"
+        "🎰 *Колесо Фортуны!*\n\n"
+        "Крути раз в неделю и получай бонусные дни.\n\n"
+        f"🎁 *Секторы:*\n{prizes_text}\n\n"
         f"{status_text}",
         reply_markup=kb,
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer()
 
 @router.callback_query(F.data == "wheel_spin")
 async def do_wheel_spin(callback: CallbackQuery):
-    """Spin the wheel!"""
+    """Commit one shared reward-service mutation for the canonical account."""
     tg_id = callback.from_user.id
-    user = get_user(tg_id)
-    if not _is_paid_active_user(user):
-        await callback.answer("⚠️ Рулетка доступна только при активном платном доступе.", show_alert=True)
+    if not BONUS_WHEEL_ENABLED:
+        await callback.answer("⚠️ Рулетка временно недоступна.", show_alert=True)
         return
-    
-    # Show spinning animation
+
     await callback.message.edit_text(
         "🎰 *Крутим колесо...*\n\n"
         "🔄 ▓▓▓▓▓▓▓▓▓▓ 🔄",
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN,
     )
-    
-    # Small delay for effect
-    import asyncio
     await asyncio.sleep(1.5)
-    
-    # Spin!
-    prize = spin_wheel(tg_id)
-    
-    if prize is None:
-        await callback.message.edit_text(
-            "❌ Не удалось прокрутить. Попробуй позже!",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")]
-            ])
+
+    now = _utcnow()
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if not user:
+            raise RewardForbidden("account_not_found")
+        if not str(user.account_id or "").strip():
+            ensure_user_account_foundation(session, user, now=now)
+            session.flush()
+        mutation = spin_wheel(
+            session,
+            account_id=str(user.account_id or ""),
+            enabled=bool(BONUS_WHEEL_ENABLED),
+            config_payload=_load_wheel_config_payload(session),
+            now=now,
+        )
+        _ensure_reward_achievement(
+            session,
+            tg_id=int(tg_id),
+            achievement_id="first_wheel",
+            now=now,
+        )
+        if int(mutation.reward_days) >= 30:
+            _ensure_reward_achievement(
+                session,
+                tg_id=int(tg_id),
+                achievement_id="jackpot",
+                now=now,
+            )
+        session.commit()
+    except RewardDisabled:
+        session.rollback()
+        await callback.answer("⚠️ Рулетка временно недоступна.", show_alert=True)
+        return
+    except RewardForbidden:
+        session.rollback()
+        await callback.answer(
+            "⚠️ Рулетка доступна только при активном платном доступе.",
+            show_alert=True,
         )
         return
+    except RewardConflict as exc:
+        session.rollback()
+        seconds_left = max(0, int((exc.next_allowed_at - now).total_seconds()))
+        days = max(1, (seconds_left + 86399) // 86400)
+        await callback.message.edit_text(
+            f"⏳ Следующий спин будет доступен примерно через {days} дней.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_bonuses")],
+            ]),
+        )
+        await callback.answer("Рулетка ещё на перезарядке.", show_alert=True)
+        return
+    except RewardDomainError:
+        session.rollback()
+        await callback.answer("⚠️ Рулетка временно недоступна.", show_alert=True)
+        return
+    except Exception as exc:
+        session.rollback()
+        logger.warning("wheel reward failed tg_id=%s err=%s", tg_id, exc)
+        await callback.answer("⚠️ Не удалось прокрутить рулетку.", show_alert=True)
+        return
+    finally:
+        session.close()
 
-    achievement_bonus_days = 0
-    achievement_id = ""
-    # Jackpot?
+    prize = int(mutation.reward_days)
     if prize >= 30:
         emoji = "🎉🎉🎉"
         title = "ДЖЕКПОТ!!!"
-        # Award jackpot achievement
         achievement_id = "jackpot"
-        achievement_bonus_days = int(award_achievement(tg_id, "jackpot") or 0)
     elif prize >= 7:
         emoji = "✨"
         title = "Отлично!"
+        achievement_id = ""
     else:
         emoji = "🎁"
         title = "Поздравляем!"
+        achievement_id = ""
 
-    # Keep user enabled in panel after all DB-side bonus changes (best-effort).
-    sync_ok = False
-    try:
-        sync_ok = bool(await panel.update_client_traffic(tg_id, 0))
-    except Exception:
-        sync_ok = False
-
-    cooldown_days = int(_wheel_cooldown_days())
-    total_bonus_days = int(prize) + int(achievement_bonus_days or 0)
+    next_spin_at = mutation.wheel_next_spin_at or now + timedelta(days=7)
+    cooldown_seconds = max(0, int((next_spin_at - now).total_seconds()))
+    cooldown_days = max(1, (cooldown_seconds + 86399) // 86400)
     track_event(
         tg_id=int(tg_id),
         event_name="wheel_spin",
@@ -5148,24 +5138,23 @@ async def do_wheel_spin(callback: CallbackQuery):
         meta={
             "prize_days": int(prize),
             "achievement_id": achievement_id or None,
-            "achievement_bonus_days": int(achievement_bonus_days or 0),
-            "total_bonus_days": int(total_bonus_days),
             "cooldown_days": int(cooldown_days),
-            "sync_ok": bool(sync_ok),
+            "grant_id": mutation.grant_id,
+            "sync_state": str(mutation.sync_state),
         },
     )
-    
+
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ В бонусы", callback_data="menu_bonuses")]
+        [InlineKeyboardButton(text="◀️ В бонусы", callback_data="menu_bonuses")],
     ])
-    
+
     await callback.message.edit_text(
         f"{emoji} *{title}*\n\n"
         f"Тебе выпало: *+{prize} Дней*!\n\n"
         f"Подписка продлена.\n"
         f"Приходи через {cooldown_days} дней за новым призом!",
         reply_markup=kb,
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer(f"🎉 +{prize} Дней!", show_alert=True)
 
@@ -6251,45 +6240,11 @@ async def handle_text_input(message: Message):
             return
 
         if action == "wheel_cd":
-            raw = (message.text or "").strip()
-            try:
-                days = int(raw)
-            except Exception:
-                await message.answer("Введи число (например `7`).", parse_mode=ParseMode.MARKDOWN)
-                return
-            if days < 1 or days > 90:
-                await message.answer("Диапазон: 1–90 дней.", parse_mode=ParseMode.MARKDOWN)
-                return
-
-            _save_wheel_config(cooldown_days=days)
-            audit_admin(ADMIN_ID, "admin_wheel_cd_set", meta=f"days={days}")
-            await message.answer(f"✅ Кулдаун обновлён: {days}д.")
+            await message.answer("Конфигурация PAID_WEEKLY_V1 фиксирована: кулдаун 7 дней.")
             return
 
         if action == "wheel_weights":
-            raw = (message.text or "").strip()
-            pairs = [p.strip() for p in raw.split(",") if p.strip()]
-            parsed: list[tuple[int, int]] = []
-            for pair in pairs:
-                if ":" not in pair:
-                    await message.answer("Формат весов: `1:45,3:35,7:15,30:5`", parse_mode=ParseMode.MARKDOWN)
-                    return
-                d_raw, w_raw = [x.strip() for x in pair.split(":", 1)]
-                try:
-                    d_val = int(d_raw)
-                    w_val = int(w_raw)
-                except Exception:
-                    await message.answer("Значения должны быть числами.", parse_mode=ParseMode.MARKDOWN)
-                    return
-                if d_val <= 0 or w_val <= 0:
-                    await message.answer("days/weight должны быть > 0.", parse_mode=ParseMode.MARKDOWN)
-                    return
-                parsed.append((d_val, w_val))
-            if not parsed:
-                await message.answer("Добавьте минимум один приз.")
-                return
-            _save_wheel_config(weights=parsed, preset="manual")
-            await message.answer("✅ Веса рулетки обновлены.")
+            await message.answer("Ручные веса отключены: действует фиксированный PAID_WEEKLY_V1.")
             return
 
         if action == "manual_create":
@@ -7859,24 +7814,17 @@ async def admin_wheel_settings(callback: CallbackQuery):
     weights = list(cfg.get("weights") or WHEEL_DEFAULT_PRIZES)
     cooldown_hours = int(cfg.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
     cooldown_days = _cooldown_days_from_hours(cooldown_hours)
-    preset = str(cfg.get("preset") or "manual")
-    total_weight = sum(w for _, w in weights)
+    preset = str(cfg.get("preset") or "invalid")
+    total_weight = sum(w for _, w in weights) or 1
     prizes_text = []
     for days, weight in weights:
         pct = (weight / total_weight) * 100
-        prizes_text.append(f"• {days} дней — {pct:.0f}%")
+        prizes_text.append(f"• {days} дней — {weight}/10000 ({pct:.2f}%)")
+    if preset == "invalid":
+        prizes_text = ["⚠️ Сохранённая конфигурация не прошла валидацию."]
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="Preset: Balanced", callback_data="wheel_preset_balanced"),
-                InlineKeyboardButton(text="Preset: Steady", callback_data="wheel_preset_steady"),
-            ],
-            [
-                InlineKeyboardButton(text="Preset: Generous", callback_data="wheel_preset_generous"),
-                InlineKeyboardButton(text="✍️ Ручные веса", callback_data="wheel_weights"),
-            ],
-            [InlineKeyboardButton(text=f"⚙️ Кулдаун ({cooldown_days}д)", callback_data="wheel_cd")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="admin")],
         ]
     )
@@ -7887,7 +7835,8 @@ async def admin_wheel_settings(callback: CallbackQuery):
         "<b>Шансы выигрыша:</b>\n"
         + "\n".join(prizes_text)
         + "\n\n"
-        + f"<b>Кулдаун:</b> {cooldown_days} дней ({cooldown_hours}ч)",
+        + f"<b>Кулдаун:</b> {cooldown_days} дней ({cooldown_hours}ч)\n"
+        + "Конфигурация фиксирована контрактом PAID_WEEKLY_V1.",
         reply_markup=kb,
         parse_mode=ParseMode.HTML,
     )
@@ -8728,30 +8677,14 @@ async def show_admin_users(callback: CallbackQuery):
 async def admin_wheel_set_preset(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-    preset = str(callback.data or "").replace("wheel_preset_", "", 1).strip().lower()
-    weights = WHEEL_PRESETS.get(preset)
-    if not weights:
-        await callback.answer("Неизвестный preset", show_alert=True)
-        return
-    _save_wheel_config(weights=list(weights), preset=preset)
-    audit_admin(ADMIN_ID, "admin_wheel_preset_set", meta=f"preset={preset}")
-    await admin_wheel_settings(callback)
+    await callback.answer("Preset фиксирован: PAID_WEEKLY_V1.", show_alert=True)
 
 
 @router.callback_query(F.data == "wheel_weights")
 async def admin_wheel_set_weights_prompt(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-    admin_pending_actions[ADMIN_ID] = {"action": "wheel_weights"}
-    await callback.message.edit_text(
-        "✍️ *Ручные веса рулетки*\n\n"
-        "Формат:\n"
-        "`1:45,3:35,7:15,30:5`\n\n"
-        "Где `дни:вес` через запятую.",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_wheel")]]),
-        parse_mode=ParseMode.MARKDOWN,
-    )
-    await callback.answer()
+    await callback.answer("Ручные веса отключены контрактом PAID_WEEKLY_V1.", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("mass_extend_run_"))
@@ -8813,16 +8746,7 @@ def _bulk_confirm_kb(confirm_cb: str) -> InlineKeyboardMarkup:
 async def admin_wheel_set_cooldown_prompt(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-
-    admin_pending_actions[ADMIN_ID] = {"action": "wheel_cd"}
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_wheel")]])
-    await callback.message.edit_text(
-        "⚙️ *Кулдаун рулетки*\n\n"
-        "Введи число дней (например `7`).",
-        reply_markup=kb,
-        parse_mode=ParseMode.MARKDOWN,
-    )
-    await callback.answer()
+    await callback.answer("Кулдаун фиксирован: 7 дней.", show_alert=True)
 
 @router.callback_query(F.data.startswith("adm_user_"))
 async def admin_view_user(callback: CallbackQuery):

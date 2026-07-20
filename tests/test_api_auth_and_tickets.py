@@ -4698,7 +4698,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
         cfg_get = self.client.get("/api/admin/wheel-config", headers=admin_hdrs)
         self.assertEqual(cfg_get.status_code, 200, cfg_get.text)
-        self.assertIn("wheel_config", cfg_get.json())
+        self.assertEqual(
+            cfg_get.json()["wheel_config"],
+            {
+                "preset": "paid_weekly_v1",
+                "weights": [
+                    {"days": 1, "weight": 9000},
+                    {"days": 3, "weight": 890},
+                    {"days": 7, "weight": 100},
+                    {"days": 30, "weight": 10},
+                ],
+                "cooldown_hours": 168,
+            },
+        )
 
         cfg_put = self._execute_admin_intent(
             action="wheel_config.update",
@@ -4707,19 +4719,39 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             method="PUT",
             path="/api/admin/wheel-config",
             payload={
-                "preset": "manual",
+                "preset": "paid_weekly_v1",
                 "weights": [
-                    {"days": 1, "weight": 50},
-                    {"days": 3, "weight": 30},
-                    {"days": 7, "weight": 15},
-                    {"days": 30, "weight": 5},
+                    {"days": 1, "weight": 9000},
+                    {"days": 3, "weight": 890},
+                    {"days": 7, "weight": 100},
+                    {"days": 30, "weight": 10},
                 ],
-                "cooldown_hours": 96,
+                "cooldown_hours": 168,
             },
         )
         self.assertEqual(cfg_put.status_code, 200, cfg_put.text)
         body = cfg_put.json().get("wheel_config") or {}
-        self.assertEqual(int(body.get("cooldown_hours") or 0), 96)
+        self.assertEqual(int(body.get("cooldown_hours") or 0), 168)
+
+        invalid = self._execute_admin_intent(
+            action="wheel_config.update",
+            target_type="config",
+            target_id="wheel",
+            method="PUT",
+            path="/api/admin/wheel-config",
+            payload={
+                "preset": "manual",
+                "weights": [
+                    {"days": 1, "weight": 8999},
+                    {"days": 3, "weight": 891},
+                    {"days": 7, "weight": 100},
+                    {"days": 30, "weight": 10},
+                ],
+                "cooldown_hours": 168,
+            },
+        )
+        self.assertEqual(invalid.status_code, 400, invalid.text)
+        self.assertEqual(invalid.json()["detail"]["code"], "wheel_config_invalid")
 
     def test_admin_campaign_links_respect_telegram_start_payload_limit(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}

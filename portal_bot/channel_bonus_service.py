@@ -138,10 +138,26 @@ async def build_channel_subscriber_check_response(
     user: User,
     channel_username: str,
     bonus_days: int,
+    claimed_days: int | None = None,
+    claimed_at: datetime | None = None,
     is_channel_member: Callable[[str, int], Awaitable[tuple[bool, str]]] = _is_channel_member,
 ) -> dict[str, Any]:
     membership_tg_id = _membership_check_tg_id(user)
-    already_claimed = bool(getattr(user, "channel_bonus_claimed_at", None))
+    resolved_claimed_at = claimed_at or getattr(user, "channel_bonus_claimed_at", None)
+    already_claimed = bool(resolved_claimed_at)
+    resolved_claimed_days = (
+        max(0, int(claimed_days))
+        if claimed_days is not None
+        else GRANDFATHERED_CHANNEL_GRANT_DAYS if already_claimed else 0
+    )
+
+    def offer_fields() -> dict[str, Any]:
+        return {
+            "bonus_days": CHANNEL_GRANT_DAYS,
+            "offer_days": CHANNEL_GRANT_DAYS,
+            "claimed_days": resolved_claimed_days,
+            "claimed_at": _safe_iso(resolved_claimed_at),
+        }
 
     if membership_tg_id <= 0:
         return {
@@ -153,7 +169,7 @@ async def build_channel_subscriber_check_response(
             "link_required": True,
             "claim_required": False,
             "already_claimed": bool(already_claimed),
-            "bonus_days": CHANNEL_GRANT_DAYS,
+            **offer_fields(),
         }
 
     is_member, reason = await is_channel_member(channel_username, membership_tg_id)
@@ -167,7 +183,7 @@ async def build_channel_subscriber_check_response(
             "link_required": False,
             "claim_required": False,
             "already_claimed": bool(already_claimed),
-            "bonus_days": CHANNEL_GRANT_DAYS,
+            **offer_fields(),
         }
 
     return {
@@ -179,7 +195,7 @@ async def build_channel_subscriber_check_response(
         "link_required": False,
         "claim_required": not already_claimed,
         "already_claimed": bool(already_claimed),
-        "bonus_days": CHANNEL_GRANT_DAYS,
+        **offer_fields(),
     }
 
 
@@ -195,6 +211,32 @@ def _channel_grant_for_account(session, *, account_id: str) -> EntitlementGrant 
         .order_by(EntitlementGrant.created_at.asc())
         .first()
     )
+
+
+def channel_bonus_status(session, *, user: User) -> dict[str, Any]:
+    """Separate the current five-day offer from already committed legacy grants."""
+    grant = _channel_grant_for_account(
+        session,
+        account_id=str(getattr(user, "account_id", "") or ""),
+    )
+    if grant is not None:
+        claimed_days = int(grant.duration_days or CHANNEL_GRANT_DAYS)
+        claimed_at = grant.activated_at or getattr(user, "channel_bonus_claimed_at", None)
+        claimed = True
+    elif getattr(user, "channel_bonus_claimed_at", None):
+        claimed_days = GRANDFATHERED_CHANNEL_GRANT_DAYS
+        claimed_at = user.channel_bonus_claimed_at
+        claimed = True
+    else:
+        claimed_days = 0
+        claimed_at = None
+        claimed = False
+    return {
+        "offer_days": CHANNEL_GRANT_DAYS,
+        "claimed": claimed,
+        "claimed_days": claimed_days,
+        "claimed_at": claimed_at,
+    }
 
 
 async def claim_channel_bonus(
@@ -236,6 +278,8 @@ async def claim_channel_bonus(
             "ok": True,
             "already_claimed": True,
             "premium_days": days,
+            "offer_days": CHANNEL_GRANT_DAYS,
+            "claimed_days": days,
             "claimed_at": _safe_iso(existing_grant.activated_at or user.channel_bonus_claimed_at),
             "expiry_at": _safe_iso(user.expiry_at),
             "sub_type": user.sub_type,
@@ -261,6 +305,8 @@ async def claim_channel_bonus(
             "ok": True,
             "already_claimed": True,
             "premium_days": GRANDFATHERED_CHANNEL_GRANT_DAYS,
+            "offer_days": CHANNEL_GRANT_DAYS,
+            "claimed_days": GRANDFATHERED_CHANNEL_GRANT_DAYS,
             "claimed_at": _safe_iso(user.channel_bonus_claimed_at),
             "expiry_at": _safe_iso(user.expiry_at),
             "sub_type": user.sub_type,
@@ -317,6 +363,8 @@ async def claim_channel_bonus(
             "ok": True,
             "already_claimed": True,
             "premium_days": int(canonical.duration_days or CHANNEL_GRANT_DAYS),
+            "offer_days": CHANNEL_GRANT_DAYS,
+            "claimed_days": int(canonical.duration_days or CHANNEL_GRANT_DAYS),
             "claimed_at": _safe_iso(canonical.activated_at),
             "expiry_at": _safe_iso(canonical.expires_at),
             "sub_type": user.sub_type,
@@ -359,6 +407,8 @@ async def claim_channel_bonus(
         "ok": True,
         "already_claimed": False,
         "premium_days": days,
+        "offer_days": CHANNEL_GRANT_DAYS,
+        "claimed_days": days,
         "claimed_at": _safe_iso(user.channel_bonus_claimed_at),
         "expiry_at": _safe_iso(user.expiry_at),
         "sub_type": user.sub_type,

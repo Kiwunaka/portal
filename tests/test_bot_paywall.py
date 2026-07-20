@@ -2657,63 +2657,160 @@ class BotPaywallTests(unittest.TestCase):
         self.assertTrue(fake.rollback_called)
         self.assertTrue(fake.closed)
 
-    def test_wheel_spin_uses_configured_cooldown_and_tracks_result(self) -> None:
-        self.bot_module.ensure_pending_user(1001, username="alice")
+    def _seed_paid_reward_authority(self, *tg_ids: int) -> str:
+        from models import EntitlementGrant
 
+        for tg_id in tg_ids:
+            self.bot_module.ensure_pending_user(tg_id, username=f"user_{tg_id}")
         session = self.bot_module.Session()
         try:
-            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
-            self.assertIsNotNone(user)
-            user.sub_type = "PAID"
-            user.is_active = True
-            user.first_purchase_done = True
-            user.expiry_at = self.bot_module._utcnow() + timedelta(days=30)
+            users = [session.query(self.bot_module.User).filter_by(tg_id=tg_id).one() for tg_id in tg_ids]
+            account_id = str(users[0].account_id)
+            now = self.bot_module._utcnow()
+            for user in users:
+                user.account_id = account_id
+                user.sub_type = "PAID"
+                user.current_plan_code = "month"
+                user.is_active = True
+                user.first_purchase_done = True
+                user.expiry_at = now + timedelta(days=30)
+            session.add(
+                EntitlementGrant(
+                    id=str(uuid.uuid4()),
+                    account_id=account_id,
+                    legacy_tg_id=tg_ids[0],
+                    idempotency_key=f"test-provider-payment:{account_id}",
+                    source="provider_payment",
+                    status="active",
+                    grant_kind="paid_access",
+                    plan_code="month",
+                    starts_at=now - timedelta(days=1),
+                    expires_at=now + timedelta(days=30),
+                    activated_at=now - timedelta(days=1),
+                    duration_days=31,
+                    provider="test",
+                    created_at=now - timedelta(days=1),
+                    updated_at=now,
+                )
+            )
             session.commit()
+            return account_id
         finally:
             session.close()
 
+    def test_wheel_spin_uses_shared_reward_result_and_tracks_result(self) -> None:
+        account_id = self._seed_paid_reward_authority(1001)
+
         callback = _FakeCallback(1001)
         tracked: list[dict] = []
-        panel_calls: list[tuple[int, int]] = []
+        calls: list[dict] = []
 
         async def _fake_sleep(_seconds):
             return None
-
-        async def _fake_update_client_traffic(tg_id, add_gb):
-            panel_calls.append((int(tg_id), int(add_gb)))
-            return True
 
         def _fake_track_event(**kwargs):
             tracked.append(kwargs)
             return 1
 
+        def _fake_spin(_session, **kwargs):
+            calls.append(kwargs)
+            return types.SimpleNamespace(
+                feature="wheel",
+                account_id=account_id,
+                grant_id="00000000-0000-4000-8000-000000000777",
+                reward_days=30,
+                sync_state="sync_pending",
+                wheel_next_spin_at=kwargs["now"] + timedelta(days=7),
+            )
+
         old_spin = self.bot_module.spin_wheel
-        old_award = self.bot_module.award_achievement
-        old_panel_update = self.bot_module.panel.update_client_traffic
         old_track_event = self.bot_module.track_event
+        old_flag = self.bot_module.BONUS_WHEEL_ENABLED
         try:
-            self.bot_module.spin_wheel = lambda _tg_id: 30
-            self.bot_module.award_achievement = lambda tg_id, achievement_id: 0
-            self.bot_module.panel.update_client_traffic = _fake_update_client_traffic
+            self.bot_module.BONUS_WHEEL_ENABLED = True
+            self.bot_module.spin_wheel = _fake_spin
             self.bot_module.track_event = _fake_track_event
             with patch("asyncio.sleep", new=_fake_sleep):
-                with patch.object(self.bot_module, "_wheel_cooldown_days", return_value=5):
-                    asyncio.run(self.bot_module.do_wheel_spin(callback))
+                asyncio.run(self.bot_module.do_wheel_spin(callback))
         finally:
             self.bot_module.spin_wheel = old_spin
-            self.bot_module.award_achievement = old_award
-            self.bot_module.panel.update_client_traffic = old_panel_update
             self.bot_module.track_event = old_track_event
+            self.bot_module.BONUS_WHEEL_ENABLED = old_flag
 
-        self.assertEqual(panel_calls, [(1001, 0)])
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0]["enabled"])
+        self.assertEqual(calls[0]["account_id"], account_id)
         self.assertGreaterEqual(len(callback.message.edits), 2)
-        self.assertIn("Приходи через 5 дней", callback.message.edits[-1])
+        self.assertIn("Приходи через 7 дней", callback.message.edits[-1])
         self.assertEqual(callback.answers[-1], ("🎉 +30 Дней!", True))
         self.assertEqual(len(tracked), 1)
         self.assertEqual(tracked[0]["event_name"], "wheel_spin")
         self.assertEqual(int(tracked[0]["meta"]["prize_days"]), 30)
-        self.assertEqual(int(tracked[0]["meta"]["cooldown_days"]), 5)
-        self.assertTrue(bool(tracked[0]["meta"]["sync_ok"]))
+        self.assertEqual(int(tracked[0]["meta"]["cooldown_days"]), 7)
+        self.assertEqual(tracked[0]["meta"]["sync_state"], "sync_pending")
+
+    def test_disabled_wheel_callback_never_calls_reward_mutator(self) -> None:
+        callback = _FakeCallback(1001)
+        calls: list[object] = []
+        old_spin = self.bot_module.spin_wheel
+        old_flag = self.bot_module.BONUS_WHEEL_ENABLED
+        try:
+            self.bot_module.BONUS_WHEEL_ENABLED = False
+            self.bot_module.spin_wheel = lambda *_args, **_kwargs: calls.append(True)
+            asyncio.run(self.bot_module.do_wheel_spin(callback))
+        finally:
+            self.bot_module.spin_wheel = old_spin
+            self.bot_module.BONUS_WHEEL_ENABLED = old_flag
+
+        self.assertEqual(calls, [])
+        self.assertIn("временно недоступ", callback.answers[-1][0].lower())
+
+    def test_trial_user_is_rejected_by_shared_wheel_authority(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        callback = _FakeCallback(1001)
+
+        async def _fake_sleep(_seconds):
+            return None
+
+        old_flag = self.bot_module.BONUS_WHEEL_ENABLED
+        try:
+            self.bot_module.BONUS_WHEEL_ENABLED = True
+            with patch("asyncio.sleep", new=_fake_sleep):
+                asyncio.run(self.bot_module.do_wheel_spin(callback))
+        finally:
+            self.bot_module.BONUS_WHEEL_ENABLED = old_flag
+
+        self.assertIn("платн", callback.answers[-1][0].lower())
+
+    def test_telegram_aliases_share_one_wheel_cooldown(self) -> None:
+        from models import EntitlementGrant, NodeProvisioningJob
+
+        self._seed_paid_reward_authority(1001, 1002)
+        first = _FakeCallback(1001)
+        alias = _FakeCallback(1002)
+
+        async def _fake_sleep(_seconds):
+            return None
+
+        old_flag = self.bot_module.BONUS_WHEEL_ENABLED
+        try:
+            self.bot_module.BONUS_WHEEL_ENABLED = True
+            with patch("asyncio.sleep", new=_fake_sleep):
+                asyncio.run(self.bot_module.do_wheel_spin(first))
+                asyncio.run(self.bot_module.do_wheel_spin(alias))
+        finally:
+            self.bot_module.BONUS_WHEEL_ENABLED = old_flag
+
+        self.assertIn("следующ", alias.message.edits[-1].lower())
+        session = self.bot_module.Session()
+        try:
+            self.assertEqual(session.query(EntitlementGrant).filter_by(source="bonus_wheel").count(), 1)
+            self.assertEqual(
+                session.query(NodeProvisioningJob).filter_by(job_type="reward_entitlement_sync").count(),
+                1,
+            )
+        finally:
+            session.close()
 
     def test_more_menu_back_clears_pending_code_prompts(self) -> None:
         callback = _FakeCallback(1001)
@@ -2729,22 +2826,14 @@ class BotPaywallTests(unittest.TestCase):
         self.assertNotIn(1001, self.bot_module.pending_promo_codes)
 
     def test_wheel_back_returns_to_bonuses_menu(self) -> None:
-        self.bot_module.ensure_pending_user(1001, username="alice")
-
-        session = self.bot_module.Session()
+        self._seed_paid_reward_authority(1001)
+        old_flag = self.bot_module.BONUS_WHEEL_ENABLED
         try:
-            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
-            self.assertIsNotNone(user)
-            user.sub_type = "PAID"
-            user.is_active = True
-            user.first_purchase_done = True
-            user.expiry_at = self.bot_module._utcnow() + timedelta(days=30)
-            session.commit()
+            self.bot_module.BONUS_WHEEL_ENABLED = True
+            callback = _FakeCallback(1001)
+            asyncio.run(self.bot_module.show_wheel(callback))
         finally:
-            session.close()
-
-        callback = _FakeCallback(1001)
-        asyncio.run(self.bot_module.show_wheel(callback))
+            self.bot_module.BONUS_WHEEL_ENABLED = old_flag
 
         markup = callback.message.edit_kwargs[-1]["reply_markup"]
         callbacks = [
