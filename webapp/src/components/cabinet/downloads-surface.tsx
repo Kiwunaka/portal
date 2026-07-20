@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { GroupedSection, Row } from "@/components/ui/grouped";
 import { fetchClientApps, type ClientAppsPayload } from "@/lib/api";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 
 const config = getPortalPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -148,7 +149,7 @@ export function CabinetDownloadsSurface() {
         }
       } catch (nextError) {
         if (!cancelled) {
-          setError(String((nextError as { message?: string })?.message || nextError || ""));
+          setError(userFacingErrorMessage(nextError, "Проверьте соединение и обновите страницу."));
         }
       }
     };
@@ -188,7 +189,7 @@ export function CabinetDownloadsSurface() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Файлы</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Файлы</h2>
         {primaryRows.length ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {primaryRows.map((item) => {
@@ -233,7 +234,7 @@ export function CabinetDownloadsSurface() {
       {error ? <p className="px-1 text-sm text-warn-text">Часть ссылок не удалось обновить: {error}</p> : null}
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Как подключиться за 3 шага</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Как подключиться за 3 шага</h2>
         <InstructionSteps
           steps={[
             {

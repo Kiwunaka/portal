@@ -44,7 +44,7 @@ export function PlatformTabs({ platforms }: { platforms: InstallPlatform[] }) {
               id={`install-tab-${platform.id}`}
               onClick={() => setActiveId(platform.id)}
               className={cn(
-                "relative min-h-11 rounded-full px-6 text-[0.9375rem] font-semibold transition-colors duration-200 ease-(--ease-apple)",
+                "relative min-h-11 rounded-full px-6 text-[0.9375rem] font-semibold transition-colors duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
                 selected ? "text-ink" : "text-ink-soft hover:text-ink",
               )}
             >
@@ -86,7 +86,7 @@ export function PlatformTabs({ platforms }: { platforms: InstallPlatform[] }) {
               />
             ))}
           </div>
-          {active.note ? <p className="text-center text-[0.8125rem] text-ink-muted">{active.note}</p> : null}
+          {active.note ? <p className="text-center text-[0.8125rem] text-ink-soft">{active.note}</p> : null}
         </motion.div>
       </AnimatePresence>
     </div>

@@ -50,7 +50,7 @@ export function Topbar({ labels }: { labels: TopbarLabels }) {
             <Link
               key={item.href}
               href={item.href}
-              className="flex min-h-11 items-center rounded-full px-3.5 text-[0.9375rem] font-medium text-ink-soft no-underline transition-colors duration-200 hover:bg-canvas-alt hover:text-ink"
+              className="flex min-h-11 items-center rounded-full px-3.5 text-[0.9375rem] font-medium text-ink-soft no-underline transition-colors duration-200 hover:bg-canvas-alt hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               {item.label}
             </Link>
@@ -66,19 +66,24 @@ export function Topbar({ labels }: { labels: TopbarLabels }) {
           </Button>
         </div>
 
-        <button
-          type="button"
-          className="flex size-11 items-center justify-center rounded-full text-ink md:hidden"
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? labels.menuClose : labels.menuOpen}
-          onClick={() => setMenuOpen((value) => !value)}
-        >
-          {menuOpen ? (
-            <X size={20} strokeWidth={1.8} aria-hidden="true" />
-          ) : (
-            <Menu size={20} strokeWidth={1.8} aria-hidden="true" />
-          )}
-        </button>
+        <div className="flex items-center gap-1.5 md:hidden">
+          <Button href={labels.downloadHref} variant="primary" className="px-4">
+            {labels.download}
+          </Button>
+          <button
+            type="button"
+            className="flex size-11 items-center justify-center rounded-full text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? labels.menuClose : labels.menuOpen}
+            onClick={() => setMenuOpen((value) => !value)}
+          >
+            {menuOpen ? (
+              <X size={20} strokeWidth={1.8} aria-hidden="true" />
+            ) : (
+              <Menu size={20} strokeWidth={1.8} aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -97,7 +102,7 @@ export function Topbar({ labels }: { labels: TopbarLabels }) {
                   <Link
                     href={item.href}
                     onClick={() => setMenuOpen(false)}
-                    className="flex min-h-11 items-center rounded-(--radius-control) px-3 text-base font-medium text-ink no-underline hover:bg-canvas-alt"
+                    className="flex min-h-11 items-center rounded-(--radius-control) px-3 text-base font-medium text-ink no-underline hover:bg-canvas-alt focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                   >
                     {item.label}
                   </Link>

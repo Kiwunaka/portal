@@ -991,7 +991,6 @@ class BotPaywallTests(unittest.TestCase):
             user.sub_type = "FREE"
             user.current_plan_code = "free_monthly"
             user.expiry_at = now
-            original_expiry = user.expiry_at
             attempt = PayAttempt(
                 tg_id=1001, source="bot", plan_code="1_month", amount_stars=299,
                 currency="XTR", status="invoice_sent", invoice_payload="portal_1_month_1001_buy_a3",
@@ -1030,13 +1029,23 @@ class BotPaywallTests(unittest.TestCase):
         self.bot_module._send_text_with_specs = _sent
         message = _FakePaymentMessage(tg_id=1001, payload=payload, charge_id="stars-panel-retry")
         try:
+            fulfillment_started_at = self.bot_module._utcnow()
             asyncio.run(self.bot_module.payment_success(message, _FakeBot(status="member")))
+            fulfillment_finished_at = self.bot_module._utcnow()
             session = self.bot_module.Session()
             try:
                 user = session.query(User).filter_by(tg_id=1001).one()
                 grant = session.query(EntitlementGrant).filter_by(external_order_id="stars-panel-retry").one()
                 expiry_after_failure = user.expiry_at
-                self.assertEqual(expiry_after_failure, original_expiry + timedelta(days=30))
+                self.assertEqual(expiry_after_failure, grant.expires_at)
+                self.assertGreaterEqual(
+                    expiry_after_failure,
+                    fulfillment_started_at + timedelta(days=30) - timedelta(seconds=1),
+                )
+                self.assertLessEqual(
+                    expiry_after_failure,
+                    fulfillment_finished_at + timedelta(days=30) + timedelta(seconds=1),
+                )
                 self.assertIn('"projection_already_applied":true', str(grant.metadata_json))
             finally:
                 session.close()
@@ -2342,7 +2351,7 @@ class BotPaywallTests(unittest.TestCase):
         }
 
         self.assertEqual(getattr(buttons["charge_long"], "style", None), self.bot_module.BTN_STYLE_PRIMARY)
-        self.assertEqual(getattr(buttons["back"], "style", None), self.bot_module.BTN_STYLE_DANGER)
+        self.assertIsNone(getattr(buttons["back"], "style", None))
 
     def test_twelve_month_tariff_savings_is_45_percent(self) -> None:
         self.assertEqual(self.bot_module._tariff_savings_pct("12_months"), 45)
@@ -2379,6 +2388,61 @@ class BotPaywallTests(unittest.TestCase):
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
         self.assertFalse(any("РУЧНАЯ ССЫЛКА" in label for label in upper_labels))
         self.assertFalse(any("БОНУСЫ" in label for label in upper_labels))
+
+    def test_main_menu_cta_does_not_offer_unavailable_checkout_or_repeat_trial(self) -> None:
+        with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=["blocked"]):
+            with patch.object(self.bot_module, "TELEGRAM_STARS_CHECKOUT_ENABLED", True):
+                with patch.object(self.bot_module, "get_user", return_value=None):
+                    self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "buy_trial")
+
+            used_trial = types.SimpleNamespace(
+                is_active=False,
+                expiry_at=None,
+                sub_type="FREE",
+                trial_used=True,
+            )
+            with patch.object(self.bot_module, "get_user", return_value=used_trial):
+                self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "gift_redeem_prompt")
+
+            active_paid = types.SimpleNamespace(
+                is_active=True,
+                expiry_at=self.bot_module._utcnow() + timedelta(days=30),
+                sub_type="PAID",
+                trial_used=False,
+            )
+            with patch.object(self.bot_module, "get_user", return_value=active_paid):
+                self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "gift_redeem_prompt")
+
+        with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=[]):
+            self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "charge")
+
+    def test_help_command_opens_faq_menu(self) -> None:
+        message = _FakeMessage()
+        message.from_user = _FakeUser(1001)
+        with patch.object(self.bot_module, "_track_bot_entry") as track:
+            asyncio.run(self.bot_module.help_command(message))
+
+        self.assertIn("Частые вопросы", message.answers[-1][0])
+        self.assertIsNotNone(message.answers[-1][1].get("reply_markup"))
+        track.assert_called_once()
+
+    def test_manual_link_flow_uses_native_copy_button_without_fake_delay_or_karing(self) -> None:
+        source = inspect.getsource(self.bot_module.show_key)
+        self.assertIn("copy_text=sub_link", source)
+        self.assertNotIn("asyncio.sleep", source)
+        self.assertNotIn("Karing", source)
+
+        if self.bot_module.SUPPORTS_BTN_COPY_TEXT:
+            button = self.bot_module.InlineKeyboardButton(
+                text="📋 Скопировать ссылку",
+                copy_text="https://connect.pokrov.space/example",
+            )
+            self.assertEqual(getattr(getattr(button, "copy_text", None), "text", None), "https://connect.pokrov.space/example")
+
+    def test_admin_trial_gift_matches_five_day_canonical_trial(self) -> None:
+        source = inspect.getsource(self.bot_module.admin_gift)
+        self.assertIn('"trial": {"days": 5', source)
+        self.assertNotIn("Пробный (7 дней)", source)
 
     def test_confused_help_routes_to_user_intents_without_raw_link(self) -> None:
         callback = _FakeCallback(1001, data="confused_help")
@@ -2500,6 +2564,8 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(classify(start_arg="gift3_ABC123", friend_gift_referral_code="ABC123"), "friend_gift")
         self.assertEqual(classify(start_arg="launch14", opening_bonus_requested=True), "opening_bonus")
         self.assertEqual(classify(start_arg="app", app_link_account_id=1001), "app_link")
+        self.assertEqual(classify(start_arg="pay"), "payment")
+        self.assertEqual(classify(start_arg="renew"), "payment")
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

@@ -10,6 +10,7 @@ import { Note } from "@/components/ui/note";
 import { Textarea } from "@/components/ui/input";
 import { SupportMessageBody } from "@/components/support-message-body";
 import { addTicketMessage, fetchAuthenticatedBlob, getTicket, uploadTicketAttachment, type TicketAttachmentInput, type TicketInfo, type TicketMessage } from "@/lib/api";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { normalizePrivateSupportAttachmentPath, SUPPORT_ATTACHMENT_ACCEPT, validateSupportAttachment } from "@/lib/support-attachments";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -193,7 +194,7 @@ export default function SupportTicketThreadPage() {
       setTicket(data);
       setError("");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError));
+      setError(userFacingErrorMessage(nextError, "Не получилось открыть обращение. Обновите страницу или вернитесь в поддержку."));
     } finally {
       setLoading(false);
     }
@@ -223,7 +224,7 @@ export default function SupportTicketThreadPage() {
       setMessage("");
       setAttachmentFile(null);
     } catch (nextError) {
-      setReplyError(String((nextError as { message?: string })?.message || nextError));
+      setReplyError(userFacingErrorMessage(nextError, "Не получилось отправить ответ. Попробуйте ещё раз или напишите в Telegram-поддержку."));
     } finally {
       setBusy(false);
     }
@@ -294,7 +295,7 @@ export default function SupportTicketThreadPage() {
       <GroupedSection title="История">
         <div className="max-h-[52vh] space-y-4 overflow-y-auto p-4">
           {ticket.messages.length === 0 ? (
-            <p className="rounded-control border border-line bg-canvas-alt px-4 py-3 text-sm text-ink-muted">
+            <p className="rounded-control border border-line bg-canvas-alt px-4 py-3 text-sm text-ink-soft">
               История сообщений пока пустая.
             </p>
           ) : (
@@ -347,7 +348,7 @@ export default function SupportTicketThreadPage() {
             </div>
             <label className="block rounded-control border border-dashed border-line bg-canvas-alt px-4 py-4 text-sm">
               <span className="block font-medium text-ink">Добавить вложение</span>
-              <span className="mt-1 block text-xs text-ink-muted">PNG, JPEG, WebP, PDF или TXT до 20 МБ.</span>
+              <span className="mt-1 block text-xs text-ink-soft">PNG, JPEG, WebP, PDF или TXT до 20 МБ.</span>
               <input
                 type="file"
                 accept={SUPPORT_ATTACHMENT_ACCEPT}
@@ -365,7 +366,7 @@ export default function SupportTicketThreadPage() {
                   </button>
                 </div>
               ) : null}
-              {attachmentFile ? <p className="mt-2 text-xs text-ink-muted">{formatFileSize(attachmentFile.size)}</p> : null}
+              {attachmentFile ? <p className="mt-2 text-xs text-ink-soft">{formatFileSize(attachmentFile.size)}</p> : null}
             </label>
             <div className="flex flex-wrap gap-3">
               <Button onClick={() => void onSendReply()} disabled={busy || !message.trim()}>

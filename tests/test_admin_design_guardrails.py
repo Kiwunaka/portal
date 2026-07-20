@@ -6,6 +6,9 @@ ROOT = Path(__file__).resolve().parents[1]
 ADMIN_SHELL = ROOT / "webapp" / "src" / "components" / "admin" / "admin-shell.tsx"
 ADMIN_LAYOUT = ROOT / "webapp" / "src" / "app" / "(admin)" / "admin" / "layout.tsx"
 MARKETING_GLOBALS = ROOT / "marketing" / "src" / "app" / "globals.css"
+MARKETING_LAYOUT = ROOT / "marketing" / "src" / "app" / "layout.tsx"
+WEBAPP_LAYOUT = ROOT / "webapp" / "src" / "app" / "layout.tsx"
+WEBAPP_GLOBALS = ROOT / "webapp" / "src" / "app" / "globals.css"
 
 
 def _read(path: Path) -> str:
@@ -57,3 +60,21 @@ def test_marketing_globals_bridge_to_design_tokens() -> None:
         assert bridge in source
 
     assert "--lp-" not in source
+
+
+def test_public_surfaces_bundle_the_canonical_cyrillic_fonts() -> None:
+    marketing_layout = _read(MARKETING_LAYOUT)
+    webapp_layout = _read(WEBAPP_LAYOUT)
+    marketing_globals = _read(MARKETING_GLOBALS)
+    webapp_globals = _read(WEBAPP_GLOBALS)
+
+    for source in (marketing_layout, webapp_layout):
+        assert 'from "next/font/google"' in source
+        assert "Golos_Text" in source
+        assert 'subsets: ["latin", "cyrillic"]' in source
+        assert 'variable: "--font-golos"' in source
+
+    assert "JetBrains_Mono" in webapp_layout
+    assert 'variable: "--font-jetbrains"' in webapp_layout
+    for globals_source in (marketing_globals, webapp_globals):
+        assert '--font-golos: "Golos Text"' not in globals_source

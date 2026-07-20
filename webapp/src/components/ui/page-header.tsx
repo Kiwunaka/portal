@@ -21,7 +21,7 @@ export function PageHeader({
     <header className={cn("flex flex-wrap items-start justify-between gap-3", className)}>
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="mb-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">{eyebrow}</p>
+          <p className="mb-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">{eyebrow}</p>
         ) : null}
         <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="font-display text-[1.65rem] leading-tight font-bold tracking-[-0.01em] text-ink sm:text-[1.9rem]">

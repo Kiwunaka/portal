@@ -17,7 +17,7 @@ type FooterLink = { external?: boolean; href: string; label: string };
 function FooterColumn({ links, title }: { links: FooterLink[]; title: string }) {
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-ink-muted uppercase">{title}</span>
+      <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-ink-soft uppercase">{title}</span>
       <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
         {links.map((link) => (
           <li key={link.href}>
@@ -26,14 +26,14 @@ function FooterColumn({ links, title }: { links: FooterLink[]; title: string }) 
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[0.9375rem] text-ink-soft no-underline transition-colors duration-200 hover:text-ink"
+                className="text-[0.9375rem] text-ink-soft no-underline transition-colors duration-200 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 {link.label}
               </a>
             ) : (
               <Link
                 href={link.href}
-                className="text-[0.9375rem] text-ink-soft no-underline transition-colors duration-200 hover:text-ink"
+                className="text-[0.9375rem] text-ink-soft no-underline transition-colors duration-200 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
               >
                 {link.label}
               </Link>
@@ -89,7 +89,7 @@ export function Footer() {
           <span className="text-[0.8125rem] text-ink-muted">
             © {new Date().getFullYear()} {CANONICAL_PLATFORM_BRAND}
           </span>
-          <span className="text-[0.8125rem] text-ink-muted">
+          <span className="text-[0.8125rem] text-ink-soft">
             {getCopyText("marketing.footer.beta_note", "Android и Windows, публичная бета")}
           </span>
         </div>

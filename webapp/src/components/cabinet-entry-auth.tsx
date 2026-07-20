@@ -415,7 +415,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
 
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-line" />
-        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">или</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-soft">или</span>
         <div className="h-px flex-1 bg-line" />
       </div>
 

@@ -41,12 +41,21 @@ def _emoji_for_style(style: str | None) -> str | None:
     return None
 
 
-def infer_button_style(text: str, callback_data: str | None = None, url: str | None = None) -> str:
+def infer_button_style(text: str, callback_data: str | None = None, url: str | None = None) -> str | None:
     del text, url
     data = (callback_data or "").strip().lower()
 
-    if "delete" in data or "close" in data or "cancel" in data or "back" in data:
+    if (
+        "delete" in data
+        or "panic" in data
+        or "ban" in data
+        or "revoke" in data
+        or "ticket_close" in data
+    ):
         return BTN_STYLE_DANGER
+
+    if "back" in data or "cancel" in data or data in {"close", "dismiss"}:
+        return None
 
     if (
         "new" in data

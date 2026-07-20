@@ -58,7 +58,7 @@ export default function StatisticsPage() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Безопасная сводка</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Безопасная сводка</h2>
         <TileGrid>
           <Tile icon={ShieldCheck} label="Режим" value={resolvePlanLabel(dash, user)} hint={dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дата уточняется"} tone="success" href="/subscription/" />
           <Tile icon={Gauge} label="Трафик" value={formatGb(trafficUsed)} hint={resolveTrafficStatusText(dash, user)} tone="info" />

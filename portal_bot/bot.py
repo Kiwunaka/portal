@@ -213,6 +213,7 @@ try:
         BTN_STYLE_DANGER,
         BTN_STYLE_PRIMARY,
         BTN_STYLE_SUCCESS,
+        SUPPORTS_BTN_COPY_TEXT,
         modern_inline_button,
     )
 except ModuleNotFoundError:
@@ -220,6 +221,7 @@ except ModuleNotFoundError:
     BTN_STYLE_PRIMARY = "primary"
     BTN_STYLE_SUCCESS = "success"
     BTN_STYLE_DANGER = "danger"
+    SUPPORTS_BTN_COPY_TEXT = False
     BTN_EMOJI_PRIMARY_ID = (os.getenv("TG_BTN_EMOJI_PRIMARY_ID") or "").strip()
     BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
     BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
@@ -2173,6 +2175,8 @@ def _classify_start_arg_for_analytics(
         return "plain"
     if int(app_link_account_id or 0) > 0:
         return "app_link"
+    if (start_arg or "").strip().lower() in {"pay", "renew"}:
+        return "payment"
     if opening_bonus_requested:
         return "opening_bonus"
     if friend_gift_referral_code:
@@ -3743,20 +3747,57 @@ def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
+
+def _has_paid_active_access(user: User | None) -> bool:
+    if not user:
+        return False
+    expiry = _naive_utc(user.expiry_at)
+    return bool(
+        user.is_active
+        and expiry
+        and expiry > _utcnow()
+        and not _is_freemium_sub_type(user.sub_type)
+    )
+
+
+def _trial_offer_available(user: User | None) -> bool:
+    return bool(not _has_paid_active_access(user) and not bool(user and user.trial_used))
+
+
+def _main_menu_cta_spec(tg_id: int) -> dict[str, str]:
+    checkout_available = not _bot_checkout_blocked_reasons()
+    if checkout_available:
+        return _btn_spec(
+            text=_main_connect_cta_text(tg_id),
+            callback_data="charge",
+            style=BTN_STYLE_PRIMARY,
+            icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+        )
+
+    user = get_user(int(tg_id)) if int(tg_id or 0) > 0 else None
+    if _trial_offer_available(user):
+        return _btn_spec(
+            text="🎁 5 дней бесплатно",
+            callback_data="buy_trial",
+            style=BTN_STYLE_PRIMARY,
+            icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+        )
+
+    return _btn_spec(
+        text="🔑 Активировать код",
+        callback_data="gift_redeem_prompt",
+        style=BTN_STYLE_PRIMARY,
+        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+    )
+
+
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
         [_btn_spec(text="📲 Подключить устройство", callback_data="instruction")],
+        [_main_menu_cta_spec(tg_id)],
         [
-            _btn_spec(
-                text=_main_connect_cta_text(tg_id),
-                callback_data="charge",
-                style=BTN_STYLE_PRIMARY,
-                icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-            ),
-        ],
-        [
-            _btn_spec(text="Проверить доступ", callback_data="status"),
-            _btn_spec(text="Помощь", callback_data="confused_help"),
+            _btn_spec(text="✅ Проверить доступ", callback_data="status"),
+            _btn_spec(text="🆘 Помощь", callback_data="confused_help"),
         ],
         [
             _btn_spec(text="🌐 Кабинет", web_app_url=WEBAPP_URL),
@@ -3785,8 +3826,9 @@ def tariff_keyboard(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=f"🎁 5 дней бесплатно — {TRIAL_LIMIT_GB} ГБ, {FREE_LIMIT_IP} устройство",
+                    text="🎁 5 дней бесплатно",
                     callback_data="buy_trial",
+                    style=BTN_STYLE_PRIMARY,
                 )
             ]
         )
@@ -3796,51 +3838,26 @@ def tariff_keyboard(
     # - long screen: 6/9/12 months only
     if include_long_plans:
         plans = [
-            ("6_months", "📅 6 Месяцев"),
-            ("9_months", "📅 9 Месяцев"),
-            ("12_months", "📅 12 Месяцев"),
+            ("6_months", "🎯", "6 месяцев"),
+            ("9_months", "🧭", "9 месяцев"),
+            ("12_months", "👑", "12 месяцев"),
         ]
     else:
         plans = [
-            ("start_99", "⚡ Приветственный 30 дней"),
-            ("1_month", "📅 1 Месяц"),
-            ("3_months", "📅 3 Месяца"),
+            ("start_99", "⚡", "30 дней"),
+            ("1_month", "🚀", "1 месяц"),
+            ("3_months", "💠", "3 месяца"),
         ]
-    
-    for key, label in plans:
+
+    for key, icon, period in plans:
         tariff = TARIFFS.get(key)
-        if not tariff: continue
-
-        icon = "▪️"
-        marketing_badge = ""
-        if key == "1_month":
-            icon = "🚀"
-        elif key == "start_99":
-            icon = "⚡"
-            marketing_badge = " (старт)"
-        elif key == "3_months":
-            icon = "💠"
-            marketing_badge = " (удобно надолго)"
-        elif key == "6_months":
-            icon = "🎯"
-            marketing_badge = " (рекомендуем)"
-        elif key == "9_months":
-            icon = "🧭"
-            marketing_badge = " (на дольше)"
-        elif key == "12_months":
-            icon = "👑"
-            savings = _tariff_savings_pct(key) or 0
-            marketing_badge = f" (максимум выгоды, -{savings}%)" if savings > 0 else " (максимум выгоды)"
-
+        if not tariff:
+            continue
+        pricing = _tariff_pricing_for_user(tg_id, key)
+        btn_text = f"{icon} {period} — {int(pricing['base_price'])} ₽"
         savings = _tariff_savings_pct(key)
-        savings_text = f" (-{savings}%)" if savings and key not in {"12_months"} else ""
-        btn_text = _tariff_button_label(
-            tg_id=tg_id,
-            tariff_key=key,
-            label=f"{icon} {label}",
-            marketing_badge=marketing_badge,
-            savings_text=savings_text,
-        )
+        if savings:
+            btn_text += f" · −{savings}%"
         buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"buy_{key}")])
     
     if include_long_plans:
@@ -4033,6 +4050,34 @@ async def cmd_start(message: Message):
         )
         return
 
+    if str(start_arg or "").strip().lower() in {"pay", "renew"}:
+        track_event(
+            tg_id=int(tg_id),
+            event_name="deep_link_opened",
+            source="bot",
+            meta={"kind": "payment", "start_arg": str(start_arg or "").strip().lower()},
+        )
+        if not check_tos_accepted(tg_id):
+            await message.answer(
+                _tos_offer_text(),
+                reply_markup=_tos_offer_keyboard(back_callback="back"),
+                parse_mode=ParseMode.MARKDOWN,
+            )
+            return
+
+        fresh_user = get_user(tg_id)
+        await message.answer(
+            build_choose_tariff_text(),
+            reply_markup=tariff_keyboard(
+                tg_id,
+                show_trial=_trial_offer_available(fresh_user),
+                show_gb_only=False,
+                include_long_plans=False,
+            ),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        return
+
     promo_requested = bool(
         OPENING_PREMIUM_ENABLED
         and OPENING_PREMIUM_START_CODE
@@ -4199,11 +4244,8 @@ async def show_tariffs(callback: CallbackQuery):
         await callback.answer()
         return
     
-    # Show Free only if user has no active paid access. It should not "downgrade" paid users.
-    now = _utcnow()
-    expiry = _naive_utc(user.expiry_at) if user else None
-    has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
-    show_trial = not has_active
+    # Do not advertise a second trial or a downgrade to an active paid user.
+    show_trial = _trial_offer_available(user)
 
     show_gb_only = False  # Kept for legacy UI compatibility.
     await callback.message.edit_text(
@@ -4218,10 +4260,7 @@ async def show_tariffs(callback: CallbackQuery):
 async def show_tariffs_stars(callback: CallbackQuery):
     tg_id = callback.from_user.id
     user = get_user(tg_id)
-    now = _utcnow()
-    expiry = _naive_utc(user.expiry_at) if user else None
-    has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
-    show_trial = not has_active
+    show_trial = _trial_offer_available(user)
     await callback.message.edit_text(
         build_choose_tariff_text(),
         reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only=False, include_long_plans=False),
@@ -4293,10 +4332,7 @@ async def accept_tos(callback: CallbackQuery):
     # Now show tariffs
     user = get_user(tg_id)
 
-    now = _utcnow()
-    expiry = _naive_utc(user.expiry_at) if user else None
-    has_active = bool(user and user.is_active and expiry and expiry > now and not _is_freemium_sub_type(user.sub_type))
-    show_trial = not has_active
+    show_trial = _trial_offer_available(user)
     show_gb_only = False
     await callback.message.edit_text(
         build_choose_tariff_text(),
@@ -4338,7 +4374,7 @@ async def show_status(callback: CallbackQuery):
     stars = user.stars_paid if user else 0
     is_active = bool(user and user.is_active and expiry_dt and expiry_dt > _utcnow())
     status_icon = "🟢" if is_active else "🔴"
-    status_name = "АКТИВЕН" if is_active else "НЕАКТИВЕН"
+    status_name = "Активен" if is_active else "Не активен"
     status_text = bot_text(
         "bot.status.card",
         tg_id=tg_id,
@@ -4350,7 +4386,9 @@ async def show_status(callback: CallbackQuery):
     )
     base_limit = FREE_LIMIT_IP if _is_freemium_sub_type(user.sub_type) else PAID_LIMIT_IP
     extra_slots = active_family_slots(tg_id)
-    status_text += f"\n📱 Устройства: `{base_limit + extra_slots}` (база {base_limit} + family {extra_slots})"
+    status_text += f"\n📱 Устройства: до `{base_limit + extra_slots}`"
+    if extra_slots:
+        status_text += f" (Family: +{extra_slots})"
     if user_uses_free_pool(user):
         remaining_gb, total_gb = await _free_remaining_gb(tg_id, user=user)
         if remaining_gb is None:
@@ -4360,9 +4398,9 @@ async def show_status(callback: CallbackQuery):
         status_text += f"\n📡 Скорость режима: до `{_free_speed_mbit_for_user(user)}` Мбит/с"
         is_subscriber = await check_subscription(tg_id, callback.message.bot)
         if is_subscriber:
-            status_text += "\n📢 Канал: `подтверждён` — бонусный режим доступен."
+            status_text += "\n📢 Канал подтверждён — бонусный режим доступен."
         else:
-            status_text += "\n📢 Канал: `не подтверждён` — сейчас работает базовый бесплатный режим."
+            status_text += "\n📢 Канал не подтверждён — сейчас работает базовый бесплатный режим."
     panel_snapshot = await _panel_online_snapshot(tg_id)
     status_text += f"\n🌐 Онлайн: `{_panel_online_text(panel_snapshot)}`"
     status_text += f"\n🕓 Последний онлайн: `{_panel_last_online_text(panel_snapshot)}`"
@@ -4413,12 +4451,7 @@ async def show_key(callback: CallbackQuery):
                 )
             ],
             [
-                _btn_spec(
-                    text="⛔ Отмена",
-                    callback_data="back",
-                    style=BTN_STYLE_DANGER,
-                    icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-                )
+                _btn_spec(text="◀️ Назад", callback_data="back")
             ],
         ]
         ok = await _edit_text_with_specs(
@@ -4464,12 +4497,7 @@ async def show_key(callback: CallbackQuery):
         )
         return
 
-    msg = await callback.message.edit_text("🔄 `Собираю запасную ручную ссылку...`", parse_mode=ParseMode.MARKDOWN)
-    await asyncio.sleep(0.35)
-    await msg.edit_text("🔄 `Проверяю, что всё готово...`", parse_mode=ParseMode.MARKDOWN)
-    await asyncio.sleep(0.35)
-    await msg.edit_text("🔄 `Формирую ссылку и QR...`", parse_mode=ParseMode.MARKDOWN)
-    await asyncio.sleep(0.35)
+    await callback.message.edit_text("🔄 `Формирую ссылку и QR...`", parse_mode=ParseMode.MARKDOWN)
 
     sub_link = build_subscription_link(tg_id)
 
@@ -4479,16 +4507,21 @@ async def show_key(callback: CallbackQuery):
         free_note = _free_access_note(user)
         free_note += f" Платный доступ откроет платные локации и до {PAID_LIMIT_IP} устройств."
 
+    copy_button = (
+        InlineKeyboardButton(text="📋 Скопировать ссылку", copy_text=sub_link)
+        if SUPPORTS_BTN_COPY_TEXT
+        else InlineKeyboardButton(text="📋 Показать ссылку", callback_data="copy_key")
+    )
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data="copy_key")],
+            [copy_button],
             [InlineKeyboardButton(text="📱 QR для подключения", callback_data="show_qr")],
             [InlineKeyboardButton(text="📲 Как подключить вручную", callback_data="instruction")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
 
-    await msg.edit_text(
+    await callback.message.edit_text(
         f"🔗 *Ручное подключение*\n\n"
         "Это запасной способ, если POKROV не подключился сам. Сначала попробуйте приложение; ссылку используйте только для ручного подключения.\n\n"
         "Это личная ссылка для подключения. Не пересылайте её: по ней можно пользоваться вашим доступом.\n\n"
@@ -4526,10 +4559,21 @@ async def show_qr_code(callback: CallbackQuery):
         photo=file,
         caption=(
             "📱 *QR для ручного подключения*\n\n"
-            "Откройте QR в Hiddify, Karing или другом клиенте, который поддержка попросила использовать вручную. "
+            "Откройте QR в Hiddify. Для Happ используйте ручную ссылку с ?format=happ. "
             "QR содержит личную ссылку подключения - не пересылайте его посторонним."
         ),
         parse_mode=ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="📋 Скопировать ссылку", copy_text=sub_link)
+                    if SUPPORTS_BTN_COPY_TEXT
+                    else InlineKeyboardButton(text="📋 Показать ссылку", callback_data="copy_key")
+                ],
+                [InlineKeyboardButton(text="📲 Как подключить вручную", callback_data="instruction")],
+                [InlineKeyboardButton(text="◀️ Назад", callback_data="show_key")],
+            ]
+        ),
     )
     await callback.answer("QR для подключения готов")
 
@@ -4567,12 +4611,7 @@ async def panic_menu(callback: CallbackQuery):
             )
         ],
         [
-            _btn_spec(
-                text="⛔ Отмена",
-                callback_data="show_key",
-                style=BTN_STYLE_DANGER,
-                icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
-            )
+            _btn_spec(text="◀️ Отмена", callback_data="show_key")
         ],
     ]
     ok = await _edit_text_with_specs(
@@ -6490,6 +6529,17 @@ async def support_command(message: Message):
     )
 
 
+@router.message(Command("help"))
+async def help_command(message: Message):
+    _set_support_context(message.from_user.id, enabled=True)
+    _track_bot_entry(tg_id=int(message.from_user.id), entrypoint="help", meta={"command": "help"})
+    await message.answer(
+        bot_text("bot.faq.menu"),
+        reply_markup=_faq_menu_keyboard(),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+
+
 def _faq_menu_keyboard() -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton(text=label, callback_data=f"faq_{key}")]
@@ -6581,8 +6631,8 @@ def _ticket_status_title(status: str) -> str:
     if status == STATUS_IN_PROGRESS:
         return "В работе"
     if status == STATUS_CLOSED:
-        return "Закрыт"
-    return "Открыт"
+        return "Закрыто"
+    return "Открыто"
 
 
 def _ticket_message_preview(text: str, limit: int = 220) -> str:
@@ -6618,10 +6668,10 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Обращение не найден", show_alert=True)
+            await callback.answer("Обращение не найдено", show_alert=True)
             return
         if not _can_access_support_ticket(session, ticket, tg_id):
-            await callback.answer("Нет доступа к обращениеу", show_alert=True)
+            await callback.answer("Нет доступа к этому обращению", show_alert=True)
             return
 
         msgs = list_ticket_messages(session, ticket_id=ticket.id, limit=20)
@@ -6641,8 +6691,8 @@ async def _render_ticket(callback: CallbackQuery, ticket_id: int) -> None:
             f"Статус: {status}\n"
             f"Пользователь: {ticket.user_tg_id}\n"
             f"Оператор: {assigned}\n"
-            f"Создан: {created}\n"
-            f"Обновлён: {updated}\n\n"
+            f"Создано: {created}\n"
+            f"Обновлено: {updated}\n\n"
             f"{history}"
         )
         await callback.message.edit_text(
@@ -6679,7 +6729,7 @@ async def ticket_new(callback: CallbackQuery):
         pending_ticket_replies[tg_id] = ticket.id
 
         await callback.message.edit_text(
-            f"Обращение #{ticket.id} создан.\nОтправь одним сообщением описание проблемы.",
+            f"Обращение #{ticket.id} создано.\nОтправьте одним сообщением описание проблемы.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[[InlineKeyboardButton(text="Отмена", callback_data="support")]]
             ),
@@ -6687,7 +6737,7 @@ async def ticket_new(callback: CallbackQuery):
         await callback.answer()
 
         kb = InlineKeyboardMarkup(
-            inline_keyboard=[[InlineKeyboardButton(text="🎫 Создать обращение", callback_data=f"ticket_view_{ticket.id}")]]
+            inline_keyboard=[[InlineKeyboardButton(text="🎫 Открыть обращение", callback_data=f"ticket_view_{ticket.id}")]]
         )
         try:
             await callback.bot.send_message(
@@ -6713,7 +6763,7 @@ async def ticket_my(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "Обращениеов пока нет.",
+            "Обращений пока нет.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🎫 Создать обращение", callback_data="ticket_new")],
@@ -6757,7 +6807,7 @@ async def ticket_reply(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Обращение не найден", show_alert=True)
+            await callback.answer("Обращение не найдено", show_alert=True)
             return
         if not _can_access_support_ticket(session, ticket, callback.from_user.id):
             await callback.answer("Нет доступа", show_alert=True)
@@ -6782,7 +6832,7 @@ async def ticket_reply(callback: CallbackQuery):
 
     pending_ticket_replies[callback.from_user.id] = ticket_id
     await callback.message.edit_text(
-        f"Ответ в обращение #{ticket_id}: отправь текст, скриншот или файл одним сообщением.",
+        f"Ответ в обращение #{ticket_id}: отправьте текст, скриншот или файл одним сообщением.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data=f"ticket_view_{ticket_id}")]]
         ),
@@ -6797,7 +6847,7 @@ async def ticket_close(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Обращение не найден", show_alert=True)
+            await callback.answer("Обращение не найдено", show_alert=True)
             return
         if not _can_access_support_ticket(session, ticket, callback.from_user.id):
             await callback.answer("Нет доступа", show_alert=True)
@@ -6821,7 +6871,7 @@ async def ticket_close(callback: CallbackQuery):
                 )
             else:
                 try:
-                    await callback.bot.send_message(delivery_tg_id, f"Обращение #{ticket.id} закрыт оператором.")
+                    await callback.bot.send_message(delivery_tg_id, f"Обращение #{ticket.id} закрыто оператором.")
                 except Exception:
                     pass
         else:
@@ -6845,7 +6895,7 @@ async def ticket_reopen(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Обращение не найден", show_alert=True)
+            await callback.answer("Обращение не найдено", show_alert=True)
             return
         if not _can_access_support_ticket(session, ticket, callback.from_user.id):
             await callback.answer("Нет доступа", show_alert=True)
@@ -6863,7 +6913,7 @@ async def ticket_reopen(callback: CallbackQuery):
             try:
                 await callback.bot.send_message(
                     ADMIN_ID,
-                    f"Обращение #{ticket.id} переоткрыт пользователем `{ticket.user_tg_id}`.",
+                    f"Обращение #{ticket.id} переоткрыто пользователем `{ticket.user_tg_id}`.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             except Exception:
@@ -6883,7 +6933,7 @@ async def ticket_claim(callback: CallbackQuery):
     try:
         ticket = get_ticket_by_id(session, ticket_id)
         if not ticket:
-            await callback.answer("Обращение не найден", show_alert=True)
+            await callback.answer("Обращение не найдено", show_alert=True)
             return
         set_ticket_status(
             session,
@@ -6911,7 +6961,7 @@ async def admin_tickets(callback: CallbackQuery):
 
     if not tickets:
         await callback.message.edit_text(
-            "В очереди нет активных обращениеов.",
+            "В очереди нет активных обращений.",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад", callback_data="admin")]]
             ),
@@ -6972,7 +7022,7 @@ async def show_admin_panel(callback: CallbackQuery):
             InlineKeyboardButton(text="🔗 Launch ссылки", callback_data="admin_start_links"),
         ],
         [
-            InlineKeyboardButton(text="🎫 Очередь обращениеов", callback_data="admin_tickets"),
+            InlineKeyboardButton(text="🎫 Очередь обращений", callback_data="admin_tickets"),
         ],
         [
             InlineKeyboardButton(text="Ноды", callback_data="admin_nodes"),
@@ -9663,7 +9713,7 @@ async def payment_success(message: Message, bot: Bot):
             buyer_tg_id = int(buyer_raw)
         except Exception:
             logger.warning("payment_success giftcard parse error payload=%s", payload)
-            await message.answer("❌ Ошибка обработки оплаты. Напиши в службу заботы.")
+            await message.answer("❌ Ошибка обработки оплаты. Напишите в службу заботы.")
             return
         
         code = create_gift_card(buyer_tg_id, card_type)
@@ -9678,13 +9728,13 @@ async def payment_success(message: Message, bot: Bot):
                 f"🎁 *Подарочная карта куплена!*\n\n"
                 f"Код: `{code}`\n\n"
                 f"📦 {card_info.get('days', 0)} дней (Безлимит)\n\n"
-                f"Отправь этот код другу!\n"
+                f"Отправьте этот код другу!\n"
                 f"Он активирует его командой `/redeem {code}`",
                 parse_mode=ParseMode.MARKDOWN
             )
         else:
             logger.warning("payment_success giftcard create failed buyer_tg_id=%s card_type=%s", buyer_tg_id, card_type)
-            await message.answer("❌ Ошибка создания карты. Напиши в службу заботы.")
+            await message.answer("❌ Ошибка создания карты. Напишите в службу заботы.")
         return
 
     # Handle family-slot purchase
@@ -9735,7 +9785,7 @@ async def payment_success(message: Message, bot: Bot):
             points_used = max(0, int(match.group("points"))) if match.group("points") else 0
         except Exception:
             logger.warning("payment_success portal parse error payload=%s", payload)
-            await message.answer("❌ Ошибка обработки оплаты. Напиши в службу заботы.")
+            await message.answer("❌ Ошибка обработки оплаты. Напишите в службу заботы.")
             return
 
         tariff = TARIFFS.get(tariff_key)
@@ -10147,8 +10197,8 @@ async def create_subscription(
                 await panel.update_client_traffic(tg_id, streak_bonus)
                 await message.answer(
                     f"🔥 *Streak бонус!*\n\n"
-                    f"Ты на волне уже *{new_streak} месяцев*!\n"
-                    f"Тебе начислено *+{streak_bonus} Дней*!",
+                    f"Вы на волне уже *{new_streak} месяцев*!\n"
+                    f"Вам начислено *+{streak_bonus} дней*!",
                     parse_mode=ParseMode.MARKDOWN
                 )
             except:
@@ -10590,7 +10640,7 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
         usage = session.query(PromoUsage).filter_by(tg_id=tg_id, promo_code=code).first()
         if usage:
             _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "already_redeemed"})
-            return False, "❌ Ты уже использовал этот промокод"
+            return False, "❌ Вы уже использовали этот промокод"
 
         user = session.query(User).filter_by(tg_id=tg_id).first()
         if not user:
@@ -10636,7 +10686,7 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
                 else:
                     user.expiry_at = now + timedelta(days=promo_value)
                 user.is_active = True
-            result_text = f"🎁 Тебе добавлено *+{promo_value} Дней!*"
+            result_text = f"🎁 Вам добавлено *+{promo_value} дней!*"
         elif promo_type == "discount":
             user = session.query(User).filter_by(tg_id=tg_id).first()
             if user:
@@ -11167,7 +11217,7 @@ async def admin_gift(message: Message, bot: Bot):
     if len(parts) < 3:
         await message.answer(
             "📦 *Формат команды /gift:*\n\n"
-            "`/gift [tg_id] trial` — Пробный (7 дней)\n"
+            "`/gift [tg_id] trial` — Пробный (5 дней)\n"
             "`/gift [tg_id] basic` — Стандарт (30 дней)\n"
             "`/gift [tg_id] pro` — Турбо (30 дней)\n"
             "`/gift [tg_id] vip` — VIP (365 дней)\n"
@@ -11193,7 +11243,7 @@ async def admin_gift(message: Message, bot: Bot):
     
     # Preset tariffs for gifts
     gift_presets = {
-        "trial": {"days": 7, "name": "🎁 Пробный"},
+        "trial": {"days": 5, "name": "🎁 Пробный"},
         "basic": {"days": 30, "name": "⚡ Стандарт"},
         "pro": {"days": 30, "name": "🚀 Турбо"},
         "vip": {"days": 365, "name": "👑 VIP"},

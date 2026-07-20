@@ -232,7 +232,7 @@ function ShellState({
           caption={pokrovBranding.cabinetName}
           label="POKROV cabinet"
         />
-        <p className="mt-6 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">{pokrovBranding.entryEyebrow}</p>
+        <p className="mt-6 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">{pokrovBranding.entryEyebrow}</p>
         <h1 className="mt-2 font-display text-[clamp(1.9rem,5vw,2.7rem)] leading-[1.02] font-semibold tracking-[-0.02em] text-ink">
           {title}
         </h1>
@@ -477,9 +477,9 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
           <div className="rounded-card border border-line bg-canvas-alt p-3">
             <div className="flex items-center justify-between gap-2">
               {statusChip}
-              <span className="text-xs text-ink-muted">{planLabel}</span>
+              <span className="text-xs text-ink-soft">{planLabel}</span>
             </div>
-            <p className="mt-2 text-xs leading-5 text-ink-muted">{sidebarSummary}</p>
+            <p className="mt-2 text-xs leading-5 text-ink-soft">{sidebarSummary}</p>
           </div>
 
           <div className="flex items-center justify-between gap-2 rounded-card border border-line bg-canvas-alt p-3">
@@ -563,7 +563,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                     <span className="block text-sm font-semibold">{item.label}</span>
                     {isAdminItem ? adminTag(active) : null}
                   </span>
-                  <span className={cn("block text-xs leading-5", active ? "opacity-80" : "text-ink-muted")}>{item.description}</span>
+                  <span className={cn("block text-xs leading-5", active ? "opacity-80" : "text-ink-soft")}>{item.description}</span>
                 </span>
               </AppRouteLink>
             );

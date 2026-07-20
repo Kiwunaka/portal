@@ -23,6 +23,7 @@ import {
 } from "@/lib/access-policy";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getCopyText, getTariffPlans, normalizePlanCode } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
 import { subscriptionUrlForFormat } from "@/lib/subscription-format";
@@ -87,7 +88,7 @@ function CompatibleClientImport({
             <p className="text-sm font-semibold text-ink">{name}</p>
             <Badge tone="neutral">Запасной</Badge>
           </div>
-          <p className="mt-1 text-xs leading-5 text-ink-muted">{platforms} · {formatLabel}</p>
+          <p className="mt-1 text-xs leading-5 text-ink-soft">{platforms} · {formatLabel}</p>
         </div>
         <a
           href={downloadUrl}
@@ -107,7 +108,7 @@ function CompatibleClientImport({
           <SubscriptionQrCard value={subscriptionUrl} active={Boolean(subscriptionUrl)} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs leading-5 text-ink-muted">
+          <p className="text-xs leading-5 text-ink-soft">
             Импортируйте эту ссылку как подписку. Не отправляйте её в чат или сторонний сайт.
           </p>
           <div className="mt-2 rounded-control border border-line bg-canvas-alt px-3 py-2.5">
@@ -155,7 +156,7 @@ export default function SubscriptionPage() {
       } catch (nextError) {
         if (!cancelled) {
           setPlans(fallbackPlans());
-          setError(String((nextError as { message?: string })?.message || nextError || ""));
+          setError(userFacingErrorMessage(nextError, "Проверьте соединение и обновите страницу."));
         }
       }
     };
@@ -238,7 +239,7 @@ export default function SubscriptionPage() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Срок</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Срок</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {visiblePlans.map((plan) => {
             const normalizedCode = normalizePlanCode(plan.code);
@@ -265,9 +266,9 @@ export default function SubscriptionPage() {
                 </span>
                 <h3 className="text-sm font-semibold text-ink">{plan.label}</h3>
                 <div className="text-xl leading-none font-bold text-ink">
-                  {amountRub} ₽{days > 0 ? <span className="text-sm font-medium text-ink-muted"> / {days} дн.</span> : null}
+                  {amountRub} ₽{days > 0 ? <span className="text-sm font-medium text-ink-soft"> / {days} дн.</span> : null}
                 </div>
-                <p className="flex-1 text-xs leading-5 text-ink-muted">{planHint(plan)}</p>
+                <p className="flex-1 text-xs leading-5 text-ink-soft">{planHint(plan)}</p>
                 {isCurrent ? (
                   <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-ok-text">
                     <CircleCheck size={18} strokeWidth={2} aria-hidden="true" />
@@ -298,7 +299,7 @@ export default function SubscriptionPage() {
 
       <section id="manual-setup" className="scroll-mt-24 space-y-2">
         <div className="flex items-center justify-between gap-3 px-1">
-          <h2 className="text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Ручная настройка</h2>
+          <h2 className="text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Ручная настройка</h2>
           <Button
             variant="secondary"
             size="sm"
@@ -350,7 +351,7 @@ export default function SubscriptionPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Совместимые клиенты</p>
+                <p className="mb-2 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Совместимые клиенты</p>
                 <GroupedSection>
                   <Row
                     label="Hiddify"

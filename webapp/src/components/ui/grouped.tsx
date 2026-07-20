@@ -22,7 +22,7 @@ export function GroupedSection({
     <section className={cn("flex flex-col gap-2", className)}>
       {title || action ? (
         <div className="flex items-center justify-between gap-3 px-1">
-          {title ? <h2 className="text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">{title}</h2> : <span />}
+          {title ? <h2 className="text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">{title}</h2> : <span />}
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
@@ -61,7 +61,7 @@ export function Row({
       ) : null}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-ink">{label}</span>
-        {hint ? <span className="mt-0.5 block truncate text-[13px] leading-5 text-ink-muted">{hint}</span> : null}
+        {hint ? <span className="mt-0.5 block truncate text-[13px] leading-5 text-ink-soft">{hint}</span> : null}
       </span>
       {value ? <span className="max-w-[48%] min-w-0 truncate text-right text-sm font-medium text-ink-soft">{value}</span> : null}
       {action ? <span className="shrink-0">{action}</span> : null}

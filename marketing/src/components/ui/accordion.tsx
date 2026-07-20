@@ -23,7 +23,7 @@ function AccordionRow({ item, defaultOpen = false }: { item: AccordionItem; defa
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen((value) => !value)}
-        className="flex min-h-11 w-full items-center justify-between gap-4 py-5 text-left"
+        className="flex min-h-11 w-full items-center justify-between gap-4 py-5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <span className="text-base font-semibold text-ink">{item.question}</span>
         <span

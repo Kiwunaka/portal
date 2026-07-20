@@ -43,7 +43,7 @@ def test_profile_copy_contains_required_pokrov_surface_facts() -> None:
 def test_public_commands_and_menu_are_the_shared_source_of_truth() -> None:
     profile = _load_profile_module()
 
-    assert profile.expected_public_command_names() == ["start", "cabinet", "support", "promo", "redeem"]
+    assert profile.expected_public_command_names() == ["start", "cabinet", "support", "help", "promo", "redeem"]
     assert profile.expected_webapp_menu_button_payload() == {
         "type": "web_app",
         "text": "POKROV",

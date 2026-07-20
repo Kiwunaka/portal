@@ -37,6 +37,7 @@ import {
 } from "@/lib/api";
 import { getDeviceLimit, resolvePlanLabel } from "@/lib/access-policy";
 import { getCopyText, getPortalPublicConfig } from "@/lib/portal";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { SUPPORT_ATTACHMENT_ACCEPT, validateSupportAttachment } from "@/lib/support-attachments";
 
@@ -163,7 +164,7 @@ export default function SupportPage() {
       setTickets(rows);
       setError("");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || ""));
+      setError(userFacingErrorMessage(nextError, "Не получилось обновить обращения. Попробуйте ещё раз."));
     } finally {
       setLoadingTickets(false);
     }
@@ -226,7 +227,7 @@ export default function SupportPage() {
       await loadTickets();
       showToast(`Обращение #${created.id} создано.`, "success");
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || ""));
+      setError(userFacingErrorMessage(nextError, "Не получилось создать обращение. Попробуйте ещё раз или напишите в Telegram-поддержку."));
     } finally {
       setBusy(false);
     }
@@ -304,12 +305,12 @@ export default function SupportPage() {
         </GroupedSection>
 
         <section className="flex flex-col gap-2.5">
-          <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Частые вопросы</h2>
+          <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Частые вопросы</h2>
           <FaqAccordion entries={FAQ_ENTRIES} />
         </section>
 
         <section className="flex flex-col gap-2.5">
-          <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Диагностика</h2>
+          <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Диагностика</h2>
           <TileGrid className="xl:grid-cols-3">
             <Tile icon={ShieldCheck} label="Доступ" value={resolvePlanLabel(dash, user)} hint="Без личных ключей" tone="success" />
             <Tile icon={MonitorSmartphone} label="Устройства" value={`${deviceCount} из ${deviceLimit}`} hint="Связано с профилем" tone="neutral" href="/devices/" />
@@ -344,7 +345,7 @@ export default function SupportPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Новое обращение</p>
+                  <p className="text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Новое обращение</p>
                   <h2 className="mt-2 text-2xl leading-tight font-semibold text-ink">Новый вопрос</h2>
                   <p className="mt-2 text-sm leading-6 text-ink-soft">{preset.hint}</p>
                 </div>
@@ -386,7 +387,7 @@ export default function SupportPage() {
 
                 <label className="block rounded-control border border-dashed border-line bg-canvas-alt px-4 py-4 text-sm">
                   <span className="block font-medium text-ink">Вложение</span>
-                  <span className="mt-1 block text-xs leading-5 text-ink-muted">
+                  <span className="mt-1 block text-xs leading-5 text-ink-soft">
                     PNG, JPEG, WebP, PDF или TXT до 20 МБ.
                   </span>
                   <input
@@ -406,7 +407,7 @@ export default function SupportPage() {
                       </button>
                     </div>
                   ) : null}
-                  {attachmentFile ? <p className="mt-2 text-xs text-ink-muted">{formatFileSize(attachmentFile.size)}</p> : null}
+                  {attachmentFile ? <p className="mt-2 text-xs text-ink-soft">{formatFileSize(attachmentFile.size)}</p> : null}
                 </label>
 
                 <div className="flex flex-wrap gap-3">

@@ -296,7 +296,7 @@ export default function SettingsPage() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Профиль</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Профиль</h2>
         <TileGrid className="xl:grid-cols-3">
           <Tile icon={ShieldCheck} label="Доступ" value={resolvePlanLabel(dash, user)} hint={resolveTrafficStatusText(dash, user)} tone="success" href="/subscription/" />
           <Tile icon={CalendarCheck} label="Срок" value={formatDate(dash?.expiry_at || user?.expiry_at)} hint="По профилю" tone="neutral" />
@@ -364,7 +364,7 @@ export default function SettingsPage() {
       {canLinkEmail ? (
         <section id="email-link" className="scroll-mt-24 space-y-2">
           <div className="px-1">
-            <h2 className="text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Подключить email к текущему аккаунту</h2>
+            <h2 className="text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Подключить email к текущему аккаунту</h2>
           </div>
           <div className="rounded-card border border-line bg-surface p-4 shadow-soft">
             <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
@@ -465,7 +465,7 @@ export default function SettingsPage() {
       </GroupedSection>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Действия</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Действия</h2>
         <ActionGrid className="sm:grid-cols-3">
           <ActionCard icon={MonitorSmartphone} title="Устройства" hint="Связанные телефоны и компьютеры" href="/devices/" />
           <ActionCard icon={Download} title="Загрузки" hint="Android и Windows" href="/downloads/" />

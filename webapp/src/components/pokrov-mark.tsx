@@ -25,8 +25,8 @@ export default function PokrovMark({ className, label = "POKROV logo", accent = 
       <path d={POKROV_MARK_PATH} fill={accent === "brand" ? `url(#${gradientId})` : "#7C8B84"} />
       <defs>
         <linearGradient id={gradientId} x1="99.63" x2="99.63" y1="1.976" y2="131.6" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#0B4832" />
-          <stop offset="1" stopColor="#0D4A35" />
+          <stop offset="0" style={{ stopColor: "var(--pokrov-accent, #12805a)" }} />
+          <stop offset="1" style={{ stopColor: "var(--pokrov-accent-hover, #0f6b47)" }} />
         </linearGradient>
       </defs>
     </svg>

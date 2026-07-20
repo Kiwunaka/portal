@@ -79,7 +79,7 @@ export default function DevicesPage() {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="font-semibold text-ink">Лимит устройств</span>
-              <span className="text-ink-muted">
+              <span className="text-ink-soft">
                 {formatCount(knownAppDevices)} из {formatCount(deviceLimit)}
               </span>
             </div>
@@ -89,7 +89,7 @@ export default function DevicesPage() {
       </StatusHero>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Сводка</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Сводка</h2>
         <TileGrid>
           <Tile icon={Wifi} label="Подключений сейчас" value={`${formatCount(activeConnections)} из ${formatCount(deviceLimit)}`} hint="Живые подключения" tone="success" />
           <Tile icon={MonitorSmartphone} label="Известных устройств" value={formatCount(knownAppDevices)} hint="Связаны с аккаунтом" tone="neutral" />

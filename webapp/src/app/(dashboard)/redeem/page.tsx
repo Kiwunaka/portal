@@ -159,7 +159,7 @@ export default function RedeemPage() {
               Активировать
             </Button>
           </div>
-          <p className="text-xs leading-5 text-ink-muted">
+          <p className="text-xs leading-5 text-ink-soft">
             Если у вас длинная ссылка connect.pokrov.space, откройте ручную настройку в разделе доступа.
           </p>
         </div>
@@ -181,7 +181,7 @@ export default function RedeemPage() {
       </GroupedSection>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Что дальше</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Что дальше</h2>
         <ActionGrid className="sm:grid-cols-3">
           <ActionCard icon={CreditCard} title="Купить доступ" hint="Если кода еще нет" href="/subscription/checkout/" />
           <ActionCard icon={LifeBuoy} title="Поддержка" hint="Если код уже использован или не найден" href="/support/" />

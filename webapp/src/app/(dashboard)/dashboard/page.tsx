@@ -132,7 +132,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="font-semibold text-ink">Осталось {formatDays(runway.days)}</span>
-              <span className="text-ink-muted">план на {formatDays(runway.max)}</span>
+              <span className="text-ink-soft">план на {formatDays(runway.max)}</span>
             </div>
             <Meter value={runway.value} max={runway.max} tone={runwayTone} label="Оставшийся срок доступа" />
           </div>
@@ -140,7 +140,7 @@ export default function DashboardPage() {
       </StatusHero>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Сводка</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Сводка</h2>
         <TileGrid>
           <Tile icon={Gauge} label="Трафик" value={dash?.traffic_policy?.kind === "unlimited" ? "Безлимит" : trafficText} tone="info" />
           <Tile
@@ -174,7 +174,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-muted uppercase">Быстрый доступ</h2>
+        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Быстрый доступ</h2>
         <ActionGrid>
           <ActionCard icon={KeyRound} title="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
           <ActionCard

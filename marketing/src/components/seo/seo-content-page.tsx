@@ -143,7 +143,7 @@ export function SeoContentPage({ page }: { page: SeoPage }) {
             <SectionHeading title="Критерии проверки" sub="Не рейтинг ради рейтинга, а список вещей, которые стоит увидеть до установки." />
           </Reveal>
           <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-soft">
-            <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-line bg-canvas-alt text-[0.8125rem] font-semibold tracking-[0.08em] text-ink-muted uppercase">
+            <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-line bg-canvas-alt text-[0.8125rem] font-semibold tracking-[0.08em] text-ink-soft uppercase">
               <div className="p-4">Критерий</div>
               <div className="border-l border-line p-4">Типичный бесплатный VPN</div>
               <div className="border-l border-line p-4">POKROV</div>
