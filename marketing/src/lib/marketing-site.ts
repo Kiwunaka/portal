@@ -12,7 +12,13 @@ import {
   CANONICAL_SUPPORT_BOT_URL,
   getTariffPlans,
 } from "./pokrov";
-import { SEO_LAST_REVIEWED_DATE, SEO_PAGE_PATHS, SEO_SITEMAP_ROUTES, type SeoPage } from "./seo-pages";
+import {
+  SEO_LAST_REVIEWED_DATE,
+  SEO_PAGE_PATHS,
+  SEO_SITEMAP_ROUTES,
+  TELEGRAM_START_PROMISE,
+  type SeoPage,
+} from "./seo-pages";
 
 export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
 export const DEFAULT_MARKETING_TWITTER_IMAGE_PATH = "/twitter-image.png";
@@ -54,13 +60,19 @@ const PUBLIC_TARIFF_PLANS = getTariffPlans()
 
 const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
 
+export const PAID_REWARDS_MARKETING_ENABLED = process.env.NEXT_PUBLIC_PAID_REWARDS_MARKETING_ENABLED === "1";
+
+export const PAID_REWARDS_MARKETING_COPY =
+  "Для активной платной подписки доступны еженедельное колесо бонусов и календарь активности. В колесе возможен редкий джекпот +30 дней.";
+
 export const MARKETING_FEATURE_LIST = [
   "Android и Windows, 5 дней бесплатно",
   "5 дней бесплатно без карты",
   "Одна кнопка подключения в приложении",
   "Продление от 99 ₽ за 30 дней",
   "До 5 устройств в платном доступе",
-  "Telegram-бонус +10 дней и поддержка",
+  TELEGRAM_START_PROMISE,
+  ...(PAID_REWARDS_MARKETING_ENABLED ? [PAID_REWARDS_MARKETING_COPY] : []),
 ] as const;
 
 export type MarketingRouteConfig = {
@@ -144,8 +156,7 @@ export const MARKETING_FAQ: MarketingFaqItem[] = [
   },
   {
     question: "Нужен ли Telegram для старта?",
-    answer:
-      "Нет. Начать можно без Telegram. Он полезен для бонуса +10 дней, восстановления доступа и быстрого контакта с поддержкой.",
+    answer: TELEGRAM_START_PROMISE,
   },
   {
     question: "Если что-то не получается, куда идти?",

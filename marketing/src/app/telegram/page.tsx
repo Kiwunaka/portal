@@ -1,6 +1,11 @@
 import { IntentLanding } from "../../components/intent/intent-landing";
-import { buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
-import { getSeoPage } from "../../lib/seo-pages";
+import {
+  buildMarketingMetadata,
+  MARKETING_CANONICAL_PATHS,
+  PAID_REWARDS_MARKETING_COPY,
+  PAID_REWARDS_MARKETING_ENABLED,
+} from "../../lib/marketing-site";
+import { getSeoPage, TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 
 const seoPage = getSeoPage(MARKETING_CANONICAL_PATHS.telegram);
 
@@ -18,15 +23,15 @@ export default function TelegramPage() {
       pagePath={MARKETING_CANONICAL_PATHS.telegram}
       breadcrumbName="Telegram"
       heroKicker="Бонус и поддержка"
-      heroTitle="+10 дней за подписку на канал"
-      heroSubtitle="Telegram не обязателен для старта, но полезен: бонус +10 дней, живая поддержка и новости о работе сервиса — всё в одном месте."
+      heroTitle="До 10 дней на старте"
+      heroSubtitle={TELEGRAM_START_PROMISE}
       scenarioTitle="Что даёт Telegram"
       scenarioBody="Три причины подписаться — все честные."
       scenarioCards={[
         {
           eyebrow: "Бонус",
-          title: "+10 дней к доступу",
-          desc: "Подпишитесь на канал и заберите бонус в приложении — он прибавится к текущему сроку.",
+          title: "+5 дней после Telegram",
+          desc: "Привяжите Telegram, подпишитесь на канал и подтвердите подписку в аккаунте.",
         },
         {
           eyebrow: "Поддержка",
@@ -38,6 +43,15 @@ export default function TelegramPage() {
           title: "Статусы работы сервиса",
           desc: "Если что-то меняется — маршруты, версии, акции — вы узнаете первым в канале.",
         },
+        ...(PAID_REWARDS_MARKETING_ENABLED
+          ? [
+              {
+                eyebrow: "Для платной подписки",
+                title: "Награды за активность",
+                desc: PAID_REWARDS_MARKETING_COPY,
+              },
+            ]
+          : []),
       ]}
       seoPage={seoPage}
     />

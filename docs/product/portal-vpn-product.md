@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-07-12
+Last updated: 2026-07-20
 
 ## Document Status
 
@@ -205,6 +205,7 @@ Current cabinet role:
 - email forms are gated by `/api/auth/email/status`; the default degrades to unavailable unless public enablement, delivery configuration, and non-debug runtime state are all green
 - current visible cabinet IA is `Главная`, `Доступ`, `Помощь`, and `Аккаунт`
 - `/devices/`, `/statistics/`, `/downloads/`, `/redeem/`, `/subscription/checkout/`, `/support/thread/`, and `/support/legal/` remain deep-linkable task/detail routes inside that compact cabinet model
+- `/rewards/` is an account-owned detail route, not a fifth primary tab; wheel, calendar, and history load independently and fail closed when their backend state is unavailable
 - task routes currently include cabinet entry, hosted-checkout continuation, redeem, downloads, and support threads
 - `/pricing/` remains only as a compatibility continuation alias and must not become a second public pricing surface
 - standalone `adminapp` is the primary operator surface;
@@ -276,18 +277,25 @@ Hostname policy:
 
 ## Connection Link Policy
 
-Public connection delivery now follows one simple rule when manual import is explicitly needed:
+Public connection delivery follows one private-source rule when manual import is
+explicitly needed:
 
-- one public connection link
-- one QR based on that same link
+- one authenticated base connection link and matching QR
 - one canonical host: `connect.pokrov.space`
 - no first-layer consumer screen should lead with QR, raw token, raw config, or transport settings
+- `POKROV` is the primary client; `Hiddify` is the verified manual fallback
+- the authenticated manual section may derive `format=smart` for Karing and
+  `format=happ` for Happ with `URL.searchParams`; both remain best-effort
+- a private URL or QR must never be placed in a third-party link, telemetry,
+  public page, or support artifact
 
 Product wording rule:
 
 - explicit fallback copy may say `ссылка подключения` and `QR для подключения`
 - do not describe separate public `умный` and `обычный` keys
 - `?format=plain` remains backend compatibility-only and must stay hidden from normal site, bot, and webapp flows
+- Karing/Happ format variants are authenticated manual-import derivatives of
+  the same private source, not public product links or new account credentials
 
 ## Trial And Bonus Rules
 
@@ -301,6 +309,7 @@ Product wording rule:
 
 ### Telegram Reward
 
+- exact public promise: `До 10 дней на старте: 5 дней бесплатно в приложении и ещё 5 дней после привязки Telegram и подтверждения подписки на канал.`
 - new reward value: `+5 days`, once per canonical account
 - already-issued `+10 days` channel rewards remain grandfathered and are never shortened or reissued
 - leaving the channel starts a `24 hour` grace period; rejoining cancels grace, and expiry removes only the unused channel interval
@@ -322,7 +331,28 @@ Product wording rule:
 - Rewards Hub may render only enabled first-party app promo slots from `GET /api/client/promo-slots?surface=app`; third-party ads, unsafe links, and tracking campaign payloads remain forbidden
 - roulette and calendar remain disabled by default, but their backend mutation routes are ledger-backed under `BONUS_WHEEL_ENABLED` / `BONUS_CALENDAR_ENABLED`; the app may show active spin/check-in controls only when backend summary state says the feature is enabled and ready
 
-Official Telegram surfaces:
+### Paid Subscriber Rewards
+
+- eligibility requires an active canonical account, an active `PAID` user
+  projection, and a currently active non-reversed `paid_access` grant from
+  provider-payment or compatibility-projection authority
+- trial, free access, bonus-only access, an expired paid interval, and a reward
+  tail after paid expiry are ineligible even when the projected expiry remains
+  in the future
+- the weekly wheel exposes only the possible `1`, `3`, `7`, and `30` day
+  sectors; sector size and order are not probabilities, and public/support copy
+  must not publish backend weights
+- the activity calendar grants `+1 day` only at consecutive-day milestones
+  `7`, `14`, `21`, and `28`; a missed day starts a new cycle
+- reward state belongs to the canonical account, awarded duration belongs to
+  typed entitlement grants, and panel synchronization is a durable retryable
+  job; legacy `RewardClaim`/achievement rows are compatibility evidence only
+- `BONUS_WHEEL_ENABLED` and `BONUS_CALENDAR_ENABLED` remain independent and
+  false by default. Public availability copy has a separate build-time gate,
+  `NEXT_PUBLIC_PAID_REWARDS_MARKETING_ENABLED`, and must remain absent until the
+  deployed backend has been enabled and verified
+
+### Official Telegram Surfaces
 
 - main bot: `@pokrov_vpnbot`
 - support bot: `@pokrov_supportbot`

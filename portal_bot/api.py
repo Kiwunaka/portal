@@ -10103,11 +10103,14 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
         )
         access_state = str(access_policy.get("access_state") or "")
         expiry = getattr(user, "expiry_at", None)
+        days_left = _client_days_left(expiry)
+        if access_state == "trial_premium":
+            days_left = min(days_left, int(APP_TRIAL_DEFAULT_DAYS))
         return {
             "lane": _client_subscription_lane(access_state),
             "accessState": access_state,
             "expiresAt": _safe_iso(expiry),
-            "daysLeft": _client_days_left(expiry),
+            "daysLeft": days_left,
             "autoRenew": False,
             "renewUrl": _checkout_url_for_user(tg_id=int(user.tg_id), source="app"),
             "plans": _client_subscription_plans(s),

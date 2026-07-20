@@ -8,6 +8,7 @@ import { Card } from "../../components/ui/card";
 import { Chip } from "../../components/ui/chip";
 import { cn } from "../../components/utils";
 import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 import {
   getCheckoutTariffPlans,
   getPricingPreviewDiscountPercent,
@@ -230,7 +231,7 @@ function describePromoContent(contentId: string): { title: string; body: string 
   if (contentId === "telegram_bonus") {
     return {
       title: "Telegram остается бонусом и способом восстановления",
-      body: "После привязки аккаунта Telegram может дать +10 дней, но первый старт остается в приложении.",
+      body: TELEGRAM_START_PROMISE,
     };
   }
   return {
@@ -533,7 +534,7 @@ export default function CheckoutClient() {
               </li>
               <li>Перед оплатой видны срок, устройства, цена и платформы.</li>
               <li>Код после оплаты продлевает тот профиль, где вы его активируете: в приложении или кабинете.</li>
-              <li>Telegram нужен только для бонуса +10 дней, восстановления и связи с поддержкой.</li>
+              <li>{TELEGRAM_START_PROMISE}</li>
             </ul>
           </div>
 

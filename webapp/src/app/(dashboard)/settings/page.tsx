@@ -27,10 +27,12 @@ import { getDeviceLimit, resolvePlanLabel, resolveTrafficStatusText } from "@/li
 import {
   checkChannelSubscriberStatus,
   claimChannelBonus,
+  fetchBonuses,
   getEmailAuthStatus,
   registerByEmail,
   setWebSessionToken,
   startTelegramLink,
+  type BonusPayload,
   type EmailAuthStatusResult,
   type TelegramLinkStartResult,
   verifyEmailToken,
@@ -49,6 +51,11 @@ function formatDate(value?: string | null): string {
     day: "numeric",
     month: "long",
   }).format(parsed);
+}
+
+function positiveDays(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
 function profileLabel(username?: string | null, tgId?: number | null): string {
@@ -88,6 +95,7 @@ export default function SettingsPage() {
   const [telegramLinkError, setTelegramLinkError] = useState("");
   const [emailAuthStatus, setEmailAuthStatus] = useState<EmailAuthStatusResult | null>(null);
   const [emailAuthChecked, setEmailAuthChecked] = useState(false);
+  const [bonusSummary, setBonusSummary] = useState<BonusPayload | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +109,14 @@ export default function SettingsPage() {
       })
       .finally(() => {
         if (!cancelled) setEmailAuthChecked(true);
+      });
+
+    fetchBonuses()
+      .then((payload) => {
+        if (!cancelled) setBonusSummary(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setBonusSummary(null);
       });
 
     return () => {
@@ -128,17 +144,30 @@ export default function SettingsPage() {
   const channelLink = user?.channel?.link || "";
   const supportLink = user?.support?.link || "/support/";
   const emailAuthReady = isEmailAuthPublicReady(emailAuthStatus);
-  const channelBonusDays = bonusCheck?.bonusDays || user?.bonuses?.channel_bonus?.premium_days || 10;
-  const channelBonusClaimedAt = user?.bonuses?.channel_bonus?.claimed_at || null;
+  const userChannelBonus = user?.bonuses?.channel_bonus;
+  const summaryChannelBonus = bonusSummary?.channel;
+  const channelBonusOfferDays = positiveDays(
+    bonusCheck?.bonusDays ?? summaryChannelBonus?.offer_days ?? userChannelBonus?.offer_days,
+    5,
+  );
+  const channelBonusClaimedAt = summaryChannelBonus?.claimed_at ?? userChannelBonus?.claimed_at ?? null;
+  const channelBonusClaimed = Boolean(summaryChannelBonus?.claimed || channelBonusClaimedAt || bonusCheck?.alreadyClaimed);
+  const channelBonusClaimedDays = positiveDays(
+    summaryChannelBonus?.claimed_days ??
+      userChannelBonus?.claimed_days ??
+      (channelBonusClaimed ? userChannelBonus?.premium_days : undefined),
+    channelBonusOfferDays,
+  );
   const channelBonusReady = Boolean(user?.bonuses?.channel_bonus?.can_claim);
-  const canClaimBonus = !channelBonusClaimedAt && (channelBonusReady || Boolean(bonusCheck?.subscriber && !bonusCheck.alreadyClaimed));
+  const canClaimBonus = !channelBonusClaimed && (channelBonusReady || Boolean(bonusCheck?.subscriber && !bonusCheck.alreadyClaimed));
   const canLinkEmail = !linkedEmail && emailAuthReady;
   const emailLinkUnavailable = !linkedEmail && emailAuthChecked && !emailAuthReady;
   const bonusStatusText =
     bonusMessage ||
-    (channelBonusClaimedAt
-      ? `Бонус уже добавлен ${formatDate(channelBonusClaimedAt)}.`
-      : bonusCheck?.message || (channelBonusReady ? `Можно забрать +${channelBonusDays} дней.` : "Проверьте подписку на канал."));
+    (channelBonusClaimed
+      ? `Получено +${channelBonusClaimedDays} дней${channelBonusClaimedAt ? ` ${formatDate(channelBonusClaimedAt)}` : ""}.`
+      : bonusCheck?.message ||
+        (channelBonusReady ? `Можно забрать +${channelBonusOfferDays} дней.` : "Проверьте подписку на канал."));
 
   async function onTelegramLink(): Promise<void> {
     setTelegramLinkBusy(true);
@@ -170,7 +199,7 @@ export default function SettingsPage() {
       setBonusCheck({
         subscriber,
         alreadyClaimed,
-        bonusDays: Number(payload.bonus_days || channelBonusDays || 10),
+        bonusDays: positiveDays(payload.bonus_days, channelBonusOfferDays),
         message: alreadyClaimed
           ? "Бонус уже был добавлен раньше."
           : subscriber
@@ -190,9 +219,18 @@ export default function SettingsPage() {
     setBonusMessage("");
     try {
       const payload = await claimChannelBonus();
-      const days = Number(payload.premium_days || channelBonusDays || 10);
+      const days = positiveDays(payload.premium_days, channelBonusOfferDays);
+      setBonusCheck({
+        subscriber: true,
+        alreadyClaimed: true,
+        bonusDays: days,
+        message: payload.already_claimed ? "Бонус уже был добавлен раньше." : `Бонус +${days} дней добавлен.`,
+      });
       setBonusMessage(payload.already_claimed ? "Бонус уже был добавлен раньше." : `Бонус +${days} дней добавлен.`);
       if (!payload.already_claimed) showToast(`Бонус +${days} дней добавлен`, "success");
+      const latestSummary = await fetchBonuses().catch(() => null);
+      if (latestSummary) setBonusSummary(latestSummary);
+      await refresh();
     } catch (error) {
       setBonusError(userFacingErrorMessage(error, "Не удалось добавить бонус. Попробуйте позже или откройте поддержку."));
     } finally {
@@ -411,16 +449,16 @@ export default function SettingsPage() {
         />
         <Row
           icon={CirclePlus}
-          label={`Бонус +${channelBonusDays} дней`}
-          hint={bonusError || (channelBonusClaimedAt ? "Уже добавлен" : "После подтверждения канала")}
+          label={channelBonusClaimed ? `Получено +${channelBonusClaimedDays} дней` : `Бонус +${channelBonusOfferDays} дней`}
+          hint={bonusError || (channelBonusClaimed ? "Уже добавлен" : "После подтверждения канала")}
           action={
             <button
               type="button"
               onClick={() => void onClaimBonus()}
-              disabled={bonusBusy !== "" || Boolean(channelBonusClaimedAt) || (!canClaimBonus && !bonusCheck?.subscriber)}
+              disabled={bonusBusy !== "" || channelBonusClaimed || (!canClaimBonus && !bonusCheck?.subscriber)}
               className={LINK_BUTTON_CLASS}
             >
-              {bonusBusy === "claim" ? "Добавляем..." : `Забрать +${channelBonusDays} дней`}
+              {bonusBusy === "claim" ? "Добавляем..." : channelBonusClaimed ? "Получено" : `Забрать +${channelBonusOfferDays} дней`}
             </button>
           }
         />

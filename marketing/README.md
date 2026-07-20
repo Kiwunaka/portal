@@ -1,6 +1,6 @@
 # POKROV Marketing
 
-Last updated: 2026-07-12
+Last updated: 2026-07-20
 
 ## Document Status
 
@@ -42,6 +42,29 @@ Public marketing should not:
 - imply store availability, trusted Windows signing, stable `1.0.0`, raw
   Android audit proof, production WARP proof, or RU-origin readiness;
 - duplicate the same product story across many card-grid sections.
+
+## Copy And Paid-Rewards Gate
+
+The Telegram start promise is always decomposed as:
+
+> До 10 дней на старте: 5 дней бесплатно в приложении и ещё 5 дней после привязки Telegram и подтверждения подписки на канал.
+
+`TELEGRAM_START_PROMISE` in `src/lib/seo-pages.ts` is the shared source for
+that wording. Do not turn it into a direct Telegram `+10` claim; already issued
+historical `+10` grants belong to authenticated account state, not acquisition
+copy.
+
+Paid-reward availability copy is build-time gated by
+`NEXT_PUBLIC_PAID_REWARDS_MARKETING_ENABLED`. The default is off; only the exact
+value `"1"` may render the shared message about the weekly wheel, activity
+calendar, and rare `+30 days`. Do not publish reward weights or infer them from
+visible sectors.
+
+This marketing gate is the last rollout step. It may be enabled only after the
+same deployed backend candidate has enabled and verified both independent
+`BONUS_WHEEL_ENABLED` and `BONUS_CALENDAR_ENABLED` paths. Turning backend flags
+off does not rewrite an already exported static site, so rollback also requires
+a fresh marketing build/deploy with the public gate removed.
 
 ## Retained Density Guidance
 

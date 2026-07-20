@@ -1,6 +1,6 @@
 # API Contracts
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 This page captures release-critical API contract expectations for the current
 repository candidate. It is also a concise router to the canonical domain
@@ -263,6 +263,51 @@ TTL after the final issuance before routing app access back to the old revision.
 - A confirmed reset starts a fresh full 30-day cycle. Migration retains any
   prior invalid node role in `access_role_legacy` before heuristic backfill so
   an application rollback can restore the old value without deleting evidence.
+
+## Rewards
+
+All reward endpoints require the normal authenticated account context. The
+server, not the client, owns eligibility, random outcome, cooldown, calendar
+position, grant duration, and synchronization state.
+
+- `GET /api/bonuses` is the compact compatibility summary. Its nested
+  `channel` object exposes `offer_days`, `claimed_days`, `claimed`,
+  `claimed_at`, and `channel_username`; UI must use `offer_days` for a current
+  offer and retain an actual historical `claimed_days` value separately.
+- `GET /api/bonuses/summary` adds nested `referral`, `channel_bonus`,
+  `opening_bonus`, `promo`, `history`, `wheel`, `calendar`, and `achievements`
+  without exposing a canonical account UUID, private subscription URL, raw
+  random weights, or internal job metadata.
+- `GET /api/bonuses/wheel/state` returns `enabled`, `eligible`, `reason`,
+  public `state`, flag name/state, `can_spin`, `last_spin_at`, `next_spin_at`,
+  `cooldown_hours`, `last_reward_days`, safe ordered `sectors`, `sync_state`,
+  `ledger_ready`, and `config_preset`. `sectors` are labels, not probability
+  evidence; missing, empty, invalid, or unknown sectors must fail closed.
+- `GET /api/bonuses/calendar` returns `enabled`, `eligible`, `reason`, public
+  `state`, flag name/state, `checked_in_today`, `can_checkin`, cycle dates/day,
+  `next_milestone`, safe checked dates, achievements, and `sync_state`.
+- `POST /api/bonuses/wheel/spin` returns the server-selected `reward_days`,
+  `grant_id`, `sync_state`, fresh wheel `state`, `expiry_at`, `sync_ok`, and a
+  fresh summary. `POST /api/bonuses/calendar/checkin` returns the equivalent
+  grant/sync fields plus `already_checked_in`, cycle position, state, and
+  summary. A repeat calendar check-in on the same day is idempotent and may
+  return zero newly awarded days.
+
+Stable mutation errors are:
+
+| HTTP | `detail.code` | Additional fields | Meaning |
+| --- | --- | --- | --- |
+| `403` | `bonus_feature_disabled` | `feature` | The independent rollout flag is off. |
+| `403` | `active_paid_required` | none | The exact active-paid predicate failed, including a bonus-only tail after paid expiry. |
+| `409` | `wheel_cooldown_active` | `next_spin_at`, `last_reward_days` | The 168-hour wheel cooldown has not elapsed. |
+| `503` | `reward_state_unavailable` | none | State/config/integrity could not be safely resolved; clients must not invent a result. |
+
+An eligible mutation atomically writes canonical `RewardAccountState`, a typed
+`EntitlementGrant`, and one idempotent `reward_entitlement_sync` job. Public
+`sync_state` is one of `not_required`, `sync_pending`, `synced`, or
+`manual_review`. `sync_pending` does not revoke the committed grant, while
+`manual_review` must remain operator-visible and must never be presented as a
+successful panel synchronization.
 
 ## Payment Providers
 

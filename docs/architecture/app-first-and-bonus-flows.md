@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-07-10
+Last updated: 2026-07-20
 
 ## Document Status
 
@@ -503,10 +503,11 @@ Checkout rule:
 
 Current user-facing delivery semantics:
 
-- one public `ссылка подключения` only in explicit manual/recovery fallback
-- one QR built from the same URL only when that fallback is intentionally revealed
+- one private base `ссылка подключения` only in an authenticated explicit
+  manual/recovery fallback
+- one QR built from the same base URL only when that fallback is intentionally revealed
 - one key-first commerce path: buy key -> redeem key -> managed premium
-- no public smart/plain split in bot, site, or webapp wording
+- no public format split in bot, site, or first-layer webapp wording
 - consumer client and cabinet flows should prefer reconnect, refresh, route-mode change, checkout, and support over raw subscription copy/edit surfaces
 - the main Telegram bot must not put the manual link, QR, share action, or security reset on the first menu layer; those actions belong in `Ещё`, device instructions, or explicit manual/recovery context
 - redeem surfaces must reject or clearly explain `connect.pokrov.space` URLs as connection links, not activation keys
@@ -515,17 +516,22 @@ Current user-facing delivery semantics:
 Compatibility note:
 
 - `?format=plain` still exists for backend compatibility and advanced/manual recovery
+- `?format=smart` is the dedicated Karing best-effort import variant
 - `?format=happ` exists for Happ-compatible open subscription delivery; it returns VLESS fallback lines plus Happ `custom-tunnel-config` carrying the same smart sing-box manifest, including `Белые списки` where the client version supports that parameter
-- that compatibility override must stay out of normal user-facing onboarding and CTA copy
+- format variants must be derived with URL query parameters inside the opened
+  authenticated manual section. They must not be sent to third-party pages,
+  telemetry, support artifacts, or public HTML
+- those compatibility overrides must stay out of normal user-facing onboarding and CTA copy
 - app-first managed flows may still receive `grpc_443_primary` during rollout, but manual/export recovery and legacy browser-visible compatibility paths stay on Reality until the share-link parity wave lands
 
 Focused compatibility matrix to run before changing support copy:
 
 | Client | URL format | Import result | Server list result | Connect result | Decision |
 | --- | --- | --- | --- | --- | --- |
-| Hiddify | default JSON/sing-box plus `?format=plain` if needed | required proof | required proof | required proof | verified fallback only after green import/list/connect |
+| POKROV | managed app-first delivery | owned client release proof | backend-owned locations | owned connect flow | primary client |
+| Hiddify | default private URL | required proof | required proof | required proof | verified manual fallback |
 | Happ | `?format=happ`; plain VLESS only as no-bridge fallback | required proof | VLESS fallback should render; `Белые списки` require client support for `custom-tunnel-config` | test direct server first, then БС where visible | best-effort with dedicated format |
-| Karing | default JSON/sing-box, then `?format=plain`/`?format=clash` if practical | required proof | required proof | required proof | best-effort until green matrix |
+| Karing | `?format=smart` | required proof | required proof | required proof | best-effort with dedicated format; return to Hiddify on incompatibility |
 | v2rayN | `?format=plain`, `?format=vless`, `?format=clash` where supported | required proof | required proof | required proof | advanced/manual fallback |
 
 `Pokrov-client` is an owned open-source source-only lane until it has separate APK/EXE/binary release evidence. Do not present it as an official user-facing binary fallback before that gate.
@@ -697,6 +703,39 @@ payment/bonus start, never count toward the `15 day` cap, and never select
   they create `RewardClaim` ledger rows, extend the app-first access window by
   the configured reward days, update safe achievement state, return a fresh
   bonus summary, and best-effort sync the paid-bonus access state to the panel.
+
+## Paid Reward Authority And Durability
+
+- `RewardAccountState` is one row per canonical `accounts.id` and owns wheel
+  cooldown plus the 28-day calendar position. Neither state machine reads the
+  legacy monthly paid-streak fields.
+- Every awarded wheel/calendar duration is an `EntitlementGrant` with source
+  `bonus_wheel` or `bonus_calendar`. `RewardClaim` and legacy achievement rows
+  remain compatibility/history projections and cannot authorize duration.
+- Eligibility is server-owned: the canonical account must be active and
+  unmerged, at least one linked user projection must be active `PAID` with a
+  future expiry, and a non-reversed active/grace `paid_access` grant from
+  `provider_payment` or `compatibility_projection` must cover the current time.
+  Trial/free/bonus-only access, expired paid intervals, and reward tails are
+  rejected with `active_paid_required`.
+- A mutation row-locks the canonical reward state, rechecks eligibility and the
+  feature flag, writes the state and entitlement grant, and enqueues one
+  idempotent `reward_entitlement_sync` `NodeProvisioningJob` in the same
+  transaction. The API reports `not_required`, `sync_pending`, `synced`, or
+  `manual_review`; an awarded grant remains durable even when panel sync is
+  pending.
+- The worker claims jobs with a lock token, recovers stale work, retries with a
+  bounded schedule, and moves exhausted or unsafe outcomes to `manual_review`
+  with stable redacted codes. It must read canonical ownership again before
+  finalization and cannot finalize a stale source account after a merge.
+- Account merge reconciles cooldown, calendar position, typed grants, and jobs
+  into the canonical target without resetting progress or duplicating duration.
+  Open merge reviews and invalid merge chains fence rollout backfill/readiness;
+  they are not auto-resolved by the reward lane.
+- `BONUS_WHEEL_ENABLED` and `BONUS_CALENDAR_ENABLED` are independent kill
+  switches and false by default. The Telegram adapter and API call the same
+  reward service; no adapter may retain a local random draw or direct expiry
+  mutation.
 
 ## Access-State Continuation After Trial
 

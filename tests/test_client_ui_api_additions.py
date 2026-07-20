@@ -57,6 +57,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "node_policy",
         "support_ai_service",
         "support_agent_context",
+        "support_agent_grounding",
         "support_agent_harness",
         "support_agent_knowledge",
         "support_agent_policy",
@@ -64,6 +65,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "support_agent_safety",
         "support_agent_service",
         "support_agent_sessions",
+        "support_agent_state",
     ]:
         sys.modules.pop(name, None)
 

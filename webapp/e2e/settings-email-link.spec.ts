@@ -97,7 +97,7 @@ function userPayload(emailLinked: boolean) {
     bonuses: {
       wheel: { last_spin_at: null, streak_months: 0 },
       referral_count: 0,
-      channel_bonus: { premium_days: 10, claimed_at: null, can_claim: false },
+      channel_bonus: { premium_days: 5, offer_days: 5, claimed_days: 0, claimed_at: null, can_claim: false },
     },
     referral: { code: "QA", link: "", bonus_days: 7 },
     channel: { username: "pokrov_vpn", link: "https://t.me/pokrov_vpn" },
@@ -105,6 +105,27 @@ function userPayload(emailLinked: boolean) {
     linked_identities: {
       telegram: { id: 1001, username: "qa_user" },
       email: emailLinked ? { email: "reader@pokrov.test", verified: true, linked_tg_id: 1001 } : null,
+    },
+  };
+}
+
+function bonusPayload() {
+  return {
+    tg_id: 1001,
+    referral_count: 0,
+    referral_code: "QA",
+    referral_bonus_days: 7,
+    streak_months: 0,
+    last_wheel_spin: null,
+    channel_bonus_premium_days: 5,
+    channel_bonus_claimed_at: null,
+    channel_username: "pokrov_vpn",
+    channel: {
+      offer_days: 5,
+      claimed_days: 0,
+      claimed: false,
+      claimed_at: null,
+      channel_username: "pokrov_vpn",
     },
   };
 }
@@ -152,6 +173,7 @@ async function registerSettingsMocks(
     }
     if (path === "/api/dashboard") return json(route, dashboardPayload(emailLinked));
     if (path === "/api/user/1001") return json(route, userPayload(emailLinked));
+    if (path === "/api/bonuses") return json(route, bonusPayload());
     if (path === "/api/auth/email/status") {
       return json(route, emailStatus);
     }
@@ -177,7 +199,7 @@ async function registerSettingsMocks(
       });
     }
     if (path === "/api/channel/subscriber/check") {
-      return json(route, { ok: true, subscriber: false, already_claimed: false, bonus_days: 10 });
+      return json(route, { ok: true, subscriber: false, already_claimed: false, bonus_days: 5 });
     }
 
     return json(route, { detail: `Unhandled ${path}` }, 404);
@@ -337,6 +359,16 @@ test("settings links email to the current Telegram account", async ({ page }) =>
   ]);
   expect(requests.verify).toEqual([{ token: "verify-settings-token" }]);
   expect(requests.authHeaders).toEqual(["Bearer e2e_mock_token", "Bearer e2e_mock_token"]);
+});
+
+test("settings shows the current five-day Telegram offer", async ({ page }) => {
+  await registerSettingsMocks(page);
+
+  await page.goto("/settings/");
+
+  await expect(page.locator("main")).toContainText("Бонус +5 дней");
+  await expect(page.getByRole("button", { name: "Забрать +5 дней", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Забрать \+10 дней/i })).toHaveCount(0);
 });
 
 test("Telegram WebApp init applies viewport, theme, haptics, and settings back navigation", async ({ page }) => {
@@ -582,6 +614,9 @@ test("settings starts Telegram linking for an email-only account", async ({ page
     if (path === "/api/user/1001") {
       return json(route, { ...userPayload(true), username: null, linked_identities });
     }
+    if (path === "/api/bonuses") {
+      return json(route, bonusPayload());
+    }
     if (path === "/api/auth/email/status") {
       return json(route, {
         ok: true,
@@ -606,7 +641,7 @@ test("settings starts Telegram linking for an email-only account", async ({ page
       });
     }
     if (path === "/api/channel/subscriber/check") {
-      return json(route, { ok: true, subscriber: false, already_claimed: false, bonus_days: 10 });
+      return json(route, { ok: true, subscriber: false, already_claimed: false, bonus_days: 5 });
     }
 
     return json(route, { detail: `Unhandled ${path}` }, 404);

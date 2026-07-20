@@ -292,7 +292,10 @@ def test_runtime_support_kb_covers_common_compatible_client_cases() -> None:
         "choose_android_client",
         "choose_windows_client",
         "choose_ios_client",
+        "paid_rewards",
+        "reward_eligibility_unknown",
         "hiddify_import",
+        "karing_import",
         "happ_import",
         "v2rayng_import",
         "v2rayn_import",
@@ -303,3 +306,19 @@ def test_runtime_support_kb_covers_common_compatible_client_cases() -> None:
         "what_not_to_send_support",
     }:
         assert topic_id in topic_ids
+
+
+def test_runtime_support_kb_has_exact_compatible_formats_and_paid_reward_boundary() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    payload = json.loads((repo_root / "shared" / "support-ai-knowledge.json").read_text(encoding="utf-8"))
+    topics = {str(topic.get("id") or ""): str(topic.get("body") or "") for topic in payload.get("topics") or []}
+    serialized = json.dumps(payload, ensure_ascii=False).lower()
+
+    assert "hiddify" in serialized
+    assert "karing" in serialized and "format=smart" in serialized
+    assert "happ" in serialized and "format=happ" in serialized
+    assert "замените ?" not in serialized
+    assert "второй ?" not in serialized
+    assert "активн" in topics["paid_rewards"].lower() and "платн" in topics["paid_rewards"].lower()
+    assert "оператор" in topics["reward_eligibility_unknown"].lower()
+    assert "hiddify" in topics["karing_import"].lower()

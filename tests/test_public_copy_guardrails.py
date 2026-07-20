@@ -21,6 +21,24 @@ FRONTEND_COPY_FILES = [
     ROOT / "copy/catalog.ru.json",
 ]
 
+MARKETING_TELEGRAM_PROMISE_FILES = [
+    ROOT / "marketing/src/lib/seo-pages.ts",
+    ROOT / "marketing/src/lib/marketing-site.ts",
+    ROOT / "marketing/src/app/checkout/checkout-client.tsx",
+    ROOT / "marketing/src/app/telegram/page.tsx",
+    ROOT / "marketing/src/app/vpn/page.tsx",
+]
+
+TELEGRAM_START_PROMISE = (
+    "До 10 дней на старте: 5 дней бесплатно в приложении и ещё 5 дней после привязки Telegram "
+    "и подтверждения подписки на канал."
+)
+
+PAID_REWARDS_MARKETING_COPY = (
+    "Для активной платной подписки доступны еженедельное колесо бонусов и календарь активности. "
+    "В колесе возможен редкий джекпот +30 дней."
+)
+
 BANNED_PATTERNS = [
     re.compile(r"\b100%\b", re.IGNORECASE),
     re.compile(r"гарантирован\w*", re.IGNORECASE),
@@ -257,3 +275,31 @@ def test_public_copy_pack_is_present_on_canonical_docs() -> None:
                 missing.append(f"{path.relative_to(ROOT)} missing: {snippet}")
 
     assert not missing, "\n".join(missing)
+
+
+def test_telegram_ten_day_start_promise_is_explicit_five_plus_five() -> None:
+    source = ROOT / "marketing/src/lib/seo-pages.ts"
+    assert TELEGRAM_START_PROMISE in source.read_text(encoding="utf-8")
+    missing_reference = [
+        path.relative_to(ROOT).as_posix()
+        for path in MARKETING_TELEGRAM_PROMISE_FILES
+        if "TELEGRAM_START_PROMISE" not in path.read_text(encoding="utf-8")
+    ]
+    assert missing_reference == [], "missing canonical 5 + 5 copy reference:\n" + "\n".join(missing_reference)
+
+
+def test_paid_rewards_marketing_copy_is_guarded_by_exact_opt_in_flag() -> None:
+    marketing_site = (ROOT / "marketing/src/lib/marketing-site.ts").read_text(encoding="utf-8")
+    assert 'process.env.NEXT_PUBLIC_PAID_REWARDS_MARKETING_ENABLED === "1"' in marketing_site
+    assert PAID_REWARDS_MARKETING_COPY in marketing_site
+    assert "PAID_REWARDS_MARKETING_ENABLED ? [PAID_REWARDS_MARKETING_COPY] : []" in marketing_site
+
+    leaked = []
+    for path in (ROOT / "marketing/src").rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in {".ts", ".tsx"}:
+            continue
+        if path.as_posix().endswith("marketing/src/lib/marketing-site.ts"):
+            continue
+        if PAID_REWARDS_MARKETING_COPY in path.read_text(encoding="utf-8"):
+            leaked.append(path.relative_to(ROOT).as_posix())
+    assert leaked == [], "unguarded paid-reward copy:\n" + "\n".join(leaked)

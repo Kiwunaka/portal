@@ -18,7 +18,7 @@ import {
   MARKETING_CANONICAL_PATHS,
 } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
-import { getSeoPage, SEO_PAGE_PATHS } from "../../lib/seo-pages";
+import { getSeoPage, SEO_PAGE_PATHS, TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const SEO_PAGE = getSeoPage(MARKETING_CANONICAL_PATHS.vpn);
@@ -177,8 +177,8 @@ export default function VpnSeoPage() {
               </P>
               <P>
                 Если POKROV подходит для повседневных задач, продление идёт через тот же аккаунт, кабинет и официальный
-                раздел оплаты. Telegram-бонус даёт +10 дней за подписку на канал, а платные планы могут включать несколько
-                устройств в зависимости от выбранного срока.
+                раздел оплаты. {TELEGRAM_START_PROMISE} Платные планы могут включать несколько устройств в зависимости от
+                выбранного срока.
               </P>
             </LongformBlock>
           </Reveal>

@@ -86,7 +86,7 @@ function mockSessionUser() {
     bonuses: {
       wheel: { last_spin_at: null, streak_months: 2 },
       referral_count: 1,
-      channel_bonus: { premium_days: 10, claimed_at: null, can_claim: true },
+      channel_bonus: { premium_days: 5, offer_days: 5, claimed_days: 0, claimed_at: null, can_claim: true },
     },
     referral: { code: "mock", link: "https://t.me/pokrov_vpnbot?start=ref_mock", bonus_days: 10 },
     channel: { username: "pokrov_vpn", link: "https://t.me/pokrov_vpn", subscriber: true, speed_bump_active: true },
@@ -213,7 +213,15 @@ type HandoffMockMode = "ok" | "expired" | "used" | "invalid" | "rate_limited";
 
 async function registerCabinetMocks(
   page: Page,
-  options: { seedWebSession?: boolean; handoff?: HandoffMockMode; handoffTargetPath?: string; subscriptionUrl?: string; isActive?: boolean } = {},
+  options: {
+    seedWebSession?: boolean;
+    handoff?: HandoffMockMode;
+    handoffTargetPath?: string;
+    subscriptionUrl?: string;
+    isActive?: boolean;
+    channelClaimedDays?: number;
+    channelClaimedAt?: string | null;
+  } = {},
 ): Promise<void> {
   const seedWebSession = options.seedWebSession ?? true;
   const handoffMode = options.handoff ?? "ok";
@@ -232,6 +240,18 @@ async function registerCabinetMocks(
 
   const sessionUser = mockSessionUser();
   const dashboard = mockDashboard();
+  const initialChannelClaimedDays = options.channelClaimedDays ?? 0;
+  const initialChannelClaimedAt =
+    options.channelClaimedAt === undefined && initialChannelClaimedDays > 0
+      ? "2029-12-20T00:00:00"
+      : options.channelClaimedAt ?? null;
+  sessionUser.bonuses.channel_bonus = {
+    premium_days: initialChannelClaimedDays || 5,
+    offer_days: 5,
+    claimed_days: initialChannelClaimedDays,
+    claimed_at: initialChannelClaimedAt,
+    can_claim: !initialChannelClaimedAt,
+  };
   if (options.subscriptionUrl !== undefined) {
     sessionUser.subscription_url = options.subscriptionUrl;
     dashboard.subscription_url = options.subscriptionUrl;
@@ -332,18 +352,42 @@ async function registerCabinetMocks(
         updated_at: "2030-01-01T00:00:00",
       });
     }
+    if (path === "/api/bonuses") {
+      const channelBonus = sessionUser.bonuses.channel_bonus;
+      return json({
+        tg_id: sessionUser.tg_id,
+        referral_count: sessionUser.bonuses.referral_count,
+        referral_code: sessionUser.referral.code,
+        referral_bonus_days: sessionUser.referral.bonus_days,
+        streak_months: sessionUser.bonuses.wheel.streak_months,
+        last_wheel_spin: sessionUser.bonuses.wheel.last_spin_at,
+        channel_bonus_premium_days: channelBonus.offer_days,
+        channel_bonus_claimed_at: channelBonus.claimed_at,
+        channel_username: sessionUser.channel.username,
+        channel: {
+          offer_days: channelBonus.offer_days,
+          claimed_days: channelBonus.claimed_days,
+          claimed: Boolean(channelBonus.claimed_at),
+          claimed_at: channelBonus.claimed_at,
+          channel_username: sessionUser.channel.username,
+        },
+      });
+    }
     if (path === "/api/channel/subscriber/check") {
+      const channelBonus = sessionUser.bonuses.channel_bonus;
       return json({
         ok: true,
         subscriber: true,
-        claim_required: true,
-        already_claimed: false,
-        bonus_days: 10,
+        claim_required: !channelBonus.claimed_at,
+        already_claimed: Boolean(channelBonus.claimed_at),
+        bonus_days: channelBonus.offer_days,
       });
     }
     if (path === "/api/bonuses/channel/claim") {
       sessionUser.bonuses.channel_bonus = {
-        premium_days: 10,
+        premium_days: 5,
+        offer_days: 5,
+        claimed_days: 5,
         claimed_at: "2030-01-01T00:10:00",
         can_claim: false,
       };
@@ -351,9 +395,9 @@ async function registerCabinetMocks(
       return json({
         ok: true,
         already_claimed: false,
-        premium_days: 10,
+        premium_days: 5,
         claimed_at: "2030-01-01T00:10:00",
-        expiry_at: "2030-01-11T00:00:00",
+        expiry_at: "2030-01-06T00:00:00",
       });
     }
     if (path === "/api/public/plans") {
@@ -511,6 +555,16 @@ test.describe("Cabinet session persistence", () => {
     await expect(page.locator("main")).toContainText("Доступ активен");
     await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toHaveCount(0);
   });
+});
+
+test("settings preserves a grandfathered claimed Telegram bonus", async ({ page }) => {
+  await registerCabinetMocks(page, { channelClaimedDays: 10, channelClaimedAt: "2029-12-20T00:00:00" });
+
+  await page.goto("/settings/");
+
+  await expect(page.locator("main")).toContainText("Получено +10 дней");
+  await expect(page.getByRole("button", { name: "Получено", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Забрать \+10 дней/i })).toHaveCount(0);
 });
 
 test.describe("Cabinet flow", () => {
@@ -908,8 +962,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Действия");
     await page.getByRole("button", { name: /Проверить подписку/i }).click();
     await expect(page.locator("main")).toContainText("Подписка подтверждена");
-    await page.getByRole("button", { name: /Забрать \+10 дней/i }).click();
-    await expect(page.locator("main")).toContainText("Бонус +10 дней добавлен");
+    await page.getByRole("button", { name: /Забрать \+5 дней/i }).click();
+    await expect(page.locator("main")).toContainText("Бонус +5 дней добавлен");
     await expect(page.locator("main")).not.toContainText("mock_token");
 
     await page.goto("/profile/");

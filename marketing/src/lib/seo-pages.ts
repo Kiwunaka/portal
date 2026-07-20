@@ -8,6 +8,9 @@ import {
 
 export const SEO_LAST_REVIEWED_DATE = "2026-07-08";
 
+export const TELEGRAM_START_PROMISE =
+  "До 10 дней на старте: 5 дней бесплатно в приложении и ещё 5 дней после привязки Telegram и подтверждения подписки на канал.";
+
 export const SEO_PAGE_PATHS = {
   android: "/android/",
   windows: "/windows/",
@@ -525,8 +528,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       },
       {
         question: "Можно ли получить ещё дни?",
-        answer:
-          "Да. Telegram-бонус даёт +10 дней после подписки на официальный канал и проверки в аккаунте.",
+        answer: TELEGRAM_START_PROMISE,
       },
     ],
     h1: "VPN бесплатно на 5 дней без карты",
@@ -536,7 +538,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     primaryCta: installCta,
     priority: 0.82,
     related: [
-      { href: "/telegram/", label: "Telegram-бонус +10 дней" },
+      { href: "/telegram/", label: "Ещё 5 дней через Telegram" },
       { href: SEO_PAGE_PATHS.billingNoAutopay, label: "Без автосписаний" },
       { href: SEO_PAGE_PATHS.android, label: "Android" },
       { href: SEO_PAGE_PATHS.windows, label: "Windows" },
@@ -1001,14 +1003,12 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     title: "Android и Windows | POKROV на устройствах",
   }),
   withDefaults({
-    answer:
-      "Telegram в POKROV нужен для бонуса +10 дней, новостей и быстрой поддержки. Стартовать можно без Telegram, но канал и бот помогают восстановить доступ, уточнить установку и получить дни после проверки подписки.",
+    answer: TELEGRAM_START_PROMISE,
     breadcrumbName: "Telegram",
     cards: [],
     changeFrequency: "weekly",
     cluster: "scenario",
-    description:
-      "Telegram-бонус POKROV: +10 дней за подписку на канал, поддержка по установке, оплате и восстановлению доступа.",
+    description: TELEGRAM_START_PROMISE,
     faq: [
       {
         question: "Telegram обязателен для старта?",
@@ -1016,7 +1016,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Нет. Начать можно через приложение и кабинет. Telegram полезен для бонуса, поддержки и новостей.",
       },
       {
-        question: "Как получить +10 дней?",
+        question: "Как получить ещё 5 дней?",
         answer:
           "Подпишитесь на официальный канал и заберите бонус в аккаунте. Проверка подписки проходит явно, без скрытых условий.",
       },
@@ -1026,7 +1026,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "В официальный бот поддержки. Так быстрее разобрать установку, оплату, доступ и Telegram-бонус.",
       },
     ],
-    h1: "Telegram-бонус POKROV: +10 дней и поддержка",
+    h1: "До 10 дней на старте с Telegram и POKROV",
     heroKicker: "Бонус и поддержка",
     kind: "intent",
     path: "/telegram/",
@@ -1038,7 +1038,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       { href: "/install/", label: "Установка" },
     ],
     sections: [],
-    title: "Telegram-бонус +10 дней и поддержка | POKROV",
+    title: "До 10 дней на старте и Telegram-поддержка | POKROV",
   }),
   withDefaults({
     answer:

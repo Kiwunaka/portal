@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Document Status
 
@@ -238,6 +238,12 @@ Account ownership transition:
 - `accounts.id` is the new immutable UUID ownership root; `users.account_id`
   is an additive legacy projection and may point multiple legacy user rows at
   the same account after an explicit app-to-Telegram link.
+- paid reward authority follows that UUID: `reward_account_states` owns wheel
+  and calendar state, typed `entitlement_grants` own awarded duration, and
+  `node_provisioning_jobs(job_type=reward_entitlement_sync)` own asynchronous
+  panel convergence. Legacy `reward_claims`, achievements, `last_wheel_spin`,
+  and monthly paid-streak fields are evidence/projections, not current reward
+  authority.
 - `users.tg_id` remains the compatibility adapter for current bot, panel,
   payment and public API behavior. Existing response fields that call the
   numeric value `account_id` have not switched to the UUID yet.
@@ -457,6 +463,13 @@ Architecture rule:
 8. membership loss opens `24 hours` of grace, and a due reversal removes only the unused channel interval
 
 Linked Telegram identity supports recovery, bonuses, support context, and diagnostics. Admin API authorization must come from the authenticated admin account/session itself, not from an account's linked Telegram identity.
+
+Paid wheel/calendar rewards are a separate account-owned flow. Both the API and
+Telegram adapter call `rewards_service`; eligibility requires current paid
+grant authority as well as an active paid projection, so trial/free/bonus tails
+cannot mutate rewards. The state, typed grant, and durable sync job commit
+together. Worker retry/manual-review and account-merge fencing keep panel drift
+or alias changes from resetting or duplicating the reward.
 
 ### Checkout Continuation Flow
 
@@ -768,12 +781,14 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
 
 App-facing wheel and calendar routes are intentionally disabled by default.
-The client may surface them as safe Rewards Hub previews while flags are off.
-When `BONUS_WHEEL_ENABLED` or `BONUS_CALENDAR_ENABLED` is turned on, the
-mutation routes write `RewardClaim` ledger rows, extend access by configured
-reward days, refresh achievement state, and return a fresh bonus summary. The
-client must expose active controls only from backend summary state, not from
-local optimism.
+The client may surface truthful unavailable/preview state while flags are off.
+When `BONUS_WHEEL_ENABLED` or `BONUS_CALENDAR_ENABLED` is turned on, mutation
+routes write account-owned reward state, one typed `EntitlementGrant`, and an
+idempotent durable panel-sync job in one transaction; compatibility
+`RewardClaim`/achievement rows do not authorize access. The response returns a
+fresh summary and `sync_state`. The client must expose controls only from
+backend state, render wheel sectors without weights, and fail closed when
+sector/state payloads are missing or unknown.
 
 The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
 

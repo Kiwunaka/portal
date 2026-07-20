@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Document Status
 
@@ -446,6 +446,49 @@ secret/key state remain `NOT_REQUESTED`, `MANUAL_OWNER_TEST`, or
 ### Monitoring and visibility guide
 
 - [monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
+
+### Paid rewards rollout boundary
+
+The paid wheel/calendar implementation is repository-candidate truth until the
+exact deployed candidate completes this rollout. Local tests do not prove a
+production flag, worker, config, database backfill, or marketing deploy.
+
+Required order:
+
+1. Stop/quiesce every legacy bot instance that can accept the old local wheel
+   callback. The old adapter ignores `BONUS_WHEEL_ENABLED`; therefore a mixed
+   fleet is unsafe even while the new flag is false.
+2. Prove the exact candidate on every API, bot, and worker instance; prove both
+   `BONUS_WHEEL_ENABLED=false` and `BONUS_CALENDAR_ENABLED=false`; prove account
+   foundation has no unresolved identities, invalid merge chains, or open merge
+   reviews relevant to the backfill.
+3. Back up the production database, run additive migrations, and execute the
+   account-owned reward-state backfill in one guarded transaction. Retain only
+   counts, candidate identity, timestamps, and redacted stable codes.
+4. Deploy the patched API, bot, and worker with both reward flags still false.
+   Read both state endpoints and confirm `disabled_until_feature_flag`; mutation
+   probes must return `bonus_feature_disabled` without creating grants/jobs.
+5. Snapshot the previous `wheel_config`, write exact preset `paid_weekly_v1`,
+   read it back, and retain canonical-JSON hashes plus outcome/count metadata.
+   Do not copy secrets, raw user rows, private URLs, or provider payloads into
+   evidence.
+6. Enable wheel only, restart/read back every new API/bot instance, and run an
+   exact active-paid smoke plus trial/free/expired/reward-tail denials. Verify
+   grant, state, durable job, worker convergence, cooldown, and history before
+   moving on.
+7. Enable calendar only after the wheel slice is green. Verify first check-in,
+   same-day idempotency, milestone grant, worker convergence, and ineligible
+   denials.
+8. Only after both backend features are verified may the static marketing build
+   set `NEXT_PUBLIC_PAID_REWARDS_MARKETING_ENABLED=1`; rebuild and deploy the
+   marketing surface, then verify the gated copy from the exact public artifact.
+
+Safe rollback disables the marketing gate and both new backend flags on the
+patched candidate first, verifies disabled readback, and leaves committed typed
+grants/history intact. If a config rollback is needed, restore the snapshotted
+canonical config and read it back. Never restart an unpatched legacy bot that
+ignores the kill switch. Worker sync failures remain retry/manual-review
+evidence; do not delete grants or reward state to make the dashboard look clean.
 
 ## Current Operator Procedures And Retained Evidence
 

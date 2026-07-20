@@ -267,6 +267,8 @@ export type UserPayload = {
     referral_count: number;
     channel_bonus?: {
       premium_days: number;
+      offer_days?: number;
+      claimed_days?: number;
       claimed_at?: string | null;
       can_claim: boolean;
     };
@@ -580,6 +582,13 @@ export type BonusPayload = {
   channel_bonus_premium_days?: number;
   channel_bonus_claimed_at?: string | null;
   channel_username?: string;
+  channel?: {
+    offer_days?: number;
+    claimed_days?: number;
+    claimed?: boolean;
+    claimed_at?: string | null;
+    channel_username?: string;
+  };
 };
 
 export type RewardSyncState = "not_required" | "sync_pending" | "synced" | "manual_review";
