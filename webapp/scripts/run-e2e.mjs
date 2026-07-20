@@ -7,7 +7,7 @@ const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 const suites = {
   full: {
     port: "3102",
-    specs: ["e2e/admin-gate.spec.ts", "e2e/cabinet-flow.spec.ts"],
+    specs: ["e2e/admin-gate.spec.ts", "e2e/cabinet-flow.spec.ts", "e2e/rewards.spec.ts"],
   },
   admin: {
     port: "3101",
@@ -15,7 +15,7 @@ const suites = {
   },
   cabinet: {
     port: "3103",
-    specs: ["e2e/cabinet-flow.spec.ts"],
+    specs: ["e2e/cabinet-flow.spec.ts", "e2e/rewards.spec.ts"],
   },
 };
 

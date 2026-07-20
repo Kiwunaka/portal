@@ -88,7 +88,8 @@ const NAV_ITEMS: NavItem[] = [
     icon: CircleUserRound,
     label: "Аккаунт",
     description: "Вход и бонусы",
-    match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),
+    match: (pathname) =>
+      pathname.startsWith("/settings") || pathname.startsWith("/profile") || pathname.startsWith("/rewards"),
   },
 ];
 
@@ -136,6 +137,10 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
   {
     match: (pathname) => pathname.startsWith("/support"),
     meta: { title: "Помощь", subtitle: "Обращения и ответы." },
+  },
+  {
+    match: (pathname) => pathname.startsWith("/rewards"),
+    meta: { title: "Награды", subtitle: "Рулетка и календарь активности." },
   },
   {
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),

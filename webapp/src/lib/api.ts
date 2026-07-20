@@ -582,6 +582,106 @@ export type BonusPayload = {
   channel_username?: string;
 };
 
+export type RewardSyncState = "not_required" | "sync_pending" | "synced" | "manual_review";
+
+export type BonusWheelState = {
+  ok: boolean;
+  enabled: boolean;
+  eligible: boolean;
+  reason: string;
+  state: "disabled_until_feature_flag" | "unavailable" | "ineligible" | "ready" | "cooldown";
+  feature_flag?: "BONUS_WHEEL_ENABLED";
+  feature_flag_enabled?: boolean;
+  spin_endpoint?: string;
+  last_spin_at: string | null;
+  can_spin: boolean;
+  next_spin_at: string | null;
+  cooldown_hours: number;
+  last_reward_days: number | null;
+  sync_state: RewardSyncState;
+  sectors: unknown;
+  ledger_ready?: boolean;
+  config_preset?: string | null;
+};
+
+export type BonusCalendarAchievements = {
+  first_checkin?: boolean;
+  streak_7?: boolean;
+  [key: string]: boolean | undefined;
+};
+
+export type BonusCalendarState = {
+  ok: boolean;
+  enabled: boolean;
+  eligible: boolean;
+  reason: string;
+  state: "disabled_until_feature_flag" | "ineligible" | "checked_in_today" | "ready";
+  feature_flag?: "BONUS_CALENDAR_ENABLED";
+  feature_flag_enabled?: boolean;
+  checkin_endpoint?: string;
+  checked_in_today: boolean;
+  can_checkin: boolean;
+  cycle_started_on: string | null;
+  calendar_cycle_day: number;
+  cycle_day: number;
+  next_milestone: number | null;
+  reward_days?: number;
+  checked_dates?: string[];
+  streak_months?: number;
+  streak_last_check_at?: string | null;
+  achievements: BonusCalendarAchievements;
+  sync_state: RewardSyncState;
+  ledger_ready?: boolean;
+};
+
+export type BonusRewardHistoryItem = {
+  kind: "promo" | "wheel_spin" | "calendar_checkin" | "legacy_reward_claim" | "telegram_channel" | "opening_bonus";
+  source?: string;
+  title: string;
+  occurred_at: string;
+  days?: number;
+  discount_pct?: number;
+  code_preview?: string | null;
+  durable_id?: string | null;
+  channel_username?: string | null;
+};
+
+export type BonusRewardHistory = {
+  ok: boolean;
+  tg_id: number;
+  items: BonusRewardHistoryItem[];
+  limit: number;
+  next_cursor: string | null;
+};
+
+export type BonusWheelMutation = {
+  ok: boolean;
+  feature: "wheel";
+  reward_days: number;
+  grant_id: string;
+  sync_state: RewardSyncState;
+  state: BonusWheelState;
+  expiry_at?: string | null;
+  sync_ok?: boolean;
+  summary?: unknown;
+};
+
+export type BonusCalendarMutation = {
+  ok: boolean;
+  feature: "calendar";
+  reward_days: number;
+  grant_id: string | null;
+  sync_state: RewardSyncState;
+  already_checked_in: boolean;
+  calendar_cycle_started_on: string | null;
+  calendar_cycle_day: number;
+  streak_months?: number;
+  state: BonusCalendarState;
+  expiry_at?: string | null;
+  sync_ok?: boolean;
+  summary?: unknown;
+};
+
 export type ReviewPayload = {
   username: string;
   rating: number;
@@ -2188,6 +2288,28 @@ export async function createReview(rating: number, text: string): Promise<{ ok: 
 
 export function fetchBonuses(): Promise<BonusPayload> {
   return apiFetch<BonusPayload>("/api/bonuses");
+}
+
+export function fetchBonusWheelState(): Promise<BonusWheelState> {
+  return apiFetch<BonusWheelState>("/api/bonuses/wheel/state");
+}
+
+export function spinBonusWheel(): Promise<BonusWheelMutation> {
+  return apiFetch<BonusWheelMutation>("/api/bonuses/wheel/spin", { method: "POST" });
+}
+
+export function fetchBonusCalendarState(): Promise<BonusCalendarState> {
+  return apiFetch<BonusCalendarState>("/api/bonuses/calendar");
+}
+
+export function checkinBonusCalendar(): Promise<BonusCalendarMutation> {
+  return apiFetch<BonusCalendarMutation>("/api/bonuses/calendar/checkin", { method: "POST" });
+}
+
+export function fetchBonusHistory(limit = 20): Promise<BonusRewardHistory> {
+  const requestedLimit = Number.isFinite(limit) ? Math.trunc(limit) : 20;
+  const safeLimit = Math.max(1, Math.min(50, requestedLimit));
+  return apiFetch<BonusRewardHistory>(`/api/bonuses/history?limit=${safeLimit}`);
 }
 
 export function claimChannelBonus(): Promise<{

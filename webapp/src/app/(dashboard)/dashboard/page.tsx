@@ -3,6 +3,7 @@
 import {
   CalendarCheck,
   Gauge,
+  Gift,
   KeyRound,
   LifeBuoy,
   Lock,
@@ -181,6 +182,13 @@ export default function DashboardPage() {
             title={getCopyText("webapp.dashboard.support_cta", "Помощь")}
             hint="Обращения и Telegram"
             href="/support/"
+          />
+          <ActionCard
+            icon={Gift}
+            title="Награды"
+            hint="Рулетка и календарь активности"
+            href="/rewards/"
+            className="sm:col-span-2"
           />
         </ActionGrid>
       </section>

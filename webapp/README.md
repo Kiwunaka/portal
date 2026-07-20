@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-07-12
+Last updated: 2026-07-20
 
 ## Document Status
 
@@ -33,6 +33,7 @@ Current user-facing route families in `webapp/src/app/`:
 - `/downloads/` for app-download continuation and install handoff as a `Доступ` task route
 - `/support/` plus support thread/legal routes for ticket continuation and documents
 - `/settings/` for account links, Telegram bonus actions, and safe continuation settings
+- `/rewards/` for the paid weekly wheel, activity calendar, and reward history as an `Аккаунт` detail route
 - `/profile/` only as a compatibility redirect to `/settings/`
 - `/dashboard/downloads/` only as a compatibility redirect to `/downloads/`
 - `/redeem/` for activation-key lookup and redeem inside the cabinet
@@ -95,6 +96,18 @@ Rules:
 - attachment preview/download is user-triggered rather than fetched on thread mount; it uses an authenticated blob request with the same API-base candidates, bearer/init-data headers, and `credentials: include` behavior as normal API calls, then a revocable object URL, and aborts in-flight retrieval on path change or unmount
 - the support picker is limited to PNG, JPEG, WebP, PDF, and UTF-8 TXT; video, SVG, HTML, log aliases, and arbitrary files are not offered
 - client preflight rejects files above the shared 20 MiB constant before reading TXT bytes; the backend `SUPPORT_UPLOAD_MAX_BYTES` check remains authoritative
+
+## Rewards Surface
+
+`/rewards/` is a detail route inside the existing `Аккаунт` lane, not a fifth primary cabinet tab. Its runtime rules are:
+
+- wheel and activity-calendar mutations are available only to an account with active `PAID` access
+- `BONUS_WHEEL_ENABLED` and `BONUS_CALENDAR_ENABLED` are independent rollout guards; a disabled, malformed, or unavailable feature fails closed without blocking the other feature
+- wheel sectors are a display allowlist only; equal visual geometry does not describe probability, and the UI never receives or invents server weights
+- the committed mutation response is authoritative for awarded days; the UI animates only when that exact result exists in the validated current sector list
+- an unknown committed reward remains visible, triggers a wheel-state and entitlement refresh, and never falls back to the first visual sector
+- calendar check-in treats the server's same-day response as successful idempotency and does not attempt a second grant
+- every successful mutation refreshes feature state, in-memory cabinet entitlement, and reward history independently
 
 ## Shell, Theme, And Loading
 
