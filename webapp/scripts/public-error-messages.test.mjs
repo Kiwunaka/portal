@@ -7,9 +7,9 @@ const source = readFileSync(new URL("../src/lib/public-error-messages.ts", impor
 const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-const module = { exports: {} };
-new Function("exports", "module", compiled)(module.exports, module);
-const { userFacingErrorMessage } = module.exports;
+const commonJsModule = { exports: {} };
+new Function("exports", "module", compiled)(commonJsModule.exports, commonJsModule);
+const { userFacingErrorMessage } = commonJsModule.exports;
 
 test("keeps domain not-found and forbidden errors out of unrelated mappings", () => {
   assert.equal(
