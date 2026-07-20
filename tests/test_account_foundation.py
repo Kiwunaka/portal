@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import create_engine, event, inspect, text
@@ -38,9 +38,11 @@ from models import (  # noqa: E402
     Base,
     EntitlementGrant,
     ExternalOrder,
+    NodeProvisioningJob,
     ReferralRelationship,
     ReferralTransition,
     RecoveryCode,
+    RewardAccountState,
     User,
     WebEmailIdentity,
 )
@@ -237,6 +239,142 @@ def _trial_grant(
         created_at=now,
         updated_at=now,
     )
+
+
+def test_account_merge_keeps_strongest_reward_state_and_requeues_running_job(
+    tmp_path: Path,
+) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 7, 20, 12, 0, 0)
+    merge_now = now + timedelta(hours=1)
+    target = Account(
+        id="reward-merge-target",
+        status="active",
+        created_source="test",
+        created_at=now,
+        updated_at=now,
+    )
+    source = Account(
+        id="reward-merge-source",
+        status="active",
+        created_source="test",
+        created_at=now,
+        updated_at=now,
+    )
+    target_grant = EntitlementGrant(
+        id="reward-target-wheel-grant",
+        account_id=target.id,
+        idempotency_key="reward-wheel:v1:merge-target",
+        source="bonus_wheel",
+        status="active",
+        grant_kind="premium_bonus",
+        duration_days=1,
+        starts_at=now,
+        expires_at=now + timedelta(days=1),
+        created_at=now,
+        updated_at=now,
+    )
+    source_grant = EntitlementGrant(
+        id="reward-source-wheel-grant",
+        account_id=source.id,
+        idempotency_key="reward-wheel:v1:merge-source",
+        source="bonus_wheel",
+        status="active",
+        grant_kind="premium_bonus",
+        duration_days=7,
+        starts_at=now,
+        expires_at=now + timedelta(days=7),
+        created_at=now,
+        updated_at=now,
+    )
+    target_state = RewardAccountState(
+        account_id=target.id,
+        wheel_last_spin_at=now - timedelta(days=4),
+        wheel_last_grant_id=target_grant.id,
+        calendar_last_check_date=date(2026, 7, 19),
+        calendar_cycle_started_on=date(2026, 7, 13),
+        calendar_cycle_day=7,
+        calendar_first_checkin_at=now - timedelta(days=40),
+        calendar_streak_7_unlocked_at=now - timedelta(days=5),
+        created_at=now - timedelta(days=40),
+        updated_at=now,
+    )
+    source_state = RewardAccountState(
+        account_id=source.id,
+        wheel_last_spin_at=now - timedelta(days=2),
+        wheel_last_grant_id=source_grant.id,
+        calendar_last_check_date=date(2026, 7, 19),
+        calendar_cycle_started_on=date(2026, 7, 6),
+        calendar_cycle_day=14,
+        calendar_first_checkin_at=now - timedelta(days=20),
+        calendar_streak_7_unlocked_at=now - timedelta(days=10),
+        created_at=now - timedelta(days=20),
+        updated_at=now,
+    )
+    reward_job = NodeProvisioningJob(
+        account_id=source.id,
+        entitlement_grant_id=source_grant.id,
+        job_type="reward_entitlement_sync",
+        status="running",
+        idempotency_key=f"reward-entitlement-sync:v1:{source_grant.id}",
+        attempts=2,
+        locked_at=now,
+        lock_token="stale-source-worker",
+        created_at=now,
+        updated_at=now,
+    )
+    session.add_all(
+        [
+            target,
+            source,
+            target_grant,
+            source_grant,
+            target_state,
+            source_state,
+            reward_job,
+        ]
+    )
+    session.flush()
+
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=merge_now,
+    )
+    session.flush()
+    _move_account_owned_rows(
+        session,
+        source_account_id=source.id,
+        target_account_id=target.id,
+        now=merge_now + timedelta(hours=1),
+    )
+    session.flush()
+
+    state = session.get(RewardAccountState, target.id)
+    assert state is not None
+    assert session.get(RewardAccountState, source.id) is None
+    assert state.wheel_last_spin_at == source_state.wheel_last_spin_at
+    assert state.wheel_last_grant_id == source_grant.id
+    assert state.calendar_last_check_date == date(2026, 7, 19)
+    assert state.calendar_cycle_started_on == date(2026, 7, 6)
+    assert state.calendar_cycle_day == 14
+    assert state.calendar_first_checkin_at == now - timedelta(days=40)
+    assert state.calendar_streak_7_unlocked_at == now - timedelta(days=10)
+
+    job = session.query(NodeProvisioningJob).filter_by(entitlement_grant_id=source_grant.id).one()
+    assert job.account_id == target.id
+    assert job.status == "queued"
+    assert job.attempts == 2
+    assert job.locked_at is None
+    assert job.lock_token is None
+    assert job.next_run_at == merge_now
+    assert job.idempotency_key == f"reward-entitlement-sync:v1:{source_grant.id}"
+    session.expire(source_grant)
+    assert source_grant.account_id == target.id
+
+    session.close()
+    engine.dispose()
 
 
 def test_account_merge_reconciles_duplicate_trial_authority_and_is_rerunnable(tmp_path: Path) -> None:

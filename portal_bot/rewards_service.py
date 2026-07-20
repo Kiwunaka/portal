@@ -971,6 +971,124 @@ def get_reward_history(
     return entries[:max_items]
 
 
+def _calendar_rank(state: RewardAccountState) -> tuple[date, int, int]:
+    last_check = state.calendar_last_check_date or date.min
+    cycle_day = int(state.calendar_cycle_day or 0)
+    cycle_start_rank = -(
+        state.calendar_cycle_started_on or date.max
+    ).toordinal()
+    return last_check, cycle_day, cycle_start_rank
+
+
+def _earliest_timestamp(
+    first: datetime | None,
+    second: datetime | None,
+) -> datetime | None:
+    values = [value for value in (first, second) if value is not None]
+    return min(values) if values else None
+
+
+def _copy_reward_state(
+    target: RewardAccountState,
+    source: RewardAccountState,
+    *,
+    now: datetime,
+) -> None:
+    target.wheel_last_spin_at = source.wheel_last_spin_at
+    target.wheel_last_grant_id = source.wheel_last_grant_id
+    target.calendar_last_check_date = source.calendar_last_check_date
+    target.calendar_cycle_started_on = source.calendar_cycle_started_on
+    target.calendar_cycle_day = int(source.calendar_cycle_day or 0)
+    target.calendar_first_checkin_at = source.calendar_first_checkin_at
+    target.calendar_streak_7_unlocked_at = source.calendar_streak_7_unlocked_at
+    target.created_at = source.created_at or now
+    target.updated_at = now
+
+
+def reconcile_reward_merge(
+    session,
+    *,
+    source_account_id: str,
+    target_account_id: str,
+    now: datetime,
+) -> None:
+    source_id = str(source_account_id)
+    target_id = str(target_account_id)
+    current_now = _naive_utc(now)
+    if not source_id or not target_id or source_id == target_id:
+        return
+
+    state_rows = (
+        session.query(RewardAccountState)
+        .filter(RewardAccountState.account_id.in_((source_id, target_id)))
+        .order_by(RewardAccountState.account_id.asc())
+        .with_for_update()
+        .all()
+    )
+    states = {str(row.account_id): row for row in state_rows}
+    source_state = states.get(source_id)
+    target_state = states.get(target_id)
+    if source_state is not None:
+        if target_state is None:
+            target_state = RewardAccountState(
+                account_id=target_id,
+                calendar_cycle_day=0,
+                created_at=source_state.created_at or current_now,
+                updated_at=current_now,
+            )
+            _copy_reward_state(target_state, source_state, now=current_now)
+            session.add(target_state)
+        else:
+            source_wheel_at = source_state.wheel_last_spin_at
+            target_wheel_at = target_state.wheel_last_spin_at
+            if source_wheel_at is not None and (
+                target_wheel_at is None or source_wheel_at > target_wheel_at
+            ):
+                target_state.wheel_last_spin_at = source_wheel_at
+                target_state.wheel_last_grant_id = source_state.wheel_last_grant_id
+            if _calendar_rank(source_state) > _calendar_rank(target_state):
+                target_state.calendar_last_check_date = source_state.calendar_last_check_date
+                target_state.calendar_cycle_started_on = source_state.calendar_cycle_started_on
+                target_state.calendar_cycle_day = int(source_state.calendar_cycle_day or 0)
+            target_state.calendar_first_checkin_at = _earliest_timestamp(
+                target_state.calendar_first_checkin_at,
+                source_state.calendar_first_checkin_at,
+            )
+            target_state.calendar_streak_7_unlocked_at = _earliest_timestamp(
+                target_state.calendar_streak_7_unlocked_at,
+                source_state.calendar_streak_7_unlocked_at,
+            )
+            target_state.created_at = _earliest_timestamp(
+                target_state.created_at,
+                source_state.created_at,
+            ) or current_now
+            target_state.updated_at = current_now
+        validate_calendar_state(target_state)
+        session.flush()
+        session.delete(source_state)
+
+    active_job_statuses = ("pending", "queued", "retry", "retrying", "running")
+    jobs = (
+        session.query(NodeProvisioningJob)
+        .filter(
+            NodeProvisioningJob.account_id == source_id,
+            NodeProvisioningJob.job_type == "reward_entitlement_sync",
+            NodeProvisioningJob.status.in_(active_job_statuses),
+        )
+        .order_by(NodeProvisioningJob.id.asc())
+        .with_for_update()
+        .all()
+    )
+    for job in jobs:
+        job.account_id = target_id
+        job.status = "queued"
+        job.locked_at = None
+        job.lock_token = None
+        job.next_run_at = current_now
+        job.updated_at = current_now
+    session.flush()
+
+
 def backfill_reward_account_states(
     session,
     *,

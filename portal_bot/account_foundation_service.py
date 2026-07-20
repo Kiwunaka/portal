@@ -968,6 +968,14 @@ def _move_account_owned_rows(
         target_account_id=target_account_id,
         now=now,
     )
+    from rewards_service import reconcile_reward_merge
+
+    reconcile_reward_merge(
+        session,
+        source_account_id=source_account_id,
+        target_account_id=target_account_id,
+        now=now,
+    )
     identities = session.query(AccountIdentity).filter_by(account_id=source_account_id).all()
     for identity in identities:
         duplicate = (

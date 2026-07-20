@@ -142,6 +142,7 @@ class FakePanel:
         self.disable_results: list[object] = []
         self.reset_results: list[object] = []
         self.rotate_results: list[object] = []
+        self.traffic_results: list[object] = []
 
     @staticmethod
     def _take(values: list[object], default: bool = True):
@@ -186,6 +187,10 @@ class FakePanel:
         self.events.append(("rotate", kwargs["node_code"], kwargs["new_key_uuid"]))
         return self._take(self.rotate_results)
 
+    async def update_client_traffic(self, tg_id: int, add_gb: int):
+        self.events.append(("traffic", int(tg_id), int(add_gb)))
+        return self._take(self.traffic_results)
+
     async def close(self):
         self.events.append(("close",))
 
@@ -201,6 +206,65 @@ async def _run(database, panel: FakePanel, *, now: datetime | None = NOW, max_at
         max_attempts=max_attempts,
         stale_after_seconds=60,
     )
+
+
+def _seed_reward_job(
+    session,
+    *,
+    account_id: str = "00000000-0000-4000-8000-000000000401",
+    tg_ids: tuple[int, ...] = (4101,),
+):
+    from models import Account, EntitlementGrant, User
+    from node_provisioning_service import enqueue_reward_entitlement_sync
+
+    grant_id = "00000000-0000-4000-8000-000000000402"
+    session.add(
+        Account(
+            id=account_id,
+            status="active",
+            created_source="test",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    for tg_id in tg_ids:
+        session.add(
+            User(
+                tg_id=tg_id,
+                account_id=account_id,
+                uuid=str(uuid.uuid4()),
+                sub_type="PAID",
+                current_plan_code="month",
+                is_active=True,
+                expiry_at=NOW + timedelta(days=30),
+            )
+        )
+    grant = EntitlementGrant(
+        id=grant_id,
+        account_id=account_id,
+        legacy_tg_id=tg_ids[0] if tg_ids else None,
+        idempotency_key="reward-wheel:v1:worker-test",
+        source="bonus_wheel",
+        status="active",
+        grant_kind="premium_bonus",
+        plan_code="reward_wheel",
+        starts_at=NOW,
+        expires_at=NOW + timedelta(days=1),
+        activated_at=NOW,
+        duration_days=1,
+        provider="internal_economy",
+        created_at=NOW,
+        updated_at=NOW,
+    )
+    session.add(grant)
+    session.flush()
+    job = enqueue_reward_entitlement_sync(
+        session,
+        account_id=account_id,
+        entitlement_grant_id=grant.id,
+        now=NOW,
+    )
+    return grant, job
 
 
 def test_reward_sync_enqueue_rejects_missing_and_nonreward_grants(database) -> None:
@@ -293,6 +357,149 @@ def test_reward_sync_enqueue_rejects_idempotency_conflict(database) -> None:
                 entitlement_grant_id=grant_id,
                 now=NOW,
             )
+
+
+def test_reward_sync_worker_updates_every_active_account_alias_once(database) -> None:
+    from models import NodeProvisioningJob, User
+    from rewards_service import reward_sync_state
+
+    with database() as session:
+        _seed_reward_job(session, tg_ids=(4101, 4102))
+        session.add(
+            User(
+                tg_id=4103,
+                account_id="00000000-0000-4000-8000-000000000401",
+                uuid=str(uuid.uuid4()),
+                sub_type="PAID",
+                current_plan_code="month",
+                is_active=False,
+                expiry_at=NOW + timedelta(days=30),
+            )
+        )
+        session.commit()
+
+    panel = FakePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["claimed"] == result["succeeded"] == 1
+    assert panel.events == [
+        ("traffic", 4101, 0),
+        ("traffic", 4102, 0),
+        ("close",),
+    ]
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "completed"
+        assert job.completed_at == NOW
+        assert reward_sync_state(job) == "synced"
+
+
+@pytest.mark.parametrize("failure", (False, RuntimeError("must-not-be-persisted")))
+def test_reward_sync_failure_retries_with_backoff_then_enters_manual_review(
+    database,
+    failure,
+) -> None:
+    from models import NodeProvisioningJob
+
+    with database() as session:
+        _seed_reward_job(session)
+        session.commit()
+
+    panel = FakePanel()
+    panel.traffic_results = [failure, failure]
+    first = asyncio.run(_run(database, panel, max_attempts=2))
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        retry_at = job.next_run_at
+        assert first["retried"] == 1
+        assert job.status == "queued"
+        assert job.attempts == 1
+        assert retry_at == NOW + timedelta(seconds=15)
+        assert job.last_error_code == "reward_sync_failed"
+
+    second = asyncio.run(_run(database, panel, now=retry_at, max_attempts=2))
+    assert second["manual_review"] == 1
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.attempts == 2
+        assert job.next_run_at is None
+        assert job.lock_token is None
+        assert job.last_error_code == "reward_sync_failed"
+        assert "must-not-be-persisted" not in str(job.result_json)
+
+
+def test_reward_sync_finalize_requires_same_token_and_canonical_account(database) -> None:
+    from models import Account, NodeProvisioningJob
+    from node_provisioning_service import (
+        _claim_next_job,
+        _finalize_success,
+        _prepare_job,
+    )
+
+    target_account_id = "00000000-0000-4000-8000-000000000409"
+    with database() as session:
+        _grant, seeded_reward_job = _seed_reward_job(session)
+        session.add(
+            Account(
+                id=target_account_id,
+                status="active",
+                created_source="test",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.flush()
+        claim = _claim_next_job(session, now=NOW, max_attempts=3)
+        assert claim is not None
+        prepared = _prepare_job(session, claim)
+        assert prepared.account_id == seeded_reward_job.account_id
+        assert prepared.reward_tg_ids == (4101,)
+        assert prepared.client_uuid == prepared.panel_email == prepared.sub_id == ""
+
+        seeded_reward_job.account_id = target_account_id
+        seeded_reward_job.status = "queued"
+        seeded_reward_job.lock_token = None
+        seeded_reward_job.locked_at = None
+        session.flush()
+
+        assert (
+            _finalize_success(
+                session,
+                claim=claim,
+                prepared=prepared,
+                outcome="synced",
+                now=NOW,
+            )
+            == "claim_lost"
+        )
+        persisted = session.query(NodeProvisioningJob).one()
+        assert persisted.completed_at is None
+
+
+def test_reward_sync_checks_ownership_before_first_call_and_each_alias(database) -> None:
+    from node_provisioning_service import PreparedJob, _execute_panel
+
+    prepared = PreparedJob(
+        job_id=1,
+        job_type="reward_entitlement_sync",
+        account_id="00000000-0000-4000-8000-000000000401",
+        entitlement_grant_id="00000000-0000-4000-8000-000000000402",
+        reward_tg_ids=(4101, 4102),
+    )
+    checks = iter((False, False, True))
+    panel = FakePanel()
+
+    outcome = asyncio.run(
+        _execute_panel(
+            prepared,
+            panel,
+            superseded_check=lambda: next(checks),
+        )
+    )
+
+    assert outcome == "superseded"
+    assert panel.events == [("traffic", 4101, 0)]
 
 
 def test_free_to_soft_confirms_target_before_disabling_standard_and_replay_is_idempotent(database) -> None:
