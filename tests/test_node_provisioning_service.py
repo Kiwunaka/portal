@@ -2,12 +2,19 @@ from __future__ import annotations
 
 import json
 import asyncio
+import sys
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+
+PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
+if str(PORTAL_BOT_DIR) not in sys.path:
+    sys.path.insert(0, str(PORTAL_BOT_DIR))
 
 
 GIB = 1024**3
@@ -194,6 +201,98 @@ async def _run(database, panel: FakePanel, *, now: datetime | None = NOW, max_at
         max_attempts=max_attempts,
         stale_after_seconds=60,
     )
+
+
+def test_reward_sync_enqueue_rejects_missing_and_nonreward_grants(database) -> None:
+    from models import EntitlementGrant
+    from node_provisioning_service import (
+        ProvisioningError,
+        enqueue_reward_entitlement_sync,
+    )
+
+    with database() as session:
+        with pytest.raises(ProvisioningError, match="reward_sync_grant_invalid"):
+            enqueue_reward_entitlement_sync(
+                session,
+                account_id="00000000-0000-4000-8000-000000000301",
+                entitlement_grant_id="00000000-0000-4000-8000-000000000302",
+                now=NOW,
+            )
+
+        grant = EntitlementGrant(
+            id="00000000-0000-4000-8000-000000000303",
+            account_id="00000000-0000-4000-8000-000000000301",
+            idempotency_key="provider:v1:nonreward",
+            source="provider_payment",
+            status="active",
+            grant_kind="paid_access",
+            plan_code="month",
+            starts_at=NOW,
+            expires_at=NOW + timedelta(days=30),
+            duration_days=30,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+        session.add(grant)
+        session.flush()
+
+        with pytest.raises(ProvisioningError, match="reward_sync_grant_invalid"):
+            enqueue_reward_entitlement_sync(
+                session,
+                account_id=grant.account_id,
+                entitlement_grant_id=grant.id,
+                now=NOW,
+            )
+
+
+def test_reward_sync_enqueue_rejects_idempotency_conflict(database) -> None:
+    from models import EntitlementGrant, NodeProvisioningJob
+    from node_provisioning_service import (
+        ProvisioningError,
+        enqueue_reward_entitlement_sync,
+    )
+
+    account_id = "00000000-0000-4000-8000-000000000311"
+    grant_id = "00000000-0000-4000-8000-000000000312"
+    with database() as session:
+        session.add(
+            EntitlementGrant(
+                id=grant_id,
+                account_id=account_id,
+                idempotency_key="reward-wheel:v1:conflict",
+                source="bonus_wheel",
+                status="active",
+                grant_kind="premium_bonus",
+                plan_code="reward_wheel",
+                starts_at=NOW,
+                expires_at=NOW + timedelta(days=1),
+                duration_days=1,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.add(
+            NodeProvisioningJob(
+                account_id=account_id,
+                entitlement_grant_id="00000000-0000-4000-8000-000000000313",
+                job_type="reward_entitlement_sync",
+                status="queued",
+                idempotency_key=f"reward-entitlement-sync:v1:{grant_id}",
+                attempts=0,
+                next_run_at=NOW,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.flush()
+
+        with pytest.raises(ProvisioningError, match="reward_sync_idempotency_conflict"):
+            enqueue_reward_entitlement_sync(
+                session,
+                account_id=account_id,
+                entitlement_grant_id=grant_id,
+                now=NOW,
+            )
 
 
 def test_free_to_soft_confirms_target_before_disabling_standard_and_replay_is_idempotent(database) -> None:

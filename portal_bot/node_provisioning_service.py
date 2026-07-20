@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from control_panel import ControlPanel
 from free_cycle_service import FREE_CYCLE_DAYS, FREE_STANDARD_QUOTA_BYTES
-from models import AccessKey, Node, NodeProvisioningJob, User
+from models import AccessKey, EntitlementGrant, Node, NodeProvisioningJob, User
 from node_policy import (
     FREE_SOFT_ROLE,
     FREE_STANDARD_ROLE,
@@ -31,6 +31,53 @@ class ProvisioningError(RuntimeError):
     def __init__(self, code: str):
         self.code = str(code or "provisioning_failed").strip()[:64] or "provisioning_failed"
         super().__init__(self.code)
+
+
+def enqueue_reward_entitlement_sync(
+    session,
+    *,
+    account_id: str,
+    entitlement_grant_id: str,
+    now: datetime,
+) -> NodeProvisioningJob:
+    account_key = str(account_id)
+    grant_id = str(entitlement_grant_id)
+    key = f"reward-entitlement-sync:v1:{grant_id}"
+    grant = session.get(EntitlementGrant, grant_id)
+    if (
+        grant is None
+        or str(grant.account_id) != account_key
+        or str(grant.source) not in {"bonus_wheel", "bonus_calendar"}
+    ):
+        raise ProvisioningError("reward_sync_grant_invalid")
+
+    existing = (
+        session.query(NodeProvisioningJob)
+        .filter_by(idempotency_key=key)
+        .one_or_none()
+    )
+    if existing is not None:
+        if (
+            str(existing.entitlement_grant_id) != grant_id
+            or str(existing.account_id) != account_key
+        ):
+            raise ProvisioningError("reward_sync_idempotency_conflict")
+        return existing
+
+    job = NodeProvisioningJob(
+        account_id=account_key,
+        entitlement_grant_id=grant_id,
+        job_type="reward_entitlement_sync",
+        status="queued",
+        idempotency_key=key,
+        attempts=0,
+        next_run_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(job)
+    session.flush()
+    return job
 
 
 @dataclass(frozen=True)

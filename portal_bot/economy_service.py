@@ -507,7 +507,7 @@ def _project_additive_days(session, *, account_id: str, days: int, now: datetime
     return baseline, projected
 
 
-def _canonical_account_id(session, account_id: str) -> str:
+def resolve_canonical_account_id(session, *, account_id: str) -> str:
     account_key = str(account_id or "").strip()
     visited: set[str] = set()
     while account_key and account_key not in visited:
@@ -592,6 +592,77 @@ def _ensure_projection_baseline_grant(session, *, account_id: str, now: datetime
     return grant
 
 
+def grant_internal_bonus_days(
+    session,
+    *,
+    account_id: str,
+    source: str,
+    plan_code: str,
+    idempotency_key: str,
+    days: int,
+    legacy_tg_id: int | None,
+    metadata: dict[str, Any],
+    now: datetime,
+) -> EntitlementGrant:
+    if source not in {"bonus_wheel", "bonus_calendar"}:
+        raise ValueError("reward_source_invalid")
+    try:
+        reward_days = int(days)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("reward_days_invalid") from exc
+    if reward_days not in {1, 3, 7, 30}:
+        raise ValueError("reward_days_invalid")
+
+    account_key = resolve_canonical_account_id(session, account_id=account_id)
+    existing = (
+        session.query(EntitlementGrant)
+        .filter_by(idempotency_key=str(idempotency_key))
+        .one_or_none()
+    )
+    if existing is not None:
+        if (
+            str(existing.account_id) != account_key
+            or str(existing.source) != source
+            or int(existing.duration_days or 0) != reward_days
+        ):
+            raise ValueError("reward_idempotency_conflict")
+        return existing
+
+    _ensure_projection_baseline_grant(session, account_id=account_key, now=now)
+    starts_at, expires_at = _project_additive_days(
+        session,
+        account_id=account_key,
+        days=reward_days,
+        now=now,
+    )
+    grant = EntitlementGrant(
+        id=str(uuid.uuid4()),
+        account_id=account_key,
+        legacy_tg_id=legacy_tg_id,
+        idempotency_key=str(idempotency_key),
+        source=source,
+        status="active",
+        grant_kind="premium_bonus",
+        plan_code=plan_code,
+        starts_at=starts_at,
+        expires_at=expires_at,
+        activated_at=now,
+        duration_days=reward_days,
+        provider="internal_economy",
+        created_at=now,
+        updated_at=now,
+    )
+    _set_grant_metadata(grant, dict(metadata))
+    session.add(grant)
+    session.flush()
+    rebuild_account_entitlement_projection(
+        session,
+        account_id=account_key,
+        now=now,
+    )
+    return grant
+
+
 def _active_projection_grants(session, *, account_id: str, now: datetime) -> list[EntitlementGrant]:
     rows = (
         session.query(EntitlementGrant)
@@ -616,7 +687,7 @@ def _grant_projects_paid_policy(grant: EntitlementGrant) -> bool:
 
 def rebuild_account_entitlement_projection(session, *, account_id: str, now: datetime | None = None) -> datetime:
     current_now = (now or _utcnow()).replace(microsecond=0)
-    account_key = _canonical_account_id(session, account_id)
+    account_key = resolve_canonical_account_id(session, account_id=account_id)
     users = _users_for_account(session, account_key)
     legacy_premium, legacy_free_expiry = _legacy_snapshot_baselines(
         session,
@@ -845,7 +916,7 @@ def normalize_account_payment_history(
     now: datetime | None = None,
 ) -> tuple[EntitlementGrant | None, ReferralRelationship | None]:
     current_now = (now or _utcnow()).replace(microsecond=0)
-    account_key = _canonical_account_id(session, account_id)
+    account_key = resolve_canonical_account_id(session, account_id=account_id)
     facts = (
         session.query(EntitlementGrant)
         .filter(
@@ -928,11 +999,14 @@ def record_successful_payment_grant(
     paid_at: datetime,
 ) -> PaymentGrantResult:
     current_paid_at = _naive_utc(paid_at)
-    account_key = _canonical_account_id(session, account_id)
+    account_key = resolve_canonical_account_id(session, account_id=account_id)
     stable_key = _provider_payment_key(provider, order_id)
     existing = session.query(EntitlementGrant).filter_by(idempotency_key=stable_key).with_for_update().one_or_none()
     if existing is not None:
-        existing_account_key = _canonical_account_id(session, str(existing.account_id))
+        existing_account_key = resolve_canonical_account_id(
+            session,
+            account_id=str(existing.account_id),
+        )
         if existing_account_key != account_key:
             raise ValueError("payment_account_mismatch")
         existing.account_id = account_key
@@ -1598,8 +1672,14 @@ def migrate_pending_legacy_referral_queue(
                 ensure_user_account_foundation(session, referrer, now=current_now)
                 ensure_user_account_foundation(session, referred, now=current_now)
                 session.flush()
-                referrer_account_id = _canonical_account_id(session, str(referrer.account_id or ""))
-                referred_account_id = _canonical_account_id(session, str(referred.account_id or ""))
+                referrer_account_id = resolve_canonical_account_id(
+                    session,
+                    account_id=str(referrer.account_id or ""),
+                )
+                referred_account_id = resolve_canonical_account_id(
+                    session,
+                    account_id=str(referred.account_id or ""),
+                )
                 if referrer_account_id == referred_account_id:
                     raise ValueError("legacy_referral_self_reference")
 
