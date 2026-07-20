@@ -3615,7 +3615,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             s.close()
 
         with patch.object(self.api, "_nodes_for_user", side_effect=lambda user, nodes, session=None: list(nodes or [])[:1]):
-            smart = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=smart")
+            smart = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?existing=1&format=smart")
         self.assertEqual(smart.status_code, 200, smart.text)
         self.assertEqual(smart.headers.get("content-type"), "application/json")
         smart_body = smart.json()
@@ -3677,7 +3677,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             }
         )
         with patch.object(self.api, "load_network_rollout_config", return_value=rollout_config):
-            happ = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
+            happ = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?existing=1&format=happ")
             happ_ua = self.client.get(
                 "/s8Kx2mP7qR4wT/token_1001_secure",
                 headers={"Host": "connect.pokrov.space", "User-Agent": "Happ/3.0"},

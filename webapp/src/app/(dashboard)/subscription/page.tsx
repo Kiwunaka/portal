@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CircleCheck, Download, KeyRound, LifeBuoy, QrCode, ShieldCheck, TriangleAlert } from "lucide-react";
 
-import AppRouteLink from "@/components/app-route-link";
 import CopyButton from "@/components/cabinet/copy-button";
 import { StatusHero } from "@/components/cabinet/status-hero";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GroupedSection, Row } from "@/components/ui/grouped";
 import SubscriptionQrCard from "@/components/subscription-qr-card";
@@ -25,6 +25,7 @@ import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
 import { getCopyText, getTariffPlans, normalizePlanCode } from "@/lib/portal";
 import { usePortalSession } from "@/lib/session";
 import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
+import { subscriptionUrlForFormat } from "@/lib/subscription-format";
 
 function fallbackPlans(): PlanCatalogRow[] {
   return getTariffPlans()
@@ -61,6 +62,73 @@ function planHint(plan: PlanCatalogRow): string {
   if (days > 0) parts.push(formatDays(days));
   if (deviceLimit > 0) parts.push(formatDevicesLimit(deviceLimit));
   return parts.join(" · ") || "срок уточняется";
+}
+
+function CompatibleClientImport({
+  name,
+  platforms,
+  formatLabel,
+  subscriptionUrl,
+  downloadUrl,
+  testId,
+}: {
+  name: "Karing" | "Happ";
+  platforms: string;
+  formatLabel: "format=smart" | "format=happ";
+  subscriptionUrl: string;
+  downloadUrl: string;
+  testId: "karing-subscription-url" | "happ-subscription-url";
+}) {
+  return (
+    <div className="p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-ink">{name}</p>
+            <Badge tone="neutral">Запасной</Badge>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-ink-muted">{platforms} · {formatLabel}</p>
+        </div>
+        <a
+          href={downloadUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm font-semibold text-brand hover:text-brand-strong"
+        >
+          Скачать
+        </a>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-[132px_minmax(0,1fr)] sm:items-start">
+        <div
+          data-testid={`${testId}-qr`}
+          className="[&>div]:!mt-0 [&>div]:!size-32 [&>img]:!mt-0 [&>img]:!size-32"
+        >
+          <SubscriptionQrCard value={subscriptionUrl} active={Boolean(subscriptionUrl)} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs leading-5 text-ink-muted">
+            Импортируйте эту ссылку как подписку. Не отправляйте её в чат или сторонний сайт.
+          </p>
+          <div className="mt-2 rounded-control border border-line bg-canvas-alt px-3 py-2.5">
+            <p data-testid={testId} className="font-mono text-xs leading-5 break-all text-ink">
+              {subscriptionUrl}
+            </p>
+          </div>
+          <CopyButton
+            text={subscriptionUrl}
+            label={`Скопировать для ${name}`}
+            copiedLabel="Скопировано"
+            toastMessage={`Ссылка для ${name} скопирована`}
+            variant="secondary"
+            size="sm"
+            disabled={!subscriptionUrl}
+            className="mt-3"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function SubscriptionPage() {
@@ -110,6 +178,17 @@ export default function SubscriptionPage() {
   const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
   const manualAccessVisible = manualAccessOpen && manualAccessReady;
+  let compatibleClientUrls: { karing: string; happ: string } | null = null;
+  if (manualAccessVisible) {
+    try {
+      compatibleClientUrls = {
+        karing: subscriptionUrlForFormat(subscriptionUrl, "smart"),
+        happ: subscriptionUrlForFormat(subscriptionUrl, "happ"),
+      };
+    } catch {
+      compatibleClientUrls = null;
+    }
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -263,7 +342,7 @@ export default function SubscriptionPage() {
                       toastMessage="Ссылка скопирована"
                       disabled={!manualAccessReady}
                     />
-                    <Button variant="secondary" href={subscriptionUrl} target="_blank" hardNavigate={false}>
+                    <Button variant="secondary" href={subscriptionUrl} hardNavigate>
                       Открыть ссылку
                     </Button>
                   </div>
@@ -276,12 +355,37 @@ export default function SubscriptionPage() {
                   <Row
                     label="Hiddify"
                     value="Android и Windows"
+                    hint="Проверенный fallback"
                     action={
                       <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
                         Скачать
                       </a>
                     }
                   />
+                  {compatibleClientUrls ? (
+                    <>
+                      <CompatibleClientImport
+                        name="Karing"
+                        platforms="Android, Windows и macOS"
+                        formatLabel="format=smart"
+                        subscriptionUrl={compatibleClientUrls.karing}
+                        downloadUrl="https://github.com/KaringX/karing/releases/latest"
+                        testId="karing-subscription-url"
+                      />
+                      <CompatibleClientImport
+                        name="Happ"
+                        platforms="Android, Windows, macOS и iOS"
+                        formatLabel="format=happ"
+                        subscriptionUrl={compatibleClientUrls.happ}
+                        downloadUrl="https://www.happ.su/main/"
+                        testId="happ-subscription-url"
+                      />
+                    </>
+                  ) : (
+                    <div className="p-4 text-sm leading-6 text-danger-text">
+                      Не удалось безопасно подготовить ссылки для Karing и Happ.
+                    </div>
+                  )}
                   <Row
                     label="v2rayN"
                     value="Windows"

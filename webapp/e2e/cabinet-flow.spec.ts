@@ -744,6 +744,34 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("?format=plain");
   });
 
+  test("builds Karing and Happ URLs without leaking them to third parties", async ({ page }) => {
+    const privateUrl = "https://connect.pokrov.space/token-value?existing=1#manual";
+    const telemetryPayloads: string[] = [];
+    page.on("request", (request) => {
+      if (/analytics|beacon|collect|telemetry/i.test(request.url())) {
+        telemetryPayloads.push(`${request.url()}\n${request.postData() || ""}`);
+      }
+    });
+    await registerCabinetMocks(page, { subscriptionUrl: privateUrl });
+
+    await page.goto("/subscription/#manual-setup");
+    await page.getByRole("button", { name: "Показать" }).click();
+
+    await expect(page.getByTestId("karing-subscription-url")).toContainText("existing=1&format=smart");
+    await expect(page.getByTestId("happ-subscription-url")).toContainText("existing=1&format=happ");
+    await expect(page.getByRole("button", { name: "Скопировать для Karing" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Скопировать для Happ" })).toBeVisible();
+
+    const externalLinks = page.locator('a[target="_blank"]');
+    for (let index = 0; index < await externalLinks.count(); index += 1) {
+      const href = (await externalLinks.nth(index).getAttribute("href")) || "";
+      expect(href).not.toContain("token-value");
+      expect(href).not.toContain("connect.pokrov.space");
+    }
+    expect(telemetryPayloads.join("\n")).not.toContain("token-value");
+    expect(telemetryPayloads.join("\n")).not.toContain("connect.pokrov.space");
+  });
+
   test("keeps manual setup closed from a direct hash when no active link exists", async ({ page }) => {
     await registerCabinetMocks(page, { subscriptionUrl: "" });
 
