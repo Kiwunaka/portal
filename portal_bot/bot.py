@@ -38,7 +38,7 @@ from node_policy import (
     user_free_access_role,
     user_uses_free_pool,
 )
-from payment_providers import enabled_provider_catalog, normalize_provider as normalize_payment_provider
+from payment_providers import enabled_public_provider_catalog, normalize_provider as normalize_payment_provider
 from public_urls import build_subscription_url as build_public_subscription_url
 from shared_surface_facts import get_access_matrix
 from telegram_profile import (
@@ -346,7 +346,9 @@ OPENING_PREMIUM_CAMPAIGN_KEY = (
 FRIEND_GIFT_ENABLED = _env_bool("FRIEND_GIFT_ENABLED", default=True)
 RUB_CHECKOUT_ENABLED = _env_bool("RUB_CHECKOUT_ENABLED", default=False)
 PAID_CHECKOUT_LAUNCH_APPROVED = _env_bool("PAID_CHECKOUT_LAUNCH_APPROVED", default=False)
-TELEGRAM_STARS_CHECKOUT_ENABLED = _env_bool("TELEGRAM_STARS_CHECKOUT_ENABLED", default=False)
+# Public-beta policy: never create new Telegram Stars checkout. Successful
+# historical payments still pass through the fulfillment handler below.
+TELEGRAM_STARS_CHECKOUT_ENABLED = False
 FRIEND_GIFT_DAYS = 5
 FRIEND_GIFT_CAMPAIGN_KEY = (
     (os.getenv("FRIEND_GIFT_CAMPAIGN_KEY") or f"friend_gift_{FRIEND_GIFT_DAYS}d").strip()[:64]
@@ -358,6 +360,10 @@ MAIN_CONNECT_CTA_LABELS = {
     "a": "💳 Продлить или начать",
     "b": "💳 Продлить или начать",
 }
+
+
+def _stars_checkout_creation_enabled() -> bool:
+    return False
 
 
 def _inline_button_supported_fields() -> set[str]:
@@ -377,6 +383,38 @@ SUPPORTS_BTN_ICON = "icon_custom_emoji_id" in INLINE_BUTTON_FIELDS
 
 def _is_private_user_chat(chat_id: int, tg_id: int) -> bool:
     return int(chat_id) > 0 and int(tg_id) > 0 and int(chat_id) == int(tg_id)
+
+
+async def _require_private_callback(callback: CallbackQuery) -> bool:
+    tg_id = int(getattr(getattr(callback, "from_user", None), "id", 0) or 0)
+    chat_id = int(getattr(getattr(getattr(callback, "message", None), "chat", None), "id", 0) or 0)
+    if _is_private_user_chat(chat_id, tg_id):
+        return True
+    await callback.answer(
+        "Личную ссылку и QR можно открыть только в личном чате с ботом.",
+        show_alert=True,
+    )
+    return False
+
+
+async def _edit_or_answer_callback_text(callback: CallbackQuery, text: str, **kwargs: Any):
+    message = callback.message
+    if bool(getattr(message, "photo", None)):
+        return await message.answer(text, **kwargs)
+    return await message.edit_text(text, **kwargs)
+
+
+def _subscription_link_for_format(subscription_url: str, format_name: str) -> str:
+    parsed = urlsplit(str(subscription_url or "").strip())
+    query = [(key, value) for key, value in parse_qsl(parsed.query, keep_blank_values=True) if key.lower() != "format"]
+    query.append(("format", str(format_name or "").strip().lower()))
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
+
+
+def _subscription_copy_button(*, label: str, value: str, fallback_callback: str) -> InlineKeyboardButton:
+    if SUPPORTS_BTN_COPY_TEXT and len(value) <= 256:
+        return InlineKeyboardButton(text=label, copy_text=value)
+    return InlineKeyboardButton(text=label.replace("Скопировать", "Показать"), callback_data=fallback_callback)
 
 
 def _set_support_context(tg_id: int, *, enabled: bool) -> None:
@@ -3405,7 +3443,7 @@ def _tariff_savings_pct(tariff_key: str) -> int | None:
     return pct if pct > 0 else None
 
 
-def build_choose_tariff_text() -> str:
+def build_choose_tariff_text(*, show_trial: bool = True) -> str:
     nodes = _bot_enabled_nodes()
     paid_nodes = paid_pool_nodes(nodes)
     paid_count = len(paid_nodes) if paid_nodes else (len(nodes) if nodes else 1)
@@ -3439,11 +3477,18 @@ def build_choose_tariff_text() -> str:
 
     payment_hint = "_Выберите вариант ниже, и я открою нужное действие._"
 
-    return (
-        "*С чего начнём?*\n\n"
-        f"*5 дней бесплатно* — старт на {free_label}\n"
-        f"*Платный срок* — {paid_count} стран: {paid_list}\n\n"
+    trial_intro = f"*5 дней бесплатно* — старт в приложении POKROV на {free_label}\n" if show_trial else ""
+    trial_details = (
         f"Бесплатный старт: 5 дней, до {TRIAL_LIMIT_GB} ГБ и до {FREE_LIMIT_IP} устройства, чтобы проверить, подходит ли вам POKROV.\n"
+        if show_trial
+        else ""
+    )
+    title = "*С чего начнём?*" if show_trial else "*Выберите срок доступа*"
+    return (
+        f"{title}\n\n"
+        f"{trial_intro}"
+        f"*Платный срок* — {paid_count} стран: {paid_list}\n\n"
+        f"{trial_details}"
         f"Платный срок: все доступные страны, до {PAID_LIMIT_IP} устройств, без снижения скорости в обычном режиме.\n"
         "Если захотите продлить без паузы, есть приветственный вариант за 99 ₽.\n\n"
         f"*Чем длиннее срок, тем выгоднее:*{savings_line}\n\n"
@@ -3521,7 +3566,7 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
     blocked_reasons = _bot_checkout_blocked_reasons()
     provider_names = ", ".join(
         str(row.get("label") or "").strip()
-        for row in _enabled_bot_rub_providers()
+        for row in _enabled_bot_rub_providers(plan_code=tariff_key)
         if str(row.get("label") or "").strip()
     )
     provider_line = f"Оплата в ₽: *{provider_names}*\n" if provider_names else ""
@@ -3556,7 +3601,7 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
 def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> InlineKeyboardMarkup:
     pricing = _tariff_pricing_for_user(tg_id, tariff_key)
     rows: list[list[InlineKeyboardButton]] = []
-    rub_providers = _enabled_bot_rub_providers()
+    rub_providers = _enabled_bot_rub_providers(plan_code=tariff_key)
     if rub_providers:
         for provider in rub_providers:
             rows.append(
@@ -3591,11 +3636,11 @@ async def _create_freekassa_payment_link_for_bot(*, tg_id: int, tariff_key: str)
     return await _create_rub_payment_link_for_bot(provider="freekassa", tg_id=tg_id, tariff_key=tariff_key)
 
 
-def _enabled_bot_rub_providers() -> list[dict[str, Any]]:
+def _enabled_bot_rub_providers(*, plan_code: str | None = None) -> list[dict[str, Any]]:
     if _bot_checkout_blocked_reasons(include_provider_check=False):
         return []
     rows: list[dict[str, Any]] = []
-    for row in enabled_provider_catalog():
+    for row in enabled_public_provider_catalog(plan_code=plan_code):
         if bool(row.get("supports_bot")):
             rows.append(row)
     return rows
@@ -3609,16 +3654,16 @@ def _bot_checkout_blocked_reasons(*, include_provider_check: bool = True) -> lis
         reasons.append("оплата временно недоступна")
     if not CHECKOUT_TICKET_SECRET:
         reasons.append("оплата временно недоступна")
-    if include_provider_check and not any(bool(row.get("supports_bot")) for row in enabled_provider_catalog()):
+    if include_provider_check and not any(bool(row.get("supports_bot")) for row in enabled_public_provider_catalog()):
         reasons.append("оплата временно недоступна")
     return list(dict.fromkeys(reasons))
 
 
-def _rub_provider_by_code(provider_code: str) -> dict[str, Any] | None:
+def _rub_provider_by_code(provider_code: str, *, plan_code: str | None = None) -> dict[str, Any] | None:
     code = normalize_payment_provider(provider_code)
     if not code:
         return None
-    for row in _enabled_bot_rub_providers():
+    for row in _enabled_bot_rub_providers(plan_code=plan_code):
         if str(row.get("code") or "") == code:
             return row
     return None
@@ -3778,7 +3823,7 @@ def _main_menu_cta_spec(tg_id: int) -> dict[str, str]:
     if _trial_offer_available(user):
         return _btn_spec(
             text="🎁 5 дней бесплатно",
-            callback_data="buy_trial",
+            callback_data="instruction",
             style=BTN_STYLE_PRIMARY,
             icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
         )
@@ -3827,7 +3872,7 @@ def tariff_keyboard(
             [
                 InlineKeyboardButton(
                     text="🎁 5 дней бесплатно",
-                    callback_data="buy_trial",
+                    callback_data="instruction",
                     style=BTN_STYLE_PRIMARY,
                 )
             ]
@@ -3888,13 +3933,18 @@ async def cmd_start(message: Message):
         if len(parts) > 1:
             code_part = parts[1].strip()
             start_arg = code_part
+            reserved_payment_start = code_part.lower() in {"pay", "renew"}
             if code_part.startswith("ref_"):
                 code_part = code_part[4:]
             if code_part.upper().startswith("SWAZ") and len(code_part) == 8:
                 referral_code = code_part.upper()
             deeplink_promo_code, deeplink_campaign_key = _parse_start_deeplink_context(start_arg)
             friend_gift_referral_code = _parse_friend_gift_ref_code(start_arg)
-            start_link_action = _resolve_start_link_action(start_arg)
+            start_link_action = (
+                {"promo_code": "", "campaign_key": "", "opening_bonus": False, "app_link_account_id": 0}
+                if reserved_payment_start
+                else _resolve_start_link_action(start_arg)
+            )
             if str(start_link_action.get("promo_code") or "").strip():
                 deeplink_promo_code = str(start_link_action.get("promo_code") or "").strip().upper()[:20]
             if str(start_link_action.get("campaign_key") or "").strip():
@@ -4067,7 +4117,7 @@ async def cmd_start(message: Message):
 
         fresh_user = get_user(tg_id)
         await message.answer(
-            build_choose_tariff_text(),
+            build_choose_tariff_text(show_trial=_trial_offer_available(fresh_user)),
             reply_markup=tariff_keyboard(
                 tg_id,
                 show_trial=_trial_offer_available(fresh_user),
@@ -4249,7 +4299,7 @@ async def show_tariffs(callback: CallbackQuery):
 
     show_gb_only = False  # Kept for legacy UI compatibility.
     await callback.message.edit_text(
-        build_choose_tariff_text(),
+        build_choose_tariff_text(show_trial=show_trial),
         reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4262,7 +4312,7 @@ async def show_tariffs_stars(callback: CallbackQuery):
     user = get_user(tg_id)
     show_trial = _trial_offer_available(user)
     await callback.message.edit_text(
-        build_choose_tariff_text(),
+        build_choose_tariff_text(show_trial=show_trial),
         reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only=False, include_long_plans=False),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4335,7 +4385,7 @@ async def accept_tos(callback: CallbackQuery):
     show_trial = _trial_offer_available(user)
     show_gb_only = False
     await callback.message.edit_text(
-        build_choose_tariff_text(),
+        build_choose_tariff_text(show_trial=show_trial),
         reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -4423,6 +4473,8 @@ async def show_status(callback: CallbackQuery):
 
 @router.callback_query(F.data == "show_key")
 async def show_key(callback: CallbackQuery):
+    if not await _require_private_callback(callback):
+        return
     try:
         await callback.answer()
     except Exception:
@@ -4433,7 +4485,8 @@ async def show_key(callback: CallbackQuery):
     user = get_user(tg_id)
 
     if not check_tos_accepted(tg_id):
-        await callback.message.edit_text(
+        await _edit_or_answer_callback_text(
+            callback,
             _tos_offer_text(),
             reply_markup=_tos_offer_keyboard(back_callback="back"),
             parse_mode=ParseMode.MARKDOWN,
@@ -4467,7 +4520,8 @@ async def show_key(callback: CallbackQuery):
                 [InlineKeyboardButton(text=_main_connect_cta_text(tg_id), callback_data="charge")],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="back")]
             ])
-            await callback.message.edit_text(
+            await _edit_or_answer_callback_text(
+                callback,
                 "⚠️ *Ручной ссылки пока нет.*\n\nСначала запустите доступ, и я сразу подготовлю запасной вариант.",
                 reply_markup=kb,
                 parse_mode=ParseMode.MARKDOWN
@@ -4497,9 +4551,10 @@ async def show_key(callback: CallbackQuery):
         )
         return
 
-    await callback.message.edit_text("🔄 `Формирую ссылку и QR...`", parse_mode=ParseMode.MARKDOWN)
+    await _edit_or_answer_callback_text(callback, "🔄 `Формирую ссылку и QR...`", parse_mode=ParseMode.MARKDOWN)
 
     sub_link = build_subscription_link(tg_id)
+    happ_link = _subscription_link_for_format(sub_link, "happ")
 
     is_free = bool(user and user_uses_free_pool(user))
     free_note = ""
@@ -4507,26 +4562,40 @@ async def show_key(callback: CallbackQuery):
         free_note = _free_access_note(user)
         free_note += f" Платный доступ откроет платные локации и до {PAID_LIMIT_IP} устройств."
 
-    copy_button = (
-        InlineKeyboardButton(text="📋 Скопировать ссылку", copy_text=sub_link)
+    copy_button = _subscription_copy_button(
+        label="📋 Скопировать ссылку",
+        value=sub_link,
+        fallback_callback="copy_key",
+    )
+    happ_copy_button = _subscription_copy_button(
+        label="📋 Скопировать для Happ",
+        value=happ_link,
+        fallback_callback="copy_happ_key",
+    )
+    fallback_rows = (
+        [[InlineKeyboardButton(text="📝 Показать ссылки текстом", callback_data="copy_key")]]
         if SUPPORTS_BTN_COPY_TEXT
-        else InlineKeyboardButton(text="📋 Показать ссылку", callback_data="copy_key")
+        else []
     )
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [copy_button],
-            [InlineKeyboardButton(text="📱 QR для подключения", callback_data="show_qr")],
+            [happ_copy_button],
+            *fallback_rows,
+            [InlineKeyboardButton(text="📱 QR для Hiddify", callback_data="show_qr")],
+            [InlineKeyboardButton(text="📱 QR для Happ", callback_data="show_happ_qr")],
             [InlineKeyboardButton(text="📲 Как подключить вручную", callback_data="instruction")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
 
-    await callback.message.edit_text(
+    await _edit_or_answer_callback_text(
+        callback,
         f"🔗 *Ручное подключение*\n\n"
         "Это запасной способ, если POKROV не подключился сам. Сначала попробуйте приложение; ссылку используйте только для ручного подключения.\n\n"
         "Это личная ссылка для подключения. Не пересылайте её: по ней можно пользоваться вашим доступом.\n\n"
         f"`{sub_link}`\n\n"
-        "Если приложения POKROV пока нет на устройстве, начните с Hiddify и добавьте туда эту личную ссылку. Для Happ используйте вариант ссылки с ?format=happ.\n"
+        "Если приложения POKROV пока нет на устройстве, начните с Hiddify. Для Happ используйте отдельную кнопку или QR — вручную менять ссылку не нужно.\n"
         f"{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -4534,16 +4603,49 @@ async def show_key(callback: CallbackQuery):
 
 @router.callback_query(F.data == "copy_key")
 async def copy_key_callback(callback: CallbackQuery):
+    if not await _require_private_callback(callback):
+        return
     tg_id = callback.from_user.id
     sub_link = build_subscription_link(tg_id)
     track_event(tg_id=tg_id, event_name="copied_key", source="bot")
-    await callback.answer(f"📋 Скопируйте ручную ссылку:\n{sub_link}", show_alert=True)
+    await callback.message.answer(
+        f"📋 <b>Обычная ссылка для Hiddify</b>\n<code>{html.escape(sub_link)}</code>",
+        parse_mode=ParseMode.HTML,
+    )
+    await callback.answer("Ссылка показана")
+
+
+@router.callback_query(F.data == "copy_happ_key")
+async def copy_happ_key_callback(callback: CallbackQuery):
+    if not await _require_private_callback(callback):
+        return
+    tg_id = callback.from_user.id
+    happ_link = _subscription_link_for_format(build_subscription_link(tg_id), "happ")
+    track_event(tg_id=tg_id, event_name="copied_key", source="bot", meta={"format": "happ"})
+    await callback.message.answer(
+        f"📋 <b>Ссылка для Happ</b>\n<code>{html.escape(happ_link)}</code>",
+        parse_mode=ParseMode.HTML,
+    )
+    await callback.answer("Ссылка Happ показана")
 
 
 @router.callback_query(F.data == "show_qr")
 async def show_qr_code(callback: CallbackQuery):
+    await _show_subscription_qr(callback, format_name="")
+
+
+@router.callback_query(F.data == "show_happ_qr")
+async def show_happ_qr_code(callback: CallbackQuery):
+    await _show_subscription_qr(callback, format_name="happ")
+
+
+async def _show_subscription_qr(callback: CallbackQuery, *, format_name: str) -> None:
+    if not await _require_private_callback(callback):
+        return
     tg_id = callback.from_user.id
     sub_link = build_subscription_link(tg_id)
+    if format_name:
+        sub_link = _subscription_link_for_format(sub_link, format_name)
 
     qr = qrcode.QRCode(box_size=10, border=4)
     qr.add_data(sub_link)
@@ -4558,19 +4660,19 @@ async def show_qr_code(callback: CallbackQuery):
     await callback.message.answer_photo(
         photo=file,
         caption=(
-            "📱 *QR для ручного подключения*\n\n"
-            "Откройте QR в Hiddify. Для Happ используйте ручную ссылку с ?format=happ. "
+            f"📱 *QR для {'Happ' if format_name == 'happ' else 'Hiddify'}*\n\n"
             "QR содержит личную ссылку подключения - не пересылайте его посторонним."
         ),
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(text="📋 Скопировать ссылку", copy_text=sub_link)
-                    if SUPPORTS_BTN_COPY_TEXT
-                    else InlineKeyboardButton(text="📋 Показать ссылку", callback_data="copy_key")
+                    _subscription_copy_button(
+                        label="📋 Скопировать ссылку",
+                        value=sub_link,
+                        fallback_callback="copy_happ_key" if format_name == "happ" else "copy_key",
+                    )
                 ],
-                [InlineKeyboardButton(text="📲 Как подключить вручную", callback_data="instruction")],
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="show_key")],
             ]
         ),
@@ -4595,11 +4697,12 @@ async def share_family_access(callback: CallbackQuery):
 
 @router.callback_query(F.data == "panic_menu")
 async def panic_menu(callback: CallbackQuery):
+    if not await _require_private_callback(callback):
+        return
     text = (
-        "🛡 *Сбросить ссылку подключения*\n\n"
-        "Используйте это, если отправили личную ссылку не туда, потеряли устройство "
-        "или подозреваете доступ с чужого устройства.\n\n"
-        "Старая ссылка перестанет работать, я выпущу новую."
+        "🛡 *Обновить ссылку подключения*\n\n"
+        "Действие меняет только URL подписки. Уже импортированные конфигурации могут продолжить работать.\n\n"
+        "Если нужно отозвать доступ с потерянного или чужого устройства, сначала напишите в поддержку — требуется отдельная проверка и отзыв устройства."
     )
     rows = [
         [
@@ -4633,6 +4736,8 @@ async def panic_menu(callback: CallbackQuery):
 
 @router.callback_query(F.data == "panic_execute")
 async def panic_execute(callback: CallbackQuery, bot: Bot):
+    if not await _require_private_callback(callback):
+        return
     user_id = callback.from_user.id
     user = get_user(user_id)
     if not user:
@@ -4640,9 +4745,6 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
         return
 
     await callback.message.edit_text("🔄 *Готовлю новую ссылку...*", parse_mode=ParseMode.MARKDOWN)
-    await asyncio.sleep(0.8)
-    await callback.message.edit_text("🔄 *Отключаю старую ссылку...*", parse_mode=ParseMode.MARKDOWN)
-    await asyncio.sleep(0.8)
 
     new_token = generate_sub_token()
     session = Session()
@@ -4676,7 +4778,8 @@ async def panic_execute(callback: CallbackQuery, bot: Bot):
 
     await callback.message.edit_text(
         "✅ *Ссылка обновлена.*\n\n"
-        "Старая ссылка больше не должна использоваться. Откройте ручное подключение, чтобы скопировать новую.",
+        "Откройте ручное подключение, чтобы скопировать новый URL. Уже импортированные конфигурации могли сохранить доступ. "
+        "Для отзыва потерянного или чужого устройства напишите в поддержку.",
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔗 Ручное подключение", callback_data="show_key")],
@@ -4712,7 +4815,8 @@ def _device_select_keyboard() -> InlineKeyboardMarkup:
 
 async def _render_device_select(callback: CallbackQuery) -> None:
     """Single device-selection screen shared by instruction and mode_simple."""
-    await callback.message.edit_text(
+    await _edit_or_answer_callback_text(
+        callback,
         bot_text("bot.instruction.pick_device"),
         reply_markup=_device_select_keyboard(),
         parse_mode=ParseMode.MARKDOWN,
@@ -4755,7 +4859,7 @@ async def show_settings(callback: CallbackQuery):
         [InlineKeyboardButton(text="🆘 Помочь начать", callback_data="mode_simple")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ]
-    if TELEGRAM_STARS_CHECKOUT_ENABLED:
+    if _stars_checkout_creation_enabled():
         rows.insert(3, [InlineKeyboardButton(text=f"👨‍👩‍👧‍👦 Family +1 слот", callback_data="buy_family_slot")])
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
     await callback.message.edit_text(
@@ -4850,7 +4954,7 @@ async def menu_more(callback: CallbackQuery):
     pending_promo_codes.discard(tg_id)
     feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
     rows = []
-    if TELEGRAM_STARS_CHECKOUT_ENABLED:
+    if _stars_checkout_creation_enabled():
         rows.extend(
             [
                 [InlineKeyboardButton(text="🎫 Подарить", callback_data="gift_cards")],
@@ -5290,7 +5394,7 @@ async def show_streak(callback: CallbackQuery):
 
 @router.callback_query(F.data == "buy_family_slot")
 async def buy_family_slot(callback: CallbackQuery, bot: Bot):
-    if not TELEGRAM_STARS_CHECKOUT_ENABLED:
+    if not _stars_checkout_creation_enabled():
         await callback.answer("Family-слоты в боте пока закрыты. Напишите в поддержку, если нужен ручной перенос.", show_alert=True)
         return
     tg_id = callback.from_user.id
@@ -5326,7 +5430,7 @@ FAQ_ANSWERS = {
         "3. Нажмите «Подключить»\n\n"
         f"iPhone / iPad: [инструкция и статус релиза]({IOS_APP_LINK}).\n"
         f"macOS: [инструкция и статус релиза]({MAC_APP_LINK}).\n\n"
-        "Если приложение недоступно или профиль не подтянулся, откройте *Ручное подключение* в кабинете POKROV. Для начала используйте Hiddify: добавьте туда личную ссылку из кабинета. Для Happ нужен вариант ссылки с ?format=happ. Если запутались, напишите в поддержку."
+        "Если приложение недоступно или профиль не подтянулся, откройте *Ручное подключение* в кабинете POKROV. Для начала используйте Hiddify: добавьте туда личную ссылку из кабинета. Для Happ используйте отдельную готовую кнопку или QR. Если запутались, напишите в поддержку."
     ),
     "notwork": (
         "⚠️ *Не работает?*\n\n"
@@ -5375,7 +5479,7 @@ FAQ_ANSWERS = {
     "device": (
         "📲 *Смена устройства*\n\n"
         "Скачайте приложение на новое устройство и войдите в тот же аккаунт POKROV.\n\n"
-        "Если профиль не подтянулся автоматически, откройте кабинет POKROV и раздел *Ручное подключение*. Для начала используйте Hiddify и добавьте туда личную ссылку из кабинета. Для Happ нужен вариант ссылки с ?format=happ.\n\n"
+        "Если профиль не подтянулся автоматически, откройте кабинет POKROV и раздел *Ручное подключение*. Для начала используйте Hiddify и добавьте туда личную ссылку из кабинета. Для Happ используйте отдельную готовую кнопку или QR.\n\n"
         f"Лимит устройств зависит от плана: до *{PAID_LIMIT_IP}* в платных режимах."
     ),
     "speed": (
@@ -5400,7 +5504,7 @@ FAQ_ANSWERS = {
         "🔗 *Ручное подключение*\n\n"
         "Запасной способ, если приложение POKROV недоступно на вашем устройстве.\n\n"
         "1. Откройте кабинет POKROV → раздел «Ручное подключение» и скопируйте личную ссылку\n"
-        "2. Установите совместимое приложение: Hiddify; Happ используйте со ссылкой ?format=happ\n"
+        "2. Установите совместимое приложение: Hiddify; для Happ используйте отдельную готовую кнопку или QR\n"
         "3. Добавьте ссылку в приложение — обычно через «Добавить профиль» или вставку из буфера\n"
         "4. Нажмите «Подключить» уже там\n\n"
         "Личная ссылка — как ключ от квартиры: не публикуйте её. Если ссылка попала не в те руки, сбросьте её в меню «⚙️ Ещё» → «🛡 Сбросить ссылку»."
@@ -5428,7 +5532,7 @@ FAQ_MENU_ITEMS: list[tuple[str, str]] = [
 @router.callback_query(F.data == "gift_cards")
 async def show_gift_cards(callback: CallbackQuery):
     """Show gift card purchase menu"""
-    if not TELEGRAM_STARS_CHECKOUT_ENABLED:
+    if not _stars_checkout_creation_enabled():
         await callback.message.edit_text(
             "🎁 *Подарки*\n\n"
             "Покупка подарков прямо в боте пока закрыта. Если у вас уже есть ключ или подарок, активируйте его здесь; если нужен новый подарок, напишите в поддержку.",
@@ -5464,7 +5568,7 @@ async def show_gift_cards(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("buy_giftcard_"))
 async def buy_gift_card(callback: CallbackQuery, bot: Bot):
     """Buy a gift card"""
-    if not TELEGRAM_STARS_CHECKOUT_ENABLED:
+    if not _stars_checkout_creation_enabled():
         await callback.answer("Покупка подарков в боте пока закрыта", show_alert=True)
         return
     card_type = callback.data.replace("buy_giftcard_", "")
@@ -9079,35 +9183,22 @@ async def _activate_trial_tariff(
     *,
     retry_callback_data: str = "buy_trial",
 ) -> None:
-    tg_id = callback.from_user.id
-    user = get_user(tg_id)
-    tariff = TARIFFS["trial"]
-
-    is_subscribed = await check_subscription(tg_id, bot)
-    if _channel_acquisition_gate_blocks(user=user, action="trial", is_member=is_subscribed):
-        channel_name = _channel_name_for_url()
-        await callback.message.answer(
-            "📢 *Бесплатный старт доступен новым участникам канала.*\n\n"
-            f"Подпишитесь на https://t.me/{channel_name}, затем нажмите «Проверить подписку».",
-            reply_markup=_channel_acquisition_gate_keyboard(retry_callback_data),
-            parse_mode=ParseMode.MARKDOWN,
-        )
-        await callback.answer("Сначала подтвердите подписку", show_alert=False)
-        return
-
-    now = _utcnow()
-    current_sub = _normalize_sub_type(user.sub_type if user else "")
-    expiry = _naive_utc(user.expiry_at) if user else None
-    has_active = bool(user and user.is_active and expiry and expiry > now)
-    if has_active and _is_freemium_sub_type(current_sub):
-        await callback.answer("5 дней бесплатно уже включены. Следующий шаг — открыть POKROV или выбрать платный срок.", show_alert=True)
-        return
-    if has_active and not _is_freemium_sub_type(current_sub):
-        await callback.answer("Платный срок уже активен. Следующий шаг — открыть POKROV.", show_alert=True)
-        return
-
-    await callback.answer("⏳ Включаю бесплатный старт...")
-    await create_subscription(callback.message, tg_id, tariff, bot)
+    del bot, retry_callback_data
+    await callback.message.edit_text(
+        "🎁 *5 дней бесплатно запускаются в приложении POKROV*\n\n"
+        "Установите приложение и войдите в аккаунт. Пробный доступ выдаётся один раз "
+        "каноническим account/device-контуром после подтверждённого подключения — бот не меняет доступ напрямую.\n\n"
+        f"Telegram-бонус +{CHANNEL_PREMIUM_DAYS} дней остаётся отдельным действием после подписки на канал.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="📲 Установить POKROV", callback_data="instruction")],
+                [InlineKeyboardButton(text="💳 Посмотреть платные сроки", callback_data="charge")],
+                [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
+            ]
+        ),
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
 
 
 def _parse_bonus_next_action(data: str, prefix: str) -> str | None:
@@ -9521,9 +9612,6 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
     user = get_user(tg_id)
     
     if tariff_key == "trial":
-        if _channel_bonus_eligible(tg_id=tg_id, user=user):
-            await _show_channel_bonus_offer(callback, next_action="trial")
-            return
         await _activate_trial_tariff(callback, bot, retry_callback_data="buy_trial")
         return
 
@@ -9538,7 +9626,7 @@ async def process_buy(callback: CallbackQuery, bot: Bot):
 
 @router.callback_query(F.data.startswith("pay_stars_"))
 async def process_buy_stars(callback: CallbackQuery, bot: Bot):
-    if not TELEGRAM_STARS_CHECKOUT_ENABLED:
+    if not _stars_checkout_creation_enabled():
         await callback.answer("Оплата через Stars сейчас не используется. Выберите оплату в ₽ или напишите в поддержку, если уже оплатили.", show_alert=True)
         return
     raw_key = callback.data.replace("pay_stars_", "")
@@ -9625,7 +9713,7 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
     if not tariff:
         await callback.answer("❌ Тариф не найден")
         return
-    provider_row = _rub_provider_by_code(provider_code)
+    provider_row = _rub_provider_by_code(provider_code, plan_code=tariff_key)
     if not provider_row:
         await callback.answer("⚠️ Рублёвая оплата сейчас временно недоступна", show_alert=True)
         return
@@ -9685,7 +9773,11 @@ async def process_buy_rub(callback: CallbackQuery, bot: Bot):
 
 @router.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout: PreCheckoutQuery, bot: Bot):
-    await bot.answer_pre_checkout_query(pre_checkout.id, ok=True)
+    await bot.answer_pre_checkout_query(
+        pre_checkout.id,
+        ok=False,
+        error_message="Оплата через Telegram Stars сейчас закрыта. Выберите Lava.top или напишите в поддержку.",
+    )
 
 @router.message(F.content_type == ContentType.SUCCESSFUL_PAYMENT)
 async def payment_success(message: Message, bot: Bot):

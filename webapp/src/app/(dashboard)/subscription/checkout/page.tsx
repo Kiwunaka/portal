@@ -146,9 +146,14 @@ export default function CheckoutPage() {
     };
   }, []);
 
+  const availablePlans = useMemo(() => {
+    const provider = providerState?.providers?.find((item) => item.code === providerCode);
+    const supported = Array.isArray(provider?.supported_plan_codes) ? provider.supported_plan_codes : null;
+    return supported ? plans.filter((plan) => supported.includes(plan.code)) : plans;
+  }, [plans, providerCode, providerState]);
   const activePlan = useMemo(
-    () => plans.find((plan) => plan.code === selectedCode) || plans[0] || SHARED_PLANS[0],
-    [plans, selectedCode],
+    () => availablePlans.find((plan) => plan.code === selectedCode) || availablePlans[0] || SHARED_PLANS[0],
+    [availablePlans, selectedCode],
   );
   const promoCode = normalizePromo(promoInput);
   const rawDiscountPercent = getPricingPreviewDiscountPercent(promoCode);
@@ -209,7 +214,7 @@ export default function CheckoutPage() {
       />
 
       <GroupedSection title="Срок">
-        {plans.map((plan) => {
+        {availablePlans.map((plan) => {
           const selected = plan.code === activePlan?.code;
           return (
             <button

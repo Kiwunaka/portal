@@ -42,8 +42,12 @@ def _emoji_for_style(style: str | None) -> str | None:
 
 
 def infer_button_style(text: str, callback_data: str | None = None, url: str | None = None) -> str | None:
-    del text, url
+    del url
+    label = (text or "").strip().lower()
     data = (callback_data or "").strip().lower()
+
+    if any(token in label for token in ("назад", "отмена", "закрыть")):
+        return None
 
     if (
         "delete" in data
@@ -51,6 +55,9 @@ def infer_button_style(text: str, callback_data: str | None = None, url: str | N
         or "ban" in data
         or "revoke" in data
         or "ticket_close" in data
+        or data.startswith("adm_del_")
+        or data.startswith("adm_regen_token_")
+        or any(token in label for token in ("удалить", "сбросить", "отозвать", "заблокировать"))
     ):
         return BTN_STYLE_DANGER
 

@@ -52,6 +52,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "PLATIMA_API_KEY_PROJECT",
             "LAVATOP_API_KEY",
             "LAVATOP_OFFER_ID",
+            "LAVATOP_OFFER_ID_START_99",
+            "LAVATOP_DYNAMIC_AMOUNT_ENABLED",
             "LAVATOP_WEBHOOK_API_KEY",
             "LAVATOP_WEBHOOK_IP_ALLOWLIST",
             "RUB_CHECKOUT_ENABLED",
@@ -89,6 +91,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["PLATIMA_API_KEY_PROJECT"] = "platima_key_project_test"
         os.environ["LAVATOP_API_KEY"] = "lavatop_api_key_test"
         os.environ["LAVATOP_OFFER_ID"] = "836b9fc5-7ae9-4a27-9642-592bc44072b7"
+        os.environ["LAVATOP_DYNAMIC_AMOUNT_ENABLED"] = "true"
         os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lavatop_webhook_key_test"
         os.environ.pop("LAVATOP_WEBHOOK_IP_ALLOWLIST", None)
         os.environ["RUB_CHECKOUT_ENABLED"] = "true"
@@ -1702,7 +1705,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             self.api.Settings.PAY_CHECKOUT_URL = old_url
 
-    def test_generic_create_public_order_uses_selected_provider(self) -> None:
+    def test_public_order_rejects_stale_non_lava_provider_configuration(self) -> None:
         client = TestClient(self.api.app)
 
         from db import SessionLocal
@@ -1733,35 +1736,71 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             source="bot",
         )
 
-        async def _fake_create_rub_payment(**kwargs):
-            self.assertEqual(kwargs["provider"], "cardlink")
-            self.assertEqual(kwargs["description"], "POKROV Старт на 30 дней")
-            return {
-                "payment_url": "https://checkout.cardlink.link/pay/test-order",
-                "remote": {"payment_url": "https://checkout.cardlink.link/pay/test-order"},
-            }
+        response = client.post(
+            "/api/payments/orders/create-public",
+            json={"provider": "cardlink", "plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
+        )
 
-        old_create = self.api.create_rub_payment
-        try:
-            self.api.create_rub_payment = _fake_create_rub_payment
-            response = client.post(
-                "/api/payments/orders/create-public",
-                json={"provider": "cardlink", "plan_code": "start_99", "checkout_ticket": ticket, "currency": "RUB"},
-            )
-        finally:
-            self.api.create_rub_payment = old_create
-
-        self.assertEqual(response.status_code, 200, response.text)
-        body = response.json()
-        self.assertEqual(body.get("provider"), "cardlink")
-        self.assertEqual(body.get("provider_label"), "Cardlink")
-        self.assertEqual(body.get("payment_url"), "https://checkout.cardlink.link/pay/test-order")
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertIn("public RUB checkout", response.text)
 
         s = SessionLocal()
         try:
             row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4444, ExternalOrder.provider == "cardlink").first()
-            self.assertIsNotNone(row)
-            self.assertEqual(str(row.plan_code or ""), "start_99")
+            self.assertIsNone(row)
+        finally:
+            s.close()
+
+    def test_public_order_rejects_lava_plan_without_exact_offer_readiness(self) -> None:
+        client = TestClient(self.api.app)
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4450,
+                    username="plan_gate",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4450",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4450,
+            plan_code="1_month",
+            promo_code="",
+            campaign_key="",
+            source="bot",
+        )
+        old_global = os.environ.pop("LAVATOP_OFFER_ID", None)
+        old_dynamic = os.environ.pop("LAVATOP_DYNAMIC_AMOUNT_ENABLED", None)
+        os.environ["LAVATOP_OFFER_ID_START_99"] = "start-only-offer"
+        try:
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={"provider": "lavatop", "plan_code": "1_month", "checkout_ticket": ticket, "currency": "RUB"},
+            )
+        finally:
+            if old_global is not None:
+                os.environ["LAVATOP_OFFER_ID"] = old_global
+            if old_dynamic is not None:
+                os.environ["LAVATOP_DYNAMIC_AMOUNT_ENABLED"] = old_dynamic
+
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertIn("plan is not configured", response.text.lower())
+        s = SessionLocal()
+        try:
+            self.assertIsNone(
+                s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4450, ExternalOrder.provider == "lavatop").first()
+            )
         finally:
             s.close()
 

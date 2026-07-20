@@ -59,6 +59,8 @@ PROVIDER_META: dict[str, PaymentProviderMeta] = {
     ),
 }
 
+PUBLIC_BETA_PROVIDER_CODES = ("lavatop",)
+
 
 def normalize_provider(value: str | None) -> str:
     raw = str(value or "").strip().lower()
@@ -110,6 +112,50 @@ def enabled_provider_catalog() -> list[dict[str, Any]]:
         meta = PROVIDER_META.get(code)
         if not meta:
             continue
+        rows.append(
+            {
+                "code": meta.code,
+                "label": meta.label,
+                "accent": meta.accent,
+                "checkout_hint": meta.checkout_hint,
+                "supports_bot": meta.supports_bot,
+                "supports_webapp": meta.supports_webapp,
+                "supports_public": meta.supports_public,
+            }
+        )
+    return rows
+
+
+def public_provider_is_configured_for_plan(code: str, plan_code: str | None = None) -> bool:
+    """Fail-closed readiness for a new public-beta order.
+
+    Historical provider adapters remain available for callbacks and replay, but
+    new public checkout is Lava-only. A universal offer is safe for every plan
+    only when dynamic amounts are explicitly enabled; otherwise an exact
+    per-plan offer is required.
+    """
+    provider = normalize_provider(code)
+    if provider not in PUBLIC_BETA_PROVIDER_CODES or not provider_is_configured(provider):
+        return False
+    normalized_plan = str(plan_code or "").strip().lower()
+    global_offer = bool((os.getenv("LAVATOP_OFFER_ID") or "").strip())
+    if global_offer and _env_bool("LAVATOP_DYNAMIC_AMOUNT_ENABLED", default=False):
+        return True
+    if not normalized_plan:
+        return any(
+            key.startswith("LAVATOP_OFFER_ID_") and bool(str(value or "").strip())
+            for key, value in os.environ.items()
+        )
+    return bool((os.getenv(f"LAVATOP_OFFER_ID_{_env_suffix(normalized_plan)}") or "").strip())
+
+
+def enabled_public_provider_catalog(*, plan_code: str | None = None) -> list[dict[str, Any]]:
+    enabled = set(enabled_rub_provider_codes())
+    rows: list[dict[str, Any]] = []
+    for code in PUBLIC_BETA_PROVIDER_CODES:
+        if code not in enabled or not public_provider_is_configured_for_plan(code, plan_code):
+            continue
+        meta = PROVIDER_META[code]
         rows.append(
             {
                 "code": meta.code,

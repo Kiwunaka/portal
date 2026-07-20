@@ -384,6 +384,7 @@ export type RubPaymentProvider = {
   supports_bot?: boolean;
   supports_webapp?: boolean;
   supports_public?: boolean;
+  supported_plan_codes?: string[];
 };
 
 export type RubPaymentProvidersResult = {

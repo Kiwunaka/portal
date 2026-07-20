@@ -516,7 +516,6 @@ Current user-facing delivery semantics:
 Compatibility note:
 
 - `?format=plain` still exists for backend compatibility and advanced/manual recovery
-- `?format=smart` is the dedicated Karing best-effort import variant
 - `?format=happ` exists for Happ-compatible open subscription delivery; it returns VLESS fallback lines plus Happ `custom-tunnel-config` carrying the same smart sing-box manifest, including `Белые списки` where the client version supports that parameter
 - format variants must be derived with URL query parameters inside the opened
   authenticated manual section. They must not be sent to third-party pages,
@@ -531,7 +530,6 @@ Focused compatibility matrix to run before changing support copy:
 | POKROV | managed app-first delivery | owned client release proof | backend-owned locations | owned connect flow | primary client |
 | Hiddify | default private URL | required proof | required proof | required proof | verified manual fallback |
 | Happ | `?format=happ`; plain VLESS only as no-bridge fallback | required proof | VLESS fallback should render; `Белые списки` require client support for `custom-tunnel-config` | test direct server first, then БС where visible | best-effort with dedicated format |
-| Karing | `?format=smart` | required proof | required proof | required proof | best-effort with dedicated format; return to Hiddify on incompatibility |
 | v2rayN | `?format=plain`, `?format=vless`, `?format=clash` where supported | required proof | required proof | required proof | advanced/manual fallback |
 
 `Pokrov-client` is an owned open-source source-only lane until it has separate APK/EXE/binary release evidence. Do not present it as an official user-facing binary fallback before that gate.

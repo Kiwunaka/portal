@@ -116,12 +116,13 @@ The main bot records `bot_entry_opened` for:
 
 - `/start`
 - `/cabinet`
+- `/help`
 - `/support`
 
 `/start` metadata is coarse only:
 
 - `start_arg_present`
-- `start_arg_kind`: `plain`, `referral`, `promo`, `campaign`, `campaign_promo`, `friend_gift`, `opening_bonus`, `app_link`, or `other`
+- `start_arg_kind`: `plain`, `referral`, `promo`, `campaign`, `campaign_promo`, `friend_gift`, `opening_bonus`, `app_link`, `payment`, or `other`
 - `created_new`
 
 Raw `start` payloads are not written to the event metadata.

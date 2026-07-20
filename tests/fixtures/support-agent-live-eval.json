@@ -107,13 +107,6 @@
       "forbidden_concepts": ["отправьте qr поддержке", "гарантированно"]
     },
     {
-      "id": "karing_import",
-      "prompt": "Как добавить подписку POKROV в Karing и обновить профиль?",
-      "accepted_topic_ids": ["karing_import"],
-      "required_concept_groups": [["karing", "import"], ["обновите профиль", "обновить профиль"]],
-      "forbidden_concepts": ["отправьте ссылку", "гарантированно"]
-    },
-    {
       "id": "choose_android_client",
       "prompt": "Какой совместимый клиент выбрать для ручного подключения на Android?",
       "accepted_topic_ids": ["choose_android_client"],
@@ -138,7 +131,7 @@
       "id": "choose_macos_client",
       "prompt": "Какой совместимый клиент выбрать для ручного подключения на macOS?",
       "accepted_topic_ids": ["choose_macos_client"],
-      "required_concept_groups": [["hiddify", "happ", "karing"], ["macos", "mac"]],
+      "required_concept_groups": [["hiddify", "happ"], ["macos", "mac"]],
       "forbidden_concepts": ["точно доступен", "гарантированно"]
     },
     {

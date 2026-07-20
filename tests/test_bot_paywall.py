@@ -95,6 +95,7 @@ class _FakeCallback:
     def __init__(self, tg_id: int, data: str = ""):
         self.from_user = _FakeUser(tg_id)
         self.message = _FakeMessage()
+        self.message.chat = types.SimpleNamespace(id=int(tg_id))
         self.answers: list[tuple[str, bool]] = []
         self.data = data
 
@@ -440,7 +441,7 @@ class BotPaywallTests(unittest.TestCase):
                 )
             )
 
-    def test_trial_handler_enforces_channel_gate_only_for_new_lead(self) -> None:
+    def test_legacy_trial_callbacks_route_to_app_without_granting_entitlement(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="new-lead")
         calls: list[int] = []
 
@@ -460,11 +461,12 @@ class BotPaywallTests(unittest.TestCase):
                 )
             )
             self.assertEqual(calls, [])
-            self.assertTrue(blocked.message.answers)
-            blocked_markup = blocked.message.answers[-1][1].get("reply_markup")
+            self.assertTrue(blocked.message.edits)
+            self.assertIn("прилож", blocked.message.edits[-1].lower())
+            blocked_markup = blocked.message.edit_kwargs[-1].get("reply_markup")
             blocked_buttons = [button for row in blocked_markup.inline_keyboard for button in row]
-            self.assertTrue(any(getattr(button, "url", None) for button in blocked_buttons))
-            self.assertTrue(any(getattr(button, "callback_data", None) == "trial_direct" for button in blocked_buttons))
+            self.assertTrue(any(getattr(button, "callback_data", None) == "instruction" for button in blocked_buttons))
+            self.assertFalse(any(getattr(button, "callback_data", None) in {"trial_direct", "buy_trial"} for button in blocked_buttons))
 
             allowed = _FakeCallback(1001, data="trial_direct")
             asyncio.run(
@@ -474,9 +476,46 @@ class BotPaywallTests(unittest.TestCase):
                     retry_callback_data="trial_direct",
                 )
             )
-            self.assertEqual(calls, [1001])
+            self.assertEqual(calls, [])
         finally:
             self.bot_module.create_subscription = old_create_subscription
+
+    def test_manual_subscription_variants_preserve_query_and_fragment(self) -> None:
+        base = "https://connect.pokrov.space/token?existing=1#manual"
+        self.assertEqual(
+            self.bot_module._subscription_link_for_format(base, "happ"),
+            "https://connect.pokrov.space/token?existing=1&format=happ#manual",
+        )
+        self.assertEqual(
+            self.bot_module._subscription_link_for_format(
+                "https://connect.pokrov.space/token?format=plain&existing=1",
+                "happ",
+            ),
+            "https://connect.pokrov.space/token?existing=1&format=happ",
+        )
+
+    def test_bearer_link_handlers_refuse_group_chats(self) -> None:
+        self.bot_module.ensure_pending_user(1001, username="alice")
+        self.bot_module.set_tos_accepted(1001)
+        callback = _FakeCallback(1001, data="show_key")
+        callback.message.chat.id = -100123
+
+        asyncio.run(self.bot_module.show_key(callback))
+
+        self.assertFalse(callback.message.edits)
+        self.assertTrue(callback.answers)
+        self.assertTrue(callback.answers[-1][1])
+        self.assertIn("личном чате", callback.answers[-1][0].lower())
+
+        for handler, data in (
+            (self.bot_module.copy_key_callback, "copy_key"),
+            (self.bot_module.show_qr_code, "show_qr"),
+        ):
+            nested = _FakeCallback(1001, data=data)
+            nested.message.chat.id = -100123
+            asyncio.run(handler(nested))
+            self.assertTrue(nested.answers[-1][1])
+            self.assertNotIn("connect.pokrov.space", nested.answers[-1][0])
 
     def test_sync_telegram_identity_updates_primary_and_linked_usernames(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="old_name")
@@ -2224,18 +2263,18 @@ class BotPaywallTests(unittest.TestCase):
             "promo_code": "WELCOME14",
             "campaign_key": "launch_week_1",
         }
-        old_catalog = self.bot_module.enabled_provider_catalog
+        old_catalog = self.bot_module.enabled_public_provider_catalog
         try:
             self.bot_module.RUB_CHECKOUT_ENABLED = True
             self.bot_module.PAID_CHECKOUT_LAUNCH_APPROVED = True
-            self.bot_module.enabled_provider_catalog = lambda: [
-                {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
+            self.bot_module.enabled_public_provider_catalog = lambda plan_code=None: [
+                {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
             ]
             keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
         finally:
-            self.bot_module.enabled_provider_catalog = old_catalog
-        self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Cardlink · 699 ₽")
-        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:cardlink:3_months")
+            self.bot_module.enabled_public_provider_catalog = old_catalog
+        self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Lava.top · 699 ₽")
+        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:lavatop:3_months")
         flat_rows = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("📚 Посмотреть долгие тарифы", flat_rows)
         self.assertIn("◀️ К тарифам", flat_rows)
@@ -2278,53 +2317,61 @@ class BotPaywallTests(unittest.TestCase):
         self.assertFalse(any("Stars" in text or "⭐" in text for text in flat_text))
 
     def test_process_buy_rub_opens_direct_payment_link(self) -> None:
-        callback = _FakeCallback(1001, data="pay_rub:cardlink:1_month")
+        callback = _FakeCallback(1001, data="pay_rub:lavatop:1_month")
 
-        old_catalog = self.bot_module.enabled_provider_catalog
+        old_catalog = self.bot_module.enabled_public_provider_catalog
 
         async def _fake_create_payment_link(*, provider, tg_id, tariff_key):
-            self.assertEqual(str(provider), "cardlink")
+            self.assertEqual(str(provider), "lavatop")
             self.assertEqual(int(tg_id), 1001)
             self.assertEqual(str(tariff_key), "1_month")
             return {
-                "order_id": "cardlink_bot_1001_test",
-                "payment_url": "https://checkout.cardlink.link/pay/test",
+                "order_id": "lavatop_bot_1001_test",
+                "payment_url": "https://checkout.lava.top/pay/test",
             }
 
         old_create = self.bot_module._create_rub_payment_link_for_bot
         try:
             self.bot_module.RUB_CHECKOUT_ENABLED = True
             self.bot_module.PAID_CHECKOUT_LAUNCH_APPROVED = True
-            self.bot_module.enabled_provider_catalog = lambda: [
-                {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
+            self.bot_module.enabled_public_provider_catalog = lambda plan_code=None: [
+                {"code": "lavatop", "label": "Lava.top", "supports_bot": True},
             ]
             self.bot_module._create_rub_payment_link_for_bot = _fake_create_payment_link
             asyncio.run(self.bot_module.process_buy_rub(callback, _FakeBot(status="member")))
         finally:
             self.bot_module._create_rub_payment_link_for_bot = old_create
-            self.bot_module.enabled_provider_catalog = old_catalog
+            self.bot_module.enabled_public_provider_catalog = old_catalog
 
         self.assertTrue(callback.message.edits)
         self.assertIn("Следующий шаг: откройте оплату", callback.message.edits[-1])
         reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
-        self.assertEqual(reply_markup.inline_keyboard[0][0].url, "https://checkout.cardlink.link/pay/test")
+        self.assertEqual(reply_markup.inline_keyboard[0][0].url, "https://checkout.lava.top/pay/test")
         self.assertEqual(callback.answers[-1], ("Ссылка на оплату готова", False))
 
-    def test_tariff_payment_choice_keyboard_lists_enabled_rub_providers(self) -> None:
-        old_catalog = self.bot_module.enabled_provider_catalog
+    def test_tariff_payment_choice_keyboard_is_lava_only_and_plan_ready(self) -> None:
+        old_catalog = self.bot_module.enabled_public_provider_catalog
         try:
             self.bot_module.RUB_CHECKOUT_ENABLED = True
             self.bot_module.PAID_CHECKOUT_LAUNCH_APPROVED = True
-            self.bot_module.enabled_provider_catalog = lambda: [
-                {"code": "cardlink", "label": "Cardlink", "supports_bot": True},
-                {"code": "pally", "label": "Paypalich", "supports_bot": True},
-            ]
+            self.bot_module.enabled_public_provider_catalog = lambda plan_code=None: (
+                [{"code": "lavatop", "label": "Lava.top", "supports_bot": True}]
+                if plan_code == "1_month"
+                else []
+            )
             keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="1_month")
+            unsupported = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
         finally:
-            self.bot_module.enabled_provider_catalog = old_catalog
+            self.bot_module.enabled_public_provider_catalog = old_catalog
 
-        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:cardlink:1_month")
-        self.assertEqual(keyboard.inline_keyboard[1][0].callback_data, "pay_rub:pally:1_month")
+        self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:lavatop:1_month")
+        self.assertFalse(
+            any(
+                str(getattr(button, "callback_data", "") or "").startswith("pay_rub")
+                for row in unsupported.inline_keyboard
+                for button in row
+            )
+        )
         flat_rows = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("📚 Посмотреть долгие тарифы", flat_rows)
         self.assertIn("◀️ К тарифам", flat_rows)
@@ -2366,12 +2413,16 @@ class BotPaywallTests(unittest.TestCase):
         self.assertNotIn("points", text.lower())
 
     def test_choose_tariff_text_is_trial_first_and_no_stars(self) -> None:
-        text = self.bot_module.build_choose_tariff_text()
+        text = self.bot_module.build_choose_tariff_text(show_trial=True)
         self.assertIn("5 дней", text)
         self.assertIn("бесплатно", text.lower())
         self.assertIn("5 ГБ", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
+
+        returning_text = self.bot_module.build_choose_tariff_text(show_trial=False)
+        self.assertNotIn("5 дней бесплатно", returning_text.lower())
+        self.assertNotIn("бесплатный старт", returning_text.lower())
 
     def test_dual_pay_text_uses_five_day_trial_copy(self) -> None:
         text = self.bot_module._dual_pay_text(show_trial=True)
@@ -2393,7 +2444,7 @@ class BotPaywallTests(unittest.TestCase):
         with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=["blocked"]):
             with patch.object(self.bot_module, "TELEGRAM_STARS_CHECKOUT_ENABLED", True):
                 with patch.object(self.bot_module, "get_user", return_value=None):
-                    self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "buy_trial")
+                    self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "instruction")
 
             used_trial = types.SimpleNamespace(
                 is_active=False,
@@ -2438,6 +2489,17 @@ class BotPaywallTests(unittest.TestCase):
                 copy_text="https://connect.pokrov.space/example",
             )
             self.assertEqual(getattr(getattr(button, "copy_text", None), "text", None), "https://connect.pokrov.space/example")
+
+    def test_reset_link_copy_is_honest_about_imported_profiles_and_has_no_fake_delay(self) -> None:
+        menu_source = inspect.getsource(self.bot_module.panic_menu)
+        execute_source = inspect.getsource(self.bot_module.panic_execute)
+
+        self.assertNotIn("asyncio.sleep", execute_source)
+        self.assertNotIn("потеряли устройство", menu_source)
+        self.assertNotIn("старая ссылка перестанет работать", menu_source.lower())
+        self.assertIn("импорт", menu_source.lower())
+        self.assertIn("поддерж", menu_source.lower())
+        self.assertIn("импорт", execute_source.lower())
 
     def test_admin_trial_gift_matches_five_day_canonical_trial(self) -> None:
         source = inspect.getsource(self.bot_module.admin_gift)
@@ -2566,6 +2628,88 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(classify(start_arg="app", app_link_account_id=1001), "app_link")
         self.assertEqual(classify(start_arg="pay"), "payment")
         self.assertEqual(classify(start_arg="renew"), "payment")
+
+    def test_reserved_payment_start_cannot_be_intercepted_by_dynamic_start_link(self) -> None:
+        session = self.bot_module.Session()
+        try:
+            session.add(
+                self.bot_module.StartLink(
+                    code="pay",
+                    target_action="app_link:9000000000101",
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        class _StartBot:
+            async def delete_message(self, *_args, **_kwargs):
+                return None
+
+        class _StartMessage(_FakeMessage):
+            def __init__(self):
+                super().__init__()
+                self.from_user = types.SimpleNamespace(id=1001, username="alice")
+                self.text = "/start pay"
+                self.bot = _StartBot()
+
+            async def delete(self):
+                return None
+
+        async def _no_panel_user(_tg_id):
+            return None
+
+        bind_calls: list[int] = []
+
+        def _bind(**kwargs):
+            bind_calls.append(int(kwargs["account_tg_id"]))
+            return "linked"
+
+        with patch.object(self.bot_module.panel, "get_existing_client", new=_no_panel_user):
+            with patch.object(self.bot_module, "_bind_app_account_to_telegram", side_effect=_bind):
+                tos_message = _StartMessage()
+                asyncio.run(self.bot_module.cmd_start(tos_message))
+                self.assertIn("услов", tos_message.answers[-1][0].lower())
+                self.assertEqual(bind_calls, [])
+
+                self.bot_module.set_tos_accepted(1001)
+                tariff_message = _StartMessage()
+                asyncio.run(self.bot_module.cmd_start(tariff_message))
+
+        self.assertEqual(bind_calls, [])
+        self.assertIn("с чего начнём", tariff_message.answers[-1][0].lower())
+        markup = tariff_message.answers[-1][1]["reply_markup"]
+        callbacks = {
+            str(getattr(button, "callback_data", "") or "")
+            for row in markup.inline_keyboard
+            for button in row
+        }
+        self.assertIn("charge_long", callbacks)
+
+    def test_stars_creation_and_precheckout_stay_closed_even_if_legacy_flag_is_true(self) -> None:
+        callback = _FakeCallback(1001, data="pay_stars_1_month")
+
+        class _InvoiceBot:
+            def __init__(self):
+                self.invoices = []
+                self.precheckout = []
+
+            async def send_invoice(self, **kwargs):
+                self.invoices.append(kwargs)
+
+            async def answer_pre_checkout_query(self, query_id, **kwargs):
+                self.precheckout.append((query_id, kwargs))
+
+        bot = _InvoiceBot()
+        with patch.object(self.bot_module, "TELEGRAM_STARS_CHECKOUT_ENABLED", True):
+            asyncio.run(self.bot_module.process_buy_stars(callback, bot))
+            query = types.SimpleNamespace(id="legacy-precheckout")
+            asyncio.run(self.bot_module.pre_checkout_handler(query, bot))
+
+        self.assertEqual(bot.invoices, [])
+        self.assertEqual(bot.precheckout[0][0], "legacy-precheckout")
+        self.assertFalse(bot.precheckout[0][1]["ok"])
 
     def test_activate_promo_code_rejects_expired_promo(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

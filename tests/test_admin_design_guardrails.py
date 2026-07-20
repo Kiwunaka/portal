@@ -1,4 +1,5 @@
 import re
+import sys
 from pathlib import Path
 
 
@@ -9,6 +10,7 @@ MARKETING_GLOBALS = ROOT / "marketing" / "src" / "app" / "globals.css"
 MARKETING_LAYOUT = ROOT / "marketing" / "src" / "app" / "layout.tsx"
 WEBAPP_LAYOUT = ROOT / "webapp" / "src" / "app" / "layout.tsx"
 WEBAPP_GLOBALS = ROOT / "webapp" / "src" / "app" / "globals.css"
+PORTAL_DIR = ROOT / "portal_bot"
 
 
 def _read(path: Path) -> str:
@@ -78,3 +80,14 @@ def test_public_surfaces_bundle_the_canonical_cyrillic_fonts() -> None:
     assert 'variable: "--font-jetbrains"' in webapp_layout
     for globals_source in (marketing_globals, webapp_globals):
         assert '--font-golos: "Golos Text"' not in globals_source
+
+
+def test_telegram_button_style_uses_label_and_real_destructive_callbacks() -> None:
+    if str(PORTAL_DIR) not in sys.path:
+        sys.path.insert(0, str(PORTAL_DIR))
+    from telegram_buttons import BTN_STYLE_DANGER, infer_button_style
+
+    assert infer_button_style("◀️ Назад", callback_data="show_key") is None
+    assert infer_button_style("Отмена", callback_data="adm_user_42") is None
+    assert infer_button_style("Удалить пользователя", callback_data="adm_del_42") == BTN_STYLE_DANGER
+    assert infer_button_style("Обновить токен", callback_data="adm_regen_token_42") == BTN_STYLE_DANGER

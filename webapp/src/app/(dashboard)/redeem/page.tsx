@@ -11,6 +11,7 @@ import { ActionCard, ActionGrid } from "@/components/ui/tiles";
 import { useToast } from "@/components/ui/toast";
 import { resolvePlanLabel } from "@/lib/access-policy";
 import { fetchAccessKeyStatus, redeemAccessKey, type AccessKeyStatusPayload } from "@/lib/api";
+import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -83,7 +84,7 @@ export default function RedeemPage() {
       }
       return nextStatus;
     } catch (nextError) {
-      setError(String((nextError as { message?: string })?.message || nextError || "Не удалось проверить код."));
+      setError(userFacingErrorMessage(nextError, "Не удалось проверить код. Попробуйте позже или откройте поддержку."));
       return null;
     } finally {
       setLookupBusy(false);
@@ -112,7 +113,7 @@ export default function RedeemPage() {
       setMessage(`Код ${payload.key} активирован. Профиль уже обновлен.`);
       showToast("Код активирован", "success");
     } catch (nextError) {
-      const errorText = String((nextError as { message?: string })?.message || nextError || "Не удалось активировать код.");
+      const errorText = userFacingErrorMessage(nextError, "Не удалось активировать код. Попробуйте позже или откройте поддержку.");
       setError(errorText);
       showToast("Не удалось активировать код", "danger");
     } finally {

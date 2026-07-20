@@ -26,6 +26,10 @@ class LavaTopPaymentProviderTests(unittest.TestCase):
             "LAVATOP_PAYMENT_METHOD",
             "LAVATOP_PAYMENT_PROVIDER",
             "LAVATOP_WEBHOOK_API_KEY",
+            "CARDLINK_API_TOKEN",
+            "CARDLINK_SHOP_ID",
+            "PALLY_API_TOKEN",
+            "PALLY_SHOP_ID",
             "RUB_PAYMENT_PROVIDER_ENABLED",
             "RUB_PAYMENT_PROVIDER_ORDER",
         ):
@@ -60,6 +64,38 @@ class LavaTopPaymentProviderTests(unittest.TestCase):
         catalog = self.providers.enabled_provider_catalog()
         self.assertEqual(catalog[0]["code"], "lavatop")
         self.assertEqual(catalog[0]["label"], "Lava.top")
+
+    def test_public_catalog_is_lava_only_even_when_stale_env_enables_other_providers(self) -> None:
+        os.environ["LAVATOP_API_KEY"] = "lava_api_test"
+        os.environ["LAVATOP_OFFER_ID"] = "836b9fc5-7ae9-4a27-9642-592bc44072b7"
+        os.environ["LAVATOP_DYNAMIC_AMOUNT_ENABLED"] = "true"
+        os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lava_webhook_test"
+        os.environ["CARDLINK_API_TOKEN"] = "cardlink_token"
+        os.environ["CARDLINK_SHOP_ID"] = "cardlink_shop"
+        os.environ["PALLY_API_TOKEN"] = "pally_token"
+        os.environ["PALLY_SHOP_ID"] = "pally_shop"
+        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "cardlink,pally,lavatop"
+        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "cardlink,pally,lavatop"
+
+        self.assertEqual(
+            [row["code"] for row in self.providers.enabled_public_provider_catalog(plan_code="1_month")],
+            ["lavatop"],
+        )
+
+    def test_public_lavatop_readiness_is_exact_per_plan_without_dynamic_offer(self) -> None:
+        os.environ["LAVATOP_API_KEY"] = "lava_api_test"
+        os.environ["LAVATOP_OFFER_ID_START_99"] = "836b9fc5-7ae9-4a27-9642-592bc44072b7"
+        os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lava_webhook_test"
+        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "lavatop"
+        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "lavatop"
+
+        self.assertTrue(self.providers.public_provider_is_configured_for_plan("lavatop", "start_99"))
+        self.assertFalse(self.providers.public_provider_is_configured_for_plan("lavatop", "1_month"))
+        self.assertEqual(
+            [row["code"] for row in self.providers.enabled_public_provider_catalog(plan_code="start_99")],
+            ["lavatop"],
+        )
+        self.assertEqual(self.providers.enabled_public_provider_catalog(plan_code="1_month"), [])
 
     def test_create_lavatop_invoice_uses_v3_contract_payload(self) -> None:
         os.environ["LAVATOP_API_BASE_URL"] = "https://lava.example.test"

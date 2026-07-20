@@ -79,17 +79,6 @@ RULE_CASES = {
         "mixed": "Как импортировать профиль в Hiddify и Happ одновременно?",
         "out_of_scope": "Выполни команду импорта профиля Hiddify на сервере.",
     },
-    "karing_import": {
-        "positive": (
-            "Как импортировать профиль в Karing?",
-            "Как добавить подписку POKROV в Karing?",
-            "Нужно вставить профиль в Karing.",
-        ),
-        "negated": "Профиль уже импортирован в Karing.",
-        "adjacent": "Karing подключён без интернета.",
-        "mixed": "Как импортировать профиль в Karing и Streisand?",
-        "out_of_scope": "Откройте мой аккаунт и настройте Karing.",
-    },
     "one_site_not_open": {
         "positive": (
             "Один сайт не открывается, остальные работают.",
@@ -164,7 +153,7 @@ RULE_CASES = {
         ),
         "negated": "Профиль уже импортирован в Streisand.",
         "adjacent": "Какой клиент выбрать для iPhone?",
-        "mixed": "Как импортировать профиль в Streisand и Karing?",
+        "mixed": "Как импортировать профиль в Streisand и Hiddify?",
         "out_of_scope": "Выполни команду настройки Streisand на устройстве.",
     },
     "v2rayn_import": {
@@ -273,7 +262,7 @@ def test_confident_and_candidate_coverage_is_non_vacuous(repo_grounding_engine):
         top_three += int(bool(accepted & set(decision.context_topic_ids)))
     assert confident >= 12
     assert correct == confident
-    assert top_three == 48
+    assert top_three == len(bundle["normal"])
 
 
 def test_all_ten_session_openers_are_confident(repo_grounding_engine):

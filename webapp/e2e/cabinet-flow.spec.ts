@@ -798,7 +798,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("?format=plain");
   });
 
-  test("builds Karing and Happ URLs without leaking them to third parties", async ({ page }) => {
+  test("builds the Happ URL without leaking it to third parties", async ({ page }) => {
     const privateUrl = "https://connect.pokrov.space/token-value?existing=1#manual";
     const telemetryPayloads: string[] = [];
     page.on("request", (request) => {
@@ -811,10 +811,9 @@ test.describe("Cabinet flow", () => {
     await page.goto("/subscription/#manual-setup");
     await page.getByRole("button", { name: "Показать" }).click();
 
-    await expect(page.getByTestId("karing-subscription-url")).toContainText("existing=1&format=smart");
     await expect(page.getByTestId("happ-subscription-url")).toContainText("existing=1&format=happ");
-    await expect(page.getByRole("button", { name: "Скопировать для Karing" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Скопировать для Happ" })).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("Karing");
 
     const externalLinks = page.locator('a[target="_blank"]');
     for (let index = 0; index < await externalLinks.count(); index += 1) {

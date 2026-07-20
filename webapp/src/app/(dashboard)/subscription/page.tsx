@@ -73,12 +73,12 @@ function CompatibleClientImport({
   downloadUrl,
   testId,
 }: {
-  name: "Karing" | "Happ";
+  name: "Happ";
   platforms: string;
-  formatLabel: "format=smart" | "format=happ";
+  formatLabel: "format=happ";
   subscriptionUrl: string;
   downloadUrl: string;
-  testId: "karing-subscription-url" | "happ-subscription-url";
+  testId: "happ-subscription-url";
 }) {
   return (
     <div className="p-4">
@@ -179,15 +179,12 @@ export default function SubscriptionPage() {
   const subscriptionUrl = String(user?.subscription_url || dash?.subscription_url || "").trim();
   const manualAccessReady = Boolean(subscriptionUrl && (dash?.is_active || user?.is_active));
   const manualAccessVisible = manualAccessOpen && manualAccessReady;
-  let compatibleClientUrls: { karing: string; happ: string } | null = null;
+  let happSubscriptionUrl: string | null = null;
   if (manualAccessVisible) {
     try {
-      compatibleClientUrls = {
-        karing: subscriptionUrlForFormat(subscriptionUrl, "smart"),
-        happ: subscriptionUrlForFormat(subscriptionUrl, "happ"),
-      };
+      happSubscriptionUrl = subscriptionUrlForFormat(subscriptionUrl, "happ");
     } catch {
-      compatibleClientUrls = null;
+      happSubscriptionUrl = null;
     }
   }
 
@@ -363,28 +360,18 @@ export default function SubscriptionPage() {
                       </a>
                     }
                   />
-                  {compatibleClientUrls ? (
-                    <>
-                      <CompatibleClientImport
-                        name="Karing"
-                        platforms="Android, Windows и macOS"
-                        formatLabel="format=smart"
-                        subscriptionUrl={compatibleClientUrls.karing}
-                        downloadUrl="https://github.com/KaringX/karing/releases/latest"
-                        testId="karing-subscription-url"
-                      />
-                      <CompatibleClientImport
-                        name="Happ"
-                        platforms="Android, Windows, macOS и iOS"
-                        formatLabel="format=happ"
-                        subscriptionUrl={compatibleClientUrls.happ}
-                        downloadUrl="https://www.happ.su/main/"
-                        testId="happ-subscription-url"
-                      />
-                    </>
+                  {happSubscriptionUrl ? (
+                    <CompatibleClientImport
+                      name="Happ"
+                      platforms="Android, Windows, macOS и iOS"
+                      formatLabel="format=happ"
+                      subscriptionUrl={happSubscriptionUrl}
+                      downloadUrl="https://www.happ.su/main/"
+                      testId="happ-subscription-url"
+                    />
                   ) : (
                     <div className="p-4 text-sm leading-6 text-danger-text">
-                      Не удалось безопасно подготовить ссылки для Karing и Happ.
+                      Не удалось безопасно подготовить ссылку для Happ.
                     </div>
                   )}
                   <Row

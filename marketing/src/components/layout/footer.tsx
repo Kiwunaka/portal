@@ -86,7 +86,7 @@ export function Footer() {
       </div>
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-5 sm:px-6">
-          <span className="text-[0.8125rem] text-ink-muted">
+          <span className="text-[0.8125rem] text-ink-soft">
             © {new Date().getFullYear()} {CANONICAL_PLATFORM_BRAND}
           </span>
           <span className="text-[0.8125rem] text-ink-soft">

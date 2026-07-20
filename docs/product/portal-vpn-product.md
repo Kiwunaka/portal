@@ -284,8 +284,8 @@ explicitly needed:
 - one canonical host: `connect.pokrov.space`
 - no first-layer consumer screen should lead with QR, raw token, raw config, or transport settings
 - `POKROV` is the primary client; `Hiddify` is the verified manual fallback
-- the authenticated manual section may derive `format=smart` for Karing and
-  `format=happ` for Happ with `URL.searchParams`; both remain best-effort
+- the authenticated manual section may derive `format=happ` for Happ with
+  `URL.searchParams`; Happ remains best-effort and the user must not edit query parameters manually
 - a private URL or QR must never be placed in a third-party link, telemetry,
   public page, or support artifact
 
@@ -294,7 +294,7 @@ Product wording rule:
 - explicit fallback copy may say `ссылка подключения` and `QR для подключения`
 - do not describe separate public `умный` and `обычный` keys
 - `?format=plain` remains backend compatibility-only and must stay hidden from normal site, bot, and webapp flows
-- Karing/Happ format variants are authenticated manual-import derivatives of
+- Happ format variants are authenticated manual-import derivatives of
   the same private source, not public product links or new account credentials
 
 ## Trial And Bonus Rules

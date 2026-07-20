@@ -115,9 +115,9 @@ from payment_providers import (
     callback_ids as payment_callback_ids,
     callback_status as payment_callback_status,
     create_rub_payment,
-    enabled_provider_catalog,
-    enabled_rub_provider_codes,
+    enabled_public_provider_catalog,
     normalize_provider as _normalize_checkout_provider,
+    public_provider_is_configured_for_plan,
     provider_is_configured,
     verify_callback_signature as verify_provider_callback_signature,
 )
@@ -1343,6 +1343,7 @@ class RubProviderChoiceOut(BaseModel):
     supports_bot: bool = True
     supports_webapp: bool = True
     supports_public: bool = True
+    supported_plan_codes: list[str] = Field(default_factory=list)
 
 
 class RubProvidersOut(BaseModel):
@@ -3968,7 +3969,7 @@ def _checkout_runtime_issues() -> list[tuple[str, str]]:
         issues.append(("missing_pay_success_url", "PAY_SUCCESS_URL is not configured"))
     if not (_safe_public_url(Settings.PAY_FAIL_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
         issues.append(("missing_pay_fail_url", "PAY_FAIL_URL is not configured"))
-    enabled = enabled_rub_provider_codes()
+    enabled = enabled_public_provider_catalog()
     if not enabled:
         issues.append(("no_enabled_providers", "No RUB payment providers are configured"))
     email_status = email_delivery_runtime_status()
@@ -3990,7 +3991,16 @@ def _checkout_runtime_errors() -> list[str]:
 def _public_checkout_provider_state() -> RubProvidersOut:
     issues = _checkout_runtime_issues()
     blocked = bool(issues)
-    rows = [] if blocked else [RubProviderChoiceOut(**row) for row in enabled_provider_catalog()]
+    rows = []
+    if not blocked:
+        for row in enabled_public_provider_catalog():
+            payload = dict(row)
+            payload["supported_plan_codes"] = [
+                code
+                for code in RUB_PLAN_PRICES
+                if public_provider_is_configured_for_plan(str(row.get("code") or ""), code)
+            ]
+            rows.append(RubProviderChoiceOut(**payload))
     if not rows and not blocked:
         issues = [("no_enabled_providers", "No RUB payment providers are configured")]
         blocked = True
@@ -4013,9 +4023,9 @@ def _ensure_checkout_runtime_ready() -> None:
 
 def _ensure_checkout_provider_enabled(provider: str) -> None:
     normalized = _normalize_provider(provider)
-    enabled = set(enabled_rub_provider_codes())
+    enabled = {str(row.get("code") or "") for row in enabled_public_provider_catalog()}
     if not normalized or normalized not in enabled:
-        raise HTTPException(status_code=503, detail=f"{normalized or 'provider'} is not enabled for RUB checkout")
+        raise HTTPException(status_code=503, detail=f"{normalized or 'provider'} is not enabled for public RUB checkout")
 
 
 def _payment_callback_base_url() -> str:
@@ -11667,7 +11677,7 @@ async def _rub_create_order_internal(
     _ensure_checkout_runtime_ready()
     provider = _normalize_provider(provider)
     if not provider:
-        enabled_codes = enabled_rub_provider_codes()
+        enabled_codes = [str(row.get("code") or "") for row in enabled_public_provider_catalog()]
         provider = str(enabled_codes[0] if enabled_codes else "").strip().lower()
     if not provider:
         raise HTTPException(status_code=503, detail="No RUB payment providers are enabled")
@@ -11697,6 +11707,8 @@ async def _rub_create_order_internal(
         if normalized_tg_id > 0 and not user:
             raise HTTPException(status_code=404, detail="User not found")
         normalized_plan_code = str(plan.get("code") or plan_code).strip().lower()
+        if not public_provider_is_configured_for_plan(provider, normalized_plan_code):
+            raise HTTPException(status_code=503, detail=f"{provider} plan is not configured for public RUB checkout")
         _ensure_start99_available_for_user(s=s, user=user, plan_code=normalized_plan_code)
         base_amount = max(0, int(plan.get("amount_rub") or 0))
         final_amount = base_amount

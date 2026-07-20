@@ -106,7 +106,7 @@ _SEARCH_STOPWORDS = frozenset(
     }
 )
 _SEARCH_SCOPE_TOKENS = frozenset(
-    {"hiddify", "happ", "karing", "v2rayng", "v2rayn", "streisand", "android", "windows", "ios", "macos"}
+    {"hiddify", "happ", "v2rayng", "v2rayn", "streisand", "android", "windows", "ios", "macos"}
 )
 _SEARCH_SUFFIXES = tuple(
     sorted(
