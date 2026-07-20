@@ -7,6 +7,7 @@
     "build": "next build && node ./scripts/fix-export-segment-paths.mjs",
     "start": "next start",
     "lint": "eslint",
+    "generate:favicon": "node ./scripts/generate-favicon.mjs",
     "test:public-errors": "node --test ./scripts/public-error-messages.test.mjs",
     "test:e2e": "node ./scripts/run-e2e.mjs full",
     "test:e2e:admin": "node ./scripts/run-e2e.mjs admin",
