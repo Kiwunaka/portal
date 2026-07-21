@@ -201,8 +201,9 @@ def test_root_release_orchestration_uses_wrappers_and_bridge_archive_mirror() ->
     assert '[sys.executable, "scripts/run_client_release_gate.py", "test", "--suite", suite],' in release_gate_text
     assert '[sys.executable, "scripts/run_client_release_gate.py", "build", "--target", target],' in release_gate_text
     assert "external/client-fork/app" not in release_gate_text
-    assert 'DEFAULT_CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"' in client_gate_text
-    assert 'CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))' in client_gate_text
+    assert "def _resolve_client_root(platform_checkout: Path) -> Path:" in client_gate_text
+    assert 'fields.get("branch") == "refs/heads/main"' in client_gate_text
+    assert "CLIENT_ROOT = _resolve_client_root(REPO_ROOT)" in client_gate_text
     assert "Run POKROV-app release gates from the platform repo." in client_gate_text
     assert "status.android_shell_root" in client_gate_text
     assert "status.windows_shell_root" in client_gate_text

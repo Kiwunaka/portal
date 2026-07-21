@@ -9,6 +9,11 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
+class ExportThreadingHTTPServer(ThreadingHTTPServer):
+    request_queue_size = 128
+    daemon_threads = True
+
+
 class ExportStaticHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, directory: str, **kwargs):
         self._export_directory = Path(directory).resolve()
@@ -81,7 +86,7 @@ def main() -> None:
     args = parser.parse_args()
 
     handler = partial(ExportStaticHandler, directory=args.directory)
-    with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
+    with ExportThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
         server.serve_forever()
 
 

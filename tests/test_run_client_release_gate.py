@@ -3,6 +3,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 
 def _load_module():
@@ -58,6 +59,50 @@ def test_preflight_reports_missing_seed_workspace_paths() -> None:
     assert status.bootstrap_script in status.missing_paths
     assert issue is not None
     assert "POKROV-app gate root is incomplete" in issue
+
+
+def test_client_root_resolver_selects_the_main_worktree() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace_root = Path(tmp)
+        platform_root = workspace_root / "VPN"
+        platform_checkout = platform_root / ".worktrees" / "integration"
+        client_repo = workspace_root / "POKROV-app"
+        main_worktree = client_repo / ".worktrees" / "final-client-integration"
+        (client_repo / ".git").mkdir(parents=True)
+
+        git_results = (
+            subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=f"{platform_root / '.git'}\n",
+            ),
+            subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=(
+                    f"worktree {client_repo}\n"
+                    "branch refs/heads/codex/client-work\n\n"
+                    f"worktree {main_worktree}\n"
+                    "branch refs/heads/main\n"
+                ),
+            ),
+        )
+        with patch.dict(MODULE.os.environ, {"POKROV_APP_ROOT": ""}, clear=False):
+            with patch.object(MODULE.subprocess, "run", side_effect=git_results):
+                resolved = MODULE._resolve_client_root(platform_checkout)
+
+    assert resolved == main_worktree.resolve()
+
+
+def test_client_root_resolver_keeps_explicit_override_authoritative() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        override = Path(tmp) / "explicit-client"
+        with patch.dict(MODULE.os.environ, {"POKROV_APP_ROOT": str(override)}, clear=False):
+            with patch.object(MODULE.subprocess, "run") as run:
+                resolved = MODULE._resolve_client_root(Path(tmp) / "platform")
+
+    assert resolved == override.resolve()
+    run.assert_not_called()
 
 
 def test_portal_suite_command_targets_pokrov_app_shells() -> None:

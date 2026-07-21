@@ -3,13 +3,45 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"
-CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    override = os.getenv("POKROV_APP_ROOT", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+
+    common_dir = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    client_repo = Path(common_dir).resolve().parent.parent / "POKROV-app"
+    if not (client_repo / ".git").exists():
+        return client_repo
+
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
+
+
+CLIENT_ROOT = _resolve_client_root(REPO_ROOT)
 
 PRODUCT_CONTRACT_PATH = CLIENT_ROOT / "config" / "product-contract.seed.json"
 RUNTIME_PROFILE_PATH = CLIENT_ROOT / "config" / "runtime-profile.seed.json"

@@ -58,11 +58,11 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             "PAID_CHECKOUT_LAUNCH_APPROVED",
             "CHECKOUT_TICKET_SECRET",
             "CHECKOUT_TICKET_TTL_SECONDS",
-            "FREEKASSA_SIGNING_SECRET",
-            "FK_SITE_SHOP_ID",
-            "FK_SITE_API_KEY",
-            "FK_SITE_SECRET_WORD_1",
-            "FK_SITE_SECRET_WORD_2",
+            "LAVATOP_API_KEY",
+            "LAVATOP_OFFER_ID",
+            "LAVATOP_DYNAMIC_AMOUNT_ENABLED",
+            "LAVATOP_WEBHOOK_API_KEY",
+            "LAVATOP_WEBHOOK_IP_ALLOWLIST",
             "RUB_PAYMENT_PROVIDER_ENABLED",
             "RUB_PAYMENT_PROVIDER_ORDER",
             "EMAIL_AUTH_PUBLIC_ENABLED",
@@ -82,13 +82,13 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         os.environ["PAID_CHECKOUT_LAUNCH_APPROVED"] = "true"
         os.environ["CHECKOUT_TICKET_SECRET"] = "checkout_secret_test_123"
         os.environ["CHECKOUT_TICKET_TTL_SECONDS"] = "900"
-        os.environ["FREEKASSA_SIGNING_SECRET"] = "test_fk_secret"
-        os.environ["FK_SITE_SHOP_ID"] = "69962"
-        os.environ["FK_SITE_API_KEY"] = "fk_api_key_test"
-        os.environ["FK_SITE_SECRET_WORD_1"] = "fk_sw1_test"
-        os.environ["FK_SITE_SECRET_WORD_2"] = "fk_sw2_test"
-        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "freekassa"
-        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "freekassa"
+        os.environ["LAVATOP_API_KEY"] = "lavatop_api_key_test"
+        os.environ["LAVATOP_OFFER_ID"] = "836b9fc5-7ae9-4a27-9642-592bc44072b7"
+        os.environ["LAVATOP_DYNAMIC_AMOUNT_ENABLED"] = "true"
+        os.environ["LAVATOP_WEBHOOK_API_KEY"] = "lavatop_webhook_key_test"
+        os.environ.pop("LAVATOP_WEBHOOK_IP_ALLOWLIST", None)
+        os.environ["RUB_PAYMENT_PROVIDER_ENABLED"] = "lavatop"
+        os.environ["RUB_PAYMENT_PROVIDER_ORDER"] = "lavatop"
         os.environ["EMAIL_AUTH_PUBLIC_ENABLED"] = "true"
         os.environ["EMAIL_AUTH_DEBUG_ECHO"] = "false"
         os.environ["EMAIL_DELIVERY_WEBHOOK_URL"] = "https://relay.pokrov.test/email/deliver"
@@ -172,11 +172,6 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             },
             json=payload,
         )
-
-    @staticmethod
-    def _fk_sci_signature(*, merchant_id: str, amount: str, order_id: str, secret_word_2: str) -> str:
-        base = f"{merchant_id}:{amount}:{secret_word_2}:{order_id}"
-        return hashlib.md5(base.encode("utf-8")).hexdigest()
 
     def test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase(self) -> None:
         class _FakePanel:
@@ -374,39 +369,55 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             campaign_key="api_smoke",
             source="site",
         )
-        create_order = self.client.post(
-            "/api/payments/freekassa/orders/create-public",
-            json={"plan_code": "1_month", "checkout_ticket": checkout_ticket, "currency": "RUB"},
-        )
+        async def _fake_create_rub_payment(**_kwargs):
+            payment_url = "https://app.lava.top/pay/api-lifecycle-smoke"
+            return {"payment_url": payment_url, "remote": {"payment_url": payment_url}}
+
+        with patch.object(self.api, "create_rub_payment", new=_fake_create_rub_payment):
+            create_order = self.client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "1_month",
+                    "checkout_ticket": checkout_ticket,
+                    "currency": "RUB",
+                },
+            )
         self.assertEqual(create_order.status_code, 200, create_order.text)
         order_body = create_order.json()
         self.assertTrue(order_body.get("ok"))
         self.assertEqual(str(order_body.get("status") or ""), "pending")
-        self.assertTrue(str(order_body.get("payment_url") or "").startswith("https://pay.fk.money/?"))
+        self.assertEqual(str(order_body.get("provider") or ""), "lavatop")
+        self.assertEqual(str(order_body.get("payment_url") or ""), "https://app.lava.top/pay/api-lifecycle-smoke")
         self.assertTrue(bool(order_body.get("discount_applied")))
 
         order_id = str(order_body.get("order_id") or "")
         self.assertTrue(order_id)
-        amount = f"{float(order_body.get('amount_rub') or 0):.2f}"
         callback_payload = {
-            "MERCHANT_ID": "69962",
-            "AMOUNT": amount,
-            "MERCHANT_ORDER_ID": order_id,
-            "SIGN": self._fk_sci_signature(
-                merchant_id="69962",
-                amount=amount,
-                order_id=order_id,
-                secret_word_2="fk_sw2_test",
-            ),
-            "us_tg_id": str(account_id),
-            "us_plan_code": "1_month",
-            "us_campaign": "api_smoke",
-            "us_promo_code": "SMOKE14",
-            "intid": f"tx-{uuid.uuid4().hex[:12]}",
+            "eventType": "payment.success",
+            "contractId": str(uuid.uuid4()),
+            "amount": float(order_body.get("amount_rub") or 0),
+            "currency": "RUB",
+            "status": "completed",
+            "timestamp": "2026-07-21T00:00:00Z",
+            "clientUtm": {
+                "utm_content": order_id,
+                "utm_medium": "site",
+                "utm_campaign": "api_smoke",
+                "utm_term": "1_month",
+            },
+            "tg_id": str(account_id),
+            "plan_code": "1_month",
+            "source": "site",
         }
-        callback = self.client.post("/api/payments/freekassa/notify", params=callback_payload)
+        callback = self.client.post(
+            "/api/payments/result/lavatop",
+            json=callback_payload,
+            headers={"X-Api-Key": "lavatop_webhook_key_test"},
+        )
         self.assertEqual(callback.status_code, 200, callback.text)
-        self.assertEqual(callback.text.strip(), "YES")
+        self.assertTrue(callback.json().get("ok"))
+        self.assertTrue(callback.json().get("activated"))
 
         dashboard_after = self.client.get("/api/dashboard", headers=auth_headers)
         self.assertEqual(dashboard_after.status_code, 200, dashboard_after.text)
@@ -442,6 +453,7 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             referred_user = s.query(User).filter(User.tg_id == account_id).first()
             referrer = s.query(User).filter(User.tg_id == 2002).first()
             self.assertIsNotNone(order_row)
+            self.assertEqual(str(order_row.provider or ""), "lavatop")
             self.assertEqual(str(order_row.status or ""), "paid")
             self.assertEqual(len(payment_events), 1)
             self.assertIsNone(bonus_queue)

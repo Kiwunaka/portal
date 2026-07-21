@@ -56,8 +56,9 @@ def test_android_release_bundle_is_root_orchestrated_from_pokrov_app() -> None:
     assert '"android-apk": "Client Android APK build",' in release_gate_text
     assert '"android-aab": "Client Android AAB build",' in release_gate_text
     assert '[sys.executable, "scripts/run_client_release_gate.py", "build", "--target", target],' in release_gate_text
-    assert 'DEFAULT_CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"' in client_gate_text
-    assert 'CLIENT_ROOT = Path(os.getenv("POKROV_APP_ROOT", str(DEFAULT_CLIENT_ROOT)))' in client_gate_text
+    assert "def _resolve_client_root(platform_checkout: Path) -> Path:" in client_gate_text
+    assert 'fields.get("branch") == "refs/heads/main"' in client_gate_text
+    assert "CLIENT_ROOT = _resolve_client_root(REPO_ROOT)" in client_gate_text
     assert 'status.android_shell_root / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk"' in client_gate_text
     assert 'status.android_shell_root / "build" / "app" / "outputs" / "bundle" / "release" / "app-release.aab"' in client_gate_text
     assert "cwd=status.android_shell_root" in client_gate_text

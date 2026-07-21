@@ -1,4 +1,5 @@
 import importlib.util
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -29,6 +30,32 @@ class ReleaseGateCheckTests(unittest.TestCase):
 
         self.assertIn("Client security smoke", names)
         self.assertIn("Client Flutter tests", names)
+
+    def test_client_root_resolver_selects_the_main_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace_root = Path(tmp)
+            platform_root = workspace_root / "VPN"
+            client_repo = workspace_root / "POKROV-app"
+            main_worktree = client_repo / ".worktrees" / "final-client-integration"
+            (client_repo / ".git").mkdir(parents=True)
+            git_results = (
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=f"{platform_root / '.git'}\n"),
+                subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=(
+                        f"worktree {client_repo}\n"
+                        "branch refs/heads/codex/client-work\n\n"
+                        f"worktree {main_worktree}\n"
+                        "branch refs/heads/main\n"
+                    ),
+                ),
+            )
+            with patch.dict(self.module.os.environ, {"POKROV_APP_ROOT": ""}, clear=False):
+                with patch.object(self.module.subprocess, "run", side_effect=git_results):
+                    resolved = self.module._resolve_client_root(platform_root / ".worktrees" / "integration")
+
+        self.assertEqual(resolved, main_worktree.resolve())
 
     def test_account_foundation_is_in_release_pytest_matrix(self) -> None:
         self.assertIn("tests/test_account_foundation.py", self.module.RELEASE_PYTEST_ARGS)

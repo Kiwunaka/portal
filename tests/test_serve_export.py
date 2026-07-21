@@ -25,6 +25,14 @@ def _handler(module, directory: Path):
     return handler
 
 
+def test_export_http_server_accepts_browser_asset_bursts() -> None:
+    module = _load_serve_export()
+
+    assert issubclass(module.ExportThreadingHTTPServer, module.ThreadingHTTPServer)
+    assert module.ExportThreadingHTTPServer.request_queue_size >= 64
+    assert module.ExportThreadingHTTPServer.daemon_threads is True
+
+
 def test_export_static_handler_normalized_candidates_cover_spa_routes(tmp_path: Path) -> None:
     module = _load_serve_export()
     handler = _handler(module, tmp_path)

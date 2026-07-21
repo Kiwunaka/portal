@@ -1,7 +1,10 @@
 import importlib.util
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 def _load_module():
@@ -19,6 +22,32 @@ class ClientSecuritySmokeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.module = _load_module()
+
+    def test_client_root_resolver_selects_the_main_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace_root = Path(tmp)
+            platform_root = workspace_root / "VPN"
+            client_repo = workspace_root / "POKROV-app"
+            main_worktree = client_repo / ".worktrees" / "final-client-integration"
+            (client_repo / ".git").mkdir(parents=True)
+            git_results = (
+                subprocess.CompletedProcess(args=[], returncode=0, stdout=f"{platform_root / '.git'}\n"),
+                subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=(
+                        f"worktree {client_repo}\n"
+                        "branch refs/heads/codex/client-work\n\n"
+                        f"worktree {main_worktree}\n"
+                        "branch refs/heads/main\n"
+                    ),
+                ),
+            )
+            with patch.dict(self.module.os.environ, {"POKROV_APP_ROOT": ""}, clear=False):
+                with patch.object(self.module.subprocess, "run", side_effect=git_results):
+                    resolved = self.module._resolve_client_root(platform_root / ".worktrees" / "integration")
+
+        self.assertEqual(resolved, main_worktree.resolve())
 
     def test_product_contract_fails_when_public_scope_or_free_tier_drift(self) -> None:
         contract = {

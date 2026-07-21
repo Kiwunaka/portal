@@ -809,7 +809,8 @@ test.describe("Cabinet flow", () => {
     await registerCabinetMocks(page, { subscriptionUrl: privateUrl });
 
     await page.goto("/subscription/#manual-setup");
-    await page.getByRole("button", { name: "Показать" }).click();
+    const manualConnection = page.locator("#manual-setup");
+    await expect(manualConnection.getByRole("button", { name: "Скрыть" })).toBeVisible();
 
     await expect(page.getByTestId("happ-subscription-url")).toContainText("existing=1&format=happ");
     await expect(page.getByRole("button", { name: "Скопировать для Happ" })).toBeVisible();
