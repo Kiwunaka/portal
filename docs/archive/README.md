@@ -18,6 +18,7 @@ The following materials are useful for investigation, migration context, and for
 - root guides moved into `docs/archive/root-guides/`
 - completed planning packets in `docs/archive/plans/`
 - completed design plans and boards in `docs/archive/design-plans/`
+- retired or superseded public design assets in `docs/archive/design-assets/`
 - old Superpowers execution plans in `docs/archive/superpowers-plans/`
 - dated competitor and censorship research in `docs/archive/competitive/`
 
@@ -33,6 +34,7 @@ Archived root-level guides currently stored here:
 
 - [Archived Planning Packets](C:/Users/kiwun/Documents/ai/VPN/docs/archive/plans/README.md)
 - [Archived Design Plans](C:/Users/kiwun/Documents/ai/VPN/docs/archive/design-plans/README.md)
+- [Archived Design Assets](C:/Users/kiwun/Documents/ai/VPN/docs/archive/design-assets/README.md)
 - [Archived Superpowers Plans](C:/Users/kiwun/Documents/ai/VPN/docs/archive/superpowers-plans/README.md)
 - [Archived Competitor Research](C:/Users/kiwun/Documents/ai/VPN/docs/archive/competitive/telegram-vpn-2026-07-12/README.md)
 

@@ -1,53 +1,56 @@
 {
   "updatedAt": "2026-06-03",
-  "intendedSurface": "marketing home feature cards",
-  "reviewNote": "Premium bitmap product-shot mockups generated after owner feedback that the earlier SVG cards looked too flat, then regenerated with Russian in-image UI text and the mark-only POKROV logo used as visual reference. Local review checked that the assets stay within current POKROV beta facts and avoid store, stable, RU-origin, hidden SEO, raw-link, personal-identifier, and unsupported safety claims.",
-  "releaseScopeNote": "Public marketing beta assets; use only current POKROV facts: 5-day trial, Android and Windows files, Telegram +10 days, one account/cabinet/support flow. No store/stable/RU-origin claims.",
+  "archivedAt": "2026-07-21",
+  "classification": "HISTORICAL_REFERENCE / SUPERSEDED",
+  "intendedSurface": "retired marketing home feature cards",
+  "reviewNote": "These unused homepage mockups were removed from marketing/public after archive review. The account variants contain the superseded direct Telegram +10-day claim and must not be republished as current product truth.",
+  "releaseScopeNote": "Historical provenance only. The current new-account Telegram reward is +5 days; public wording may state up to 10 starting days only as 5 trial days plus 5 Telegram reward days.",
   "assets": [
     {
-      "path": "marketing/public/home/feature-start-premium.png",
+      "path": "docs/archive/design-assets/marketing-home-2026-06-03/feature-start-premium.png",
       "tool": "built-in image_gen",
       "finalDimensions": "1672x941 PNG",
       "sourcePrompt": "Premium product-shot UI mockup for app-first connection start with Russian UI labels: POKROV desktop and phone panels, Подключить control, 5 дней state, service checks, calm warm light canvas, deep emerald/mint/gold accents, no VPN wording or release-overclaim.",
       "sourceMaster": "POKROV mark-only logo reference, design tokens, canonical public product facts, and existing marketing feature-card layout"
     },
     {
-      "path": "marketing/public/home/feature-devices-premium.png",
+      "path": "docs/archive/design-assets/marketing-home-2026-06-03/feature-devices-premium.png",
       "tool": "built-in image_gen",
       "finalDimensions": "1672x941 PNG",
       "sourcePrompt": "Premium product-shot UI mockup with Russian UI labels for one cabinet managing Android and Windows devices, up to 5 devices in paid plans, warm light canvas, deep emerald/mint/gold accents, no store/stable/RU-origin claims.",
       "sourceMaster": "POKROV mark-only logo reference, design tokens, canonical public product facts, and existing marketing feature-card layout"
     },
     {
-      "path": "marketing/public/home/feature-account-premium.png",
+      "path": "docs/archive/design-assets/marketing-home-2026-06-03/feature-account-premium.png",
       "tool": "built-in image_gen",
       "finalDimensions": "1672x941 PNG",
       "sourcePrompt": "Premium product-shot UI mockup with Russian UI labels for Почта and Telegram leading to one POKROV account with Telegram +10 дней and support continuation, warm light canvas, deep emerald/mint/gold accents, no raw links, personal identifiers, or unsupported claims.",
-      "sourceMaster": "POKROV mark-only logo reference, design tokens, canonical public product facts, and existing marketing feature-card layout"
+      "sourceMaster": "POKROV mark-only logo reference, design tokens, and the then-current marketing feature-card layout",
+      "status": "archived; contains superseded direct +10-day copy; do not publish"
     },
     {
-      "path": "marketing/public/home/feature-start.svg",
+      "path": "docs/archive/design-assets/marketing-home-2026-06-03/feature-start.svg",
       "tool": "deterministic SVG",
       "finalDimensions": "1600x900 SVG",
       "sourcePrompt": "Earlier real product mockup for app-first start: POKROV, Connect, 5 days without card, Android/Windows, YouTube/TikTok service check.",
       "sourceMaster": "POKROV design tokens and canonical public product facts",
-      "status": "retained fallback; no longer referenced by homepage"
+      "status": "archived; no longer referenced by homepage"
     },
     {
-      "path": "marketing/public/home/feature-devices.svg",
+      "path": "docs/archive/design-assets/marketing-home-2026-06-03/feature-devices.svg",
       "tool": "deterministic SVG",
       "finalDimensions": "1600x900 SVG",
       "sourcePrompt": "Earlier real product mockup for one cabinet managing Android and Windows devices.",
       "sourceMaster": "POKROV design tokens and canonical public product facts",
-      "status": "retained fallback; no longer referenced by homepage"
+      "status": "archived; no longer referenced by homepage"
     },
     {
-      "path": "marketing/public/home/feature-account.svg",
+      "path": "docs/archive/design-assets/marketing-home-2026-06-03/feature-account.svg",
       "tool": "deterministic SVG",
       "finalDimensions": "1600x900 SVG",
       "sourcePrompt": "Earlier real product mockup for Email, Telegram +10 days, one POKROV account, and support.",
       "sourceMaster": "POKROV design tokens and canonical public product facts",
-      "status": "retained fallback; no longer referenced by homepage"
+      "status": "archived; contains superseded direct +10-day copy; do not publish"
     }
   ]
 }

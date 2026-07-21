@@ -25,6 +25,8 @@ TELEGRAM_PROMISE_FILES = [
     ROOT / "marketing/src/app/checkout/checkout-client.tsx",
     ROOT / "marketing/src/app/telegram/page.tsx",
     ROOT / "marketing/src/app/vpn/page.tsx",
+    ROOT / "marketing/public/llms.txt",
+    ROOT / "marketing/public/pricing.md",
     ROOT / "webapp/src/app/(dashboard)/settings/page.tsx",
 ]
 

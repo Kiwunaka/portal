@@ -1,6 +1,6 @@
 # POKROV
 
-Last updated: 2026-07-08
+Last updated: 2026-07-21
 
 POKROV is an app-first VPN product for Android and Windows. The public beta flow is simple: install the app, start 5 days free without a card, connect from the app, then manage duration, devices, recovery, and support through the cabinet.
 
@@ -21,7 +21,8 @@ POKROV is an app-first VPN product for Android and Windows. The public beta flow
 - Brand: POKROV
 - Public beta platforms: Android and Windows
 - Trial: 5 days free, no card required
-- Telegram reward: +10 days after explicit account linking and channel check
+- Telegram reward: +5 days after explicit account linking and channel check
+- Starting total: up to 10 days (5 trial days + 5 Telegram reward days)
 - Paid plans: from 99 RUB for 30 days; up to 5 devices depending on plan
 - Billing model: one-time paid access periods, no automatic renewal in the public flow
 - Free fallback after trial: monthly limited base mode

@@ -1,6 +1,6 @@
 # Pricing - POKROV
 
-Last updated: 2026-07-08
+Last updated: 2026-07-21
 
 Canonical checkout page: https://pokrov.space/checkout/
 
@@ -18,7 +18,8 @@ Public billing model: one-time paid access periods. No automatic renewal is prom
 
 ## Telegram reward
 
-- Reward: +10 days
+- Reward: +5 days
+- Starting total: up to 10 days (5 trial days + 5 Telegram reward days)
 - Requirement: explicit account linking and official channel check
 - Channel: https://t.me/pokrov_vpn
 - Support: https://t.me/pokrov_supportbot

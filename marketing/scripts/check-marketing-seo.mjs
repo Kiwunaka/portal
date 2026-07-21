@@ -231,7 +231,7 @@ function checkMachineReadableFiles() {
       pushError(`llms.txt is missing ${absoluteUrl}.`);
     }
   }
-  for (const snippet of ["5 days", "no card", "No automatic renewal", "99 RUB", "GitHub Releases", "+10 days"]) {
+  for (const snippet of ["5 days", "no card", "No automatic renewal", "99 RUB", "GitHub Releases", "+5 days", "up to 10 days"]) {
     if (!pricing.includes(snippet) && !llms.includes(snippet)) {
       pushError(`Machine-readable files are missing SEO/pricing snippet: ${snippet}`);
     }

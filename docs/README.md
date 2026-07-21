@@ -46,6 +46,7 @@ This registry classifies important platform documents and the active client poin
 | `HISTORICAL_REFERENCE` | retired client lanes | `docs/archive/client-lanes/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | completed plans | `docs/archive/plans/` | `REVIEWED_NO_CHANGE` |
 | `HISTORICAL_REFERENCE` | completed design plans | `docs/archive/design-plans/` | `REVIEWED_NO_CHANGE` |
+| `HISTORICAL_REFERENCE` | retired public design assets | `docs/archive/design-assets/` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | completed implementation specs | `docs/archive/superpowers-plans/` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | older specs | `docs/superpowers/specs/` | `PENDING_COLLISION_REVIEW` |
 | `HISTORICAL_REFERENCE` | visual reference atlas | `reference-atlas/` | `REVIEWED_NO_CHANGE` |
