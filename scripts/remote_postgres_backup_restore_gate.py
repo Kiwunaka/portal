@@ -21,6 +21,7 @@ from ssh_host_keys import configure_ssh_host_key_policy
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 DEFAULT_BACKUP_DIRECTORY = "/root/backups/postgres-rehearsals"
+DEFAULT_BACKUP_RETENTION_COUNT = 3
 DEFAULT_PASSPHRASE_ENV = "POKROV_POSTGRES_BACKUP_PASSPHRASE"
 LIVE_ENV_PATH = "/root/portal_bot/.env"
 LIVE_VENV_PYTHON = "/root/portal_bot/venv/bin/python"
@@ -134,6 +135,46 @@ def _validated_backup_path(backup_path: str) -> tuple[str, str]:
     ):
         raise GateError("Invalid backup filename")
     return directory, str(path)
+
+
+def validate_backup_retention_count(raw: int) -> int:
+    retain_count = int(raw)
+    if not 1 <= retain_count <= 30:
+        raise GateError("--backup-retain-count must be between 1 and 30")
+    return retain_count
+
+
+def build_backup_retention_command(backup_path: str, *, retain_count: int) -> str:
+    directory, final_path = _validated_backup_path(backup_path)
+    keep = validate_backup_retention_count(retain_count)
+    basename = PurePosixPath(final_path).name
+    source = basename.split("-", 1)[0]
+    if not SQL_IDENTIFIER_RE.fullmatch(source):
+        raise GateError("Invalid backup source prefix")
+    directory_q = shlex.quote(directory)
+    current_q = shlex.quote(final_path)
+    filename_re = re.escape(f"{source}-") + r"[0-9]{8}T[0-9]{6}Z-[a-f0-9]{8,32}\.dump\.enc"
+    return "\n".join(
+        [
+            "# gate_backup_retention",
+            "set -Eeuo pipefail",
+            f"backup_dir={directory_q}",
+            f"current={current_q}",
+            f'test "$backup_dir" = {directory_q}',
+            'test -f "$current"',
+            'find "$backup_dir" -mindepth 1 -maxdepth 1 -type f -printf \'%f\\n\' |',
+            f"  grep -E '^{filename_re}$' |",
+            "  LC_ALL=C sort |",
+            f"  head -n -{keep} |",
+            "  while IFS= read -r name; do",
+            '    test -n "$name" || continue',
+            '    candidate="$backup_dir/$name"',
+            '    test "$candidate" = "$current" && continue',
+            '    rm -f -- "$candidate"',
+            "  done",
+            'sync -f "$backup_dir"',
+        ]
+    )
 
 
 def validate_snapshot_id(snapshot_id: str) -> str:
@@ -1650,7 +1691,14 @@ def _assert_integrity_matches(source: Mapping[str, Any], target: Mapping[str, An
         raise GateError("integrity_evidence_mismatch")
 
 
-def _plan_report(source: str, target: str, backup_path: str, *, reset_target: bool) -> dict[str, Any]:
+def _plan_report(
+    source: str,
+    target: str,
+    backup_path: str,
+    *,
+    reset_target: bool,
+    backup_retain_count: int = DEFAULT_BACKUP_RETENTION_COUNT,
+) -> dict[str, Any]:
     report = {
         "status": "PLAN_ONLY",
         "mode": "plan",
@@ -1661,6 +1709,11 @@ def _plan_report(source: str, target: str, backup_path: str, *, reset_target: bo
         "source_database": source,
         "target_database": target,
         "backup_path": backup_path,
+        "backup_retention": {
+            "status": "NOT_RUN",
+            "retain_count": validate_backup_retention_count(backup_retain_count),
+            "runs_after_verified_restore": True,
+        },
         "reset_target": bool(reset_target),
         "operations": [
             "strict SSH host-key preflight",
@@ -1687,6 +1740,7 @@ class RunState:
     snapshot_cleanup_outcome: str = "not_opened"
     support_ownership_status: str = "NOT_EVALUATED"
     target_role_status: str = "NOT_EVALUATED"
+    backup_retention_status: str = "NOT_RUN"
 
 
 def _apply_gate(
@@ -1913,6 +1967,24 @@ def _apply_gate(
                 state.target_state = "integrity_mismatch_retained"
                 raise
             state.target_state = "restored_retained"
+            state.phase = "backup_retention"
+            try:
+                _remote_run(
+                    ssh,
+                    build_backup_retention_command(
+                        backup_path,
+                        retain_count=args.backup_retain_count,
+                    ),
+                    error_class="backup_retention",
+                    timeout=120,
+                )
+                state.backup_retention_status = "PASS"
+            except GateError:
+                state.backup_retention_status = "FAILED"
+                print(
+                    "[warn] backup/restore proof passed but encrypted archive retention failed",
+                    file=sys.stderr,
+                )
             state.phase = "complete"
         except Exception:
             if state.backup_metadata is None and state.backup_retained == "unknown" and state.phase not in {
@@ -1963,6 +2035,10 @@ def _apply_gate(
         "source_database": source,
         "target_database": target,
         "backup": {"path": backup_path, **backup_metadata},
+        "backup_retention": {
+            "status": state.backup_retention_status,
+            "retain_count": args.backup_retain_count,
+        },
         "source_integrity": source_evidence,
         "target_integrity": target_evidence,
         "target_role_evidence": target_role_evidence,
@@ -1991,6 +2067,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target-db", required=True)
     parser.add_argument("--confirm-target", required=True)
     parser.add_argument("--backup-dir", default=DEFAULT_BACKUP_DIRECTORY)
+    parser.add_argument(
+        "--backup-retain-count",
+        type=int,
+        default=DEFAULT_BACKUP_RETENTION_COUNT,
+        help="number of encrypted restore-proven archives to retain",
+    )
     parser.add_argument("--passphrase-env", default=DEFAULT_PASSPHRASE_ENV)
     parser.add_argument("--report", required=True)
     parser.add_argument("--apply", action="store_true")
@@ -2042,6 +2124,9 @@ def _write_failure_report(
             "phase": state.phase if state is not None else "local_preflight",
             "encrypted_backup": encrypted_backup,
             "backup_retained": state.backup_retained if state is not None else "unknown",
+            "backup_retention_status": (
+                state.backup_retention_status if state is not None else "NOT_RUN"
+            ),
             "target_state": state.target_state if state is not None else "not_checked",
             "partial_cleanup_outcome": (
                 state.partial_cleanup_outcome if state is not None else "not_attempted"
@@ -2069,6 +2154,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.confirm_target,
         )
         backup_directory = validate_backup_directory(args.backup_dir)
+        backup_retain_count = validate_backup_retention_count(args.backup_retain_count)
         report_path = validate_report_path(args.report)
         if not ENV_NAME_RE.fullmatch(args.passphrase_env):
             raise GateError("Invalid --passphrase-env name")
@@ -2081,7 +2167,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         state = RunState(backup_path=backup_path)
 
         if not args.apply:
-            report = _plan_report(source, target, backup_path, reset_target=args.reset_target)
+            report = _plan_report(
+                source,
+                target,
+                backup_path,
+                reset_target=args.reset_target,
+                backup_retain_count=backup_retain_count,
+            )
             write_report_atomic(report_path, report)
             print(json.dumps(report, ensure_ascii=True, sort_keys=True, indent=2))
             return 0

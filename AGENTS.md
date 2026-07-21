@@ -16,6 +16,21 @@ Root `AGENTS.md` is the only tracked platform instruction file. Put scoped navig
 4. Use the [classified documentation registry](docs/README.md) when the route names a document family or when current and historical material need separation.
 5. If a missing decision would materially change the result, return `NEEDS_CONTEXT` before making speculative changes.
 
+## Proportional Engineering
+
+- Apply KISS, YAGNI, and the Pareto principle. Make the smallest maintainable change that satisfies explicit acceptance criteria and evidence; prefer existing patterns and code paths.
+- Do not add speculative abstractions, dependencies, compatibility layers, fallbacks, configuration, cleanup, documentation, or future-proofing outside the assigned scope.
+- Keep verification proportional. Add or update only the smallest focused tests needed to prove changed behavior or prevent a concrete observed regression. Do not add redundant unit/integration/E2E coverage, exhaustive edge-case matrices, broad regression suites, or unrelated test refactors unless the task, affected shared contract, or observed failure requires them.
+- Keep security work proportional to the actual trust boundary and concrete threat model. Preserve mandatory safeguards and fix vulnerabilities introduced or exposed by the task, but do not add speculative hardening, new security frameworks, or unrelated defenses without evidence or an explicit requirement.
+- Before expanding scope, identify the concrete acceptance criterion, failure, or risk that requires it. If none exists, omit the extra work. If expansion would materially change the solution, request owner direction first.
+- These proportionality rules do not authorize skipping checks explicitly required by the selected router row, current repository contracts, or release gates applicable to the changed behavior.
+
+## Architecture Shape
+
+- Prefer a modular monolith: one deployable with cohesive modules and explicit interfaces; keep entrypoints, route registration, and startup thin.
+- Treat `portal_bot/bot.py` and `portal_bot/api.py` as legacy composition roots. Put substantial new behavior in focused handler/router/service modules and wire it from the entrypoint; tiny fixes need no extraction.
+- Avoid mechanical splits, big-bang refactors, microservices, or new process/database/network boundaries without concrete operational need.
+
 ## Authority And Current Truth
 
 Use the authority ladder for the question being answered. Canonical owner documents define intended behavior; current code and tests show implemented behavior; exact runtime evidence shows observed state. Work orders and history explain execution or prior decisions but do not silently override current owners.

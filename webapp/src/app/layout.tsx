@@ -58,7 +58,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <style id="pokrov-design-tokens" dangerouslySetInnerHTML={{ __html: designTokenThemeCss }} />
-        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+        {/* Official Telegram Mini App SDK v63, mirrored from
+            https://telegram.org/js/telegram-web-app.js?63 on 2026-07-21.
+            SHA-256: 3549138a7934039fe7dfd1291a4ee739bd2b705a614308053a8b08a87d85c451.
+            Self-hosting avoids blocking cabinet hydration when telegram.org is unavailable. */}
+        <Script src="/telegram-web-app.js" strategy="beforeInteractive" />
         <Script id="pokrov-theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <TelegramWebAppInit />
         <QaOverlayHost enabled={QA_OVERLAY_ENABLED} />

@@ -131,6 +131,7 @@ Repo-side deploy rule:
 - staged requirements are installed in a temporary staging venv first; the live venv is updated only after staged syntax/JSON/requirements preflight passes
 - if preflight or requirements installation fails, the script exits before live file promotion and before any `systemctl restart`
 - if a requested unit fails restart or does not report `active`, the script restores the previous backed-up backend/shared files and restarts the requested units on that previous file set
+- after every successful deploy, only the five newest timestamped directories under `/root/portal_bot.deploy-backups/` are retained; `--backup-retain-count` may set a bounded value from 1 to 50, and pruning never selects nonconforming/manual evidence names
 - `--restart` accepts only systemd-safe unit names; do not use shell fragments or chained commands in the unit list
 - the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, `support-ai-knowledge.json`, and `support-agent-policy.json`
 - the deploy step should be treated as failed if any requested unit does not become `active` after restart
@@ -317,6 +318,21 @@ encrypted backup and treat the target as tainted; reset only the separately
 confirmed `_rehearsal` database on the next approved run. Do not use
 cluster-wide `REASSIGN OWNED` as repair.
 
+After a complete verified restore and integrity match, the gate retains the
+three newest matching encrypted archives by default and protects the archive
+from the current run explicitly. `--backup-retain-count` accepts a bounded value
+from 1 to 30. Retention runs only after restore proof; failures are reported as
+`backup_retention.status=FAILED` without rewriting a completed backup/restore
+result into a false failure. Manual files, plaintext legacy dumps, and other
+backup families are outside this automatic selector.
+
+The destructive inactive-user purge keeps only the two newest matching
+`portal_pre_inactive_user_purge_<timestamp>.dump` safety snapshots after a
+successful purge. These short-lived plaintext rollback files are root-only and
+do not replace the encrypted restore-proven backup family. A separately named
+encrypted historical anchor is evidence and is not selected by either rolling
+retention rule.
+
 Run the exact application candidate only after the clone is retained. Build the
 archive from a clean `portal_bot` tree at `HEAD`; keep it outside Git:
 
@@ -360,6 +376,8 @@ restart a service.
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out`, `webapp/out`, and `adminapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp,adminapp}` symlinks
+- static deploy retains only the five newest versioned directories under `/var/www/portal/releases/`; the one-time `legacy_backups/` migration snapshot is not recreated after the public paths become symlinks
+- `webapp/public/telegram-web-app.js` is the reviewed byte-identical mirror of the official Telegram Mini App SDK v63 (`telegram-web-app.js?63`, SHA-256 recorded beside its layout include); the cabinet loads it from its own origin so an unavailable `telegram.org` cannot block pre-hydration startup, and any SDK refresh must update the pinned integrity test in the same change
 - `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out`, `webapp/out`, and `adminapp/out` without opening SSH; local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
 - before bundling, static deploy removes only the legacy `v=<release>` query field from exported `/_next/static/*` references while preserving unrelated query fields and fragments; Next chunk, CSS, font, and media filenames are content-hashed, HTML is revalidated, and inconsistent query-busted chunk identities can prevent soft navigation from committing
 - `app.pokrov.space` and `admin.pokrov.space`/`www.admin.pokrov.space` should serve HTML with `Cache-Control: no-cache, must-revalidate`, while `/_next/static/*` assets should serve `Cache-Control: public, max-age=31536000, immutable`
@@ -370,7 +388,7 @@ restart a service.
 - security baseline for `brain`: expose only `80/tcp`, `443/tcp`, and the active SSH port publicly; Caddy `:8444`, API `:8080`, legacy `:2096`, and panel ports must be loopback-only or firewall allowlisted
 - `infra/brain-haproxy-l4.cfg` and `infra/portal-transport-front.cfg` use HAProxy TCP stick-tables as a self-hosted burst guard; this is not a volumetric DDoS guarantee and hoster/network filtering remains a separate incident-control layer
 - `infra/Caddyfile.internal` owns the public HTTP security headers (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors`, `Alt-Svc: clear`) while API path limits remain backend-owned
-- [remote_deploy_brain_caddy_config.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_caddy_config.py) validates the repo Caddy config, uploads it to `brain`, backs up `/etc/caddy/Caddyfile`, validates the installed file, and reloads Caddy; use it for Caddy-only changes instead of the older legacy proxy patch helper
+- [remote_deploy_brain_caddy_config.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_caddy_config.py) validates the repo Caddy config, uploads it to `brain`, backs up `/etc/caddy/Caddyfile`, validates the installed file, reloads Caddy, and retains only the five newest script-owned `Caddyfile.bak-<release_id>` rollback files; use it for Caddy-only changes instead of the older legacy proxy patch helper
 - fresh node/bootstrap paths must enable UFW default-deny and fail2ban `sshd` with escalating bans; root password access is retained only as break-glass until the owner approves a key-only cutover
 - repo-managed systemd units should carry `NoNewPrivileges`, `PrivateTmp`, and read-mostly system protections unless a unit has a documented operational need for broader write access
 

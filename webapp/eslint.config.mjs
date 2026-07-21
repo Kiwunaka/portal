@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reviewed byte-for-byte vendor mirror; linting it only reports upstream warnings.
+    "public/telegram-web-app.js",
   ]),
 ]);
 

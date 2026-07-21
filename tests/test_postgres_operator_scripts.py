@@ -310,6 +310,19 @@ def test_remote_cleanup_inactive_users_panel_script_loads_env_before_db_import()
     assert script.index('load_env("/root/portal_bot/.env")') < script.index("from db import SessionLocal")
 
 
+def test_remote_cleanup_inactive_users_backup_retention_is_bounded() -> None:
+    module = _load_script("remote_cleanup_inactive_users.py")
+    current = "/root/portal_bot/backups/portal_pre_inactive_user_purge_20260721_140000.dump"
+
+    command = module._build_backup_retention_command(current)
+
+    assert "head -n -2" in command
+    assert 'test "$candidate" = "$current" && continue' in command
+    assert 'rm -f -- "$candidate"' in command
+    with pytest.raises(ValueError):
+        module._build_backup_retention_command("/root/portal_bot/.env")
+
+
 def test_remote_install_portal_worker_service_uploads_service_and_restart_commands(monkeypatch) -> None:
     module = _load_script("remote_install_portal_worker_service.py")
     fake = _install_fake_ssh(module, monkeypatch)

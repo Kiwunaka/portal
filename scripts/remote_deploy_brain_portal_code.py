@@ -24,6 +24,7 @@ REMOTE_PORTAL_ROOT = "/root/portal_bot"
 REMOTE_SHARED_ROOT = "/root/shared"
 REMOTE_STAGE_ROOT = "/root/portal_bot.deploy-staging"
 REMOTE_BACKUP_ROOT = "/root/portal_bot.deploy-backups"
+DEFAULT_BACKUP_RETENTION_COUNT = 5
 SYSTEMD_UNIT_RE = re.compile(r"^[A-Za-z0-9_.@:-]+$")
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -108,6 +109,34 @@ def _build_backup_command(targets: list[str], backup_root: str) -> str:
             ]
         )
     return "\n".join(lines)
+
+
+def _validate_backup_retention_count(value: int) -> int:
+    retain_count = int(value)
+    if not 1 <= retain_count <= 50:
+        raise SystemExit("--backup-retain-count must be between 1 and 50")
+    return retain_count
+
+
+def _build_backup_prune_command(retain_count: int) -> str:
+    keep = _validate_backup_retention_count(retain_count)
+    root_q = _q(REMOTE_BACKUP_ROOT)
+    return "\n".join(
+        [
+            "set -e",
+            f"root={root_q}",
+            f'test "$root" = {root_q}',
+            'test -d "$root" || exit 0',
+            'find "$root" -mindepth 1 -maxdepth 1 -type d -printf \'%f\\n\' |',
+            "  grep -E '^[0-9]{8}T[0-9]{6}Z-[0-9]+$' |",
+            "  LC_ALL=C sort |",
+            f"  head -n -{keep} |",
+            "  while IFS= read -r name; do",
+            '    test -n "$name" || continue',
+            '    rm -rf -- "$root/$name"',
+            "  done",
+        ]
+    )
 
 
 def _build_preflight_command(stage_root: str) -> str:
@@ -260,8 +289,15 @@ def main() -> int:
         default=",".join(DEFAULT_RESTART_UNITS),
         help="comma-separated systemd units to restart",
     )
+    ap.add_argument(
+        "--backup-retain-count",
+        type=int,
+        default=DEFAULT_BACKUP_RETENTION_COUNT,
+        help="number of successful backend rollback snapshots to retain",
+    )
     args = ap.parse_args()
     restart_units = _parse_restart_units(args.restart)
+    backup_retain_count = _validate_backup_retention_count(args.backup_retain_count)
     release_id = _release_id()
     stage_root = f"{REMOTE_STAGE_ROOT}/{release_id}"
     backup_root = f"{REMOTE_BACKUP_ROOT}/{release_id}"
@@ -358,6 +394,13 @@ def main() -> int:
                 return 1
         _run(ssh, f"rm -rf {_q(stage_root)}", timeout=60)
         print(f"backend backup retained: {backup_root}")
+        if not _run_checked(
+            ssh,
+            _build_backup_prune_command(backup_retain_count),
+            label="prune old backend backups",
+            timeout=120,
+        ):
+            print("[warn] backend deploy succeeded but rollback-backup retention failed")
         return 0
     finally:
         ssh.close()

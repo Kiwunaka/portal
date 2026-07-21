@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import JsonLd from "../../components/json-ld";
 import { PlatformTabs, type InstallPlatform } from "../../components/install/platform-tabs";
 import { PageShell } from "../../components/layout/page-shell";
@@ -179,6 +181,17 @@ export default function InstallPage() {
           <Button href={windowsHref} size="lg" variant="secondary" target="_blank" rel="noreferrer">
             {getCopyText("marketing.install.cta.windows", "Скачать для Windows")}
           </Button>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <p className="m-0 text-[0.8125rem] text-ink-soft">
+            {getCopyText("marketing.install.cta.note", "Файл выдаст кабинет — откроется в новой вкладке.")}
+          </p>
+          <Link
+            href={SEO_PAGE_PATHS.trustGithubReleases}
+            className="text-[0.8125rem] font-medium text-brand no-underline hover:text-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            {getCopyText("marketing.install.cta.releases_link", "Файлы и checksums — на GitHub Releases")}
+          </Link>
         </div>
       </section>
 

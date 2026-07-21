@@ -48,7 +48,7 @@ const TELEGRAM_WEBAPP_INIT_PRIVATE_HELPER_BEHAVIOR_COVERAGE = [
 ] as const;
 
 test.beforeEach(async ({ page }) => {
-  await page.route("https://telegram.org/js/telegram-web-app.js", async (route) => {
+  await page.route("**/telegram-web-app.js", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/javascript",

@@ -416,7 +416,7 @@ def test_private_helper_coverage_matrix_matches_private_inventory_only() -> None
         ):
             if fragment not in owner_policy_note:
                 invalid_rows.append(f"{symbol_id}: owner_policy_note={fragment}")
-        if row.get("updated_at") != "2026-07-20":
+        if row.get("updated_at") != "2026-07-21":
             invalid_rows.append(f"{symbol_id}: updated_at={row.get('updated_at')}")
 
         inventory = inventory_rows[symbol_id]

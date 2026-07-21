@@ -45,7 +45,7 @@ DEFAULT_SYMBOL_COVERAGE_OUT = REPO_ROOT / "docs" / "developer" / "pokrov-symbol-
 DEFAULT_TRACKER = REPO_ROOT / "docs" / "developer" / "pokrov-canonical-feature-tracker.csv"
 DEFAULT_ENTRYPOINT_COVERAGE = REPO_ROOT / "docs" / "developer" / "pokrov-entrypoint-story-coverage.csv"
 DEFAULT_SCRIPT_MANIFEST = REPO_ROOT / "scripts" / "manifest.yaml"
-TODAY = "2026-07-20"
+TODAY = "2026-07-21"
 
 EXCLUDED_PARTS = {
     ".dart_tool",

@@ -1,0 +1,713 @@
+{
+  "schema": "pokrov.telegram_vpn_competitor_dataset.v1",
+  "generated_at": "2026-07-13T03:13:13+03:00",
+  "snapshot": {
+    "captured_date": "2026-07-12",
+    "post_window_start": "2026-05-12",
+    "post_window_end": "2026-07-12",
+    "timezone": "Europe/Moscow",
+    "audience": "internal POKROV strategy",
+    "status": "EVIDENCE_ADVISORY"
+  },
+  "definitions": {
+    "subscribers": "Telegram channel subscribers at the observed snapshot",
+    "bot_mau": "Telegram monthly users shown for the bot; not paid subscribers",
+    "growth_30d": "Net channel subscriber change over 30 days",
+    "growth_30d_percent": "Growth divided by reconstructed channel size at the start of the 30-day window",
+    "average_reach": "TGStat average post reach",
+    "err_percent": "TGStat reach ratio; not a customer-retention metric",
+    "marketing_aggression_score": "Analyst inference from 0 to 5 based on entry coercion, prize/reward intensity, referral/affiliate pressure, cadence/repetition and crisis/cross-sell pressure",
+    "confidence": "high = directly inspected flow/content; medium = mixed direct and public evidence; low = source inferred from distribution signals",
+    "inflow_evidence_class": "DIRECT_OR_PUBLIC_EVIDENCE = block backed by direct/public evidence; MIXED_DIRECT_AND_INFERRED = block combines verified signals and inference; INFERENCE = source mix is an analyst read",
+    "android_footprint_scale": "Structured public install floors for visual sizing only; not attribution from app installs to Telegram growth"
+  },
+  "global_limitations": [
+    "Channel metrics do not prove paid users, revenue, VPN MAU or customer churn.",
+    "Competitor demographics, geography and complete source-of-growth are OWNER_ONLY in TGStat.",
+    "Public TGStat widgets do not expose subscriber quality or complete attraction tables.",
+    "Luma is a proxy/repost anomaly and must not be ranked by ERR or average reach against ordinary channels.",
+    "A missing public attraction row does not prove that no advertising or off-platform acquisition occurred.",
+    "POKROV has no comparable verified public channel-growth metric in this research snapshot."
+  ],
+  "channels": [
+    {
+      "id": "quattro",
+      "name": "Quattro",
+      "channel": "@QuattroVPN_NEWS",
+      "subscribers": 1045049,
+      "bot_mau": null,
+      "growth_30d": 51999,
+      "growth_30d_percent": 5.2,
+      "average_reach": 399078,
+      "err_percent": 38.2,
+      "posts_30d": 6,
+      "android_footprint": "first-party Android app; APK/static report retained",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "cats-vpn",
+      "name": "Cats VPN",
+      "channel": "@catsvpn",
+      "subscribers": 20123,
+      "bot_mau": null,
+      "growth_30d": 9752,
+      "growth_30d_percent": 94.0,
+      "average_reach": 13148,
+      "err_percent": 65.3,
+      "posts_30d": 3,
+      "android_footprint": "anonymous code login plus external-client instructions",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "nosok-vpn",
+      "name": "Nosok VPN",
+      "channel": "@nosokVPN",
+      "subscribers": 204076,
+      "bot_mau": null,
+      "growth_30d": 24913,
+      "growth_30d_percent": 13.9,
+      "average_reach": 83294,
+      "err_percent": 40.8,
+      "posts_30d": 2,
+      "android_footprint": "direct-install matrix and Telegram fallback",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "platina-vpn",
+      "name": "VPN Platina",
+      "channel": "@vpnplatina",
+      "subscribers": 109647,
+      "bot_mau": null,
+      "growth_30d": 13536,
+      "growth_30d_percent": 14.1,
+      "average_reach": 43641,
+      "err_percent": 39.8,
+      "posts_30d": 12,
+      "android_footprint": "external-client and reseller surface",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "luma-vpn",
+      "name": "Luma VPN",
+      "channel": "@lumavpn_landing",
+      "subscribers": 18201,
+      "bot_mau": null,
+      "growth_30d": 12127,
+      "growth_30d_percent": 199.7,
+      "average_reach": 116213,
+      "err_percent": 638.5,
+      "posts_30d": 7,
+      "android_footprint": "proxy-to-VPN funnel through external clients",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "ANOMALY_PROXY_REPOST"
+    },
+    {
+      "id": "net4ebur",
+      "name": "4ebur",
+      "channel": "@net4ebur",
+      "subscribers": 7272,
+      "bot_mau": null,
+      "growth_30d": -41,
+      "growth_30d_percent": -0.6,
+      "average_reach": 2847,
+      "err_percent": 39.2,
+      "posts_30d": 2,
+      "android_footprint": "Mini App plus store distribution",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "mori-vpn",
+      "name": "MORI",
+      "channel": "@MoriVpnOfficial",
+      "subscribers": 90578,
+      "bot_mau": null,
+      "growth_30d": -2940,
+      "growth_30d_percent": -3.1,
+      "average_reach": 28186,
+      "err_percent": 31.1,
+      "posts_30d": 22,
+      "android_footprint": "Mini App plus external clients",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "nashvpn",
+      "name": "NashVPN",
+      "channel": "@nashvpnnews",
+      "subscribers": 70336,
+      "bot_mau": null,
+      "growth_30d": -996,
+      "growth_30d_percent": -1.4,
+      "average_reach": 28253,
+      "err_percent": 40.2,
+      "posts_30d": 37,
+      "android_footprint": "multi-platform external-client instructions",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "opengate-vpn",
+      "name": "OpenGate",
+      "channel": "@opengate_community",
+      "subscribers": 24179,
+      "bot_mau": null,
+      "growth_30d": 608,
+      "growth_30d_percent": 2.6,
+      "average_reach": 11007,
+      "err_percent": 45.5,
+      "posts_30d": 4,
+      "android_footprint": "bot-first service with external clients",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "groza-vpn",
+      "name": "GROZA",
+      "channel": "@VPN_GROZA_NEWS",
+      "subscribers": 92580,
+      "bot_mau": null,
+      "growth_30d": 2291,
+      "growth_30d_percent": 2.5,
+      "average_reach": 23745,
+      "err_percent": 25.6,
+      "posts_30d": 4,
+      "android_footprint": "mobile bypass through external clients",
+      "metric_source": "authenticated TGStat",
+      "data_quality": "PASS_DIRECT"
+    },
+    {
+      "id": "hitvpn",
+      "name": "HitVPN",
+      "channel": "@hitvpn_news",
+      "subscribers": 4607630,
+      "bot_mau": 3752595,
+      "growth_30d": 386200,
+      "growth_30d_percent": 9.1,
+      "average_reach": 2236043,
+      "err_percent": 48.5,
+      "posts_30d": null,
+      "posts_60d": 16,
+      "android_footprint": "HitRay 10M+; HitVPN 1M+",
+      "metric_source": "public TGStat widget plus Telegram",
+      "data_quality": "PASS_PUBLIC"
+    },
+    {
+      "id": "shuka-vpn",
+      "name": "Shuka",
+      "channel": "@ShukaVPN",
+      "subscribers": 1291035,
+      "bot_mau": 496996,
+      "growth_30d": 53455,
+      "growth_30d_percent": 4.3,
+      "average_reach": null,
+      "err_percent": null,
+      "posts_30d": null,
+      "posts_60d": 1,
+      "android_footprint": "MantaRay 10K+; generic/BYO client, ownership not proven",
+      "metric_source": "public TGStat widget plus Telegram",
+      "data_quality": "INVALID_REACH"
+    },
+    {
+      "id": "atlanta-vpn",
+      "name": "Atlanta",
+      "channel": "@AtlantaVPN",
+      "subscribers": 801830,
+      "bot_mau": 319740,
+      "growth_30d": 40909,
+      "growth_30d_percent": 5.4,
+      "average_reach": 210089,
+      "err_percent": 26.2,
+      "posts_30d": null,
+      "posts_60d": 5,
+      "android_footprint": "own Android beta 1K+ plus external clients",
+      "metric_source": "public TGStat widget plus Telegram",
+      "data_quality": "PASS_PUBLIC"
+    },
+    {
+      "id": "sota-vpn",
+      "name": "Sota",
+      "channel": "@sota",
+      "subscribers": 794734,
+      "bot_mau": 436732,
+      "growth_30d": 105221,
+      "growth_30d_percent": 15.3,
+      "average_reach": null,
+      "err_percent": null,
+      "posts_30d": null,
+      "android_footprint": "Sota Connect 500K+",
+      "metric_source": "public TGStat widget",
+      "data_quality": "INSUFFICIENT_REACH"
+    },
+    {
+      "id": "batya-vpn",
+      "name": "Batya",
+      "channel": "@mybatyavpn",
+      "subscribers": 185484,
+      "bot_mau": 176626,
+      "growth_30d": 11776,
+      "growth_30d_percent": 6.8,
+      "average_reach": 81710,
+      "err_percent": 44.1,
+      "posts_30d": null,
+      "content_events_60d": 32,
+      "giveaway_events_60d": 21,
+      "android_footprint": "Batya Android 1M+",
+      "metric_source": "public TGStat widget plus Telegram",
+      "data_quality": "PASS_PUBLIC"
+    },
+    {
+      "id": "lagom-vpn",
+      "name": "Lagom",
+      "channel": "@LagomVPN",
+      "subscribers": 167258,
+      "bot_mau": 218394,
+      "growth_30d": 21990,
+      "growth_30d_percent": 15.1,
+      "average_reach": 108701,
+      "err_percent": 64.9,
+      "posts_30d": null,
+      "android_footprint": "Lagom Android 5M+",
+      "metric_source": "public TGStat widget",
+      "data_quality": "PASS_PUBLIC"
+    },
+    {
+      "id": "blancvpn",
+      "name": "BlancVPN",
+      "channel": "@blancvpn",
+      "subscribers": 97041,
+      "bot_mau": 36333,
+      "growth_30d": 547,
+      "growth_30d_percent": 0.6,
+      "average_reach": 61334,
+      "err_percent": 63.2,
+      "posts_30d": null,
+      "posts_60d": 7,
+      "android_footprint": "BlancVPN Android 100K+",
+      "metric_source": "public TGStat widget plus channel",
+      "data_quality": "PASS_PUBLIC"
+    },
+    {
+      "id": "genvpn",
+      "name": "GenVPN",
+      "channel": "@vpngen",
+      "subscribers": 69612,
+      "bot_mau": 11887,
+      "growth_30d": -301,
+      "growth_30d_percent": -0.4,
+      "average_reach": 20604,
+      "err_percent": 29.6,
+      "posts_30d": null,
+      "posts_60d": 47,
+      "android_footprint": "legacy Android app 50K+; last update 2024",
+      "metric_source": "public TGStat widget plus channel",
+      "data_quality": "PASS_PUBLIC"
+    },
+    {
+      "id": "durev-vpn",
+      "name": "Durev",
+      "channel": "@DurevVPN",
+      "subscribers": 58111,
+      "bot_mau": 193755,
+      "growth_30d": 2205,
+      "growth_30d_percent": 3.9,
+      "average_reach": 55695,
+      "err_percent": 95.8,
+      "posts_30d": null,
+      "android_footprint": "Durev Android 100K+",
+      "metric_source": "public TGStat widget plus Telegram",
+      "data_quality": "PASS_PUBLIC"
+    }
+  ],
+  "android_footprint_scale": {
+    "usage": "Bubble size may encode only these structured public install floors. Missing entries render as unknown, never zero.",
+    "tiers": {
+      "1k_plus": 1000,
+      "10k_plus": 10000,
+      "50k_plus": 50000,
+      "100k_plus": 100000,
+      "500k_plus": 500000,
+      "1m_plus": 1000000,
+      "5m_plus": 5000000,
+      "10m_plus": 10000000
+    },
+    "entries": [
+      {
+        "id": "hitvpn",
+        "public_install_floor": 10000000,
+        "tier": "10m_plus",
+        "ownership_state": "official ecosystem includes HitRay 10M+ and HitVPN 1M+; attribution to Telegram growth is not proven"
+      },
+      {
+        "id": "shuka-vpn",
+        "public_install_floor": 10000,
+        "tier": "10k_plus",
+        "ownership_state": "generic MantaRay client; Shuka ownership not proven"
+      },
+      {
+        "id": "atlanta-vpn",
+        "public_install_floor": 1000,
+        "tier": "1k_plus",
+        "ownership_state": "first-party beta app plus external clients"
+      },
+      {
+        "id": "sota-vpn",
+        "public_install_floor": 500000,
+        "tier": "500k_plus",
+        "ownership_state": "Sota Connect public store footprint"
+      },
+      {
+        "id": "batya-vpn",
+        "public_install_floor": 1000000,
+        "tier": "1m_plus",
+        "ownership_state": "Batya branded Android app"
+      },
+      {
+        "id": "lagom-vpn",
+        "public_install_floor": 5000000,
+        "tier": "5m_plus",
+        "ownership_state": "Lagom branded Android app"
+      },
+      {
+        "id": "blancvpn",
+        "public_install_floor": 100000,
+        "tier": "100k_plus",
+        "ownership_state": "BlancVPN branded Android app"
+      },
+      {
+        "id": "genvpn",
+        "public_install_floor": 50000,
+        "tier": "50k_plus",
+        "ownership_state": "legacy Android app; last observed update 2024"
+      },
+      {
+        "id": "durev-vpn",
+        "public_install_floor": 100000,
+        "tier": "100k_plus",
+        "ownership_state": "Durev branded Android app"
+      }
+    ]
+  },
+  "marketing_analysis": [
+    {
+      "id": "hitvpn",
+      "score": 5.0,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": [
+        "8 of 16 two-month posts were giveaway announcements or results",
+        "iPhone 17 Pro Max loop repeated every one to two weeks",
+        "entry tied channel subscription and bot connection to the draw",
+        "app pushes and crisis communication were part of the same loop"
+      ],
+      "inflow": ["giveaway traffic", "bot funnel", "app/store distribution", "cross-promo"],
+      "why_growth": "Large Android footprint plus a recurring prize loop creates both reach and forced channel conversion."
+    },
+    {
+      "id": "atlanta-vpn",
+      "score": 5.0,
+      "confidence": "high",
+      "inflow_evidence_class": "DIRECT_OR_PUBLIC_EVIDENCE",
+      "evidence": [
+        "mandatory channel gate",
+        "explicit recruitment across Telegram, TikTok, Shorts, Reels, YouTube and forums",
+        "50 RUB registration bounty plus 30% of referred top-ups",
+        "partner offer at 50% of payments; statistics were broken during inspection"
+      ],
+      "inflow": ["paid creators", "affiliate traffic", "mandatory gate", "referral economics"],
+      "why_growth": "The product buys distribution through creators and affiliates before its own Android app reaches comparable scale."
+    },
+    {
+      "id": "batya-vpn",
+      "score": 5.0,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": [
+        "21 of 32 two-month events were tied to giveaways, streams or results",
+        "one campaign offered 199 prizes",
+        "later draw offered 10 iPhones, 10 AirPods and ten 10000 RUB payments",
+        "store review rewarded with 14 subscription days",
+        "fear/newsjacking posts pushed long plans"
+      ],
+      "inflow": ["prize traffic", "review incentives", "brand media", "1M+ Android distribution"],
+      "why_growth": "A recognizable voice and app footprint are amplified by continuous prize mechanics."
+    },
+    {
+      "id": "luma-vpn",
+      "score": 4.5,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": [
+        "proxy-to-paid acquisition funnel",
+        "growth and reach are driven by proxy/repost distribution",
+        "ERR of 638.5% makes the channel non-comparable with ordinary channels"
+      ],
+      "inflow": ["proxy funnel", "reposts", "bot conversion", "referral balance"],
+      "why_growth": "A utility/proxy surface continuously feeds a smaller paid-VPN channel."
+    },
+    {
+      "id": "platina-vpn",
+      "score": 4.5,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": [
+        "referral, gifts and franchise/reseller mechanics",
+        "hourly notification defect reproduced",
+        "strong growth despite almost empty public attraction rows"
+      ],
+      "inflow": ["bot referrals", "resellers/franchise", "off-platform traffic"],
+      "why_growth": "A reseller and referral engine can grow outside the public channel-placement table."
+    },
+    {
+      "id": "genvpn",
+      "score": 4.0,
+      "confidence": "high",
+      "inflow_evidence_class": "DIRECT_OR_PUBLIC_EVIDENCE",
+      "evidence": [
+        "47 posts in two months",
+        "tracked deep links",
+        "holiday-to-sale and block-to-free conversion",
+        "GEN PAY cross-sell and polls"
+      ],
+      "inflow": ["content cadence", "tracked links", "cross-sell", "promotions"],
+      "why_growth": "The engine is active but ineffective in the snapshot: the channel still lost 301 subscribers over 30 days."
+    },
+    {
+      "id": "groza-vpn",
+      "score": 4.0,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": ["aggressive claims", "crisis framing", "trial reactivation mechanics"],
+      "inflow": ["trial lifecycle", "crisis demand", "bot funnel"],
+      "why_growth": "Pressure and reactivation support modest positive growth, not category-leading scale."
+    },
+    {
+      "id": "cats-vpn",
+      "score": 3.5,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": ["mandatory channel gate", "cross-promo", "94% reconstructed 30-day growth", "anonymous code login is the primary product hook"],
+      "inflow": ["mandatory gate", "cross-promo", "privacy-first positioning", "bot-to-web handoff"],
+      "why_growth": "A differentiated anonymous-login story converts well, while the gate mechanically increases channel size."
+    },
+    {
+      "id": "nosok-vpn",
+      "score": 3.5,
+      "confidence": "high",
+      "inflow_evidence_class": "DIRECT_OR_PUBLIC_EVIDENCE",
+      "evidence": ["mandatory subscription", "97 July mentions in 14 channels", "placement reach 568765", "direct-install and fallback utility"],
+      "inflow": ["paid placements", "cross-promo", "mandatory gate", "direct-install utility"],
+      "why_growth": "The strongest directly visible attraction table in the first sample supports its 24913 monthly gain."
+    },
+    {
+      "id": "shuka-vpn",
+      "score": 3.5,
+      "confidence": "high",
+      "inflow_evidence_class": "DIRECT_OR_PUBLIC_EVIDENCE",
+      "evidence": ["mandatory channel gate", "3-day trial for 10 RUB", "referral entrant gets 7 days for 10 RUB", "inviter receives 14 days plus 20 GB whitelist traffic"],
+      "inflow": ["mandatory gate", "referral trial", "large release blast", "MantaRay product story"],
+      "why_growth": "A huge existing audience is monetized through a low-friction paid trial and concrete dual-sided referral."
+    },
+    {
+      "id": "durev-vpn",
+      "score": 3.5,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": ["20% recurring referral", "choice of free days or money", "5000 RUB / 50 USDT / 3000 Stars payout threshold", "Povel Durev token ecosystem"],
+      "inflow": ["bot referrals", "TON/meme ecosystem", "transferable keys", "multi-domain funnel"],
+      "why_growth": "The bot and referral economy are larger than the channel; the main funnel lives outside content cadence."
+    },
+    {
+      "id": "nashvpn",
+      "score": 3.0,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": ["37 posts in 30 days", "incident communication", "channel still declined by 996"],
+      "inflow": ["content", "service communication", "existing user base"],
+      "why_growth": "High publishing frequency alone did not create positive net acquisition."
+    },
+    {
+      "id": "quattro",
+      "score": 2.5,
+      "confidence": "medium",
+      "inflow_evidence_class": "INFERENCE",
+      "evidence": ["51999 monthly growth", "only 6 posts in 30 days", "public mention reach explains only a small part of the growth", "app, cabinet and bot ecosystem"],
+      "inflow": ["app ecosystem", "bot funnel", "off-platform acquisition", "channel mentions"],
+      "why_growth": "Growth appears system-led rather than content-cadence-led; the exact source mix is not publicly exposed."
+    },
+    {
+      "id": "mori-vpn",
+      "score": 2.5,
+      "confidence": "medium",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": ["22 posts in 30 days", "channel lost 2940 subscribers", "earlier mention bursts did not sustain current growth"],
+      "inflow": ["content", "Mini App", "legacy promotion"],
+      "why_growth": "Current content volume is not offsetting churn in the public channel."
+    },
+    {
+      "id": "blancvpn",
+      "score": 2.0,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": ["7 product-led posts in two months", "status and compensation", "roadmap and own apps", "66% promotion attached to product material"],
+      "inflow": ["product communication", "own apps", "organic/legacy reach", "limited promotion"],
+      "why_growth": "High reach and good communication coexist with only 547 net new subscribers."
+    },
+    {
+      "id": "opengate-vpn",
+      "score": 1.5,
+      "confidence": "high",
+      "inflow_evidence_class": "MIXED_DIRECT_AND_INFERRED",
+      "evidence": ["symptom-based support", "4 posts in 30 days", "no heavy prize loop observed"],
+      "inflow": ["service UX", "support", "organic retention"],
+      "why_growth": "A calm service model supports trust but produces only modest public channel growth."
+    },
+    {
+      "id": "net4ebur",
+      "score": 1.5,
+      "confidence": "medium",
+      "inflow_evidence_class": "INFERENCE",
+      "evidence": ["2 posts in 30 days", "Mini App and store distribution", "channel declined by 41"],
+      "inflow": ["stores", "Mini App", "brand/mascot"],
+      "why_growth": "Product distribution exists, but the public channel shows no current acquisition momentum."
+    },
+    {
+      "id": "sota-vpn",
+      "score": null,
+      "confidence": "low",
+      "inflow_evidence_class": "INFERENCE",
+      "evidence": ["bot buttons and complete content engine were not inspected"],
+      "inflow": ["500K+ Android app", "Telegram bot/channel campaign inferred"],
+      "why_growth": "The 15.3% monthly gain is real in the widget, but the causal source is not exposed."
+    },
+    {
+      "id": "lagom-vpn",
+      "score": null,
+      "confidence": "low",
+      "inflow_evidence_class": "INFERENCE",
+      "evidence": ["bot buttons and complete content engine were not inspected"],
+      "inflow": ["5M+ Android app", "Telegram funnel inferred"],
+      "why_growth": "The app footprint is the strongest visible distribution signal, not proof of the exact acquisition mix."
+    }
+  ],
+  "content_only_cases": [
+    {
+      "name": "Liberty",
+      "posts_60d": 5,
+      "pattern": "political/education content plus private investment offer from 150000 RUB with claimed 120-170% annualized return and no guarantees",
+      "risk": "highest financial-risk messaging in the observed set"
+    },
+    {
+      "name": "Raketa",
+      "posts_60d": 4,
+      "pattern": "news and third-party-client instructions",
+      "risk": "low-pressure utility content"
+    },
+    {
+      "name": "Velvet",
+      "posts_60d": 0,
+      "pattern": "silent channel in the observed window",
+      "risk": "no current content engine"
+    }
+  ],
+  "apps": [
+    {
+      "name": "Quattro 0.18.1",
+      "package": "ru.quattrocloud.vpnapp",
+      "architecture": "Flutter UI plus sing-box/SagerNet-derived native core",
+      "strengths": ["ecosystem", "routing controls", "cabinet and bot continuity"],
+      "risks": ["Android debug signing", "hardcoded local control token", "surface complexity"],
+      "evidence": "retained 2026-07-09 static report"
+    },
+    {
+      "name": "HiroVPN 1.17.1",
+      "package": "com.hiro.vpn",
+      "architecture": "Flutter plus V2Ray/Xray and hev-socks5-tunnel",
+      "strengths": ["broad distribution", "many platform integrations", "billing and TV modes"],
+      "risks": ["AdMob", "Yandex Ads/AppMetrica", "Firebase", "AppsFlyer", "Sentry", "Pairip and wide SDK surface"],
+      "evidence": "retained 2026-07-09 static report"
+    },
+    {
+      "name": "ByeByeDPI 1.7.6",
+      "package": "io.github.romanvht.byedpi",
+      "architecture": "native ByeDPI core plus SOCKS tunnel",
+      "strengths": ["clean telemetry surface", "presets", "target lists", "Quick Tile"],
+      "risks": ["self-signed distribution", "manual strategy complexity"],
+      "evidence": "retained 2026-07-09 static report"
+    },
+    {
+      "name": "OverSecure 1.1.7",
+      "package": "com.oversecure.vpn",
+      "architecture": "subscription client",
+      "strengths": ["focused onboarding", "split-app routing"],
+      "risks": ["broad app visibility", "sideload/update permissions"],
+      "sha256": "F3FC3DD14F92EF0837501345B050F91FBE56940A36688C842277A10D9B0EE167"
+    },
+    {
+      "name": "Kubik 1.2.4",
+      "package": "com.kubikvpn.app",
+      "architecture": "free/ad-funded Android app",
+      "strengths": ["anonymous free entry", "simple server and premium surfaces"],
+      "risks": ["Android Debug signing", "extreme ad/attribution SDK stack", "mutable latest.apk channel"],
+      "sha256": "65C9E93EA4117BCC3319F6CAD5EF372F3A3057E474387A71D5026DCF609FAB52"
+    },
+    {
+      "name": "MantaRay 2.25.8",
+      "package": "com.mantaray.vpn",
+      "architecture": "BYO configuration client",
+      "strengths": ["best routing preset UX", "rule builder", "local diagnostics", "import surface"],
+      "risks": ["broad usage/package access", "routing telemetry", "provider ownership not proven"],
+      "sha256": "2DAA9D98A1E9D7B974974FD3F6E6BD820FD31D857D2B43F9C15EDE34E1148BEC"
+    }
+  ],
+  "pokrov": {
+    "public_channel_growth_metric": null,
+    "metric_status": "NO_VERIFIED_COMPARABLE_METRIC",
+    "strengths": [
+      "app-first onboarding",
+      "Telegram optional for first launch, trial and daily use",
+      "real 5-day premium trial without card",
+      "Up to 10 days total: 5 trial days + 5 for explicit Telegram link and membership",
+      "Android and Windows first-party apps",
+      "app to web cabinet to Telegram recovery order",
+      "one-time activation keys and no auto-renewal",
+      "honest beta limitations and official release-file guidance",
+      "no prize spam, fake counters or third-party ads in the first-party app"
+    ],
+    "weaknesses": [
+      "no verified comparable audience-growth series",
+      "public scope currently Android and Windows only",
+      "outside-store beta; Windows is unsigned",
+      "store distribution and public social proof are weaker",
+      "creator, referral and SEO acquisition machine is not yet proven",
+      "stable 1.0.0 is unproven",
+      "routing-builder and diagnostics depth trails MantaRay"
+    ],
+    "marketing_aggression_score": 1.0,
+    "marketing_aggression_confidence": "high",
+    "positioning": "calm product-led acquisition; Telegram as amplifier, not gate"
+  },
+  "strategic_findings": [
+    "The market winner is a system: app plus cabinet plus bot plus a repeatable acquisition loop.",
+    "Prizes and forced gates can manufacture channel growth but weaken subscriber-quality signals.",
+    "App-store footprint is the clearest visible distribution moat for HitVPN, Sota, Lagom and Batya.",
+    "High content cadence is not sufficient: NashVPN, MORI and GenVPN declined despite frequent posting.",
+    "Cats proves that a differentiated login/recovery concept can become a marketing hook.",
+    "BlancVPN is the best model for calm status, compensation, roadmap and product communication.",
+    "POKROV should build creators, referrals, SEO and store presence without making Telegram mandatory.",
+    "POKROV must not copy prize spam, incentivized reviews, broken partner dashboards, fake counters or unverified crisis claims."
+  ],
+  "source_files": [
+    "../final-market-report.md",
+    "../telegram-vpn-wave2-summary-ru.md",
+    "../telegram-vpn-wave2-and-apk-analysis.md",
+    "../../../../competitor-profiles/_summary.md",
+    "../../../../competitor-profiles/raw/market/2026-07-12/seo/tgstat-summary.json",
+    "../../../../competitor-profiles/raw/market/2026-07-12/seo/tgstat-deep.json",
+    "../../../../competitor-profiles/raw/market-wave2/2026-07-12/scrapes/session-notes.md"
+  ]
+}

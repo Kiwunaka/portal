@@ -6,19 +6,6 @@ function getWebApp(): any {
   return (window as any)?.Telegram?.WebApp;
 }
 
-export function tgReady() {
-  const tg = getWebApp();
-  if (!tg) return;
-  tg.ready();
-  tg.expand();
-  try {
-    tg.setHeaderColor("#0b0b0e");
-    tg.setBackgroundColor("#0b0b0e");
-  } catch {
-    // ignore
-  }
-}
-
 export function getTgUser(): TgUser | null {
   const tg = getWebApp();
   const u = tg?.initDataUnsafe?.user;

@@ -1,6 +1,6 @@
 # POKROV Canonical Feature And User Story Tracker
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Purpose
 
@@ -33,9 +33,9 @@ Interpretation rule: in this tracker, `function` means a product capability or e
 - `client-app`: `docs/audit-artifacts/source-trackers/2026-06-27/pokrov-client-user-story-tracker.xlsx` (67 story rows imported)
 - generated backend API rows use `source_tracker = generated from portal_bot/api.py route decorators` (165 route rows imported; all 165 now have direct test-reference mappings)
 - generated script/operator rows use `source_tracker = generated from scripts/manifest.yaml` (123 active script/operator workflow rows imported; all 123 now have direct test-reference mappings; 2 legacy FreeKassa CLIs are explicitly deprecated)
-- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (6873 low-level source symbols inventoried; 0 parser errors)
-- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (6873 rows; 17 generic public-symbol review rows; 3 client-package public-API review rows; 0 entrypoint mapping gaps; 0 script-manifest review rows; 9 active script workflow-mapping gaps; 81 platform/tray manual-tier rows carry `manual_gate_refs`)
-- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 policy matrix (23 current private helper rows; 0 high risk, 2 medium risk, 21 low risk; 23 `accepted_story_and_symbol_tiers_q001`, 0 `needs_owner_decision_q001`)
+- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (6908 low-level source symbols inventoried; 0 parser errors)
+- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (6908 rows; 17 generic public-symbol review rows; 3 client-package public-API review rows; 0 entrypoint mapping gaps; 0 script-manifest review rows; 9 active script workflow-mapping gaps; 81 platform/tray manual-tier rows carry `manual_gate_refs`)
+- `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 policy matrix (193 current private helper rows; 0 high risk, 8 medium risk, 185 low risk; 193 `accepted_story_and_symbol_tiers_q001`, 0 `needs_owner_decision_q001`)
 - `generated-story-test-evidence-audit`: canonical tracker evidence, retest proof, and field-completeness classifier (525 rows audited; 524 direct file refs, 524 `direct_test_ref_passed` rows, 0 imported-pass rows without direct file refs, 1 manual owner gate / `manual_owner_gate_open`, 0 stale refs; 0 missing story contract fields; every row has at least one resolvable concrete `code_evidence` ref, with no wildcard source evidence; 0 unresolved `source_tracker` refs)
 - `generated-defect-fix-retest-ledger`: canonical rows with documented defects or discrepancies (18 rows; 16 `closed_retested`, 2 `closed_retested_no_product_change`, 0 weak/open closure rows; all 18 have `direct_test_ref_passed`)
 - `generated-entrypoint-story-coverage`: source entrypoint to route/story/script evidence bridge (514 entrypoints audited; 514 direct evidence mappings; 0 review gaps)
@@ -93,10 +93,10 @@ No backend route scenario gaps remain in the current coverage map. If a new rout
 
 | Metric | Count |
 | --- | ---: |
-| Total source symbols | 6873 |
-| Root repo symbols | 5506 |
-| POKROV-app symbols | 1367 |
-| Symbols with token-level test references | 2356 |
+| Total source symbols | 6908 |
+| Root repo symbols | 5540 |
+| POKROV-app symbols | 1368 |
+| Symbols with token-level test references | 2378 |
 | Parser errors | 0 |
 
 This companion inventory is intentionally `inventory_only`: token-level test references are a triage signal, not a claim that every private helper has a dedicated behavior test.
@@ -105,14 +105,14 @@ This companion inventory is intentionally `inventory_only`: token-level test ref
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3557 |
-| Story dependency source file | 1939 |
+| Story source file | 3580 |
+| Story dependency source file | 1944 |
 | Entrypoint mapped | 468 |
-| Direct token test ref | 422 |
-| Module test ref | 115 |
+| Direct token test ref | 425 |
+| Module test ref | 116 |
 | Private inventory only | 193 |
 | Client platform host manual gate | 77 |
-| Entrypoint route test ref | 42 |
+| Entrypoint route test ref | 45 |
 | Operator tooling inventory | 5 |
 | Next route boundary inventory | 7 |
 | Client desktop tray manual gate | 4 |

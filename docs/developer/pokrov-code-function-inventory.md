@@ -1,6 +1,6 @@
 # POKROV Low-Level Code Function Inventory
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Purpose
 
@@ -37,20 +37,20 @@ Excluded:
 
 | Metric | Count |
 | --- | ---: |
-| Total symbols | 6873 |
-| Root repo symbols | 5506 |
-| POKROV-app symbols | 1367 |
-| Symbols with token-level test references | 2356 |
+| Total symbols | 6908 |
+| Root repo symbols | 5540 |
+| POKROV-app symbols | 1368 |
+| Symbols with token-level test references | 2378 |
 | Parser errors | 0 |
 
 ### By Language
 
 | Language | Count |
 | --- | ---: |
-| Python | 4609 |
-| Dart | 1117 |
-| TSX | 590 |
-| TypeScript | 307 |
+| Python | 4638 |
+| Dart | 1118 |
+| TSX | 596 |
+| TypeScript | 306 |
 | Kotlin | 130 |
 | Swift | 92 |
 | C++ | 23 |
@@ -60,27 +60,27 @@ Excluded:
 
 | Subsystem | Count |
 | --- | ---: |
-| Backend and Telegram bots | 2967 |
-| Scripts and Ops | 1642 |
-| POKROV client app | 1326 |
-| WebApp and Admin | 724 |
-| Marketing site | 131 |
+| Backend and Telegram bots | 2985 |
+| Scripts and Ops | 1653 |
+| POKROV client app | 1327 |
+| WebApp and Admin | 725 |
+| Marketing site | 135 |
 | Shared constants | 83 |
 
 ### By Symbol Kind
 
 | Symbol kind | Count |
 | --- | ---: |
-| Function | 4950 |
+| Function | 4984 |
 | Method | 1209 |
-| Class | 714 |
+| Class | 715 |
 
 ### By Entrypoint Hint
 
 | Entrypoint hint | Count |
 | --- | ---: |
 | FastAPI route handler | 224 |
-| Telegram handler | 173 |
+| Telegram handler | 176 |
 | Script CLI main | 134 |
 | Framework override | 117 |
 | FastAPI middleware | 1 |
@@ -95,7 +95,7 @@ Excluded:
 - The generated private-helper coverage matrix currently has 193 private inventory-only rows: 185 low-risk and 8 medium-risk; Q-001 records that story/symbol tiers are sufficient for this audit.
 - For public behavior, prefer feature/user-story tests over one-test-per-helper churn.
 - Entrypoint hints are conservative labels; Aiogram `router.*` handlers are classified as Telegram handlers before HTTP route detection, and HTTP route detection requires route decorators such as `app.get`, `app.post`, or `app.api_route`.
-- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 6873 symbols.
+- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 6908 symbols.
 - Source-symbol coverage also includes `expected_behavior_from_code`, a generated behavior-preservation note for every symbol that keeps manual/review buckets honest instead of treating them as direct proof.
 
 ## Regeneration

@@ -73,6 +73,19 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("/root/portal_bot.deploy-backups/20260705T010203Z-1/root/portal_bot/api.py", restore)
         self.assertIn("rm -f /root/shared/product-facts.json", restore)
 
+    def test_backup_prune_is_bounded_to_timestamped_deploy_snapshots(self) -> None:
+        module = _load_module()
+
+        command = module._build_backup_prune_command(5)
+
+        self.assertIn('root=/root/portal_bot.deploy-backups', command)
+        self.assertIn('test "$root" = /root/portal_bot.deploy-backups', command)
+        self.assertIn("^[0-9]{8}T[0-9]{6}Z-[0-9]+$", command)
+        self.assertIn("head -n -5", command)
+        self.assertIn('rm -rf -- "$root/$name"', command)
+        with self.assertRaises(SystemExit):
+            module._build_backup_prune_command(0)
+
     def test_main_fails_when_requested_unit_is_not_active_after_restart(self) -> None:
         module = _load_module()
         ssh = MagicMock()
@@ -99,6 +112,7 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
                 ssh_port=29374,
                 passwords="C:/tmp/PASSWORDS.txt",
                 restart="portal-feedbackbot",
+                backup_retain_count=5,
             )
             with patch.object(module, "connect_node", return_value=(ssh, "password")):
                 with patch.object(module, "_release_id", return_value="20260705T010203Z-1"):

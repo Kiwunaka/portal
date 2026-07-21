@@ -1,3 +1,4 @@
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,6 +7,15 @@ from scripts.remote_deploy_brain_static_sites import _strip_next_static_cache_bu
 
 
 class StaticDeployCacheNormalizeTests(unittest.TestCase):
+    def test_vendored_telegram_sdk_matches_reviewed_official_v63(self) -> None:
+        sdk = Path(__file__).resolve().parents[1] / "webapp" / "public" / "telegram-web-app.js"
+
+        self.assertEqual(116510, sdk.stat().st_size)
+        self.assertEqual(
+            "3549138a7934039fe7dfd1291a4ee739bd2b705a614308053a8b08a87d85c451",
+            hashlib.sha256(sdk.read_bytes()).hexdigest(),
+        )
+
     def test_release_query_is_stripped_from_next_static_refs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -1,6 +1,6 @@
 # WO-001 Canonical Feature Tracker
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Status
 
@@ -99,9 +99,9 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 - Backend route direct test-reference mappings: `165/165`; scenario gaps: `0`
 - Scripts/Ops workflow rows: `123`
 - Script workflow direct test-reference mappings: `123/123`; scenario gaps: `0`
-- Low-level code function inventory rows: `6873`; parser errors: `0`; token-level test-reference hints: `2356`
-- Low-level entrypoint hints: `224` FastAPI route handlers, `1` FastAPI middleware, `173` Telegram handlers, `134` script CLI mains, `117` framework overrides, `1` Next.js page component; `portal_bot/bot.py` FastAPI mislabels: `0`
-- Source symbol coverage audit rows: `6873`; expected-behavior notes: `6873`; entrypoint mapping gaps: `0`; story source refs: `3557`; story dependency refs: `1939`; module test refs: `115`; direct token test refs: `422`; private inventory-only rows: `193`; private inventory public/entrypoint leakage: `0`; client platform manual-gate rows: `77`; client desktop tray manual-gate rows: `4`; platform/tray manual-gate rows with `manual_gate_refs`: `81`; client package public-API review rows: `3`; script CLI manifest review rows: `0`; active script CLI workflow-mapping gaps: `9`; script CLI deprecated rows: `2`; public symbol review rows: `17`
+- Low-level code function inventory rows: `6908`; parser errors: `0`; token-level test-reference hints: `2378`
+- Low-level entrypoint hints: `224` FastAPI route handlers, `1` FastAPI middleware, `176` Telegram handlers, `134` script CLI mains, `117` framework overrides, `1` Next.js page component; `portal_bot/bot.py` FastAPI mislabels: `0`
+- Source symbol coverage audit rows: `6908`; expected-behavior notes: `6908`; entrypoint mapping gaps: `0`; story source refs: `3580`; story dependency refs: `1944`; module test refs: `116`; direct token test refs: `425`; private inventory-only rows: `193`; private inventory public/entrypoint leakage: `0`; client platform manual-gate rows: `77`; client desktop tray manual-gate rows: `4`; platform/tray manual-gate rows with `manual_gate_refs`: `81`; client package public-API review rows: `3`; script CLI manifest review rows: `0`; active script CLI workflow-mapping gaps: `9`; script CLI deprecated rows: `2`; public symbol review rows: `17`
 - Private helper coverage matrix rows: `193`; accepted-policy rows: `193`; Q-001 owner-decision rows: `0`; high risk rows: `0`; medium risk rows: `8`; low risk rows: `185`
 - Story evidence audit rows: `525`; direct file refs: `524`; imported-pass rows without direct file refs: `0`; manual owner gates: `1`; stale refs: `0`
 - Story retest proof rows: `524` `direct_test_ref_passed`; `1` `manual_owner_gate_open`; weak/stale/imported/textual proof buckets: `0`

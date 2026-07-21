@@ -1,9 +1,11 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 
 import AppRouteLink from "@/components/app-route-link";
 import TelegramLoginWidget from "@/components/telegram-login-widget";
+import { cn, FOCUS_RING } from "@/components/utils";
 import { finishEmailRecovery, getEmailAuthStatus, loginByEmail, registerByEmail, setWebSessionToken, startEmailRecovery, verifyEmailToken, type EmailAuthStatusResult } from "@/lib/api";
 import { isEmailAuthPublicReady } from "@/lib/email-auth-readiness";
 import { getCopyText } from "@/lib/portal";
@@ -32,6 +34,7 @@ function externalPageUrl(siteUrl: string, pathname: "/offer/" | "/privacy/"): st
 
 export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const { webLoginBusy, webLoginError } = usePortalSession();
+  const reduceMotion = useReducedMotion();
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const newPasswordRef = useRef<HTMLInputElement | null>(null);
   const [emailMode, setEmailMode] = useState<EmailMode>("login");
@@ -200,9 +203,26 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
     clearSensitiveInputs();
   };
 
-  const inputClass =
-    "w-full rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink outline-none transition focus:border-brand focus:shadow-[0_0_0_3px_var(--pokrov-accent-soft)] motion-reduce:transition-none";
-  const passwordInputClass = `${inputClass} pr-12`;
+  // Aligned with the UI kit (ui/input.tsx, ui/button.tsx): control radius
+  // token, kit FOCUS_RING focus-visible pattern, pressed scale feedback with
+  // motion-reduce guards.
+  const inputClass = cn(
+    "w-full rounded-control border border-line bg-surface px-4 py-3 text-sm text-ink placeholder:text-ink-muted transition-colors duration-200 hover:border-line-strong motion-reduce:transition-none",
+    FOCUS_RING,
+  );
+  const passwordInputClass = cn(inputClass, "pr-12");
+  const primaryButtonClass = cn(
+    "w-full rounded-control bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-[background-color,transform] duration-200 hover:bg-brand-strong active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100",
+    FOCUS_RING,
+  );
+  const secondaryButtonClass = cn(
+    "w-full rounded-control border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-[background-color,transform] duration-200 hover:bg-canvas-alt active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
+    FOCUS_RING,
+  );
+  const passwordToggleClass = cn(
+    "absolute top-1/2 right-3 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-soft transition-colors duration-200 hover:bg-canvas-alt hover:text-ink motion-reduce:transition-none",
+    FOCUS_RING,
+  );
   const legalLinkClass = "text-ink-soft underline-offset-4 transition hover:text-ink hover:underline";
   const emailAuthReady = isEmailAuthPublicReady(emailAuthStatus);
 
@@ -223,7 +243,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
           type="button"
           aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
           onClick={() => setShowPassword((value) => !value)}
-          className="absolute top-1/2 right-3 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-soft transition hover:bg-canvas-alt hover:text-ink"
+          className={passwordToggleClass}
         >
           {showPassword ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
         </button>
@@ -236,20 +256,33 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       {emailAuthReady ? (
         <div>
           <div className="grid grid-cols-2 rounded-[1.5rem] bg-canvas-alt p-1 shadow-inner">
-            {(["login", "register"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setMode(mode)}
-                className={`min-h-12 rounded-[1.25rem] px-4 text-sm font-semibold transition ${
-                  emailMode === mode
-                    ? "bg-surface text-brand shadow-sm"
-                    : "text-ink-soft hover:text-ink"
-                }`}
-              >
-                {EMAIL_MODE_LABELS[mode]}
-              </button>
-            ))}
+            {(["login", "register"] as const).map((mode) => {
+              const active = emailMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setMode(mode)}
+                  aria-pressed={active}
+                  className={cn(
+                    "relative min-h-12 rounded-[1.25rem] px-4 text-sm font-semibold transition-colors duration-200 motion-reduce:transition-none",
+                    active ? "text-brand" : "text-ink-soft hover:text-ink",
+                    FOCUS_RING,
+                  )}
+                >
+                  {active ? (
+                    /* Same sliding-thumb pattern as the sidebar nav pill in cabinet-shell.tsx. */
+                    <motion.span
+                      layoutId="entry-auth-mode-thumb"
+                      aria-hidden="true"
+                      className="absolute inset-0 rounded-[1.25rem] bg-surface shadow-sm"
+                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 480, damping: 40 }}
+                    />
+                  ) : null}
+                  <span className="relative z-10">{EMAIL_MODE_LABELS[mode]}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="mt-6">
@@ -268,13 +301,13 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                   />
                 </div>
                 {passwordField}
-                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
+                <button type="submit" disabled={emailBusy} className={primaryButtonClass}>
                   {emailBusy ? "Входим..." : "Войти"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("recover")}
-                  className="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-canvas-alt motion-reduce:transition-none"
+                  className={cn(secondaryButtonClass, "text-ink-soft")}
                 >
                   Забыли пароль?
                 </button>
@@ -310,7 +343,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                 <p className="text-xs leading-5 text-ink-soft">
                   Уже начали в приложении? Откройте кабинет из приложения и добавьте email там, чтобы доступ остался в одном профиле.
                 </p>
-                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
+                <button type="submit" disabled={emailBusy} className={primaryButtonClass}>
                   {emailBusy ? "Создаем..." : "Зарегистрироваться"}
                 </button>
               </form>
@@ -329,10 +362,10 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                     required
                   />
                 </div>
-                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
+                <button type="submit" disabled={emailBusy} className={primaryButtonClass}>
                   {emailBusy ? "Проверяем..." : "Подтвердить"}
                 </button>
-                <button type="button" onClick={() => setMode("login")} className="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-canvas-alt motion-reduce:transition-none">
+                <button type="button" onClick={() => setMode("login")} className={secondaryButtonClass}>
                   Вернуться ко входу
                 </button>
               </form>
@@ -378,16 +411,16 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
                       type="button"
                       aria-label={showNewPassword ? "Скрыть пароль" : "Показать пароль"}
                       onClick={() => setShowNewPassword((value) => !value)}
-                      className="absolute top-1/2 right-3 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-ink-soft transition hover:bg-canvas-alt hover:text-ink"
+                      className={passwordToggleClass}
                     >
                       {showNewPassword ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
                     </button>
                   </div>
                 </div>
-                <button type="submit" disabled={emailBusy} className="w-full rounded-2xl bg-brand px-5 py-4 text-sm font-semibold text-brand-contrast transition-colors hover:bg-brand-strong disabled:opacity-60 motion-reduce:transition-none">
+                <button type="submit" disabled={emailBusy} className={primaryButtonClass}>
                   {emailBusy ? "Отправляем..." : recoveryToken ? "Сбросить пароль и войти" : "Отправить письмо"}
                 </button>
-                <button type="button" onClick={() => setMode("login")} className="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-canvas-alt motion-reduce:transition-none">
+                <button type="button" onClick={() => setMode("login")} className={secondaryButtonClass}>
                   Вернуться ко входу
                 </button>
               </form>
@@ -420,7 +453,7 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
       </div>
 
       <TelegramLoginWidget
-        buttonClassName="w-full rounded-2xl border border-line bg-surface px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-canvas-alt motion-reduce:transition-none"
+        buttonClassName={cn(secondaryButtonClass, "text-ink")}
         buttonLabel={getCopyText("webapp.entry.primary_cta", "Войти через Telegram")}
         busyLabel="Открываем Telegram..."
         showHint={false}

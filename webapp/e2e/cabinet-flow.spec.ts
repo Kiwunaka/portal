@@ -607,7 +607,9 @@ test.describe("Cabinet flow", () => {
     const supportRscRequests: string[] = [];
     page.on("request", (request) => {
       const url = request.url();
-      if (url.includes("/support") && url.includes("_rsc=")) {
+      const isPrefetch =
+        Boolean(request.headers()["next-router-prefetch"]) || request.headers()["purpose"] === "prefetch";
+      if (url.includes("/support") && url.includes("_rsc=") && !isPrefetch) {
         supportRscRequests.push(url);
       }
     });

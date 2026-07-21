@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import posixpath
+import re
 import shlex
 import sys
 import time
@@ -11,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 DEFAULT_SOURCE = REPO_ROOT / "infra" / "Caddyfile.internal"
 DEFAULT_REMOTE_CONFIG = "/etc/caddy/Caddyfile"
+DEFAULT_BACKUP_RETENTION_COUNT = 5
 
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -35,6 +37,35 @@ def _require_ok(ssh, cmd: str, *, timeout: int = 120) -> tuple[str, str]:
     if code != 0:
         raise DeployError(f"remote command failed ({code}): {cmd}\n{out}\n{err}")
     return out, err
+
+
+def _build_backup_prune_command(remote_config: str, retain_count: int = DEFAULT_BACKUP_RETENTION_COUNT) -> str:
+    keep = int(retain_count)
+    if not 1 <= keep <= 50:
+        raise ValueError("retain_count must be between 1 and 50")
+    remote_path = str(remote_config or "")
+    remote_dir = posixpath.dirname(remote_path)
+    basename = posixpath.basename(remote_path)
+    if not remote_path.startswith("/") or not remote_dir or not re.fullmatch(r"[A-Za-z0-9._-]+", basename):
+        raise ValueError("unsafe remote Caddy config path")
+    directory_q = shlex.quote(remote_dir)
+    filename_re = re.escape(f"{basename}.bak-") + r"[0-9]{14}"
+    return "\n".join(
+        [
+            "set -e",
+            f"root={directory_q}",
+            f'test "$root" = {directory_q}',
+            'test -d "$root" || exit 0',
+            'find "$root" -mindepth 1 -maxdepth 1 -type f -printf \'%f\\n\' |',
+            f"  grep -E '^{filename_re}$' |",
+            "  LC_ALL=C sort |",
+            f"  head -n -{keep} |",
+            "  while IFS= read -r name; do",
+            '    test -n "$name" || continue',
+            '    rm -f -- "$root/$name"',
+            "  done",
+        ]
+    )
 
 
 def _upload_caddy_config(*, ssh, source: Path, remote_config: str, release_id: str) -> None:
@@ -67,6 +98,14 @@ def _upload_caddy_config(*, ssh, source: Path, remote_config: str, release_id: s
         _require_ok(ssh, f"caddy validate --adapter caddyfile --config {q_remote}", timeout=120)
         _require_ok(ssh, "systemctl reload caddy || systemctl restart caddy", timeout=180)
         _require_ok(ssh, "systemctl is-active caddy", timeout=60)
+        prune_code, prune_out, prune_err = _run(
+            ssh,
+            _build_backup_prune_command(remote_config),
+            timeout=120,
+        )
+        if prune_code != 0:
+            detail = (prune_out.strip() or prune_err.strip() or f"exit={prune_code}").strip()
+            print(f"[warn] Caddy backup retention failed: {detail}")
     except Exception:
         if installed:
             _run(

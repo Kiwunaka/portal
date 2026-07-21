@@ -19,7 +19,7 @@ const json = (route: Route, payload: unknown, status = 200) =>
   });
 
 async function installAuthMocks(page: Page): Promise<void> {
-  await page.route("https://telegram.org/js/telegram-web-app.js", async (route) => {
+  await page.route("**/telegram-web-app.js", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/javascript",

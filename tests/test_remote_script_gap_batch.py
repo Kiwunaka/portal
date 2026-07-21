@@ -416,6 +416,9 @@ def test_remote_deploy_brain_caddy_config_validates_backs_up_installs_and_reload
     assert f"install -m 0644 {shlex.quote(uploaded_paths[0])} /etc/caddy/Caddyfile" in joined
     assert "caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile" in joined
     assert "systemctl reload caddy || systemctl restart caddy" in joined
+    assert "Caddyfile\\.bak\\-[0-9]{14}" in joined
+    assert "head -n -5" in joined
+    assert 'rm -f -- "$root/$name"' in joined
     assert "rm -f" in joined
     assert fake.closed is True
     assert "brain caddy config deployed:" in capsys.readouterr().out

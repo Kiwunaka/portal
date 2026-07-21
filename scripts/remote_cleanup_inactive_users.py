@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import time
 from pathlib import Path
@@ -13,6 +14,8 @@ from ssh_host_keys import configure_ssh_host_key_policy
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
+INACTIVE_BACKUP_ROOT = "/root/portal_bot/backups"
+DEFAULT_BACKUP_RETENTION_COUNT = 2
 CONFIRM_PHRASE = "PURGE_INACTIVE_14D"
 
 
@@ -487,7 +490,7 @@ def _psql_json(ssh: paramiko.SSHClient, *, db_name: str, sql: str, label: str, t
 
 def _backup_postgres(ssh: paramiko.SSHClient, *, db_name: str) -> str:
     stamp = time.strftime("%Y%m%d_%H%M%S")
-    backup_path = f"/root/portal_bot/backups/portal_pre_inactive_user_purge_{stamp}.dump"
+    backup_path = f"{INACTIVE_BACKUP_ROOT}/portal_pre_inactive_user_purge_{stamp}.dump"
     cmd = (
         "mkdir -p /root/portal_bot/backups && "
         f"runuser -u postgres -- pg_dump -Fc -d {shlex.quote(str(db_name))} > {shlex.quote(backup_path)} && "
@@ -498,6 +501,47 @@ def _backup_postgres(ssh: paramiko.SSHClient, *, db_name: str) -> str:
     if code != 0:
         raise RuntimeError((err or out).strip() or "pg_dump backup failed")
     return backup_path
+
+
+def _build_backup_retention_command(backup_path: str, *, retain_count: int = DEFAULT_BACKUP_RETENTION_COUNT) -> str:
+    keep = int(retain_count)
+    if not 1 <= keep <= 30:
+        raise ValueError("retain_count must be between 1 and 30")
+    expected = re.compile(
+        rf"^{re.escape(INACTIVE_BACKUP_ROOT)}/portal_pre_inactive_user_purge_[0-9]{{8}}_[0-9]{{6}}\.dump$"
+    )
+    if not expected.fullmatch(str(backup_path or "")):
+        raise ValueError("unsafe inactive-user backup path")
+    root_q = shlex.quote(INACTIVE_BACKUP_ROOT)
+    current_q = shlex.quote(backup_path)
+    return "\n".join(
+        [
+            "set -e",
+            f"root={root_q}",
+            f"current={current_q}",
+            f'test "$root" = {root_q}',
+            'test -f "$current"',
+            'find "$root" -mindepth 1 -maxdepth 1 -type f -printf \'%f\\n\' |',
+            "  grep -E '^portal_pre_inactive_user_purge_[0-9]{8}_[0-9]{6}\\.dump$' |",
+            "  LC_ALL=C sort |",
+            f"  head -n -{keep} |",
+            "  while IFS= read -r name; do",
+            '    test -n "$name" || continue',
+            '    candidate="$root/$name"',
+            '    test "$candidate" = "$current" && continue',
+            '    rm -f -- "$candidate"',
+            "  done",
+        ]
+    )
+
+
+def _prune_postgres_backups(ssh: paramiko.SSHClient, backup_path: str) -> str:
+    code, _out, _err = _run(
+        ssh,
+        _build_backup_retention_command(backup_path),
+        timeout=120,
+    )
+    return "PASS" if code == 0 else "FAILED"
 
 
 def _run_panel_cleanup(ssh: paramiko.SSHClient, *, tg_ids: list[int]) -> dict:
@@ -599,11 +643,14 @@ def main() -> int:
             label="inactive_purge",
             timeout=300,
         )
+        backup_retention_status = _prune_postgres_backups(ssh, backup_path)
         print(
             json.dumps(
                 {
                     "mode": "apply",
                     "backup_path": backup_path,
+                    "backup_retention_status": backup_retention_status,
+                    "backup_retain_count": DEFAULT_BACKUP_RETENTION_COUNT,
                     "candidates": candidates,
                     "panel_cleanup": panel_result,
                     "db_purge": purge_result,

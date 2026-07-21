@@ -67,6 +67,22 @@ def test_backup_location_is_allowlisted_and_basename_is_unique() -> None:
     assert "/" not in first
 
 
+def test_backup_retention_is_bounded_and_preserves_the_current_archive() -> None:
+    module = _load_script()
+    backup_path = "/root/backups/postgres-rehearsals/portal-20260721T140028Z-4171d4bffad4.dump.enc"
+
+    command = module.build_backup_retention_command(backup_path, retain_count=3)
+
+    assert "# gate_backup_retention" in command
+    assert "set -Eeuo pipefail" in command
+    assert "head -n -3" in command
+    assert 'test "$candidate" = "$current" && continue' in command
+    assert 'rm -f -- "$candidate"' in command
+    assert "portal\\-[0-9]{8}T[0-9]{6}Z" in command
+    with pytest.raises(module.GateError):
+        module.build_backup_retention_command(backup_path, retain_count=0)
+
+
 def test_backup_command_encrypts_stream_and_cleans_partial_without_secret() -> None:
     module = _load_script()
     secret = "correct horse battery staple"

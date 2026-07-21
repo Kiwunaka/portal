@@ -1,6 +1,6 @@
 # POKROV Source Symbol Coverage Audit
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Purpose
 
@@ -21,14 +21,14 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3557 |
-| Story dependency source file | 1939 |
+| Story source file | 3580 |
+| Story dependency source file | 1944 |
 | Entrypoint mapped | 468 |
-| Direct token test ref | 422 |
-| Module test ref | 115 |
+| Direct token test ref | 425 |
+| Module test ref | 116 |
 | Private inventory only | 193 |
 | Client platform host manual gate | 77 |
-| Entrypoint route test ref | 42 |
+| Entrypoint route test ref | 45 |
 | Operator tooling inventory | 5 |
 | Next route boundary inventory | 7 |
 | Client desktop tray manual gate | 4 |

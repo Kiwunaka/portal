@@ -17,6 +17,7 @@ This registry classifies important platform documents and the active client poin
 | `EVIDENCE` | 2026-05-15 beta decision baseline | `docs/product/public-beta-prd.md` | `REVIEWED_NO_CHANGE` |
 | `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | dated platform availability snapshot | `docs/archive/flat-docs/platform-availability-2026-05-26.md` | `RECONCILED` |
+| `HISTORICAL_REFERENCE` | 2026-07 Telegram VPN and censorship research | `docs/archive/competitive/telegram-vpn-2026-07-12/` | `RECONCILED` |
 | `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `RECONCILED` |
 | `CANONICAL` | launch known issues | `docs/launch/known-issues.md` | `RECONCILED` |
 | `CANONICAL` | platform architecture | `docs/architecture/system-overview.md` | `PENDING_WAVE_3` |
