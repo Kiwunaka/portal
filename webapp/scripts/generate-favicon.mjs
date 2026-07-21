@@ -1,14 +1,19 @@
-// Regenerates src/app/favicon.ico from the WebApp vector mark.
+// Regenerates WebApp and marketing browser icons from one vector mark.
 // Sync src/app/icon.svg from the current brand master before running this.
 // Usage: npm run generate:favicon
 import { chromium } from "@playwright/test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import process from "node:process";
+import { fileURLToPath } from "node:url";
 
-const SIZES = [16, 32, 48, 256];
-const svgPath = path.join(process.cwd(), "src", "app", "icon.svg");
-const outPath = path.join(process.cwd(), "src", "app", "favicon.ico");
+const ICO_SIZES = [16, 32, 48, 256];
+const RASTER_SIZES = [...ICO_SIZES, 512];
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const webappRoot = path.resolve(scriptDir, "..");
+const repoRoot = path.resolve(webappRoot, "..");
+const svgPath = path.join(webappRoot, "src", "app", "icon.svg");
+const webappFaviconPath = path.join(webappRoot, "src", "app", "favicon.ico");
+const marketingPublic = path.join(repoRoot, "marketing", "public");
 
 const svgMarkup = readFileSync(svgPath, "utf8");
 const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svgMarkup).toString("base64")}`;
@@ -53,13 +58,19 @@ function packIco(frames) {
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ deviceScaleFactor: 1 });
 const frames = [];
-for (const size of SIZES) {
+for (const size of RASTER_SIZES) {
   frames.push({ size, png: await renderPng(page, size) });
 }
 await browser.close();
 
-const ico = packIco(frames);
-writeFileSync(outPath, ico);
+const frame = (size) => frames.find((item) => item.size === size).png;
+const ico = packIco(frames.filter((item) => ICO_SIZES.includes(item.size)));
+writeFileSync(webappFaviconPath, ico);
+writeFileSync(path.join(marketingPublic, "favicon.ico"), ico);
+writeFileSync(path.join(marketingPublic, "tab-icon-32.png"), frame(32));
+writeFileSync(path.join(marketingPublic, "tab-icon-256.png"), frame(256));
+writeFileSync(path.join(marketingPublic, "apple-icon.png"), frame(512));
+copyFileSync(svgPath, path.join(marketingPublic, "pokrov-logo.svg"));
 console.log(
-  `[generate-favicon] wrote ${outPath} (${ico.length} bytes, sizes: ${SIZES.join(", ")})`,
+  `[generate-favicon] synced WebApp + marketing icons (${ico.length} ICO bytes; raster sizes: ${RASTER_SIZES.join(", ")})`,
 );

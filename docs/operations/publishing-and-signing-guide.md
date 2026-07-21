@@ -80,7 +80,7 @@ Current release brand masters:
 Brand publication rule:
 
 - regenerate launcher, splash, tray, Windows ICO, favicon, and share-preview assets from those masters before publication
-- after syncing `webapp/src/app/icon.svg` from the current vector master, regenerate the WebApp favicon with `npm --prefix webapp run generate:favicon`
+- after syncing `webapp/src/app/icon.svg` from the current vector master, run `npm --prefix webapp run generate:favicon`; it regenerates the WebApp ICO and the marketing favicon, tab, Apple, and SVG icon set from that one mark
 - do not treat previously exported PNG, ICO, or favicon files as independent truth once the masters change
 
 Current implementation note:

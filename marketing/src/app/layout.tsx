@@ -64,12 +64,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/tab-icon-32.png", type: "image/png", sizes: "32x32" },
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/pokrov-logo.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/pokrov-logo.svg?v=20260722", type: "image/svg+xml", sizes: "any" },
+      { url: "/tab-icon-32.png?v=20260722", type: "image/png", sizes: "32x32" },
+      { url: "/favicon.ico?v=20260722", sizes: "any" },
     ],
-    shortcut: [{ url: "/favicon.ico", sizes: "any" }],
-    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "512x512" }],
+    shortcut: [{ url: "/favicon.ico?v=20260722", sizes: "any" }],
+    apple: [{ url: "/apple-icon.png?v=20260722", type: "image/png", sizes: "512x512" }],
   },
 };
 
