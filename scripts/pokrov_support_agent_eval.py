@@ -26,7 +26,7 @@ PORTAL_DIR = REPO_ROOT / "portal_bot"
 if str(PORTAL_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_DIR))
 
-from support_ai_service import SupportAIConfig  # noqa: E402
+from support_ai_service import SupportAIConfig, provider_timeout_ceiling  # noqa: E402
 from support_agent_context import PROMPT_BUNDLE_VERSION, SupportContextBuilder  # noqa: E402
 from support_agent_grounding import (  # noqa: E402
     RETRIEVER_RULES_SHA256,
@@ -818,6 +818,10 @@ def _build_runtime(*, repo_root: Path, adapter: object) -> _Runtime:
         decision=probe_decision,
     )
     collector = _TraceCollector()
+    adapter_config = getattr(adapter, "config", None)
+    provider_timeout = provider_timeout_ceiling(
+        str(getattr(adapter_config, "api_base_url", ""))
+    )
     harness = SupportAgentHarness(
         policy=policy,
         knowledge=knowledge,
@@ -830,7 +834,7 @@ def _build_runtime(*, repo_root: Path, adapter: object) -> _Runtime:
         max_concurrency=2,
         concurrency_wait_seconds=0.25,
         run_deadline_seconds=25.0,
-        provider_timeout_seconds=20.0,
+        provider_timeout_seconds=provider_timeout,
         trace_callback=collector,
     )
     return _Runtime(
@@ -1276,7 +1280,7 @@ def _live_config(api_key: str, base_url: str) -> SupportAIConfig:
         api_base_url=base_url,
         model=DEFAULT_MODEL,
         reasoning_effort=DEFAULT_REASONING_EFFORT,
-        timeout_seconds=20.0,
+        timeout_seconds=provider_timeout_ceiling(base_url),
         max_context_chars=30_000,
         max_user_chars=1_200,
         max_answer_chars=1_200,

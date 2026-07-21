@@ -161,6 +161,7 @@ def render_synthesis_policy_prompt(policy: SupportAgentPolicy) -> str:
         "A source step to update or re-import never implies deletion: never add delete, reinstall, or reset as a prerequisite.",
         "Never repeat attempted_steps from session_state. If only already-attempted steps remain, use status escalate.",
         "Return one JSON object with exactly schema_version, status, and reply.",
+        "Do not wrap the JSON object in Markdown or code fences.",
         '- schema_version must be "1".',
         '- status must be "answer" or "escalate".',
         f"- reply must be non-empty and no longer than {policy.max_reply_chars} characters.",

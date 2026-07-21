@@ -256,6 +256,40 @@ def test_minimal_model_output_accepts_answer_and_escalate() -> None:
     assert escalation.status == "escalate"
 
 
+@pytest.mark.parametrize("opening", ("```json", "```JSON", "```"))
+def test_minimal_model_output_accepts_one_clean_json_fence(opening: str) -> None:
+    from support_agent_safety import validate_model_output
+
+    result = validate_model_output(
+        f'{opening}\n{{"schema_version":"1","status":"answer","reply":"Переподключите приложение один раз."}}\n```',
+        _policy_snapshot(),
+        source_text="Переподключиться в приложении один раз.",
+    )
+
+    assert result.status == "answer"
+    assert result.reply == "Переподключите приложение один раз."
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        'До JSON\n```json\n{"schema_version":"1","status":"answer","reply":"Ответ."}\n```',
+        '```javascript\n{"schema_version":"1","status":"answer","reply":"Ответ."}\n```',
+        '```json\n```\n{"schema_version":"1","status":"answer","reply":"Ответ."}\n```',
+        '```json\n{"schema_version":"1","status":"answer","reply":"Ответ."}\n```\nПосле JSON',
+    ),
+)
+def test_model_output_rejects_non_exact_json_fences(raw: str) -> None:
+    from support_agent_safety import SafetyValidationError, validate_model_output
+
+    with pytest.raises(SafetyValidationError, match="agent_output_json_invalid"):
+        validate_model_output(
+            raw,
+            _policy_snapshot(),
+            source_text="Безопасный ответ.",
+        )
+
+
 def test_duplicate_json_keys_and_oversized_output_fail_closed() -> None:
     from support_agent_safety import SafetyValidationError, validate_model_output
 

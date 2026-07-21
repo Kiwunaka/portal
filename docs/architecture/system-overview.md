@@ -79,7 +79,7 @@ Reference-lane note:
 - `portal_bot/support_ai_service.py`
   Legacy one-call OpenAI-compatible helper and shared bounded sanitizer; retained only when `SUPPORT_AI_ENABLED=true` and `SUPPORT_AI_AGENT_ENABLED=false`.
 - `portal_bot/support_agent_harness.py`, `portal_bot/support_agent_context.py`, and `portal_bot/support_agent_provider.py`
-  Bounded mini-agent loop, stable cacheable context, and an exact-route OpenAI-compatible adapter for canonical `minimax-m3` with medium reasoning. The xCody route sends that ID directly; the exact OpenRouter route maps it to `minimax/minimax-m3` on the wire.
+  Bounded mini-agent loop, stable cacheable context, and an exact-route OpenAI-compatible adapter for canonical `minimax-m3` with medium reasoning. The xCody route sends that ID directly; the exact OpenRouter route maps it to `minimax/minimax-m3` on the wire, allows a 24-second provider window inside the 25-second harness deadline, and normalizes only a single clean JSON Markdown fence before the unchanged closed-schema safety checks.
 - `portal_bot/support_agent_policy.py`, `portal_bot/support_agent_knowledge.py`, and `portal_bot/support_agent_sessions.py`
   Fail-closed policy/KB validation, read-only local topic retrieval, and owner-scoped process-memory/rate limits.
 - `portal_bot/worker.py`

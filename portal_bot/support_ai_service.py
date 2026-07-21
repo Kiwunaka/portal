@@ -21,6 +21,8 @@ DEFAULT_MODEL = "minimax-m3"
 DEFAULT_REASONING_EFFORT = "medium"
 OPENROUTER_API_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MINIMAX_M3_MODEL = "minimax/minimax-m3"
+DEFAULT_PROVIDER_TIMEOUT_SECONDS = 20.0
+OPENROUTER_PROVIDER_TIMEOUT_SECONDS = 24.0
 DEFAULT_KNOWLEDGE_PATH = Path(__file__).resolve().parents[1] / "shared" / "support-ai-knowledge.json"
 
 _MAX_SANITIZER_INPUT_CHARS = 65536
@@ -300,6 +302,7 @@ class SupportAIConfig:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "SupportAIConfig":
         source: Mapping[str, str] = os.environ if env is None else env
+        api_base_url = (source.get("SUPPORT_AI_API_BASE_URL") or DEFAULT_API_BASE_URL).strip().rstrip("/")
         api_key = (
             (source.get("SUPPORT_AI_API_KEY") or "").strip()
             or (source.get("XCODY_API_KEY") or "").strip()
@@ -307,11 +310,13 @@ class SupportAIConfig:
         return cls(
             enabled=_parse_bool(source.get("SUPPORT_AI_ENABLED"), default=False),
             api_key=api_key,
-            api_base_url=(source.get("SUPPORT_AI_API_BASE_URL") or DEFAULT_API_BASE_URL).strip().rstrip("/"),
+            api_base_url=api_base_url,
             model=(source.get("SUPPORT_AI_MODEL") or DEFAULT_MODEL).strip(),
             reasoning_effort=_parse_reasoning_effort(source.get("SUPPORT_AI_REASONING_EFFORT")),
             timeout_seconds=_bounded_env_float(
-                source.get("SUPPORT_AI_TIMEOUT_SECONDS"), default=20.0, maximum=20.0
+                source.get("SUPPORT_AI_TIMEOUT_SECONDS"),
+                default=DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+                maximum=provider_timeout_ceiling(api_base_url),
             ),
             knowledge_path=(source.get("SUPPORT_AI_KB_PATH") or str(DEFAULT_KNOWLEDGE_PATH)).strip(),
             max_context_chars=_bounded_env_int(
@@ -330,11 +335,23 @@ class SupportAIConfig:
         )
 
 
+def is_exact_openrouter_route(api_base_url: str) -> bool:
+    return str(api_base_url or "").rstrip("/").casefold() == OPENROUTER_API_BASE_URL.casefold()
+
+
+def provider_timeout_ceiling(api_base_url: str) -> float:
+    return (
+        OPENROUTER_PROVIDER_TIMEOUT_SECONDS
+        if is_exact_openrouter_route(api_base_url)
+        else DEFAULT_PROVIDER_TIMEOUT_SECONDS
+    )
+
+
 def provider_wire_model(config: SupportAIConfig) -> str:
     """Map the canonical model ID only for the exact owned OpenRouter route."""
     if (
         config.model == DEFAULT_MODEL
-        and config.api_base_url.rstrip("/").casefold() == OPENROUTER_API_BASE_URL.casefold()
+        and is_exact_openrouter_route(config.api_base_url)
     ):
         return OPENROUTER_MINIMAX_M3_MODEL
     return config.model

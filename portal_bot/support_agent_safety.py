@@ -509,6 +509,19 @@ def validate_grounded_reply(
     return safe_reply
 
 
+def _unwrap_single_json_fence(raw_content: str) -> str:
+    stripped = raw_content.strip()
+    opening, separator, remainder = stripped.partition("\n")
+    if opening.casefold() not in {"```", "```json"} or not separator:
+        return raw_content
+    if not remainder.endswith("```"):
+        return raw_content
+    inner = remainder[:-3].strip()
+    if "```" in inner or not inner.startswith("{") or not inner.endswith("}"):
+        return raw_content
+    return inner
+
+
 def validate_model_output(
     raw_content: str,
     policy: PolicySnapshot,
@@ -518,8 +531,9 @@ def validate_model_output(
     _validate_grounding_source(source_text)
     if not isinstance(raw_content, str) or not 1 <= len(raw_content) <= _MAX_RAW_OUTPUT_CHARS:
         raise SafetyValidationError("agent_output_size_invalid")
+    normalized_content = _unwrap_single_json_fence(raw_content)
     try:
-        payload = json.loads(raw_content, object_pairs_hook=_reject_duplicate_keys)
+        payload = json.loads(normalized_content, object_pairs_hook=_reject_duplicate_keys)
     except SafetyValidationError:
         raise
     except json.JSONDecodeError as exc:

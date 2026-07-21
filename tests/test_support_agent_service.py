@@ -198,6 +198,30 @@ def test_missing_key_and_invalid_agent_limits_fail_before_harness_construction()
     assert invalid_flag_factory.calls == []
 
 
+def test_exact_openrouter_route_allows_24_second_runtime_timeout() -> None:
+    from support_agent_service import SupportAgentRuntimeSettings
+
+    openrouter = SupportAgentRuntimeSettings.from_env(
+        {
+            "SUPPORT_AI_AGENT_ENABLED": "true",
+            "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
+            "SUPPORT_AI_TIMEOUT_SECONDS": "24",
+        }
+    )
+    xcody = SupportAgentRuntimeSettings.from_env(
+        {
+            "SUPPORT_AI_AGENT_ENABLED": "true",
+            "SUPPORT_AI_API_BASE_URL": "https://api.xcody.dev/v1",
+            "SUPPORT_AI_TIMEOUT_SECONDS": "24",
+        }
+    )
+
+    assert openrouter.valid is True
+    assert openrouter.provider_timeout_seconds == 24.0
+    assert xcody.valid is False
+    assert xcody.invalid_reason == "support_ai_timeout_seconds_invalid"
+
+
 def test_agent_output_budget_defaults_to_1200_and_rejects_higher_values() -> None:
     from support_agent_service import SupportAgentRuntimeSettings
 

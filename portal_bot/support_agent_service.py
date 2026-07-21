@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Mapping
 
-from support_ai_service import SupportAIConfig, generate_support_reply
+from support_ai_service import SupportAIConfig, generate_support_reply, provider_timeout_ceiling
 from support_agent_context import SupportContextBuilder
 from support_agent_grounding import SupportGroundingEngine
 from support_agent_harness import (
@@ -124,12 +124,20 @@ class SupportAgentRuntimeSettings:
                 return default
             return value
 
+        provider_timeout_max = provider_timeout_ceiling(
+            str(source.get("SUPPORT_AI_API_BASE_URL") or "")
+        )
         settings = cls(
             agent_enabled=boolean("SUPPORT_AI_AGENT_ENABLED", False),
             valid=True,
             invalid_reason=None,
             run_deadline_seconds=number("SUPPORT_AI_RUN_DEADLINE_SECONDS", 25.0, 0.1, 25.0),
-            provider_timeout_seconds=number("SUPPORT_AI_TIMEOUT_SECONDS", 20.0, 0.1, 20.0),
+            provider_timeout_seconds=number(
+                "SUPPORT_AI_TIMEOUT_SECONDS",
+                20.0,
+                0.1,
+                provider_timeout_max,
+            ),
             max_concurrency=integer("SUPPORT_AI_MAX_CONCURRENCY", 2, 1, 2),
             concurrency_wait_ms=integer("SUPPORT_AI_CONCURRENCY_WAIT_MS", 250, 1, 250),
             session_ttl_seconds=number("SUPPORT_AI_SESSION_TTL_SECONDS", 3600.0, 1.0, 3600.0),
@@ -209,7 +217,7 @@ def _default_harness_factory(
             config.timeout_seconds,
             settings.provider_timeout_seconds,
             settings.run_deadline_seconds,
-            20.0,
+            provider_timeout_ceiling(config.api_base_url),
         ),
         max_context_chars=min(config.max_context_chars, settings.max_input_chars),
         max_output_tokens=min(config.max_output_tokens, settings.max_output_tokens),

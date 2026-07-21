@@ -196,7 +196,7 @@ def test_exact_openrouter_route_maps_canonical_minimax_model() -> None:
         api_base_url="https://openrouter.ai/api/v1",
         model="minimax-m3",
         reasoning_effort="medium",
-        timeout_seconds=20.0,
+        timeout_seconds=24.0,
         max_context_chars=30_000,
         max_output_tokens=1_200,
     )
@@ -204,13 +204,14 @@ def test_exact_openrouter_route_maps_canonical_minimax_model() -> None:
     adapter = XCodyChatAdapter(config=config, session_factory=factory)
 
     turn = asyncio.run(
-        adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
+        adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=24.0)
     )
 
     assert turn.finish_reason == "stop"
     assert factory.posts[0]["url"] == "https://openrouter.ai/api/v1/chat/completions"
     assert factory.posts[0]["json"]["model"] == "minimax/minimax-m3"
     assert factory.posts[0]["json"]["reasoning_effort"] == "medium"
+    assert factory.timeout.total == 24.0
 
 
 @pytest.mark.parametrize(

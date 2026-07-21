@@ -1672,6 +1672,25 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(clamped.timeout_seconds, 20.0)
         self.assertEqual(clamped.max_context_chars, 30000)
 
+    def test_exact_openrouter_route_allows_24_second_provider_window(self) -> None:
+        import support_ai_service
+
+        exact = support_ai_service.SupportAIConfig.from_env(
+            {
+                "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
+                "SUPPORT_AI_TIMEOUT_SECONDS": "24",
+            }
+        )
+        clamped = support_ai_service.SupportAIConfig.from_env(
+            {
+                "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
+                "SUPPORT_AI_TIMEOUT_SECONDS": "24.1",
+            }
+        )
+
+        self.assertEqual(exact.timeout_seconds, 24.0)
+        self.assertEqual(clamped.timeout_seconds, 24.0)
+
     def test_xcody_output_budget_is_hard_capped_at_live_validated_limit(self) -> None:
         import support_ai_service
 

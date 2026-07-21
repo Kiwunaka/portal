@@ -84,6 +84,7 @@ _MIXED_FOLLOWUP_RE = re.compile(
     r"\b(?:но|однако|при\s+этом|кроме|а\s+ещ[её])\b"
 )
 _MIN_PROVIDER_WINDOW_SECONDS = 0.1
+_MAX_PROVIDER_TIMEOUT_SECONDS = 24.0
 _EMPTY_HASH = "0" * 64
 _REDACTION_CATEGORIES = frozenset(
     {
@@ -346,7 +347,7 @@ class SupportAgentHarness:
             or not math.isfinite(run_deadline_seconds)
             or not 0.1 <= run_deadline_seconds <= 25.0
             or not math.isfinite(provider_timeout_seconds)
-            or not 0.1 <= provider_timeout_seconds <= 20.0
+            or not 0.1 <= provider_timeout_seconds <= _MAX_PROVIDER_TIMEOUT_SECONDS
         ):
             raise ValueError("harness_config_invalid")
         self.policy = policy

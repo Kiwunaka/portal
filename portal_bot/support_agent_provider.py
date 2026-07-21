@@ -13,6 +13,7 @@ import aiohttp
 from support_ai_service import (
     SupportAIConfig,
     _ProviderResponseTooLarge,
+    provider_timeout_ceiling,
     provider_wire_model,
     read_bounded_provider_json,
 )
@@ -143,7 +144,10 @@ class XCodyChatAdapter:
         messages: Sequence[Mapping[str, object]],
         request_timeout: float,
     ) -> SynthesisTurn:
-        timeout_seconds = _validated_timeout(request_timeout, maximum=20.0)
+        timeout_seconds = _validated_timeout(
+            request_timeout,
+            maximum=provider_timeout_ceiling(self.config.api_base_url),
+        )
         if (
             len(messages) != 2
             or any(not isinstance(item, Mapping) for item in messages)
