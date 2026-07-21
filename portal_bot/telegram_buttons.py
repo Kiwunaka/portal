@@ -46,9 +46,6 @@ def infer_button_style(text: str, callback_data: str | None = None, url: str | N
     label = (text or "").strip().lower()
     data = (callback_data or "").strip().lower()
 
-    if any(token in label for token in ("назад", "отмена", "закрыть")):
-        return None
-
     if (
         "delete" in data
         or "panic" in data
@@ -60,6 +57,9 @@ def infer_button_style(text: str, callback_data: str | None = None, url: str | N
         or any(token in label for token in ("удалить", "сбросить", "отозвать", "заблокировать"))
     ):
         return BTN_STYLE_DANGER
+
+    if any(token in label for token in ("назад", "отмена", "закрыть")):
+        return None
 
     if "back" in data or "cancel" in data or data in {"close", "dismiss"}:
         return None

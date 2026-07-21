@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_API_BASE_URL = "https://api.xcody.dev/v1"
 DEFAULT_MODEL = "minimax-m3"
 DEFAULT_REASONING_EFFORT = "medium"
+OPENROUTER_API_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_MINIMAX_M3_MODEL = "minimax/minimax-m3"
 DEFAULT_KNOWLEDGE_PATH = Path(__file__).resolve().parents[1] / "shared" / "support-ai-knowledge.json"
 
 _MAX_SANITIZER_INPUT_CHARS = 65536
@@ -326,6 +328,16 @@ class SupportAIConfig:
                 source.get("SUPPORT_AI_MAX_OUTPUT_TOKENS"), default=1200, maximum=1200
             ),
         )
+
+
+def provider_wire_model(config: SupportAIConfig) -> str:
+    """Map the canonical model ID only for the exact owned OpenRouter route."""
+    if (
+        config.model == DEFAULT_MODEL
+        and config.api_base_url.rstrip("/").casefold() == OPENROUTER_API_BASE_URL.casefold()
+    ):
+        return OPENROUTER_MINIMAX_M3_MODEL
+    return config.model
 
 
 def _split_trailing_url_punctuation(value: str) -> tuple[str, str]:
@@ -1253,7 +1265,7 @@ def _payload(user_text: str, *, config: SupportAIConfig) -> dict[str, Any]:
         f"\n\nSupport knowledge JSON:\n{knowledge}"
     )
     return {
-        "model": config.model,
+        "model": provider_wire_model(config),
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": redacted_text},

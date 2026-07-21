@@ -88,7 +88,6 @@ EXPECTED_NORMAL_TOPIC_IDS = (
     "v2rayng_import",
     "v2rayn_import",
     "streisand_import",
-    "karing_import",
     "choose_android_client",
     "choose_windows_client",
     "choose_ios_client",

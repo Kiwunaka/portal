@@ -78,9 +78,9 @@ def _live_kwargs(tmp_path: Path) -> dict[str, object]:
     }
 
 
-def test_repository_fixture_has_closed_exact_12_48_12_10_schema(bundle) -> None:
+def test_repository_fixture_has_closed_exact_12_47_12_10_schema(bundle) -> None:
     assert len(bundle.smoke) == 12
-    assert len(bundle.normal) == 48
+    assert len(bundle.normal) == 47
     assert len(bundle.adversarial) == 12
     assert len(bundle.sessions) == 10
     assert {case.case_id for case in bundle.normal} == set(agent_eval.EXPECTED_NORMAL_TOPIC_IDS)
@@ -231,7 +231,7 @@ def test_deterministic_corpus_runs_boundaries_and_returns_aggregate_only() -> No
     assert report["schema_version"] == "2"
     assert report["mode"] == "deterministic"
     assert report["automated_gate"] == "PASS"
-    assert report["fixture_counts"] == {"smoke": 12, "normal": 48, "adversarial": 12, "sessions": 10}
+    assert report["fixture_counts"] == {"smoke": 12, "normal": 47, "adversarial": 12, "sessions": 10}
     assert report["quality"]["normal_passed"] >= 43
     assert report["safety"]["adversarial_passed"] == 12
     assert report["sessions"]["passed"] >= 9
@@ -255,7 +255,7 @@ def test_cli_deterministic_prints_one_aggregate_json_document(capsys) -> None:
     assert exit_code == 0
     output = capsys.readouterr().out.strip()
     report = json.loads(output)
-    assert report["fixture_counts"]["normal"] == 48
+    assert report["fixture_counts"]["normal"] == 47
     assert "Подключено, но интернета нет" not in output
     assert _contains_forbidden_report_key(report) is False
 

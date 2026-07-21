@@ -13,6 +13,7 @@ import aiohttp
 from support_ai_service import (
     SupportAIConfig,
     _ProviderResponseTooLarge,
+    provider_wire_model,
     read_bounded_provider_json,
 )
 
@@ -167,7 +168,7 @@ class XCodyChatAdapter:
         ):
             _raise_provider_error(retryable=False, code="provider_request_invalid", status=0)
         payload = {
-            "model": self.config.model,
+            "model": provider_wire_model(self.config),
             "messages": [dict(item) for item in messages],
             "reasoning_effort": self.config.reasoning_effort,
             "temperature": 0.2,

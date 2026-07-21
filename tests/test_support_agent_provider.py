@@ -186,6 +186,33 @@ def test_exact_xcody_synthesis_payload_and_normalized_usage() -> None:
     assert factory.timeout.total == 20.0
 
 
+def test_exact_openrouter_route_maps_canonical_minimax_model() -> None:
+    from support_agent_provider import XCodyChatAdapter
+    from support_ai_service import SupportAIConfig
+
+    config = SupportAIConfig(
+        enabled=True,
+        api_key="sk-or-test-key",
+        api_base_url="https://openrouter.ai/api/v1",
+        model="minimax-m3",
+        reasoning_effort="medium",
+        timeout_seconds=20.0,
+        max_context_chars=30_000,
+        max_output_tokens=1_200,
+    )
+    factory = _FakeSessionFactory(payload=SAFE_RESPONSE)
+    adapter = XCodyChatAdapter(config=config, session_factory=factory)
+
+    turn = asyncio.run(
+        adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.0)
+    )
+
+    assert turn.finish_reason == "stop"
+    assert factory.posts[0]["url"] == "https://openrouter.ai/api/v1/chat/completions"
+    assert factory.posts[0]["json"]["model"] == "minimax/minimax-m3"
+    assert factory.posts[0]["json"]["reasoning_effort"] == "medium"
+
+
 @pytest.mark.parametrize(
     "message",
     (

@@ -1726,6 +1726,37 @@ class SupportAIServiceTests(unittest.TestCase):
         finally:
             knowledge_path.unlink(missing_ok=True)
 
+    def test_exact_openrouter_route_maps_canonical_minimax_model(self) -> None:
+        import support_ai_service
+
+        knowledge_path = self._knowledge_path()
+        try:
+            config = support_ai_service.SupportAIConfig.from_env(
+                {
+                    "SUPPORT_AI_ENABLED": "true",
+                    "SUPPORT_AI_API_KEY": "sk-or-test",
+                    "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
+                    "SUPPORT_AI_MODEL": "minimax-m3",
+                    "SUPPORT_AI_KB_PATH": str(knowledge_path),
+                }
+            )
+            fake_factory = _FakeSessionFactory()
+            asyncio.run(
+                support_ai_service.generate_support_reply(
+                    "Подключение не работает",
+                    ticket_id=7,
+                    user_tg_id=8,
+                    config=config,
+                    session_factory=fake_factory,
+                )
+            )
+            post = fake_factory.posts[0]
+            self.assertEqual(post["url"], "https://openrouter.ai/api/v1/chat/completions")
+            self.assertEqual(post["json"]["model"], "minimax/minimax-m3")
+            self.assertEqual(post["json"]["reasoning_effort"], "medium")
+        finally:
+            knowledge_path.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()
