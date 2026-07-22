@@ -197,6 +197,37 @@ proxy. POKROV Android generated config возвращает только TUN и 
 ядро и тонкие host bindings. У нас таким ядром может оставаться разрешенный
 Hiddify v4 поверх sing-box/libbox; новая реализация TLS/AEAD силами POKROV не нужна.
 
+### Проверка текущего Qeli repository
+
+Статья была дополнительно сверена с exact source/history
+[`litvinovtd/qeli`](https://github.com/litvinovtd/qeli), а не только с текстом и
+комментариями:
+
+- repo создан `2026-06-07`, на срезе latest `v0.7.12` остается pre-release; docs
+  называют компоненты beta и обещают первую stable line только с `1.0`;
+- из 342 проверенных commits 330 принадлежат основному автору; высокая скорость
+  fixes реальна, но bus factor низкий;
+- core/server — `AGPL-3.0-only`; client shells MPL не отменяют AGPL obligations
+  bundled `libqeli`, dual licensing core не заявлен;
+- собственный L4 protocol включает hand-written TLS 1.3 records/handshake,
+  certificate borrowing, fake TLS/QUIC, X25519 + ML-KEM-768 и multipath;
+- [`SECURITY.md`](https://github.com/litvinovtd/qeli/blob/main/SECURITY.md) прямо
+  называет custom TLS крупнейшей attack surface и говорит, что независимого
+  внешнего аудита еще не было;
+- release/docs с фразой `external audit` описывают review принесенных reports и
+  внутренние/multi-agent fix rounds. Это полезная работа, но ее нельзя выдавать за
+  опубликованный независимый профессиональный audit;
+- recent releases исправляли серьезные flaws: enforcement `allowed_networks`,
+  command execution lifecycle hooks, arbitrary file read, parser OOM/DoS,
+  CSRF/XSS и silently broken pushed routes;
+- статья говорит об одном Rust core, однако exact tree сохраняет часть protocol и
+  lifecycle code в Kotlin/C# clients. Centralization пока неполная.
+
+Вердикт не изменился: Qeli — сильный R&D/postmortem и хороший источник failure
+tests. Для POKROV shipping core он слишком молод, криптографически амбициозен и
+неаудирован. Подробное сравнение Rust engines:
+[`core-engine-architecture.md`](core-engine-architecture.md).
+
 ## Тематический срез
 
 Числа ниже — posts с совпадением тематических выражений, а не голоса «за» и не
@@ -244,7 +275,11 @@ runtime wrapper. Высокая частота темы тоже не являе
 | [zapret](https://github.com/bol-van/zapret/releases/tag/v72.13) | `v72.13`, 2026-07-21 | Optional local/router recovery |
 | [TUIC](https://github.com/tuic-protocol/tuic/releases/tag/tuic-server-1.0.0) | Server release `1.0.0`, 2023-06-08 | Drop from near term |
 | [Remnawave](https://github.com/remnawave/panel/releases/tag/2.8.1) | `2.8.1`, 2026-07-13 | No evidence for control-plane migration |
-| [3x-ui](https://github.com/MHSanaei/3x-ui/releases/tag/v3.5.0) | `v3.5.0`, 2026-07-12 | Same |
+| [3x-ui](https://github.com/MHSanaei/3x-ui/releases/tag/v3.5.0) | `v3.5.0`, 2026-07-12; README says personal-only/no production | Current Xray adapter; decouple from production authority |
+| [libXray](https://github.com/XTLS/libXray) | Cross-platform wrapper; API stability не гарантируется, latest-Xray-only | Реальный second-engine path, но только за POKROV adapter |
+| [shoes](https://github.com/cfal/shoes/releases/tag/v0.2.7) | Tag `v0.2.7`, source version `0.2.8` | Rust server lab comparator |
+| [Qeli](https://github.com/litvinovtd/qeli/releases/tag/v0.7.12) | `v0.7.12` pre-release/beta, 2026-07-21 | R&D only; custom TLS без independent audit |
+| [Radiance](https://github.com/getlantern/radiance) | Rolling Lantern client backend | Архитектурный reference: forked sing-box + specialist dialers |
 
 Версия — только freshness signal. Она не доказывает protocol viability, license
 compatibility или готовность POKROV candidate.

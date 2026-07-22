@@ -23,10 +23,10 @@ Android `VpnService`, Apple packet tunnel, TUN, split routing и desktop host м
 перевести его с `v3.1.8` на POKROV-owned fork от `v4.1.0` за стабильным adapter и
 мигрировать конфиг с sing-box schema 1.8 на 1.13. Upstream release — source
 baseline, а не готовый ship artifact: до candidate нужны ABI/security fixes и
-reviewed rebase embedded sing-box `1.13.0` на current patch baseline `1.13.14`.
+patch-by-patch backport review. Released `hiddify-sing-box` — крупная продуктовая
+дельта, а не чистый sing-box `1.13.0`, поэтому blind rebase на `1.13.14` запрещен.
 `v3.1.8` остается rollback bridge до parity. Direct upstream sing-box/libbox
-остается запасным вариантом, если Hiddify build, API или support окажутся
-неприемлемыми.
+остается запасным вариантом и возможной долгосрочной базой минимального fork.
 
 ## Почему Hiddify v4 — основной путь, но не drop-in update
 
@@ -69,6 +69,10 @@ grant и подтвердить, что его scope покрывает испо
 Карта больших clients, branded APK и forks:
 [`client-core-landscape.md`](client-core-landscape.md). Проверенный Hiddify v4
 audit и наш patch stack: [`hiddify-v4-hardening.md`](hiddify-v4-hardening.md).
+Точная дельта Hiddify, WARP и варианты обновления:
+[`hiddify-fork-delta.md`](hiddify-fork-delta.md). Сравнение Go/Rust cores и
+клиентской/серверной архитектуры:
+[`core-engine-architecture.md`](core-engine-architecture.md).
 
 ## Что реально есть сейчас
 
@@ -115,7 +119,7 @@ POKROV compatibility adapter
   Android/iOS host bindings        Windows versioned FFI
               |
               v
-POKROV fork: Hiddify Core v4.1.0 baseline / reviewed sing-box 1.13.x
+POKROV fork: Hiddify Core v4.1.0 + exact released hiddify-sing-box
               |
               v
 managed config, schema pinned to the embedded core
@@ -133,11 +137,15 @@ Kotlin и Swift: смена core должна оставаться локаль�
 Исходная точка migration — exact Hiddify `v4.1.0`, а не плавающий `main`.
 Первый candidate — собственная воспроизводимая сборка с зафиксированным patch
 manifest. Release содержит Android, iOS, macOS и Windows library artifacts с
-опубликованными digests, а build tags включают Naive и AWG. Но code audit нашел
-desktop use-after-free, небезопасное хранение/logging config и лишний old command
-server; upstream artifact без исправлений не ship-им. Источники:
+опубликованными digests, а build tags включают Naive и AWG. Exact fork audit также
+нашел WARP, XHTTP, Mieru, Psiphon и DNSTT. Это сильнее чистого sing-box по
+capability breadth, но дороже в сопровождении: released fork уже содержит 156
+commits и меняет 236 файлов после общего upstream base. Code audit нашел desktop
+use-after-free, небезопасное хранение/logging config и лишний old command server;
+upstream artifact без исправлений не ship-им. Источники:
 [Hiddify v4.1.0 release](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0),
-[`hiddify-v4-hardening.md`](hiddify-v4-hardening.md).
+[`hiddify-v4-hardening.md`](hiddify-v4-hardening.md),
+[`hiddify-fork-delta.md`](hiddify-fork-delta.md).
 
 ## Обязательная миграция схемы
 
@@ -184,9 +192,11 @@ client/platform output есть удаленные или устаревшие �
 
 ### Не включать сейчас
 
-- XHTTP не показывать клиенту до реального Xray runtime path либо сознательного
-  отказа от него. uTLS воспроизводит ClientHello, а не полный browser stack;
-  свежие полевые сообщения противоречивы. Официальный owner:
+- XHTTP не показывать клиенту до ship-проверки Hiddify XHTTP path либо реального
+  Xray runtime path. Released Hiddify fork уже содержит XHTTP transport, поэтому
+  второй engine не обязателен априори; нужны build-registration, config parity и
+  interoperability tests с exact Xray server. uTLS воспроизводит ClientHello, а
+  не полный browser stack; свежие полевые сообщения противоречивы. Reference owner:
   [Xray transports](https://xtls.github.io/en/config/transports/).
 - gRPC оставить compatibility canary, не объявлять «primary» без новых RU данных.
 - Cloak, GoodbyeDPI, browser extension и zapret не являются core transport для
@@ -196,9 +206,10 @@ client/platform output есть удаленные или устаревшие �
   аккаунты, CAPTCHA, ToS, rate limits и внезапные изменения сервиса.
 - Не переносить собственный Rust crypto/TLS/protocol из Habr. Оттуда полезны
   инженерные уроки, но не новый криптографический стек.
-- Не мигрировать control plane на Remnawave/3x-ui только по статье: корпус почти не
-  содержит сравнительных данных, а текущая POKROV policy/provisioning интеграция
-  уже глубже, чем типовая panel subscription.
+- Не мигрировать control plane на Remnawave только по статье. Одновременно 3x-ui
+  нельзя оставлять стратегическим production authority: его README называет проект
+  personal-use и просит не использовать в production. Xray baseline сохраняем, а
+  3x-ui постепенно отделяем тонким POKROV-owned runner/config/rollback layer.
 
 ## Наши исправления
 
@@ -210,8 +221,9 @@ client/platform output есть удаленные или устаревшие �
 1. Запретить выдачу `xray-json` текущему POKROV client и удалить/скрыть ложное
    обещание Xray fallback.
 2. Зафиксировать внутренний reference на отдельное Hiddify permission и создать
-   POKROV fork от `v4.1.0`: pinned source/submodule commits, reviewed sing-box
-   `1.13.14` baseline, toolchain, SHA-256, SBOM и provenance.
+   POKROV fork от `v4.1.0`: pinned root/submodule commits, toolchain, SHA-256, SBOM
+   и provenance. Составить upstream-fix manifest до `1.13.14`; переносить patches
+   по одному, без blanket rebase released Hiddify delta.
 3. Исправить desktop C ABI ownership, config persistence/logging, raw-config path
    и лишние command/profiling surfaces; затем сделать v4 compatibility-adapter +
    config migration spike и пройти Android TUN, Windows TUN, iOS source build и
@@ -232,6 +244,9 @@ client/platform output есть удаленные или устаревшие �
    payload probe по carrier/region/time bucket. Никаких вечных Yandex/VK flags.
 3. Naive H2 canary, затем отдельный Hysteria2 canary. Rollout только после
    `PASS` exact candidate, `MANUAL_OWNER_TEST` на устройствах и rollback proof.
+4. Отделить Xray process/config lifecycle от 3x-ui: canonical POKROV model,
+   exact-binary validation, atomic activation и rollback. Панель временно может
+   остаться adapter/UI, но не единственным источником runtime truth.
 
 ### P2 — только по измеренной необходимости
 

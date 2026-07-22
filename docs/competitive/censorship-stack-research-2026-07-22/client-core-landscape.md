@@ -59,6 +59,7 @@ developer/user community, не число активных установок.
 | [Amnezia Client](https://github.com/amnezia-vpn/amnezia-client) | ~13k stars, cross-platform | OpenVPN, WireGuard, AWG, Xray, Cloak и другие | Нет, multi-protocol orchestrator | Reference для AWG и multi-protocol UX; слишком широкий base для POKROV |
 | [sing-box for Android](https://github.com/SagerNet/sing-box-for-android) | ~1k stars, Android | upstream sing-box/libbox | Да, ближайший вариант | Лучший upstream reference и Plan B, но не white-label SDK |
 | [sing-box for Apple platforms](https://github.com/SagerNet/sing-box-for-apple) | ~1k stars, Apple | upstream sing-box/libbox | Да, ближайший вариант | Reference для current libbox API и Apple lifecycle |
+| [Lantern / Radiance](https://github.com/getlantern/radiance) | Малый недавно открытый backend repo, но зрелый продукт | Forked sing-box + Outline SDK + AWG + Geneva + WATER/WASM | Нет, собственный backend/orchestrator | Лучший открытый reference модели «наш backend + стандартный core + specialist dialers» |
 
 Проверка fork ownership:
 
@@ -126,26 +127,30 @@ Sota Connect, Batya, Atlanta и другие. Для них публичный i
 
 Цена:
 
-- каждое обновление — rebase и differential tests;
+- каждое обновление — upstream reconciliation/backport review и differential tests;
 - fork может отставать от upstream;
 - лишние control/config surfaces приходится отключать;
 - воспроизводимая сборка и SBOM становятся нашей обязанностью.
 
 Сам fork не проблема. Проблема — непинованный fork без списка patches, owner и
-регулярного rebase budget.
+регулярного update/backport budget. Для большой продуктовой дельты blanket rebase
+может быть опаснее контролируемого backport.
 
 ## Решение для POKROV
 
 1. Не заменять POKROV client на Hiddify/Karing/NekoBox.
 2. Взять Hiddify `v4.1.0` как фиксированную исходную точку для POKROV-owned fork,
    но не ship-ить upstream release binary без аудита и patches.
-3. Перенести нужную Hiddify delta на reviewed sing-box `1.13.14` baseline либо
-   явно зафиксировать и обосновать оставшийся delta от `1.13.0`.
+3. Сохранить exact released Hiddify lineage; построить manifest отсутствующих
+   upstream changes до `1.13.14` и backport-ить security/correctness fixes по
+   одному. Параллельно измерять, какие Hiddify capabilities реально используются.
 4. Спрятать fork за узким versioned `PokrovCoreBackend` contract.
 5. Direct upstream sing-box/libbox сохранить как exit path и compatibility spike,
    не тащить второй production core параллельно.
-6. Xray добавлять только после измеренного XHTTP gap. Mihomo не добавлять без
-   решения сменить всю config/runtime family.
+6. Сначала проверить shipped Hiddify XHTTP против exact Xray server; libXray
+   добавлять только после измеренного gap. Mihomo не добавлять без решения сменить
+   всю config/runtime family.
 
 Конкретный Hiddify patch stack и release gates:
-[`hiddify-v4-hardening.md`](hiddify-v4-hardening.md).
+[`hiddify-v4-hardening.md`](hiddify-v4-hardening.md). Exact fork delta и WARP:
+[`hiddify-fork-delta.md`](hiddify-fork-delta.md).

@@ -51,7 +51,7 @@ Issue tracker — источник конкретных regressions, не ста
 | Жалоба | Где дефект | Что это значит для POKROV |
 | --- | --- | --- |
 | [Core #112](https://github.com/hiddify/hiddify-core/issues/112): `C.CString` leak в v3 Dart bridge | Core bridge | Реальный дефект текущей v3-линии; v3 держать только как bounded rollback |
-| [App #2284](https://github.com/hiddify/hiddify-app/issues/2284): sporadic allocator panic в app `4.1.1` / sing-box `1.13.0` | Core/fork/runtime path | Не оставаться молча на embedded `1.13.0`; нужен reviewed rebase и soak |
+| [App #2284](https://github.com/hiddify/hiddify-app/issues/2284): sporadic allocator panic в app `4.1.1` / sing-box `1.13.0` | Core/fork/runtime path | Exact candidate надо воспроизвести/soak; номер upstream patch сам по себе не доказывает fix |
 | [App #2281](https://github.com/hiddify/hiddify-app/issues/2281): Android 16 background disconnect без auto-reconnect | App lifecycle | Hiddify app host не брать; свой POKROV service обязан иметь supervisor/recovery |
 | [App #2047](https://github.com/hiddify/hiddify-app/issues/2047): connect method сообщает success до фактической готовности | App method-channel contract | Не наследуем код, но обязаны сделать readiness handshake в своем adapter |
 | [App #2246](https://github.com/hiddify/hiddify-app/issues/2246): Windows crash в `flutter_windows.dll` | Hiddify app/Flutter shell | Наш shell защищает от этого конкретного дефекта; это не аргумент выкидывать core |
@@ -59,7 +59,9 @@ Issue tracker — источник конкретных regressions, не ста
 
 К Hiddify обычно предъявляют четыре обоснованные претензии: breaking upgrades,
 fork lag, тяжелая supply chain и неровный lifecycle вокруг core. Все четыре
-контролируются pinning, собственным adapter, небольшим fork и release gates.
+контролируются pinning, собственным adapter, нашим ограниченным hardening patch
+stack и release gates. Но inherited `hiddify-sing-box` fork сам по себе большой;
+это не «маленькая дельта к upstream».
 
 ## Проверенные дефекты и риски в `v4.1.0`
 
@@ -75,7 +77,10 @@ fork lag, тяжелая supply chain и неровный lifecycle вокруг
 | Desktop `start/restart` принудительно включает old command server | P0 | [`custom.go#L108-L140`](https://github.com/hiddify/hiddify-core/blob/v4.1.0/platform/desktop/custom.go#L108-L140) | `false`; не поднимать неиспользуемый listener/control plane |
 | Managed final JSON по умолчанию проходит через Hiddify config builder; `EnableRawConfig` не выставлен desktop/mobile exports | P0 | [`buildconfighelper.go#L28-L42`](https://github.com/hiddify/hiddify-core/blob/v4.1.0/v2/hcore/buildconfighelper.go#L28-L42) | Экспортировать явный `start_raw`/`check_config`; POKROV final config не должен тихо переписываться |
 | Mobile и gRPC code импортируют `net/http/pprof` | P1 | [`platform/mobile/mobile.go`](https://github.com/hiddify/hiddify-core/blob/v4.1.0/platform/mobile/mobile.go), [`grpc_server.go`](https://github.com/hiddify/hiddify-core/blob/v4.1.0/v2/hcore/grpc_server.go) | Убрать из production build, если profiling endpoint не используется |
-| Tag использует Hiddify fork на sing-box `1.13.0`, тогда как current upstream patch release — `1.13.14` | P0 | [`v4.1.0 go.mod`](https://github.com/hiddify/hiddify-core/blob/v4.1.0/go.mod), [sing-box `v1.13.14`](https://github.com/SagerNet/sing-box/releases/tag/v1.13.14) | Перенести Hiddify patches на reviewed 1.13.14 baseline; не менять dependency вслепую |
+| Released fork основан на sing-box 1.13-era code, но содержит 156 собственных commits/236 changed files и не включает 191 upstream stable commits на дату среза | P0 | Exact submodule `0a02b77`, `git merge-base/rev-list/diff`; [`hiddify-fork-delta.md`](hiddify-fork-delta.md) | Не делать blind module replace/rebase. Классифицировать upstream commits и backport-ить security/correctness fixes с provenance/tests |
+| WARP endpoint начинает profile/bootstrap в goroutine и возвращает success до readiness; failures только логируются | P0 | [`endpoint_warp.go`](https://github.com/hiddify/hiddify-sing-box/blob/0a02b7729f6a211436bb8bdcd8696c283eb27767/protocol/wireguard/endpoint_warp.go) | Typed readiness/failure callback, timeout и adapter state gate |
+| WARP cache содержит private key; malformed profile может дать empty `Peers`/ports и panic | P0/P1 | Тот же exact source | App-private encrypted/ACL-controlled storage; validate profile before indexing/random choice; fuzz/unit tests |
+| Hiddify Core `GenerateWarpConfig` фактически stub, а legacy `patchWarp` содержит unreachable code после early return | P1 | [`v2/hcore/warp.go`](https://github.com/hiddify/hiddify-core/blob/v4.1.0/v2/hcore/warp.go), [`v2/config/warp.go`](https://github.com/hiddify/hiddify-core/blob/v4.1.0/v2/config/warp.go) | Не публиковать эти helpers в POKROV contract до исправления; использовать exact endpoint config path |
 
 Проверка [`main` desktop ABI](https://github.com/hiddify/hiddify-core/blob/main/platform/desktop/custom.go)
 и [`main` config persistence](https://github.com/hiddify/hiddify-core/blob/main/v2/config/debug.go)
@@ -104,7 +109,8 @@ fork lag, тяжелая supply chain и неровный lifecycle вокруг
   `0700/0600` на Unix-like systems и app-private directory/ACL на Windows;
 - запретить raw config logging и проверять ошибки записи;
 - pin root commit, all submodules, Go/gomobile/NDK и build tags;
-- rebase `hiddify-sing-box` patches на reviewed current 1.13 patch level;
+- сохранить exact released Hiddify lineage; составить manifest отсутствующих
+  upstream commits и backport-ить только нужные security/correctness fixes;
 - собирать Android/Apple/Windows artifacts самим с hashes, SBOM и provenance.
 
 ### Отправляем upstream
@@ -124,6 +130,10 @@ truth.
 - cross-platform build recipes;
 - Hiddify WARP/config helpers только как явные opt-in capabilities.
 
+WARP endpoint implementation оставить, но пустой `GenerateWarpConfig` RPC и
+legacy unreachable path не считать рабочим product API. Readiness и private-key
+storage должны принадлежать нашему adapter/security contract.
+
 Убрать из shipped surface:
 
 - Hiddify app UI/updater/branding/telemetry;
@@ -140,16 +150,18 @@ Cronet и заметный размер artifact — осознанная цен
 
 1. Создать POKROV fork от exact `v4.1.0`; сохранить upstream tag/root/submodule
    provenance.
-2. Зафиксировать reviewed sing-box patch baseline; целиться в `1.13.14`, а не
-   оставлять `1.13.0` по инерции.
+2. Зафиксировать exact Hiddify submodule lineage и upstream-fix manifest до
+   `1.13.14`; выбрать и backport-ить fixes по одному. Не делать blanket rebase.
 3. Исправить C ABI ownership и добавить ABI/capability versioning.
 4. Добавить `check_config` и `start_raw`; запретить скрытую перестройку managed JSON.
 5. Закрыть config-at-rest/logging issues.
 6. Отключить old command server, pprof и неиспользуемые listeners.
-7. Портировать Android/iOS host bindings и Windows FFI на adapter.
-8. Мигрировать schema 1.8 -> 1.13 и валидировать exact candidate binary.
-9. Выпустить reproducible artifacts с SHA-256, SBOM и build metadata.
-10. Пройти differential profiles, TUN/DNS, reconnect, handover, crash, memory и
+7. Исправить WARP validation/readiness/cache handling и покрыть opt-in capability
+   отдельными tests.
+8. Портировать Android/iOS host bindings и Windows FFI на adapter.
+9. Мигрировать schema 1.8 -> 1.13 и валидировать exact candidate binary.
+10. Выпустить reproducible artifacts с SHA-256, SBOM и build metadata.
+11. Пройти differential profiles, TUN/DNS, reconnect, handover, crash, memory и
     long-soak tests до canary.
 
 Не смешивать core migration и rollout Naive/Hysteria/AWG в одном candidate. Сначала
@@ -160,7 +172,7 @@ parity старого контура, затем новые transports отде�
 Перейти на direct upstream sing-box стоит только если наш Hiddify fork:
 
 - систематически не проходит crash/memory/TUN gates;
-- требует слишком большого rebase delta;
+- требует все больше несвязанных product patches ради сохранения нужных features;
 - блокирует timely security updates;
 - теряет нужный scope разрешения.
 
@@ -168,3 +180,6 @@ parity старого контура, затем новые transports отде�
 Karing/NekoBox forks добавляют еще одного посредника и не дают POKROV преимущества.
 Xray оправдан только измеренным XHTTP gap; Mihomo — только сознательной сменой
 config/runtime family.
+
+Точный состав fork, WARP semantics и три update strategy:
+[`hiddify-fork-delta.md`](hiddify-fork-delta.md).

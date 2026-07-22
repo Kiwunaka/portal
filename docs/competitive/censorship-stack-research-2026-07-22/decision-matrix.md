@@ -19,12 +19,15 @@ grant не был прочитан и не является repository artifact.
 | Apple packet tunnel | `KEEP_AND_PORT` | P0 | Сохраняем provider/flow, обновляем libbox bindings | Source build; signing и device proof остаются manual gates |
 | Hiddify Core `v3.1.8` | `ROLLBACK_BRIDGE` | P0 | Заморозить; оставить только до parity v4 | Bounded rollback milestone |
 | Hiddify Core `v4.1.0` | `SOURCE_BASELINE` | P0 | POKROV-owned fork через compatibility adapter; upstream binary не ship-ить без patches | API/config parity, permission reference, TUN, crash/reconnect/soak |
-| `hiddify-sing-box` / sing-box `1.13.0` | `REBASE_OR_JUSTIFY` | P0 | Перенести Hiddify patches на reviewed `1.13.14` baseline либо документировать блокирующий delta | Dependency diff, config parity, protocol and soak tests |
+| Released `hiddify-sing-box@0a02b77` | `PIN_AUDIT_BACKPORT` | P0 | Сохранить exact lineage; классифицировать отсутствующие upstream commits до `1.13.14`; backport security/correctness patches по одному | Commit manifest, provenance, config/protocol parity and soak; no blanket rebase |
 | Hiddify desktop C ABI | `FIX_IN_FORK` | P0 | Убрать error-string use-after-free; caller всегда вызывает `free_string` | Error-path ASan/stress + allocation ownership tests |
 | Hiddify config persistence/logging | `FIX_IN_FORK` | P0 | No raw logs/settings copy; Unix `0700/0600`, Windows app-private ACL; checked writes; bounded cleanup | Credential canary absent from logs/DB; file ACL/mode checks |
 | Hiddify old command server/pprof | `DISABLE` | P0 | Не включать неиспользуемые control/profiling surfaces | Listener inventory and hostile-local-client test |
+| Hiddify WARP endpoint | `KEEP_FIX_OPT_IN` | P0/P1 | Typed readiness/error, profile bounds validation, protected private-key cache; не использовать stub RPC | Unit/fuzz malformed profile, offline/API-detour, readiness timeout, cache ACL and reconnect |
 | Upstream sing-box/libbox `1.13.x` | `FALLBACK_B` | P1 | Сохранить ADR/spike path без реализации до проблемы с Hiddify | Больше собственного glue, GPL review |
-| Xray second engine | `DEFER` | P2 | Не добавлять ради уже написанного backend profile | Только измеренный gap + lifecycle/update/security budget |
+| Xray/libXray second client engine | `DEFER` | P2 | Wrapper существует, но API unstable/latest-only; не добавлять ради уже написанного backend profile | Только измеренный Xray-vs-Hiddify XHTTP gap + lifecycle/update/security budget |
+| `shoes` Rust engine | `SERVER_LAB` | P2 | Exact VLESS/Reality/Naive/Hysteria benchmark/interoperability only | No production until control/multi-user/XHTTP/platform gaps and supply chain pass |
+| Qeli | `R_AND_D_ONLY` | — | Заимствовать тесты/lifecycle lessons; не ship-ить custom protocol/TLS | 1.0, independent external audit, interop/field evidence and license decision would be prerequisites |
 | `advanced_fallback_core: xray` | `REMOVE_OR_HIDE` | P0 | Canonical contract должен совпасть с shipped capability | Contract and UI tests |
 | `xray-json` assignment | `BLOCK_FOR_CURRENT_CLIENT` | P0 | Capability-aware manifest selection | Client никогда не получает неподдерживаемый format |
 | Legacy sing-box 1.8 config | `MIGRATE` | P0 | TUN, DNS, route actions, block, WireGuard/endpoints | Validate against exact embedded binary |
@@ -45,7 +48,7 @@ grant не был прочитан и не является repository artifact.
 | Hysteria2 | `ADD_CANARY` | P1 | Независимый UDP/QUIC contour | Никогда не sole path; carrier-dependent QUIC blocks |
 | AmneziaWG | `SPIKE` | P2 | Второй UDP comparator | Интеграционная цена и недостаток POKROV exact evidence |
 | AnyTLS | `SPIKE_IF_NEEDED` | P2 | TCP comparator | Не нужен до результатов Naive |
-| XHTTP | `DEFER_CLIENT_ROLLOUT` | P2 | Возможный Xray-only contour | Сейчас backend/client contract сломан; свежие failure reports |
+| XHTTP | `DEFER_CLIENT_ROLLOUT` | P2 | Hiddify fork уже имеет implementation; Xray остается reference owner | Сейчас backend/client contract сломан; exact build registration/config/server interop и RU evidence отсутствуют |
 | Cloak | `DROP_FROM_CORE_PLAN` | — | — | Отдельный stack, слабее текущего priority set, блокировки hoster/traffic |
 | TUIC | `DROP_FROM_NEAR_TERM` | — | — | Старый официальный release и пересечение роли с Hysteria2 |
 
@@ -58,8 +61,9 @@ grant не был прочитан и не является repository artifact.
 | RU bridge detour | `KEEP_MECHANISM` | P1 | Multi-endpoint, multi-ASN, expiring eligibility | Fresh payload probe, no static whitelist claim |
 | Hardcoded Yandex/VK whitelist premise | `REMOVE` | P0 | Не связывать cloud ASN с consumer service brand | Only measured endpoint eligibility |
 | Single ingress/egress | `AVOID` | P1 | Разнести failure domains и rotation | Provider/ASN failure simulation |
-| WARP as censorship dependency | `REMOVE_FROM_CORE_PATH` | P1 | Можно оставить отдельной optional egress feature | Не считать обходом блокировок/доступом к RU by default |
-| Remnawave/3x-ui migration | `REJECT_WITHOUT_CASE` | — | Не менять control plane по Habr-инструкции | Нужен отдельный TCO/capability migration case |
+| WARP as censorship dependency | `REMOVE_FROM_CORE_PATH` | P1 | Оставить сильной optional egress/bridge capability Hiddify | Cloudflare API/WireGuard могут быть недоступны; readiness и private-key cache надо исправить |
+| Remnawave migration | `REJECT_WITHOUT_CASE` | — | Не менять control plane по Habr-инструкции | Нужен отдельный TCO/capability migration case |
+| 3x-ui as production authority | `DECOUPLE` | P1 | Xray оставить; сделать POKROV canonical config + exact-check/atomic runner/rollback; panel временно adapter/UI | Official README says personal-only/no production; parity and rollback before removing dependency |
 
 ## Measurement
 
@@ -105,8 +109,8 @@ Owner: отдельный `POKROV-app` worktree.
 - source baseline — exact `v4.1.0`, первый ship candidate — POKROV fork с patch
   manifest, а не upstream release artifact;
 - Hiddify root/submodule commits, Go/gomobile versions и tags pinned;
-- embedded sing-box patches перенесены на reviewed `1.13.14` baseline либо
-  сохранение старого patch level имеет конкретное записанное обоснование;
+- exact Hiddify fork lineage сохранена; upstream commits до `1.13.14`
+  классифицированы; каждый выбранный backport имеет provenance и focused tests;
 - downloader сверяет digest до extract;
 - SBOM и internal permission reference сохраняются рядом с candidate metadata;
 - Android/iOS host interfaces компилируются против v4 bindings;
@@ -117,6 +121,8 @@ Owner: отдельный `POKROV-app` worktree.
 - managed JSON идет через `check_config`/`start_raw`, не переписывается скрытым
   Hiddify builder, не сохраняется в settings и не попадает в logs;
 - old command server, pprof и неиспользуемые gRPC/listeners выключены;
+- WARP endpoint не сообщает ready до фактической готовности, profile bounds
+  проверяются, private key не попадает в logs/settings и cache защищен;
 - direct sing-box остается документированным fallback, а не параллельным core.
 
 ### WP2 — config migration
@@ -156,3 +162,15 @@ Owner: network rollout.
 Порядок: Naive H2 → Hysteria2 → только затем AWG/AnyTLS/XHTTP comparator.
 Каждый contour получает отдельные ingress/egress, SLO, cohort, expiry и one-click
 rollback. Никаких автоматических default promotions по единичным форумным отчетам.
+
+### WP6 — server runtime authority
+
+Owner: platform node runtime.
+
+- Xray остается protocol engine current baseline;
+- canonical config/profile state принадлежит POKROV, не 3x-ui DB/UI;
+- runner делает exact-binary validate, atomic activate, health и rollback;
+- 3x-ui сначала становится совместимым adapter, затем удаляется только после
+  доказанной provisioning/accounting/rollback parity;
+- native Hysteria/AWG/sing-box contours живут отдельными processes/listeners и не
+  получают неявного доступа к общему routing state.
