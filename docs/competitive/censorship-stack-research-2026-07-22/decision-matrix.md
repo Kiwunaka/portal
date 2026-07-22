@@ -18,7 +18,11 @@ grant не был прочитан и не является repository artifact.
 | Android `VpnService` + TUN host | `KEEP_AND_PORT` | P0 | Сохраняем ownership, переносим interface bindings на libbox 1.13 | Android unit/build + physical-device TUN proof |
 | Apple packet tunnel | `KEEP_AND_PORT` | P0 | Сохраняем provider/flow, обновляем libbox bindings | Source build; signing и device proof остаются manual gates |
 | Hiddify Core `v3.1.8` | `ROLLBACK_BRIDGE` | P0 | Заморозить; оставить только до parity v4 | Bounded rollback milestone |
-| Hiddify Core `v4.1.0` | `MIGRATE_TO` | P0 | Exact-version port через POKROV compatibility adapter | API/config parity, permission reference, TUN, crash/reconnect/soak |
+| Hiddify Core `v4.1.0` | `SOURCE_BASELINE` | P0 | POKROV-owned fork через compatibility adapter; upstream binary не ship-ить без patches | API/config parity, permission reference, TUN, crash/reconnect/soak |
+| `hiddify-sing-box` / sing-box `1.13.0` | `REBASE_OR_JUSTIFY` | P0 | Перенести Hiddify patches на reviewed `1.13.14` baseline либо документировать блокирующий delta | Dependency diff, config parity, protocol and soak tests |
+| Hiddify desktop C ABI | `FIX_IN_FORK` | P0 | Убрать error-string use-after-free; caller всегда вызывает `free_string` | Error-path ASan/stress + allocation ownership tests |
+| Hiddify config persistence/logging | `FIX_IN_FORK` | P0 | No raw logs/settings copy; Unix `0700/0600`, Windows app-private ACL; checked writes; bounded cleanup | Credential canary absent from logs/DB; file ACL/mode checks |
+| Hiddify old command server/pprof | `DISABLE` | P0 | Не включать неиспользуемые control/profiling surfaces | Listener inventory and hostile-local-client test |
 | Upstream sing-box/libbox `1.13.x` | `FALLBACK_B` | P1 | Сохранить ADR/spike path без реализации до проблемы с Hiddify | Больше собственного glue, GPL review |
 | Xray second engine | `DEFER` | P2 | Не добавлять ради уже написанного backend profile | Только измеренный gap + lifecycle/update/security budget |
 | `advanced_fallback_core: xray` | `REMOVE_OR_HIDE` | P0 | Canonical contract должен совпасть с shipped capability | Contract and UI tests |
@@ -98,12 +102,21 @@ Owners: platform manifest selection + client product contract.
 Owner: отдельный `POKROV-app` worktree.
 
 - ADR фиксирует POKROV adapter → Hiddify v4 boundary и versioned Windows ABI;
+- source baseline — exact `v4.1.0`, первый ship candidate — POKROV fork с patch
+  manifest, а не upstream release artifact;
 - Hiddify root/submodule commits, Go/gomobile versions и tags pinned;
+- embedded sing-box patches перенесены на reviewed `1.13.14` baseline либо
+  сохранение старого patch level имеет конкретное записанное обоснование;
 - downloader сверяет digest до extract;
 - SBOM и internal permission reference сохраняются рядом с candidate metadata;
 - Android/iOS host interfaces компилируются против v4 bindings;
 - Windows adapter больше не требует удаленных `setupOnce`, `parse` и
   `changeHiddifyOptions`, а новый `setup` вызывается по точной v4 ABI;
+- каждый C result копируется и освобождается через `free_string`; error path не
+  возвращает freed pointer;
+- managed JSON идет через `check_config`/`start_raw`, не переписывается скрытым
+  Hiddify builder, не сохраняется в settings и не попадает в logs;
+- old command server, pprof и неиспользуемые gRPC/listeners выключены;
 - direct sing-box остается документированным fallback, а не параллельным core.
 
 ### WP2 — config migration

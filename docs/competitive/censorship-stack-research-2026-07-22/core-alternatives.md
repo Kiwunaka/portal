@@ -13,7 +13,8 @@ Hiddify. Это `OPERATOR_ATTESTED`; confidential grant в research не чит�
 
 При действующем разрешении Hiddify v4 — самый дешевый рациональный путь. Он уже
 дает cross-platform artifacts, знакомую архитектуру и hiddify-sing-box с нужными
-build tags. Но обновление требует настоящего API/config port.
+build tags. Но обновление требует настоящего API/config port и небольшого
+POKROV-owned patch stack; upstream `v4.1.0` — source baseline, не готовый binary.
 
 Запасной порядок:
 
@@ -29,7 +30,7 @@ build tags. Но обновление требует настоящего API/co
 
 | Вариант | Public license | Сильные стороны | Цена для POKROV | Решение |
 | --- | --- | --- | --- | --- |
-| [Hiddify Core v4.1.0](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0) | Public GPLv3 + restrictions; у POKROV отдельное разрешение `OPERATOR_ATTESTED` | Android/iOS/macOS/Windows libs, sing-box 1.13 family, Naive/AWG build tags, близко к текущему stack | Medium: breaking bindings и config migration | `PRIMARY` |
+| [Hiddify Core v4.1.0](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0) | Public GPLv3 + restrictions; у POKROV отдельное разрешение `OPERATOR_ATTESTED` | Android/iOS/macOS/Windows libs, sing-box 1.13 family, Naive/AWG build tags, близко к текущему stack | Medium: breaking bindings, config migration, ABI/security patches и fork rebase | `PRIMARY_SOURCE_BASELINE` |
 | [sing-box v1.13.14](https://github.com/SagerNet/sing-box/releases/tag/v1.13.14) | GPLv3-or-later | VLESS/REALITY, Naive, Hysteria2, зрелый libbox/TUN | High: свой Windows ABI, mobile command-service port, больше supply-chain ownership | `FALLBACK_B` |
 | [Xray-core v26.3.27](https://github.com/XTLS/Xray-core/releases/tag/v26.3.27) | MPL-2.0 | Native owner VLESS/REALITY/XHTTP; file-level copyleft вместо GPL | High: нет готовой POKROV mobile library boundary, свой wrapper/TUN lifecycle; нет Naive/Hysteria2 contour | `FALLBACK_C` |
 | [Mihomo v1.19.29](https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.29) | MIT | VLESS/REALITY, Hysteria2, TUIC, AnyTLS, TUN, активный project | Very high: Clash config model, новые bindings, profile/routing rewrite; нет Naive/XHTTP/AWG parity | `FALLBACK_D` |
@@ -67,6 +68,8 @@ Public license — только название upstream license, не юрид
 
 Правильная реализация — отдельный `PokrovCoreBackend` contract. Внутри может быть
 Hiddify v3 или v4; остальной Flutter/native код не должен знать конкретные symbols.
+Проверенные defects и точная граница adapter/fork/upstream перечислены в
+[`hiddify-v4-hardening.md`](hiddify-v4-hardening.md).
 
 ### Migration gates
 
@@ -74,13 +77,16 @@ Hiddify v3 или v4; остальной Flutter/native код не должен
    TUN open/close, route modes и DNS recovery.
 2. Сохранить только internal reference на permission: entity, covered versions,
    redistribution/modification/platform scope и срок. Сам документ не коммитить.
-3. Pin exact v4 tag, submodule commits, Go/NDK/gomobile versions и build tags.
-4. Проверять release digest до extract; для собственных builds публиковать наш
+3. Создать POKROV fork от exact v4 tag; pin submodule commits, Go/NDK/gomobile
+   versions и build tags.
+4. Исправить C ABI ownership, raw config handling, persistence/logging и лишние
+   control surfaces; перенести Hiddify delta на reviewed sing-box `1.13.14`.
+5. Проверять release digest до extract; для собственных builds публиковать наш
    digest, SBOM и provenance.
-5. Сначала портировать config schema и Windows ABI в изолированном client worktree,
+6. Сначала портировать config schema и Windows ABI в изолированном client worktree,
    затем Android, затем Apple readiness lane.
-6. Запустить old/new differential tests на одинаковых managed profiles.
-7. Выпустить закрытый cohort с мгновенным rollback на v3; не смешивать с rollout
+7. Запустить old/new differential tests на одинаковых managed profiles.
+8. Выпустить закрытый cohort с мгновенным rollback на v3; не смешивать с rollout
    Naive/Hysteria/AWG в том же candidate.
 
 Обновление Hiddify само по себе не чинит текущий `xray-json` gap: bootstrap
@@ -129,7 +135,8 @@ Leaf интересен Apache-2.0, Rust и cross-platform TUN, но подде�
 
 ## Итог
 
-Выбираем Hiddify v4, но защищаемся от следующей миграции своим узким adapter
-contract, reproducible builds и capability-aware manifests. Direct sing-box
-остается документированным Plan B, Xray — evidence-gated Plan C. Остальные cores
-не дают преимущества, которое оправдывает переписывание текущего POKROV client.
+Выбираем собственный fork Hiddify v4, но защищаемся от следующей миграции узким
+adapter contract, reproducible builds и capability-aware manifests. Direct
+sing-box остается документированным Plan B, Xray — evidence-gated Plan C.
+Остальные cores не дают преимущества, которое оправдывает переписывание текущего
+POKROV client. Карта реальных clients/forks: [`client-core-landscape.md`](client-core-landscape.md).

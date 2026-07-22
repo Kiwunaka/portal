@@ -20,10 +20,13 @@ research не проверялись и в репозиторий не копи�
 Android `VpnService`, Apple packet tunnel, TUN, split routing и desktop host менять
 на Hiddify не нужно. Hiddify сейчас только поставщик встроенного `libcore`-артефакта.
 С учетом отдельного разрешения целевое решение — сохранить Hiddify как backend,
-перевести его с `v3.1.8` на `v4.1.0` за стабильным POKROV-owned adapter и мигрировать
-конфиг с sing-box schema 1.8 на 1.13. `v3.1.8` остается rollback bridge до parity.
-Direct upstream sing-box/libbox остается запасным вариантом, если Hiddify build,
-API или support окажутся неприемлемыми.
+перевести его с `v3.1.8` на POKROV-owned fork от `v4.1.0` за стабильным adapter и
+мигрировать конфиг с sing-box schema 1.8 на 1.13. Upstream release — source
+baseline, а не готовый ship artifact: до candidate нужны ABI/security fixes и
+reviewed rebase embedded sing-box `1.13.0` на current patch baseline `1.13.14`.
+`v3.1.8` остается rollback bridge до parity. Direct upstream sing-box/libbox
+остается запасным вариантом, если Hiddify build, API или support окажутся
+неприемлемыми.
 
 ## Почему Hiddify v4 — основной путь, но не drop-in update
 
@@ -63,6 +66,10 @@ grant и подтвердить, что его scope покрывает испо
 
 Сравнение запасных cores: [`core-alternatives.md`](core-alternatives.md).
 
+Карта больших clients, branded APK и forks:
+[`client-core-landscape.md`](client-core-landscape.md). Проверенный Hiddify v4
+audit и наш patch stack: [`hiddify-v4-hardening.md`](hiddify-v4-hardening.md).
+
 ## Что реально есть сейчас
 
 | Слой | Наблюдаемое состояние | Вывод |
@@ -86,7 +93,9 @@ grant и подтвердить, что его scope покрывает испо
   все, кроме `singbox-json`, и генерирует legacy-поля `inet4_address`,
   `inet6_address`, inbound `sniff` и `domain_strategy`;
 - `POKROV-app/packages/runtime_engine/lib/runtime_engine.dart` задает
-  `use-xray-core-when-possible=false` и mixed port `22341`;
+  `use-xray-core-when-possible=false` и mixed port `22341`; его v3 Windows FFI
+  копирует возвращенный `C.CString`, но не имеет `freeString`, что подтверждает
+  актуальность Hiddify [core issue #112](https://github.com/hiddify/hiddify-core/issues/112);
 - `portal_bot/api.py` выдает `xray-json` для XHTTP/lab профилей;
 - `portal_bot/.env.example`, `portal_bot/config.py` и `portal_bot/bot.py`
   по умолчанию используют общий donor SNI `yahoo.com`;
@@ -106,7 +115,7 @@ POKROV compatibility adapter
   Android/iOS host bindings        Windows versioned FFI
               |
               v
-Hiddify Core v4.1.x / hiddify-sing-box 1.13.x
+POKROV fork: Hiddify Core v4.1.0 baseline / reviewed sing-box 1.13.x
               |
               v
 managed config, schema pinned to the embedded core
@@ -121,11 +130,14 @@ TUN callbacks, status/error и version/capabilities. Профили остают
 а host networking — POKROV-owned. Нельзя размазывать Hiddify API по Flutter,
 Kotlin и Swift: смена core должна оставаться локальной заменой backend adapter.
 
-Первый migration candidate — exact Hiddify `v4.1.0`, а не плавающий `main`.
-Release содержит Android, iOS, macOS и Windows library artifacts с опубликованными
-digests. Его build tags включают Naive и AWG, поэтому он закрывает больше
-экспериментальных contours без второго core. Источник:
-[Hiddify v4.1.0 release](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0).
+Исходная точка migration — exact Hiddify `v4.1.0`, а не плавающий `main`.
+Первый candidate — собственная воспроизводимая сборка с зафиксированным patch
+manifest. Release содержит Android, iOS, macOS и Windows library artifacts с
+опубликованными digests, а build tags включают Naive и AWG. Но code audit нашел
+desktop use-after-free, небезопасное хранение/logging config и лишний old command
+server; upstream artifact без исправлений не ship-им. Источники:
+[Hiddify v4.1.0 release](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0),
+[`hiddify-v4-hardening.md`](hiddify-v4-hardening.md).
 
 ## Обязательная миграция схемы
 
@@ -197,11 +209,13 @@ client/platform output есть удаленные или устаревшие �
 
 1. Запретить выдачу `xray-json` текущему POKROV client и удалить/скрыть ложное
    обещание Xray fallback.
-2. Зафиксировать внутренний reference на отдельное Hiddify permission и сделать
-   reproducible v4 build: pinned source/submodule commits, tags, toolchain,
-   SHA-256 validation до распаковки и SBOM/provenance.
-3. Сделать Hiddify v4 compatibility-adapter + config migration spike; пройти
-   Android TUN, Windows TUN, iOS source build и existing route-mode tests.
+2. Зафиксировать внутренний reference на отдельное Hiddify permission и создать
+   POKROV fork от `v4.1.0`: pinned source/submodule commits, reviewed sing-box
+   `1.13.14` baseline, toolchain, SHA-256, SBOM и provenance.
+3. Исправить desktop C ABI ownership, config persistence/logging, raw-config path
+   и лишние command/profiling surfaces; затем сделать v4 compatibility-adapter +
+   config migration spike и пройти Android TUN, Windows TUN, iOS source build и
+   existing route-mode tests.
 4. Убрать generic `yahoo.com` default. REALITY target/SNI должен быть
    per-node, достижим с этого node и подтвержден probe; один donor на весь парк
    создает общий kill switch.
