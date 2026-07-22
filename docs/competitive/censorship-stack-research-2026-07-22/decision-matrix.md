@@ -7,6 +7,9 @@
 Приоритеты означают порядок исследования/исправления, а не разрешение на deploy.
 Любой runtime candidate проходит точные client, device и RU-origin gates.
 
+Лицензия/разрешение Hiddify для POKROV отмечены как `OPERATOR_ATTESTED`; confidential
+grant не был прочитан и не является repository artifact.
+
 ## Core и client
 
 | Компонент | Решение | Приоритет | Что именно делаем | Gate |
@@ -14,9 +17,9 @@
 | POKROV UI/bootstrap | `KEEP` | — | Оставляем собственный app-first client | Existing client tests; без замены UI |
 | Android `VpnService` + TUN host | `KEEP_AND_PORT` | P0 | Сохраняем ownership, переносим interface bindings на libbox 1.13 | Android unit/build + physical-device TUN proof |
 | Apple packet tunnel | `KEEP_AND_PORT` | P0 | Сохраняем provider/flow, обновляем libbox bindings | Source build; signing и device proof остаются manual gates |
-| Hiddify Core `v3.1.8` | `TEMPORARY_BRIDGE` | P0 | Не расширять; оставить только пока новый adapter не пройдет parity | Bounded removal milestone |
-| Hiddify Core `v4.1.0` | `REJECT_AS_TARGET` | P0 | Не делать in-place update и не форкать | Breaking API + `LEGAL_REVIEW_REQUIRED` NonCommercial term |
-| Upstream sing-box/libbox `1.13.x` | `MIGRATE_TO` | P0 | POKROV-owned reproducible builds и thin adapters | Config parity, TUN, crash/reconnect/soak, license review |
+| Hiddify Core `v3.1.8` | `ROLLBACK_BRIDGE` | P0 | Заморозить; оставить только до parity v4 | Bounded rollback milestone |
+| Hiddify Core `v4.1.0` | `MIGRATE_TO` | P0 | Exact-version port через POKROV compatibility adapter | API/config parity, permission reference, TUN, crash/reconnect/soak |
+| Upstream sing-box/libbox `1.13.x` | `FALLBACK_B` | P1 | Сохранить ADR/spike path без реализации до проблемы с Hiddify | Больше собственного glue, GPL review |
 | Xray second engine | `DEFER` | P2 | Не добавлять ради уже написанного backend profile | Только измеренный gap + lifecycle/update/security budget |
 | `advanced_fallback_core: xray` | `REMOVE_OR_HIDE` | P0 | Canonical contract должен совпасть с shipped capability | Contract and UI tests |
 | `xray-json` assignment | `BLOCK_FOR_CURRENT_CLIENT` | P0 | Capability-aware manifest selection | Client никогда не получает неподдерживаемый format |
@@ -94,12 +97,14 @@ Owners: platform manifest selection + client product contract.
 
 Owner: отдельный `POKROV-app` worktree.
 
-- ADR фиксирует direct sing-box/libbox boundary и Windows ABI;
-- source commit, Go/gomobile versions и tags pinned;
+- ADR фиксирует POKROV adapter → Hiddify v4 boundary и versioned Windows ABI;
+- Hiddify root/submodule commits, Go/gomobile versions и tags pinned;
 - downloader сверяет digest до extract;
-- SBOM/license bundle сохраняются рядом с candidate;
-- Android/iOS host interfaces компилируются против 1.13;
-- Windows adapter имеет минимальный versioned ABI.
+- SBOM и internal permission reference сохраняются рядом с candidate metadata;
+- Android/iOS host interfaces компилируются против v4 bindings;
+- Windows adapter больше не требует удаленных `setupOnce`, `parse` и
+  `changeHiddifyOptions`, а новый `setup` вызывается по точной v4 ABI;
+- direct sing-box остается документированным fallback, а не параллельным core.
 
 ### WP2 — config migration
 

@@ -10,18 +10,22 @@
 
 Проверенный client: `C:/Users/kiwun/Documents/ai/POKROV-app`, `main@60a6ca49c46b057c2654bab4be57d7f1b82d6797`
 
+Лицензионный контекст: `OPERATOR_ATTESTED` — owner подтвердил отдельную лицензию
+и разрешение на использование Hiddify в POKROV. Сам документ и его scope в этом
+research не проверялись и в репозиторий не копировались.
+
 ## Решение в одном абзаце
 
 Клиент POKROV уже переделан и остается нашим: UI, bootstrap, managed profiles,
 Android `VpnService`, Apple packet tunnel, TUN, split routing и desktop host менять
 на Hiddify не нужно. Hiddify сейчас только поставщик встроенного `libcore`-артефакта.
-Целевое решение — убрать эту зависимость: собрать POKROV-owned тонкий runtime adapter
-поверх upstream `sing-box/libbox 1.13.x`, сохранить наши host/TUN-слои и мигрировать
-конфиг с устаревшей схемы 1.8. На время миграции `Hiddify Core v3.1.8` остается
-ограниченным совместимым мостом; обновлять его in-place до `v4.1.0` и форкать
-Hiddify не надо.
+С учетом отдельного разрешения целевое решение — сохранить Hiddify как backend,
+перевести его с `v3.1.8` на `v4.1.0` за стабильным POKROV-owned adapter и мигрировать
+конфиг с sing-box schema 1.8 на 1.13. `v3.1.8` остается rollback bridge до parity.
+Direct upstream sing-box/libbox остается запасным вариантом, если Hiddify build,
+API или support окажутся неприемлемыми.
 
-## Почему не «Hiddify так Hiddify»
+## Почему Hiddify v4 — основной путь, но не drop-in update
 
 Текущий pin клиента — `Hiddify Core v3.1.8`. В его `go.mod` находятся
 `sing-box v1.8.9`, `Xray-core v1.8.21` и Hiddify forks. Актуальный на дату среза
@@ -29,11 +33,26 @@ Hiddify `v4.1.0` перешел на ветку `sing-box 1.13`, изменил 
 сам проект называет это massive refactor with breaking changes. Это не замена
 одного файла.
 
-В `v4.1.0/LICENSE.md` отдельно записан запрет commercial use. Для платного
-POKROV это как минимум `LEGAL_REVIEW_REQUIRED`; технический план не должен
-закладываться на спорную лицензию. Upstream sing-box тоже GPLv3-or-later и требует
-отдельной проверки obligations, но в его лицензии нет Hiddify-условия
-`NonCommercial`. Это не юридическое заключение.
+Public `v4.1.0/LICENSE.md` содержит `NonCommercial`, но owner сообщил о отдельном
+разрешении для POKROV. Поэтому public-лицензия больше не является причиной
+отвергать Hiddify. Перед release достаточно сохранить внутреннюю ссылку/ID на
+grant и подтвердить, что его scope покрывает используемую версию, коммерческую
+дистрибуцию, наши изменения и нужные platform/store channels. Секретный документ
+в git класть не надо.
+
+Технический разрыв остается:
+
+- v3 mobile API экспортирует `Setup(baseDir, workingDir, tempDir, debug)`, `Parse`
+  и `BuildConfig`;
+- v4 mobile API использует `Setup(*SetupOptions, PlatformInterface)`, `Start` и
+  `Stop`; старые `Parse`/`BuildConfig` исчезли;
+- текущий Windows FFI ожидает `setupOnce`, `parse`, `changeHiddifyOptions` и старый
+  пятиаргументный `setup`; v4 desktop ABI этих символов не имеет и расширяет
+  `setup`;
+- Android/iOS сейчас напрямую используют старые `Libbox.newService` /
+  `LibboxNewService` bindings, которые также надо портировать;
+- v4 release assets переименованы в `hiddify-lib-*`, но GitHub уже публикует их
+  SHA-256 digests — downloader должен проверять их до распаковки.
 
 Источники: [Hiddify v4.1.0 release](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0),
 [Hiddify history](https://github.com/hiddify/hiddify-core/blob/v4.1.0/HISTORY.md),
@@ -41,6 +60,8 @@ POKROV это как минимум `LEGAL_REVIEW_REQUIRED`; техническ�
 [v3.1.8 go.mod](https://github.com/hiddify/hiddify-core/blob/v3.1.8/go.mod),
 [v4.1.0 go.mod](https://github.com/hiddify/hiddify-core/blob/v4.1.0/go.mod),
 [sing-box license](https://github.com/SagerNet/sing-box/blob/v1.13.14/LICENSE).
+
+Сравнение запасных cores: [`core-alternatives.md`](core-alternatives.md).
 
 ## Что реально есть сейчас
 
@@ -50,7 +71,7 @@ POKROV это как минимум `LEGAL_REVIEW_REQUIRED`; техническ�
 | Android | Собственный `VpnService`, `PlatformInterface`, app-owned TUN; generated config не добавляет mixed inbound | Оставить и адаптировать к новому libbox API |
 | iOS | Собственный `PacketTunnelProvider`, `PlatformInterface`, command server/service | Оставить; signed-device proof по-прежнему отдельный release gate |
 | Desktop | TUN плюс loopback mixed listeners `12334` и runtime `22341` | Инвентаризировать, ненужные убрать; нужные закрыть случайной авторизацией/жестким lifecycle |
-| Core artifact | `hiddify/hiddify-core@v3.1.8` (`libcore.aar`, `libcore.dll`, Apple framework) | Заменить, а не обновлять вслепую |
+| Core artifact | `hiddify/hiddify-core@v3.1.8` (`libcore.aar`, `libcore.dll`, Apple framework) | Портировать на v4 через compatibility adapter, с rollback на v3 |
 | Client config gate | Bootstrap принимает только `config_format == singbox-json` | Это текущая фактическая capability |
 | Declared fallback | Product seed объявляет `advanced_fallback_core: xray` | Ложный контракт: убрать до реальной реализации |
 | Backend XHTTP | `reserve_xhttp_cdn` и `operator_lab` возвращают `xray-json` | Текущий клиент отвергнет manifest; не назначать пользователям |
@@ -81,11 +102,14 @@ POKROV UI / bootstrap / policy
 POKROV runtime contract + versioned capability manifest
               |
               v
-POKROV thin adapter
-  Android/iOS: libbox 1.13.x       Windows: thin Go DLL/process adapter
+POKROV compatibility adapter
+  Android/iOS host bindings        Windows versioned FFI
               |
               v
-managed sing-box config, schema pinned to the embedded core
+Hiddify Core v4.1.x / hiddify-sing-box 1.13.x
+              |
+              v
+managed config, schema pinned to the embedded core
               |
               v
 baseline + independently rolled-out transport contours
@@ -94,14 +118,14 @@ baseline + independently rolled-out transport contours
 Не нужен новый универсальный proxy framework внутри клиента. Adapter должен
 владеть только стабильной границей: `setup`, `validate`, `start/reload`, `stop`,
 TUN callbacks, status/error и version/capabilities. Профили остаются server-owned,
-а host networking — POKROV-owned.
+а host networking — POKROV-owned. Нельзя размазывать Hiddify API по Flutter,
+Kotlin и Swift: смена core должна оставаться локальной заменой backend adapter.
 
-Upstream `sing-box v1.13.14` — актуальная проверенная точка для migration spike,
-не автоматически утвержденный production pin. Его mobile libbox API строится
-вокруг `SetupOptions`, `PlatformInterface` и `CommandServer`; старый прямой
-`newService` путь клиента надо переподключить. Windows-артефакт upstream mobile
-build не закрывает, поэтому там нужен наш тонкий ABI adapter, а не Hiddify UI/core
-fork. Источник: [sing-box v1.13.14](https://github.com/SagerNet/sing-box/releases/tag/v1.13.14).
+Первый migration candidate — exact Hiddify `v4.1.0`, а не плавающий `main`.
+Release содержит Android, iOS, macOS и Windows library artifacts с опубликованными
+digests. Его build tags включают Naive и AWG, поэтому он закрывает больше
+экспериментальных contours без второго core. Источник:
+[Hiddify v4.1.0 release](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0).
 
 ## Обязательная миграция схемы
 
@@ -173,10 +197,11 @@ client/platform output есть удаленные или устаревшие �
 
 1. Запретить выдачу `xray-json` текущему POKROV client и удалить/скрыть ложное
    обещание Xray fallback.
-2. Сделать reproducible core build: pinned source commit, build tags, toolchain,
-   SHA-256 validation до распаковки, SBOM/provenance и license review.
-3. Сделать adapter + config migration spike на sing-box 1.13; пройти Android TUN,
-   Windows TUN, iOS source build и existing route-mode tests.
+2. Зафиксировать внутренний reference на отдельное Hiddify permission и сделать
+   reproducible v4 build: pinned source/submodule commits, tags, toolchain,
+   SHA-256 validation до распаковки и SBOM/provenance.
+3. Сделать Hiddify v4 compatibility-adapter + config migration spike; пройти
+   Android TUN, Windows TUN, iOS source build и existing route-mode tests.
 4. Убрать generic `yahoo.com` default. REALITY target/SNI должен быть
    per-node, достижим с этого node и подтвержден probe; один donor на весь парк
    создает общий kill switch.

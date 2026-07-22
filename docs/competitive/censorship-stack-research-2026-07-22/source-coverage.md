@@ -194,8 +194,8 @@ proxy. POKROV Android generated config возвращает только TUN и 
 | Multipath дал throughput, но несколько TLS flows меняют shape | Не считать «как браузер» доказательством незаметности | RU-origin comparison: single connection против N, одинаковый payload |
 
 Самый важный архитектурный вывод статьи совпадает с этим research: одно нативное
-ядро и тонкие host bindings. Но у нас таким ядром должен быть аудируемый upstream
-sing-box/libbox, а не новая реализация TLS/AEAD силами POKROV.
+ядро и тонкие host bindings. У нас таким ядром может оставаться разрешенный
+Hiddify v4 поверх sing-box/libbox; новая реализация TLS/AEAD силами POKROV не нужна.
 
 ## Тематический срез
 
@@ -233,8 +233,8 @@ runtime wrapper. Высокая частота темы тоже не являе
 
 | Проект | Проверенная версия/состояние | Роль в решении |
 | --- | --- | --- |
-| [sing-box](https://github.com/SagerNet/sing-box/releases/tag/v1.13.14) | `v1.13.14`, 2026-06-25 | Целевой migration spike |
-| [Hiddify Core](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0) | `v4.1.0`, 2026-03-05 | Не target: breaking/API/license burden |
+| [sing-box](https://github.com/SagerNet/sing-box/releases/tag/v1.13.14) | `v1.13.14`, 2026-06-25 | Direct-core fallback |
+| [Hiddify Core](https://github.com/hiddify/hiddify-core/releases/tag/v4.1.0) | `v4.1.0`, 2026-03-05 | Основной migration target; отдельное разрешение `OPERATOR_ATTESTED`, API port обязателен |
 | [Xray-core](https://github.com/XTLS/Xray-core/releases/tag/v26.3.27) | `v26.3.27`, 2026-03-27 | Deferred second engine/XHTTP owner |
 | [NaiveProxy](https://github.com/klzgrad/naiveproxy/releases/tag/v150.0.7871.63-1) | `v150.0.7871.63-1`, 2026-07-03 | TCP canary technology; prefer sing-box integration |
 | [Hysteria](https://github.com/apernet/hysteria/releases/tag/app/v2.10.0) | `app/v2.10.0`, 2026-07-13 | UDP canary |
