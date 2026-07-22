@@ -950,6 +950,14 @@ def _move_account_owned_rows(
     target_account_id: str,
     now: datetime,
 ) -> None:
+    from account_experience_service import reconcile_account_merge
+
+    reconcile_account_merge(
+        session,
+        source_account_id=source_account_id,
+        target_account_id=target_account_id,
+        now=now,
+    )
     _reconcile_account_trial_grants(
         session,
         source_account_id=source_account_id,

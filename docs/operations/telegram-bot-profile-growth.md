@@ -1,6 +1,6 @@
 # Telegram Bot Profile Growth
 
-Last updated: 2026-07-08
+Last updated: 2026-07-22
 
 This runbook keeps `@pokrov_vpnbot` ready for Telegram's native `Similar bots` surface without gray automation.
 
@@ -43,6 +43,30 @@ Official references:
 - [`bots.getBotRecommendations`](https://core.telegram.org/method/bots.getBotRecommendations)
 - [Telegram Mini Apps profile launch button](https://core.telegram.org/bots/webapps)
 - [Bot API profile and menu methods](https://core.telegram.org/bots/api)
+- [Bot API changelog](https://core.telegram.org/bots/api-changelog)
+- [Rich-message guide](https://core.telegram.org/bots/features#rich-messages)
+
+## Current Bot UX Contract
+
+The candidate runtime targets `aiogram >=3.30,<4` and the current Bot API rich
+message surface. Capability use remains progressive rather than mandatory:
+
+- `/help` and the durable Stars success receipt prefer `InputRichMessage` and
+  fall back to equivalent HTML when the installed Telegram runtime is older or
+  rejects a rich payload.
+- Primary, success, and danger button styles are used only when the runtime
+  exposes them. Custom button emoji require operator-provided
+  `TG_BTN_EMOJI_*_ID` values; the bot never invents an emoji ID.
+- `copy_text` is preferred for the real subscription link. Older runtimes keep
+  the existing callback fallback, so a client update is not required to copy a
+  link.
+- Context cleanup applies only to transient navigation messages. Payment
+  receipts and other retained facts are explicitly preserved.
+- A connection QR is a separate transient message with its own timer and
+  `qr_close` action. Closing it deletes only that QR and does not erase the
+  source link or the surrounding instructions.
+- The main CTA is derived from current account/access state. Happ remains the
+  recommended manual client path; stale Karing guidance must not reappear.
 
 ## Check And Apply
 

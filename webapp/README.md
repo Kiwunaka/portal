@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-07-20
+Last updated: 2026-07-22
 
 ## Document Status
 
@@ -116,8 +116,29 @@ Rules:
 - Internal links warm their static route payload on hover/focus intent (`app-route-link.tsx`, deduplicated per session); hard-navigation auth flows and external links never prefetch.
 - Dashboard and user snapshots may be kept only in React memory as last-good state during warm refresh; do not persist dashboard cache to browser storage.
 - Theme follows the system preference by default. Manual light/dark choice is a browser UI preference and should not store account or dashboard data.
-- Mobile cabinet navigation keeps bottom tabs stable on cabinet routes.
+- Mobile cabinet navigation uses the shell drawer as its only navigation surface;
+  a second bottom-tab system must not be added.
+- Sidebar theme and account actions share one grouped shell card, and hidden
+  route activity collapses without retaining an empty layout gap.
 - Retained admin navigation uses its own route group and must not depend on `CabinetShell` or dashboard path checks; new primary admin navigation lives in `adminapp/`.
+
+## Account Onboarding And Motion
+
+- The dashboard reads `experience` from `GET /api/user/*`. First-run display,
+  version, completion, and skip state belong to the account; they are never
+  stored in `localStorage`.
+- Completion and skip use `POST /api/account/experience/onboarding`; a failed
+  write keeps the tour open and presents the error inside the dialog.
+- The tour is an app-first four-screen handoff: welcome, download, same-account
+  login, and connect. It does not claim store availability or trusted signing.
+- The main dashboard CTA follows server state: renew inactive access, download
+  before app identity exists, reopen connection guidance before first connect,
+  and open devices after connection.
+- `reported` connection state is app-authored UX progress. Only `verified`
+  means signed observer evidence exists.
+- Onboarding transitions, counters, status pulses, and route activity honor
+  reduced-motion preferences. Animated numbers use tabular figures and spring
+  only when their value changes; they are not continuous decorative loops.
 
 ## Frontend Environment
 

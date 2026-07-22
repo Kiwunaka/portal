@@ -1,6 +1,6 @@
 # API Contracts
 
-Last updated: 2026-07-20
+Last updated: 2026-07-22
 
 This page captures release-critical API contract expectations for the current
 repository candidate. It is also a concise router to the canonical domain
@@ -193,10 +193,25 @@ TTL after the final issuance before routing app access back to the old revision.
 
 ### Trial Connection Evidence
 
+- `GET /api/user/{tg_id}` includes an additive account UX snapshot:
+  `experience.onboarding` (`version`, `status`, `should_show`, `updated_at`),
+  `experience.first_connection` (`state`, `reported_at`, `verified_at`), and
+  `experience.next_step` (`install`, `connect`, or `complete`). Compatibility
+  mirrors `sync.connected_once` and `sync.first_connected_at` remain additive.
+- Authenticated `POST /api/account/experience/onboarding` accepts only
+  `{"status":"completed"}` or `{"status":"skipped"}` and returns the updated
+  snapshot. This is account-scoped UX state; it does not mutate access.
+- `POST /api/client/runtime/stats` with `connected=true` records the earliest
+  account-scoped `reported_at`. It remains client-authored telemetry and cannot
+  activate a trial, extend expiry, grant a reward, or become observer evidence.
 - Signed `POST /api/internal/observer/batches` observations resolved to a
   canonical account are the activation source. Each accepted observation adds
   append-only `connection_evidence` with account, optional device, node,
   evidence kind, observed timestamp, and a unique stable evidence key.
+- The same accepted observation records the earliest account UX
+  `verified_at`. `verified` is derived from server evidence even if a legacy row
+  predates the UX state table; this projection cannot weaken the evidence or
+  entitlement ledgers.
 - Offset-aware observation timestamps are converted to naive UTC before
   evidence storage, activation, expiry calculation, and key derivation. `Z`,
   positive offsets, and negative offsets representing the same instant produce
@@ -218,8 +233,8 @@ TTL after the final issuance before routing app access back to the old revision.
   losing transaction and returns the committed winner as a replay response.
   Other integrity failures still fail the request.
 - `POST /api/connect/confirm`, `/api/events`, `clicked_connect`,
-  `connected_ok`, funnel events, and other client-authored telemetry are never
-  activation evidence.
+  `connected_ok`, runtime stats, funnel events, and other client-authored
+  telemetry are never activation evidence.
 - The worker expires unactivated reservations after `7 days` and updates only
   the legacy compatibility projection to `free_monthly` when no paid or
   unrelated active grant or current `User` projection survives. This projection

@@ -2483,10 +2483,13 @@ class BotPaywallTests(unittest.TestCase):
 
     def test_manual_link_flow_uses_native_copy_button_without_fake_delay_or_karing(self) -> None:
         source = inspect.getsource(self.bot_module.show_key)
+        qr_source = inspect.getsource(self.bot_module._show_subscription_qr)
         self.assertIn("_subscription_copy_button(", source)
         self.assertIn("value=sub_link", source)
         self.assertNotIn("asyncio.sleep", source)
         self.assertNotIn("Karing", source)
+        self.assertIn('callback_data="qr_close"', qr_source)
+        self.assertIn("track_context=False", qr_source)
 
         button = self.bot_module._subscription_copy_button(
             label="📋 Скопировать ссылку",
@@ -2497,6 +2500,33 @@ class BotPaywallTests(unittest.TestCase):
             self.assertEqual(getattr(getattr(button, "copy_text", None), "text", None), "https://connect.pokrov.space/example")
         else:
             self.assertEqual(button.callback_data, "copy_key")
+
+    def test_qr_close_deletes_only_qr_and_cancels_its_timer(self) -> None:
+        async def scenario() -> None:
+            callback = _FakeCallback(1001, data="qr_close")
+            callback.message.message_id = 77
+            deleted = False
+
+            async def delete() -> None:
+                nonlocal deleted
+                deleted = True
+
+            callback.message.delete = delete
+            timer = asyncio.create_task(asyncio.sleep(60))
+            key = (1001, 77)
+            self.bot_module._auto_delete_tasks[key] = timer
+            self.bot_module._auto_delete_scheduled.add(key)
+
+            await self.bot_module.qr_close(callback)
+            await asyncio.sleep(0)
+
+            self.assertTrue(deleted)
+            self.assertTrue(timer.cancelled())
+            self.assertNotIn(key, self.bot_module._auto_delete_tasks)
+            self.assertNotIn(key, self.bot_module._auto_delete_scheduled)
+            self.assertEqual(callback.answers, [("QR закрыт", False)])
+
+        asyncio.run(scenario())
 
     def test_reset_link_copy_is_honest_about_imported_profiles_and_has_no_fake_delay(self) -> None:
         menu_source = inspect.getsource(self.bot_module.panic_menu)

@@ -20,6 +20,21 @@ type TicketMock = {
   messages: TicketMessageMock[];
 };
 
+type ExperienceMock = {
+  onboarding: {
+    version: number;
+    status: "pending" | "completed" | "skipped";
+    should_show: boolean;
+    updated_at: string | null;
+  };
+  first_connection: {
+    state: "none" | "reported" | "verified";
+    reported_at: string | null;
+    verified_at: string | null;
+  };
+  next_step: "install" | "connect" | "complete";
+};
+
 function mockSessionUser() {
   return {
     tg_id: 1001,
@@ -221,6 +236,7 @@ async function registerCabinetMocks(
     isActive?: boolean;
     channelClaimedDays?: number;
     channelClaimedAt?: string | null;
+    onboardingShouldShow?: boolean;
   } = {},
 ): Promise<void> {
   const seedWebSession = options.seedWebSession ?? true;
@@ -238,7 +254,23 @@ async function registerCabinetMocks(
     });
   }, seedWebSession);
 
-  const sessionUser = mockSessionUser();
+  const sessionUser: ReturnType<typeof mockSessionUser> & { experience?: ExperienceMock } = mockSessionUser();
+  if (options.onboardingShouldShow !== undefined) {
+    sessionUser.experience = {
+      onboarding: {
+        version: 1,
+        status: options.onboardingShouldShow ? "pending" : "completed",
+        should_show: options.onboardingShouldShow,
+        updated_at: options.onboardingShouldShow ? null : "2030-01-01T00:00:00",
+      },
+      first_connection: {
+        state: "none",
+        reported_at: null,
+        verified_at: null,
+      },
+      next_step: "install",
+    };
+  }
   const dashboard = mockDashboard();
   const initialChannelClaimedDays = options.channelClaimedDays ?? 0;
   const initialChannelClaimedAt =
@@ -310,6 +342,25 @@ async function registerCabinetMocks(
       });
     }
     if (path === "/api/dashboard") return json(dashboard);
+    if (path === "/api/account/experience/onboarding" && request.method() === "POST") {
+      const payload = JSON.parse(request.postData() || "{}");
+      const status = payload.status === "completed" ? "completed" : "skipped";
+      sessionUser.experience = {
+        onboarding: {
+          version: 1,
+          status,
+          should_show: false,
+          updated_at: "2030-01-01T00:05:00",
+        },
+        first_connection: sessionUser.experience?.first_connection || {
+          state: "none",
+          reported_at: null,
+          verified_at: null,
+        },
+        next_step: sessionUser.experience?.next_step || "install",
+      };
+      return json({ ok: true, experience: sessionUser.experience });
+    }
     if (path.startsWith("/api/user/")) return json(sessionUser);
     if (path === "/api/nodes/status") {
       return json({
@@ -565,6 +616,22 @@ test("settings preserves a grandfathered claimed Telegram bonus", async ({ page 
   await expect(page.locator("main")).toContainText("Получено +10 дней");
   await expect(page.getByRole("button", { name: "Получено", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: /Забрать \+10 дней/i })).toHaveCount(0);
+});
+
+test("persists first-run onboarding in the account instead of local storage", async ({ page }) => {
+  await registerCabinetMocks(page, { onboardingShouldShow: true });
+  await page.goto("/dashboard/");
+
+  const tour = page.getByTestId("onboarding-tour");
+  await expect(tour).toBeVisible();
+  await expect(tour.getByRole("heading", { name: "Добро пожаловать в POKROV" })).toBeVisible();
+  await tour.getByRole("button", { name: "Пропустить" }).click();
+  await expect(tour).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByTestId("onboarding-tour")).toHaveCount(0);
+  const storedKeys = await page.evaluate(() => Object.keys(window.localStorage));
+  expect(storedKeys).not.toContain("pokrov-onboarding-v1");
 });
 
 test.describe("Cabinet flow", () => {

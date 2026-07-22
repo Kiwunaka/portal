@@ -188,6 +188,23 @@ export type TicketInfo = {
 
 export type AdminTicketSummary = Omit<TicketInfo, "messages" | "assigned_admin_tg_id">;
 
+export type OnboardingCompletionStatus = "completed" | "skipped";
+export type AccountExperienceNextStep = "install" | "connect" | "complete";
+export type AccountExperience = {
+  onboarding: {
+    version: number;
+    status: "pending" | OnboardingCompletionStatus;
+    should_show: boolean;
+    updated_at?: string | null;
+  };
+  first_connection: {
+    state: "none" | "reported" | "verified";
+    reported_at?: string | null;
+    verified_at?: string | null;
+  };
+  next_step: AccountExperienceNextStep;
+};
+
 export type UserPayload = {
   tg_id: number;
   username?: string | null;
@@ -235,7 +252,10 @@ export type UserPayload = {
     telegram_linked?: boolean;
     subscription_ready?: boolean;
     device_count?: number;
+    connected_once?: boolean;
+    first_connected_at?: string | null;
   };
+  experience?: AccountExperience;
   traffic: {
     used_gb: number;
     used_bytes?: number;
@@ -2223,6 +2243,17 @@ export async function fetchAuthenticatedBlob(path: string, signal?: AbortSignal)
 
 export function fetchUser(tgId: number): Promise<UserPayload> {
   return apiFetch<UserPayload>(`/api/user/${tgId}`);
+}
+
+export function updateOnboardingStatus(status: OnboardingCompletionStatus): Promise<{
+  ok: boolean;
+  experience: AccountExperience;
+}> {
+  return apiFetch("/api/account/experience/onboarding", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function fetchPublicPlans(): Promise<PublicPlansPayload> {

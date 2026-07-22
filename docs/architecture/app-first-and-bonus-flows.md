@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-07-20
+Last updated: 2026-07-22
 
 ## Document Status
 
@@ -8,7 +8,11 @@ This file is living source of truth for app-first identity, Telegram linking, an
 
 ## Goal
 
-Document the current app-first identity model, automatic username sync path, checkout continuation, node-pool assignment, and the live Telegram bonus flow used by the active `POKROV-app/main` client line, with legacy `POKROV VPN` labels treated as compatibility or archival leftovers only.
+Document the current app-first identity model, account-scoped onboarding state,
+first-connection evidence, automatic username sync path, checkout continuation,
+node-pool assignment, and the live Telegram bonus flow used by the active
+`POKROV-app/main` client line, with legacy `POKROV VPN` labels treated as
+compatibility or archival leftovers only.
 
 ## Wave 0 Rework Target
 
@@ -134,7 +138,6 @@ Predeploy account-foundation gates:
    - `access` payload with `reserved` or `active` trial state plus reservation
      and activation timestamps
    - `provisioning` payload with explicit readiness state
-   - experience payload
 7. client silently imports the profile
 8. client asks how this device should be optimized before the first live route activation
 9. client saves the per-device route policy and then switches to `Quick Connect`
@@ -164,6 +167,33 @@ Contract rule:
 - panel provisioning stays retryable and outside the irreversible ledger
   decision; panel failure does not create connection evidence
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
+
+### Account Experience And First Connection
+
+`account_experience_state` is small account-owned UX state. It is not an
+entitlement, payment, trial, or connection-evidence ledger.
+
+- `GET /api/user/{tg_id}` returns additive `experience.onboarding`,
+  `experience.first_connection`, and `experience.next_step` fields.
+- Cabinet onboarding completion or skip is written through
+  `POST /api/account/experience/onboarding`; browser storage must not decide
+  whether another device or browser sees the onboarding again.
+- The native welcome shown before an account exists remains install-scoped by
+  necessity. After the runtime really reaches `RuntimePhase.running`, the
+  active client reports runtime UX state and marks account onboarding complete
+  through the authenticated app session.
+- `POST /api/client/runtime/stats` may set the first connection state to
+  `reported`. That client-authored fact can drive copy and progression only; it
+  cannot activate a trial, grant days, or prove a working route.
+- Signed observer ingestion remains the only path to `verified`. It records
+  append-only `connection_evidence`, stores the earliest verified timestamp,
+  and preserves the existing trial activation rules.
+- The local first-connect hint is completed only after the runtime reaches
+  `running`; a tap, permission prompt, timeout, or failed connect leaves the
+  milestone pending.
+- Account merge preserves the strongest onboarding result (`completed`, then
+  `skipped`, then `pending`) and the earliest reported and verified connection
+  timestamps.
 
 Current `client_policy` contract:
 

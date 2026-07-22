@@ -24,6 +24,7 @@ from economy_service import (
     observer_evidence_key,
     record_connection_evidence,
 )
+from account_experience_service import record_first_connection_verified
 
 
 OBSERVER_RETENTION_DAYS = max(7, int(os.getenv("OBSERVER_RETENTION_DAYS", "30")))
@@ -517,6 +518,11 @@ def ingest_observer_batch(
                 evidence_kind="observer_connection",
                 observed_at=seen_at,
                 evidence_key=stable_key,
+            )
+            record_first_connection_verified(
+                s,
+                account_id=account_id,
+                verified_at=evidence.observed_at,
             )
             activation = activate_reserved_trial(s, account_id=account_id, evidence=evidence)
             if activation.activated_now:

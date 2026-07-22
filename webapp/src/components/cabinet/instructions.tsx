@@ -19,7 +19,7 @@ const ART_STROKE = "var(--pokrov-accent)";
 const ART_SOFT = "var(--pokrov-status-success-bg)";
 const ART_LINE = "var(--pokrov-line-strong)";
 
-function StepArt({ kind }: { kind: StepArtKind }) {
+export function StepArt({ kind }: { kind: StepArtKind }) {
   const common = {
     width: 44,
     height: 44,

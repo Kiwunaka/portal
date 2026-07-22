@@ -1,6 +1,6 @@
 # Payment State Machine
 
-Last updated: 2026-07-18
+Last updated: 2026-07-22
 
 | State | Meaning | Access effect |
 | --- | --- | --- |
@@ -114,6 +114,16 @@ the original polling update. Missing lane identity or cross-node key provenance
 remains a retryable failure.
 If local commit or marker persistence fails, replay uses the already-created
 panel client and repeats reconciliation without extending entitlement again.
+
+After durable Stars fulfillment completes, the bot sends one consolidated
+success message instead of a provisioning message followed by a second receipt.
+The current Bot API rich-message form is preferred when the installed runtime
+supports it; an HTML fallback keeps the same actions and expandable receipt.
+The receipt uses the real Telegram charge identifier, the access link remains a
+manual app-first fallback, and the message is excluded from transient
+auto-deletion. Message rendering or delivery failure must never roll back or
+repeat the already-committed fulfillment. Creation and pre-checkout of new Stars
+payments remain closed until their separate rollout gate is explicitly reopened.
 
 Fulfillment is split by local order identity:
 

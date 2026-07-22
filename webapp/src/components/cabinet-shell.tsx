@@ -482,28 +482,30 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
             <p className="mt-2 text-xs leading-5 text-ink-soft">{sidebarSummary}</p>
           </div>
 
-          <div className="flex items-center justify-between gap-2 rounded-card border border-line bg-canvas-alt p-3">
-            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <Moon size={16} strokeWidth={2} aria-hidden="true" className="text-ink-soft" />
-              Тёмная тема
-            </span>
-            <Switch checked={dark} onChange={setDark} aria-label="Переключить тему" />
-          </div>
-
-          <div className="flex items-center gap-3 rounded-card border border-line bg-canvas-alt p-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-contrast uppercase">
-              {accountMark}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-ink">{accountLabel}</p>
+          <div className="overflow-hidden rounded-card border border-line bg-canvas-alt">
+            <div className="flex items-center justify-between gap-2 p-3">
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <Moon size={16} strokeWidth={2} aria-hidden="true" className="text-ink-soft" />
+                Тёмная тема
+              </span>
+              <Switch checked={dark} onChange={setDark} aria-label="Переключить тему" />
             </div>
-            <div className="flex gap-0.5">
-              <AppRouteLink href={CABINET_SITE_URL} hardNavigate className={cn(ICON_BUTTON_CLASS, "h-9 w-9")} aria-label="На сайт">
-                <ExternalLink size={17} strokeWidth={2} aria-hidden="true" />
-              </AppRouteLink>
-              <button type="button" onClick={logoutWebSession} className={cn(ICON_BUTTON_CLASS, "h-9 w-9")} aria-label="Выйти">
-                <LogOut size={17} strokeWidth={2} aria-hidden="true" />
-              </button>
+            <div className="mx-3 h-px bg-line" aria-hidden="true" />
+            <div className="flex items-center gap-3 p-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-contrast uppercase">
+                {accountMark}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-ink">{accountLabel}</p>
+              </div>
+              <div className="flex gap-0.5">
+                <AppRouteLink href={CABINET_SITE_URL} hardNavigate className={cn(ICON_BUTTON_CLASS, "h-9 w-9")} aria-label="На сайт">
+                  <ExternalLink size={17} strokeWidth={2} aria-hidden="true" />
+                </AppRouteLink>
+                <button type="button" onClick={logoutWebSession} className={cn(ICON_BUTTON_CLASS, "h-9 w-9")} aria-label="Выйти">
+                  <LogOut size={17} strokeWidth={2} aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -638,8 +640,8 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
 
             <div
               className={cn(
-                "mb-3 flex h-5 items-center gap-2 transition-opacity duration-200 motion-reduce:transition-none",
-                showActivity ? "opacity-100" : "opacity-0",
+                "flex items-center gap-2 overflow-hidden transition-[height,margin,opacity] duration-200 motion-reduce:transition-none",
+                showActivity ? "mb-3 h-5 opacity-100" : "mb-0 h-0 opacity-0",
               )}
               role="status"
               aria-hidden={!showActivity}

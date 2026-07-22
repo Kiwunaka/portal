@@ -41,6 +41,7 @@ def _load_api(monkeypatch, tmp_path: Path):
 
     for name in [
         "api",
+        "account_experience_service",
         "app_first_service",
         "account_foundation_service",
         "antiabuse_privacy_service",
@@ -206,6 +207,64 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
     user_payload = user_response.json()
     assert user_payload["devices"][0]["name"] == "Samsung S25"
     assert user_payload["devices"][0]["platform"] == "android"
+
+
+def test_account_onboarding_and_connection_milestone_are_server_scoped(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    started = client.post(
+        "/api/client/session/start-trial",
+        headers={"X-Forwarded-For": "198.51.100.88"},
+        json={
+            "install_id": "experience-install-123",
+            "device_name": "Pixel test",
+            "platform": "android",
+        },
+    )
+    assert started.status_code == 200
+    token = started.json()["session_token"]
+    auth = {"Authorization": f"Bearer {token}"}
+    session_payload = client.get("/api/auth/session", headers=auth).json()
+    tg_id = int(session_payload["user"]["account_id"])
+
+    before = client.get(f"/api/user/{tg_id}", headers=auth)
+    assert before.status_code == 200
+    assert before.json()["experience"] == {
+        "onboarding": {
+            "version": 1,
+            "status": "pending",
+            "should_show": True,
+            "updated_at": None,
+        },
+        "first_connection": {
+            "state": "none",
+            "reported_at": None,
+            "verified_at": None,
+        },
+        "next_step": "connect",
+    }
+
+    completed = client.post(
+        "/api/account/experience/onboarding",
+        headers=auth,
+        json={"status": "completed"},
+    )
+    assert completed.status_code == 200
+    assert completed.json()["experience"]["onboarding"]["status"] == "completed"
+    assert completed.json()["experience"]["onboarding"]["should_show"] is False
+
+    runtime = client.post(
+        "/api/client/runtime/stats",
+        headers=auth,
+        json={"runtime_phase": "running", "connected": True, "uptime_seconds": 12},
+    )
+    assert runtime.status_code == 200
+
+    after = client.get(f"/api/user/{tg_id}", headers=auth).json()
+    assert after["experience"]["first_connection"]["state"] == "reported"
+    assert after["experience"]["first_connection"]["reported_at"]
+    assert after["experience"]["first_connection"]["verified_at"] is None
+    assert after["sync"]["connected_once"] is True
 
 
 def test_security_event_is_mirrored_to_privacy_ledger(monkeypatch, tmp_path):

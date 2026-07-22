@@ -144,17 +144,18 @@ def audit_platform_context(root: Path) -> list[str]:
     router_path = root / "docs" / "developer" / "agent-context-map.md"
     registry_path = root / "docs" / "README.md"
 
-    agents_bytes = agents_path.read_bytes()
-    agents_text = agents_bytes.decode("utf-8")
-    router_bytes = router_path.read_bytes()
-    router_text = router_bytes.decode("utf-8")
+    # Path.read_text() applies universal-newline normalization. Budget the
+    # repository content, not the platform-specific CRLF checkout expansion on
+    # Windows; the direct contract tests use the same representation.
+    agents_text = agents_path.read_text(encoding="utf-8")
+    router_text = router_path.read_text(encoding="utf-8")
     registry_text = registry_path.read_text(encoding="utf-8")
 
-    if len(agents_bytes) > ROOT_MAX_BYTES:
+    if len(agents_text.encode("utf-8")) > ROOT_MAX_BYTES:
         errors.append(f"AGENTS.md exceeds {ROOT_MAX_BYTES} bytes")
     if physical_line_count(agents_text) > ROOT_MAX_LINES:
         errors.append(f"AGENTS.md exceeds {ROOT_MAX_LINES} lines")
-    if len(router_bytes) > ROUTER_MAX_BYTES:
+    if len(router_text.encode("utf-8")) > ROUTER_MAX_BYTES:
         errors.append(f"agent-context-map.md exceeds {ROUTER_MAX_BYTES} bytes")
     if physical_line_count(router_text) > ROUTER_MAX_LINES:
         errors.append(f"agent-context-map.md exceeds {ROUTER_MAX_LINES} lines")

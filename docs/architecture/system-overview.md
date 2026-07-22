@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-21
+Last updated: 2026-07-22
 
 ## Document Status
 
@@ -51,6 +51,10 @@ Reference-lane note:
 - `portal_bot/account_foundation_service.py`
   Additive canonical-account projection and idempotent legacy backfill for
   accounts, typed identities, devices and legacy entitlement snapshots.
+- `portal_bot/account_experience_service.py`
+  Account-scoped onboarding and first-connection UX projection. It reconciles
+  account merges and reads trusted `ConnectionEvidence`, but never owns access,
+  trial activation, payment, or reward authority.
 - `portal_bot/auth_session_service.py`
   Device-bound access/refresh issuance, one-time rotation, refresh-family reuse
   detection, persisted logout, fresh-auth device revoke and access validation.
@@ -132,7 +136,9 @@ Reference-lane note:
   routes write `WarpEvent` rows and redact runtime secrets from public status
   and ledger metadata
 - `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed` form the primary app node-selection contract; `POST /api/client/nodes/latency-samples` remains compatibility telemetry for install-scoped RTT samples and carrier/platform context
-- `POST /api/client/runtime/stats` is best-effort app telemetry and must not be required from external subscription clients
+- `POST /api/client/runtime/stats` is best-effort app telemetry and must not be required from external subscription clients; `connected=true` may record only an account UX `reported` milestone
+- signed observer ingestion remains the only `verified` first-connection path and the only connection source allowed to activate a reserved trial
+- `GET /api/user/*` exposes account experience state, while `POST /api/account/experience/onboarding` persists cabinet/app onboarding completion or skip without touching entitlement state
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path
 - `reserve_xhttp_cdn` is prepared as a hidden reserve profile; when explicitly selected it resolves to `transport_kind=xhttp` with `engine_hint=xray`, while the normal consumer baseline stays `sing-box`

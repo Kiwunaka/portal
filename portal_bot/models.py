@@ -133,6 +133,21 @@ class Account(Base):
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class AccountExperienceState(Base):
+    """Small account-scoped UX state; never an entitlement authority."""
+
+    __tablename__ = "account_experience_state"
+
+    account_id = Column(String(36), primary_key=True)
+    onboarding_version = Column(Integer, default=1, nullable=False)
+    onboarding_status = Column(String(24), default="pending", nullable=False)
+    onboarding_updated_at = Column(DateTime, nullable=True)
+    first_connection_reported_at = Column(DateTime, nullable=True)
+    first_connection_verified_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class AccountIdentity(Base):
     __tablename__ = "account_identities"
     __table_args__ = (

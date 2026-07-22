@@ -251,6 +251,7 @@ from account_recovery_service import (
     rotate_recovery_code,
 )
 import app_first_service
+import account_experience_service
 import auth_session_service
 import channel_bonus_service
 from account_foundation_service import ensure_user_account_foundation
@@ -9559,6 +9560,10 @@ class ClientRuntimeStatsIn(BaseModel):
     error_code: str | None = Field(default=None, max_length=64)
 
 
+class AccountOnboardingStatusIn(BaseModel):
+    status: str = Field(min_length=7, max_length=9)
+
+
 class InternalNodeMetricsIn(BaseModel):
     sampled_at: datetime | None = None
     source: str = Field(default="node_agent", max_length=64)
@@ -10795,8 +10800,50 @@ async def client_runtime_stats(
                 "error_code": str(payload.error_code or "").strip() or None,
             },
         )
+        if bool(payload.connected):
+            account_id = str(auth_user.get("account_id") or getattr(user, "account_id", "") or "").strip()
+            if account_id:
+                account_experience_service.record_first_connection_reported(
+                    s,
+                    account_id=account_id,
+                )
         s.commit()
         return {"ok": True}
+    finally:
+        s.close()
+
+
+@app.post("/api/account/experience/onboarding")
+async def account_onboarding_status(
+    payload: AccountOnboardingStatusIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        account_id = str(auth_user.get("account_id") or getattr(user, "account_id", "") or "").strip()
+        if not account_id:
+            raise HTTPException(status_code=409, detail="Account foundation is not ready")
+        try:
+            account_experience_service.set_onboarding_status(
+                s,
+                account_id=account_id,
+                status=payload.status,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        experience = account_experience_service.build_experience_snapshot(
+            s,
+            account_id=account_id,
+            app_identity_known=bool(str(getattr(user, "app_install_id", "") or "").strip()),
+        )
+        s.commit()
+        return {"ok": True, "experience": experience}
     finally:
         s.close()
 
@@ -13027,6 +13074,12 @@ async def user_data(
             and free_speed_kbps < int(FREE_SPEED_LIMIT_KBPS)
         )
         devices_payload = _build_app_device_rows(user)
+        account_id = str(auth_user.get("account_id") or getattr(user, "account_id", "") or "").strip()
+        experience = account_experience_service.build_experience_snapshot(
+            s,
+            account_id=account_id,
+            app_identity_known=bool(str(getattr(user, "app_install_id", "") or "").strip()),
+        )
         client_policy = app_first_service.build_client_policy(
             session=s,
             user=user,
@@ -13094,7 +13147,13 @@ async def user_data(
                 "telegram_linked": bool(_linked_telegram_id(user)),
                 "subscription_ready": bool(str(getattr(user, "sub_token", "") or "").strip()),
                 "device_count": int(len(devices_payload)),
+                "connected_once": experience["first_connection"]["state"] != "none",
+                "first_connected_at": (
+                    experience["first_connection"]["verified_at"]
+                    or experience["first_connection"]["reported_at"]
+                ),
             },
+            "experience": experience,
             "traffic": {
                 "used_gb": used_gb,
                 "used_bytes": int(used_bytes),

@@ -192,12 +192,17 @@ except ModuleNotFoundError:
 
     F = _FilterExpr()
 _RAW_INLINE_KEYBOARD_BUTTON = InlineKeyboardButton
+try:
+    from aiogram.types import InputRichMessage as TelegramInputRichMessage
+except (ImportError, ModuleNotFoundError):
+    TelegramInputRichMessage = None
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, BigInteger, func
 from sqlalchemy.orm import sessionmaker, declarative_base
 import json
 from control_panel import ControlPanel
 import html
+from telegram_rich_messages import RichMessageCopy, help_copy, payment_success_copy
 
 # ==========================================
 #               CONFIGURATION
@@ -226,7 +231,7 @@ except ModuleNotFoundError:
     BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
     BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
 else:
-    # Route regular main-bot buttons through the shared Bot API 9.4/9.5
+    # Route regular main-bot buttons through the shared current Bot API
     # style/custom-emoji helper, while keeping the raw class for capability probes.
     InlineKeyboardButton = modern_inline_button
 
@@ -328,6 +333,7 @@ logger = logging.getLogger(__name__)
 last_bot_message: dict[int, int] = {}  # tg_id -> message_id
 AUTO_DELETE_SECONDS = max(0, int(os.getenv("BOT_AUTO_DELETE_SECONDS", "86400")))
 _auto_delete_scheduled: set[tuple[int, int]] = set()
+_auto_delete_tasks: dict[tuple[int, int], asyncio.Task] = {}
 _user_context_mode: dict[int, str] = {}  # tg_id -> "main" | "support"
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -452,6 +458,7 @@ async def _schedule_auto_delete(bot: Bot, chat_id: int, message_id: int) -> None
     _auto_delete_scheduled.add(key)
 
     async def _delete_later() -> None:
+        current_task = asyncio.current_task()
         try:
             await asyncio.sleep(AUTO_DELETE_SECONDS)
             await bot.delete_message(chat_id=int(chat_id), message_id=int(message_id))
@@ -459,8 +466,26 @@ async def _schedule_auto_delete(bot: Bot, chat_id: int, message_id: int) -> None
             pass
         finally:
             _auto_delete_scheduled.discard(key)
+            if _auto_delete_tasks.get(key) is current_task:
+                _auto_delete_tasks.pop(key, None)
 
-    asyncio.create_task(_delete_later())
+    _auto_delete_tasks[key] = asyncio.create_task(_delete_later())
+
+
+def _cancel_auto_delete(chat_id: int, message_id: int) -> None:
+    key = (int(chat_id), int(message_id))
+    task = _auto_delete_tasks.pop(key, None)
+    if task is not None:
+        task.cancel()
+    _auto_delete_scheduled.discard(key)
+
+
+def _preserve_outgoing_message(chat_id: int, message_id: int) -> None:
+    chat_id = int(chat_id)
+    message_id = int(message_id)
+    _cancel_auto_delete(chat_id, message_id)
+    if last_bot_message.get(chat_id) == message_id:
+        last_bot_message.pop(chat_id, None)
 
 
 async def _track_context_message(
@@ -506,18 +531,19 @@ def _patch_outgoing_message_methods(bot: Bot) -> None:
         if not callable(original):
             continue
 
-        async def _wrapped(*args, _orig=original, **kwargs):
+        async def _wrapped(*args, _orig=original, track_context: bool = True, **kwargs):
             result = await _orig(*args, **kwargs)
             try:
-                chat_id = _extract_chat_id(args=args, kwargs=kwargs)
-                message_id = int(getattr(result, "message_id", 0) or 0)
-                if chat_id and message_id:
-                    await _track_context_message(
-                        bot=bot,
-                        chat_id=int(chat_id),
-                        tg_id=int(chat_id),
-                        message_id=message_id,
-                    )
+                if track_context:
+                    chat_id = _extract_chat_id(args=args, kwargs=kwargs)
+                    message_id = int(getattr(result, "message_id", 0) or 0)
+                    if chat_id and message_id:
+                        await _track_context_message(
+                            bot=bot,
+                            chat_id=int(chat_id),
+                            tg_id=int(chat_id),
+                            message_id=message_id,
+                        )
             except Exception:
                 pass
             return result
@@ -681,6 +707,50 @@ async def _send_text_with_specs(
         return True
     except Exception:
         return False
+
+
+async def _send_rich_copy(
+    *,
+    message: Message,
+    bot: Bot,
+    chat_id: int,
+    copy: RichMessageCopy,
+    rows: list[list[dict[str, str]]],
+    preserve: bool = False,
+) -> bool:
+    sent = None
+    rich_sender = getattr(bot, "send_rich_message", None)
+    if TelegramInputRichMessage is not None and callable(rich_sender):
+        try:
+            sent = await rich_sender(
+                chat_id=int(chat_id),
+                rich_message=TelegramInputRichMessage(html=copy.rich_html),
+                reply_markup=_keyboard_from_specs(rows),
+            )
+        except Exception:
+            sent = None
+    if sent is None:
+        try:
+            sent = await message.answer(
+                copy.fallback_html,
+                parse_mode=ParseMode.HTML,
+                reply_markup=_keyboard_from_specs(rows),
+                disable_web_page_preview=True,
+            )
+        except Exception:
+            return False
+
+    message_id = int(getattr(sent, "message_id", 0) or 0)
+    if message_id:
+        await _track_context_message(
+            bot=bot,
+            chat_id=int(chat_id),
+            tg_id=int(chat_id),
+            message_id=message_id,
+        )
+        if preserve:
+            _preserve_outgoing_message(int(chat_id), message_id)
+    return True
 
 
 async def _edit_text_with_specs(
@@ -4657,7 +4727,8 @@ async def _show_subscription_qr(callback: CallbackQuery, *, format_name: str) ->
     bio.seek(0)
     file = BufferedInputFile(bio.read(), filename="pokrov-key.png")
 
-    await callback.message.answer_photo(
+    sent = await callback.message.bot.send_photo(
+        chat_id=int(callback.message.chat.id),
         photo=file,
         caption=(
             f"📱 *QR для {'Happ' if format_name == 'happ' else 'Hiddify'}*\n\n"
@@ -4673,11 +4744,33 @@ async def _show_subscription_qr(callback: CallbackQuery, *, format_name: str) ->
                         fallback_callback="copy_happ_key" if format_name == "happ" else "copy_key",
                     )
                 ],
-                [InlineKeyboardButton(text="◀️ Назад", callback_data="show_key")],
+                [InlineKeyboardButton(text="✕ Закрыть QR", callback_data="qr_close")],
             ]
         ),
+        track_context=False,
     )
+    qr_message_id = int(getattr(sent, "message_id", 0) or 0)
+    if qr_message_id:
+        await _schedule_auto_delete(
+            callback.message.bot,
+            chat_id=int(callback.message.chat.id),
+            message_id=qr_message_id,
+        )
     await callback.answer("QR для подключения готов")
+
+
+@router.callback_query(F.data == "qr_close")
+async def qr_close(callback: CallbackQuery):
+    if not await _require_private_callback(callback):
+        return
+    chat_id = int(callback.message.chat.id)
+    message_id = int(callback.message.message_id)
+    _cancel_auto_delete(chat_id, message_id)
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+    await callback.answer("QR закрыт")
 
 
 @router.callback_query(F.data == "share_access")
@@ -6577,19 +6670,23 @@ async def network_status_scan(callback: CallbackQuery):
     await asyncio.sleep(0.6)
     await network_status(callback)
 
-def _support_hub_keyboard() -> InlineKeyboardMarkup:
+def _support_hub_rows() -> list[list[dict[str, str]]]:
     support_new_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
     support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
     feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎫 Создать обращение", url=support_new_url)],
-        [InlineKeyboardButton(text="📂 Мои обращения", url=support_my_url)],
-        [InlineKeyboardButton(text="❓ Частые вопросы", callback_data="faqmenu")],
-        [InlineKeyboardButton(text="🩺 Диагностика", callback_data="support_diagnose")],
-        [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
-        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=PUBLIC_BOT_WEBAPP_MENU_URL))],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
-    ])
+    return [
+        [_btn_spec(text="🎫 Создать обращение", url=support_new_url, style=BTN_STYLE_SUCCESS)],
+        [_btn_spec(text="📂 Мои обращения", url=support_my_url)],
+        [_btn_spec(text="❓ Частые вопросы", callback_data="faqmenu")],
+        [_btn_spec(text="🩺 Диагностика", callback_data="support_diagnose")],
+        [_btn_spec(text="💌 Идеи и фидбэк", url=feedback_url)],
+        [_btn_spec(text="🌐 Открыть кабинет", web_app_url=PUBLIC_BOT_WEBAPP_MENU_URL)],
+        [_btn_spec(text="◀️ Назад", callback_data="back", style="")],
+    ]
+
+
+def _support_hub_keyboard() -> InlineKeyboardMarkup:
+    return _keyboard_from_specs(_support_hub_rows())
 
 
 @router.callback_query(F.data == "support")
@@ -6637,10 +6734,12 @@ async def support_command(message: Message):
 async def help_command(message: Message):
     _set_support_context(message.from_user.id, enabled=True)
     _track_bot_entry(tg_id=int(message.from_user.id), entrypoint="help", meta={"command": "help"})
-    await message.answer(
-        bot_text("bot.faq.menu"),
-        reply_markup=_faq_menu_keyboard(),
-        parse_mode=ParseMode.MARKDOWN,
+    await _send_rich_copy(
+        message=message,
+        bot=getattr(message, "bot", message),
+        chat_id=int(getattr(getattr(message, "chat", None), "id", message.from_user.id)),
+        copy=help_copy(),
+        rows=_support_hub_rows(),
     )
 
 
@@ -9779,6 +9878,60 @@ async def pre_checkout_handler(pre_checkout: PreCheckoutQuery, bot: Bot):
         error_message="Оплата через Telegram Stars сейчас закрыта. Выберите Lava.top или напишите в поддержку.",
     )
 
+
+def _payment_amount_display(*, total_amount: int, currency: str) -> str:
+    amount = int(total_amount or 0)
+    normalized = str(currency or "").strip().upper()
+    if normalized == "XTR":
+        return f"{amount} Telegram Stars"
+    if normalized in {"RUB", "RUR"}:
+        return f"{amount // 100} ₽" if amount % 100 == 0 else f"{amount / 100:.2f} ₽"
+    return f"{amount} {normalized}".strip()
+
+
+async def _send_payment_success_summary(
+    *,
+    message: Message,
+    bot: Bot,
+    tg_id: int,
+    tariff: dict,
+    payment: object,
+    transaction_id: str,
+) -> bool:
+    user = get_user(int(tg_id))
+    expiry_dt = _naive_utc(user.expiry_at) if user and user.expiry_at else None
+    copy = payment_success_copy(
+        tariff_name=str(tariff.get("name") or "Доступ POKROV"),
+        expiry=expiry_dt.strftime("%d.%m.%Y") if expiry_dt else "—",
+        amount_display=_payment_amount_display(
+            total_amount=int(getattr(payment, "total_amount", 0) or 0),
+            currency=str(getattr(payment, "currency", "") or ""),
+        ),
+        paid_at=_utcnow().strftime("%d.%m.%Y %H:%M"),
+        transaction_id=str(transaction_id or "")[:160],
+    )
+    rows = [
+        [
+            _btn_spec(
+                text="📲 Подключить устройство",
+                callback_data="instruction",
+                style=BTN_STYLE_SUCCESS,
+                icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
+            )
+        ],
+        [_btn_spec(text="🌐 Открыть кабинет", web_app_url=WEBAPP_URL)],
+        [_btn_spec(text="🔗 Ручная ссылка / QR", callback_data="show_key")],
+    ]
+    return await _send_rich_copy(
+        message=message,
+        bot=bot,
+        chat_id=int(tg_id),
+        copy=copy,
+        rows=rows,
+        preserve=True,
+    )
+
+
 @router.message(F.content_type == ContentType.SUCCESSFUL_PAYMENT)
 async def payment_success(message: Message, bot: Bot):
     payment = message.successful_payment
@@ -9899,7 +10052,6 @@ async def payment_success(message: Message, bot: Bot):
                     "points_used": int(points_used),
                 },
             )
-            await message.answer(bot_text("bot.payment.success"), parse_mode=ParseMode.MARKDOWN)
             fulfilled = await create_subscription(
                 message,
                 tg_id,
@@ -9908,6 +10060,7 @@ async def payment_success(message: Message, bot: Bot):
                 paid_amount_stars=int(payment.total_amount),
                 pay_attempt_id=attempt_id,
                 provider_order_id=str(getattr(payment, "telegram_payment_charge_id", "") or payment_fingerprint),
+                send_completion_message=False,
             )
             if not fulfilled:
                 return
@@ -9916,34 +10069,16 @@ async def payment_success(message: Message, bot: Bot):
                 invoice_payload=payload,
                 tg_id=tg_id,
             )
-            receipt_text = (
-                "🧾 *Квитанция об оплате*\n"
-                f"📦 Товар: *{tariff['name']}*\n"
-                f"💳 Сумма: *{payment.total_amount} XTR*\n"
-                f"📅 Дата: *{_utcnow().strftime('%d.%m.%Y %H:%M')} UTC*\n"
-                f"🆔 TransID: `{payload}`\n\n"
-                "✅ *Лицензия активирована успешно*"
-            )
-            receipt_rows = [[
-                _btn_spec(
-                    text="✅ Готово",
-                    callback_data="show_key",
-                    style=BTN_STYLE_SUCCESS,
-                    icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-                )
-            ]]
-            ok = await _send_text_with_specs(
+            summary_sent = await _send_payment_success_summary(
+                message=message,
                 bot=bot,
-                chat_id=tg_id,
-                text=receipt_text,
-                rows=receipt_rows,
-                parse_mode=ParseMode.MARKDOWN,
+                tg_id=tg_id,
+                tariff=tariff,
+                payment=payment,
+                transaction_id=str(getattr(payment, "telegram_payment_charge_id", "") or payload),
             )
-            if not ok:
-                kb = InlineKeyboardMarkup(
-                    inline_keyboard=[[InlineKeyboardButton(text="🔗 Ручная ссылка / QR", callback_data="show_key")]]
-                )
-                await message.answer(receipt_text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
+            if not summary_sent:
+                logger.warning("payment_success summary delivery failed tg_id=%s", tg_id)
         else:
             logger.warning("payment_success unknown tariff_key=%s payload=%s", tariff_key, payload)
         return
@@ -9983,7 +10118,6 @@ async def payment_success(message: Message, bot: Bot):
                     "recovered_by_fallback": True,
                 },
             )
-            await message.answer(bot_text("bot.payment.success"), parse_mode=ParseMode.MARKDOWN)
             fulfilled = await create_subscription(
                 message,
                 int(payer_tg_id),
@@ -9992,6 +10126,7 @@ async def payment_success(message: Message, bot: Bot):
                 paid_amount_stars=int(payment.total_amount),
                 pay_attempt_id=int(fallback_attempt.id),
                 provider_order_id=str(getattr(payment, "telegram_payment_charge_id", "") or payment_fingerprint),
+                send_completion_message=False,
             )
             if not fulfilled:
                 return
@@ -10000,6 +10135,16 @@ async def payment_success(message: Message, bot: Bot):
                 invoice_payload=payload,
                 tg_id=int(payer_tg_id),
             )
+            summary_sent = await _send_payment_success_summary(
+                message=message,
+                bot=bot,
+                tg_id=int(payer_tg_id),
+                tariff=tariff,
+                payment=payment,
+                transaction_id=str(getattr(payment, "telegram_payment_charge_id", "") or payload),
+            )
+            if not summary_sent:
+                logger.warning("payment_success fallback summary delivery failed tg_id=%s", payer_tg_id)
             return
 
     logger.warning(
@@ -10079,6 +10224,7 @@ async def create_subscription(
     paid_amount_stars: int | None = None,
     pay_attempt_id: int | None = None,
     provider_order_id: str | None = None,
+    send_completion_message: bool = True,
 ):
     """Create or extend subscription"""
     # Check if this is a PAID purchase (for referral bonus)
@@ -10310,15 +10456,16 @@ async def create_subscription(
         [InlineKeyboardButton(text="◀️ В меню", callback_data="back")]
     ])
 
-    await message.answer(
-        f"✅ *Доступ готов!*\n\n"
-        f"📅 До: `{expiry}`\n\n"
-        "Лучший путь: откройте POKROV, войдите тем же способом и нажмите «Подключить».\n\n"
-        "Если приложения нет под рукой, нажмите «Ручная ссылка / QR» ниже. Я покажу ссылку отдельно и напомню, как использовать её безопасно."
-        f"{free_note}",
-        reply_markup=kb,
-        parse_mode=ParseMode.MARKDOWN
-    )
+    if send_completion_message:
+        await message.answer(
+            f"✅ *Доступ готов!*\n\n"
+            f"📅 До: `{expiry}`\n\n"
+            "Лучший путь: откройте POKROV, войдите тем же способом и нажмите «Подключить».\n\n"
+            "Если приложения нет под рукой, нажмите «Ручная ссылка / QR» ниже. Я покажу ссылку отдельно и напомню, как использовать её безопасно."
+            f"{free_note}",
+            reply_markup=kb,
+            parse_mode=ParseMode.MARKDOWN
+        )
     return True
 
 

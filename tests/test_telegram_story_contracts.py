@@ -50,6 +50,7 @@ def test_main_bot_public_and_admin_story_triggers_remain_present() -> None:
             "noop",
             "accept_tos",
             "show_key",
+            "qr_close",
             "share_access",
             "panic_menu",
             "panic_execute",
