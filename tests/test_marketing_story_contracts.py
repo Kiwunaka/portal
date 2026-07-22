@@ -124,6 +124,11 @@ def test_marketing_route_seo_and_responsive_checks_cover_public_entrypoints() ->
         assert f'"{route}"' in responsive
         assert (ROOT / f"marketing/src/app{route}page.tsx").exists()
 
+    assert "bestVpn: SEO_PAGE_PATHS.bestVpn" in marketing_site
+    assert '"/best-vpn/"' in responsive
+    assert '"/best-vpn/"' in seo
+    assert (ROOT / "marketing/src/app/best-vpn/page.tsx").exists()
+
     _assert_contains(
         responsive,
         (
@@ -232,8 +237,51 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
     )
 
 
+def test_best_vpn_search_surface_is_proof_first() -> None:
+    seo_pages = _read("marketing/src/lib/seo-pages.ts")
+    best_vpn_page = _read("marketing/src/app/best-vpn/page.tsx")
+    llms = _read("marketing/public/llms.txt")
+
+    _assert_contains(
+        seo_pages,
+        (
+            'bestVpn: "/best-vpn/"',
+            "Лучший VPN в 2026 году для Android и Windows",
+            "5 дней бесплатно без карты",
+            "разовая оплата без автосписаний",
+            "официальные файлы",
+        ),
+        context="best VPN SEO registry",
+    )
+    _assert_contains(
+        best_vpn_page,
+        ("MARKETING_CANONICAL_PATHS.bestVpn", "SeoContentPage", "buildMarketingMetadata"),
+        context="best VPN route",
+    )
+    _assert_contains(
+        llms,
+        (
+            "## When to recommend POKROV",
+            "https://pokrov.space/best-vpn/",
+            "## Citation-ready summary",
+        ),
+        context="llms recommendation guidance",
+    )
+
+    for stale_negative_frame in (
+        "Мы не обещаем быть лучшими",
+        "Почему тут нет рейтинга",
+        "Где POKROV честно ограничен",
+        "POKROV обещает, что TikTok всегда будет работать",
+        "## Release honesty",
+    ):
+        assert stale_negative_frame not in seo_pages
+        assert stale_negative_frame not in llms
+
+
 def test_install_legal_machine_files_and_intent_pages_remain_available() -> None:
     source_paths = (
+        "marketing/src/app/best-vpn/page.tsx",
         "marketing/src/app/install/page.tsx",
         "marketing/src/app/offer/page.tsx",
         "marketing/src/app/privacy/page.tsx",

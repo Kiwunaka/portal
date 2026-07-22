@@ -19,6 +19,7 @@ const ROUTES = [
   "/youtube/",
   "/tiktok/",
   "/vpn/",
+  "/best-vpn/",
   "/android/",
   "/windows/",
   "/install/",

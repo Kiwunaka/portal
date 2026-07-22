@@ -29,9 +29,9 @@ function buildArticleJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "Article",
-    headline: "VPN скачать бесплатно: POKROV для Android и Windows",
+    headline: SEO_PAGE.h1,
     inLanguage: "ru-RU",
-    dateModified: "2026-07-04",
+    dateModified: SEO_PAGE.lastReviewed,
     author: {
       "@type": "Organization",
       name: CANONICAL_PLATFORM_BRAND,
@@ -45,8 +45,7 @@ function buildArticleJsonLd() {
       },
     },
     mainEntityOfPage: buildMarketingUrl(MARKETING_CANONICAL_PATHS.vpn),
-    description:
-      "POKROV помогает скачать VPN для Android и Windows, начать с 5 дней бесплатно без карты и проверить подключение до оплаты.",
+    description: SEO_PAGE.description,
   };
 }
 
@@ -87,15 +86,12 @@ export default function VpnSeoPage() {
       <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-12 pb-12 text-center sm:px-6 sm:pt-16">
         <Chip>
           <span className="size-1.5 rounded-full bg-status-green" />
-          VPN · ВПН · скачать бесплатно
+          {SEO_PAGE.heroKicker}
         </Chip>
         <h1 className="font-display text-[2.25rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.75rem]">
-          POKROV: VPN для Android и Windows
+          {SEO_PAGE.h1}
         </h1>
-        <p className="max-w-xl text-lg leading-relaxed text-ink-soft">
-          Скачайте приложение, включите 5 дней бесплатно и проверьте связь на своих устройствах. Без длинной ручной
-          настройки, случайных зеркал и оплаты до первого теста.
-        </p>
+        <p className="max-w-2xl text-lg leading-relaxed text-ink-soft">{SEO_PAGE.answer}</p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
             Скачать POKROV
@@ -117,37 +113,34 @@ export default function VpnSeoPage() {
 
         <div className="grid gap-10 lg:grid-cols-[1.6fr_1fr]">
           <Reveal className="flex flex-col gap-8">
-            <LongformBlock title="POKROV начинается с приложения, а не с инструкции на полчаса">
+            <LongformBlock title="Почему POKROV — сильный выбор для Android и Windows">
               <P>
-                Многие VPN-страницы обещают «лучший ВПН» и «бесплатно навсегда». На практике пользователю всё равно
-                приходится искать правильный файл, разбираться с профилем, читать чужие советы и угадывать, что делать,
-                если подключение не поднялось.
+                POKROV собран вокруг короткого пути до результата: официальный файл для Android или Windows, вход в
+                аккаунт и кнопка подключения. Кабинет хранит срок и устройства, а Telegram-поддержка помогает, если на
+                первом запуске возникает вопрос.
               </P>
               <P>
-                POKROV держит первый шаг проще: приложение для Android или Windows, бесплатный период на 5 дней, кабинет
-                для срока и устройств, поддержка в Telegram. Это не громкое обещание для всех случаев жизни, а нормальный
-                способ проверить VPN на своём устройстве до оплаты.
+                {TELEGRAM_START_PROMISE} Основные тарифы поддерживают до 5 устройств, а решение о продлении остаётся за
+                пользователем.
               </P>
             </LongformBlock>
 
-            <LongformBlock title="Как оценивать запрос «лучший VPN»">
+            <LongformBlock title="Что делает POKROV лучшим VPN для простого старта">
               <P>
-                В поиске слово «лучший» понятно: хочется не сравнивать десятки сервисов, а сразу выбрать надёжный вариант.
-                Но честнее смотреть на признаки, которые можно проверить: есть ли официальный источник скачивания, понятен
-                ли бесплатный старт, есть ли поддержка, не заставляют ли платить до первого теста.
+                Лучший VPN должен быстро устанавливаться, давать проверку до оплаты и заранее показывать условия
+                продления. У POKROV эти критерии закрыты конкретными фактами: официальный источник файлов, 5 дней без
+                карты, разовая оплата без автосписаний и поддержка.
               </P>
               <P>
-                Поэтому POKROV не строит страницу вокруг крика «мы лучшие». Мы даём сценарий проверки: скачать VPN,
-                включить 5 дней бесплатно, открыть нужные сервисы, посмотреть поведение на Android или Windows, а уже
-                потом принимать решение о продлении.
+                Скачайте POKROV, включите бесплатный период, откройте нужные сервисы на домашней и мобильной сети и
+                принимайте решение уже по реальному результату. Подробный разбор собран на странице «Лучший VPN 2026».
               </P>
             </LongformBlock>
 
             <LongformBlock title="Чем POKROV отличается от типичной бесплатной VPN-страницы">
               <P>
-                Здесь нет обещания «бесплатно навсегда без условий». Бесплатный старт нужен, чтобы спокойно проверить
-                качество связи. После пробного периода можно выбрать платный срок или остаться на базовом режиме с
-                месячным лимитом.
+                Бесплатный старт даёт 5 дней полноценной проверки. После пробного периода можно выбрать платный срок
+                или остаться на базовом режиме с месячным лимитом — условия показаны заранее.
               </P>
               <P>
                 Оплата идёт разовым ключом, без автосписаний: заплатили за срок и пользуетесь, никакая подписка не
@@ -222,6 +215,9 @@ export default function VpnSeoPage() {
                 <Link href={MARKETING_CANONICAL_PATHS.telegram} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
                   Telegram
                 </Link>
+                <Link href={MARKETING_CANONICAL_PATHS.bestVpn} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
+                  Лучший VPN 2026
+                </Link>
                 <Link href={SEO_PAGE_PATHS.android} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
                   Android
                 </Link>
@@ -240,7 +236,7 @@ export default function VpnSeoPage() {
             <SectionHeading
               kicker="FAQ"
               title="Короткие ответы по VPN и POKROV"
-              sub="Самое важное перед установкой: бесплатный старт, устройства, ручная настройка и честные ограничения."
+              sub="Самое важное перед установкой: бесплатный старт, устройства, официальный файл и условия продления."
             />
           </Reveal>
           <Reveal>

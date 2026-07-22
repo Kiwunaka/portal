@@ -89,9 +89,9 @@ export function SeoContentPage({ page }: { page: SeoPage }) {
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.95fr_1.35fr]">
             <Reveal>
               <SectionHeading
-                kicker="Разбор"
+                kicker="Преимущества"
                 title="Что важно знать перед установкой"
-                sub="Без громких обещаний. Только то, что влияет на первый запуск, проверку и продление."
+                sub="Факты о первом запуске, бесплатной проверке, официальных файлах и продлении."
               />
             </Reveal>
             <Reveal className="flex flex-col gap-5">
@@ -140,7 +140,10 @@ export function SeoContentPage({ page }: { page: SeoPage }) {
       {page.comparisonRows?.length ? (
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <Reveal>
-            <SectionHeading title="Критерии проверки" sub="Не рейтинг ради рейтинга, а список вещей, которые стоит увидеть до установки." />
+            <SectionHeading
+              title="Сравнение по проверяемым критериям"
+              sub="Источник файлов, бесплатный старт, оплата и поддержка — всё, что стоит проверить до установки."
+            />
           </Reveal>
           <div className="overflow-hidden rounded-(--radius-card) border border-line bg-surface shadow-soft">
             <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-line bg-canvas-alt text-[0.8125rem] font-semibold tracking-[0.08em] text-ink-soft uppercase">

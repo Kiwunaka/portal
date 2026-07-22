@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-07-20
+Last updated: 2026-07-22
 
 ## Document Status
 
@@ -51,7 +51,8 @@ The current program is locked around these target product decisions:
 - normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
 - target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
 - visible routing story becomes `All except RU`, `Full tunnel`, and `Selected apps`, with `Rules` owning split tunneling and bypass behavior
-- owner-approved update on `2026-06-01`: public `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent surfaces and metadata when it is visible, useful to users, and tied to the actual POKROV Android/Windows app flow; hidden text, cloaking, keyword stuffing, unsupported "best" claims, and unsupported availability claims remain forbidden
+- owner-approved update on `2026-06-01`: public `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent surfaces and metadata when it is visible, useful to users, and tied to the actual POKROV Android/Windows app flow
+- owner-approved update on `2026-07-22`: dedicated search-intent surfaces may call POKROV `лучший VPN` / `best VPN` when the statement names the user segment or scenario and is supported nearby by current verifiable product facts; hidden text, cloaking, keyword stuffing, fabricated rankings, unqualified universal superiority claims, and unsupported availability claims remain forbidden
 
 Client-canon note:
 
@@ -182,7 +183,7 @@ Current public role:
 - `https://pokrov.space/install/` is the public step-by-step install instruction page (Android unknown-sources and Windows SmartScreen honesty included); since the `2026-07` redesign it is indexable, sits in the sitemap, and routes download CTAs through the cabinet downloads flow
 - indexable landing pages can capture platform, use-case, or Telegram intent, but they must converge to the same product facts and the same app-first trial/install/first-connection CTA set
 - public legal pages also live on the marketing surface
-- the current canonical public route family is `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, `/telegram/`, and `/vpn/`, with permanent redirects from the earlier legacy SEO paths
+- the current canonical public route family includes `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, `/telegram/`, `/vpn/`, `/best-vpn/`, `/compare/free-vpn/`, and the platform/install/trust/support intent routes, with permanent redirects from the earlier legacy SEO paths
 
 2026-07 redesign positioning notes:
 
@@ -250,7 +251,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 - email continuation copy may be live when the delivery path is ready, and must degrade honestly if delivery readiness fails
 - cabinet copy should focus on continuation, renewal, redeem, support, and recovery rather than acting like a second landing page
 - one product story across homepage, SEO landings, cabinet, and checkout, with trial, install, and first connection as the primary public CTA path
-- direct `VPN` / `ВПН` wording is allowed for visible SEO/search-intent copy after the `2026-06-01` owner approval; do not use hidden SEO text, cloaking, keyword stuffing, unsupported "лучший" claims, or copy that implies store availability, stable `1.0.0`, trusted Windows signing, raw Android physical-audit proof, or RU-origin readiness without evidence
+- direct `VPN` / `ВПН` wording is allowed for visible SEO/search-intent copy after the `2026-06-01` owner approval; the `2026-07-22` owner approval also permits qualified `лучший VPN` positioning for a named segment or scenario when the supporting current facts are adjacent; do not use hidden SEO text, cloaking, keyword stuffing, fabricated rankings, unqualified universal superiority claims, or copy that implies store availability, stable `1.0.0`, trusted Windows signing, raw Android physical-audit proof, or RU-origin readiness without evidence
 - public-facing wording should prefer user outcomes and next steps over transport acronyms, raw profile terminology, or operator jargon
 - explicit next-step CTA wording such as `download app`, `open cabinet`, `continue to checkout`, or `open Telegram` only when that is the real next step
 - no separate product variants or conflicting promises invented for SEO pages
@@ -531,4 +532,4 @@ Current major product risks are:
 - Apple readiness notes being mistaken for a public ship promise
 - Android release being treated as ready before localhost listener and control-surface safety is proven in a release build
 - RU routing and DNS presets being described as finished before the real strategy layer and leak checks ship
-- public `VPN` / `ВПН` copy drifting from useful visible SEO/search-intent language into hidden text, cloaking, stuffing, or unsupported "best"/availability claims
+- public `VPN` / `ВПН` copy drifting from useful visible SEO/search-intent language into hidden text, cloaking, stuffing, fabricated rankings, unqualified superiority, or unsupported availability claims

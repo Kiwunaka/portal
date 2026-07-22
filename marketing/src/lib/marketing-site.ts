@@ -35,6 +35,7 @@ export const MARKETING_CANONICAL_PATHS = {
   devices: "/devices/",
   telegram: "/telegram/",
   vpn: "/vpn/",
+  bestVpn: SEO_PAGE_PATHS.bestVpn,
   installAndroid: SEO_PAGE_PATHS.installAndroid,
   installWindows: SEO_PAGE_PATHS.installWindows,
   trialNoCard: SEO_PAGE_PATHS.trialNoCard,
