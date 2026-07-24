@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-07-13T03:11:23.721Z",
+  "source": "../archive/infographic-data.json",
+  "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86",
+  "dimensions": {
+    "width": 1600,
+    "height": 5000
+  },
+  "outputs": [
+    {
+      "html": "01-analytical-report.html",
+      "png": "01-analytical-report.png",
+      "width": 1600,
+      "height": 5000,
+      "sha256": "b2ff0a1d1dc60679d44f6d095dace6f8050db156e1d7f92a65a5c0710c1e0629",
+      "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86"
+    },
+    {
+      "html": "02-war-room.html",
+      "png": "02-war-room.png",
+      "width": 1600,
+      "height": 5000,
+      "sha256": "d6bbb9fe106ca84ae107574446e6669e51b591784581572b0c0df1e4405437c0",
+      "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86"
+    },
+    {
+      "html": "03-growth-funnel.html",
+      "png": "03-growth-funnel.png",
+      "width": 1600,
+      "height": 5000,
+      "sha256": "e054503ba4d5d4f23d075b5211ceb96e8785636b6e06d1cb706081c996988820",
+      "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86"
+    }
+  ]
+}
