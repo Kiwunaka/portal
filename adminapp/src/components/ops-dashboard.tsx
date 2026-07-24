@@ -7,14 +7,16 @@ import type { OpsSectionId } from "@/lib/sections";
 
 export function OpsDashboard({
   section,
-  onShellStatus
+  onShellStatus,
+  onNavigate
 }: {
   section: OpsSectionId;
   onShellStatus?: (status: OpsShellStatus) => void;
+  onNavigate?: (href: string) => void;
 }) {
   return (
     <AdminRouteBoundary onShellStatus={onShellStatus}>
-      <ActiveOpsRoute section={section} onShellStatus={onShellStatus} />
+      <ActiveOpsRoute section={section} onShellStatus={onShellStatus} onNavigate={onNavigate} />
     </AdminRouteBoundary>
   );
 }

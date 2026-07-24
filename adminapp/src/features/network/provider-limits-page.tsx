@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { RefreshCw, Save, Trash2 } from "lucide-react";
+import { AlertTriangle, CircleCheck, CircleOff, Gauge, RefreshCw, Save, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { ActionIntentDialog } from "@/components/ops/action-intent-dialog";
 import { MISSING_DATA_TEXT, MissingData } from "@/components/ops/missing-data";
 import { RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, DataTable, EmptyState, Progress, SectionTitle, type Tone } from "@/components/ui";
+import { Badge, Button, Card, DataTable, EmptyState, MetricCell, MetricStrip, Progress, SectionTitle, type Tone } from "@/components/ui";
 import type { ActionIntentRequest } from "@/lib/admin-api/actions";
 import { AdminApiError } from "@/lib/admin-api/client";
 import { fetchProviderQuotas, type ProviderQuotaConfig, type ProviderQuotaStatus } from "@/lib/admin-api/network";
@@ -221,13 +221,22 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
   const serverChangedWhileEditing = Boolean(dirty && draftSourceVersion !== selectedSourceVersion);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]"><Badge tone={resource.error ? "warning" : resource.data ? "success" : "neutral"}>{resource.error ? "Есть сбой источника" : resource.data ? "Лимиты перечитаны" : "Лимиты ещё не получены"}</Badge><span>{resource.data ? `${resource.data.configs.length} настроенных квот` : "Данные ещё не получены"}</span></div>
         <Button tone="secondary" disabled={resource.loading || resource.refreshing} onClick={resource.reload}><RefreshCw size={15} className={resource.refreshing ? "animate-spin" : ""} /> Обновить</Button>
       </div>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      {resource.data ? (
+        <MetricStrip label="Сводка лимитов провайдеров">
+          <MetricCell icon={<Gauge aria-hidden="true" size={17} />} label="Ноды в контроле" value={resource.data.statuses.length} detail={`${resource.data.configs.length} настроенных квот`} tone="info" />
+          <MetricCell icon={<CircleCheck aria-hidden="true" size={17} />} label="В норме" value={resource.data.statuses.filter((row) => row.state === "ok").length} detail="Ниже warning threshold" tone="success" />
+          <MetricCell icon={<AlertTriangle aria-hidden="true" size={17} />} label="Требуют внимания" value={resource.data.statuses.filter((row) => ["warning", "critical"].includes(row.state)).length} detail="Warning или critical" tone={resource.data.statuses.some((row) => ["warning", "critical"].includes(row.state)) ? "warning" : "success"} />
+          <MetricCell icon={<CircleOff aria-hidden="true" size={17} />} label="Без настройки" value={resource.data.statuses.filter((row) => !row.configured || row.state === "missing_limit").length} detail="Нужно задать лимит" tone={resource.data.statuses.some((row) => !row.configured || row.state === "missing_limit") ? "warning" : "neutral"} />
+        </MetricStrip>
+      ) : null}
+
+      <div className="ops-workspace xl:grid-cols-[minmax(0,1.38fr)_minmax(21rem,0.62fr)]">
         <Card>
           <SectionTitle title="Лимиты провайдеров" description="Серверный расход, окно сброса и остаток по нодам. Исходные provider payload и секреты не показываются." />
           <RouteBoundary loading={resource.loading} refreshing={resource.refreshing} error={resource.error} hasData={resource.data !== null} retryLabel="Повторить загрузку лимитов" onRetry={resource.reload}>
@@ -236,7 +245,7 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
         </Card>
 
         <aside aria-label="Редактор лимита">
-          <Card className="xl:sticky xl:top-4">
+          <Card className="xl:sticky xl:top-[7.75rem]">
             <SectionTitle title={selectedConfig ? `Квота ${selectedCode?.toUpperCase()}` : selectedCode ? `Новая квота ${selectedCode.toUpperCase()}` : "Редактор квоты"} description="Сохранение сначала открывает серверный review. Удаление потребует точный код ноды." />
             {!draft ? <EmptyState title="Выберите ноду" description="Откройте строку в таблице, чтобы настроить или проверить квоту." /> : (
               <form className="space-y-3" onSubmit={openSave}>

@@ -5,7 +5,7 @@ import { Radio, RefreshCw, Search, Server, UsersRound, Wifi } from "lucide-react
 
 import { RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, SectionTitle, type Tone } from "@/components/ui";
+import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import { EmptyState } from "@/components/ui/states";
 import { OpsTooltip } from "@/components/ui/tooltip";
 import type { AdminApiError } from "@/lib/admin-api/client";
@@ -68,12 +68,14 @@ function riskLabel(flags: string[]): string {
 function Metric({ label, value, explanation, sampledAt, icon, tone = "neutral" }: { label: string; value: string; explanation: string; sampledAt: string | null; icon: ReactNode; tone?: Tone }) {
   const id = useId();
   return (
-    <Card className="min-h-28">
-      <div className="flex items-start justify-between gap-2">
-        <div><div className="flex items-center gap-2 text-xs font-semibold text-[color:var(--atlas-text-soft)]">{icon}{label}</div><div className="mt-3 text-2xl font-semibold">{value}</div><Badge tone={tone} className="mt-2">Оперативный снимок</Badge></div>
-        <OpsTooltip id={`${id}-online-metric`} content={explanation} source="Панель · агрегат без полных IP-адресов" sampledAt={sampledAt} threshold="Обновляется каждые 30 секунд при видимой вкладке" />
-      </div>
-    </Card>
+    <MetricCell
+      icon={icon}
+      label={label}
+      value={value}
+      detail="Оперативный снимок"
+      tone={tone}
+      aside={<OpsTooltip id={`${id}-online-metric`} content={explanation} source="Панель · агрегат без полных IP-адресов" sampledAt={sampledAt} threshold="Обновляется каждые 30 секунд при видимой вкладке" />}
+    />
   );
 }
 
@@ -117,8 +119,8 @@ export function OnlinePage({ onShellStatus }: { onShellStatus?: (status: OpsShel
 
   const generatedAt = online.data?.generatedAt || null;
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={online.error || online.data?.summary.nodesWithPanelErrors ? "warning" : online.data ? "success" : "neutral"}>{online.error ? "Источник не ответил" : online.data?.summary.nodesWithPanelErrors ? "Снимок неполный" : online.data ? "Оперативный источник отвечает" : "Ожидаем источник"}</Badge>
           <span>{generatedAt ? `Снимок ${formatSourceAge(generatedAt)}` : "Снимок ещё не получен"}</span>
@@ -128,12 +130,12 @@ export function OnlinePage({ onShellStatus }: { onShellStatus?: (status: OpsShel
       </div>
 
       {online.data ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricStrip>
           <Metric label="Пользователи онлайн" value={String(online.data.summary.knownUsersOnline)} explanation="Сопоставленные с записью пользователя идентификаторы из оперативного снимка." sampledAt={generatedAt} icon={<UsersRound size={15} />} tone="success" />
           <Metric label="Соединения" value={String(online.data.summary.onlineConnectionsNow)} explanation="Сумма соединений панели; не число уникальных людей." sampledAt={generatedAt} icon={<Wifi size={15} />} tone="info" />
           <Metric label="Ключи онлайн" value={String(online.data.summary.onlineKeysNow)} explanation="Количество ключей, присутствующих в текущем оперативном снимке." sampledAt={generatedAt} icon={<Radio size={15} />} tone="info" />
           <Metric label="Сбои нод" value={String(online.data.summary.nodesWithPanelErrors)} explanation="Число нод, по которым панель не дала пригодный оперативный снимок." sampledAt={generatedAt} icon={<Server size={15} />} tone={online.data.summary.nodesWithPanelErrors ? "warning" : "success"} />
-        </div>
+        </MetricStrip>
       ) : null}
 
       <Card>

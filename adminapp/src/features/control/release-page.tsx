@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { Boxes, Clock3, Copy, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import { MissingData } from "@/components/ops/missing-data";
 import { RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, EmptyState, SectionTitle, type Tone } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import { AdminApiError } from "@/lib/admin-api/client";
 import {
   fetchReleaseCandidates,
@@ -185,9 +185,13 @@ export function ReleasePage({ onShellStatus }: { onShellStatus?: (status: OpsShe
   }, [candidates.data, candidates.error, candidates.loading, onShellStatus, readiness.data, readiness.error, readiness.loading]);
 
   const candidate = readiness.data?.candidate || selectedCandidate;
+  const origins = readiness.data?.origins || [];
+  const requiredAttention = origins
+    .flatMap((origin) => origin.checks)
+    .filter((check) => check.required && check.status !== "PASS").length;
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={candidates.error || readiness.error ? "warning" : readiness.data ? statusTone(readiness.data.status) : "neutral"}>
             {readiness.data ? `Итог backend: ${statusText(readiness.data.status)}` : candidates.error || readiness.error ? "Источник релизов недоступен" : "Релиз ещё не выбран"}
@@ -199,7 +203,14 @@ export function ReleasePage({ onShellStatus }: { onShellStatus?: (status: OpsShe
         </Button>
       </div>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(260px,0.34fr)_minmax(0,1fr)]">
+      <MetricStrip label="Сводка готовности релиза">
+        <MetricCell icon={<Boxes aria-hidden="true" size={17} />} label="Кандидаты" value={candidates.data ? candidates.data.items.length : <MissingData />} detail="Импортированные backend" tone="info" />
+        <MetricCell icon={<ShieldCheck aria-hidden="true" size={17} />} label="Origins PASS" value={readiness.data ? `${origins.filter((origin) => origin.status === "PASS").length} / ${origins.length}` : <MissingData />} detail="current, brain и RU отдельно" tone={readiness.data && origins.length > 0 && origins.every((origin) => origin.status === "PASS") ? "success" : readiness.data ? "warning" : "neutral"} />
+        <MetricCell icon={<TriangleAlert aria-hidden="true" size={17} />} label="Требуют доказательств" value={readiness.data ? requiredAttention : <MissingData />} detail="Обязательные проверки не PASS" tone={requiredAttention ? "warning" : readiness.data ? "success" : "neutral"} />
+        <MetricCell icon={<Clock3 aria-hidden="true" size={17} />} label="Возраст кандидата" value={candidate ? ageText(candidate.age_seconds) : <MissingData />} detail={candidate?.component || "Кандидат не выбран"} tone="neutral" />
+      </MetricStrip>
+
+      <div className="ops-workspace xl:grid-cols-[minmax(19rem,0.4fr)_minmax(0,1fr)]">
         <Card>
           <SectionTitle title="Кандидаты релиза" description="Точная версия, revision, artifact hash и возраст импорта. Выбор сохраняется в URL." />
           <RouteBoundary loading={candidates.loading} refreshing={candidates.refreshing} error={candidates.error} hasData={candidates.data !== null} retryLabel="Повторить список" onRetry={candidates.reload}>

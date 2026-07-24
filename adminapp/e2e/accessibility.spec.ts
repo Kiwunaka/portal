@@ -34,8 +34,14 @@ test("все 15 маршрутов открываются напрямую с р
     const main = page.getByRole("main");
     await expect(main).toBeVisible();
     await expect(page.getByRole("heading", { name: label, exact: true, level: 1 })).toBeVisible();
+    await expect(main.locator(".ops-route-toolbar")).toHaveCount(1);
     await expect(main.getByText("Ops admin", { exact: true })).toHaveCount(0);
     await expect(main.getByText("Free tier", { exact: true })).toHaveCount(0);
+    const viewport = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth
+    }));
+    expect(viewport.documentWidth, `общий горизонтальный скролл на ${path}`).toBeLessThanOrEqual(viewport.viewportWidth + 1);
   }
 });
 
@@ -122,5 +128,14 @@ test("mobile master-detail и desktop layout не создают общий го
     expect(layout.mainLeft).toBeGreaterThanOrEqual(layout.sidebarRight - 1);
     expect(layout.mainRight).toBeLessThanOrEqual(layout.viewportWidth + 1);
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    const clippedNavigation = await page.locator('header nav[aria-label="Разделы центра управления"]').evaluate((navigation) =>
+      Array.from(navigation.querySelectorAll("a"))
+        .filter((link) => {
+          const rect = link.getBoundingClientRect();
+          return rect.left < 0 || rect.right > window.innerWidth + 1;
+        })
+        .map((link) => link.getAttribute("aria-label") || link.textContent?.trim() || "")
+    );
+    expect(clippedNavigation, `скрытые разделы при ширине ${width}`).toEqual([]);
   }
 });

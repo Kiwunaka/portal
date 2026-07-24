@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CircleCheck, Clock3, Inbox, RefreshCw } from "lucide-react";
 
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, SectionTitle, type Tone } from "@/components/ui";
+import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import type { AdminApiError } from "@/lib/admin-api/client";
 import { fetchTicketDetail, fetchTickets, type AdminTicket, type TicketPriority, type TicketPriorityFilter, type TicketStatusFilter } from "@/lib/admin-api/support";
@@ -135,8 +135,8 @@ export function TicketsPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={tickets.error || (selected !== null && detail.error) ? "warning" : tickets.data ? "success" : "neutral"}>{tickets.error || (selected !== null && detail.error) ? "Есть сбой источника" : tickets.data ? "Очередь загружена" : "Ожидаем очередь"}</Badge>
           <span>{tickets.data ? `${queue.length} тикетов по фильтру` : "Очередь ещё не получена"}</span>
@@ -145,7 +145,16 @@ export function TicketsPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
         <Button tone="secondary" disabled={tickets.loading || tickets.refreshing || detail.refreshing} onClick={() => { tickets.reload(); if (selected !== null) detail.reload(); }}><RefreshCw size={15} className={tickets.refreshing || detail.refreshing ? "animate-spin" : ""} /> Обновить</Button>
       </div>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(340px,0.8fr)_minmax(0,1.2fr)]">
+      {tickets.data ? (
+        <MetricStrip label="Сводка тикетов">
+          <MetricCell icon={<Inbox aria-hidden="true" size={17} />} label="По текущему фильтру" value={queue.length} detail={`Статус: ${urlState.status}`} tone={queue.length ? "info" : "success"} />
+          <MetricCell icon={<AlertTriangle aria-hidden="true" size={17} />} label="Критические" value={queue.filter((ticket) => ticket.priority === "critical").length} detail="Сортируются первыми" tone={queue.some((ticket) => ticket.priority === "critical") ? "danger" : "success"} />
+          <MetricCell icon={<Clock3 aria-hidden="true" size={17} />} label="В работе" value={queue.filter((ticket) => ticket.status === "in_progress").length} detail="Оператор уже начал разбор" tone="warning" />
+          <MetricCell icon={<CircleCheck aria-hidden="true" size={17} />} label="Закрытые" value={(tickets.data.tickets || []).filter((ticket) => ticket.status === "closed").length} detail="В загруженном ответе" tone="success" />
+        </MetricStrip>
+      ) : null}
+
+      <div className="ops-workspace xl:grid-cols-[minmax(21rem,0.72fr)_minmax(0,1.28fr)]">
         <section aria-label="Очередь тикетов" className={`min-w-0 ${selected !== null ? "max-xl:hidden" : ""}`}>
           <Card className="min-h-[420px] p-3">
             <SectionTitle title="Очередь тикетов" description="Сначала критический приоритет, затем высокий и более старые обращения. Выбор и фильтры сохраняются в URL." />

@@ -313,6 +313,7 @@ from warp_service import (
     warp_material_public_payload,
 )
 from admin_ops_service import (
+    MANAGED_ALERT_SOURCES as _OPS_MANAGED_ALERT_SOURCES,
     admin_search_results as _ops_admin_search_results,
     admin_nodes_capacity_payload as _ops_admin_nodes_capacity_payload,
     alert_payload as _ops_alert_payload,
@@ -507,15 +508,7 @@ TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE
 ADMIN_WEB_SESSION_TTL_SECONDS = max(300, env_int("ADMIN_WEB_SESSION_TTL_SECONDS", 3600))
 CABINET_HANDOFF_TTL_SECONDS = max(60, min(120, env_int("CABINET_HANDOFF_TTL_SECONDS", 120)))
 CABINET_HANDOFF_LEDGER_RETENTION_SECONDS = max(3600, env_int("CABINET_HANDOFF_LEDGER_RETENTION_SECONDS", 86400))
-NODE_METRICS_CPU_ALERT_PERCENT = _env_float("NODE_METRICS_CPU_ALERT_PERCENT", 70.0)
-NODE_METRICS_MEMORY_ALERT_PERCENT = _env_float("NODE_METRICS_MEMORY_ALERT_PERCENT", 85.0)
-NODE_METRICS_DISK_ALERT_PERCENT = _env_float("NODE_METRICS_DISK_ALERT_PERCENT", 90.0)
-NODE_METRICS_NETWORK_ALERT_PERCENT = _env_float("NODE_METRICS_NETWORK_ALERT_PERCENT", 70.0)
 NODE_METRICS_PORT_CAPACITY_MBPS = _env_float("NODE_METRICS_PORT_CAPACITY_MBPS", 1000.0)
-NODE_METRICS_LATENCY_ALERT_MS = _env_float("NODE_METRICS_LATENCY_ALERT_MS", 800.0)
-NODE_METRICS_ERROR_RATE_ALERT = _env_float("NODE_METRICS_ERROR_RATE_ALERT", 0.2)
-NODE_METRICS_ACTIVE_CLIENTS_ALERT = max(1, env_int("NODE_METRICS_ACTIVE_CLIENTS_ALERT", 200))
-NODE_METRICS_SUSTAINED_SAMPLES = max(2, env_int("NODE_METRICS_SUSTAINED_SAMPLES", 3))
 SUPPORT_UPLOAD_DIR = Path(
     os.getenv("SUPPORT_UPLOAD_DIR") or (Path(__file__).resolve().parent / "uploads" / "support")
 ).resolve()
@@ -12765,12 +12758,6 @@ def _network_utilization_percent(total_mbps: object) -> float:
     return round((current / capacity) * 100.0, 2)
 
 
-def _sample_network_percent(sample: NodeHealthSample | None) -> float:
-    if not sample:
-        return 0.0
-    return _network_utilization_percent(getattr(sample, "network_total_mbps", 0.0))
-
-
 def _observer_is_stale(node: Node, *, now: datetime) -> bool:
     last_push_at = getattr(node, "observer_last_push_at", None)
     configured = bool(str(getattr(node, "observer_push_secret", "") or "").strip())
@@ -12779,78 +12766,6 @@ def _observer_is_stale(node: Node, *, now: datetime) -> bool:
     if not last_push_at:
         return True
     return int((now - last_push_at).total_seconds()) > observer_stale_after_seconds()
-
-
-def _active_node_metric_alert_kinds(
-    *,
-    samples: list[NodeHealthSample],
-    last_sample_at: datetime | None,
-    stale_after_seconds: int,
-    now: datetime,
-) -> list[str]:
-    kinds: list[str] = []
-    age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
-    if age_seconds is None or age_seconds > stale_after_seconds:
-        kinds.append("stale_metrics")
-        return kinds
-
-    if len(samples) < NODE_METRICS_SUSTAINED_SAMPLES:
-        return kinds
-
-    window = samples[:NODE_METRICS_SUSTAINED_SAMPLES]
-    if all(float(getattr(sample, "cpu_percent", 0.0) or 0.0) >= NODE_METRICS_CPU_ALERT_PERCENT for sample in window):
-        kinds.append("cpu_high")
-    if all(_sample_memory_percent(sample) >= NODE_METRICS_MEMORY_ALERT_PERCENT for sample in window):
-        kinds.append("memory_high")
-    if all(_sample_disk_percent(sample) >= NODE_METRICS_DISK_ALERT_PERCENT for sample in window):
-        kinds.append("disk_high")
-    if all(_sample_network_percent(sample) >= NODE_METRICS_NETWORK_ALERT_PERCENT for sample in window):
-        kinds.append("network_high")
-    if all(float(getattr(sample, "panel_latency_ms", 0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS for sample in window):
-        kinds.append("latency_high")
-    if all(float(getattr(sample, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT for sample in window):
-        kinds.append("error_rate_high")
-    if all(int(getattr(sample, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT for sample in window):
-        kinds.append("client_density_high")
-    return kinds
-
-
-def _node_snapshot_alert_kinds(
-    *,
-    node: Node,
-    last_sample_at: datetime | None,
-    stale_after_seconds: int,
-    now: datetime,
-) -> list[str]:
-    age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
-    kinds: list[str] = []
-    if age_seconds is None or age_seconds > stale_after_seconds:
-        kinds.append("stale_metrics")
-    cpu_percent = float(getattr(node, "cpu_percent", 0.0) or 0.0)
-    memory_total = float(getattr(node, "memory_total_mb", 0.0) or 0.0)
-    memory_used = float(getattr(node, "memory_used_mb", 0.0) or 0.0)
-    disk_total = float(getattr(node, "disk_total_gb", 0.0) or 0.0)
-    disk_used = float(getattr(node, "disk_used_gb", 0.0) or 0.0)
-    network_total_mbps = float(getattr(node, "network_total_mbps", 0.0) or 0.0)
-    memory_percent = (memory_used / memory_total * 100.0) if memory_total > 0 else 0.0
-    disk_percent = (disk_used / disk_total * 100.0) if disk_total > 0 else 0.0
-    if cpu_percent >= NODE_METRICS_CPU_ALERT_PERCENT:
-        kinds.append("cpu_high")
-    if memory_percent >= NODE_METRICS_MEMORY_ALERT_PERCENT:
-        kinds.append("memory_high")
-    if disk_percent >= NODE_METRICS_DISK_ALERT_PERCENT:
-        kinds.append("disk_high")
-    if _network_utilization_percent(network_total_mbps) >= NODE_METRICS_NETWORK_ALERT_PERCENT:
-        kinds.append("network_high")
-    if float(getattr(node, "panel_latency_ms", 0.0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS:
-        kinds.append("latency_high")
-    if float(getattr(node, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT:
-        kinds.append("error_rate_high")
-    if int(getattr(node, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT:
-        kinds.append("client_density_high")
-    if _observer_is_stale(node, now=now):
-        kinds.append("observer_push_stale")
-    return kinds
 
 
 def _legacy_node_alert_kind(kind: str) -> str:
@@ -18874,10 +18789,21 @@ async def admin_ticket_status(
 @app.get("/api/admin/nodes/health")
 async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> dict:
     _require_admin(x_telegram_init_data)
+    now = _utcnow()
+    stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     s = SessionLocal()
     try:
         rows = s.query(Node).order_by(Node.enabled.desc(), Node.health_score.desc(), Node.weight.desc(), Node.code.asc()).all()
-        window_start = _utcnow() - timedelta(hours=24)
+        metrics_snapshot = _ops_build_admin_metrics_status_snapshot(
+            s=s,
+            now=now,
+            stale_after_seconds=stale_after_seconds,
+        )
+        alert_kinds_by_code = {
+            str(item.get("node_code") or item.get("code") or "").strip().lower(): list(item.get("alert_kinds") or [])
+            for item in list(metrics_snapshot.get("nodes") or [])
+        }
+        window_start = now - timedelta(hours=24)
         peak_by_code = {
             str(node_code or ""): (float(peak_mbps) if peak_mbps is not None else None)
             for node_code, peak_mbps in (
@@ -18921,6 +18847,8 @@ async def admin_nodes_health(x_telegram_init_data: str = Header(default="")) -> 
                 network_peak_mbps_24h=peak_by_code.get(str(n.code or ""), None),
                 online_keys_now=int((online_summary_by_code.get(str(n.code or ""), {}) or {}).get("online_keys_now") or 0),
                 online_connections_now=int((online_summary_by_code.get(str(n.code or ""), {}) or {}).get("online_connections_now") or 0),
+                alert_kinds=alert_kinds_by_code.get(str(n.code or "").strip().lower(), []),
+                now=now,
             )
             for n in rows
         ]
@@ -19033,6 +18961,51 @@ async def _refresh_ops_alerts_for_payload(*, s, now: datetime) -> tuple[list[dic
         stale_after_seconds=stale_after_seconds,
     )
     return rows, notifications
+
+
+def _admin_ops_compact_summary_payload(*, s, now: datetime, metrics_status: dict[str, Any]) -> dict[str, Any]:
+    active_user_filter = _effective_active_user_filter(now=now)
+    user_sub_type = func.upper(func.coalesce(User.sub_type, ""))
+    user_counts = (
+        s.query(
+            func.count(User.tg_id).label("total"),
+            func.sum(case((active_user_filter, 1), else_=0)).label("active"),
+            func.sum(case((user_sub_type == "FREE", 1), else_=0)).label("free"),
+            func.sum(case((user_sub_type == "PAID", 1), else_=0)).label("paid"),
+        )
+        .one()
+    )
+    node_counts = (
+        s.query(
+            func.count(Node.id).label("total"),
+            func.sum(case((Node.is_healthy == True, 1), else_=0)).label("healthy"),
+        )
+        .filter(Node.enabled == True)
+        .one()
+    )
+    open_tickets = int(
+        s.query(func.count(SupportTicket.id))
+        .filter(SupportTicket.status != STATUS_CLOSED)
+        .scalar()
+        or 0
+    )
+    total_nodes = int(getattr(node_counts, "total", 0) or 0)
+    healthy_nodes = int(getattr(node_counts, "healthy", 0) or 0)
+    return {
+        "users": {
+            "total": int(getattr(user_counts, "total", 0) or 0),
+            "active": int(getattr(user_counts, "active", 0) or 0),
+            "free": int(getattr(user_counts, "free", 0) or 0),
+            "paid": int(getattr(user_counts, "paid", 0) or 0),
+        },
+        "tickets": {"open": open_tickets},
+        "nodes": {"total": total_nodes, "healthy": healthy_nodes},
+        "errors": {
+            "stale_metrics": bool(metrics_status.get("status") != "fresh"),
+            "unhealthy_nodes": max(0, total_nodes - healthy_nodes),
+            "open_tickets": open_tickets,
+        },
+    }
 
 
 @app.get("/api/admin/provider-quotas")
@@ -19494,8 +19467,12 @@ async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> 
     stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
     s = SessionLocal()
     try:
-        summary_payload = await admin_summary(x_telegram_init_data=x_telegram_init_data)
         metrics_status = _ops_build_admin_metrics_status_snapshot(s=s, now=now, stale_after_seconds=stale_after_seconds)
+        summary_payload = _admin_ops_compact_summary_payload(
+            s=s,
+            now=now,
+            metrics_status=metrics_status,
+        )
         capacity_payload = _ops_admin_nodes_capacity_payload(s=s, now=now)
         provider_status = _ops_provider_quota_status_rows(s=s, now=now)
         free_summary = _ops_free_tier_summary(
@@ -19504,14 +19481,17 @@ async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> 
             free_limit_gb=FREE_STANDARD_QUOTA_GB,
             cycle_days=int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         )
-        alert_rows, notifications = await _refresh_ops_alerts_for_payload(s=s, now=now)
-        s.commit()
-    except Exception:
-        s.rollback()
-        raise
+        alert_rows = [
+            _ops_alert_payload(row, now=now)
+            for row in (
+                s.query(OpsAlert)
+                .filter(OpsAlert.source.in_(sorted(_OPS_MANAGED_ALERT_SOURCES)))
+                .order_by(OpsAlert.status.asc(), OpsAlert.severity.asc(), OpsAlert.last_seen_at.desc())
+                .all()
+            )
+        ]
     finally:
         s.close()
-    await _deliver_ops_alert_notifications(notifications)
     active_alerts = [row for row in alert_rows if row["status"] in {"active", "silenced"}]
     return {
         "ok": True,
@@ -23303,15 +23283,13 @@ def _serialize_admin_node(
     network_peak_mbps_24h: float | None = None,
     online_keys_now: int = 0,
     online_connections_now: int = 0,
+    alert_kinds: list[str] | None = None,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
-    stale_after_seconds = max(300, int(os.getenv("NODE_METRICS_STALE_AFTER_SECONDS", "900")))
-    now = _utcnow()
+    now = now or _utcnow()
     last_sample_at = getattr(n, "last_health_at", None) or getattr(n, "last_probe_at", None)
-    alert_kinds = _node_snapshot_alert_kinds(
-        node=n,
-        last_sample_at=last_sample_at,
-        stale_after_seconds=stale_after_seconds,
-        now=now,
+    resolved_alert_kinds = sorted(
+        {str(kind) for kind in list(alert_kinds or []) if str(kind or "").strip()}
     )
     memory_used_mb, memory_total_mb = _nullable_node_memory_value(
         used_mb=getattr(n, "memory_used_mb", None),
@@ -23401,10 +23379,10 @@ def _serialize_admin_node(
         ),
         "last_ok_at": _safe_iso(getattr(n, "last_ok_at", None)),
         "last_health_at": _safe_iso(getattr(n, "last_health_at", None)),
-        "freshness_status": "stale" if "stale_metrics" in alert_kinds else "fresh",
+        "freshness_status": "stale" if "stale_metrics" in resolved_alert_kinds else "fresh",
         "freshness_age_seconds": int((now - last_sample_at).total_seconds()) if last_sample_at else None,
-        "alerts": _legacy_node_alerts(alert_kinds),
-        "alert_kinds": sorted(set(alert_kinds)),
+        "alerts": _legacy_node_alerts(resolved_alert_kinds),
+        "alert_kinds": resolved_alert_kinds,
         "last_probe_stage": str(getattr(n, "last_probe_stage", "") or "") or None,
         "last_probe_error_kind": str(getattr(n, "last_probe_error_kind", "") or "") or None,
         "last_probe_error_message": str(getattr(n, "last_probe_error_message", "") or "") or None,

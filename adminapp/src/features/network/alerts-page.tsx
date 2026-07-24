@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BellOff, Check, ExternalLink, RefreshCw } from "lucide-react";
+import { AlertTriangle, BellOff, Check, CircleCheck, ExternalLink, RefreshCw, ShieldAlert } from "lucide-react";
 
 import { MISSING_DATA_TEXT, MissingData } from "@/components/ops/missing-data";
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, EmptyState, ErrorState, SectionTitle, type Tone } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, ErrorState, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import { AdminApiError } from "@/lib/admin-api/client";
 import { acknowledgeAlert, fetchNetworkAlerts, silenceAlert, type NetworkAlert } from "@/lib/admin-api/network";
 import { useRouteResource } from "@/lib/use-route-resource";
@@ -122,8 +122,8 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
   }, [resource]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={resource.error ? "warning" : resource.data === null ? "neutral" : alerts.some((alert) => alert.severity === "critical") ? "danger" : "success"}>{resource.data === null ? resource.error ? "Данные алертов недоступны" : "Данные алертов ещё не получены" : alerts.length ? `В очереди: ${alerts.length}` : "Очередь пуста"}</Badge>
           <span>{resource.data?.generated_at ? `Снимок ${dateText(resource.data.generated_at)}` : "Снимок ещё не получен"}</span>
@@ -138,7 +138,16 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
 
       {actionError ? <ErrorState title="Действие не выполнено" description={actionError} className="min-h-0" /> : null}
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      {resource.data ? (
+        <MetricStrip label="Сводка очереди алертов">
+          <MetricCell icon={<ShieldAlert aria-hidden="true" size={17} />} label="В текущем представлении" value={alerts.length} detail={urlState.status === "active" ? "Активные и приглушённые" : urlState.status === "resolved" ? "Закрытые" : "Все состояния"} tone={alerts.length ? "warning" : "success"} />
+          <MetricCell icon={<AlertTriangle aria-hidden="true" size={17} />} label="Критичные" value={alerts.filter((alert) => alert.severity.toLowerCase() === "critical").length} detail="Сортируются первыми" tone={alerts.some((alert) => alert.severity.toLowerCase() === "critical") ? "danger" : "success"} />
+          <MetricCell icon={<BellOff aria-hidden="true" size={17} />} label="Приглушённые" value={alerts.filter((alert) => alert.status.toLowerCase() === "silenced").length} detail="Не удалены из истории" tone="warning" />
+          <MetricCell icon={<CircleCheck aria-hidden="true" size={17} />} label="Закрытые" value={alerts.filter((alert) => alert.status.toLowerCase() === "resolved").length} detail="В выбранном фильтре" tone="success" />
+        </MetricStrip>
+      ) : null}
+
+      <div className="ops-workspace lg:grid-cols-[minmax(22rem,0.82fr)_minmax(20rem,1.18fr)]">
         <Card>
           <SectionTitle title="Очередь реакции" description="Критичные сигналы идут первыми. Подтверждение и приглушение — L1-действия с обычным аудитом, без action intent." />
           <RouteBoundary loading={resource.loading} refreshing={resource.refreshing} error={resource.error} hasData={resource.data !== null} retryLabel="Повторить загрузку алертов" onRetry={resource.reload}>
@@ -155,7 +164,7 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
         </Card>
 
         <aside aria-label="Детали алерта">
-          <Card className="lg:sticky lg:top-4">
+          <Card className="lg:sticky lg:top-20 xl:top-[7.75rem]">
             {!selected ? <EmptyState title="Выберите алерт" description="Детали, источник, возраст и действия откроются здесь." /> : (
               <div>
                 <div className="flex flex-wrap items-center gap-2"><Badge tone={tone(selected.severity)}>{severityLabel(selected.severity)}</Badge><Badge tone={tone(selected.status)}>{statusLabel(selected.status)}</Badge></div>

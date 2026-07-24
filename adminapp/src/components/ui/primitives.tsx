@@ -16,7 +16,7 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return (
     <section
       className={cn(
-        "rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-[var(--pokrov-panel-padding)] shadow-[var(--atlas-shadow-soft)]",
+        "rounded-[var(--pokrov-radius-panel)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-[var(--pokrov-panel-padding)] shadow-[var(--atlas-shadow-soft)] transition-[border-color,box-shadow]",
         className
       )}
     >
@@ -61,9 +61,47 @@ export function Progress({ value, tone = "info", label = "Заполнение" 
 
 export function SectionTitle({ title, description }: { title: string; description?: string }) {
   return (
-    <header className="mb-4 flex flex-col gap-1">
-      <h2 className="text-balance text-lg font-semibold leading-tight tracking-tight text-[color:var(--atlas-text)]">{title}</h2>
-      {description ? <p className="max-w-3xl text-pretty text-sm leading-6 text-[color:var(--atlas-text-soft)]">{description}</p> : null}
+    <header className="mb-4 flex max-w-4xl flex-col gap-1">
+      <h2 className="text-balance text-lg font-semibold leading-tight tracking-[-0.015em] text-[color:var(--atlas-text)]">{title}</h2>
+      {description ? <p className="max-w-[68ch] text-pretty text-sm leading-6 text-[color:var(--atlas-text-soft)]">{description}</p> : null}
     </header>
+  );
+}
+
+export function MetricStrip({ children, className, label = "Ключевые показатели" }: { children: ReactNode; className?: string; label?: string }) {
+  return (
+    <section aria-label={label} className={cn("ops-metric-strip", className)}>
+      {children}
+    </section>
+  );
+}
+
+export function MetricCell({
+  icon,
+  label,
+  value,
+  detail,
+  tone = "neutral",
+  aside
+}: {
+  icon?: ReactNode;
+  label: string;
+  value: ReactNode;
+  detail?: ReactNode;
+  tone?: Tone;
+  aside?: ReactNode;
+}) {
+  return (
+    <div className="ops-metric-cell">
+      <div className={cn("ops-metric-icon", toneClasses[tone])}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[11px] font-medium text-[color:var(--atlas-text-soft)]">{label}</div>
+          {aside}
+        </div>
+        <div className="mt-1 truncate text-xl font-semibold tracking-[-0.02em] text-[color:var(--atlas-text)] tabular-nums">{value}</div>
+        {detail ? <div className="mt-1 truncate text-[10px] text-[color:var(--atlas-text-muted)]">{detail}</div> : null}
+      </div>
+    </div>
   );
 }
