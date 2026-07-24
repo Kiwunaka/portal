@@ -47,9 +47,9 @@ function FooterColumn({ links, title }: { links: FooterLink[]; title: string }) 
 
 export function Footer() {
   const productLinks: FooterLink[] = [
-    { href: "/#features", label: getCopyText("marketing.footer.link.features", "Возможности") },
-    { href: "/#pricing", label: getCopyText("marketing.footer.link.pricing", "Цены") },
-    { href: MARKETING_CANONICAL_PATHS.install, label: getCopyText("marketing.footer.link.install", "Установка") },
+    { href: "/#features", label: getCopyText("marketing.footer.link.features", "Что откроется") },
+    { href: "/#pricing", label: getCopyText("marketing.footer.link.pricing", "Тарифы от 99 ₽") },
+    { href: MARKETING_CANONICAL_PATHS.install, label: getCopyText("marketing.footer.link.install", "Скачать POKROV") },
     { href: MARKETING_CANONICAL_PATHS.guides, label: "Инструкции" },
     { href: MARKETING_CANONICAL_PATHS.fallback, label: "Запасные клиенты" },
     { href: MARKETING_CANONICAL_PATHS.programs, label: "Программы" },
@@ -58,7 +58,7 @@ export function Footer() {
 
   const supportLinks: FooterLink[] = [
     { href: MARKETING_CANONICAL_PATHS.status, label: "Статус сервиса" },
-    { href: CANONICAL_SUPPORT_BOT_URL, label: getCopyText("marketing.footer.link.support", "Поддержка в Telegram"), external: true },
+    { href: CANONICAL_SUPPORT_BOT_URL, label: getCopyText("marketing.footer.link.support", "Помощь с подключением"), external: true },
     { href: CANONICAL_NEWS_CHANNEL_URL, label: getCopyText("marketing.footer.link.channel", "Канал с новостями"), external: true },
     { href: CANONICAL_BOT_URL, label: getCopyText("marketing.footer.link.bot", "Бот POKROV"), external: true },
     { href: CANONICAL_GITHUB_RELEASES_URL, label: getCopyText("marketing.footer.link.releases", "Файлы на GitHub"), external: true },
@@ -81,7 +81,7 @@ export function Footer() {
           <p className="max-w-xs text-[0.9375rem] leading-relaxed text-ink-soft">
             {getCopyText(
               "marketing.footer.tagline",
-              "Приложение для Android и Windows: одна кнопка — и любимые сервисы снова работают.",
+              "Быстрый VPN для Android и Windows: 5 дней бесплатно, затем безлимитный трафик от 99 ₽.",
             )}
           </p>
         </div>
@@ -95,7 +95,7 @@ export function Footer() {
             © {new Date().getFullYear()} {CANONICAL_PLATFORM_BRAND}
           </span>
           <span className="text-[0.8125rem] text-ink-soft">
-            {getCopyText("marketing.footer.beta_note", "Android и Windows, публичная бета")}
+            {getCopyText("marketing.footer.beta_note", "Android + Windows · 5 дней бесплатно · от 99 ₽")}
           </span>
         </div>
       </div>

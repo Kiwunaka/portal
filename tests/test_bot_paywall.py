@@ -2280,7 +2280,7 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Lava.top · 699 ₽")
         self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:lavatop:3_months")
         flat_rows = [button.text for row in keyboard.inline_keyboard for button in row]
-        self.assertIn("📚 Посмотреть долгие тарифы", flat_rows)
+        self.assertIn("💎 Сэкономить на долгом тарифе", flat_rows)
         self.assertIn("◀️ К тарифам", flat_rows)
 
     def test_bot_rub_order_payload_uses_ticket_without_email(self) -> None:
@@ -2377,7 +2377,7 @@ class BotPaywallTests(unittest.TestCase):
             )
         )
         flat_rows = [button.text for row in keyboard.inline_keyboard for button in row]
-        self.assertIn("📚 Посмотреть долгие тарифы", flat_rows)
+        self.assertIn("💎 Сэкономить на долгом тарифе", flat_rows)
         self.assertIn("◀️ К тарифам", flat_rows)
 
     def test_tariff_keyboard_is_rub_first_without_visible_stars(self) -> None:
@@ -2520,6 +2520,8 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("5 дней", text)
         self.assertIn("бесплатно", text.lower())
         self.assertIn("5 ГБ", text)
+        self.assertIn("Безлимитный трафик", text)
+        self.assertIn("Фактическая скорость зависит", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
 
@@ -2538,7 +2540,8 @@ class BotPaywallTests(unittest.TestCase):
         upper_labels = [label.upper() for label in labels]
         self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
         self.assertTrue(any("ПОДКЛЮЧИТЬ УСТРОЙСТВО" in label for label in upper_labels))
-        self.assertTrue(any("ПОМОЩЬ" in label for label in upper_labels))
+        self.assertTrue(any("VPN НЕ РАБОТАЕТ" in label for label in upper_labels))
+        self.assertTrue(any("НИЗКАЯ СКОРОСТЬ" in label for label in upper_labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
         self.assertFalse(any("РУЧНАЯ ССЫЛКА" in label for label in upper_labels))
         self.assertFalse(any("БОНУСЫ" in label for label in upper_labels))

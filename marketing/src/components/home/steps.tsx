@@ -11,10 +11,10 @@ export function Steps() {
 
   const steps = [
     {
-      title: getCopyText("marketing.home.steps.download.title", "Скачайте приложение"),
+      title: getCopyText("marketing.home.steps.download.title", "Скачайте POKROV"),
       text: getCopyText(
         "marketing.home.steps.download.text",
-        "Android или Windows — файл весит немного, установка занимает минуту.",
+        "Выберите Android или Windows и возьмите актуальный файл из официального кабинета.",
       ),
       variant: "download" as const,
     },
@@ -22,12 +22,12 @@ export function Steps() {
       title: getCopyText("marketing.home.steps.connect.title", "Нажмите «Подключить»"),
       text: getCopyText(
         "marketing.home.steps.connect.text",
-        "Всё уже настроено: приложение само выберет лучший маршрут.",
+        "POKROV сам подберёт маршрут. Вам остаётся одна кнопка.",
       ),
       variant: "connect" as const,
     },
     {
-      title: getCopyText("marketing.home.steps.done.title", "Готово"),
+      title: getCopyText("marketing.home.steps.done.title", "Проверьте любимые сервисы"),
       text: getCopyText(
         "marketing.home.steps.done.text",
         `${facts.trial.days} бесплатных дней уже идут — карта для этого не нужна.`,
@@ -41,11 +41,11 @@ export function Steps() {
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
         <Reveal>
           <SectionHeading
-            kicker={getCopyText("marketing.home.steps.kicker", "Как это работает")}
-            title={getCopyText("marketing.home.steps.title", "Три шага — и всё открывается")}
+            kicker={getCopyText("marketing.home.steps.kicker", "Подключение за минуту")}
+            title={getCopyText("marketing.home.steps.title", "Скачали. Вошли. Нажали «Подключить».")}
             sub={getCopyText(
               "marketing.home.steps.sub",
-              "Никаких профилей, ключей и настроек. Мы уже всё сделали за вас.",
+              "Никаких профилей и ключей. Установите, войдите и нажмите одну кнопку.",
             )}
           />
         </Reveal>
@@ -65,7 +65,7 @@ export function Steps() {
         </div>
         <Reveal className="mt-10 flex justify-center">
           <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
-            {getCopyText("marketing.home.steps.cta", "Начать бесплатно")}
+            {getCopyText("marketing.home.steps.cta", "Забрать 5 дней бесплатно")}
           </Button>
         </Reveal>
       </div>

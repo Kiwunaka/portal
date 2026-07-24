@@ -18,8 +18,8 @@ import {
 } from "../lib/marketing-site";
 
 export const metadata = buildMarketingMetadata(
-  "POKROV открывает YouTube, TikTok и другие сервисы | Android и Windows",
-  "Скачайте POKROV на Android или Windows, попробуйте 5 дней без карты и продлите доступ от 99 ₽ за 30 дней.",
+  "POKROV VPN — интернет без ограничений | Android и Windows",
+  "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
   {
     path: "/",
   },

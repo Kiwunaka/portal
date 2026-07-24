@@ -170,11 +170,12 @@ def test_run_check_apply_uses_expected_commands_without_leaking_token() -> None:
     assert isinstance(set_commands_payload, dict)
     descriptions = [item["description"] for item in set_commands_payload["commands"]]
     assert descriptions == [
-        "Открыть главное меню",
-        "Открыть кабинет",
-        "Написать в поддержку",
-        "Активировать промокод",
-        "Активировать ключ доступа",
+        "Попробовать VPN бесплатно",
+        "Доступ, устройства и тарифы",
+        "VPN не работает? Получить помощь",
+        "Инструкции и низкая скорость",
+        "Получить скидку по промокоду",
+        "Включить оплаченный доступ",
     ]
     set_menu_payload = calls[1][2]
     assert isinstance(set_menu_payload, dict)

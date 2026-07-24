@@ -17,30 +17,30 @@ export function HonestyStrip() {
   const items: HonestyItem[] = [
     {
       icon: <Gift {...ICON_PROPS} />,
-      title: getCopyText("marketing.home.honesty.trial.title", "Триал без карты"),
-      text: getCopyText("marketing.home.honesty.trial.text", "5 дней бесплатно — карту не спрашиваем вообще"),
+      title: getCopyText("marketing.home.honesty.trial.title", "5 дней за 0 ₽"),
+      text: getCopyText("marketing.home.honesty.trial.text", "Скачиваете, подключаетесь и проверяете свои сервисы до оплаты"),
     },
     {
       icon: <KeyRound {...ICON_PROPS} />,
-      title: getCopyText("marketing.home.honesty.no_autopay.title", "Без автосписаний"),
+      title: getCopyText("marketing.home.honesty.no_autopay.title", "0 автосписаний"),
       text: getCopyText(
         "marketing.home.honesty.no_autopay.text",
-        "Оплата разовым ключом: ничего не продлевается само",
+        "Оплачиваете только выбранный срок — ни одного неожиданного продления",
       ),
     },
     {
       icon: <Package {...ICON_PROPS} />,
-      title: getCopyText("marketing.home.honesty.releases.title", "Файлы на GitHub"),
+      title: getCopyText("marketing.home.honesty.releases.title", "Официальные релизы"),
       text: getCopyText(
         "marketing.home.honesty.releases.text",
-        "Релизы приложения лежат на GitHub Releases — у всех на виду",
+        "APK, EXE и checksums опубликованы на GitHub Releases",
       ),
       href: CANONICAL_GITHUB_RELEASES_URL,
     },
     {
       icon: <MessagesSquare {...ICON_PROPS} />,
-      title: getCopyText("marketing.home.honesty.support.title", "Живая поддержка"),
-      text: getCopyText("marketing.home.honesty.support.text", "Отвечаем в Telegram, без ботов-заглушек"),
+      title: getCopyText("marketing.home.honesty.support.title", "Поддержка по шагам"),
+      text: getCopyText("marketing.home.honesty.support.text", "Помогаем с установкой, подключением и оплатой по шагам"),
     },
   ];
 

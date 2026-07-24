@@ -22,38 +22,38 @@ export function ServicesGrid() {
     {
       icon: <BrandIcon icon={siYoutube} />,
       href: MARKETING_CANONICAL_PATHS.youtube,
-      title: getCopyText("marketing.home.services.youtube.title", "YouTube в полном качестве"),
-      text: getCopyText("marketing.home.services.youtube.text", "Без замедлений, буферизации и «крутилки» на 480p"),
+      title: getCopyText("marketing.home.services.youtube.title", "YouTube без ограничений"),
+      text: getCopyText("marketing.home.services.youtube.text", "Смотрите ролики, стримы и длинные видео в нужном качестве"),
     },
     {
       icon: <BrandIcon icon={siTiktok} />,
       href: MARKETING_CANONICAL_PATHS.tiktok,
-      title: getCopyText("marketing.home.services.tiktok.title", "TikTok снова открывается"),
-      text: getCopyText("marketing.home.services.tiktok.text", "Лента, лайки и загрузка роликов работают как раньше"),
+      title: getCopyText("marketing.home.services.tiktok.title", "TikTok без блокировок"),
+      text: getCopyText("marketing.home.services.tiktok.text", "Листайте ленту, ставьте лайки и загружайте ролики"),
     },
     {
       icon: <BrandIcon icon={siInstagram} />,
       href: MARKETING_CANONICAL_PATHS.vpn,
-      title: getCopyText("marketing.home.services.social.title", "Соцсети и мессенджеры"),
-      text: getCopyText("marketing.home.services.social.text", "Instagram, звонки и медиа в чатах — без танцев с бубном"),
+      title: getCopyText("marketing.home.services.social.title", "Instagram и соцсети"),
+      text: getCopyText("marketing.home.services.social.text", "Открывайте Instagram, соцсети, звонки и медиа без отдельных профилей"),
     },
     {
       icon: <Sparkles size={18} strokeWidth={1.8} className="text-brand" aria-hidden="true" />,
       href: MARKETING_CANONICAL_PATHS.vpn,
-      title: getCopyText("marketing.home.services.ai.title", "ИИ-сервисы"),
-      text: getCopyText("marketing.home.services.ai.text", "ChatGPT и другие инструменты открываются напрямую"),
+      title: getCopyText("marketing.home.services.ai.title", "ChatGPT без лишних настроек"),
+      text: getCopyText("marketing.home.services.ai.text", "Открывайте ChatGPT и другие AI-инструменты одной кнопкой"),
     },
     {
       icon: <BrandIcon icon={siDiscord} />,
       href: MARKETING_CANONICAL_PATHS.vpn,
-      title: getCopyText("marketing.home.services.games.title", "Игры и Discord"),
-      text: getCopyText("marketing.home.services.games.text", "Голосовые каналы и магазины игр без обрывов"),
+      title: getCopyText("marketing.home.services.games.title", "Discord и игры"),
+      text: getCopyText("marketing.home.services.games.text", "Возвращайтесь в голосовые каналы, игровые магазины и сообщества"),
     },
     {
       icon: <InfinityIcon size={18} strokeWidth={1.8} className="text-brand" aria-hidden="true" />,
       href: MARKETING_CANONICAL_PATHS.compareFreeVpn,
-      title: getCopyText("marketing.home.services.rest.title", "И всё остальное"),
-      text: getCopyText("marketing.home.services.rest.text", "Маршрут «всё, кроме РУ»: российские сайты идут напрямую"),
+      title: getCopyText("marketing.home.services.rest.title", "Российские сайты — напрямую"),
+      text: getCopyText("marketing.home.services.rest.text", "Режим «всё, кроме РУ» оставляет российские сайты на прямом маршруте"),
     },
   ];
 
@@ -61,11 +61,11 @@ export function ServicesGrid() {
     <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
       <Reveal>
         <SectionHeading
-          kicker={getCopyText("marketing.home.services.kicker", "Что снова работает")}
-          title={getCopyText("marketing.home.services.title", "Любимые сервисы — как раньше")}
+          kicker={getCopyText("marketing.home.services.kicker", "Интернет без границ")}
+          title={getCopyText("marketing.home.services.title", "YouTube, TikTok, ChatGPT — всё в одном VPN")}
           sub={getCopyText(
             "marketing.home.services.sub",
-            "Подключение в приложении открывает то, что тормозит или не открывается, — а российские сайты продолжают работать напрямую.",
+            "Одна кнопка открывает YouTube, TikTok, ChatGPT, соцсети, мессенджеры и игры. Российские сайты идут напрямую в режиме «всё, кроме РУ».",
           )}
         />
       </Reveal>

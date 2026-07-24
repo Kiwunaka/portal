@@ -95,10 +95,10 @@ export function IntentLanding({
         ) : null}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
-            {getCopyText("marketing.intent.cta.primary", "Скачать бесплатно")}
+            {getCopyText("marketing.intent.cta.primary", "Попробовать бесплатно")}
           </Button>
-          <Button href="/#how-it-works" size="lg" variant="secondary">
-            {getCopyText("marketing.intent.cta.secondary", "Как это работает")}
+          <Button href="/#pricing" size="lg" variant="secondary">
+            {getCopyText("marketing.intent.cta.secondary", "Тарифы от 99 ₽")}
           </Button>
         </div>
       </section>

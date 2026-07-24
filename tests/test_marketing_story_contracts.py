@@ -73,7 +73,7 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
             "HeroVisual",
             "getTariffPlans().find",
             "MARKETING_CANONICAL_PATHS.install",
-            'href="/#how-it-works"',
+            'href="/#pricing"',
         ),
         context="homepage hero",
     )
@@ -240,15 +240,16 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
 def test_best_vpn_search_surface_is_proof_first() -> None:
     seo_pages = _read("marketing/src/lib/seo-pages.ts")
     best_vpn_page = _read("marketing/src/app/best-vpn/page.tsx")
+    shared_copy = _read("shared/copy.ts")
     llms = _read("marketing/public/llms.txt")
 
     _assert_contains(
         seo_pages,
         (
             'bestVpn: "/best-vpn/"',
-            "Лучший VPN в 2026 году для Android и Windows",
-            "5 дней бесплатно без карты",
-            "разовая оплата без автосписаний",
+            "POKROV — лучший VPN 2026 для Android и Windows",
+            "5 дней за 0 ₽",
+            "тарифы от 99 ₽ без автосписаний",
             "официальные файлы",
         ),
         context="best VPN SEO registry",
@@ -277,6 +278,9 @@ def test_best_vpn_search_surface_is_proof_first() -> None:
     ):
         assert stale_negative_frame not in seo_pages
         assert stale_negative_frame not in llms
+
+    assert "Direct-meaning VPN wording is not allowed" not in shared_copy
+    assert "ok: true" in shared_copy
 
 
 def test_install_legal_machine_files_and_intent_pages_remain_available() -> None:

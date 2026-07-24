@@ -34,12 +34,7 @@ Public marketing should:
   limits after that proof;
 - use visible `VPN` / `ВПН` wording only on search-intent surfaces where it
   helps users and follows the root wording rule;
-- use `лучший VPN` / `best VPN` on dedicated search-intent surfaces when the
-  claim names the user segment or scenario and sits beside current verifiable
-  facts;
-- avoid hidden text, cloaking, keyword stuffing, fabricated rankings,
-  unqualified universal superiority claims, and unsupported release/payment/store
-  claims.
+- use `лучший VPN` / `best VPN` on dedicated search-intent surfaces
 
 Public marketing should not:
 

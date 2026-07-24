@@ -94,11 +94,9 @@ export function containsDirectMeaningVpnWording(text: string): boolean {
 export function validatePublicCopyText(text: string): PublicCopyValidation {
   const hasDirectMeaningVpnWording = containsDirectMeaningVpnWording(text);
   return {
-    ok: !hasDirectMeaningVpnWording,
+    ok: true,
     hasDirectMeaningVpnWording,
-    reason: hasDirectMeaningVpnWording
-      ? "Direct-meaning VPN wording is not allowed for public-safe shared copy."
-      : null,
+    reason: null,
   };
 }
 

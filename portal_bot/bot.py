@@ -3800,24 +3800,23 @@ def build_choose_tariff_text(*, show_trial: bool = True) -> str:
     savings = list(context["savings"])
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
-    payment_hint = "_Выберите вариант ниже, и я открою нужное действие._"
-
-    trial_intro = f"*5 дней бесплатно* — старт в приложении POKROV на {free_label}\n" if show_trial else ""
-    trial_details = (
-        f"Бесплатный старт: 5 дней, до {TRIAL_LIMIT_GB} ГБ и до {FREE_LIMIT_IP} устройства, чтобы проверить, подходит ли вам POKROV.\n"
+    trial_block = (
+        f"*5 дней бесплатно* — {free_label}, до {TRIAL_LIMIT_GB} ГБ, "
+        f"до {FREE_LIMIT_IP} устройства, без карты.\n\n"
         if show_trial
         else ""
     )
-    title = "*С чего начнём?*" if show_trial else "*Выберите срок доступа*"
+    title = "*POKROV VPN — выберите вариант*" if show_trial else "*POKROV Premium — выберите срок*"
     return (
         f"{title}\n\n"
-        f"{trial_intro}"
-        f"*Платный срок* — {paid_count} стран: {paid_list}\n\n"
-        f"{trial_details}"
-        f"Платный срок: все доступные страны, до {PAID_LIMIT_IP} устройств, без снижения скорости в обычном режиме.\n"
-        "Если захотите продлить без паузы, есть приветственный вариант за 99 ₽.\n\n"
-        f"*Чем длиннее срок, тем выгоднее:*{savings_line}\n\n"
-        f"{payment_hint}"
+        f"{trial_block}"
+        f"*Платный доступ* — {paid_count} локаций: {paid_list}\n"
+        f"До {PAID_LIMIT_IP} устройств, безлимитный трафик и без тарифного ограничения скорости¹.\n"
+        "Приложения: Android и Windows.\n\n"
+        "После теста — от *99 ₽*. Автосписаний нет.\n"
+        f"💰 *Экономия на длинном сроке:*{savings_line}\n\n"
+        "_¹ Фактическая скорость зависит от сети, устройства, локации и нагрузки; POKROV не ставит тарифный лимит скорости._\n\n"
+        "_Выберите вариант ниже, и я открою нужное действие._"
     )
 
 
@@ -3888,6 +3887,14 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
         discount_line = "💡 Сработают скидки: " + ", ".join(discount_chunks) + ".\n\n"
 
     rub_price = int(pricing["base_price"])
+    device_limit = 1 if tariff_key == "start_99" else PAID_LIMIT_IP
+    benefits = (
+        "✅ Безлимитный трафик\n"
+        "✅ Без тарифного ограничения скорости¹\n"
+        f"✅ До {device_limit} устройств\n"
+        "✅ Все доступные платные локации\n\n"
+    )
+    speed_note = "_¹ Фактическая скорость зависит от сети, устройства, выбранной локации и нагрузки._"
     blocked_reasons = _bot_checkout_blocked_reasons()
     provider_names = ", ".join(
         str(row.get("label") or "").strip()
@@ -3898,28 +3905,28 @@ def _build_tariff_payment_choice_text(*, tariff_key: str, tg_id: int) -> str:
     if blocked_reasons:
         return (
             f"💳 *{tariff.get('name', 'Тариф')}*\n\n"
+            f"{benefits}"
             f"Срок: *{int(tariff.get('days', 0))} дней*\n"
-            f"Устройств: *до {PAID_LIMIT_IP}*\n"
-            "Локации: *все доступные платные*\n\n"
             f"Цена в ₽: *{rub_price} ₽*\n"
             f"{discount_line}"
             "Оплата пока закрыта: "
             f"{'; '.join(blocked_reasons)}.\n\n"
-            "Если доступ уже оплачен или у вас есть ключ, используйте раздел «Применить ключ» в кабинете или напишите в поддержку."
+            "Если доступ уже оплачен или у вас есть ключ, используйте раздел «Применить ключ» в кабинете или напишите в поддержку.\n\n"
+            f"{speed_note}"
         )
     return (
-        f"💳 *{tariff.get('name', 'Тариф')}*\n\n"
+        f"💎 *POKROV PREMIUM — {tariff.get('name', 'Тариф')}*\n\n"
+        f"{benefits}"
         f"Срок: *{int(tariff.get('days', 0))} дней*\n"
-        f"Устройств: *до {PAID_LIMIT_IP}*\n"
-        "Локации: *все доступные платные*\n\n"
         f"Цена в ₽: *{rub_price} ₽*\n"
-        "Откроем оплату в рублях из личного кабинета.\n\n"
+        "Разовая оплата в рублях — автосписаний нет.\n\n"
         f"{discount_line}"
         f"{provider_line}"
         "В боте email не нужен: оплата привяжется к вашему Telegram.\n"
         "\n"
-        "Следующий шаг: выберите удобную кассу. "
-        "После оплаты доступ обновится автоматически."
+        "Выберите кассу и завершите оплату. "
+        "Доступ обновится автоматически.\n\n"
+        f"{speed_note}"
     )
 
 
@@ -3938,7 +3945,7 @@ def _build_tariff_payment_choice_keyboard(*, tg_id: int, tariff_key: str) -> Inl
                 ]
             )
     if tariff_key not in {"6_months", "9_months", "12_months"}:
-        rows.append([InlineKeyboardButton(text="📚 Посмотреть долгие тарифы", callback_data="charge_long")])
+        rows.append([InlineKeyboardButton(text="💎 Сэкономить на долгом тарифе", callback_data="charge_long")])
     rows.append([InlineKeyboardButton(text="◀️ К тарифам", callback_data="charge")])
     rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="back")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
@@ -4090,28 +4097,36 @@ def _dual_pay_text(*, show_trial: bool) -> str:
     )
     if show_trial:
         return (
-            "🚀 *Как удобнее начать?*\n\n"
-            "Можно взять 5 дней бесплатно и проверить всё в деле.\n"
-            "Если хотите продлить сразу, выберите тариф и оплату в рублях.\n"
+            "🔥 *POKROV VPN — интернет без ограничений*\n\n"
+            "✅ Безлимитный трафик на платных тарифах\n"
+            "✅ Без тарифного ограничения скорости¹\n"
+            "✅ Android + Windows\n"
+            f"✅ До {PAID_LIMIT_IP} устройств\n\n"
+            "🎁 5 дней бесплатно без карты.\n"
+            "После теста — от 99 ₽, без автосписаний.\n"
             f"{rub_hint}\n"
-            "После оплаты всё включится автоматически.\n\n"
-            "Выберите действие:"
+            "После оплаты доступ обновится автоматически.\n\n"
+            "_¹ Фактическая скорость зависит от сети, устройства, локации и нагрузки._"
         )
     return (
-        "💳 *Оплата в рублях*\n\n"
+        "💎 *Продлите POKROV PREMIUM*\n\n"
+        "✅ Безлимитный трафик\n"
+        "✅ Без тарифного ограничения скорости¹\n"
+        f"✅ До {PAID_LIMIT_IP} устройств\n\n"
         f"{rub_hint}\n"
-        "После оплаты всё включится автоматически.\n\n"
-        "Выберите удобный способ:"
+        "После оплаты доступ обновится автоматически. Автосписаний нет.\n\n"
+        "Выберите способ оплаты:\n\n"
+        "_¹ Фактическая скорость зависит от сети, устройства, локации и нагрузки._"
     )
 
 
 def _dual_pay_keyboard(*, tg_id: int, show_trial: bool) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     if show_trial:
-        rows.append([InlineKeyboardButton(text="🚀 Запустить тест на 5 дней", callback_data="buy_trial")])
+        rows.append([InlineKeyboardButton(text="🔥 Попробовать VPN бесплатно", callback_data="buy_trial")])
     rows.extend(
         [
-            [InlineKeyboardButton(text="💳 Посмотреть тарифы и оплату в ₽", callback_data="charge")],
+            [InlineKeyboardButton(text="💳 Купить VPN от 99 ₽", callback_data="charge")],
         ]
     )
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
@@ -4147,7 +4162,7 @@ def _main_menu_cta_spec(tg_id: int) -> dict[str, str]:
     user = get_user(int(tg_id)) if int(tg_id or 0) > 0 else None
     if _trial_offer_available(user):
         return _btn_spec(
-            text="5 дней бесплатно",
+            text="Попробовать 5 дней бесплатно",
             callback_data="instruction",
             style=BTN_STYLE_SUCCESS,
             emoji_key="free",
@@ -4177,6 +4192,10 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
             _btn_spec(text="Помощь", callback_data="confused_help", emoji_key="support"),
         ],
         [
+            _btn_spec(text="VPN не работает", callback_data="faq_notwork", emoji_key="warning"),
+            _btn_spec(text="Низкая скорость", callback_data="faq_speed", emoji_key="faq"),
+        ],
+        [
             _btn_spec(text="Кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet"),
             _btn_spec(text="Ещё", callback_data="settings", emoji_key="settings"),
         ],
@@ -4204,7 +4223,7 @@ def tariff_keyboard_specs(
         rows.append(
             [
                 _btn_spec(
-                    text="5 дней бесплатно",
+                    text="Попробовать 5 дней бесплатно",
                     callback_data="instruction",
                     style=BTN_STYLE_SUCCESS,
                     emoji_key="free",
@@ -4251,7 +4270,7 @@ def tariff_keyboard_specs(
         rows.append(
             [
                 _btn_spec(
-                    text="Долгие тарифы",
+                    text="Сэкономить на долгом тарифе",
                     callback_data="charge_long",
                     emoji_key="crown",
                 )
@@ -4629,14 +4648,14 @@ async def cmd_start(message: Message):
     rows = [
         [
             _btn_spec(
-                text="Начать: установить POKROV",
+                text="Попробовать POKROV бесплатно",
                 callback_data="mode_simple",
                 style=BTN_STYLE_PRIMARY,
-                emoji_key="device",
+                emoji_key="free",
             )
         ],
-        [_btn_spec(text="Кабинет: доступ и оплата", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
-        [_btn_spec(text="Все действия", callback_data="mode_pro", emoji_key="settings")],
+        [_btn_spec(text="Тарифы от 99 ₽", web_app_url=WEBAPP_URL, emoji_key="payment")],
+        [_btn_spec(text="Все возможности", callback_data="mode_pro", emoji_key="settings")],
     ]
     ok = await _send_rich_copy(
         message=message,
@@ -9655,11 +9674,11 @@ async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
     starter_price = int(TARIFFS["1_month"]["stars"])
     recommended_price = int(TARIFFS["6_months"]["stars"])
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Начать с 5 дней бесплатно", callback_data="trial_direct")],
-        [InlineKeyboardButton(text=f"6 месяцев за {recommended_price} ₽", callback_data="buy_6_months")],
-        [InlineKeyboardButton(text=f"1 месяц за {starter_price} ₽", callback_data="buy_1_month")],
-        [InlineKeyboardButton(text="Все планы", callback_data="charge")],
-        [InlineKeyboardButton(text=f"Telegram +{CHANNEL_PREMIUM_DAYS} дней", callback_data="bonus_offer_trial")],
+        [InlineKeyboardButton(text="🔥 Попробовать VPN бесплатно", callback_data="trial_direct")],
+        [InlineKeyboardButton(text=f"💎 6 месяцев · {recommended_price} ₽", callback_data="buy_6_months")],
+        [InlineKeyboardButton(text=f"🚀 1 месяц · {starter_price} ₽", callback_data="buy_1_month")],
+        [InlineKeyboardButton(text="Сравнить все планы", callback_data="charge")],
+        [InlineKeyboardButton(text=f"🎁 Ещё {CHANNEL_PREMIUM_DAYS} дней за Telegram", callback_data="bonus_offer_trial")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="instruction")],
     ])
     await callback.message.edit_text(
@@ -9678,14 +9697,14 @@ async def _activate_trial_tariff(
 ) -> None:
     del bot, retry_callback_data
     await callback.message.edit_text(
-        "🎁 *5 дней бесплатно запускаются в приложении POKROV*\n\n"
-        "Установите приложение и войдите в аккаунт. Пробный доступ выдаётся один раз "
-        "каноническим account/device-контуром после подтверждённого подключения — бот не меняет доступ напрямую.\n\n"
-        f"Telegram-бонус +{CHANNEL_PREMIUM_DAYS} дней остаётся отдельным действием после подписки на канал.",
+        "🔥 *Ваши 5 бесплатных дней ждут в POKROV*\n\n"
+        "Установите приложение, войдите в аккаунт и подключитесь. Бесплатный доступ включится один раз "
+        "после первого подтверждённого соединения — карта не нужна.\n\n"
+        f"Хотите больше времени на проверку? После подписки на канал заберите ещё {CHANNEL_PREMIUM_DAYS} дней.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="📲 Установить POKROV", callback_data="instruction")],
-                [InlineKeyboardButton(text="💳 Посмотреть платные сроки", callback_data="charge")],
+                [InlineKeyboardButton(text="🚀 Скачать POKROV", callback_data="instruction")],
+                [InlineKeyboardButton(text="💳 Выбрать тариф от 99 ₽", callback_data="charge")],
                 [InlineKeyboardButton(text="◀️ В меню", callback_data="back")],
             ]
         ),

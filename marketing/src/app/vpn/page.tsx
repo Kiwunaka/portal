@@ -94,10 +94,10 @@ export default function VpnSeoPage() {
         <p className="max-w-2xl text-lg leading-relaxed text-ink-soft">{SEO_PAGE.answer}</p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
-            Скачать POKROV
+            Попробовать бесплатно
           </Button>
           <Button href={MARKETING_CANONICAL_PATHS.checkout} size="lg" variant="secondary">
-            Посмотреть тарифы
+            Выбрать тариф от 99 ₽
           </Button>
         </div>
       </section>
@@ -105,19 +105,18 @@ export default function VpnSeoPage() {
       <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <Reveal>
           <SectionHeading
-            kicker="Почему POKROV"
-            title="Скачать ВПН и быстро проверить рабочий сценарий"
-            sub="Когда человек ищет «VPN скачать бесплатно», ему не нужна лекция о протоколах. Ему нужно быстро поставить приложение, понять, работает ли связь, и не попасть на мутный файл из случайного архива."
+            kicker="POKROV PREMIUM"
+            title="Интернет без ограничений на Android и Windows"
+            sub="YouTube, TikTok, ChatGPT, соцсети и сайты одной кнопкой. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽."
           />
         </Reveal>
 
         <div className="grid gap-10 lg:grid-cols-[1.6fr_1fr]">
           <Reveal className="flex flex-col gap-8">
-            <LongformBlock title="Почему POKROV — сильный выбор для Android и Windows">
+            <LongformBlock title="Всё нужное — одной кнопкой">
               <P>
-                POKROV собран вокруг короткого пути до результата: официальный файл для Android или Windows, вход в
-                аккаунт и кнопка подключения. Кабинет хранит срок и устройства, а Telegram-поддержка помогает, если на
-                первом запуске возникает вопрос.
+                Скачайте POKROV для Android или Windows, войдите и нажмите «Подключить». YouTube, TikTok, ChatGPT,
+                соцсети, мессенджеры и сайты работают через одно приложение — без ручных профилей и копирования ключей.
               </P>
               <P>
                 {TELEGRAM_START_PROMISE} Основные тарифы поддерживают до 5 устройств, а решение о продлении остаётся за
@@ -125,28 +124,25 @@ export default function VpnSeoPage() {
               </P>
             </LongformBlock>
 
-            <LongformBlock title="Что делает POKROV лучшим VPN для простого старта">
+            <LongformBlock title="Что входит в POKROV PREMIUM">
               <P>
-                Лучший VPN должен быстро устанавливаться, давать проверку до оплаты и заранее показывать условия
-                продления. У POKROV эти критерии закрыты конкретными фактами: официальный источник файлов, 5 дней без
-                карты, разовая оплата без автосписаний и поддержка.
+                Безлимитный трафик, все доступные платные локации, Android и Windows, до 5 устройств на основных
+                тарифах и поддержка в Telegram. Первый полный месяц стоит от 99 ₽, длинные тарифы экономят до 45%.
               </P>
               <P>
-                Скачайте POKROV, включите бесплатный период, откройте нужные сервисы на домашней и мобильной сети и
-                принимайте решение уже по реальному результату. Подробный разбор собран на странице «Лучший VPN 2026».
+                POKROV не ставит тарифный лимит скорости. Фактическая скорость зависит от сети, устройства, выбранной
+                локации и текущей нагрузки.
               </P>
             </LongformBlock>
 
-            <LongformBlock title="Чем POKROV отличается от типичной бесплатной VPN-страницы">
+            <LongformBlock title="Сначала 5 дней бесплатно">
               <P>
-                Бесплатный старт даёт 5 дней полноценной проверки. После пробного периода можно выбрать платный срок
-                или остаться на базовом режиме с месячным лимитом — условия показаны заранее.
+                Карта не нужна. Установите POKROV и пять дней проверяйте свои обычные сервисы на домашнем Wi-Fi,
+                мобильной сети, телефоне и компьютере.
               </P>
               <P>
-                Оплата идёт разовым ключом, без автосписаний: заплатили за срок и пользуетесь, никакая подписка не
-                продлевается втихую. Мы используем обычный язык, которым люди ищут приложение: «VPN», «ВПН», «скачать»,
-                «бесплатно». За этими словами стоит понятный ответ: где скачать, что именно бесплатно и когда писать
-                в поддержку.
+                После теста выберите платный срок от 99 ₽ или оставайтесь на базовом режиме. Оплата разовая,
+                автосписаний нет.
               </P>
             </LongformBlock>
 
@@ -179,16 +175,16 @@ export default function VpnSeoPage() {
           <Reveal className="flex flex-col gap-4" aria-label="Короткая сводка">
             <Card className="flex flex-col gap-1.5">
               <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">На старте</span>
-              <h3 className="text-[1.0625rem] font-semibold text-ink">5 дней бесплатно</h3>
+              <h3 className="text-[1.0625rem] font-semibold text-ink">5 дней за 0 ₽</h3>
               <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-                Без карты. Сначала установка и проверка, потом решение о продлении.
+                Без карты и автосписаний. Сначала проверка на вашей сети, потом решение о продлении.
               </p>
             </Card>
             <Card className="flex flex-col gap-1.5">
               <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Устройства</span>
-              <h3 className="text-[1.0625rem] font-semibold text-ink">Android и Windows</h3>
+              <h3 className="text-[1.0625rem] font-semibold text-ink">Android + Windows · до 5 устройств</h3>
               <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-                Публичная бета сфокусирована на двух основных платформах этой волны.
+                Один аккаунт для телефона и компьютера на основных платных тарифах.
               </p>
             </Card>
             <Card className="flex flex-col gap-3">
@@ -234,9 +230,9 @@ export default function VpnSeoPage() {
         <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
           <Reveal>
             <SectionHeading
-              kicker="FAQ"
-              title="Короткие ответы по VPN и POKROV"
-              sub="Самое важное перед установкой: бесплатный старт, устройства, официальный файл и условия продления."
+              kicker="Перед стартом"
+              title="Всё, что нужно знать перед бесплатными 5 днями"
+              sub="Устройства, официальный файл, подключение и условия продления — без поиска по мелкому шрифту."
             />
           </Reveal>
           <Reveal>
@@ -247,7 +243,7 @@ export default function VpnSeoPage() {
               Кабинет
             </Button>
             <Button href={MARKETING_CANONICAL_PATHS.checkout} variant="secondary">
-              Тарифы
+              Тарифы от 99 ₽
             </Button>
           </Reveal>
         </div>

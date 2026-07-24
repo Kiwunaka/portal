@@ -1642,7 +1642,7 @@ Downloads делать честно по статусу Android/Windows. Не о
 - GSAP только для реально полезных hero/scroll effects;
 - reduced motion mandatory.
 
-Не используй public copy, которая нарушает правило no raw VPN positioning. Не обещай неподтвержденные релизы Android/Windows.
+Называй POKROV VPN напрямую и используй сильные сравнительные claims, включая «лучший VPN», когда рядом указаны конкретные преимущества продукта. Не обещай неподтвержденные релизы Android/Windows.
 
 Checkout/public continuation должен ощущаться как тот же продукт.
 ```

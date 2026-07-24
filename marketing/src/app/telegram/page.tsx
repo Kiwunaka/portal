@@ -22,26 +22,26 @@ export default function TelegramPage() {
     <IntentLanding
       pagePath={MARKETING_CANONICAL_PATHS.telegram}
       breadcrumbName="Telegram"
-      heroKicker="Бонус и поддержка"
-      heroTitle="До 10 дней на старте"
+      heroKicker="5 дней в приложении + 5 дней за Telegram"
+      heroTitle="Заберите до 10 дней POKROV на старте"
       heroSubtitle={TELEGRAM_START_PROMISE}
-      scenarioTitle="Что даёт Telegram"
-      scenarioBody="Три причины подписаться — все честные."
+      scenarioTitle="Одна подписка на канал — ещё 5 дней к бесплатному старту"
+      scenarioBody="Плюс обновления сервиса и быстрый вход в поддержку."
       scenarioCards={[
         {
-          eyebrow: "Бонус",
-          title: "+5 дней после Telegram",
-          desc: "Привяжите Telegram, подпишитесь на канал и подтвердите подписку в аккаунте.",
+          eyebrow: "Ещё 5 дней",
+          title: "Удвойте время на проверку POKROV",
+          desc: "Привяжите Telegram, подпишитесь на официальный канал и подтвердите подписку в аккаунте.",
         },
         {
-          eyebrow: "Поддержка",
-          title: "Живой человек в чате",
-          desc: "Установка, оплата, восстановление доступа — поддержка отвечает по делу, а не скриптами.",
+          eyebrow: "Помощь",
+          title: "Не останетесь один на один с настройкой",
+          desc: "По установке, оплате и восстановлению можно открыть одно обращение и продолжить диалог в Telegram.",
         },
         {
-          eyebrow: "Новости",
-          title: "Статусы работы сервиса",
-          desc: "Если что-то меняется — маршруты, версии, акции — вы узнаете первым в канале.",
+          eyebrow: "Обновления",
+          title: "Статусы, версии и акции в одном канале",
+          desc: "Следите за изменениями маршрутов, новыми версиями и бонусными предложениями POKROV.",
         },
         ...(PAID_REWARDS_MARKETING_ENABLED
           ? [
