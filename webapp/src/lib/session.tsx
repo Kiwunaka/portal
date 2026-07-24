@@ -76,6 +76,82 @@ type PortalSessionProviderProps = {
   mode?: "entry" | "dashboard";
 };
 
+/*
+ * Warm-start snapshot: the last good {user, dash} pair is mirrored into
+ * sessionStorage (5-minute TTL) so a reload paints real account state
+ * immediately while `refreshing` revalidates in the background. Only
+ * non-sensitive display data is stored: every field whose name matches
+ * SENSITIVE_SNAPSHOT_FIELD_RE (tokens, keys, links, urls, secrets) is
+ * stripped recursively before write and again after read.
+ */
+const SESSION_SNAPSHOT_STORAGE_KEY = "pokrov-session-snapshot:v1";
+const SESSION_SNAPSHOT_TTL_MS = 5 * 60 * 1000;
+const SENSITIVE_SNAPSHOT_FIELD_RE = /token|key|link|url|secret/i;
+
+type SessionSnapshot = { user: UserPayload; dash: DashboardSnapshot };
+
+function stripSensitiveSnapshotFields(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripSensitiveSnapshotFields(item));
+  }
+  if (value && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      if (SENSITIVE_SNAPSHOT_FIELD_RE.test(key)) continue;
+      result[key] = stripSensitiveSnapshotFields(item);
+    }
+    return result;
+  }
+  return value;
+}
+
+function persistSessionSnapshot(user: UserPayload, dash: DashboardSnapshot): void {
+  if (typeof window === "undefined") return;
+  try {
+    const payload = {
+      savedAt: Date.now(),
+      user: stripSensitiveSnapshotFields(user),
+      dash: stripSensitiveSnapshotFields(dash),
+    };
+    window.sessionStorage.setItem(SESSION_SNAPSHOT_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Storage full or blocked: warm start is best-effort only.
+  }
+}
+
+function clearSessionSnapshot(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(SESSION_SNAPSHOT_STORAGE_KEY);
+  } catch {
+    // ignore blocked storage
+  }
+}
+
+function readSessionSnapshot(): SessionSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_SNAPSHOT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt?: number; user?: unknown; dash?: unknown } | null;
+    const savedAt = Number(parsed?.savedAt || 0);
+    if (!savedAt || Date.now() - savedAt > SESSION_SNAPSHOT_TTL_MS) {
+      clearSessionSnapshot();
+      return null;
+    }
+    if (!parsed?.user || typeof parsed.user !== "object" || !parsed?.dash || typeof parsed.dash !== "object") {
+      return null;
+    }
+    // Defense in depth: never trust stored data to be clean.
+    const user = stripSensitiveSnapshotFields(parsed.user) as UserPayload;
+    const dash = stripSensitiveSnapshotFields(parsed.dash) as DashboardSnapshot;
+    if (!Number(user.tg_id || 0) || typeof dash.is_active !== "boolean") return null;
+    return { user, dash };
+  } catch {
+    return null;
+  }
+}
+
 export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSessionProviderProps) {
   const [tgUser] = useState<TgUser | null>(() => getTgUser());
   const [loading, setLoading] = useState(true);
@@ -113,6 +189,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       setUser(null);
       setDash(null);
       lastGoodRef.current = null;
+      clearSessionSnapshot();
       setError("");
       setWebLoginRequired(true);
       setWebLoginError(telegramAuthRefreshMessage(error));
@@ -143,6 +220,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     const hasSession = hasWebSessionToken() || completedOidcFromUrl || cabinetHandoffResult.exchanged || consumedFromUrl;
     if (!tgUser && !hasSession) {
       lastGoodRef.current = null;
+      clearSessionSnapshot();
       setUser(null);
       setDash(null);
       setLoading(false);
@@ -152,6 +230,20 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       setWebLoginError(cabinetHandoffResult.errorMessage || "");
       setWebLoginRequired(true);
       return;
+    }
+
+    // Warm start: hydrate the persisted display snapshot so the shell renders
+    // instantly and `refreshing` (not the bootstrap skeleton) covers the
+    // revalidation. Skipped when a URL just carried fresh auth material —
+    // that may be a different account than the stored snapshot.
+    const consumedAuthFromUrl = completedOidcFromUrl || cabinetHandoffResult.exchanged || consumedFromUrl;
+    if (mode !== "entry" && !consumedAuthFromUrl && !lastGoodRef.current) {
+      const warmSnapshot = readSessionSnapshot();
+      if (warmSnapshot) {
+        lastGoodRef.current = warmSnapshot;
+        setUser(warmSnapshot.user);
+        setDash(warmSnapshot.dash);
+      }
     }
 
     const hasWarmSnapshot = mode !== "entry" && Boolean(lastGoodRef.current?.user && lastGoodRef.current?.dash);
@@ -183,6 +275,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       setDash(dashboard);
       setUser(profile);
       lastGoodRef.current = { user: profile, dash: dashboard };
+      persistSessionSnapshot(profile, dashboard);
     } catch (error) {
       const message = parseErrorMessage(error);
       if (isReauthMessage(message)) {
@@ -190,6 +283,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         setUser(null);
         setDash(null);
         lastGoodRef.current = null;
+        clearSessionSnapshot();
         setWebLoginRequired(true);
         setWebLoginBusy(false);
         setWebLoginError(telegramAuthRefreshMessage(message));
@@ -236,6 +330,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
       setUser(null);
       setDash(null);
       lastGoodRef.current = null;
+      clearSessionSnapshot();
       setError("");
       setWebLoginError(telegramAuthRefreshMessage(message || detail.code || "telegram_login_deprecated"));
       setWebLoginRequired(true);
@@ -256,6 +351,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         setUser(null);
         setDash(null);
         lastGoodRef.current = null;
+        clearSessionSnapshot();
         setWebLoginRequired(true);
         setError("");
         setWebLoginError(message);
@@ -278,6 +374,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
         setUser(null);
         setDash(null);
         lastGoodRef.current = null;
+        clearSessionSnapshot();
         setWebLoginRequired(true);
         setError("");
         setWebLoginError(telegramAuthRefreshMessage(message));
@@ -316,6 +413,7 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     setUser(null);
     setDash(null);
     lastGoodRef.current = null;
+    clearSessionSnapshot();
     setError("");
     setWebLoginError("");
     setWebLoginBusy(false);

@@ -871,7 +871,7 @@ async def oto_free_job() -> None:
             if not offer:
                 continue
 
-            text = "🎁 Мягкий апгрейд на 2 часа: 1 месяц за 149 Stars.\nОффер закреплён за вами."
+            text = "🎁 Мягкий апгрейд на 2 часа: 1 месяц за 149 ₽.\nОффер закреплён за вами."
             buttons = [[{"text": "Подключить / Продлить", "url": _bot_pay_url()}]]
             await _telegram_send_message(chat_id=int(u.tg_id), text=text, buttons=buttons)
         await asyncio.sleep(900)

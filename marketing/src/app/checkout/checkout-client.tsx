@@ -311,6 +311,8 @@ export default function CheckoutClient() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>("sbp");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
 
+  // Fetch the catalog exactly once on mount: plan selection must not refetch.
+  // Selection is reconciled through a functional update instead of a dep.
   useEffect(() => {
     let cancelled = false;
 
